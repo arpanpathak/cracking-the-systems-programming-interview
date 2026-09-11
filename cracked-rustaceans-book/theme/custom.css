@@ -1,0 +1,130 @@
+/* Typography and colour for the browser edition. The printed edition has its
+   own stylesheet in tools/print.css; both set a text face for prose, a monospace
+   face for code, and the same accent colour. */
+
+:root {
+    --content-max-width: 100%;
+    --text-face: "Bitstream Charter", Georgia, "DejaVu Serif", serif;
+    --code-face: "DejaVu Sans Mono", "Liberation Mono", monospace;
+
+    --accent: #14508c;
+    --accent-deep: #0c325c;
+    --accent-soft: #e9f0f8;
+    --accent-line: #b9cbe0;
+
+    /* Sidebar and link colours, so the browser edition matches the print one. */
+    --links: #14508c;
+    --sidebar-bg: #0e3b68;
+    --sidebar-fg: #e8eef6;
+    --sidebar-non-existant: #9db6cf;
+    --sidebar-active: #ffffff;
+    --sidebar-spacer: #2f5a86;
+}
+
+/* mdBook sets the root at 62.5%; 75% raises the base to 12px, so body text is
+   about 19px rather than 16px. */
+html {
+    font-size: 75%;
+}
+
+body {
+    font-family: var(--text-face);
+    font-size: 1.6rem;
+    line-height: 1.7;
+    color: #191919;
+}
+
+.content {
+    padding: 1.2em 2.6em 4em;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+    letter-spacing: -0.012em;
+    color: var(--accent-deep);
+}
+
+h1 {
+    font-size: 3.2rem;
+    line-height: 1.2;
+    margin-block: 1.2em 0.8em;
+    padding-bottom: 0.32em;
+    border-bottom: 3px solid var(--accent);
+}
+
+h2 {
+    font-size: 2.2rem;
+    border-bottom: 2px solid var(--accent-line);
+    padding-bottom: 0.24em;
+    margin-block: 1.8em 0.7em;
+}
+
+h3 {
+    font-size: 1.8rem;
+}
+
+a {
+    color: var(--accent);
+}
+
+p {
+    text-align: justify;
+    hyphens: auto;
+    margin-block: 0.9em;
+}
+
+code,
+pre {
+    font-family: var(--code-face);
+}
+
+code {
+    font-size: 0.84em;
+}
+
+pre {
+    font-size: 0.82em;
+    line-height: 1.5;
+    background: #f6f8fa;
+    border-left: 4px solid var(--accent);
+    padding: 0.9em 1.1em;
+    border-radius: 4px;
+}
+
+:not(pre) > code {
+    background: var(--accent-soft);
+    padding: 0.12em 0.32em;
+    border-radius: 3px;
+}
+
+table {
+    font-size: 0.95em;
+    border-collapse: collapse;
+    margin-block: 1.4em;
+}
+
+th,
+td {
+    padding: 0.45em 0.7em;
+    border: 1px solid var(--accent-line);
+    vertical-align: top;
+}
+
+thead th {
+    font-family: "DejaVu Sans", sans-serif;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    text-align: left;
+}
+
+blockquote {
+    font-style: normal;
+    border-left: 4px solid var(--accent);
+    padding-left: 1em;
+    color: #2b3540;
+}

@@ -1,0 +1,12 @@
+apiVersion: gpucloud.example.com/v1
+kind: GpuWorkload
+metadata:
+  name: triton-kind
+  namespace: default
+spec:
+  # CPU-safe sample for Kind: no nvidia.com/gpu is requested.
+  image: nginx:1.27-alpine
+  replicas: 1
+  gpuCount: 0
+  servicePort: 8080
+  containerPort: 80

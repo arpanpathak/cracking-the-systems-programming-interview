@@ -1,0 +1,29 @@
+[package]
+name = "nvidia-rust-interview-lab"
+version = "0.1.0"
+edition = "2024"
+description = "Rust interview examples for NVIDIA Senior Cloud Software Engineer"
+license = "MIT"
+
+[dependencies]
+libc = "0.2"
+
+# The benchmarking examples live outside src/bin so everything the benchmark
+# measures sits in one directory. The structures themselves are library modules
+# (benchmarking_examples/lists and benchmarking_examples/cache) so all four
+# programs share one compiled copy.
+[[bin]]
+name = "benchmark"
+path = "benchmarking_examples/benchmark.rs"
+
+[[bin]]
+name = "list_box"
+path = "benchmarking_examples/list_box.rs"
+
+[[bin]]
+name = "list_enum"
+path = "benchmarking_examples/list_enum.rs"
+
+[[bin]]
+name = "list_drop"
+path = "benchmarking_examples/list_drop.rs"

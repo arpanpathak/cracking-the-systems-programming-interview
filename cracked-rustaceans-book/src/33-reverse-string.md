@@ -1,0 +1,142 @@
+# 33. Reversing a String In Place {#reverse-string}
+
+*Source file: [`src/bin/reverse_string.rs`](../../rust-interview-lab/src/bin/reverse_string.rs). Run it with
+`cargo run --bin reverse_string`.*
+
+## Problem Statement
+
+Reverse the characters of a `String` without allocating a second one. The
+constraint is what makes the problem interesting in Rust: a `String` is UTF-8, so
+its bytes are not the same as its characters, and the safe API does not expose a
+mutable byte buffer.
+
+## Designing a Solution
+
+The function works on bytes and swaps from the two ends inward. Two indices start
+at the first and last byte, exchange their values, and move toward each other
+until they meet. Each swap fixes two positions, so the loop runs half as many
+times as there are bytes and requires no extra storage.
+
+Reversing bytes only produces a valid `String` when every byte is a complete
+character. For ASCII that is true, because one byte is one code point. For
+general UTF-8 it is not: a multi-byte character read backwards is not a character.
+The function therefore asserts that the input is ASCII before it touches the
+buffer, and the assertion is the precondition that makes the unsafe access sound.
+
+`String::as_mut_vec` is the only way to reach the bytes. It is `unsafe` because a
+caller that leaves invalid UTF-8 in the buffer creates a `String` that violates
+its own invariant, and every later operation on it is undefined. The `SAFETY`
+comment states the obligation and the assertion that discharges it.
+
+## Implementation
+
+```rust
+
+fn reverse_str(s: &mut String) {
+    // SAFETY: s._as_mut_vec() is unsafe because it exposes the inner mutability to it's character buffer, and we must ensure
+    // to leave valid UTF-8. We enforce ASCII only characters.
+    assert!(s.is_ascii());
+    let bytes = unsafe { s.as_mut_vec() };
+
+    let (mut start, mut end) = (0, bytes.len() - 1);
+
+    while start < end {
+        bytes.swap(start, end);
+        start+=1; end-=1;
+    }
+}
+
+fn main() {
+
+}
+```
+
+The file's `main` is empty, so the listing ends at the function.
+
+`assert!(s.is_ascii())` walks the string before the reversal. It is `O(n)`, which
+does not change the overall bound, and it runs before the unsafe block rather than
+inside it, so the panic leaves the string untouched.
+
+`bytes.swap(start, end)` is `slice::swap`, which exchanges two elements without
+moving either out. A manual exchange through a temporary would be three
+assignments on `u8`; `swap` states the intent and compiles to the same place.
+
+## Intuition
+
+Reverse `"abcd"`:
+
+```text
+before   a  b  c  d
+         ^        ^
+         start    end
+
+swap 0,3 b  a  c  d
+swap 1,2 b  c  a  d
+         start >= end, stop
+after    b  c  a  d
+```
+
+Reverse `"abc"`:
+
+```text
+before   a  b  c
+swap 0,2 c  b  a
+         start = 1, end = 1, stop
+after    c  b  a
+```
+
+The middle byte of an odd-length string is never moved, which is why the loop
+condition is `start < end` rather than `start <= end`.
+
+## Time and Space Complexity
+
+| Resource | Cost | Condition |
+|---|---|---|
+| Time | `O(n)` | `is_ascii` reads every byte; the swaps touch half of them |
+| Space | `O(1)` | the swap is in place; no second buffer |
+| Allocations | zero | the `String` keeps its buffer |
+
+The reversal itself is `n / 2` swaps, and it is performed in place, so the
+buffer's address and capacity do not change.
+
+## Limitations
+
+**Non-ASCII input panics.** `assert!(s.is_ascii())` refuses any string containing
+a byte above `0x7F`, which includes every accented letter and every emoji. A
+general reversal needs to decode the string into characters, reverse the
+characters, and rebuild the `String`, which allocates.
+
+**Empty input panics.** With `bytes.len() == 0`, the expression `bytes.len() - 1`
+underflows. In a debug build that panics with an arithmetic error; in a release
+build it wraps and the following `swap` is out of bounds. The function needs a
+check for an empty string, and it does not have one.
+
+**The `unsafe` block is sound only because of the assertion above it.** Removing
+the assertion makes the function undefined behaviour on any non-ASCII input. The
+`SAFETY` comment is the record of that dependency, and a future edit that drops
+the check has to drop the unsafe approach as well.
+
+**The function reverses bytes, not grapheme clusters.** For ASCII the two are the
+same. For text that passes the assertion they cannot differ, but a reader should
+not carry the assumption to a general string.
+
+**The file's `main` is empty.** Nothing runs when the program starts, so the
+function is only reachable from a test or another program.
+
+## Summary
+
+- Byte reversal is `O(n)` time and `O(1)` space, and only the ASCII precondition
+  makes it a valid `String` transformation.
+- `as_mut_vec` is `unsafe` because it can leave the buffer invalid; the assertion
+  ahead of it is what discharges the obligation recorded in the `SAFETY` comment.
+- The loop runs `n / 2` times and leaves the middle byte of an odd-length string
+  in place.
+- Empty and non-ASCII inputs are not handled: the first panics on the subtraction,
+  and the second is refused by the assertion.
+
+## References
+
+- Standard library, [`String::as_mut_vec`](https://doc.rust-lang.org/std/string/struct.String.html#method.as_mut_vec).
+- Standard library, [`str::is_ascii`](https://doc.rust-lang.org/std/primitive.str.html#method.is_ascii).
+- Standard library, [`slice::swap`](https://doc.rust-lang.org/std/primitive.slice.html#method.swap).
+- The Rustonomicon, [Working with unsafe](https://doc.rust-lang.org/nomicon/working-with-unsafe.html).
