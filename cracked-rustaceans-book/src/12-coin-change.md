@@ -5,23 +5,23 @@
 > I call it my billion-dollar mistake. It was the invention of the null
 > reference in 1965.
 >
->, C. A. R. Hoare, QCon London, 2009
+> C. A. R. Hoare, QCon London, 2009
 
 ## Problem Statement
 
-Given a list of coin denominations and a target amount, return the smallest number
-of coins whose values sum exactly to the amount, or report that no combination
-exists. Each denomination may be used any number of times.
+Given a list of coin denominations and a target amount, return the smallest number of
+coins whose values sum exactly to the amount, or report that no combination exists.
+Each denomination may be used any number of times.
 
 ## Designing a Solution
 
 A greedy rule does not work. Taking the largest coin that fits fails for
-`coins = [1, 3, 4]` and `amount = 6`: the greedy choice of `4` leaves `2`, which
-needs two more coins, for a total of three, while `3 + 3` needs two.
+`coins = [1, 3, 4]` and `amount = 6`: the greedy choice of `4` leaves `2`, which needs
+two more coins, for a total of three, while `3 + 3` needs two.
 
-The recurrence is over amounts. Let `dp[t]` be the smallest number of coins that
-sums to `t`. The last coin used is some denomination `c`, and everything before it
-must sum to `t - c` in the smallest possible number of coins:
+The recurrence is over amounts. Let `dp[t]` be the smallest number of coins that sums
+to `t`. The last coin used is some denomination `c`, and everything before it must sum
+to `t - c` in the smallest possible number of coins:
 
 ```text
 dp[0] = 0
@@ -87,23 +87,22 @@ mod tests {
 }
 ```
 
-`usize::MAX` is the sentinel for "no combination reaches this amount yet". It is
-safe as a marker because a real answer can never be that large: any combination
-uses at most `amount` coins, because every coin is worth at least one.
+`usize::MAX` is the sentinel for an amount no combination has reached. It is safe as a
+marker because a real answer can never be that large: any combination uses at most
+`amount` coins, because every coin is worth at least one.
 
-The guard `if coin > total || dp[total - coin] == usize::MAX` does two things at
-once. It skips a coin that is too large to be the last coin, and it skips a coin
-whose remainder is itself unreachable. Without the second test the addition below
-would add one to the sentinel and produce a wrong answer that looks reachable.
+The guard `if coin > total || dp[total - coin] == usize::MAX` does two things. It skips
+a coin too large to be the last coin, and it skips a coin whose remainder is itself
+unreachable. Without the second test the addition below would add one to the sentinel
+and produce a wrong answer that looks reachable.
 
-`dp[total] = dp[total].min(dp[total - coin] + 1)` keeps the best count found so
-far for this amount. Because `dp[total]` is read and written in the same
-statement, the loop order over coins does not matter.
+`dp[total] = dp[total].min(dp[total - coin] + 1)` keeps the best count found so far for
+this amount. Because `dp[total]` is read and written in the same statement, the loop
+order over coins does not matter.
 
-The boundary conversion is where the sentinel stops. `match dp[amount]` translates
-`usize::MAX` into `None` and everything else into `Some(count as i32)`, so no
-caller ever sees the marker. The type of the answer is `Option<i32>`, which is the
-part of the design that matters: "impossible" is not a number.
+`match dp[amount]` translates `usize::MAX` into `None` and everything else into
+`Some(count as i32)`, so no caller sees the marker. The answer type is `Option<i32>`,
+which is the part of the design that matters: "impossible" is not a number.
 
 ## Intuition
 
@@ -145,48 +144,31 @@ dp[3] is the sentinel, so the result is None.
 
 ## Limitations
 
-**The table is allocated from the amount alone.** `coin_change(&[1], i32::MAX)`
-asks for a vector of `i32::MAX + 1` machine words, which is sixteen gigabytes on a
-64-bit target. The allocation failure aborts the process, because the standard
-library's allocation error handling calls `handle_alloc_error`, which aborts. A
-version that accepts an amount from the network would validate it against a limit
-first, or use `Vec::try_reserve` to turn the failure into a `Result`.
+**The table is allocated from the amount alone.** `coin_change(&[1], i32::MAX)` asks for
+a vector of `i32::MAX + 1` machine words, which is sixteen gigabytes on a 64-bit target.
+The allocation failure aborts the process, because the standard library's allocation
+error handling calls `handle_alloc_error`, which aborts. A version that accepts an
+amount from a network input would validate it against a limit first, or use
+`Vec::try_reserve` to turn the failure into a `Result`.
 
-**A negative coin is treated as a very large positive one.** `coin as usize`
-converts `-1` to `usize::MAX`, and the guard `coin > total` then skips it on every
-iteration. The function returns an answer that ignores the negative coin, which is
-the wrong answer if the caller meant the coin to be usable. Nothing reports the
-conversion.
+**A negative coin is treated as a very large positive one.** `coin as usize` converts
+`-1` to `usize::MAX`, and the guard `coin > total` then skips it on every iteration. The
+function returns an answer that ignores the negative coin, which is the wrong answer if
+the caller meant the coin to be usable. Nothing reports the conversion.
 
-**A zero coin is skipped by the same guard, correctly.** `coin = 0` passes the
-first test only when `total` is zero, and the loop starts at one, so a zero
-denomination contributes nothing. That is the right behaviour and it is a
-consequence of the guard rather than a stated rule.
+**A zero coin is skipped by the same guard, correctly.** `coin = 0` passes the first
+test only when `total` is zero, and the loop starts at one, so a zero denomination
+contributes nothing. That is the right behaviour, and it is a consequence of the guard
+rather than a stated rule.
 
-**The function returns the count, not the coins.** A caller that wants to know
-which coins to use needs the predecessor that produced each entry, which means a
-second table recording decisions. The current one-minimum-per-entry design cannot
-reconstruct the combination.
+**The function returns the count, not the coins.** A caller that wants to know which
+coins to use needs the predecessor that produced each entry, which means a second table
+recording decisions. The one-minimum-per-entry design cannot reconstruct the
+combination.
 
-**`i32` bounds both the amount and the answer.** An amount above `i32::MAX` cannot
-be passed, and the conversion `count as i32` is safe only because the answer is at
-most the amount.
-
-## Summary
-
-- The recurrence decides on the last coin: `dp[total]` is one more than the best
-  `dp[total - coin]`, which is what makes the table a dynamic program rather than a
-  sequence of locally optimal choices.
-- A greedy choice is not correct here. For `[1, 3, 4]` and the amount `6`, greedy
-  produces `4 + 1 + 1` and the optimum is `3 + 3`.
-- The table holds `usize::MAX` as a sentinel for an unreachable amount, and the
-  boundary converts it to `None`, so a caller never sees the sentinel. The
-  conversion `count as i32` is safe because the answer is at most the amount.
-- The allocation is controlled by the input. `coin_change(&[1], i32::MAX)` requests
-  a vector of `i32::MAX + 1` machine words, and a failed allocation aborts the
-  process.
-- The function returns the count and not the coins. Reconstructing the combination
-  needs the predecessor that produced each entry, which is a second table.
+**`i32` bounds both the amount and the answer.** An amount above `i32::MAX` cannot be
+passed, and the conversion `count as i32` is safe only because the answer is at most the
+amount.
 
 ## References
 

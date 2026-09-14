@@ -5,16 +5,16 @@
 
 ## Problem Statement
 
-Given a list of distinct values, return every subset. A list of `n` values has
-`2^n` subsets, because each value is independently either present or absent, and
-the empty subset and the whole list are both included.
+Given a list of distinct values, return every subset. A list of `n` values has `2^n`
+subsets, because each value is independently either present or absent, and both the
+empty subset and the whole list are included.
 
 ## Designing a Solution
 
-Backtracking walks a sequence of decisions. At each step the algorithm holds a
-partial selection and a position, records the selection, and then tries every
-value from that position onward as the next member. After each trial it undoes the
-choice, which is what allows the next trial to start from the same state.
+Backtracking walks a sequence of decisions. At each step the algorithm holds a partial
+selection and a position, records the selection, and then tries every value from that
+position onward as the next member. After each trial it undoes the choice, which is
+what allows the next trial to start from the same state.
 
 ```text
 values = [1, 2, 3]
@@ -32,14 +32,13 @@ values = [1, 2, 3]
 8 records: [], [1], [2], [3], [1,2], [1,3], [2,3], [1,2,3]
 ```
 
-The invariant that makes the undo step correct is: on entry to the recursive call,
+The invariant that makes the undo step correct: on entry to the recursive call,
 `selection` holds a prefix of a decision sequence; on exit it holds exactly what it
-held on entry. Every branch therefore starts from a state that the branches before
-it did not disturb.
+held on entry. Every branch therefore starts from a state that the branches before it
+did not disturb.
 
-The restriction that each recursive call may only choose a value at or after
-`start` is what prevents `[1, 2]` and `[2, 1]` from both appearing. The output is
-ordered by index, not by value.
+Restricting each recursive call to values at or after `start` is what prevents `[1, 2]`
+and `[2, 1]` from both appearing. The output is ordered by index, not by value.
 
 ## Implementation
 
@@ -87,21 +86,20 @@ mod tests {
 ```
 
 `fn backtrack(...)` is a nested function inside `subsets`. A nested `fn` does not
-capture its environment, so the values it needs are passed as parameters:
-`nums`, `start`, `path`, and `result`. That is why the signature is longer than the
-body: the parameters replace the closure capture that a nested `fn` cannot have.
+capture its environment, so the values it needs are passed as parameters: `nums`,
+`start`, `path`, and `result`. That is why the signature is longer than the body.
 
 `result.push(path.clone())` records the current selection. The clone is required
-because `path` is reused for the rest of the search; all `2^n` recorded subsets are
+because `path` is reused for the rest of the search, and all `2^n` recorded subsets are
 independent vectors.
 
-`backtrack(&nums, idx + 1, path, result)` passes `idx + 1`, not `start + 1`. Each
-chosen value advances the lower bound past itself, so a value cannot be chosen
-twice and the indices in a subset always increase.
+`backtrack(&nums, idx + 1, path, result)` passes `idx + 1`, not `start + 1`. Each chosen
+value advances the lower bound past itself, so a value cannot be chosen twice and the
+indices in a subset always increase.
 
-`path.pop()` after the recursive call restores the invariant. Removing that line
-makes the selection grow for the remainder of the search, and the output would
-contain subsets that were never selected.
+`path.pop()` after the recursive call restores the invariant. Removing that line makes
+the selection grow for the remainder of the search, and the output would contain
+subsets that were never selected.
 
 ## Intuition
 
@@ -142,53 +140,33 @@ recorded, in order: [], [1], [1,2], [1,2,3], [1,3], [2], [2,3], [3]
 | Time | `O(2^n × n)` | one clone of the selection per recorded subset, of length up to `n` |
 | Space | `O(2^n × n)` | the output dominates; the stack is `O(n)` |
 
-The clone is the reason for the extra factor of `n`. A caller that only needs to
-visit each subset can pass a closure instead of collecting them, which removes the
-factor.
+The clone is the reason for the factor of `n`. A caller that only needs to visit each
+subset can pass a closure instead of collecting them, which removes the factor.
 
 ## Limitations
 
-**The capacity hint overflows for large inputs.** `Vec::with_capacity(1 <<
-nums.len())` evaluates `1 << nums.len()` as a `usize`. For a list of 64 or more
-values on a 64-bit target, the shift is not representable and panics in a debug
-build. The panic happens on an input the function is otherwise able to accept: the
-recursion itself has no such limit, and the allocation would fail long before the
-work finished. The hint is a promise the code cannot keep.
+**The capacity hint overflows for large inputs.** `Vec::with_capacity(1 << nums.len())`
+evaluates `1 << nums.len()` as a `usize`. For a list of 64 or more values on a 64-bit
+target the shift is not representable and panics in a debug build. The panic happens on
+an input the function is otherwise able to accept: the recursion itself has no such
+limit, and the allocation would fail long before the work finished.
 
-**A list of 40 values cannot be enumerated at all.** `2^40` subsets is about a
-trillion vectors, and the output alone would exceed any machine's memory. The
-function has no bound on the input size and no way to report that the work is
-impossible, so the caller has to know.
+**A list of 40 values cannot be enumerated at all.** `2^40` subsets is about a trillion
+vectors, and the output alone would exceed any machine's memory. The function has no
+bound on the input size and no way to report that the work is impossible.
 
-**Duplicate values produce duplicate-looking subsets.** The function takes a list
-and treats every position as distinct, so `subsets(vec![1, 1, 1])` returns eight
-subsets (five of them empty-looking). The documentation says "distinct integers",
-which is a precondition the type does not enforce.
+**Duplicate values produce duplicate-looking subsets.** The function takes a list and
+treats every position as distinct, so `subsets(vec![1, 1, 1])` returns eight subsets.
+The documentation says "distinct integers", which is a precondition the type does not
+enforce.
 
 **The output order is an implementation detail, and one test depends on it.**
-`empty_input_has_one_subset` compares the whole output, which is safe for one
-element. The other test sorts before comparing, which is the right pattern;
-`generates_all_subsets` follows it.
+`empty_input_has_one_subset` compares the whole output, which is safe for one element.
+The other test sorts before comparing.
 
-**There is no way to stop the search early or to stream the results.** A caller
-that wants the first `k` subsets, or wants to search for a subset with a property,
-must collect all of them first.
-
-## Summary
-
-- The recording happens at the start of each call, before the loop. That is what
-  produces the empty subset and what makes every node of the recursion tree
-  correspond to one output.
-- The output is `2^n` subsets, and cloning the working path into each one adds a
-  factor of `n`. Replacing the collected vectors with a visitor closure removes the
-  factor, which is a change of interface rather than a micro-optimisation.
-- The `push` and `pop` pair is a single operation. The `pop` is what makes the next
-  branch independent, not cleanup after the current one.
-- The input size is unbounded. A list of 40 values produces about a trillion
-  subsets, and the capacity hint `1 << nums.len()` overflows for 64 values on a
-  64-bit target.
-- The documentation states "distinct integers" as a precondition the type does not
-  enforce, so repeated values produce repeated-looking subsets.
+**There is no way to stop the search early or to stream the results.** A caller that
+wants the first `k` subsets, or that is searching for a subset with a property, must
+collect all of them first.
 
 ## References
 

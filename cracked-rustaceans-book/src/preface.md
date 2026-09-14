@@ -5,17 +5,15 @@
 >
 > Bjarne Stroustrup, *Foundations of C++*, ECOOP 2012
 
-## What this book is
+## About the book
 
-The subject is one Rust repository, `rust-interview-lab`. Its files cover the working
-material of a systems interview: data structures, caches, concurrency primitives,
-file and directory handling, and the network code a service needs.
+It can be very hard to use Rust for coding interviews if you don't have guidance. I felt
+the need of having a book, being a senior engineer, who can teach the language and its
+idiomatic patterns effortlessly with code that you can reproduce under pressure.
 
-Each chapter takes one file, prints it as the repository holds it, and works through
-the design, a trace on a concrete input, the cost of each operation, and the cases the
-code does not handle. The tests appear with the code.
+This book prepares you for those interviews and solidifies your intuition.
 
-The repository is at
+The code is in `rust-interview-lab`, at
 <https://github.com/arpanpathak/cracking-the-systems-programming-interview>.
 
 ## What you need to know
