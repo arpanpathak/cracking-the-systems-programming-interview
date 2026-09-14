@@ -4,24 +4,19 @@
 
 ## Problem Statement
 
-Support four operations on a stack, `push`, `pop`, `top`, and `get_min`, with
-each of them in constant time. The first three are what a stack always provides.
-The fourth is the whole problem: the smallest value currently in the stack, also in
-constant time.
+Implement a stack with four operations: `push`, `pop`, `top`, and `get_min`. Each
+runs in `O(1)` time. The first three are the standard stack operations. `get_min`
+returns the smallest value currently on the stack.
 
-A single vector of values cannot do it. The minimum of the stack is easy to track
-while values are only added: keep a running smallest value and update it on each
-push. Popping destroys it. When the smallest value leaves the stack, the next
-smallest is whatever the second smallest was at that moment, and that value was
-overwritten by the running minimum when the smaller one arrived. The information
-needed to answer the question after a pop is information the running minimum
-discarded.
+A `Vec<i32>` together with a variable holding the current minimum does not satisfy
+the bound. The variable is correct while values are pushed. A `pop` that removes the
+current minimum leaves the previous minimum unavailable, because the variable was
+overwritten when the smaller value was pushed.
 
 ## Designing a Solution
 
-The fix is to stop tracking one minimum and start recording the minimum at every
-depth. Keep a second vector, the same length as the first, in which entry `i` holds
-the smallest value among the first `i + 1` entries of the stack.
+Store the minimum at every depth. A second vector, the same length as the first,
+records at index `i` the smallest value among `values[0..=i]`.
 
 ```text
 values          3   1   4   1   5
@@ -31,21 +26,14 @@ mins            3   1   1   1   1
                 the smallest of 3
 ```
 
-The invariant is the sentence
+The invariant is `mins[i] == min(values[0..=i])`. Two consequences cover the
+implementation. `get_min` returns the last entry of `mins`, because the last index
+covers the whole stack. `pop` removes the last entry from both vectors, and the
+invariant still holds for every remaining index, so nothing is recomputed.
 
-> `mins[i]` is the minimum of `values[0..=i]`.
-
-Two facts follow from it, and between them they explain the whole implementation.
-The answer to `get_min` is the last entry of `mins`, because the last index covers
-the whole stack. And `pop` can remove the last entry of each vector and remain
-consistent, because after removing index `i` from both, the invariant still holds
-for every remaining index. Nothing has to be recomputed, because what was recorded
-at each depth happens to be exactly what is needed at that depth.
-
-Push does not compute a minimum; it records the decision that was made at the new
-depth. The value appended to `mins` is either the incoming value, if it is smaller
-than everything already there, or the previous minimum, if it is not. Both are
-available in constant time, which is where the constant time bound comes from.
+`push` appends to `mins` either the incoming value, when it is smaller than the
+current minimum, or the current minimum otherwise. Both are available in constant
+time, which is where the bound comes from.
 
 ## Implementation
 
@@ -116,29 +104,25 @@ mod tests {
 ```
 
 `MinStack::new` returns `Self::default()`, so the constructor and the `Default`
-implementation cannot drift apart. The derive provides `Default`, and `new` is the
-name callers expect.
+implementation cannot disagree.
 
 `push` matches on the last entry of `mins` with a guard. `Some(&min) if min <= val`
-handles the case where the stack is non-empty and the incoming value is not
-smaller, in which case the previous minimum is repeated. The underscore arm covers
-both remaining cases at once: the stack is empty, so there is no previous minimum,
-or the incoming value is strictly smaller, so it becomes the new minimum. In both,
-the value pushed is `val`.
+handles a non-empty stack whose incoming value is not smaller, and repeats the
+previous minimum. The underscore arm covers the empty stack and the strictly smaller
+value; in both, the value pushed is `val`.
 
-The comparison is `<=` rather than `<`. With `<` the two arms would still be
-correct for the minimum, because equal values give the same answer. The choice
-matters for the variant that stores counts, where equality against the current
-minimum is what increments the count instead of appending an entry.
+The comparison is `<=` rather than `<`. With `<` the arms remain correct for the
+minimum, because equal values give the same answer. The choice matters for the
+variant that stores counts, where equality with the current minimum increments the
+count instead of appending an entry.
 
-`pop` discards the last entry of each vector and returns the value from the first.
-Both vectors lose exactly one element per call, so the equal-length invariant is
-maintained by construction, and the discarded entry of `mins` is never read.
+`pop` removes the last entry of each vector and returns the value from the first.
+Both vectors lose one element per call, so the equal-length invariant holds by
+construction, and the discarded entry of `mins` is never read.
 
-`top` and `get_min` use `copied`, which turns `Option<&i32>` into `Option<i32>` by
-copying the value out of the reference. Without it the returned `&i32` would borrow
-the stack, and a caller could not push while holding the result, a restriction
-that a four-line accessor should not impose.
+`top` and `get_min` use `copied`, which turns `Option<&i32>` into `Option<i32>`.
+Without it the returned reference would borrow the stack and prevent a push while
+the result is held.
 
 ## Intuition
 
@@ -156,15 +140,12 @@ pop()             []              []                Some(-2)
 get_min()         []              []                None
 ```
 
-The sequence in the test suite exercises the case the running-minimum design would
-fail: after `-3` is popped, `get_min` reports `-2`, the value that was second
-smallest. A single tracked minimum would still report `-3`, a value no longer in
-the stack.
+The trace exercises the case a single tracked minimum would fail. After `-3` is
+popped, `get_min` reports `-2`, which was the second smallest value. A single
+tracked minimum would report `-3`, a value no longer on the stack.
 
-The second test covers equality. Two equal values are pushed and one is popped; the
-minimum after the pop is still that value, because the surviving entry also records
-it. Both vectors held two entries and one remains, so the derivation of the
-invariant is unaffected by the repetition.
+The second test pushes two equal values and pops one. The minimum after the pop is
+still that value, because the surviving entry records it.
 
 ## Time and Space Complexity
 
@@ -176,69 +157,44 @@ invariant is unaffected by the repetition.
 | `get_min` | `O(1)` | none |
 
 Push is amortised rather than constant because a `Vec` occasionally reallocates and
-moves its elements. The event is rare and the capacity doubles, so `n` pushes
-perform `O(n)` total movement, which is the amortised `O(1)` the caller receives.
+moves its elements. The capacity doubles, so `n` pushes perform `O(n)` total
+movement.
 
-The structure stores two integers per element to hold one. For a stack of a million
-entries that is eight megabytes instead of four. The overhead is the price of the
-constant time minimum, and it is the measurement to give when someone asks what the
-approach costs. The alternative is described under failure modes: it stores a pair
-per *run* of equal minimum values rather than a value per element, which is smaller
-when the minimum repeats and equal to or larger than this design when it does not.
+The structure stores two integers per element to hold one. A stack of one million
+entries occupies eight megabytes instead of four. The alternative under Limitations
+stores a pair per run of equal minima, which uses less space when the minimum
+repeats and no more when it does not.
 
 ## Limitations
 
-The memory overhead is proportional to the number of elements rather than to the
-number of distinct minimum values. A stack whose minimum changes on every push,
-which is what an increasing sequence produces, records the incoming value every
-time, and both vectors hold distinct entries. A stack whose minimum never changes
+The memory overhead is proportional to the number of elements, not to the number of
+distinct minimum values. An increasing sequence changes the minimum on every push
+and records a distinct value each time. A sequence whose minimum never changes
 records the same value repeatedly, and the second vector is redundant. A design that
-stores `(value, repeat_count)` pairs, appending an entry only when the minimum
-strictly decreases and incrementing the count when it is repeated, holds fewer
-entries on inputs with repeated minima and never more than one entry per element.
-That variant is not implemented here, and the gain appears only on inputs where the
-minimum repeats.
+stores `(value, repeat_count)` pairs, appending only when the minimum strictly
+decreases and incrementing the count when it repeats, holds fewer entries on inputs
+with repeated minima and never more than one entry per element. That variant is not
+implemented here.
 
-Pop on an empty stack returns `None` and changes nothing: `Option::pop` on an empty
-`Vec` returns `None` without panicking, and both vectors are left empty. `top` and
-`get_min` also return `None` on an empty stack, so an empty stack reports no minimum
-rather than a minimum of zero, which is the distinction that a sentinel value would
-lose.
+`pop` on an empty stack returns `None` and changes nothing. `top` and `get_min` also
+return `None` on an empty stack, so an empty stack reports no minimum rather than a
+minimum of zero.
 
-The structure has no `len` and no `is_empty`. A caller cannot ask how many entries
-the stack holds, and the two fields are private, so the depth is not observable from
-outside the module. A caller can push, pop, read the top and read the minimum, and
-nothing else; an application that needs the depth has to track it alongside the
-structure, or wait for the accessor to be added.
+The structure has no `len` and no `is_empty`, and both fields are private, so the
+depth is not observable outside the module. A caller can push, pop, read the top and
+read the minimum, and nothing else. An application that needs the depth has to track
+it separately.
 
-The value type is `i32`. Making the structure generic over a type `T` with the
-`Ord` bound requires a type parameter on the struct, the implementation, and the two
-vectors, and the comparison in `push` is the only operation that needs the bound.
-Nothing in the algorithm depends on the values being integers, and nothing in it
-depends on `Copy` either: the second vector stores cloned values, which would need a
-`Clone` bound on the same type parameter.
+The value type is `i32`. Making the structure generic over a type `T: Ord` requires
+a type parameter on the struct, the implementation, and both vectors; the comparison
+in `push` is the only operation that needs the bound. The second vector stores cloned
+values, which would also require `Clone`.
 
-The order of the two pushes in `push`, `mins` first, then `values`, is an aspect
-of the invariant that the type system does not enforce. The code appends to `mins`
-before it appends to `values`, so if the second append could fail, the vectors would
-differ in length and the invariant would be broken. In Rust an allocation failure
-aborts the process rather than returning an error, so the case is not reachable
-through this function. The invariant holds because of the order of two adjacent
-statements rather than because of anything the compiler checks, and a reader
-verifying the structure should know that.
-
-## Summary
-
-- The invariant is that `mins[i]` is the minimum of `values[0..=i]`. Every question
-  about the design follows from it.
-- A single tracked minimum is not sufficient: the value that the running minimum
-  overwrites is the value needed after the pop, which is the problem the parallel
-  vector solves.
-- The cost is constant amortised time and two integers per element. The time bound
-  alone does not decide whether the structure is usable for a large stack.
-- The `(value, count)` pair is an alternative that occupies less memory when
-  consecutive values repeat, and the shape of the input decides between the two
-  designs. Only the bound changes if the variant is requested.
+`push` appends to `mins` before `values`. If the second append could fail, the
+vectors would differ in length and the invariant would break. Rust aborts the process
+on allocation failure, so the case is unreachable through this function. The
+invariant holds because of the order of two adjacent statements, which the compiler
+does not check.
 
 ## References
 

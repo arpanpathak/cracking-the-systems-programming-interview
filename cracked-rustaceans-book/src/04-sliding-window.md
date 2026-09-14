@@ -6,8 +6,8 @@
 ## Problem Statement
 
 Given a text, return the length of the longest contiguous substring that contains
-no repeated character. The answer is a length, not the substring, which lets the
-implementation discard the content of the window and keep only its start.
+no repeated character. The answer is a length, not the substring, so the
+implementation can discard the contents of the window and keep only its start.
 
 ## Designing a Solution
 
@@ -28,12 +28,12 @@ end  char  window       last_seen          longest
  5    w    [ew]         start = 2 + 1 = 3  3
 ```
 
-The line that carries the algorithm is `start = start.max(previous + 1)`. The
-`max` is not defensive coding. A character may have been seen, left the window,
-and been seen again; in that case its recorded index is *before* `start`, and
-assigning `previous + 1` unconditionally would move the window backwards and
-re-scan characters that have already been counted. `start` is monotonic, and that
-monotonicity is what makes the scan linear.
+The line that carries the algorithm is `start = start.max(previous + 1)`. The `max`
+is required, not defensive. A character may have been seen, left the window, and
+been seen again; its recorded index is then before `start`, and assigning
+`previous + 1` unconditionally would move the window backwards and count characters
+that were already counted. `start` is monotonic, and that monotonicity is what makes
+the scan linear.
 
 ## Implementation
 
@@ -85,8 +85,7 @@ the borrow ends at the end of the `if let` and the `insert` below is allowed.
 
 ## Intuition
 
-A case where the repeat has left the window, which is the case the `max` exists
-for:
+A case where the repeat has left the window, which is the case the `max` exists for:
 
 ```text
 "abba"
@@ -112,34 +111,23 @@ and count "abb" as a window.
 ## Limitations
 
 **The map is sized by a byte count.** `HashMap::with_capacity(s.len())` uses the
-byte length as the capacity hint, which over-allocates for multi-byte text. The
-hint is safe because a byte count bounds a character count.
+byte length as the capacity hint, which over-allocates for multi-byte text. The hint
+is safe because a byte count bounds a character count.
 
-**The answer is a length, and the substring is discarded.** A caller that needs
-the text of the longest window must record `start` alongside `longest` and slice
-the original at the end. That change is two lines and is not in the file.
+**The answer is a length, and the substring is discarded.** A caller that needs the
+text of the longest window must record `start` alongside `longest` and slice the
+original at the end. That change is two lines and is not in the file.
 
-**Non-ASCII text is measured in characters, not in grapheme clusters.** A
-combining sequence such as `e` followed by a combining acute accent is two scalar
-values, so the function counts it as two characters. A user-facing length would
-need grapheme segmentation, which the standard library does not provide.
+**Non-ASCII text is measured in characters, not in grapheme clusters.** A combining
+sequence such as `e` followed by a combining acute accent is two scalar values, so
+the function counts it as two characters. A user-facing length would need grapheme
+segmentation, which the standard library does not provide.
 
-**The map keeps an entry per distinct character ever seen.** Entries for
-characters that have left the window are not removed, so the space bound is over
-the whole text rather than over the current window. An implementation that
-removes entries on eviction would bound memory by the window instead.
-
-## Summary
-
-- The `max` on the first match is required for correctness. Without it the
-  function fails on `"abba"`.
-- `start` is monotonic, which is what reduces the scan to a single pass with no
-  backtracking and an `O(n)` bound.
-- The space bound is `O(min(n, alphabet))` rather than `O(n)`. For `char` keys the
-  alphabet cannot exceed 1,112,064, the number of Unicode scalar values.
-- Lengths are counted in scalar values, so a combining sequence counts as two. A
-  user-visible length would need grapheme segmentation, which the standard library
-  does not provide.
+**The map keeps an entry per distinct character ever seen.** Entries for characters
+that have left the window are not removed, so the space bound is over the whole text
+rather than over the current window. An implementation that removes entries on
+eviction would bound memory by the window instead. For `char` keys the map cannot
+hold more than 1,112,064 entries, the number of Unicode scalar values.
 
 ## References
 
