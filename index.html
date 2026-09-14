@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cracking the Systems Programming Interview</title>
+<style>
+    :root { --accent: #14508c; --deep: #0c325c; --soft: #e9f0f8; --line: #b9cbe0; }
+    body {
+        margin: 0;
+        font-family: "Bitstream Charter", Georgia, "DejaVu Serif", serif;
+        color: #191919;
+        line-height: 1.6;
+    }
+    header { background: var(--deep); color: #fff; padding: 4rem 1.5rem 3rem; text-align: center; }
+    header .kicker {
+        font-family: "DejaVu Sans", sans-serif;
+        font-size: .8rem; letter-spacing: .26em; text-transform: uppercase;
+        color: #bcd3ea; margin: 0 0 1rem;
+    }
+    header h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); margin: 0 0 .6rem; line-height: 1.15; }
+    header p { margin: 0; color: #d7e4f2; }
+    main { max-width: 860px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .cards { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card {
+        border: 1px solid var(--line); border-radius: 8px; padding: 1.4rem;
+        background: #fff; text-decoration: none; color: inherit; display: block;
+    }
+    .card:hover { background: var(--soft); }
+    .card h2 { margin: 0 0 .4rem; font-size: 1.15rem; color: var(--deep);
+        font-family: "DejaVu Sans", sans-serif; }
+    .card p { margin: 0; font-size: .95rem; color: #3d4a58; }
+    footer { border-top: 1px solid var(--line); color: #5f6b78; font-size: .9rem;
+        text-align: center; padding: 2rem 1.5rem 3rem; }
+    a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+    <p class="kicker">Rust · Linux · Kubernetes · Distributed Systems</p>
+    <h1>Cracking the Systems Programming Interview</h1>
+    <p>Thirty-five chapters, read one source file at a time.</p>
+</header>
+<main>
+    <div class="cards">
+        <a class="card" href="book/">
+            <h2>Read the book</h2>
+            <p>The browser edition of <em>Coding Interviews for Cracked Rustaceans</em>, with search and a table of contents.</p>
+        </a>
+        <a class="card" href="cracked-rustaceans.pdf">
+            <h2>Download the PDF</h2>
+            <p>The 215-page printed edition, with chapter openers, worked examples, and cost tables.</p>
+        </a>
+    </div>
+</main>
+<footer>
+    Source files for every chapter are linked from the chapter openers.
+</footer>
+</body>
+</html>

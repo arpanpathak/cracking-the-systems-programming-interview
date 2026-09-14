@@ -1,0 +1,556 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>22. Mutex Poisoning - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-bfe0b982.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-0bff135c.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-a5b67c94.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="mutex-poisoning"><a class="header" href="#mutex-poisoning">22. Mutex Poisoning</a></h1>
+<p><em>Source file: <a href="../rust-interview-lab/src/bin/mutex_poisoning.rs"><code>src/bin/mutex_poisoning.rs</code></a>. Run it with
+<code>cargo run --bin mutex_poisoning</code>.</em></p>
+<blockquote>
+<p>A distributed system is one in which the failure of a computer you didn’t
+even know existed can render your own computer unusable.</p>
+<p>, Leslie Lamport, <em>Distribution</em>, 1987</p>
+</blockquote>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Handle the case where a thread panics while holding a lock. The data behind the
+lock may be half-updated, and the next thread to acquire it has to decide whether
+to trust what it finds.</p>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>A panic can happen in the middle of a sequence of writes that were meant to
+succeed or fail together. If the lock were released and the data left as it was,
+the next reader would see the partial update. Rust makes that failure visible
+rather than silent: a <code>Mutex</code> whose guard was held during a panic is <em>poisoned</em>,
+and later calls to <code>lock</code> return <code>Err(PoisonError)</code> instead of a guard.</p>
+<pre><code class="language-text">thread A                          thread B
+--------                          --------
+lock() -&gt; guard
+stock_value -= 1000
+cash_on_hand += 1200
+panic!  while guard is alive
+                                  lock() -&gt; Err(PoisonError)
+the Mutex records that a panic     the guard is still reachable through
+happened while the lock was held   PoisonError::into_inner(), so B can read the
+                                  state, correct it, and release the lock
+</code></pre>
+<p>The recovery path in the file is a reconciliation: an audit prints the discrepancy,
+corrects the cash figure, marks the transaction closed, and takes a copy of the
+corrected state.</p>
+<p>The important detail is what poisoning does <em>not</em> do. Poisoning is not access
+control, and recovering the data does not clear the mark. Every later <code>lock()</code> on
+that mutex still returns <code>Err</code>, so the decision to trust the repaired state is made
+by each caller rather than by the act of repair.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust">// ============================================================================
+// Mutex poisoning: failed transaction and audit recovery
+//
+// Ported from the Rust playground repo (`scam_transaction.rs`).
+//
+// Story:
+//   A branch executes a financial transaction that mutates shared state under
+//   a `Mutex`. Mid-transaction the thread panics. In Rust, a `Mutex` whose
+//   guard was held during a panic becomes **poisoned**. Future `lock()` calls
+//   return `Err(PoisonError)` instead of silently letting another thread
+//   observe an inconsistent partial update.
+//
+// Why this appears in cloud interviews:
+//   - Controllers/reconcilers mutate shared state; a panic while holding a lock
+//     is a real failure mode in worker pools, caches, and rate limiters.
+//   - Rust chooses fail-fast over data corruption: a poisoned mutex tells
+//     callers that the protected invariant may be broken. The caller must
+//     decide whether to abort, recover, or reset state.
+//   - `PoisonError::into_inner()` returns the `MutexGuard`, so a recovery path
+//     can inspect/correct the last known state without waiting for the lock to
+//     be released by the panicked thread.
+//
+// Run:
+//   cargo run --bin mutex_poisoning
+// ============================================================================
+
+use std::error::Error;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::thread;
+
+/// Shared ledger state. In a real system this would be behind a transactional
+/// store; here it is plain in-memory state to illustrate lock poisoning.
+#[derive(Debug, Clone)]
+struct Ledger {
+    cash_on_hand: i64,
+    stock_value: i64,
+    transaction_id: u32,
+    is_settled: bool,
+}
+
+impl Ledger {
+    fn new() -&gt; Self {
+        Ledger {
+            cash_on_hand: 10_000,
+            stock_value: 5_000,
+            transaction_id: 0,
+            is_settled: false,
+        }
+    }
+}
+
+/// Recovers from a poisoned mutex by taking ownership of the guard that the
+/// panicked thread left behind.
+///
+/// `PoisonError::into_inner()` gives us the `MutexGuard`, which means we still
+/// hold the lock while repairing state. The guard is dropped when this function
+/// returns.
+fn recover_ledger(poisoned: PoisonError&lt;MutexGuard&lt;'_, Ledger&gt;&gt;) -&gt; Ledger {
+    // into_inner() returns the MutexGuard. We own the lock exclusively even
+    // though the previous holder panicked.
+    let mut guard = poisoned.into_inner();
+
+    println!("[Reconciliation] Physical audit reveals a cash discrepancy.");
+    println!(
+        "[Reconciliation] Digital cash: {} | Corrected cash: {}",
+        guard.cash_on_hand,
+        guard.cash_on_hand - 200
+    );
+
+    // Correct the data while we still hold the guard.
+    guard.cash_on_hand -= 200;
+    guard.is_settled = true;
+    guard.transaction_id += 1;
+
+    println!("[Reconciliation] Ledger corrected. Transaction marked failed and closed.");
+
+    // Clone the inner data to return an owned value. The guard drops here and
+    // releases the lock.
+    guard.clone()
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let ledger = Arc::new(Mutex::new(Ledger::new()));
+
+    // Thread A: the faulty transaction. It mutates one side of the ledger and
+    // then panics before marking the transaction settled.
+    let ledger_a = Arc::clone(&amp;ledger);
+    let handle_a = thread::spawn(move || {
+        // SAFETY-free normal code: if the mutex is already poisoned, unwrap()
+        // panics; in a controlled demo this is the first lock so it is fine.
+        let mut guard = ledger_a.lock().unwrap();
+
+        println!(
+            "[Branch A] Transaction {} commenced.",
+            guard.transaction_id + 1
+        );
+        guard.stock_value -= 1_000;
+        println!(
+            "[Branch A] Stock deducted. New value: {}",
+            guard.stock_value
+        );
+        guard.cash_on_hand += 1_200;
+        println!(
+            "[Branch A] Cash updated. New balance: {}",
+            guard.cash_on_hand
+        );
+
+        // Panic while `guard` is still alive -&gt; the Mutex becomes poisoned.
+        panic!("[Branch A] Settlement failure: arithmetic overflow in reconciliation.");
+    });
+
+    // A panic in a spawned thread does not abort the process unless the panic
+    // strategy is set to abort. `join()` returns Err, which is expected here.
+    let _ = handle_a.join();
+
+    // Thread B: the forensic audit. It sees Err(PoisonError), inspects the
+    // recovered state, and repairs the ledger.
+    let ledger_b = Arc::clone(&amp;ledger);
+    let handle_b = thread::spawn(move || {
+        println!("\n[Audit] Attempting to access the ledger...");
+
+        match ledger_b.lock() {
+            Ok(guard) =&gt; {
+                println!("[Audit] Ledger is not poisoned: {:?}", *guard);
+            }
+            Err(poisoned) =&gt; {
+                println!("[Audit] Mutex is poisoned. Recovered state before correction:");
+                println!("[Audit] {:?}", *poisoned.get_ref());
+
+                let corrected = recover_ledger(poisoned);
+                println!("[Audit] Corrected ledger: {:?}", corrected);
+            }
+        }
+    });
+
+    handle_b.join().unwrap();
+
+    // Important: recovering the data does NOT clear the poison bit on the
+    // Mutex itself. Subsequent lock() calls still return Err(PoisonError) so
+    // callers can decide whether the repaired state is trustworthy.
+    // Uncommenting the next lines would panic:
+    //
+    // let _guard = ledger.lock().unwrap();
+
+    Ok(())
+}
+
+// ============================================================================
+// Tests (cargo test --bin mutex_poisoning)
+// ============================================================================
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ledger_starts_in_expected_state() {
+        let ledger = Ledger::new();
+        assert_eq!(ledger.cash_on_hand, 10_000);
+        assert_eq!(ledger.stock_value, 5_000);
+        assert!(!ledger.is_settled);
+    }
+
+    #[test]
+    fn recovery_repairs_a_poisoned_ledger() {
+        let ledger = Arc::new(Mutex::new(Ledger::new()));
+
+        // Poison the mutex from a helper thread, exactly like the demo.
+        let ledger_a = Arc::clone(&amp;ledger);
+        let handle = thread::spawn(move || {
+            let _guard = ledger_a.lock().unwrap();
+            panic!("boom");
+        });
+        let _ = handle.join();
+
+        let lock_result = ledger.lock();
+        assert!(lock_result.is_err(), "mutex should be poisoned");
+
+        let recovered = recover_ledger(lock_result.unwrap_err());
+        assert!(recovered.is_settled);
+        assert_eq!(recovered.transaction_id, 1);
+        assert_eq!(recovered.cash_on_hand, 10_000 - 200);
+    }
+}</code></pre>
+<p><code>recover_ledger</code> takes the <code>PoisonError</code> by value. That is the signature that makes
+the type system enforce what the function needs: a <code>PoisonError&lt;MutexGuard&lt;...&gt;&gt;</code>
+can only be produced by a failed <code>lock</code>, so the function cannot be called with a
+healthy lock by mistake.</p>
+<p><code>poisoned.into_inner()</code> consumes the error and returns the guard. The lock is now
+held by this thread, so the repair happens under the lock rather than beside it.</p>
+<p><code>guard.clone()</code> returns an owned copy of the state. <code>MutexGuard</code> is not <code>Clone</code>, so
+the clone is of the inner value, taken through the guard. The guard is dropped when
+the function returns, which releases the lock.</p>
+<p><code>handle_b.join().unwrap()</code> propagates a panic from the audit thread. <code>main</code> returns
+<code>Result</code>, so an <code>unwrap</code> here would panic rather than return an error; the join
+result is discarded for the first thread with <code>let _ = handle_a.join()</code>, and the
+comment explains that the panic is the point of the demonstration.</p>
+<p>The test calls <code>recover_ledger</code> with the error from a real poisoned lock, so the
+recovery path is exercised rather than described.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<pre><code class="language-text">ledger after new:   { cash 10000, stock 5000, transaction_id 0, is_settled false }
+
+thread A          lock() -&gt; guard, the mutex is now marked as locked
+                  stock_value -= 1000   -&gt; 4000
+                  cash_on_hand += 1200  -&gt; 11200
+                  panic! while the guard is alive
+
+                  the guard is dropped during unwinding, the mutex is unlocked,
+                  and the poison bit is set
+
+join A            returns Err, which the code discards
+
+thread B          lock() -&gt; Err(PoisonError)
+                  poisoned.get_ref() shows the partial update:
+                    { cash 11200, stock 4000, transaction_id 0, is_settled false }
+                  recover_ledger:
+                    cash 11200 - 200 = 11000
+                    is_settled = true
+                    transaction_id = 1
+                  the guard is dropped, the lock is released
+
+after the run     the mutex is still poisoned, and the ledger inside it reads
+                    { cash 11000, stock 4000, transaction_id 1, is_settled true }
+</code></pre>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td>one lock acquisition per access; the recovery path prints four lines and clones the state once</td></tr>
+<tr><td>Space</td><td>the ledger is four machine words; a <code>PoisonError</code> is the size of a guard</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>The repair rule is a constant in the code.</strong> <code>guard.cash_on_hand -= 200</code> is the
+audit’s correction, and it is hardcoded. In a real reconciliation the correct
+figure comes from an external source, a bank statement, a database, and the
+function would take that source as a parameter. As written, the demonstration shows
+the mechanism and not a policy.</p>
+<p><strong>Recovering does not clear the poison mark.</strong> The comment at the end of <code>main</code>
+says so, and the line that would panic is left commented out. Every subsequent
+<code>lock()</code> therefore returns <code>Err</code>, and a program whose recovery is complete has no
+way to say so to the other threads without dropping the mutex entirely.
+<code>Mutex::clear_poison</code> exists for that, and it is not used here.</p>
+<p><strong>The failed thread’s own recovery is absent.</strong> Thread A panics and its work is
+lost; nothing rolls back the partial update except thread B’s audit. A system where
+either thread might be the one to recover needs the repair to be idempotent and
+runnable by any caller.</p>
+<p><strong><code>ledger_a.lock().unwrap()</code> panics if the mutex is already poisoned.</strong> The comment
+acknowledges it. In a program where several threads may touch the same lock,
+<code>unwrap</code> on a <code>lock</code> result converts one thread’s failure into a cascade of
+panics, which is the opposite of what poisoning is for.</p>
+<p><strong>The audit thread’s panic would be propagated with <code>unwrap</code>.</strong> <code>main</code> returns
+<code>Result&lt;(), Box&lt;dyn Error&gt;&gt;</code>, so the error type on the happy path is unused here:
+the only failure that can occur is a panic, and a panic cannot be converted into
+<code>Box&lt;dyn Error&gt;</code> by <code>?</code>. <code>join()</code> returns <code>Result&lt;T, Box&lt;dyn Any + Send&gt;&gt;</code>, and
+<code>Box&lt;dyn Any + Send&gt;</code> does not implement <code>Error</code>.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Poisoning records that a panic occurred while the guard was held. It repairs
+nothing and it does not deny access to the data.</li>
+<li><code>PoisonError::into_inner()</code> returns the guard, so the thread that recovers also
+holds the lock while it repairs the state, and the repair does not race with
+other readers.</li>
+<li>Recovering is appropriate where the invariant can be re-established from data the
+program trusts, and propagating is appropriate where it cannot. In both cases the
+defect is a recovery with no stated repair rule.</li>
+<li>The repair rule here is a constant, <code>guard.cash_on_hand -= 200</code>. A reconciliation
+would take the correct figure from an external source and pass it in.</li>
+<li>Recovering does not clear the poison mark, so every later <code>lock()</code> returns <code>Err</code>
+and the other threads cannot be told that the repair is complete.
+<code>Mutex::clear_poison</code> exists for that purpose and is not used here.</li>
+<li><code>ledger_a.lock().unwrap()</code> converts one thread’s failure into a cascade of
+panics, which is the opposite of what poisoning is for.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html"><code>Mutex</code></a>, including the section on poisoning.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/struct.PoisonError.html#method.into_inner"><code>PoisonError::into_inner</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html#method.clear_poison"><code>Mutex::clear_poison</code></a>, stabilised in Rust 1.77.0.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/thread/struct.JoinHandle.html#method.join"><code>JoinHandle::join</code></a>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="21-worker-pool.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="23-count-islands.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="21-worker-pool.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="23-count-islands.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

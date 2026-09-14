@@ -1,0 +1,525 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>23. Counting Islands - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-bfe0b982.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-0bff135c.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-a5b67c94.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="counting-islands"><a class="header" href="#counting-islands">23. Counting Islands</a></h1>
+<p><em>Source file: <a href="../rust-interview-lab/src/bin/count_islands.rs"><code>src/bin/count_islands.rs</code></a>. Run it with
+<code>cargo run --bin count_islands</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Given a rectangular grid of cells, count the connected regions of a chosen value.
+Two cells are connected when they share an edge, so a cell touches at most four
+neighbours. The function is generic over the cell type, so the caller decides
+whether land is <code>'1'</code>, <code>true</code>, <code>1u8</code>, or something else.</p>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>Scan the grid and flood-fill each unvisited land cell. Counting the number of
+flood-fills is the answer, because a flood-fill visits exactly one connected
+region.</p>
+<pre><code class="language-text">grid                    count
+1 1 0 0 0
+1 1 0 0 0               scan finds (0,0), fills the four cells of the top-left block
+0 0 1 0 0               scan finds (2,2), fills that single cell
+0 0 0 1 1               scan finds (3,3), fills (3,3) and (3,4)
+                        answer: 3
+
+the fill order for the first region, breadth first
+queue: [(0,0)]
+pop (0,0), push (0,1) and (1,0)
+pop (0,1), push (1,1)
+pop (1,0), neighbours already visited
+pop (1,1), neighbours already visited
+</code></pre>
+<p>A cell is marked when it enters the queue rather than when it leaves. Marking on
+entry is what keeps a cell from being enqueued twice: two neighbours of the same
+cell can both see it as unvisited if the mark happens later, and the queue then
+holds duplicates and the work grows.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust">// ============================================================================
+// Count Islands
+//
+// Ported from the Rust playground repo.
+//
+// Problem: given a grid of cells, count the number of connected "land"
+// regions. Two land cells are connected when they are adjacent horizontally
+// or vertically (4-directional). Water cells are not traversable.
+//
+// Why this appears in cloud interviews:
+//   - "Islands" are connected-component counting, the same shape used to find
+//     connected GPU nodes, failure domains, network partitions, or storage
+//     groups in distributed systems.
+//   - The generic implementation accepts any land type (char, u8, bool) and
+//     uses BFS with an explicit visited set, which is easy to reason about.
+//
+// Time complexity: O(rows * cols)
+// Space complexity: O(rows * cols) for the visited set and BFS queue.
+// ============================================================================
+
+use std::collections::{HashSet, VecDeque};
+
+/// Counts 4-directionally connected components of `land` in a rectangular grid.
+///
+/// The grid is generic over cell values so callers can use `'1'/'0'`,
+/// `true/false`, `1u8/0u8`, or any other PartialEq value.
+fn count_islands&lt;T: PartialEq&gt;(grid: &amp;[&amp;[T]], land: T) -&gt; usize {
+    if grid.is_empty() || grid[0].is_empty() {
+        return 0;
+    }
+
+    let rows = grid.len();
+    let cols = grid[0].len();
+    let mut visited = HashSet::new();
+    let mut count = 0;
+    let dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+    // BFS closure: flood-fill one island starting from a known land cell.
+    // Passing `visited` explicitly avoids borrow-checker friction when calling
+    // the closure from the outer loop.
+    let bfs = |start: (usize, usize), visited: &amp;mut HashSet&lt;(usize, usize)&gt;| {
+        let mut queue = VecDeque::new();
+        queue.push_back(start);
+        visited.insert(start);
+
+        while let Some((cr, cc)) = queue.pop_front() {
+            for &amp;(dr, dc) in &amp;dirs {
+                let nr = cr as i32 + dr;
+                let nc = cc as i32 + dc;
+
+                if (0..rows as i32).contains(&amp;nr) &amp;&amp; (0..cols as i32).contains(&amp;nc) {
+                    let (ur, uc) = (nr as usize, nc as usize);
+                    if grid[ur][uc] == land &amp;&amp; !visited.contains(&amp;(ur, uc)) {
+                        visited.insert((ur, uc));
+                        queue.push_back((ur, uc));
+                    }
+                }
+            }
+        }
+    };
+
+    for r in 0..rows {
+        for c in 0..cols {
+            if grid[r][c] == land &amp;&amp; !visited.contains(&amp;(r, c)) {
+                count += 1;
+                bfs((r, c), &amp;mut visited);
+            }
+        }
+    }
+
+    count
+}
+
+// ============================================================================
+// Runnable demonstration
+// ============================================================================
+fn main() {
+    let grid = [
+        &amp;['1', '1', '0', '0', '0'][..],
+        &amp;['1', '1', '0', '0', '0'][..],
+        &amp;['0', '0', '1', '0', '0'][..],
+        &amp;['0', '0', '0', '1', '1'][..],
+    ];
+
+    println!("Islands: {}", count_islands(&amp;grid, '1'));
+
+    let boolean_grid = [
+        &amp;[true, true, false][..],
+        &amp;[false, false, false][..],
+        &amp;[false, true, true][..],
+    ];
+    println!("Boolean islands: {}", count_islands(&amp;boolean_grid, true));
+}
+
+// ============================================================================
+// Tests (cargo test --bin count_islands)
+// ============================================================================
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_grid_has_zero_islands() {
+        let empty: [&amp;[char]; 0] = [];
+        assert_eq!(count_islands(&amp;empty, '1'), 0);
+
+        let no_cols: [&amp;[char]; 2] = [&amp;[], &amp;[]];
+        assert_eq!(count_islands(&amp;no_cols, '1'), 0);
+    }
+
+    #[test]
+    fn counts_classic_example() {
+        let grid = [
+            &amp;['1', '1', '0', '0', '0'][..],
+            &amp;['1', '1', '0', '0', '0'][..],
+            &amp;['0', '0', '1', '0', '0'][..],
+            &amp;['0', '0', '0', '1', '1'][..],
+        ];
+        assert_eq!(count_islands(&amp;grid, '1'), 3);
+    }
+
+    #[test]
+    fn all_water_is_zero() {
+        let grid = [&amp;['0', '0'][..], &amp;['0', '0'][..]];
+        assert_eq!(count_islands(&amp;grid, '1'), 0);
+    }
+
+    #[test]
+    fn generic_bool_grid_works() {
+        let grid = [
+            &amp;[true, false, false][..],
+            &amp;[true, false, true][..],
+            &amp;[false, false, true][..],
+        ];
+        assert_eq!(count_islands(&amp;grid, true), 2);
+    }
+
+    #[test]
+    fn single_row_and_column() {
+        let row = [&amp;['1', '0', '1', '1'][..]];
+        assert_eq!(count_islands(&amp;row, '1'), 2);
+
+        let col = [&amp;['1'][..], &amp;['1'][..], &amp;['0'][..], &amp;['1'][..]];
+        assert_eq!(count_islands(&amp;col, '1'), 2);
+    }
+}</code></pre>
+<p>The grid type is <code>&amp;[&amp;[T]]</code>: a slice of row slices. This accepts a fixed-size
+array of slices (<code>&amp;['1', '1', '0'][..]</code>) and a vector of vectors, and it requires
+every row to have the same length. The code reads <code>grid[0].len()</code> as the column
+count and assumes the rest of the rows match.</p>
+<p><code>count_islands&lt;T: PartialEq&gt;(grid: &amp;[&amp;[T]], land: T)</code> takes <code>land</code> by value. The
+comparison <code>grid[r][c] == land</code> therefore needs <code>PartialEq&lt;T&gt;</code> for <code>T</code>, which the
+single bound provides. The bound is minimal: nothing else about the cell type is
+required.</p>
+<p>The bounds test casts to <code>i32</code> before adding the delta:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let nr = cr as i32 + dr;
+let nc = cc as i32 + dc;
+
+if (0..rows as i32).contains(&amp;nr) &amp;&amp; (0..cols as i32).contains(&amp;nc) {
+<span class="boring">}</span></code></pre>
+<p>A <code>usize</code> cannot represent <code>-1</code>, so a neighbour above or to the left of the origin
+would wrap to a very large index rather than failing a range check. Signed
+arithmetic makes the range test correct for all four directions in one expression.</p>
+<p>The <code>bfs</code> closure takes <code>visited</code> as a parameter rather than capturing it mutably.
+A closure that captured <code>visited</code> would hold a mutable borrow across the whole
+outer loop, and the loop also reads <code>visited</code>. Passing the reference in makes the
+borrow begin and end at the call.</p>
+<p>The demonstration prints two lines, and the tests exercise the same two grids plus
+four boundary cases.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<pre><code class="language-text">grid
+row 0: 1 1 0 0 0
+row 1: 1 1 0 0 0
+row 2: 0 0 1 0 0
+row 3: 0 0 0 1 1
+
+scan reach  cell   is land  visited?  action
+(0,0)       yes    no        count = 1, fill from (0,0)
+                             visit (0,0), (1,0), (0,1), (1,1)
+(0,1)       yes    yes       skip
+(0,2)       no     -         skip
+(0,3)       no     -         skip
+(0,4)       no     -         skip
+(1,0)       yes    yes       skip
+(1,1)       yes    yes       skip
+(2,2)       yes    no        count = 2, fill from (2,2), visiting one cell
+(3,3)       yes    no        count = 3, fill from (3,3), visiting (3,3) and (3,4)
+
+the run prints:  Islands: 3
+                 Boolean islands: 2
+</code></pre>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td><code>O(rows × cols)</code>, each cell is visited once and each visit examines four neighbours</td></tr>
+<tr><td>Space</td><td><code>O(rows × cols)</code> for the visited set and the queue</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>The visited set is a hash set of coordinate pairs.</strong> Each entry holds two
+<code>usize</code> values plus the hash table’s overhead: control bytes, a bucket array that
+may be twice the entry count, and a random seed per set. A bitmap of one bit per
+cell answers the same question in <code>rows × cols / 8</code> bytes and one shift per lookup.
+For a 4096 × 4096 grid the hash set holds up to sixteen million entries, while the
+bitmap holds two megabytes. That factor, roughly fifty to a hundred, depending on
+load factor, is the difference between a large allocation and a small one, and the
+file’s own comment says only “O(rows * cols) for the visited set”.</p>
+<p><strong>The rows are assumed to be the same length.</strong> <code>cols</code> is read from the first row
+and used to bound every row. A ragged input does not panic on the bound check for
+the shorter rows; it panics on <code>grid[ur][uc]</code> when a shorter row is indexed at a
+column the first row had. A ragged grid is a malformed input, and the failure mode
+is an index panic deep inside the fill.</p>
+<p><strong>A very large connected region is held in the queue.</strong> The BFS queue can hold a
+frontier proportional to the region’s size, so memory is bounded by the input area
+in the worst case. A depth-first fill with an explicit stack has the same bound.</p>
+<p><strong>The function is private to the binary.</strong> <code>count_islands</code> is in <code>src/bin/</code>, so it
+is not part of the library’s API, and a second binary that wants it must copy it.
+Moving it into <code>src/problems/</code> would export it with the rest of the problems.</p>
+<p><strong>The cell type must be <code>PartialEq</code> and the land value is taken by value.</strong> So
+<code>count_islands</code> cannot accept a predicate, which would let a caller count something
+other than strict equality, for example, a region of cells above a threshold. The
+predicate version is the same code with <code>land</code> replaced by a closure.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A flood fill visits exactly one connected component, so the number of fills is
+the number of components.</li>
+<li>A cell is marked when it is enqueued rather than when it is dequeued. Without
+that, several neighbours can enqueue the same cell and the queue holds it more
+than once.</li>
+<li>The neighbour offsets use signed arithmetic, which is what prevents the fill from
+wrapping around the edge of the grid.</li>
+<li>The visited set is a hash set of coordinate pairs, so each entry holds two
+<code>usize</code> values plus the table’s overhead. A bitmap of one bit per cell answers the
+same question in <code>rows × cols / 8</code> bytes: for a 4096 × 4096 grid the hash set
+holds up to sixteen million entries against two megabytes for the bitmap.</li>
+<li>The rows are assumed to be of equal length. A ragged grid does not fail the bound
+check on a short row; it panics on <code>grid[ur][uc]</code> when a short row is indexed at a
+column the first row had.</li>
+<li>The BFS queue holds a frontier proportional to the region being filled, so memory
+is bounded by the area of the input in the worst case. A depth-first fill with an
+explicit stack has the same bound.</li>
+<li>The function is private to its binary, and the cell type must be <code>PartialEq</code>,
+because the land value is taken by value and no predicate is accepted.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
+<em>Introduction to Algorithms</em>, 4th edition, MIT Press, 2022, Section 20.2,
+“Breadth-first search”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/ops/struct.Range.html#method.contains"><code>std::ops::Range::contains</code></a>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="22-mutex-poisoning.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="24-syscall-overhead.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="22-mutex-poisoning.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="24-syscall-overhead.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
