@@ -1,6 +1,6 @@
 # 33. Reversing a String In Place {#reverse-string}
 
-*Source file: [`src/bin/reverse_string.rs`](../../rust-interview-lab/src/bin/reverse_string.rs). Run it with
+*Source file: [`src/bin/reverse_string.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs). Run it with
 `cargo run --bin reverse_string`.*
 
 ## Problem Statement

@@ -26,6 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 TITLE_LINES = ("Coding Interviews for", "Cracked Rustaceans")
 TITLE = " ".join(TITLE_LINES)
+REPOSITORY = "https://github.com/arpanpathak/cracking-the-systems-programming-interview"
 SUBTITLE = "A Zero-Cost Abstraction Obsession Anatomy"
 AUTHOR = "Arpan Pathak"
 
@@ -211,7 +212,8 @@ def build_title_page() -> list[str]:
         '<hr class="cover-rule">',
         '<p class="cover-author">%s</p>' % html.escape(AUTHOR),
         "</div>",
-        '<p class="cover-foot">rust-interview-lab</p>',
+        '<p class="cover-foot"><a href="%s">%s</a></p>'
+        % (REPOSITORY, REPOSITORY.removeprefix("https://")),
         "</div>",
     ]
 

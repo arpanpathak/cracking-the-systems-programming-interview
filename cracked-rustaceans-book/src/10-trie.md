@@ -1,6 +1,6 @@
 # 10. Trie {#trie}
 
-*Source file: [`src/problems/trie.rs`](../../rust-interview-lab/src/problems/trie.rs). Test it with `cargo test trie`.*
+*Source file: [`src/problems/trie.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs). Test it with `cargo test trie`.*
 
 ## Problem Statement
 

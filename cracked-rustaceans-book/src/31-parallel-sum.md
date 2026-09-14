@@ -1,6 +1,6 @@
 # 31. Parallel Sum {#parallel-sum}
 
-*Source file: [`src/bin/parallel_sum.rs`](../../rust-interview-lab/src/bin/parallel_sum.rs). Run it with
+*Source file: [`src/bin/parallel_sum.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs). Run it with
 `cargo run --release --bin parallel_sum`, optionally followed by the thread count
 and the element count.*
 

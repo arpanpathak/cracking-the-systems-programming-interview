@@ -1,6 +1,6 @@
 # 23. Counting Islands {#counting-islands}
 
-*Source file: [`src/bin/count_islands.rs`](../../rust-interview-lab/src/bin/count_islands.rs). Run it with
+*Source file: [`src/bin/count_islands.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs). Run it with
 `cargo run --bin count_islands`.*
 
 ## Problem Statement

@@ -1,6 +1,6 @@
 # 9. Binary Search on a Rotated Array {#binary-search}
 
-*Source file: [`src/problems/binary_search.rs`](../../rust-interview-lab/src/problems/binary_search.rs). Test it with
+*Source file: [`src/problems/binary_search.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs). Test it with
 `cargo test binary_search`.*
 
 ## Problem Statement

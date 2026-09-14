@@ -1,6 +1,6 @@
 # 1. Two Sum {#two-sum}
 
-*Source file: [`src/problems/two_sum.rs`](../../rust-interview-lab/src/problems/two_sum.rs). Test it with `cargo test two_sum`.*
+*Source file: [`src/problems/two_sum.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/two_sum.rs). Test it with `cargo test two_sum`.*
 
 ## Problem Statement
 

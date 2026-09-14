@@ -1,6 +1,6 @@
 # 16. Doubly Linked List {#doubly-linked-list}
 
-*Source file: [`src/bin/ll.rs`](../../rust-interview-lab/src/bin/ll.rs). Run it with `cargo run --bin ll`.*
+*Source file: [`src/bin/ll.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs). Run it with `cargo run --bin ll`.*
 
 ## Problem Statement
 

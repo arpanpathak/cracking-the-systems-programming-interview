@@ -1,6 +1,6 @@
 # 11. Topological Sort {#topological-sort}
 
-*Source file: [`src/problems/graph_topology.rs`](../../rust-interview-lab/src/problems/graph_topology.rs). Test it with
+*Source file: [`src/problems/graph_topology.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs). Test it with
 `cargo test graph_topology`.*
 
 ## Problem Statement

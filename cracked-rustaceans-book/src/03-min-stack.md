@@ -1,6 +1,6 @@
 # 3. Min Stack {#min-stack}
 
-*Source file: [`src/problems/min_stack.rs`](../../rust-interview-lab/src/problems/min_stack.rs). Test it with `cargo test min_stack`.*
+*Source file: [`src/problems/min_stack.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs). Test it with `cargo test min_stack`.*
 
 ## Problem Statement
 

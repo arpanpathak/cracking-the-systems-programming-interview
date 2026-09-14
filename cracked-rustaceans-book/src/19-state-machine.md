@@ -1,6 +1,6 @@
 # 19. Workload State Machine {#state-machine}
 
-*Source file: [`src/problems/state_machine.rs`](../../rust-interview-lab/src/problems/state_machine.rs). Test it with
+*Source file: [`src/problems/state_machine.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs). Test it with
 `cargo test state_machine`.*
 
 ## Problem Statement

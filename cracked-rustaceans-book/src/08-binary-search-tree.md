@@ -1,6 +1,6 @@
 # 8. Binary Search Tree {#binary-search-tree}
 
-*Source file: [`src/bin/bst_clean.rs`](../../rust-interview-lab/src/bin/bst_clean.rs). Run it with `cargo run --bin bst_clean`.*
+*Source file: [`src/bin/bst_clean.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs). Run it with `cargo run --bin bst_clean`.*
 
 ## Problem Statement
 

@@ -1,6 +1,6 @@
 # 4. Longest Substring Without Repeating Characters {#sliding-window}
 
-*Source file: [`src/problems/sliding_window.rs`](../../rust-interview-lab/src/problems/sliding_window.rs). Test it with
+*Source file: [`src/problems/sliding_window.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs). Test it with
 `cargo test sliding_window`.*
 
 ## Problem Statement

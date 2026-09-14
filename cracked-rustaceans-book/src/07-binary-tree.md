@@ -1,6 +1,6 @@
 # 7. Binary Tree {#binary-tree}
 
-*Source file: [`src/problems/binary_tree.rs`](../../rust-interview-lab/src/problems/binary_tree.rs). Test it with
+*Source file: [`src/problems/binary_tree.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs). Test it with
 `cargo test binary_tree`.*
 
 ## Problem Statement

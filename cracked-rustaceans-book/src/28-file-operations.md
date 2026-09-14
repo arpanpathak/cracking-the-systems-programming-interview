@@ -1,7 +1,7 @@
 # 28. File Operations and Errors {#file-operations}
 
-*Source files: [`src/bin/copy_rename_delete_file.rs`](../../rust-interview-lab/src/bin/copy_rename_delete_file.rs) and
-[`src/bin/file_error_handling.rs`](../../rust-interview-lab/src/bin/file_error_handling.rs). Run them with
+*Source files: [`src/bin/copy_rename_delete_file.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs) and
+[`src/bin/file_error_handling.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_error_handling.rs). Run them with
 `cargo run --bin copy_rename_delete_file` and
 `cargo run --bin file_error_handling`.*
 

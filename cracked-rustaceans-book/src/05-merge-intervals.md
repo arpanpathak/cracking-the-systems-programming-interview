@@ -1,6 +1,6 @@
 # 5. Merge Intervals {#merge-intervals}
 
-*Source file: [`src/problems/merge_intervals.rs`](../../rust-interview-lab/src/problems/merge_intervals.rs). Test it with
+*Source file: [`src/problems/merge_intervals.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs). Test it with
 `cargo test merge_intervals`.*
 
 ## Problem Statement

@@ -1,6 +1,6 @@
 # 13. Subsets {#subsets}
 
-*Source file: [`src/problems/backtracking.rs`](../../rust-interview-lab/src/problems/backtracking.rs). Test it with
+*Source file: [`src/problems/backtracking.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/backtracking.rs). Test it with
 `cargo test backtracking`.*
 
 ## Problem Statement

@@ -1,6 +1,6 @@
 # 12. Coin Change {#coin-change}
 
-*Source file: [`src/problems/dp.rs`](../../rust-interview-lab/src/problems/dp.rs). Test it with `cargo test dp`.*
+*Source file: [`src/problems/dp.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/dp.rs). Test it with `cargo test dp`.*
 
 > I call it my billion-dollar mistake. It was the invention of the null
 > reference in 1965.

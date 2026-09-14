@@ -1,6 +1,6 @@
 # 25. Shadowing and Mutation {#shadowing}
 
-*Source file: [`src/bin/shadowing.rs`](../../rust-interview-lab/src/bin/shadowing.rs). Run it with `cargo run --bin shadowing`.*
+*Source file: [`src/bin/shadowing.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/shadowing.rs). Run it with `cargo run --bin shadowing`.*
 
 ## Problem Statement
 

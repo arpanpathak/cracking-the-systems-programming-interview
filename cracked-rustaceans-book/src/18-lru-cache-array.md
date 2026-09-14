@@ -1,6 +1,6 @@
 # 18. LRU Cache, Array-Backed {#lru-cache-array}
 
-*Source file: [`src/problems/lru_cache_easy.rs`](../../rust-interview-lab/src/problems/lru_cache_easy.rs). Test it with
+*Source file: [`src/problems/lru_cache_easy.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs). Test it with
 `cargo test lru_cache_easy`.*
 
 ## Problem Statement

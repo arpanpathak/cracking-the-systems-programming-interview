@@ -1,6 +1,6 @@
 # 15. Singly Linked List {#singly-linked-list}
 
-*Source file: [`src/bin/singly_linked_list.rs`](../../rust-interview-lab/src/bin/singly_linked_list.rs). Run it with
+*Source file: [`src/bin/singly_linked_list.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs). Run it with
 `cargo run --bin singly_linked_list`.*
 
 ## Problem Statement

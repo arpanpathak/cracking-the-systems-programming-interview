@@ -1,6 +1,6 @@
 # 30. A Bounded Buffer {#bounded-buffer}
 
-*Source file: [`src/bin/bounded_buffer.rs`](../../rust-interview-lab/src/bin/bounded_buffer.rs). Run it with
+*Source file: [`src/bin/bounded_buffer.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs). Run it with
 `cargo run --bin bounded_buffer`.*
 
 ## Problem Statement

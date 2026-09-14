@@ -5,19 +5,19 @@
 >
 > Bjarne Stroustrup, *Foundations of C++*, ECOOP 2012
 
-## Why this book
+## What this book is
 
-A systems interview is less about whether a candidate can name the right data
-structure than about the sentence that follows the name. The interviewer asks why
-one representation is cheaper than another, what an abstraction hides, and which
-input breaks it.
+This book reads one repository of Rust, `rust-interview-lab`, one file at a time.
+Each chapter covers a single file: the problem it solves, the design it uses, the
+code as the repository holds it, a trace of that code on a concrete input, the
+cost of each operation, and the inputs it does not handle.
 
-A list of exercises does not practise that reasoning, because the list gives the
-answer and leaves the argument out. This book works in the other direction. It
-takes one repository of running Rust, covering data structures, caches,
-concurrency primitives, and the file and network code a service needs, and reads
-it the way an interviewer reads an answer: one file at a time, with the cost of
-every operation and the inputs that break it written down.
+The files are working programs and modules rather than fragments written for the
+page. Each is short enough to read in full, and each keeps its own tests.
+
+The repository is at
+<https://github.com/arpanpathak/cracking-the-systems-programming-interview>, and
+every chapter links the exact source file it reads.
 
 ## Who this book is for
 
@@ -26,14 +26,13 @@ The book assumes that you can read Rust and that you know what `Vec`, `HashMap`,
 is built in the text, and every cost claim is either derived on the page or
 measured by a program printed beside it.
 
-If you are preparing for a senior systems or cloud engineering interview, the
-chapters are the interview slowed down: the problem statement, the design, the
-implementation, the intuition, the cost, and the limits, in that order. If you are
-reading for the code alone, each chapter stands on its own.
+Each chapter follows the same order: the problem statement, the design, the
+implementation, a worked example, the cost, and the limits. Read straight through,
+or read one chapter on its own; each stands alone.
 
 ## How the chapters are built
 
-Most chapters follow the same movements.
+Most chapters have the same sections.
 
 **Problem Statement.** The input, the output, and the boundary cases that decide
 whether an answer is complete.
@@ -72,7 +71,11 @@ and the cross-references in each chapter are enough to read out of order.
 
 ## The repository
 
-The code is the repository `rust-interview-lab`. To run it:
+The code is in `rust-interview-lab`, in this repository:
+
+<https://github.com/arpanpathak/cracking-the-systems-programming-interview>
+
+To run it:
 
 ```bash
 cd rust-interview-lab

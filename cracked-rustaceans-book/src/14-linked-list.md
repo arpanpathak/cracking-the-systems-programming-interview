@@ -1,6 +1,6 @@
 # 14. Reverse a Linked List {#reverse-linked-list}
 
-*Source file: [`src/problems/linked_list.rs`](../../rust-interview-lab/src/problems/linked_list.rs). Test it with
+*Source file: [`src/problems/linked_list.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs). Test it with
 `cargo test linked_list`.*
 
 ## Problem Statement

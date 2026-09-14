@@ -1,6 +1,6 @@
 # 17. LRU Cache {#lru-cache}
 
-*Source file: [`src/problems/lru_cache.rs`](../../rust-interview-lab/src/problems/lru_cache.rs). Test it with `cargo test lru_cache::`.*
+*Source file: [`src/problems/lru_cache.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs). Test it with `cargo test lru_cache::`.*
 
 ## Problem Statement
 

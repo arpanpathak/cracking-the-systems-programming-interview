@@ -1,7 +1,7 @@
 # 27. Paths and Directory Traversal {#paths-and-directories}
 
-*Source files: [`src/bin/path_buff.rs`](../../rust-interview-lab/src/bin/path_buff.rs), [`src/bin/list_directory.rs`](../../rust-interview-lab/src/bin/list_directory.rs), and
-[`src/bin/recusrive_directory_walk.rs`](../../rust-interview-lab/src/bin/recusrive_directory_walk.rs). Run them with
+*Source files: [`src/bin/path_buff.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/path_buff.rs), [`src/bin/list_directory.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs), and
+[`src/bin/recusrive_directory_walk.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/recusrive_directory_walk.rs). Run them with
 `cargo run --bin path_buff`, `cargo run --bin list_directory`, and
 `cargo run --bin recusrive_directory_walk`.*
 

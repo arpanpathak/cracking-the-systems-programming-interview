@@ -1,6 +1,6 @@
 # 29. Command-Line Arguments {#command-line-arguments}
 
-*Source file: [`src/bin/command_line_args.rs`](../../rust-interview-lab/src/bin/command_line_args.rs). Run it with
+*Source file: [`src/bin/command_line_args.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs). Run it with
 `cargo run --bin command_line_args -- --name ada --count 3 --verbose`.*
 
 ## Problem Statement

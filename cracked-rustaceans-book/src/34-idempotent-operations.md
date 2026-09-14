@@ -1,8 +1,8 @@
 # 34. Idempotent Operations {#idempotent-operations}
 
 *Source files:
-[`src/bin/idempotent_operation.rs`](../../rust-interview-lab/src/bin/idempotent_operation.rs) and
-[`src/bin/idempotent_operation_with_error_progagation.rs`](../../rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs).
+[`src/bin/idempotent_operation.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation.rs) and
+[`src/bin/idempotent_operation_with_error_progagation.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs).
 Run them with `cargo run --bin idempotent_operation` and
 `cargo run --bin idempotent_operation_with_error_progagation`.*
 

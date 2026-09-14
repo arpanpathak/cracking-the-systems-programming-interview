@@ -1,8 +1,8 @@
 # 26. Reading and Writing Files {#files-and-io}
 
-*Source files: [`src/bin/read_write_file.rs`](../../rust-interview-lab/src/bin/read_write_file.rs),
-[`src/bin/append_to_file_open_options.rs`](../../rust-interview-lab/src/bin/append_to_file_open_options.rs), and
-[`src/bin/readfile_line_by_line.rs`](../../rust-interview-lab/src/bin/readfile_line_by_line.rs). Run them with
+*Source files: [`src/bin/read_write_file.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_write_file.rs),
+[`src/bin/append_to_file_open_options.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/append_to_file_open_options.rs), and
+[`src/bin/readfile_line_by_line.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/readfile_line_by_line.rs). Run them with
 `cargo run --bin read_write_file`,
 `cargo run --bin append_to_file_open_options`, and
 `cargo run --bin readfile_line_by_line`.*

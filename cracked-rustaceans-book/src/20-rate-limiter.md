@@ -1,6 +1,6 @@
 # 20. Token Bucket Rate Limiter {#rate-limiter}
 
-*Source file: [`src/problems/rate_limiter.rs`](../../rust-interview-lab/src/problems/rate_limiter.rs). Test it with
+*Source file: [`src/problems/rate_limiter.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs). Test it with
 `cargo test rate_limiter`.*
 
 ## Problem Statement

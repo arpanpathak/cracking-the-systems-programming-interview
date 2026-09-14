@@ -1,6 +1,6 @@
 # 32. Running Median {#running-median}
 
-*Source file: [`src/bin/median_finder.rs`](../../rust-interview-lab/src/bin/median_finder.rs). Run it with
+*Source file: [`src/bin/median_finder.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs). Run it with
 `cargo run --bin median_finder`.*
 
 ## Problem Statement

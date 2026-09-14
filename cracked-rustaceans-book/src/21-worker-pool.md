@@ -1,6 +1,6 @@
 # 21. Worker Pool {#worker-pool}
 
-*Source file: [`src/problems/worker_pool.rs`](../../rust-interview-lab/src/problems/worker_pool.rs). Test it with
+*Source file: [`src/problems/worker_pool.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs). Test it with
 `cargo test worker_pool`.*
 
 ## Problem Statement

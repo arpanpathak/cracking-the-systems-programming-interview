@@ -1,6 +1,6 @@
 # 22. Mutex Poisoning {#mutex-poisoning}
 
-*Source file: [`src/bin/mutex_poisoning.rs`](../../rust-interview-lab/src/bin/mutex_poisoning.rs). Run it with
+*Source file: [`src/bin/mutex_poisoning.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs). Run it with
 `cargo run --bin mutex_poisoning`.*
 
 > A distributed system is one in which the failure of a computer you didn't

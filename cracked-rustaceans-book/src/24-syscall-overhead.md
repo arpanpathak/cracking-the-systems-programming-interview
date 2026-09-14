@@ -1,6 +1,6 @@
 # 24. Syscall Overhead {#syscall-overhead}
 
-*Source file: [`src/bin/syscall_overhead.rs`](../../rust-interview-lab/src/bin/syscall_overhead.rs). Run it with
+*Source file: [`src/bin/syscall_overhead.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/syscall_overhead.rs). Run it with
 `cargo run --release --bin syscall_overhead`.*
 
 > Latency lags bandwidth.

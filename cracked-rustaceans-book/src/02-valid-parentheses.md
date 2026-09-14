@@ -1,6 +1,6 @@
 # 2. Valid Parentheses {#valid-parentheses}
 
-*Source file: [`src/problems/valid_parentheses.rs`](../../rust-interview-lab/src/problems/valid_parentheses.rs). Test it with
+*Source file: [`src/problems/valid_parentheses.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs). Test it with
 `cargo test valid_parentheses`.*
 
 ## Problem Statement

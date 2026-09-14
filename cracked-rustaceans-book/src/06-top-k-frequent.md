@@ -1,6 +1,6 @@
 # 6. Top K Frequent Elements {#top-k-frequent}
 
-*Source file: [`src/problems/top_k_frequent.rs`](../../rust-interview-lab/src/problems/top_k_frequent.rs). Test it with
+*Source file: [`src/problems/top_k_frequent.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/top_k_frequent.rs). Test it with
 `cargo test top_k_frequent`.*
 
 ## Problem Statement
