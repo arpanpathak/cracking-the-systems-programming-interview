@@ -7,7 +7,7 @@
 [![Read the book](https://img.shields.io/badge/read%20the%20book-browser%20edition-14508c?style=for-the-badge&logo=mdbook&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/book/)
 [![PDF](https://img.shields.io/badge/PDF-215%20pages-b1361f?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/cracked-rustaceans.pdf)
 [![Rust](https://img.shields.io/badge/rust-edition%202024-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![CI](https://img.shields.io/github/actions/workflow/status/arpanpathak/cracking-the-systems-programming-interview/ci.yaml?branch=main&style=for-the-badge&label=CI)](../../actions/workflows/ci.yaml)
+[![CI](https://img.shields.io/github/actions/workflow/status/arpanpathak/cracking-the-systems-programming-interview/ci.yaml?branch=prep-v2&style=for-the-badge&label=CI)](../../actions/workflows/ci.yaml)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-operator-326ce5?style=for-the-badge&logo=kubernetes&logoColor=white)](operator/)
 [![Study guides](https://img.shields.io/badge/study%20guides-14-4c566a?style=for-the-badge&logo=readthedocs&logoColor=white)](docs/)
 [![Benchmarks](https://img.shields.io/badge/benchmarks-8--page%20report-0b7285?style=for-the-badge&logo=speedtest&logoColor=white)](rust-interview-lab/benchmarking_examples/benchmarking-report.pdf)
