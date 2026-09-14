@@ -7,6 +7,17 @@ license = "MIT"
 
 [dependencies]
 libc = "0.2"
+# Tokio async runtime with all core features enabled
+tokio = { version = "1.53", features = ["full"] }
+
+# Reqwest HTTP client with JSON support enabled
+reqwest = { version = "0.13", features = ["json"] }
+
+
+# Serde for serializing and deserializing Rust data structures
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
 
 # The benchmarking examples live outside src/bin so everything the benchmark
 # measures sits in one directory. The structures themselves are library modules
