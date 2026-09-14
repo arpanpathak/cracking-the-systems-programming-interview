@@ -113,6 +113,12 @@
 
 - [59. Interview Drills](59-drills.md)
 
+# Part XVIII: Graphs and Lists, Revisited
+
+- [60. Graph Traversal: BFS and DFS](60-graph-traversal.md)
+- [61. Dijkstra's Shortest Paths](61-dijkstra.md)
+- [62. Merge K Sorted Lists](62-merge-k-sorted-lists.md)
+
 # Closing
 
 - [References](references.md)
