@@ -547,6 +547,44 @@ counts and the program would stop before printing a time.
 needed because `variant` is an associated function with no `self`, and the type has
 no inherent function of that name to fall back on.
 
+### The arena cache as a standalone program
+
+The repository also holds the arena cache as a runnable program,
+[`src/bin/lru_cache_arena.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs). Its `Node`, `LruCache`,
+`touch`, `get`, `put`, and tests are the same as `src/problems/lru_cache_easy.rs`, which
+chapter 18 prints in full; its test module is named `tests_for_lru`. It adds a `main`
+that runs the eviction sequence traced in chapter 18. Run it with
+`cargo run --bin lru_cache_arena`.
+
+```rust
+fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&"B")); // None
+    println!("get A = {:?}", cache.get(&"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&"A")); // Some(99)
+}
+```
+
+The program prints:
+
+```text
+get A = Some(10)
+get B = None
+get A = Some(10)
+get C = Some(30)
+get A = Some(99)
+```
+
 ## Intuition
 
 The recorded result from `BENCHMARKS.md`, release build, on an NVIDIA Jetson board

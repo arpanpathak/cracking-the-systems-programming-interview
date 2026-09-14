@@ -125,4 +125,7 @@ the list printed by `cargo test` reads as an index of the book.
 | `src/problems/retry.rs` | 57 |
 | `src/bin/fun_network_call.rs`, `src/bin/reqwest_and_tokio.rs` | 58 |
 | `src/problems/drills.rs` | 59 |
-
+| `src/bin/lru_cache_arena.rs` | 40 |
+| `src/problems/graph_bfs.rs`, `src/problems/graph_dfs.rs` | 60 |
+| `src/problems/graph_dijkstra.rs` | 61 |
+| `src/bin/merge_k_sorted_lists_divide.rs` | 62 |

@@ -55,7 +55,8 @@ Chapters 35 to 59 cover the rest of the repository: types and smart pointers (35
 36), recursion, memory layout, and caches (37 to 42), threads and synchronization
 primitives (43 to 47), performance and the operating system (48 to 50), networking and
 HTTP (51 to 55), an async runtime, retries, and an HTTP client (56 to 58), and the short
-interview drills (59).
+interview drills (59). Chapters 60 to 62 add breadth-first and depth-first search,
+Dijkstra's shortest paths, and merging k sorted lists.
 
 ## The repository
 
