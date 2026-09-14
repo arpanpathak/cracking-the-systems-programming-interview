@@ -37,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+            window.path_to_searchindex_js = "searchindex-872ceb07.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ce4c8d76.js"></script>
+        <script src="toc-b7d46df8.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -216,7 +216,8 @@ covers idempotent operations.</p>
 36), recursion, memory layout, and caches (37 to 42), threads and synchronization
 primitives (43 to 47), performance and the operating system (48 to 50), networking and
 HTTP (51 to 55), an async runtime, retries, and an HTTP client (56 to 58), and the short
-interview drills (59).</p>
+interview drills (59). Chapters 60 to 62 add breadth-first and depth-first search,
+Dijkstra’s shortest paths, and merging k sorted lists.</p>
 <h2 id="the-repository"><a class="header" href="#the-repository">The repository</a></h2>
 <p>The code is in <code>rust-interview-lab</code>:</p>
 <p><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a></p>
@@ -384,6 +385,10 @@ the list printed by <code>cargo test</code> reads as an index of the book.</p>
 <tr><td><code>src/problems/retry.rs</code></td><td>57</td></tr>
 <tr><td><code>src/bin/fun_network_call.rs</code>, <code>src/bin/reqwest_and_tokio.rs</code></td><td>58</td></tr>
 <tr><td><code>src/problems/drills.rs</code></td><td>59</td></tr>
+<tr><td><code>src/bin/lru_cache_arena.rs</code></td><td>40</td></tr>
+<tr><td><code>src/problems/graph_bfs.rs</code>, <code>src/problems/graph_dfs.rs</code></td><td>60</td></tr>
+<tr><td><code>src/problems/graph_dijkstra.rs</code></td><td>61</td></tr>
+<tr><td><code>src/bin/merge_k_sorted_lists_divide.rs</code></td><td>62</td></tr>
 </tbody>
 </table>
 </div>
@@ -10014,6 +10019,36 @@ counts and the program would stop before printing a time.</p>
 <p><code>&lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant()</code> is fully qualified syntax. It is
 needed because <code>variant</code> is an associated function with no <code>self</code>, and the type has
 no inherent function of that name to fall back on.</p>
+<h3 id="the-arena-cache-as-a-standalone-program"><a class="header" href="#the-arena-cache-as-a-standalone-program">The arena cache as a standalone program</a></h3>
+<p>The repository also holds the arena cache as a runnable program,
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs"><code>src/bin/lru_cache_arena.rs</code></a>. Its <code>Node</code>, <code>LruCache</code>,
+<code>touch</code>, <code>get</code>, <code>put</code>, and tests are the same as <code>src/problems/lru_cache_easy.rs</code>, which
+chapter 18 prints in full; its test module is named <code>tests_for_lru</code>. It adds a <code>main</code>
+that runs the eviction sequence traced in chapter 18. Run it with
+<code>cargo run --bin lru_cache_arena</code>.</p>
+<pre class="playground"><code class="language-rust">fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&amp;"B")); // None
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
+}</code></pre>
+<p>The program prints:</p>
+<pre><code class="language-text">get A = Some(10)
+get B = None
+get A = Some(10)
+get C = Some(30)
+get A = Some(99)
+</code></pre>
 <h2 id="intuition-39"><a class="header" href="#intuition-39">Intuition</a></h2>
 <p>The recorded result from <code>BENCHMARKS.md</code>, release build, on an NVIDIA Jetson board
 with an 8-core Cortex-A78AE:</p>
@@ -17263,7 +17298,825 @@ the <code>Send</code> and <code>Sync</code> implementations of guard types.</li>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/num/type.NonZeroU16.html"><code>std::num::NonZeroU16</code></a>.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="references-59"><a class="header" href="#references-59">References</a></h1>
+<h1 id="graph-traversal"><a class="header" href="#graph-traversal">60. Graph Traversal: BFS and DFS</a></h1>
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs"><code>src/problems/graph_bfs.rs</code></a> and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs"><code>src/problems/graph_dfs.rs</code></a>. Test them with <code>cargo test graph_bfs</code> and <code>cargo test graph_dfs</code>.</em></p>
+<h2 id="problem-statement-59"><a class="header" href="#problem-statement-59">Problem Statement</a></h2>
+<p>Given a directed graph and a start node, return the nodes reachable from the start in
+the order a traversal visits them, once in breadth-first order and once in depth-first
+order. Each node must appear at most once, and the traversal must terminate on graphs
+with cycles.</p>
+<p>Each algorithm is written twice. The vector variant numbers the nodes <code>0..n</code> and stores
+the graph as <code>Vec&lt;Vec&lt;(usize, u32)&gt;&gt;</code>. The map variant accepts any node type that is
+<code>Copy + Eq + Hash</code>, such as <code>&amp;str</code>, and stores the graph as a <code>HashMap</code> from a node to a
+slice of <code>(neighbor, weight)</code> edges. The weights are unused by the traversals and are
+kept so that the same graph can be passed to Dijkstra’s algorithm in chapter 61.</p>
+<h2 id="designing-a-solution-59"><a class="header" href="#designing-a-solution-59">Designing a Solution</a></h2>
+<p>Both traversals keep a frontier of nodes still to explore and a visited set. They
+differ only in the frontier.</p>
+<pre><code class="language-text">BFS: frontier is a queue (VecDeque)     DFS: frontier is a stack (Vec)
+     pop_front, push_back                    pop, push
+
+     explores all nodes at distance 1,       follows one path as deep as it goes,
+     then all at distance 2, ...             then backtracks
+</code></pre>
+<p>The sample graph used in the tests:</p>
+<pre><code class="language-text">A --1--&gt; B --5--&gt; D
+|        |        ^
+4        2        |
+v        v        |
+C ------------1---+
+(B -&gt; C with weight 2, C -&gt; D with weight 1)
+
+vector variant: A = 0, B = 1, C = 2, D = 3
+</code></pre>
+<p><strong>When a node is marked visited differs between the two.</strong> BFS marks a node when it is
+enqueued. Every node enters the queue once, and the queue never holds a duplicate. The
+iterative DFS marks a node when it is popped. A node can be pushed several times, once
+by each neighbor that reaches it before it is explored, and the later copies are
+skipped when they are popped. Marking on pop is what makes the order depth-first: a
+node pushed recently is explored before an older copy of the same node.</p>
+<p><strong>The vector variant is the one to write first.</strong> With nodes as indices, the visited
+set is a <code>Vec&lt;bool&gt;</code> indexed directly, with no hashing, and <code>graph[node]</code> is a bounds-
+checked index into a vector. The map variant is the same algorithm with <code>HashSet</code>
+membership and <code>HashMap</code> lookup, which is what a problem with named nodes needs.</p>
+<h2 id="implementation-59"><a class="header" href="#implementation-59">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Breadth-first search.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `bfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`,
+//!   so `visited` is a plain `Vec&lt;bool&gt;`. This is the version to write first.
+//! - `bfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`
+//!   from a node to a slice of `(neighbor, weight)` edges.
+
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::hash::Hash;
+
+/// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
+pub type GraphAdjList&lt;'a, Node&gt; = HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;;
+
+/// BFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn bfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited[start_node] = true;
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+/// BFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn bfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited.insert(start_node);
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        // slice iter yields &amp;(Node, u32); `&amp;` destructures it
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            if visited.insert(neighbor) {
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_visits_level_by_level() {
+        assert_eq!(bfs_vec(&amp;sample_vec(), 0), vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn vec_variant_skips_unreachable_nodes() {
+        let graph = vec![vec![(1, 1)], vec![], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn map_variant_visits_level_by_level() {
+        assert_eq!(bfs(&amp;sample_map(), "A"), vec!["A", "B", "C", "D"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = bfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, bfs(&amp;sample_map(), "A"));
+    }
+}
+<span class="boring">}</span></code></pre>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Iterative depth-first search with an explicit stack.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`.
+//! - `dfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`.
+//!
+//! A node is marked visited when it is popped, not when it is pushed, so it may
+//! sit on the stack more than once. Neighbors are pushed in order, which means the
+//! last neighbor is explored first.
+
+use crate::problems::graph_bfs::GraphAdjList;
+use std::collections::HashSet;
+use std::hash::Hash;
+
+/// DFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn dfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if visited[current_node] {
+            continue;
+        }
+        visited[current_node] = true;
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+/// DFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn dfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if !visited.insert(current_node) {
+            continue;
+        }
+        result.push(current_node);
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_explores_the_last_neighbor_first() {
+        // Pop 0, push 1 and 2; pop 2, push 3; pop 3; pop 1.
+        assert_eq!(dfs_vec(&amp;sample_vec(), 0), vec![0, 2, 3, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(2, 1)], vec![(0, 1)]];
+        assert_eq!(dfs_vec(&amp;graph, 0), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn map_variant_explores_the_last_neighbor_first() {
+        assert_eq!(dfs(&amp;sample_map(), "A"), vec!["A", "C", "D", "B"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = dfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, dfs(&amp;sample_map(), "A"));
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>bfs_vec</code> sets <code>visited[start_node] = true</code> before the loop and marks each neighbor as it
+is enqueued, so the check <code>!visited[neighbor]</code> and the mark happen together. The map
+variant does the same in one call: <code>visited.insert(neighbor)</code> returns <code>true</code> only when
+the node was not already present, so the condition both tests and records membership.</p>
+<p><code>for &amp;(neighbor, _) in &amp;graph[current_node]</code> iterates over <code>&amp;(usize, u32)</code> values, and the
+pattern <code>&amp;(neighbor, _)</code> copies the neighbor out and ignores the weight. In the map
+variant, <code>graph[&amp;current_node]</code> already yields a slice reference, <code>&amp;[(Node, u32)]</code>, so
+the loop iterates over it without another <code>&amp;</code>.</p>
+<p><code>dfs_vec</code> pushes every neighbor, visited or not, and filters at pop time with
+<code>if visited[current_node] { continue; }</code>. The map variant writes the same test as
+<code>if !visited.insert(current_node) { continue; }</code>.</p>
+<p><code>GraphAdjList&lt;'a, Node&gt;</code> is <code>HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;</code>. The lifetime says the map
+borrows its edge slices rather than owning them, which is why the tests build the graph
+from slice literals such as <code>&amp;[("B", 1), ("C", 4)][..]</code>. The <code>[..]</code> turns an array
+reference into a slice reference, so every entry of the map has the same type. The alias
+is defined in <code>graph_bfs.rs</code> and imported by the other two graph modules.</p>
+<p>The <code>both_variants_agree</code> tests map the indices from the vector variant to names and
+compare the result with the map variant, so the two implementations cannot drift apart.</p>
+<h2 id="intuition-59"><a class="header" href="#intuition-59">Intuition</a></h2>
+<pre><code class="language-text">bfs_vec(sample, start = 0)
+
+pop   queue after pushes        visited              result
+ -    [0]                       {0}                  []
+ 0    [1, 2]                    {0, 1, 2}            [0]
+ 1    [2, 3]                    {0, 1, 2, 3}         [0, 1]      2 already visited
+ 2    [3]                       {0, 1, 2, 3}         [0, 1, 2]   3 already visited
+ 3    []                        {0, 1, 2, 3}         [0, 1, 2, 3]
+</code></pre>
+<pre><code class="language-text">dfs_vec(sample, start = 0)
+
+pop   visited before?   stack after pushes     result
+ 0    no                [1, 2]                 [0]
+ 2    no                [1, 3]                 [0, 2]
+ 3    no                [1]                    [0, 2, 3]
+ 1    no                [2, 3]                 [0, 2, 3, 1]
+ 3    yes, skip         [2]
+ 2    yes, skip         []
+</code></pre>
+<p>The tests <code>vec_variant_visits_level_by_level</code> and
+<code>vec_variant_explores_the_last_neighbor_first</code> assert exactly these two orders, and the
+map variants return <code>["A", "B", "C", "D"]</code> and <code>["A", "C", "D", "B"]</code>.</p>
+<h2 id="time-and-space-complexity-59"><a class="header" href="#time-and-space-complexity-59">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td><code>O(V + E)</code></td><td>every reachable node is expanded once and each of its edges is examined once</td></tr>
+<tr><td>Space, BFS</td><td><code>O(V)</code></td><td>the queue and the visited set each hold at most one entry per node</td></tr>
+<tr><td>Space, DFS</td><td><code>O(V + E)</code></td><td>a node can be pushed once per incoming edge before it is popped</td></tr>
+<tr><td>Map variant</td><td>the same bounds, expected</td><td><code>HashSet</code> and <code>HashMap</code> operations are expected constant time</td></tr>
+</tbody>
+</table>
+</div>
+<p>The vector variant allocates <code>visited</code> for every node in the graph, reachable or not. The
+map variant grows its set only as nodes are visited.</p>
+<h2 id="limitations-59"><a class="header" href="#limitations-59">Limitations</a></h2>
+<p><strong>A missing node panics.</strong> <code>graph[current_node]</code> in the vector variant panics when an
+edge names an index outside the vector, and <code>graph[&amp;current_node]</code> in the map variant
+panics when a neighbor has no entry of its own, even an empty one. The tests give every
+node an entry. A graph read from input should be validated first, or the loop should use
+<code>graph.get(node)</code> and treat a missing entry as a node with no edges.</p>
+<p><strong>The DFS order is not the recursive order.</strong> A recursive DFS visits the first neighbor
+first. This iterative version pushes neighbors in order and pops the last one first, so
+it visits <code>C</code> before <code>B</code>. Both are valid depth-first orders. Pushing the neighbors in
+reverse, <code>for &amp;(neighbor, _) in graph[node].iter().rev()</code>, reproduces the recursive order.</p>
+<p><strong>The DFS stack can grow beyond <code>V</code>.</strong> Marking on pop allows duplicates on the stack, up
+to one entry per edge. Marking on push keeps the stack at <code>V</code> entries but no longer
+produces a depth-first order in all cases.</p>
+<p><strong>Only reachable nodes are returned.</strong> To traverse a graph with several components, call
+the function from every node that has not been visited yet, as chapter 23 does for grid
+islands.</p>
+<p><strong>The weights are carried but unused.</strong> A traversal that only needs connectivity can
+store <code>Vec&lt;Vec&lt;usize&gt;&gt;</code>, which halves the memory per edge.</p>
+<h2 id="summary-39"><a class="header" href="#summary-39">Summary</a></h2>
+<ul>
+<li>BFS and DFS share one loop and differ only in the frontier: a <code>VecDeque</code> used as a queue
+or a <code>Vec</code> used as a stack.</li>
+<li>BFS marks a node when it enters the queue; this iterative DFS marks a node when it is
+popped, which allows duplicates on the stack and gives a depth-first order.</li>
+<li>The vector variant uses indices and a <code>Vec&lt;bool&gt;</code>; the map variant uses a <code>HashSet</code>,
+whose <code>insert</code> returns whether the node was new.</li>
+<li>Both run in <code>O(V + E)</code> time, and tests that compare the two variants keep them
+consistent.</li>
+</ul>
+<h2 id="references-59"><a class="header" href="#references-59">References</a></h2>
+<ul>
+<li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
+<em>Introduction to Algorithms</em>, 4th edition, MIT Press, 2022, Sections 20.2,
+“Breadth-first search”, and 20.3, “Depth-first search”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashSet.html#method.insert"><code>HashSet::insert</code></a>, on its return value.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="dijkstra"><a class="header" href="#dijkstra">61. Dijkstra’s Shortest Paths</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs"><code>src/problems/graph_dijkstra.rs</code></a>. Test it with <code>cargo test graph_dijkstra</code>.</em></p>
+<h2 id="problem-statement-60"><a class="header" href="#problem-statement-60">Problem Statement</a></h2>
+<p>Given a directed graph with non-negative edge weights and a start node, return the
+length of the shortest path from the start to every node. A node that cannot be reached
+has no distance.</p>
+<p>As in chapter 60, the algorithm is written twice. The vector variant numbers the nodes
+<code>0..n</code> and returns <code>Vec&lt;Option&lt;u32&gt;&gt;</code>, with <code>None</code> for an unreachable node. The map
+variant accepts any node type that is <code>Copy + Eq + Hash + Ord</code> and returns a <code>HashMap</code>
+that contains only the reachable nodes.</p>
+<h2 id="designing-a-solution-60"><a class="header" href="#designing-a-solution-60">Designing a Solution</a></h2>
+<p>BFS finds shortest paths when every edge has the same length, because it settles nodes
+in order of hop count. Dijkstra’s algorithm generalizes that order to weighted edges:
+it always expands the unexpanded node with the smallest known distance. With
+non-negative weights, no later path can make that node’s distance smaller, so its
+distance is final once it is expanded.</p>
+<p>A priority queue supplies the smallest known distance in <code>O(log n)</code>. Rust’s <code>BinaryHeap</code>
+is a max-heap, so each entry is wrapped in <code>std::cmp::Reverse</code>, which inverts the
+ordering and makes the smallest <code>(cost, node)</code> pair come out first.</p>
+<p><code>BinaryHeap</code> has no operation to lower the priority of an entry already in the heap.
+Instead, a shorter distance pushes a second entry for the same node. The older entry
+stays in the heap and is recognised as stale when it is popped, because its cost is
+larger than the distance recorded for the node.</p>
+<pre><code class="language-text">the sample graph from chapter 60
+
+A --1--&gt; B --5--&gt; D
+|        |        ^
+4        2        |
+v        v        |
+C ------------1---+
+
+shortest distances from A: A 0, B 1, C 3 (via B), D 4 (via B and C)
+</code></pre>
+<h2 id="implementation-60"><a class="header" href="#implementation-60">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Dijkstra's shortest paths with a binary min-heap.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dijkstra_vec`: nodes are `usize` indices and distances are a
+//!   `Vec&lt;Option&lt;u32&gt;&gt;`, where `None` means unreachable.
+//! - `dijkstra`: nodes are any `Copy + Eq + Hash + Ord` type and distances are a
+//!   `HashMap` containing only the reachable nodes.
+//!
+//! Edge weights must be non-negative, which `u32` guarantees. `BinaryHeap` is a
+//! max-heap, so entries are wrapped in `Reverse` to pop the smallest cost first.
+//! A node can be in the heap several times; an entry whose cost is larger than the
+//! recorded distance is stale and skipped.
+
+use crate::problems::graph_bfs::GraphAdjList;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
+use std::hash::Hash;
+
+/// Shortest distances from `start_node` over an index-based adjacency list.
+pub fn dijkstra_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;Option&lt;u32&gt;&gt; {
+    let mut distances = vec![None; graph.len()];
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    distances[start_node] = Some(0);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if distances[current_node].is_some_and(|best| current_cost &gt; best) {
+            continue;
+        }
+        for &amp;(neighbor, weight) in &amp;graph[current_node] {
+            let new_distance = current_cost + weight;
+            if distances[neighbor].is_none_or(|best| new_distance &lt; best) {
+                distances[neighbor] = Some(new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}
+
+/// Shortest distances from `start_node` over a `HashMap` adjacency list.
+pub fn dijkstra&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; HashMap&lt;Node, u32&gt;
+where
+    Node: Copy + Eq + Hash + Ord,
+{
+    let mut distances = HashMap::from([(start_node, 0)]);
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if current_cost &gt; distances[&amp;current_node] {
+            continue;
+        }
+        for &amp;(neighbor, weight) in graph[&amp;current_node] {
+            let new_distance = current_cost + weight;
+            if new_distance &lt; *distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX) {
+                distances.insert(neighbor, new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_finds_shorter_multi_hop_paths() {
+        // A -&gt; C directly costs 4, A -&gt; B -&gt; C costs 3; D is reached via C for 4.
+        assert_eq!(
+            dijkstra_vec(&amp;sample_vec(), 0),
+            vec![Some(0), Some(1), Some(3), Some(4)]
+        );
+    }
+
+    #[test]
+    fn vec_variant_marks_unreachable_nodes() {
+        let graph = vec![vec![(1, 7)], vec![], vec![(0, 1)]];
+        assert_eq!(dijkstra_vec(&amp;graph, 0), vec![Some(0), Some(7), None]);
+    }
+
+    #[test]
+    fn map_variant_finds_shorter_multi_hop_paths() {
+        let distances = dijkstra(&amp;sample_map(), "A");
+        assert_eq!(
+            distances,
+            HashMap::from([("A", 0), ("B", 1), ("C", 3), ("D", 4)])
+        );
+    }
+
+    #[test]
+    fn map_variant_omits_unreachable_nodes() {
+        let graph: HashMap&lt;u8, &amp;[(u8, u32)]&gt; =
+            HashMap::from([(0, &amp;[(1, 2)][..]), (1, &amp;[][..]), (2, &amp;[(0, 1)][..])]);
+        assert_eq!(dijkstra(&amp;graph, 0), HashMap::from([(0, 0), (1, 2)]));
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>dijkstra_vec</code> stores distances as <code>Vec&lt;Option&lt;u32&gt;&gt;</code>, so “not reached yet” is <code>None</code>
+rather than a sentinel. The relaxation test
+<code>distances[neighbor].is_none_or(|best| new_distance &lt; best)</code> accepts an edge when the
+neighbor has no distance yet or when the new path is shorter. <code>Option::is_none_or</code> was
+stabilised in Rust 1.82. The stale-entry test
+<code>distances[current_node].is_some_and(|best| current_cost &gt; best)</code> skips an entry whose
+cost is larger than the distance already recorded.</p>
+<p>The map variant, <code>dijkstra</code>, keeps the same logic with a <code>HashMap</code>. It uses
+<code>*distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX)</code> as the current best, so a node without
+an entry compares as infinitely far. <code>distances[&amp;current_node]</code> cannot panic in the
+stale-entry test, because a node is pushed onto the heap only after its distance is
+inserted.</p>
+<p><code>Node: Ord</code> is required by the map variant because the heap orders <code>(cost, node)</code> tuples,
+and tuples compare element by element: when two costs are equal, the nodes decide the
+order. The vector variant gets that ordering for free from <code>usize</code>.</p>
+<p>The tests cover the multi-hop case, where the direct edge <code>A -&gt; C</code> of weight 4 loses to
+<code>A -&gt; B -&gt; C</code> of weight 3, and a graph with an unreachable node in each variant.</p>
+<h2 id="intuition-60"><a class="header" href="#intuition-60">Intuition</a></h2>
+<pre><code class="language-text">dijkstra_vec(sample, start = 0)
+
+pop (cost, node)   stale?   relaxations                         distances [A, B, C, D]   heap after
+ -                                                              [0, -, -, -]             [(0,0)]
+(0, 0)             no       B: 1 &lt; none, push; C: 4 &lt; none, push [0, 1, 4, -]             [(1,1), (4,2)]
+(1, 1)             no       C: 3 &lt; 4, push; D: 6 &lt; none, push    [0, 1, 3, 6]             [(3,2), (4,2), (6,3)]
+(3, 2)             no       D: 4 &lt; 6, push                       [0, 1, 3, 4]             [(4,2), (4,3), (6,3)]
+(4, 2)             yes, 4 &gt; 3, skip                              [0, 1, 3, 4]             [(4,3), (6,3)]
+(4, 3)             no       D has no edges                       [0, 1, 3, 4]             [(6,3)]
+(6, 3)             yes, 6 &gt; 4, skip                              [0, 1, 3, 4]             []
+</code></pre>
+<p>The result is <code>[Some(0), Some(1), Some(3), Some(4)]</code>. Two of the six pops were stale
+entries, one for <code>C</code> and one for <code>D</code>.</p>
+<h2 id="time-and-space-complexity-60"><a class="header" href="#time-and-space-complexity-60">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td><code>O((V + E) log E)</code></td><td>each edge can push one heap entry, and each push and pop costs <code>O(log E)</code></td></tr>
+<tr><td>Space</td><td><code>O(V + E)</code></td><td>the distance table holds one entry per node, and the heap up to one entry per edge</td></tr>
+<tr><td>Map variant</td><td>the same bounds, expected</td><td><code>HashMap</code> operations are expected constant time</td></tr>
+</tbody>
+</table>
+</div>
+<p>Since <code>E</code> is at most <code>V²</code>, <code>log E</code> is at most <code>2 log V</code>, and the bound is usually written
+<code>O((V + E) log V)</code>.</p>
+<h2 id="limitations-60"><a class="header" href="#limitations-60">Limitations</a></h2>
+<p><strong>Negative weights are not supported.</strong> The algorithm relies on a node’s distance being
+final when it is expanded. The <code>u32</code> weight type rules out negative edges. A graph with
+negative weights needs the Bellman-Ford algorithm.</p>
+<p><strong>Distances can overflow.</strong> <code>current_cost + weight</code> is a <code>u32</code> addition. A path whose
+total exceeds <code>u32::MAX</code> panics in a debug build and wraps in a release build, which
+could make a long path look short. <code>checked_add</code>, or <code>u64</code> distances, removes the risk.</p>
+<p><strong>Paths are not returned.</strong> The functions return distances only. Recording the
+predecessor of each node when its distance improves, in a <code>Vec&lt;Option&lt;usize&gt;&gt;</code> or a
+<code>HashMap&lt;Node, Node&gt;</code>, allows the path to be rebuilt by walking back from the target.</p>
+<p><strong>The whole reachable graph is explored.</strong> A search for one target can stop as soon as
+that target is popped, because its distance is final at that point. Neither function
+takes a target.</p>
+<p><strong>A missing node panics.</strong> As in chapter 60, an edge to an index outside the vector, or
+to a node without its own map entry, panics on indexing.</p>
+<h2 id="summary-40"><a class="header" href="#summary-40">Summary</a></h2>
+<ul>
+<li>Dijkstra’s algorithm expands nodes in order of distance, which is final on expansion
+when every weight is non-negative.</li>
+<li><code>BinaryHeap</code> is a max-heap; <code>Reverse((cost, node))</code> turns it into a min-heap.</li>
+<li>Instead of decreasing a key, the algorithm pushes a new entry and skips stale entries
+whose cost exceeds the recorded distance.</li>
+<li>The vector variant represents “unreachable” as <code>None</code> and uses <code>is_none_or</code> and
+<code>is_some_and</code> for the two tests; the map variant omits unreachable nodes.</li>
+<li>The cost is <code>O((V + E) log V)</code> time and <code>O(V + E)</code> space.</li>
+</ul>
+<h2 id="references-60"><a class="header" href="#references-60">References</a></h2>
+<ul>
+<li>Edsger W. Dijkstra, “A note on two problems in connexion with graphs”, <em>Numerische
+Mathematik</em> 1, 1959, pages 269–271.</li>
+<li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
+<em>Introduction to Algorithms</em>, 4th edition, MIT Press, 2022, Section 22.3,
+“Dijkstra’s algorithm”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html"><code>BinaryHeap</code></a>, on using <code>Reverse</code> for a min-heap.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/option/enum.Option.html#method.is_none_or"><code>Option::is_none_or</code></a>.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="merge-k-sorted-lists"><a class="header" href="#merge-k-sorted-lists">62. Merge K Sorted Lists</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs"><code>src/bin/merge_k_sorted_lists_divide.rs</code></a>. Run it with <code>cargo run --bin merge_k_sorted_lists_divide</code>, and test it with <code>cargo test --bin merge_k_sorted_lists_divide</code>.</em></p>
+<h2 id="problem-statement-61"><a class="header" href="#problem-statement-61">Problem Statement</a></h2>
+<p>Given <code>k</code> singly linked lists, each sorted in ascending order, merge them into one sorted
+list. The nodes must be relinked rather than copied, and the result must contain every
+node of every input list.</p>
+<h2 id="designing-a-solution-61"><a class="header" href="#designing-a-solution-61">Designing a Solution</a></h2>
+<p>Merging two sorted lists is the building block: compare the heads, move the smaller node
+to the output, and repeat. Merging <code>k</code> lists one after another into a growing result is
+simple and slow, because the result is walked again for every list, which costs
+<code>O(kN)</code> for <code>N</code> nodes in total.</p>
+<p>Divide and conquer merges the lists in pairs, like the merge step of merge sort. In the
+first round, list 0 is merged with list 1, list 2 with list 3, and so on. In the next
+round, the survivors are merged in pairs again, until one list remains. Each node takes
+part in one merge per round, and there are <code>log k</code> rounds, so the total is <code>O(N log k)</code>.</p>
+<p>The implementation merges in place inside the input vector. <code>interval</code> is the distance
+between the two lists being merged, and it doubles every round:</p>
+<pre><code class="language-text">lists: [L0, L1, L2, L3, L4]        n = 5
+
+interval 1:  L0 = merge(L0, L1)   L2 = merge(L2, L3)   L4 untouched
+interval 2:  L0 = merge(L0, L2)                        L4 untouched
+interval 4:  L0 = merge(L0, L4)
+interval 8:  8 &gt;= 5, stop; the answer is lists[0]
+</code></pre>
+<p><code>merge_two</code> uses a dummy head node, so appending the first node of the result needs no
+special case, and a <code>tail</code> reference that always points at the last node of the output.</p>
+<h2 id="implementation-61"><a class="header" href="#implementation-61">Implementation</a></h2>
+<pre class="playground"><code class="language-rust">struct MergeKSorted { }
+
+#[derive(Default)]
+struct ListNode {
+    data: u32,
+    next: Option&lt;Box&lt;ListNode&gt;&gt;
+}
+impl ListNode {
+    fn new(data: u32) -&gt; Self { 
+        Self {
+            data,
+            next: None
+        }
+    }
+}
+
+type OptionalLink&lt;T&gt; = Option&lt;Box&lt;T&gt;&gt;;
+
+impl MergeKSorted {
+    pub fn merge_k_lists(mut lists: Vec&lt;OptionalLink&lt;ListNode&gt;&gt;) -&gt; OptionalLink&lt;ListNode&gt; {
+        if lists.is_empty() { return None; }
+
+        let (n, mut interval) = (lists.len(), 1);
+        while interval &lt; n {
+            let mut i = 0;
+            while i + interval &lt; n {
+                let (left, right) = lists.split_at_mut(i + interval);
+                left[i] = Self::merge_two(&amp;mut left[i], &amp;mut right[0]);
+                i += interval * 2;
+            }
+            interval *= 2;
+        }
+
+        lists[0].take()
+    }
+
+    fn merge_two(a: &amp;mut OptionalLink&lt;ListNode&gt;, b: &amp;mut OptionalLink&lt;ListNode&gt;) -&gt; OptionalLink&lt;ListNode&gt; {
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut tail = &amp;mut dummy;
+
+        while let (Some(na), Some(nb)) = (a.as_ref(), b.as_ref()) {
+            let pick = if na.data &lt; nb.data { &amp;mut *a } else { &amp;mut *b };
+            let mut node = pick.take().unwrap();
+            *pick = node.next.take();
+            tail.next = Some(node);
+            tail = tail.next.as_mut().unwrap();
+        }
+
+        tail.next = a.take().or(b.take());
+        dummy.next
+    }
+}
+
+/// Build a list from a slice, front to back.
+fn from_slice(values: &amp;[u32]) -&gt; OptionalLink&lt;ListNode&gt; {
+    let mut head = None;
+    for &amp;value in values.iter().rev() {
+        let mut node = Box::new(ListNode::new(value));
+        node.next = head;
+        head = Some(node);
+    }
+    head
+}
+
+/// Collect a list's values into a vector.
+fn to_vec(mut list: &amp;OptionalLink&lt;ListNode&gt;) -&gt; Vec&lt;u32&gt; {
+    let mut values = Vec::new();
+    while let Some(node) = list {
+        values.push(node.data);
+        list = &amp;node.next;
+    }
+    values
+}
+
+fn main() {
+    let lists = vec![from_slice(&amp;[1, 4, 5]), from_slice(&amp;[1, 3, 4]), from_slice(&amp;[2, 6])];
+    let merged = MergeKSorted::merge_k_lists(lists);
+    println!("{:?}", to_vec(&amp;merged));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merges_three_lists() {
+        let lists = vec![from_slice(&amp;[1, 4, 5]), from_slice(&amp;[1, 3, 4]), from_slice(&amp;[2, 6])];
+        let merged = MergeKSorted::merge_k_lists(lists);
+        assert_eq!(to_vec(&amp;merged), vec![1, 1, 2, 3, 4, 4, 5, 6]);
+    }
+
+    #[test]
+    fn handles_empty_input_and_empty_lists() {
+        assert!(MergeKSorted::merge_k_lists(vec![]).is_none());
+        let merged = MergeKSorted::merge_k_lists(vec![None, from_slice(&amp;[2]), None]);
+        assert_eq!(to_vec(&amp;merged), vec![2]);
+    }
+
+    #[test]
+    fn handles_an_odd_number_of_lists() {
+        let lists: Vec&lt;_&gt; = (0..5).map(|i| from_slice(&amp;[i, i + 10])).collect();
+        let merged = MergeKSorted::merge_k_lists(lists);
+        assert_eq!(to_vec(&amp;merged), vec![0, 1, 2, 3, 4, 10, 11, 12, 13, 14]);
+    }
+}</code></pre>
+<p><code>lists.split_at_mut(i + interval)</code> is the step that makes the in-place merge legal. The
+merge needs mutable access to two different elements of the same vector, <code>lists[i]</code> and
+<code>lists[i + interval]</code>, and the borrow checker does not allow two <code>&amp;mut</code> borrows of one
+vector at the same time. <code>split_at_mut</code> divides the vector into two non-overlapping
+mutable slices, so <code>left[i]</code> and <code>right[0]</code> are two separate borrows.</p>
+<p><code>merge_two</code> takes both lists as <code>&amp;mut OptionalLink&lt;ListNode&gt;</code> and consumes them with
+<code>take</code>. The loop condition <code>while let (Some(na), Some(nb)) = (a.as_ref(), b.as_ref())</code>
+peeks at both heads without moving them. Inside the loop, <code>pick</code> is a mutable reference to
+whichever list has the smaller head, <code>pick.take().unwrap()</code> detaches that node, and
+<code>*pick = node.next.take()</code> advances the list past it.</p>
+<p><code>tail</code> is <code>&amp;mut Box&lt;ListNode&gt;</code>. After <code>tail.next = Some(node)</code>, the statement
+<code>tail = tail.next.as_mut().unwrap()</code> moves the reference to the node just appended. When
+either input runs out, <code>tail.next = a.take().or(b.take())</code> attaches the rest of the other
+list in one step, with no further comparisons.</p>
+<p><code>dummy.next</code> is the merged list. The dummy node itself is freed when the function returns.</p>
+<p>The helpers <code>from_slice</code> and <code>to_vec</code> build lists from slices and read them back, so
+<code>main</code> and the tests can express lists as arrays. The tests cover three lists, an empty
+input and empty lists mixed with non-empty ones, and an odd number of lists, where the
+last list waits until the final round.</p>
+<h2 id="intuition-61"><a class="header" href="#intuition-61">Intuition</a></h2>
+<pre><code class="language-text">merge_two([1, 4, 5], [1, 3, 4])
+
+a head   b head   pick   output so far
+  1        1       b     [1]              1 &lt; 1 is false, so b is picked on ties
+  1        3       a     [1, 1]
+  4        3       b     [1, 1, 3]
+  4        4       b     [1, 1, 3, 4]
+  4        -             loop ends: b is empty
+                         tail.next = rest of a = [4, 5]
+result: [1, 1, 3, 4, 4, 5]
+</code></pre>
+<p>For the three lists in <code>main</code>, the first round merges <code>[1, 4, 5]</code> with <code>[1, 3, 4]</code>, and the
+second round merges the result with <code>[2, 6]</code>. The program prints:</p>
+<pre><code class="language-text">[1, 1, 2, 3, 4, 4, 5, 6]
+</code></pre>
+<h2 id="time-and-space-complexity-61"><a class="header" href="#time-and-space-complexity-61">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td><code>O(N log k)</code></td><td><code>N</code> nodes in total; each of the <code>log k</code> rounds touches every node at most once</td></tr>
+<tr><td>Space</td><td><code>O(1)</code> extra</td><td>nodes are relinked in place; one dummy node per merge</td></tr>
+<tr><td>Allocations</td><td>one per <code>merge_two</code> call</td><td>the dummy head is boxed</td></tr>
+</tbody>
+</table>
+</div>
+<p>A min-heap of the <code>k</code> current heads is the other common solution. It also costs
+<code>O(N log k)</code>, and it needs <code>O(k)</code> extra space for the heap.</p>
+<h2 id="limitations-61"><a class="header" href="#limitations-61">Limitations</a></h2>
+<p><strong>Ties take the node from the second list.</strong> The comparison is <code>na.data &lt; nb.data</code>, so
+equal values come from <code>b</code> first. The merge is correct, but it is not stable: equal
+elements do not keep the order of their input lists. Using <code>&lt;=</code> would keep elements from
+the first list ahead on ties.</p>
+<p><strong>The dummy node allocates.</strong> <code>Box::new(ListNode::new(0))</code> allocates for every merge,
+<code>k - 1</code> allocations in total. A local, unboxed dummy avoids the allocation, at the cost of
+a slightly different type for <code>tail</code>.</p>
+<p><strong><code>MergeKSorted</code> is an empty struct used as a namespace.</strong> <code>merge_k_lists</code> and <code>merge_two</code>
+could be free functions; the struct groups them the way many online judges expect, and
+it carries no state.</p>
+<p><strong>The derived <code>Default</code> is unused.</strong> <code>ListNode</code> derives <code>Default</code>, and nothing calls it.</p>
+<p><strong>Dropping a very long result list is recursive.</strong> As chapters 14 and 38 showed, the
+default destructor of <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> frees one node per stack frame, so a merged
+list of a few hundred thousand nodes can overflow the stack when it is dropped.</p>
+<p><strong>The values are <code>u32</code>.</strong> The algorithm needs only <code>Ord</code>; a generic <code>ListNode&lt;T: Ord&gt;</code>
+would merge any ordered type.</p>
+<h2 id="summary-41"><a class="header" href="#summary-41">Summary</a></h2>
+<ul>
+<li>Merging <code>k</code> sorted lists in pairs, doubling the interval each round, costs
+<code>O(N log k)</code> and relinks nodes without copying.</li>
+<li><code>split_at_mut</code> provides two mutable borrows of different vector elements at once.</li>
+<li>A dummy head and a <code>tail</code> reference remove the special case for the first node, and
+<code>a.take().or(b.take())</code> attaches the remainder in one step.</li>
+<li>The merge is not stable on ties, and each merge allocates one dummy node.</li>
+</ul>
+<h2 id="references-61"><a class="header" href="#references-61">References</a></h2>
+<ul>
+<li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
+<em>Introduction to Algorithms</em>, 4th edition, MIT Press, 2022, Section 2.3, on merging.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.slice.html#method.split_at_mut"><code>slice::split_at_mut</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/option/enum.Option.html#method.take"><code>Option::take</code></a>.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="references-62"><a class="header" href="#references-62">References</a></h1>
 <h2 id="how-to-read-this-list"><a class="header" href="#how-to-read-this-list">How to read this list</a></h2>
 <p>Sources are grouped by kind, and each entry says where the claim it supports
 appears. Language and library claims cite the document that specifies the

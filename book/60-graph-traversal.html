@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>41. A Sharded Concurrent Cache - Coding Interviews for Cracked Rustaceans</title>
+        <title>60. Graph Traversal: BFS and DFS - Coding Interviews for Cracked Rustaceans</title>
 
 
         <!-- Custom HTML head -->
@@ -175,331 +175,377 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="sharded-cache"><a class="header" href="#sharded-cache">41. A Sharded Concurrent Cache</a></h1>
-<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sharded_cache.rs"><code>src/problems/sharded_cache.rs</code></a>. Test it with <code>cargo test sharded_cache</code>.</em></p>
+                        <h1 id="graph-traversal"><a class="header" href="#graph-traversal">60. Graph Traversal: BFS and DFS</a></h1>
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs"><code>src/problems/graph_bfs.rs</code></a> and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs"><code>src/problems/graph_dfs.rs</code></a>. Test them with <code>cargo test graph_bfs</code> and <code>cargo test graph_dfs</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Build a map from <code>K</code> to <code>V</code> that many threads can read and write concurrently. Two
-operations on different keys should usually not block each other. The map needs
-<code>insert</code>, <code>get</code>, <code>remove</code>, <code>contains_key</code>, <code>len</code>, <code>is_empty</code>, <code>clear</code>, and a way to
-inspect a value without cloning it.</p>
+<p>Given a directed graph and a start node, return the nodes reachable from the start in
+the order a traversal visits them, once in breadth-first order and once in depth-first
+order. Each node must appear at most once, and the traversal must terminate on graphs
+with cycles.</p>
+<p>Each algorithm is written twice. The vector variant numbers the nodes <code>0..n</code> and stores
+the graph as <code>Vec&lt;Vec&lt;(usize, u32)&gt;&gt;</code>. The map variant accepts any node type that is
+<code>Copy + Eq + Hash</code>, such as <code>&amp;str</code>, and stores the graph as a <code>HashMap</code> from a node to a
+slice of <code>(neighbor, weight)</code> edges. The weights are unused by the traversals and are
+kept so that the same graph can be passed to Dijkstra’s algorithm in chapter 61.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Allocate <code>N</code> independent <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> values. To find a key’s shard, hash the
-key and take the hash modulo <code>N</code>. Operations on keys in different shards take
-different locks and proceed in parallel. The diagram below shows the layout for four shards.</p>
-<pre><code class="language-text">                    hash(key) &amp; mask
-                           |
-        +----------+-------+--+----------+
-        v          v          v          v
-   +---------+ +---------+ +---------+ +---------+
-   | Mutex   | | Mutex   | | Mutex   | | Mutex   |
-   | HashMap | | HashMap | | HashMap | | HashMap |
-   +---------+ +---------+ +---------+ +---------+
-    shard 0     shard 1     shard 2     shard 3
+<p>Both traversals keep a frontier of nodes still to explore and a visited set. They
+differ only in the frontier.</p>
+<pre><code class="language-text">BFS: frontier is a queue (VecDeque)     DFS: frontier is a stack (Vec)
+     pop_front, push_back                    pop, push
+
+     explores all nodes at distance 1,       follows one path as deep as it goes,
+     then all at distance 2, ...             then backtracks
 </code></pre>
-<p>If <code>N</code> is a power of two, <code>hash % N</code> equals <code>hash &amp; (N - 1)</code>, and the mask is cheaper
-than a division. The constructor therefore rounds the requested shard count up to a
-power of two and stores the mask.</p>
-<p>The hash that selects a shard must be the same for a key every time. The cache keeps
-one <code>RandomState</code>, created once, and builds a hasher from it for each lookup. A
-<code>RandomState</code> holds random keys chosen at construction, so shard selection is stable
-for the life of the cache and unpredictable to an outside party, which prevents a
-client from choosing keys that all land in one shard.</p>
-<p>Operations that touch one key lock one shard. Operations that touch every key, <code>len</code>
-and <code>clear</code>, lock each shard in turn. They do not hold all the locks at once, so they
-do not observe a single consistent state of the whole map.</p>
+<p>The sample graph used in the tests:</p>
+<pre><code class="language-text">A --1--&gt; B --5--&gt; D
+|        |        ^
+4        2        |
+v        v        |
+C ------------1---+
+(B -&gt; C with weight 2, C -&gt; D with weight 1)
+
+vector variant: A = 0, B = 1, C = 2, D = 3
+</code></pre>
+<p><strong>When a node is marked visited differs between the two.</strong> BFS marks a node when it is
+enqueued. Every node enters the queue once, and the queue never holds a duplicate. The
+iterative DFS marks a node when it is popped. A node can be pushed several times, once
+by each neighbor that reaches it before it is explored, and the later copies are
+skipped when they are popped. Marking on pop is what makes the order depth-first: a
+node pushed recently is explored before an older copy of the same node.</p>
+<p><strong>The vector variant is the one to write first.</strong> With nodes as indices, the visited
+set is a <code>Vec&lt;bool&gt;</code> indexed directly, with no hashing, and <code>graph[node]</code> is a bounds-
+checked index into a vector. The map variant is the same algorithm with <code>HashSet</code>
+membership and <code>HashMap</code> lookup, which is what a problem with named nodes needs.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>//! Sharded concurrent map to reduce lock contention.
+</span>//! Breadth-first search.
 //!
-//! A single `Mutex&lt;HashMap&gt;` serializes every access. Splitting the map into N
-//! shards, each with its own lock, lets independent keys proceed in parallel. The
-//! cost is that `len` and `clear` must visit every shard, and there is no global
-//! atomic snapshot.
+//! Two variants of the same algorithm:
 //!
-//! This is a common SDK/CLI cache shape: per-account token caches, node metadata
-//! caches, and request de-duplication tables.
+//! - `bfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`,
+//!   so `visited` is a plain `Vec&lt;bool&gt;`. This is the version to write first.
+//! - `bfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`
+//!   from a node to a slice of `(neighbor, weight)` edges.
 
-use std::collections::HashMap;
-use std::collections::hash_map::RandomState;
-use std::hash::{BuildHasher, Hash, Hasher};
-use std::sync::Mutex;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::hash::Hash;
 
-/// A fixed-size map split across independently locked shards.
-///
-/// The shard count is rounded up to a power of two so the index is a mask instead
-/// of a modulo.
-pub struct ShardedCache&lt;K, V&gt; {
-    shards: Vec&lt;Mutex&lt;HashMap&lt;K, V&gt;&gt;&gt;,
-    hasher: RandomState,
-    mask: usize,
+/// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
+pub type GraphAdjList&lt;'a, Node&gt; = HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;;
+
+/// BFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn bfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited[start_node] = true;
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
 }
 
-impl&lt;K, V&gt; ShardedCache&lt;K, V&gt;
+/// BFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn bfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
 where
-    K: Hash + Eq,
+    Node: Copy + Eq + Hash,
 {
-    /// Create a cache with at least `shard_count` shards (rounded to a power of two).
-    pub fn new(shard_count: usize) -&gt; Self {
-        let shard_count = shard_count.max(1).next_power_of_two();
-        
-        let shards = (0..shard_count)
-            .map(|_| Mutex::new(HashMap::new()))
-            .collect();
-        Self {
-            shards,
-            hasher: RandomState::new(),
-            mask: shard_count - 1,
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited.insert(start_node);
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        // slice iter yields &amp;(Node, u32); `&amp;` destructures it
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            if visited.insert(neighbor) {
+                queue.push_back(neighbor);
+            }
         }
     }
-
-    fn shard(&amp;self, key: &amp;K) -&gt; &amp;Mutex&lt;HashMap&lt;K, V&gt;&gt; {
-        let mut hasher = self.hasher.build_hasher();
-        key.hash(&amp;mut hasher);
-        let index = (hasher.finish() as usize) &amp; self.mask;
-        &amp;self.shards[index]
-    }
-
-    /// Insert a value, returning the previous one if the key was present.
-    pub fn insert(&amp;self, key: K, value: V) -&gt; Option&lt;V&gt; {
-        self.shard(&amp;key)
-            .lock()
-            .expect("shard mutex poisoned")
-            .insert(key, value)
-    }
-
-    /// Read a value by cloning it out of the shard.
-    pub fn get(&amp;self, key: &amp;K) -&gt; Option&lt;V&gt;
-    where
-        V: Clone,
-    {
-        self.shard(key)
-            .lock()
-            .expect("shard mutex poisoned")
-            .get(key)
-            .cloned()
-    }
-
-    /// Run `inspect` against the value under the shard lock, without cloning.
-    ///
-    /// Use this for read-modify-write on a single key; the closure holds the lock
-    /// for its duration, so keep it short and do not call back into the cache.
-    pub fn with&lt;R&gt;(&amp;self, key: &amp;K, inspect: impl FnOnce(Option&lt;&amp;V&gt;) -&gt; R) -&gt; R {
-        let guard = self.shard(key).lock().expect("shard mutex poisoned");
-        inspect(guard.get(key))
-    }
-
-    pub fn remove(&amp;self, key: &amp;K) -&gt; Option&lt;V&gt; {
-        self.shard(key)
-            .lock()
-            .expect("shard mutex poisoned")
-            .remove(key)
-    }
-
-    pub fn contains_key(&amp;self, key: &amp;K) -&gt; bool {
-        self.shard(key)
-            .lock()
-            .expect("shard mutex poisoned")
-            .contains_key(key)
-    }
-
-    pub fn len(&amp;self) -&gt; usize {
-        self.shards
-            .iter()
-            .map(|shard| shard.lock().expect("shard mutex poisoned").len())
-            .sum()
-    }
-
-    pub fn is_empty(&amp;self) -&gt; bool {
-        self.len() == 0
-    }
-
-    pub fn clear(&amp;self) {
-        for shard in &amp;self.shards {
-            shard.lock().expect("shard mutex poisoned").clear();
-        }
-    }
-
-    pub fn shard_count(&amp;self) -&gt; usize {
-        self.shards.len()
-    }
+    result
 }
-<span class="boring">}</span></code></pre>
-<p><code>new</code> builds the shard vector with an iterator, <code>(0..shard_count).map(...).collect()</code>.
-<code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> is not <code>Clone</code>, so <code>vec![Mutex::new(HashMap::new()); n]</code> would
-not compile; the iterator constructs each shard separately.</p>
-<p><code>shard</code> returns <code>&amp;Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> borrowed from <code>self</code>. The caller locks it, and
-the guard lives only for the expression that uses it, so each public method holds its
-lock for exactly one map operation.</p>
-<p><code>get</code> requires <code>V: Clone</code> through a <code>where</code> clause on the method rather than on the
-<code>impl</code> block. A cache of values that are not <code>Clone</code> can still use every other method,
-including <code>with</code>.</p>
-<p><code>with</code> takes a closure <code>FnOnce(Option&lt;&amp;V&gt;) -&gt; R</code> and calls it with a reference into the
-map while the shard lock is held. The caller can read a large value, or compute
-something small from it, without copying the value out. The documentation comment
-states the two rules that make this safe to use: keep the closure short, because it
-holds the lock, and do not call back into the cache from inside it, because a second
-lock of the same shard on the same thread deadlocks.</p>
-<p><code>len</code> sums the shard lengths with an iterator. Each shard is locked, measured, and
-unlocked before the next is locked.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
+
+#[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
-    use std::thread;
 
-    #[test]
-    fn insert_get_remove() {
-        let cache: ShardedCache&lt;String, u32&gt; = ShardedCache::new(4);
-        assert_eq!(cache.insert("gpu-a100".into(), 8), None);
-        assert_eq!(cache.get(&amp;"gpu-a100".into()), Some(8));
-        assert_eq!(cache.insert("gpu-a100".into(), 16), Some(8));
-        assert_eq!(cache.get(&amp;"gpu-a100".into()), Some(16));
-        assert_eq!(cache.remove(&amp;"gpu-a100".into()), Some(16));
-        assert!(!cache.contains_key(&amp;"gpu-a100".into()));
-        assert!(cache.is_empty());
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
     }
 
     #[test]
-    fn with_exposes_the_value_without_cloning() {
-        let cache: ShardedCache&lt;&amp;str, String&gt; = ShardedCache::new(2);
-        cache.insert("node", "A100".to_string());
-        let observed = cache.with(&amp;"node", |value| value.map(|v| v.len()));
-        assert_eq!(observed, Some(4));
+    fn vec_variant_visits_level_by_level() {
+        assert_eq!(bfs_vec(&amp;sample_vec(), 0), vec![0, 1, 2, 3]);
     }
 
     #[test]
-    fn concurrent_writers_all_land() {
-        let cache = Arc::new(ShardedCache::new(16));
-        let mut handles = Vec::new();
-
-        for writer in 0..8 {
-            let cache = Arc::clone(&amp;cache);
-            handles.push(thread::spawn(move || {
-                for key in 0..500 {
-                    cache.insert(format!("{writer}-{key}"), key);
-                }
-            }));
-        }
-        for handle in handles {
-            handle.join().expect("writer panicked");
-        }
-
-        assert_eq!(cache.len(), 8 * 500);
+    fn vec_variant_skips_unreachable_nodes() {
+        let graph = vec![vec![(1, 1)], vec![], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
     }
 
     #[test]
-    fn keys_spread_across_shards() {
-        let cache: ShardedCache&lt;u32, u32&gt; = ShardedCache::new(8);
-        for key in 0..4_096 {
-            cache.insert(key, key);
-        }
-        // Every shard should hold roughly 1/8 of the keys; assert none is starved.
-        let smallest = cache
-            .shards
-            .iter()
-            .map(|shard| shard.lock().expect("shard mutex poisoned").len())
-            .min()
-            .expect("at least one shard");
-        assert!(smallest &gt; 0, "at least one shard was empty");
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn map_variant_visits_level_by_level() {
+        assert_eq!(bfs(&amp;sample_map(), "A"), vec!["A", "B", "C", "D"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = bfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, bfs(&amp;sample_map(), "A"));
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>concurrent_writers_all_land</code> runs eight threads that insert 500 distinct keys each and
-checks that the total is 4,000. A lost update would show as a smaller count.</p>
-<p><code>keys_spread_across_shards</code> inserts 4,096 keys into eight shards and asserts that no
-shard is empty. The test module can read the private <code>shards</code> field because it is a
-child module.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Iterative depth-first search with an explicit stack.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`.
+//! - `dfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`.
+//!
+//! A node is marked visited when it is popped, not when it is pushed, so it may
+//! sit on the stack more than once. Neighbors are pushed in order, which means the
+//! last neighbor is explored first.
+
+use crate::problems::graph_bfs::GraphAdjList;
+use std::collections::HashSet;
+use std::hash::Hash;
+
+/// DFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn dfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if visited[current_node] {
+            continue;
+        }
+        visited[current_node] = true;
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+/// DFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn dfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if !visited.insert(current_node) {
+            continue;
+        }
+        result.push(current_node);
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_explores_the_last_neighbor_first() {
+        // Pop 0, push 1 and 2; pop 2, push 3; pop 3; pop 1.
+        assert_eq!(dfs_vec(&amp;sample_vec(), 0), vec![0, 2, 3, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(2, 1)], vec![(0, 1)]];
+        assert_eq!(dfs_vec(&amp;graph, 0), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn map_variant_explores_the_last_neighbor_first() {
+        assert_eq!(dfs(&amp;sample_map(), "A"), vec!["A", "C", "D", "B"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = dfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, dfs(&amp;sample_map(), "A"));
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>bfs_vec</code> sets <code>visited[start_node] = true</code> before the loop and marks each neighbor as it
+is enqueued, so the check <code>!visited[neighbor]</code> and the mark happen together. The map
+variant does the same in one call: <code>visited.insert(neighbor)</code> returns <code>true</code> only when
+the node was not already present, so the condition both tests and records membership.</p>
+<p><code>for &amp;(neighbor, _) in &amp;graph[current_node]</code> iterates over <code>&amp;(usize, u32)</code> values, and the
+pattern <code>&amp;(neighbor, _)</code> copies the neighbor out and ignores the weight. In the map
+variant, <code>graph[&amp;current_node]</code> already yields a slice reference, <code>&amp;[(Node, u32)]</code>, so
+the loop iterates over it without another <code>&amp;</code>.</p>
+<p><code>dfs_vec</code> pushes every neighbor, visited or not, and filters at pop time with
+<code>if visited[current_node] { continue; }</code>. The map variant writes the same test as
+<code>if !visited.insert(current_node) { continue; }</code>.</p>
+<p><code>GraphAdjList&lt;'a, Node&gt;</code> is <code>HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;</code>. The lifetime says the map
+borrows its edge slices rather than owning them, which is why the tests build the graph
+from slice literals such as <code>&amp;[("B", 1), ("C", 4)][..]</code>. The <code>[..]</code> turns an array
+reference into a slice reference, so every entry of the map has the same type. The alias
+is defined in <code>graph_bfs.rs</code> and imported by the other two graph modules.</p>
+<p>The <code>both_variants_agree</code> tests map the indices from the vector variant to names and
+compare the result with the map variant, so the two implementations cannot drift apart.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p><strong>Shard selection for a cache created with <code>new(6)</code></strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>step</th><th>value</th></tr>
-</thead>
-<tbody>
-<tr><td><code>shard_count.max(1)</code></td><td>6</td></tr>
-<tr><td><code>.next_power_of_two()</code></td><td>8</td></tr>
-<tr><td><code>mask</code></td><td><code>8 - 1 = 7</code>, binary <code>0b111</code></td></tr>
-<tr><td><code>hasher.finish()</code> for some key</td><td>for example <code>0x9f3a_52c1_0b7e_44d5</code></td></tr>
-<tr><td><code>as usize &amp; mask</code></td><td>the low three bits, <code>0b101</code>, so shard 5</td></tr>
-</tbody>
-</table>
-</div>
-<p>Two threads inserting <code>"gpu-a100"</code> and <code>"node-17"</code> lock shard 5 and, say, shard 2. The
-two inserts do not wait for each other. Two threads inserting keys that both hash to
-shard 5 serialize on that shard’s lock, exactly as they would on a single global map.</p>
+<pre><code class="language-text">bfs_vec(sample, start = 0)
+
+pop   queue after pushes        visited              result
+ -    [0]                       {0}                  []
+ 0    [1, 2]                    {0, 1, 2}            [0]
+ 1    [2, 3]                    {0, 1, 2, 3}         [0, 1]      2 already visited
+ 2    [3]                       {0, 1, 2, 3}         [0, 1, 2]   3 already visited
+ 3    []                        {0, 1, 2, 3}         [0, 1, 2, 3]
+</code></pre>
+<pre><code class="language-text">dfs_vec(sample, start = 0)
+
+pop   visited before?   stack after pushes     result
+ 0    no                [1, 2]                 [0]
+ 2    no                [1, 3]                 [0, 2]
+ 3    no                [1]                    [0, 2, 3]
+ 1    no                [2, 3]                 [0, 2, 3, 1]
+ 3    yes, skip         [2]
+ 2    yes, skip         []
+</code></pre>
+<p>The tests <code>vec_variant_visits_level_by_level</code> and
+<code>vec_variant_explores_the_last_neighbor_first</code> assert exactly these two orders, and the
+map variants return <code>["A", "B", "C", "D"]</code> and <code>["A", "C", "D", "B"]</code>.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Operation</th><th>Time</th><th>Locks taken</th></tr>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
 </thead>
 <tbody>
-<tr><td><code>insert</code>, <code>get</code>, <code>remove</code>, <code>contains_key</code>, <code>with</code></td><td><code>O(1)</code> expected, plus hashing the key</td><td>one shard</td></tr>
-<tr><td><code>len</code>, <code>is_empty</code></td><td><code>O(shards)</code></td><td>every shard, one at a time</td></tr>
-<tr><td><code>clear</code></td><td><code>O(entries)</code></td><td>every shard, one at a time</td></tr>
-<tr><td>memory</td><td><code>O(entries + shards)</code></td><td>one <code>Mutex</code> and one <code>HashMap</code> header per shard</td></tr>
+<tr><td>Time</td><td><code>O(V + E)</code></td><td>every reachable node is expanded once and each of its edges is examined once</td></tr>
+<tr><td>Space, BFS</td><td><code>O(V)</code></td><td>the queue and the visited set each hold at most one entry per node</td></tr>
+<tr><td>Space, DFS</td><td><code>O(V + E)</code></td><td>a node can be pushed once per incoming edge before it is popped</td></tr>
+<tr><td>Map variant</td><td>the same bounds, expected</td><td><code>HashSet</code> and <code>HashMap</code> operations are expected constant time</td></tr>
 </tbody>
 </table>
 </div>
-<p>With <code>S</code> shards and keys spread evenly, the chance that two concurrent single-key
-operations need the same lock is about <code>1/S</code>.</p>
+<p>The vector variant allocates <code>visited</code> for every node in the graph, reachable or not. The
+map variant grows its set only as nodes are visited.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>No cross-shard atomicity.</strong> <code>len</code> can return a value the map never held, if one
-thread inserts into shard 0 after <code>len</code> has counted it and another removes from shard
-7 before <code>len</code> reaches it. A read-modify-write over two keys, such as moving a value
-from one key to another, cannot be done atomically with this API.</p>
-<p><strong><code>get</code> then <code>insert</code> is not atomic either.</strong> Two threads that both call <code>get</code>, see
-<code>None</code>, and then <code>insert</code> will both insert. An <code>entry</code>-style method that performs the
-check and the insert under one shard lock is the idiomatic addition.</p>
-<p><strong>No eviction.</strong> Despite its name, this is a concurrent map with no capacity. A
-long-running process that caches without bound will grow without bound.</p>
-<p><strong><code>with</code> can deadlock its caller.</strong> Calling any method of the same cache inside the
-closure, for a key in the same shard, locks a <code>std::sync::Mutex</code> twice on one thread.
-The standard mutex does not detect this, and the thread waits forever.</p>
-<p><strong>Hot keys defeat sharding.</strong> If most traffic targets one key, that key’s shard is a
-single global lock. Sharding spreads keys, not load.</p>
-<p><strong>Hashing is written out by hand.</strong> <code>shard</code> creates a hasher, feeds the key, and calls
-<code>finish</code>. Since Rust 1.71, <code>BuildHasher::hash_one</code> does the same in one call,
-<code>self.hasher.hash_one(key)</code>, and Clippy suggests it through <code>manual_hash_one</code>. The
-constructor also contains a line with trailing whitespace after <code>let shard_count</code>,
-which <code>rustfmt</code> removes.</p>
-<p><strong>A poisoned shard panics every caller.</strong> Each method uses <code>expect("shard mutex poisoned")</code>. One panic while a shard is locked makes every later access to any key in
-that shard panic as well. Chapter 22 describes the alternatives.</p>
+<p><strong>A missing node panics.</strong> <code>graph[current_node]</code> in the vector variant panics when an
+edge names an index outside the vector, and <code>graph[&amp;current_node]</code> in the map variant
+panics when a neighbor has no entry of its own, even an empty one. The tests give every
+node an entry. A graph read from input should be validated first, or the loop should use
+<code>graph.get(node)</code> and treat a missing entry as a node with no edges.</p>
+<p><strong>The DFS order is not the recursive order.</strong> A recursive DFS visits the first neighbor
+first. This iterative version pushes neighbors in order and pops the last one first, so
+it visits <code>C</code> before <code>B</code>. Both are valid depth-first orders. Pushing the neighbors in
+reverse, <code>for &amp;(neighbor, _) in graph[node].iter().rev()</code>, reproduces the recursive order.</p>
+<p><strong>The DFS stack can grow beyond <code>V</code>.</strong> Marking on pop allows duplicates on the stack, up
+to one entry per edge. Marking on push keeps the stack at <code>V</code> entries but no longer
+produces a depth-first order in all cases.</p>
+<p><strong>Only reachable nodes are returned.</strong> To traverse a graph with several components, call
+the function from every node that has not been visited yet, as chapter 23 does for grid
+islands.</p>
+<p><strong>The weights are carried but unused.</strong> A traversal that only needs connectivity can
+store <code>Vec&lt;Vec&lt;usize&gt;&gt;</code>, which halves the memory per edge.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>Splitting a map into <code>N</code> independently locked shards lets operations on different
-keys run in parallel while keeping the simplicity of a <code>Mutex</code>.</li>
-<li>Rounding <code>N</code> to a power of two turns <code>hash % N</code> into <code>hash &amp; (N - 1)</code>.</li>
-<li>A single <code>RandomState</code> gives stable, unpredictable shard selection for the life of
-the cache.</li>
-<li><code>with</code> exposes a reference under the lock without cloning, and must not call back
-into the cache.</li>
-<li>Whole-map operations visit shards one at a time and do not see a consistent
-snapshot, and check-then-insert sequences need an atomic <code>entry</code>-style method.</li>
+<li>BFS and DFS share one loop and differ only in the frontier: a <code>VecDeque</code> used as a queue
+or a <code>Vec</code> used as a stack.</li>
+<li>BFS marks a node when it enters the queue; this iterative DFS marks a node when it is
+popped, which allows duplicates on the stack and gives a depth-first order.</li>
+<li>The vector variant uses indices and a <code>Vec&lt;bool&gt;</code>; the map variant uses a <code>HashSet</code>,
+whose <code>insert</code> returns whether the node was new.</li>
+<li>Both run in <code>O(V + E)</code> time, and tests that compare the two variants keep them
+consistent.</li>
 </ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/hash_map/struct.RandomState.html"><code>std::collections::hash_map::RandomState</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/hash/trait.BuildHasher.html#method.hash_one"><code>BuildHasher::hash_one</code></a>.</li>
-<li>The <code>dashmap</code> crate, <a href="https://docs.rs/dashmap/latest/dashmap/">documentation</a>, a production sharded map.</li>
-<li>Maurice Herlihy and Nir Shavit, <em>The Art of Multiprocessor Programming</em>, 2nd
-edition, Morgan Kaufmann, 2020, Chapter 32, “Concurrent Hashing and Natural
-Parallelism”.</li>
+<li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
+<em>Introduction to Algorithms</em>, 4th edition, MIT Press, 2022, Sections 20.2,
+“Breadth-first search”, and 20.3, “Depth-first search”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashSet.html#method.insert"><code>HashSet::insert</code></a>, on its return value.</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="40-measuring-lru-layouts.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="59-drills.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="42-consistent-hashing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="61-dijkstra.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -509,11 +555,11 @@ Parallelism”.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="40-measuring-lru-layouts.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="59-drills.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="42-consistent-hashing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="61-dijkstra.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

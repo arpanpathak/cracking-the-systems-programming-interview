@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Index - Coding Interviews for Cracked Rustaceans</title>
+        <title>61. Dijkstra&#x27;s Shortest Paths - Coding Interviews for Cracked Rustaceans</title>
 
 
         <!-- Custom HTML head -->
@@ -175,199 +175,257 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="index"><a class="header" href="#index">Index</a></h1>
-<h2 id="a"><a class="header" href="#a">A</a></h2>
+                        <h1 id="dijkstra"><a class="header" href="#dijkstra">61. Dijkstra’s Shortest Paths</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs"><code>src/problems/graph_dijkstra.rs</code></a>. Test it with <code>cargo test graph_dijkstra</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Given a directed graph with non-negative edge weights and a start node, return the
+length of the shortest path from the start to every node. A node that cannot be reached
+has no distance.</p>
+<p>As in chapter 60, the algorithm is written twice. The vector variant numbers the nodes
+<code>0..n</code> and returns <code>Vec&lt;Option&lt;u32&gt;&gt;</code>, with <code>None</code> for an unreachable node. The map
+variant accepts any node type that is <code>Copy + Eq + Hash + Ord</code> and returns a <code>HashMap</code>
+that contains only the reachable nodes.</p>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>BFS finds shortest paths when every edge has the same length, because it settles nodes
+in order of hop count. Dijkstra’s algorithm generalizes that order to weighted edges:
+it always expands the unexpanded node with the smallest known distance. With
+non-negative weights, no later path can make that node’s distance smaller, so its
+distance is final once it is expanded.</p>
+<p>A priority queue supplies the smallest known distance in <code>O(log n)</code>. Rust’s <code>BinaryHeap</code>
+is a max-heap, so each entry is wrapped in <code>std::cmp::Reverse</code>, which inverts the
+ordering and makes the smallest <code>(cost, node)</code> pair come out first.</p>
+<p><code>BinaryHeap</code> has no operation to lower the priority of an entry already in the heap.
+Instead, a shorter distance pushes a second entry for the same node. The older entry
+stays in the heap and is recognised as stale when it is popped, because its cost is
+larger than the distance recorded for the node.</p>
+<pre><code class="language-text">the sample graph from chapter 60
+
+A --1--&gt; B --5--&gt; D
+|        |        ^
+4        2        |
+v        v        |
+C ------------1---+
+
+shortest distances from A: A 0, B 1, C 3 (via B), D 4 (via B and C)
+</code></pre>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Dijkstra's shortest paths with a binary min-heap.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dijkstra_vec`: nodes are `usize` indices and distances are a
+//!   `Vec&lt;Option&lt;u32&gt;&gt;`, where `None` means unreachable.
+//! - `dijkstra`: nodes are any `Copy + Eq + Hash + Ord` type and distances are a
+//!   `HashMap` containing only the reachable nodes.
+//!
+//! Edge weights must be non-negative, which `u32` guarantees. `BinaryHeap` is a
+//! max-heap, so entries are wrapped in `Reverse` to pop the smallest cost first.
+//! A node can be in the heap several times; an entry whose cost is larger than the
+//! recorded distance is stale and skipped.
+
+use crate::problems::graph_bfs::GraphAdjList;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
+use std::hash::Hash;
+
+/// Shortest distances from `start_node` over an index-based adjacency list.
+pub fn dijkstra_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;Option&lt;u32&gt;&gt; {
+    let mut distances = vec![None; graph.len()];
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    distances[start_node] = Some(0);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if distances[current_node].is_some_and(|best| current_cost &gt; best) {
+            continue;
+        }
+        for &amp;(neighbor, weight) in &amp;graph[current_node] {
+            let new_distance = current_cost + weight;
+            if distances[neighbor].is_none_or(|best| new_distance &lt; best) {
+                distances[neighbor] = Some(new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}
+
+/// Shortest distances from `start_node` over a `HashMap` adjacency list.
+pub fn dijkstra&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; HashMap&lt;Node, u32&gt;
+where
+    Node: Copy + Eq + Hash + Ord,
+{
+    let mut distances = HashMap::from([(start_node, 0)]);
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if current_cost &gt; distances[&amp;current_node] {
+            continue;
+        }
+        for &amp;(neighbor, weight) in graph[&amp;current_node] {
+            let new_distance = current_cost + weight;
+            if new_distance &lt; *distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX) {
+                distances.insert(neighbor, new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_finds_shorter_multi_hop_paths() {
+        // A -&gt; C directly costs 4, A -&gt; B -&gt; C costs 3; D is reached via C for 4.
+        assert_eq!(
+            dijkstra_vec(&amp;sample_vec(), 0),
+            vec![Some(0), Some(1), Some(3), Some(4)]
+        );
+    }
+
+    #[test]
+    fn vec_variant_marks_unreachable_nodes() {
+        let graph = vec![vec![(1, 7)], vec![], vec![(0, 1)]];
+        assert_eq!(dijkstra_vec(&amp;graph, 0), vec![Some(0), Some(7), None]);
+    }
+
+    #[test]
+    fn map_variant_finds_shorter_multi_hop_paths() {
+        let distances = dijkstra(&amp;sample_map(), "A");
+        assert_eq!(
+            distances,
+            HashMap::from([("A", 0), ("B", 1), ("C", 3), ("D", 4)])
+        );
+    }
+
+    #[test]
+    fn map_variant_omits_unreachable_nodes() {
+        let graph: HashMap&lt;u8, &amp;[(u8, u32)]&gt; =
+            HashMap::from([(0, &amp;[(1, 2)][..]), (1, &amp;[][..]), (2, &amp;[(0, 1)][..])]);
+        assert_eq!(dijkstra(&amp;graph, 0), HashMap::from([(0, 0), (1, 2)]));
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>dijkstra_vec</code> stores distances as <code>Vec&lt;Option&lt;u32&gt;&gt;</code>, so “not reached yet” is <code>None</code>
+rather than a sentinel. The relaxation test
+<code>distances[neighbor].is_none_or(|best| new_distance &lt; best)</code> accepts an edge when the
+neighbor has no distance yet or when the new path is shorter. <code>Option::is_none_or</code> was
+stabilised in Rust 1.82. The stale-entry test
+<code>distances[current_node].is_some_and(|best| current_cost &gt; best)</code> skips an entry whose
+cost is larger than the distance already recorded.</p>
+<p>The map variant, <code>dijkstra</code>, keeps the same logic with a <code>HashMap</code>. It uses
+<code>*distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX)</code> as the current best, so a node without
+an entry compares as infinitely far. <code>distances[&amp;current_node]</code> cannot panic in the
+stale-entry test, because a node is pushed onto the heap only after its distance is
+inserted.</p>
+<p><code>Node: Ord</code> is required by the map variant because the heap orders <code>(cost, node)</code> tuples,
+and tuples compare element by element: when two costs are equal, the nodes decide the
+order. The vector variant gets that ordering for free from <code>usize</code>.</p>
+<p>The tests cover the multi-hop case, where the direct edge <code>A -&gt; C</code> of weight 4 loses to
+<code>A -&gt; B -&gt; C</code> of weight 3, and a graph with an unreachable node in each variant.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<pre><code class="language-text">dijkstra_vec(sample, start = 0)
+
+pop (cost, node)   stale?   relaxations                         distances [A, B, C, D]   heap after
+ -                                                              [0, -, -, -]             [(0,0)]
+(0, 0)             no       B: 1 &lt; none, push; C: 4 &lt; none, push [0, 1, 4, -]             [(1,1), (4,2)]
+(1, 1)             no       C: 3 &lt; 4, push; D: 6 &lt; none, push    [0, 1, 3, 6]             [(3,2), (4,2), (6,3)]
+(3, 2)             no       D: 4 &lt; 6, push                       [0, 1, 3, 4]             [(4,2), (4,3), (6,3)]
+(4, 2)             yes, 4 &gt; 3, skip                              [0, 1, 3, 4]             [(4,3), (6,3)]
+(4, 3)             no       D has no edges                       [0, 1, 3, 4]             [(6,3)]
+(6, 3)             yes, 6 &gt; 4, skip                              [0, 1, 3, 4]             []
+</code></pre>
+<p>The result is <code>[Some(0), Some(1), Some(3), Some(4)]</code>. Two of the six pops were stale
+entries, one for <code>C</code> and one for <code>D</code>.</p>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td><code>O((V + E) log E)</code></td><td>each edge can push one heap entry, and each push and pop costs <code>O(log E)</code></td></tr>
+<tr><td>Space</td><td><code>O(V + E)</code></td><td>the distance table holds one entry per node, and the heap up to one entry per edge</td></tr>
+<tr><td>Map variant</td><td>the same bounds, expected</td><td><code>HashMap</code> operations are expected constant time</td></tr>
+</tbody>
+</table>
+</div>
+<p>Since <code>E</code> is at most <code>V²</code>, <code>log E</code> is at most <code>2 log V</code>, and the bound is usually written
+<code>O((V + E) log V)</code>.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>Negative weights are not supported.</strong> The algorithm relies on a node’s distance being
+final when it is expanded. The <code>u32</code> weight type rules out negative edges. A graph with
+negative weights needs the Bellman-Ford algorithm.</p>
+<p><strong>Distances can overflow.</strong> <code>current_cost + weight</code> is a <code>u32</code> addition. A path whose
+total exceeds <code>u32::MAX</code> panics in a debug build and wraps in a release build, which
+could make a long path look short. <code>checked_add</code>, or <code>u64</code> distances, removes the risk.</p>
+<p><strong>Paths are not returned.</strong> The functions return distances only. Recording the
+predecessor of each node when its distance improves, in a <code>Vec&lt;Option&lt;usize&gt;&gt;</code> or a
+<code>HashMap&lt;Node, Node&gt;</code>, allows the path to be rebuilt by walking back from the target.</p>
+<p><strong>The whole reachable graph is explored.</strong> A search for one target can stop as soon as
+that target is popped, because its distance is final at that point. Neither function
+takes a target.</p>
+<p><strong>A missing node panics.</strong> As in chapter 60, an edge to an index outside the vector, or
+to a node without its own map entry, panics on indexing.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li><strong><code>ApiError</code></strong>, error enumeration carrying data, <a href="#state-machine">19</a></li>
-<li><strong><code>Arc</code></strong>, shared ownership across threads, <a href="#worker-pool">21</a>, <a href="#mutex-poisoning">22</a>, <a href="#bounded-buffer">30</a></li>
-<li><strong><code>args</code></strong>, the command-line boundary, <a href="#command-line-arguments">29</a></li>
-<li><strong><code>assert!</code></strong>, refusal of an empty input as a design decision, <a href="#worker-pool">21</a></li>
-<li><strong>assertion in a destructor-free type</strong>, <a href="#subsets">13</a></li>
-<li><strong><code>attach</code> and <code>detach</code></strong>, index-linked list maintenance, <a href="#lru-cache-array">18</a></li>
-<li><strong>average, limits of</strong>, a benchmark statistic that hides the distribution, <a href="#syscall-overhead">24</a></li>
+<li>Dijkstra’s algorithm expands nodes in order of distance, which is final on expansion
+when every weight is non-negative.</li>
+<li><code>BinaryHeap</code> is a max-heap; <code>Reverse((cost, node))</code> turns it into a min-heap.</li>
+<li>Instead of decreasing a key, the algorithm pushes a new entry and skips stale entries
+whose cost exceeds the recorded distance.</li>
+<li>The vector variant represents “unreachable” as <code>None</code> and uses <code>is_none_or</code> and
+<code>is_some_and</code> for the two tests; the map variant omits unreachable nodes.</li>
+<li>The cost is <code>O((V + E) log V)</code> time and <code>O(V + E)</code> space.</li>
 </ul>
-<h2 id="b"><a class="header" href="#b">B</a></h2>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
-<li><strong>backtracking</strong>, <code>result.push(path.clone())</code>, <code>path.pop()</code>, <a href="#subsets">13</a></li>
-<li><strong><code>BinaryHeap</code></strong>, a max-heap, so pairs sort by the first field, <a href="#top-k-frequent">6</a>, <a href="#running-median">32</a></li>
-<li><strong>binary search</strong>, half-open range and the sorted-half test, <a href="#binary-search">9</a></li>
-<li><strong>binary search tree</strong>, ordering invariant, three removal shapes, <a href="#binary-search-tree">8</a></li>
-<li><strong>binary tree</strong>, algebraic data type with boxed children, <a href="#binary-tree">7</a></li>
-<li><strong><code>black_box</code></strong>, keeping a measurement alive, <a href="#syscall-overhead">24</a></li>
-<li><strong>bounded buffer</strong>, one mutex and two condition variables, <a href="#bounded-buffer">30</a></li>
-<li><strong><code>Box</code></strong>, one ownership pointer, one allocation, <a href="#binary-tree">7</a>, <a href="#reverse-linked-list">14</a>, <a href="#singly-linked-list">15</a></li>
-<li><strong>BFS</strong>, flood fill with a queue, <a href="#counting-islands">23</a></li>
-<li><strong>borrow counter</strong>, <code>RefCell</code> and the run-time check, <a href="#doubly-linked-list">16</a></li>
-</ul>
-<h2 id="c"><a class="header" href="#c">C</a></h2>
-<ul>
-<li><strong>cache</strong>, two designs, bounded and unbounded memory, <a href="#lru-cache">17</a>, <a href="#lru-cache-array">18</a></li>
-<li><strong>capacity hint</strong>, <code>with_capacity</code> and its units, <a href="#two-sum">1</a>, <a href="#valid-parentheses">2</a>, <a href="#subsets">13</a></li>
-<li><strong>channel</strong>, <code>mpsc</code> for jobs and results, <a href="#worker-pool">21</a></li>
-<li><strong><code>checked_sub</code></strong>, the fix for overflow at the target, <a href="#two-sum">1</a></li>
-<li><strong>clone</strong>, value copied out of a guard or a map, <a href="#doubly-linked-list">16</a>, <a href="#lru-cache">17</a></li>
-<li><strong>closure</strong>, taking a mutable reference as a parameter, <a href="#counting-islands">23</a></li>
-<li><strong>coin change</strong>, dynamic program over amounts, <a href="#coin-change">12</a></li>
-<li><strong>command-line arguments</strong>, <code>env::args</code> and the first item, <a href="#command-line-arguments">29</a></li>
-<li><strong>condition variable</strong>, a directed wake-up for each state change, <a href="#bounded-buffer">30</a></li>
-<li><strong>connected components</strong>, counting them by flood fill, <a href="#counting-islands">23</a></li>
-<li><strong>copy</strong>, <code>fs::copy</code> and what it preserves, <a href="#file-operations">28</a></li>
-<li><strong>cost model</strong>, instructions, memory, stack, compilation, <a href="#syscall-overhead">24</a></li>
-<li><strong>cycle detection</strong>, a short topological order, <a href="#topological-sort">11</a></li>
-</ul>
-<h2 id="d"><a class="header" href="#d">D</a></h2>
-<ul>
-<li><strong><code>dead_code</code> warning</strong>, the unused second merge function, <a href="#merge-intervals">5</a>, <a href="#syscall-overhead">24</a></li>
-<li><strong><code>Default</code></strong>, <code>#[derive(Default)]</code> and <code>#[default]</code> on a variant, <a href="#min-stack">3</a>, <a href="#binary-search-tree">8</a>, <a href="#trie">10</a></li>
-<li><strong>destructor</strong>, recursion in derived drop glue, <a href="#binary-tree">7</a>, <a href="#reverse-linked-list">14</a>, <a href="#singly-linked-list">15</a>, <a href="#doubly-linked-list">16</a></li>
-<li><strong>directory traversal</strong>, <code>read_dir</code> and a recursive walk, <a href="#paths-and-directories">27</a></li>
-<li><strong>discriminant</strong>, a <code>size_of</code> of one byte for a six-variant enum, <a href="#state-machine">19</a></li>
-<li><strong><code>Display</code></strong>, the trait a message method should implement, <a href="#state-machine">19</a></li>
-<li><strong><code>drop</code></strong>, releasing a sender to end a receive loop, <a href="#worker-pool">21</a></li>
-<li><strong><code>Duration</code></strong>, a retry delay carried by an error variant, <a href="#state-machine">19</a></li>
-<li><strong>dynamic dispatch</strong>, a trait object and the vtable call, <a href="#worker-pool">21</a></li>
-</ul>
-<h2 id="e"><a class="header" href="#e">E</a></h2>
-<ul>
-<li><strong>enum</strong>, states a caller cannot construct illegally, <a href="#binary-tree">7</a>, <a href="#binary-search-tree">8</a>, <a href="#state-machine">19</a></li>
-<li><strong>epigraph</strong>, attributed quotations in this book, <a href="#references">references</a></li>
-<li><strong><code>ErrorKind</code></strong>, branching on a failure without parsing a message, <a href="#file-operations">28</a></li>
-<li><strong>eviction</strong>, least recently used, in two designs, <a href="#lru-cache">17</a>, <a href="#lru-cache-array">18</a></li>
-<li><strong>error type</strong>, variants with data, and matching on them, <a href="#state-machine">19</a></li>
-</ul>
-<h2 id="f"><a class="header" href="#f">F</a></h2>
-<ul>
-<li><strong><code>f64</code></strong>, a rate that is neither validated nor reported, <a href="#rate-limiter">20</a>; a median that cannot be an integer, <a href="#running-median">32</a></li>
-<li><strong>file I/O</strong>, <code>fs::write</code>, <code>OpenOptions</code> and <code>BufReader</code>, <a href="#files-and-io">26</a></li>
-<li><strong>file operations</strong>, <code>copy</code>, <code>rename</code> and <code>remove_file</code>, <a href="#file-operations">28</a></li>
-<li><strong>flood fill</strong>, marking on entry, <a href="#counting-islands">23</a></li>
-<li><strong><code>format!</code></strong>, one allocation per call, <a href="#state-machine">19</a>, <a href="#shadowing">25</a></li>
-</ul>
-<h2 id="h"><a class="header" href="#h">H</a></h2>
-<ul>
-<li><strong>half-open range</strong>, <code>[low, high)</code> as the search invariant, <a href="#binary-search">9</a></li>
-<li><strong>hash map</strong>, expected constant time and the assumption behind it, <a href="#two-sum">1</a>, <a href="#top-k-frequent">6</a>, <a href="#trie">10</a></li>
-<li><strong>heap</strong>, <code>BinaryHeap</code> as a priority queue, <a href="#top-k-frequent">6</a>, <a href="#running-median">32</a></li>
-<li><strong><code>HashSet</code></strong>, the visited set that a bitmap would replace, <a href="#counting-islands">23</a></li>
-</ul>
-<h2 id="i"><a class="header" href="#i">I</a></h2>
-<ul>
-<li><strong>idempotency</strong>, a keyed store that runs an operation at most once, <a href="#idempotent-operations">34</a></li>
-<li><strong>in-degree</strong>, the counter Kahn’s algorithm waits on, <a href="#topological-sort">11</a></li>
-<li><strong>index-linked list</strong>, nodes in a vector, links as integers, <a href="#lru-cache-array">18</a></li>
-<li><strong><code>Instant</code></strong>, the clock a limiter trusts, <a href="#rate-limiter">20</a>; the clock a measurement reads, <a href="#parallel-sum">31</a></li>
-<li><strong>interior mutability</strong>, mutation behind a shared reference, <a href="#doubly-linked-list">16</a></li>
-<li><strong>invariant</strong>, a sentence true before and after every operation, <a href="#min-stack">3</a>, <a href="#binary-search">9</a>, <a href="#subsets">13</a>, <a href="#running-median">32</a></li>
-</ul>
-<h2 id="j"><a class="header" href="#j">J</a></h2>
-<ul>
-<li><strong><code>JoinHandle::join</code></strong>, a discarded panic, <a href="#worker-pool">21</a>, <a href="#mutex-poisoning">22</a></li>
-</ul>
-<h2 id="k"><a class="header" href="#k">K</a></h2>
-<ul>
-<li><strong>Kahn’s algorithm</strong>, topological sort by in-degree, <a href="#topological-sort">11</a></li>
-<li><strong><code>key</code></strong>, the field a full cache reads back before overwriting a slot, <a href="#lru-cache-array">18</a></li>
-</ul>
-<h2 id="l"><a class="header" href="#l">L</a></h2>
-<ul>
-<li><strong>lifetime</strong>, <code>'a</code> in the range query, and what it ties together, <a href="#binary-search-tree">8</a></li>
-<li><strong>linked list</strong>, reversal with three bindings, <a href="#reverse-linked-list">14</a></li>
-<li><strong>lock</strong>, held across a clock read, released before the work, <a href="#rate-limiter">20</a>, <a href="#worker-pool">21</a>, <a href="#bounded-buffer">30</a></li>
-<li><strong>LRU</strong>, least recently used, <a href="#lru-cache">17</a>, <a href="#lru-cache-array">18</a></li>
-</ul>
-<h2 id="m"><a class="header" href="#m">M</a></h2>
-<ul>
-<li><strong>max-heap</strong>, why the top-k result pops the largest pair, <a href="#top-k-frequent">6</a></li>
-<li><strong>median, running</strong>, two heaps and a rebalancing rule, <a href="#running-median">32</a></li>
-<li><strong><code>mem::replace</code></strong>, moving a value out of a place, <a href="#singly-linked-list">15</a>, <a href="#binary-search-tree">8</a></li>
-<li><strong><code>mem::swap</code></strong>, exchanging two subtrees, <a href="#binary-tree">7</a>; two bytes, <a href="#reverse-string">33</a></li>
-<li><strong>Mutex</strong>, protection, and the poison mark, <a href="#rate-limiter">20</a>, <a href="#worker-pool">21</a>, <a href="#mutex-poisoning">22</a>, <a href="#bounded-buffer">30</a></li>
-<li><strong>monomorphisation</strong>, one copy of the code per type argument, <a href="#two-sum">1</a></li>
-<li><strong>mutation</strong>, writing to a binding rather than rebinding it, <a href="#shadowing">25</a></li>
-</ul>
-<h2 id="n"><a class="header" href="#n">N</a></h2>
-<ul>
-<li><strong><code>new</code></strong>, and the <code>Default</code> implementation Clippy expects, <a href="#singly-linked-list">15</a></li>
-<li><strong><code>None</code></strong>, the end of a list, not a sentinel, <a href="#reverse-linked-list">14</a></li>
-</ul>
-<h2 id="o"><a class="header" href="#o">O</a></h2>
-<ul>
-<li><strong><code>OpenOptions</code></strong>, <code>create</code> and <code>append</code> flags, <a href="#files-and-io">26</a></li>
-<li><strong><code>Option</code></strong>, absence in the type, <a href="#two-sum">1</a>, <a href="#min-stack">3</a>, <a href="#coin-change">12</a>, <a href="#reverse-linked-list">14</a>, <a href="#running-median">32</a></li>
-<li><strong>overhead</strong>, the boundary cost of a system call, <a href="#syscall-overhead">24</a></li>
-<li><strong>overflow</strong>, arithmetic that differs between debug and release, <a href="#two-sum">1</a>, <a href="#binary-search">9</a>, <a href="#subsets">13</a></li>
-</ul>
-<h2 id="p"><a class="header" href="#p">P</a></h2>
-<ul>
-<li><strong>panic</strong>, unwinding while a guard is alive, <a href="#rate-limiter">20</a>, <a href="#mutex-poisoning">22</a>; reversal of a non-ASCII string, <a href="#reverse-string">33</a></li>
-<li><strong>parallel sum</strong>, borrowed workers under a scope, <a href="#parallel-sum">31</a></li>
-<li><strong><code>PartialEq</code></strong>, the minimal bound on a grid cell, <a href="#counting-islands">23</a></li>
-<li><strong><code>Path</code> and <code>PathBuf</code></strong>, borrowed and owned paths, <a href="#paths-and-directories">27</a></li>
-<li><strong><code>PoisonError</code></strong>, the error a poisoned lock returns, <a href="#mutex-poisoning">22</a></li>
-<li><strong>prefix tree</strong>, see trie, <a href="#trie">10</a></li>
-<li><strong>pruning</strong>, a range query that skips whole subtrees, <a href="#binary-search-tree">8</a></li>
-</ul>
-<h2 id="r"><a class="header" href="#r">R</a></h2>
-<ul>
-<li><strong><code>Rc</code></strong>, shared ownership on one thread, <a href="#doubly-linked-list">16</a></li>
-<li><strong><code>read_dir</code></strong>, one <code>Result</code> per directory entry, <a href="#paths-and-directories">27</a></li>
-<li><strong><code>Ref</code> and <code>Ref::map</code></strong>, a guard projected to a field, <a href="#doubly-linked-list">16</a></li>
-<li><strong><code>RefCell</code></strong>, mutation with a run-time borrow check, <a href="#doubly-linked-list">16</a></li>
-<li><strong>recursion</strong>, stack depth proportional to input, <a href="#binary-tree">7</a>, <a href="#binary-search-tree">8</a>, <a href="#reverse-linked-list">14</a>, <a href="#paths-and-directories">27</a></li>
-<li><strong>refill</strong>, tokens computed from elapsed time, <a href="#rate-limiter">20</a></li>
-<li><strong>rename</strong>, an atomic replacement within one filesystem, <a href="#file-operations">28</a></li>
-<li><strong><code>Result</code></strong>, failure in the type, <a href="#state-machine">19</a>, <a href="#mutex-poisoning">22</a></li>
-<li><strong><code>Reverse</code></strong>, flipping a heap’s ordering, <a href="#running-median">32</a></li>
-</ul>
-<h2 id="s"><a class="header" href="#s">S</a></h2>
-<ul>
-<li><strong><code>Send</code> and <code>Sync</code></strong>, what a single-threaded structure does not implement, <a href="#doubly-linked-list">16</a></li>
-<li><strong>sentinel</strong>, <code>usize::MAX</code> kept inside the table, <a href="#coin-change">12</a></li>
-<li><strong>shadowing</strong>, a new binding with an old name, <a href="#shadowing">25</a></li>
-<li><strong>sliding window</strong>, a start index that only moves forward, <a href="#sliding-window">4</a></li>
-<li><strong><code>sort_unstable_by_key</code></strong>, ordering intervals by start, <a href="#merge-intervals">5</a></li>
-<li><strong>stack</strong>, frames per call, and the depth they reach, <a href="#binary-tree">7</a>, <a href="#singly-linked-list">15</a>, <a href="#paths-and-directories">27</a></li>
-<li><strong>state machine</strong>, legal transitions in one <code>match</code>, <a href="#state-machine">19</a></li>
-<li><strong><code>String</code></strong>, an allocated message on an error path, <a href="#state-machine">19</a></li>
-<li><strong>string reversal</strong>, an in-place byte swap under an ASCII precondition, <a href="#reverse-string">33</a></li>
-<li><strong>subsets</strong>, <code>2^n</code> results and the clone per result, <a href="#subsets">13</a></li>
-<li><strong>syscall</strong>, the user and kernel boundary, <a href="#syscall-overhead">24</a></li>
-</ul>
-<h2 id="t"><a class="header" href="#t">T</a></h2>
-<ul>
-<li><strong><code>thread::scope</code></strong>, workers that borrow the input, <a href="#parallel-sum">31</a></li>
-<li><strong>tie-break</strong>, the ordering the top-k result depends on, <a href="#top-k-frequent">6</a></li>
-<li><strong>token bucket</strong>, burst then rate, <a href="#rate-limiter">20</a></li>
-<li><strong>topological sort</strong>, an order in which edges point forward, <a href="#topological-sort">11</a></li>
-<li><strong>trace</strong>, the state after each step, produced by running the code, <a href="#valid-parentheses">2</a>, <a href="#merge-intervals">5</a>, <a href="#binary-search">9</a>, <a href="#topological-sort">11</a></li>
-<li><strong>trait object</strong>, <code>dyn</code> and what it costs, <a href="#worker-pool">21</a></li>
-<li><strong><code>try_unwrap</code></strong>, moving a value out of an <code>Rc</code>, <a href="#doubly-linked-list">16</a></li>
-</ul>
-<h2 id="u"><a class="header" href="#u">U</a></h2>
-<ul>
-<li><strong><code>unsafe</code></strong>, the obligation a <code>SAFETY</code> comment states, <a href="#syscall-overhead">24</a>, <a href="#reverse-string">33</a></li>
-<li><strong><code>upgrade</code></strong>, turning a weak pointer into a strong one, <a href="#doubly-linked-list">16</a></li>
-</ul>
-<h2 id="v"><a class="header" href="#v">V</a></h2>
-<ul>
-<li><strong><code>Vec</code></strong>, amortised growth and reuse of a slot, <a href="#lru-cache-array">18</a></li>
-<li><strong><code>VecDeque</code></strong>, constant time at both ends, <a href="#topological-sort">11</a>, <a href="#lru-cache">17</a>, <a href="#bounded-buffer">30</a></li>
-</ul>
-<h2 id="w"><a class="header" href="#w">W</a></h2>
-<ul>
-<li><strong>warm-up</strong>, why a benchmark runs the code before timing it, <a href="#syscall-overhead">24</a></li>
-<li><strong><code>Weak</code></strong>, observing without owning, <a href="#doubly-linked-list">16</a></li>
-<li><strong>worker pool</strong>, bounded threads, ordered results, <a href="#worker-pool">21</a></li>
+<li>Edsger W. Dijkstra, “A note on two problems in connexion with graphs”, <em>Numerische
+Mathematik</em> 1, 1959, pages 269–271.</li>
+<li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
+<em>Introduction to Algorithms</em>, 4th edition, MIT Press, 2022, Section 22.3,
+“Dijkstra’s algorithm”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html"><code>BinaryHeap</code></a>, on using <code>Reverse</code> for a min-heap.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/option/enum.Option.html#method.is_none_or"><code>Option::is_none_or</code></a>.</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="references.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="60-graph-traversal.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
+                            <a rel="next prefetch" href="62-merge-k-sorted-lists.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -375,10 +433,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="references.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="60-graph-traversal.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
+                    <a rel="next prefetch" href="62-merge-k-sorted-lists.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
