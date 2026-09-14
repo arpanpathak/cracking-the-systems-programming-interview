@@ -1,0 +1,659 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>47. A Lock-Free Ring Buffer - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="ring-buffer"><a class="header" href="#ring-buffer">47. A Lock-Free Ring Buffer</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs"><code>src/problems/ring_buffer.rs</code></a>. Test it with <code>cargo test ring_buffer</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Implement <code>SpscRing&lt;T, N&gt;</code> with capacity <code>N</code>:</p>
+<ul>
+<li><code>push(value) -&gt; Result&lt;(), T&gt;</code> returns the value when the ring is full;</li>
+<li><code>pop() -&gt; Option&lt;T&gt;</code> returns <code>None</code> when the ring is empty;</li>
+<li>one thread may push while another pops, with no lock;</li>
+<li>items still in the ring when it is dropped must be dropped too.</li>
+</ul>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p><strong>Two indices, two owners.</strong> <code>tail</code> is the index of the next slot to write, and only the
+producer changes it. <code>head</code> is the index of the next slot to read, and only the consumer
+changes it. Neither side ever writes the other’s index, so no compare-and-swap is
+needed; each side reads the other’s index to decide whether it may proceed.</p>
+<p><strong>Indices that only grow.</strong> The indices count total pushes and total pops, and the slot
+used is <code>index % N</code>. The number of queued items is <code>tail - head</code>, computed with
+wrapping subtraction. Keeping full and empty distinct needs no spare slot: empty is
+<code>head == tail</code>, and full is <code>tail - head == N</code>.</p>
+<p><strong>Publish after the write.</strong> The producer writes the value into the slot first and
+stores the new <code>tail</code> second. Until that store, the consumer’s view of <code>tail</code> does not
+include the slot, so it cannot read a slot that is still being written. The consumer
+does the mirror image: it reads the value out, then stores the new <code>head</code>, which is
+when the producer may reuse the slot.</p>
+<pre><code class="language-text">a ring of four slots after six pushes and three pops
+
+tail = 6, head = 3, len = tail - head = 3
+
+slot index:   0        1        2        3
+            [ v4 ]  [ v5 ]  [ free ] [ v3 ]
+                              ^         ^
+                   tail % 4 = 2         head % 4 = 3
+                   next write           next read
+</code></pre>
+<p><strong>Uninitialized storage.</strong> Slots that do not hold a value must not be dropped or read.
+Each slot is <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>: <code>MaybeUninit</code> allows a slot to be
+uninitialized, and <code>UnsafeCell</code> allows the two threads to write slots through a shared
+reference.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Lock-free single-producer / single-consumer (SPSC) ring buffer.
+//!
+//! The classic producer/consumer exercise, but with no mutex: the producer owns
+//! the `tail` index and the consumer owns the `head` index, and each publishes its
+//! write with a release store so the other side sees the slot only after it is
+//! initialized. This is the shape inside channel implementations, log shippers,
+//! and kernel ring buffers.
+//!
+//! Two rules keep this sound:
+//!
+//! - exactly one thread calls [`SpscRing::push`] and exactly one calls
+//!   [`SpscRing::pop`];
+//! - a slot is written before `tail` is published, and read only after `head`
+//!   reaches it.
+//!
+//! If you need many producers or consumers, use a mutex-backed queue such as
+//! [`crate::problems::bounded_queue::BoundedQueue`].
+
+use std::cell::UnsafeCell;
+use std::mem::MaybeUninit;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Ring buffer with capacity `N` (the maximum number of queued items).
+pub struct SpscRing&lt;T, const N: usize&gt; {
+    slots: [UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;; N],
+    /// Next index to read. Written only by the consumer.
+    head: AtomicUsize,
+    /// Next index to write. Written only by the producer.
+    tail: AtomicUsize,
+}
+
+// SAFETY: at most one thread mutates `head` and one mutates `tail`. A slot is
+// initialized before `tail` is published with a release store, and the consumer
+// performs an acquire load of `tail` before reading that slot, so there is no
+// data race and no read of uninitialized memory under the SPSC discipline.
+unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}
+
+impl&lt;T, const N: usize&gt; SpscRing&lt;T, N&gt; {
+    /// Create an empty ring. Panics if `N` is zero.
+    pub fn new() -&gt; Self {
+        assert!(N &gt; 0, "ring capacity must be &gt; 0");
+        Self {
+            slots: std::array::from_fn(|_| UnsafeCell::new(MaybeUninit::uninit())),
+            head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
+        }
+    }
+
+    /// Maximum number of items the ring can hold.
+    pub const fn capacity(&amp;self) -&gt; usize {
+        N
+    }
+
+    /// Number of queued items. Only meaningful to the owning side in a race.
+    pub fn len(&amp;self) -&gt; usize {
+        self.tail
+            .load(Ordering::Acquire)
+            .wrapping_sub(self.head.load(Ordering::Acquire))
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.len() == 0
+    }
+
+    pub fn is_full(&amp;self) -&gt; bool {
+        self.len() &gt;= N
+    }
+
+    /// Enqueue a value, returning `Err(value)` when the ring is full.
+    pub fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
+        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.head.load(Ordering::Acquire);
+        if tail.wrapping_sub(head) &gt;= N {
+            return Err(value);
+        }
+
+        let index = tail % N;
+        // SAFETY: the slot at `index` is free because the ring is not full, and
+        // only the producer writes it.
+        unsafe { (*self.slots[index].get()).write(value) };
+
+        // Publish the slot to the consumer.
+        self.tail.store(tail.wrapping_add(1), Ordering::Release);
+        Ok(())
+    }
+
+    /// Dequeue a value, or `None` when the ring is empty.
+    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Acquire);
+        if head == tail {
+            return None;
+        }
+
+        let index = head % N;
+        // SAFETY: `head != tail`, so the producer has published this slot and
+        // only the consumer reads it.
+        let value = unsafe { (*self.slots[index].get()).assume_init_read() };
+
+        // Publish the freed slot to the producer.
+        self.head.store(head.wrapping_add(1), Ordering::Release);
+        Some(value)
+    }
+}
+
+impl&lt;T, const N: usize&gt; Default for SpscRing&lt;T, N&gt; {
+    fn default() -&gt; Self {
+        Self::new()
+    }
+}
+
+impl&lt;T, const N: usize&gt; Drop for SpscRing&lt;T, N&gt; {
+    fn drop(&amp;mut self) {
+        // Drop any items that were never popped.
+        while self.pop().is_some() {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicUsize;
+    use std::thread;
+
+    #[test]
+    fn is_fifo_within_capacity() {
+        let ring = SpscRing::&lt;u32, 4&gt;::new();
+        assert!(ring.push(1).is_ok());
+        assert!(ring.push(2).is_ok());
+        assert!(ring.push(3).is_ok());
+        assert_eq!(ring.pop(), Some(1));
+        assert_eq!(ring.pop(), Some(2));
+        assert_eq!(ring.pop(), Some(3));
+        assert_eq!(ring.pop(), None);
+    }
+
+    #[test]
+    fn full_ring_returns_the_value() {
+        let ring = SpscRing::&lt;u32, 2&gt;::new();
+        assert!(ring.push(1).is_ok());
+        assert!(ring.push(2).is_ok());
+        assert!(ring.is_full());
+        assert_eq!(ring.push(3), Err(3));
+    }
+
+    #[test]
+    fn producer_and_consumer_run_concurrently_in_order() {
+        const ITEMS: u64 = 50_000;
+        const SENTINEL: u64 = u64::MAX;
+
+        let ring = Arc::new(SpscRing::&lt;u64, 256&gt;::new());
+
+        let producer = {
+            let ring = Arc::clone(&amp;ring);
+            thread::spawn(move || {
+                for value in 0..ITEMS {
+                    let mut pending = value;
+                    loop {
+                        match ring.push(pending) {
+                            Ok(()) =&gt; break,
+                            Err(returned) =&gt; {
+                                pending = returned;
+                                thread::yield_now();
+                            }
+                        }
+                    }
+                }
+                let mut pending = SENTINEL;
+                loop {
+                    match ring.push(pending) {
+                        Ok(()) =&gt; break,
+                        Err(returned) =&gt; {
+                            pending = returned;
+                            thread::yield_now();
+                        }
+                    }
+                }
+            })
+        };
+
+        let consumer = {
+            let ring = Arc::clone(&amp;ring);
+            thread::spawn(move || {
+                let mut received = Vec::with_capacity(ITEMS as usize);
+                loop {
+                    match ring.pop() {
+                        Some(SENTINEL) =&gt; break,
+                        Some(value) =&gt; received.push(value),
+                        None =&gt; thread::yield_now(),
+                    }
+                }
+                received
+            })
+        };
+
+        producer.join().expect("producer panicked");
+        let received = consumer.join().expect("consumer panicked");
+
+        assert_eq!(received, (0..ITEMS).collect::&lt;Vec&lt;_&gt;&gt;());
+    }
+
+    #[test]
+    fn dropped_ring_drops_queued_items() {
+        struct Tracker(Arc&lt;AtomicUsize&gt;);
+        impl Drop for Tracker {
+            fn drop(&amp;mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let dropped = Arc::new(AtomicUsize::new(0));
+        {
+            let ring = SpscRing::&lt;Tracker, 4&gt;::new();
+            assert!(ring.push(Tracker(Arc::clone(&amp;dropped))).is_ok());
+            assert!(ring.push(Tracker(Arc::clone(&amp;dropped))).is_ok());
+            assert!(ring.push(Tracker(Arc::clone(&amp;dropped))).is_ok());
+        }
+        assert_eq!(dropped.load(Ordering::SeqCst), 3);
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="storage"><a class="header" href="#storage">Storage</a></h3>
+<p><code>slots: [UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;; N]</code> is an array whose length is the const generic
+parameter, so the ring stores its items inline with no heap allocation. <code>new</code> builds it
+with <code>std::array::from_fn</code>, which calls the closure once per element. The obvious
+<code>[UnsafeCell::new(MaybeUninit::uninit()); N]</code> does not compile, because array repeat
+expressions require the element to be <code>Copy</code> or a constant.</p>
+<p><code>assert!(N &gt; 0)</code> runs at construction. A zero-capacity ring would make <code>tail % N</code> a
+division by zero.</p>
+<h3 id="the-producers-side"><a class="header" href="#the-producers-side">The producer’s side</a></h3>
+<p><code>push</code> loads its own <code>tail</code> with <code>Relaxed</code>, because no other thread writes it, and loads
+the consumer’s <code>head</code> with <code>Acquire</code>, because it must see the consumer’s latest
+published value. If the ring is full, the value is returned to the caller in <code>Err</code>.</p>
+<p>The <code>unsafe</code> block writes into the slot with <code>MaybeUninit::write</code>, which does not drop
+the previous contents. That is required: the slot either was never initialized or was
+moved out of by <code>pop</code>, and dropping it would be a double free or a read of
+uninitialized memory. The <code>SAFETY</code> comment names the two facts that justify the write:
+the slot is free because the ring is not full, and only the producer writes slots.</p>
+<p><code>self.tail.store(tail.wrapping_add(1), Ordering::Release)</code> publishes the new item.</p>
+<h3 id="the-consumers-side"><a class="header" href="#the-consumers-side">The consumer’s side</a></h3>
+<p><code>pop</code> is the mirror of <code>push</code>. <code>assume_init_read</code> copies the value out of the slot by
+bitwise read and leaves the slot logically uninitialized. The <code>SAFETY</code> comment rests
+on <code>head != tail</code>, which means the producer has published this slot.</p>
+<h3 id="dropping-remaining-items"><a class="header" href="#dropping-remaining-items">Dropping remaining items</a></h3>
+<p><code>Drop</code> calls <code>pop</code> until the ring is empty, which moves each remaining value out and
+drops it. <code>drop</code> receives <code>&amp;mut self</code>, so no other thread can be using the ring, and the
+atomic operations are merely unnecessary rather than incorrect.</p>
+<h3 id="the-sync-implementation"><a class="header" href="#the-sync-implementation">The <code>Sync</code> implementation</a></h3>
+<p><code>unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}</code> lets <code>&amp;SpscRing</code> be
+shared between threads. The <code>SAFETY</code> comment conditions it on “at most one thread
+mutates <code>head</code> and one mutates <code>tail</code>”. The Limitations section examines what happens
+when that condition is not met.</p>
+<p><code>producer_and_consumer_run_concurrently_in_order</code> pushes 50,000 values and a sentinel
+from one thread and pops on another, retrying with <code>yield_now</code> when the ring is full or
+empty. It requires the consumer to receive every value in order.</p>
+<p><code>dropped_ring_drops_queued_items</code> pushes three <code>Tracker</code> values that increment a shared
+counter when dropped, lets the ring go out of scope, and checks that the counter reads
+three. It would fail if <code>Drop</code> were missing, because <code>MaybeUninit</code> never drops its
+contents by itself.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p><strong><code>is_fifo_within_capacity</code> on <code>SpscRing::&lt;u32, 4&gt;</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>call</th><th><code>tail</code> before</th><th><code>head</code> before</th><th>slot</th><th><code>tail</code> after</th><th><code>head</code> after</th><th>result</th></tr>
+</thead>
+<tbody>
+<tr><td><code>push(1)</code></td><td>0</td><td>0</td><td>write 0</td><td>1</td><td>0</td><td><code>Ok(())</code></td></tr>
+<tr><td><code>push(2)</code></td><td>1</td><td>0</td><td>write 1</td><td>2</td><td>0</td><td><code>Ok(())</code></td></tr>
+<tr><td><code>push(3)</code></td><td>2</td><td>0</td><td>write 2</td><td>3</td><td>0</td><td><code>Ok(())</code></td></tr>
+<tr><td><code>pop()</code></td><td>3</td><td>0</td><td>read 0</td><td>3</td><td>1</td><td><code>Some(1)</code></td></tr>
+<tr><td><code>pop()</code></td><td>3</td><td>1</td><td>read 1</td><td>3</td><td>2</td><td><code>Some(2)</code></td></tr>
+<tr><td><code>pop()</code></td><td>3</td><td>2</td><td>read 2</td><td>3</td><td>3</td><td><code>Some(3)</code></td></tr>
+<tr><td><code>pop()</code></td><td>3</td><td>3</td><td>none</td><td>3</td><td>3</td><td><code>None</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+</thead>
+<tbody>
+<tr><td><code>push</code>, <code>pop</code></td><td><code>O(1)</code>: two atomic loads, one store, one slot move</td><td>none</td></tr>
+<tr><td><code>len</code>, <code>is_empty</code>, <code>is_full</code></td><td><code>O(1)</code></td><td>none</td></tr>
+<tr><td>drop</td><td><code>O(len)</code></td><td>none</td></tr>
+<tr><td>memory</td><td></td><td><code>N</code> slots of <code>size_of::&lt;T&gt;()</code> plus two <code>usize</code> indices, inline</td></tr>
+</tbody>
+</table>
+</div>
+<p>The ring never blocks and never allocates after construction. The producer and consumer
+still share the cache lines holding <code>head</code> and <code>tail</code>, so heavy traffic on both sides
+causes the false sharing described in chapter 48; production rings pad the two indices
+onto separate cache lines.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>The single-producer, single-consumer rule is not enforced, so the safe API admits
+undefined behaviour.</strong> <code>push</code> and <code>pop</code> take <code>&amp;self</code>, and <code>SpscRing</code> is <code>Sync</code>. Nothing
+stops two threads holding an <code>Arc&lt;SpscRing&lt;T, N&gt;&gt;</code> from both calling <code>push</code>. Both can
+load the same <code>tail</code>, write the same slot concurrently, and store the same new <code>tail</code>,
+so one value is lost and the slot write is a data race. That is undefined behaviour
+reachable from safe code, which means the <code>unsafe impl Sync</code> is unsound as written.</p>
+<p>The idiomatic repair is to encode the rule in types. A <code>split</code> method hands out one
+<code>Producer</code> with <code>push</code> and one <code>Consumer</code> with <code>pop</code>. Each handle is <code>Send</code>, so it can be
+moved to its thread, and neither is <code>Clone</code> or <code>Sync</code>, so there can be only one of each
+and neither can be shared:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Producer&lt;'a, T, const N: usize&gt; {
+    ring: &amp;'a SpscRing&lt;T, N&gt;,
+    _not_sync: PhantomData&lt;Cell&lt;()&gt;&gt;,
+}
+
+pub struct Consumer&lt;'a, T, const N: usize&gt; {
+    ring: &amp;'a SpscRing&lt;T, N&gt;,
+    _not_sync: PhantomData&lt;Cell&lt;()&gt;&gt;,
+}
+
+impl&lt;T: Send, const N: usize&gt; SpscRing&lt;T, N&gt; {
+    /// Borrowing `self` mutably guarantees this is the only split.
+    pub fn split(&amp;mut self) -&gt; (Producer&lt;'_, T, N&gt;, Consumer&lt;'_, T, N&gt;) {
+        let ring: &amp;Self = self;
+        (
+            Producer { ring, _not_sync: PhantomData },
+            Consumer { ring, _not_sync: PhantomData },
+        )
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>push</code> and <code>pop</code> then move to <code>Producer</code> and <code>Consumer</code>, and become private on the ring.
+<code>PhantomData&lt;Cell&lt;()&gt;&gt;</code> removes the automatic <code>Sync</code> implementation while keeping
+<code>Send</code>.</p>
+<p><strong>Index continuity assumes a power-of-two capacity after wrap-around.</strong> When <code>tail</code>
+wraps from <code>usize::MAX</code> to 0, the slot index jumps from <code>usize::MAX % N</code> to 0, which is
+the next slot only when <code>N</code> divides <code>2^64</code>. With any other <code>N</code>, the ring would misplace
+items after 2^64 operations. The limit is unreachable in practice, and restricting <code>N</code>
+to powers of two would also let <code>% N</code> become a mask.</p>
+<p><strong>Busy retrying is the caller’s job.</strong> A full or empty ring returns immediately. The
+tests retry with <code>yield_now</code>, which uses a core while waiting. A blocking wrapper needs
+a way to park and wake the other side, such as a futex or a condition variable, which
+reintroduces some of the cost the design removes.</p>
+<p><strong>The array is inline.</strong> A ring of 4,096 <code>u64</code> values is 32 KiB inside the struct, and
+constructing it on the stack before moving it into an <code>Arc</code> can overflow a small
+thread stack. Large rings are better allocated on the heap.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>An SPSC ring gives the tail index to the producer and the head index to the consumer,
+so each side writes only its own atomic and no lock or compare-and-swap is needed.</li>
+<li>Writing the slot before publishing <code>tail</code>, and reading it before publishing <code>head</code>,
+guarantees that neither side sees a slot the other is still using.</li>
+<li><code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code> slots in a const-generic array hold values without heap
+allocation; <code>MaybeUninit::write</code> and <code>assume_init_read</code> move values in and out
+without dropping uninitialized memory.</li>
+<li>A <code>Drop</code> implementation must drain the ring, because <code>MaybeUninit</code> never drops its
+contents.</li>
+<li>Because <code>push</code> and <code>pop</code> take <code>&amp;self</code> on a <code>Sync</code> type, two producers can race; split
+handles that are <code>Send</code> and not <code>Sync</code> enforce the single-producer rule in the types.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Mara Bos, <em>Rust Atomics and Locks</em>, O’Reilly Media, 2023, Chapter 5, “Building Our
+Own Channels”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/mem/union.MaybeUninit.html"><code>std::mem::MaybeUninit</code></a> and <a href="https://doc.rust-lang.org/std/array/fn.from_fn.html"><code>std::array::from_fn</code></a>.</li>
+<li>The Rust Reference, <a href="https://doc.rust-lang.org/reference/items/generics.html#const-generics">Const generics</a>.</li>
+<li>The <code>crossbeam</code> project, <a href="https://docs.rs/crossbeam/latest/crossbeam/queue/struct.ArrayQueue.html"><code>ArrayQueue</code></a>, a bounded lock-free MPMC queue.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="46-bounded-queue.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="48-cache-locality.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="46-bounded-queue.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="48-cache-locality.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

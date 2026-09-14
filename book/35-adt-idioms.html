@@ -1,0 +1,640 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>35. Types That Reject Invalid Values - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="adt-idioms"><a class="header" href="#adt-idioms">35. Types That Reject Invalid Values</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs"><code>src/problems/adt_idioms.rs</code></a>. Test it with <code>cargo test adt_idioms</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>A command-line client for a GPU service accepts four commands, one per line:</p>
+<pre><code class="language-text">list
+get &lt;id&gt;
+create &lt;name&gt; &lt;gpu-count&gt;
+delete &lt;id&gt;
+</code></pre>
+<p>A GPU count must be an integer from 1 to 64. The parser must turn a line into a value
+the rest of the program can use without checking it again, and it must report each
+kind of malformed input in a way a caller can distinguish: an empty line, an unknown
+verb, a missing argument, and a count that is not a number or is out of range.</p>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>The obvious representation is a <code>String</code> for the verb, an <code>Option&lt;String&gt;</code> for each
+argument, and a <code>u32</code> for the count. Every function that receives those values would
+have to re-check them, because nothing in the types says that a <code>create</code> has a name or
+that the count is in range. Three types remove the re-checking.</p>
+<p><strong>A newtype for the count.</strong> <code>struct GpuCount(u32)</code> is a distinct type whose only
+constructor validates the range. Code that receives a <code>GpuCount</code> knows the value is
+between 1 and 64 without looking at it, and a raw <code>u32</code> cannot be passed where a
+<code>GpuCount</code> is expected.</p>
+<p><strong>An enumeration for the command.</strong> Each variant carries exactly the fields its
+command needs. <code>Command::List</code> has none, <code>Command::Get</code> has an <code>id</code>, and
+<code>Command::Create</code> has a <code>name</code> and a <code>GpuCount</code>. A <code>match</code> on a <code>Command</code> must
+handle all four variants, and a variant cannot be built without its fields.</p>
+<p><strong>An enumeration for the failure.</strong> <code>CommandError</code> names each way a line can be
+rejected, and carries the text that caused the rejection. A caller can match on the
+variant to decide what to do, and print it through <code>Display</code> to tell a user what
+happened.</p>
+<p>The diagram below shows the flow from text to typed value.</p>
+<pre><code class="language-text">"create triton 4"
+       |
+       v
+ Command::parse ----&gt; Err(CommandError::UnknownVerb | MissingArgument | InvalidGpuCount)
+       |
+       v
+ Ok(Command::Create { name: "triton", gpus: GpuCount(4) })
+       |
+       v
+ the rest of the program: no further checks on name or gpus
+</code></pre>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<p>The module has four parts: the newtype, its error, the command and its error, and a
+short iterator example. The first listing shows the newtype.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fmt;
+
+/// A GPU count that is validated at construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GpuCount(u32);
+
+impl GpuCount {
+    pub const MIN: u32 = 1;
+    pub const MAX: u32 = 64;
+
+    /// Validate a raw count.
+    pub fn new(value: u32) -&gt; Result&lt;Self, GpuCountError&gt; {
+        if (Self::MIN..=Self::MAX).contains(&amp;value) {
+            Ok(Self(value))
+        } else {
+            Err(GpuCountError(value))
+        }
+    }
+
+    pub fn get(self) -&gt; u32 {
+        self.0
+    }
+}
+
+/// Why a raw GPU count was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpuCountError(pub u32);
+
+impl fmt::Display for GpuCountError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(
+            formatter,
+            "gpu count {} is outside {}..={}",
+            self.0,
+            GpuCount::MIN,
+            GpuCount::MAX
+        )
+    }
+}
+
+impl std::error::Error for GpuCountError {}
+
+impl TryFrom&lt;u32&gt; for GpuCount {
+    type Error = GpuCountError;
+
+    fn try_from(value: u32) -&gt; Result&lt;Self, Self::Error&gt; {
+        Self::new(value)
+    }
+}
+
+impl From&lt;GpuCount&gt; for u32 {
+    fn from(count: GpuCount) -&gt; u32 {
+        count.0
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>The tuple field of <code>GpuCount</code> is private, so code outside the module cannot write
+<code>GpuCount(0)</code>. The only ways to obtain a value are <code>GpuCount::new</code> and
+<code>GpuCount::try_from</code>, and both run the range check.</p>
+<p><code>(Self::MIN..=Self::MAX).contains(&amp;value)</code> states the valid range once, using the
+associated constants that the error message also prints. Changing the limit is a
+one-line edit that updates the check and the message together.</p>
+<p><code>GpuCountError</code> is itself a newtype. It carries the rejected value, which lets the
+<code>Display</code> implementation produce a message such as <code>gpu count 99 is outside 1..=64</code>.
+The empty <code>impl std::error::Error for GpuCountError {}</code> is enough to make the type
+usable with <code>?</code> in a function that returns <code>Box&lt;dyn Error&gt;</code>; the trait’s methods all
+have default implementations.</p>
+<p><code>TryFrom&lt;u32&gt;</code> connects the newtype to the standard conversion traits. A caller can
+write <code>GpuCount::try_from(raw)?</code> or <code>let gpus: GpuCount = raw.try_into()?</code>, and
+generic code that accepts <code>T: TryFrom&lt;u32&gt;</code> works with it. The implementation
+delegates to <code>new</code>, so there is one validation path. <code>From&lt;GpuCount&gt; for u32</code> goes
+the other way, and it cannot fail, which is why it is <code>From</code> rather than <code>TryFrom</code>.</p>
+<p>The next listing shows the command type and its parser.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A closed set of commands, each carrying exactly the data it needs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    List,
+    Get { id: String },
+    Create { name: String, gpus: GpuCount },
+    Delete { id: String },
+}
+
+impl Command {
+    /// Parse one command line.
+    pub fn parse(line: &amp;str) -&gt; Result&lt;Self, CommandError&gt; {
+        let mut parts = line.split_whitespace();
+        let verb = parts.next().ok_or(CommandError::Empty)?;
+
+        match verb {
+            "list" =&gt; Ok(Self::List),
+            "get" =&gt; Ok(Self::Get {
+                id: argument(&amp;mut parts, "id")?.to_string(),
+            }),
+            "delete" =&gt; Ok(Self::Delete {
+                id: argument(&amp;mut parts, "id")?.to_string(),
+            }),
+            "create" =&gt; {
+                let name = argument(&amp;mut parts, "name")?.to_string();
+                let raw = argument(&amp;mut parts, "gpu count")?;
+                let value: u32 = raw
+                    .parse()
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                let gpus = GpuCount::new(value)
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                Ok(Self::Create { name, gpus })
+            }
+            other =&gt; Err(CommandError::UnknownVerb(other.to_string())),
+        }
+    }
+
+    pub fn verb(&amp;self) -&gt; &amp;'static str {
+        match self {
+            Self::List =&gt; "list",
+            Self::Get { .. } =&gt; "get",
+            Self::Create { .. } =&gt; "create",
+            Self::Delete { .. } =&gt; "delete",
+        }
+    }
+}
+
+/// A typed parse failure, so callers can distinguish the cases.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandError {
+    Empty,
+    UnknownVerb(String),
+    MissingArgument(&amp;'static str),
+    InvalidGpuCount(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Empty =&gt; write!(formatter, "empty command"),
+            Self::UnknownVerb(verb) =&gt; write!(formatter, "unknown verb {verb:?}"),
+            Self::MissingArgument(name) =&gt; write!(formatter, "missing argument: {name}"),
+            Self::InvalidGpuCount(raw) =&gt; write!(formatter, "invalid gpu count: {raw:?}"),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+fn argument&lt;'a&gt;(
+    parts: &amp;mut impl Iterator&lt;Item = &amp;'a str&gt;,
+    name: &amp;'static str,
+) -&gt; Result&lt;&amp;'a str, CommandError&gt; {
+    parts.next().ok_or(CommandError::MissingArgument(name))
+}
+<span class="boring">}</span></code></pre>
+<p><code>Command::parse</code> splits the line on whitespace and takes the verb with
+<code>parts.next().ok_or(CommandError::Empty)?</code>. <code>ok_or</code> converts <code>Option</code> to <code>Result</code>, and
+<code>?</code> returns the error immediately, so the rest of the function runs only when a verb
+exists.</p>
+<p>The helper <code>argument</code> has the same shape and adds the name of the missing argument to
+the error. Its signature is worth reading closely. <code>parts: &amp;mut impl Iterator&lt;Item = &amp;'a str&gt;</code> borrows the iterator mutably, so each call consumes one item from the same
+sequence. The lifetime <code>'a</code> ties the returned <code>&amp;str</code> to the original line, not to the
+iterator, which lets <code>parse</code> convert it with <code>to_string</code> after the call.</p>
+<p>The <code>create</code> arm distinguishes two failures that produce the same variant. A count
+that does not parse as <code>u32</code> and a count that parses but is out of range both return
+<code>InvalidGpuCount</code>, carrying the raw text. The design choice is that the caller cares
+about which argument was wrong, not about which check rejected it.</p>
+<p><code>verb</code> returns <code>&amp;'static str</code> for each variant. The <code>..</code> in patterns such as
+<code>Self::Get { .. }</code> ignores the fields, and the <code>match</code> has no wildcard arm, so adding a
+fifth command makes this function fail to compile until the new variant is handled.</p>
+<p>The next listing shows the last function in the module, which is unrelated to parsing and
+illustrates a different idiom.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Count and sum in one pass, without managing an index.
+pub fn summarize(values: &amp;[i32]) -&gt; (usize, i64) {
+    values.iter().fold((0usize, 0i64), |(count, sum), value| {
+        (count + 1, sum + i64::from(*value))
+    })
+}
+<span class="boring">}</span></code></pre>
+<p><code>fold</code> carries a tuple of accumulators through the iteration. The count is <code>usize</code>
+and the sum is <code>i64</code>, and each element is widened with <code>i64::from(*value)</code>. Widening
+before adding means that summing a slice of <code>i32</code> values cannot overflow until the
+total exceeds the range of <code>i64</code>. <code>From</code> is used instead of <code>as</code> because it compiles
+only for conversions that cannot lose information.</p>
+<p>The last listing shows the tests. They exercise every variant of <code>Command</code>, every variant
+of <code>CommandError</code>, the boundaries of the newtype, and the rendered messages.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_each_command_variant() {
+        assert_eq!(Command::parse("list"), Ok(Command::List));
+        assert_eq!(
+            Command::parse("get wl-7"),
+            Ok(Command::Get { id: "wl-7".into() })
+        );
+        assert_eq!(
+            Command::parse("create triton 4"),
+            Ok(Command::Create {
+                name: "triton".into(),
+                gpus: GpuCount::new(4).expect("valid")
+            })
+        );
+        assert_eq!(
+            Command::parse("delete wl-7"),
+            Ok(Command::Delete { id: "wl-7".into() })
+        );
+    }
+
+    #[test]
+    fn rejects_bad_input_with_typed_errors() {
+        assert_eq!(Command::parse(""), Err(CommandError::Empty));
+        assert_eq!(
+            Command::parse("frobnicate"),
+            Err(CommandError::UnknownVerb("frobnicate".into()))
+        );
+        assert_eq!(
+            Command::parse("get"),
+            Err(CommandError::MissingArgument("id"))
+        );
+        assert_eq!(
+            Command::parse("create triton 0"),
+            Err(CommandError::InvalidGpuCount("0".into()))
+        );
+        assert_eq!(
+            Command::parse("create triton many"),
+            Err(CommandError::InvalidGpuCount("many".into()))
+        );
+    }
+
+    #[test]
+    fn newtype_rejects_out_of_range_values() {
+        assert!(GpuCount::new(1).is_ok());
+        assert!(GpuCount::new(64).is_ok());
+        assert!(GpuCount::new(0).is_err());
+        assert!(GpuCount::new(65).is_err());
+        assert_eq!(u32::from(GpuCount::try_from(8).expect("valid")), 8);
+        assert!(GpuCount::try_from(0).is_err());
+    }
+
+    #[test]
+    fn summarize_reports_count_and_sum() {
+        assert_eq!(summarize(&amp;[]), (0, 0));
+        assert_eq!(summarize(&amp;[1, 2, 3]), (3, 6));
+        assert_eq!(summarize(&amp;[-5, 5]), (2, 0));
+    }
+
+    #[test]
+    fn errors_render_a_reason() {
+        assert_eq!(
+            Command::parse("create triton 0").unwrap_err().to_string(),
+            "invalid gpu count: \"0\""
+        );
+        assert!(
+            GpuCount::new(99)
+                .unwrap_err()
+                .to_string()
+                .contains("outside")
+        );
+    }
+}
+<span class="boring">}</span></code></pre>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p>The table below follows six inputs through <code>Command::parse</code>.</p>
+<p><strong><code>Command::parse</code> on valid and invalid lines</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>input</th><th>verb</th><th>arguments consumed</th><th>result</th></tr>
+</thead>
+<tbody>
+<tr><td><code>"list"</code></td><td><code>list</code></td><td>none</td><td><code>Ok(Command::List)</code></td></tr>
+<tr><td><code>"get wl-7"</code></td><td><code>get</code></td><td><code>wl-7</code></td><td><code>Ok(Command::Get { id: "wl-7" })</code></td></tr>
+<tr><td><code>"create triton 4"</code></td><td><code>create</code></td><td><code>triton</code>, <code>4</code></td><td><code>Ok(Command::Create { name: "triton", gpus: GpuCount(4) })</code></td></tr>
+<tr><td><code>"create triton 0"</code></td><td><code>create</code></td><td><code>triton</code>, <code>0</code></td><td><code>"0"</code> parses as <code>0u32</code>, <code>GpuCount::new(0)</code> fails, <code>Err(InvalidGpuCount("0"))</code></td></tr>
+<tr><td><code>"get"</code></td><td><code>get</code></td><td>none available</td><td><code>Err(MissingArgument("id"))</code></td></tr>
+<tr><td><code>""</code></td><td>none</td><td>none</td><td><code>Err(Empty)</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>Command::parse("create triton 0").unwrap_err().to_string()</code> produces
+<code>invalid gpu count: "0"</code>. The <code>{raw:?}</code> format prints the text with quotes, which makes
+trailing whitespace or an empty string visible in the message.</p>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+</thead>
+<tbody>
+<tr><td><code>GpuCount::new</code></td><td><code>O(1)</code></td><td>none; <code>GpuCount</code> is the size of a <code>u32</code></td></tr>
+<tr><td><code>Command::parse</code></td><td><code>O(len)</code> for the line</td><td>one <code>String</code> per stored argument</td></tr>
+<tr><td><code>verb</code></td><td><code>O(1)</code></td><td>none</td></tr>
+<tr><td><code>summarize</code></td><td><code>O(n)</code></td><td>none</td></tr>
+</tbody>
+</table>
+</div>
+<p>A newtype has no run-time cost. <code>GpuCount</code> has the same size and alignment as <code>u32</code>,
+and its methods compile to the same instructions as the unwrapped code. The type
+exists only for the compiler.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>The parser allocates for every argument.</strong> <code>Command::Get { id: String }</code> owns its
+identifier, so each successful parse copies the argument out of the line. A version
+that returns <code>Command&lt;'a&gt;</code> with <code>&amp;'a str</code> fields would allocate nothing, at the cost
+of tying the command’s lifetime to the input line.</p>
+<p><strong>Extra arguments are ignored.</strong> <code>"get wl-7 extra"</code> parses as <code>Get { id: "wl-7" }</code>.
+The parser never checks that <code>parts</code> is exhausted. Adding
+<code>if parts.next().is_some() { return Err(...) }</code> after each arm would reject the input,
+and it would require a new error variant.</p>
+<p><strong>The two count failures are merged.</strong> <code>InvalidGpuCount</code> does not say whether the text
+was not a number or the number was out of range. A caller that wants to print “must
+be between 1 and 64” for the second case has to parse the text again. Keeping the
+<code>GpuCountError</code> inside the variant, for example <code>OutOfRange(GpuCountError)</code>, would
+preserve the information.</p>
+<p><strong><code>CommandError::MissingArgument(&amp;'static str)</code> limits the argument names to string
+literals.</strong> This is fine for a fixed grammar and prevents building the name at run
+time. It also keeps the error type <code>Clone</code> and cheap.</p>
+<p><strong><code>summarize</code> is unrelated to the rest of the module.</strong> It sits here as an example of
+an iterator fold. In a real codebase it would live with the code that uses it.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A newtype with a private field and a validating constructor makes an invalid value
+unrepresentable, at no run-time cost.</li>
+<li><code>TryFrom</code> and <code>From</code> connect a newtype to the standard conversion traits, so <code>?</code> and
+<code>try_into</code> work with it.</li>
+<li>An enumeration whose variants carry only the fields they need replaces a bag of
+optional fields, and <code>match</code> without a wildcard makes a new variant a compile error
+at every use.</li>
+<li>A typed error enumeration lets a caller branch on the failure, and implementing
+<code>Display</code> and <code>std::error::Error</code> lets it travel through <code>?</code> and <code>Box&lt;dyn Error&gt;</code>.</li>
+<li>Widening with <code>i64::from</code> before adding avoids overflow, and <code>From</code> rejects lossy
+conversions at compile time.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch20-02-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types">Using the newtype pattern</a>.</li>
+<li>Rust API Guidelines, <a href="https://rust-lang.github.io/api-guidelines/type-safety.html#newtypes-provide-static-distinctions-c-newtype">Newtypes provide static distinctions</a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/convert/trait.TryFrom.html"><code>TryFrom</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/error/trait.Error.html"><code>std::error::Error</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.fold"><code>Iterator::fold</code></a>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="34-idempotent-operations.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="36-smart-pointers.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="34-idempotent-operations.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="36-smart-pointers.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,583 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>44. A Spin Lock - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="spin-lock"><a class="header" href="#spin-lock">44. A Spin Lock</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/spin_lock.rs"><code>src/problems/spin_lock.rs</code></a>. Test it with <code>cargo test spin_lock</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Implement <code>SpinLock&lt;T&gt;</code> with <code>lock</code>, which waits until the lock is free and returns a
+guard, and <code>try_lock</code>, which returns <code>None</code> immediately if the lock is held. The guard
+must give <code>&amp;T</code> and <code>&amp;mut T</code> access to the value and release the lock when it is
+dropped. The lock must be shareable between threads through <code>Arc</code> or a scoped borrow.</p>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p><strong>State.</strong> The lock is an <code>AtomicBool</code>, <code>false</code> when free, and the value is an
+<code>UnsafeCell&lt;T&gt;</code>. <code>UnsafeCell</code> is the only legal way in Rust to obtain a mutable
+pointer to data reachable through a shared reference; every interior-mutability type,
+including <code>Mutex</code> and <code>RefCell</code>, is built on it.</p>
+<p><strong>Acquire.</strong> <code>compare_exchange(false, true)</code> stores <code>true</code> only if the current value is
+<code>false</code>, and reports whether it did. Exactly one of several competing threads succeeds.
+The losers wait for the flag to become <code>false</code> and try again.</p>
+<p><strong>Release.</strong> The guard’s <code>Drop</code> stores <code>false</code>. Because release happens in a destructor,
+it happens on every path out of the critical section, including a panic that unwinds
+through it.</p>
+<p><strong>Soundness.</strong> The guard dereferences to <code>&amp;mut T</code> using the <code>UnsafeCell</code>. That is sound
+only while the guard is the only way to reach the value, which the flag guarantees:
+while one guard exists, no other thread can create a second one.</p>
+<pre><code class="language-text">thread A                                 thread B
+compare_exchange(false, true) -&gt; Ok       compare_exchange(false, true) -&gt; Err
+guard A: exclusive access to the value    while locked.load() { spin_loop() }
+*guard += 1                               ...
+drop(guard A): locked.store(false)        load() sees false, loop exits
+                                          compare_exchange(false, true) -&gt; Ok
+                                          guard B: exclusive access
+</code></pre>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! A spin lock built from a single `AtomicBool`.
+//!
+//! This is the primitive to write when an interviewer asks for a lock from
+//! scratch. The interesting part is not the loop; it is the memory ordering and
+//! the ownership argument that make the unsafe block sound.
+//!
+//! - `lock`/`try_lock` use a compare-exchange with `Acquire` ordering, so the
+//!   critical section observes every write the previous holder made before it
+//!   released.
+//! - `unlock` uses a `Release` store, so writes inside the critical section are
+//!   visible to whoever acquires next.
+//! - The guard derefs to `&amp;T`/`&amp;mut T`. Mutual exclusion is what makes handing out
+//!   `&amp;mut T` sound, and that is exactly what the lock guarantees.
+//!
+//! A spin lock is the wrong choice when the critical section can block or is
+//! long: every waiting thread burns a core. Use it for very short sections on
+//! dedicated cores, and prefer `std::sync::Mutex` (which parks the thread) in
+//! general code.
+
+use std::cell::UnsafeCell;
+use std::hint::spin_loop;
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// A mutual-exclusion lock that busy-waits instead of parking.
+pub struct SpinLock&lt;T&gt; {
+    locked: AtomicBool,
+    value: UnsafeCell&lt;T&gt;,
+}
+
+// SAFETY: `value` is only accessed while `locked` is held, and the acquire/release
+// ordering on `locked` makes a hand-off between threads well defined. Sharing
+// `&amp;SpinLock` across threads therefore only requires the protected value to be
+// `Send`, which lets one thread move data in and another move it out.
+unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}
+
+/// Grants access to the protected value and releases the lock when dropped.
+pub struct SpinGuard&lt;'a, T&gt; {
+    lock: &amp;'a SpinLock&lt;T&gt;,
+}
+
+impl&lt;T&gt; SpinLock&lt;T&gt; {
+    /// Create an unlocked spin lock.
+    pub const fn new(value: T) -&gt; Self {
+        Self {
+            locked: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    /// Acquire the lock, spinning until it is free.
+    pub fn lock(&amp;self) -&gt; SpinGuard&lt;'_, T&gt; {
+        loop {
+            if self
+                .locked
+                .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_ok()
+            {
+                return SpinGuard { lock: self };
+            }
+
+            // Spin on a relaxed load so the contention loop does not keep
+            // bouncing the cache line with exclusive accesses.
+            while self.locked.load(Ordering::Relaxed) {
+                spin_loop();
+            }
+        }
+    }
+
+    /// Acquire the lock only if it is free right now.
+    pub fn try_lock(&amp;self) -&gt; Option&lt;SpinGuard&lt;'_, T&gt;&gt; {
+        self.locked
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .ok()
+            .map(|_| SpinGuard { lock: self })
+    }
+
+    /// Whether the lock is currently held.
+    pub fn is_locked(&amp;self) -&gt; bool {
+        self.locked.load(Ordering::Relaxed)
+    }
+
+    fn unlock(&amp;self) {
+        self.locked.store(false, Ordering::Release);
+    }
+}
+
+impl&lt;T: Default&gt; Default for SpinLock&lt;T&gt; {
+    fn default() -&gt; Self {
+        Self::new(T::default())
+    }
+}
+
+impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
+    fn drop(&amp;mut self) {
+        self.lock.unlock();
+    }
+}
+
+impl&lt;T&gt; Deref for SpinGuard&lt;'_, T&gt; {
+    type Target = T;
+
+    fn deref(&amp;self) -&gt; &amp;T {
+        // SAFETY: holding the guard means this thread has exclusive access.
+        unsafe { &amp;*self.lock.value.get() }
+    }
+}
+
+impl&lt;T&gt; DerefMut for SpinGuard&lt;'_, T&gt; {
+    fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
+        // SAFETY: holding the guard means this thread has exclusive access.
+        unsafe { &amp;mut *self.lock.value.get() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::thread;
+
+    #[test]
+    fn serializes_concurrent_increments() {
+        let lock = Arc::new(SpinLock::new(0usize));
+        let mut handles = Vec::new();
+
+        for _ in 0..8 {
+            let lock = Arc::clone(&amp;lock);
+            handles.push(thread::spawn(move || {
+                for _ in 0..1_000 {
+                    *lock.lock() += 1;
+                }
+            }));
+        }
+        for handle in handles {
+            handle.join().expect("worker panicked");
+        }
+
+        assert_eq!(*lock.lock(), 8_000);
+    }
+
+    #[test]
+    fn try_lock_reports_contention() {
+        let lock = SpinLock::new(1u32);
+        let guard = lock.lock();
+        assert!(lock.try_lock().is_none());
+        assert!(lock.is_locked());
+        drop(guard);
+        assert!(lock.try_lock().is_some());
+        assert!(!lock.is_locked());
+    }
+
+    #[test]
+    fn guard_gives_mutable_access() {
+        let lock = SpinLock::new(vec![1, 2, 3]);
+        {
+            let mut guard = lock.lock();
+            guard.push(4);
+        }
+        assert_eq!(*lock.lock(), vec![1, 2, 3, 4]);
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="the-acquire-loop"><a class="header" href="#the-acquire-loop">The acquire loop</a></h3>
+<p><code>lock</code> has two nested loops. The outer loop attempts the exchange with
+<code>compare_exchange_weak</code>, which is allowed to fail spuriously even when the value is
+<code>false</code>. On some architectures, including ARM, the weak version maps directly to a
+load-link/store-conditional instruction pair and avoids an internal retry loop, and
+the outer loop already handles failure.</p>
+<p>When the exchange fails, the inner loop waits with plain <code>load</code> calls until the flag
+reads <code>false</code>. A failed <code>compare_exchange</code> still requests exclusive ownership of the
+cache line holding the flag, while a <code>load</code> can proceed from a shared copy. Spinning on
+<code>load</code> keeps contending threads from bouncing the cache line between cores.
+<code>std::hint::spin_loop</code> emits the processor’s pause instruction, which reduces power
+use and lets the processor schedule the waiting loop efficiently.</p>
+<h3 id="the-orderings"><a class="header" href="#the-orderings">The orderings</a></h3>
+<p>The success ordering of the exchange is <code>Acquire</code> and the release uses <code>Release</code>. For a
+lock built on one atomic, these names document intent: <code>Acquire</code> for the operation that
+takes the lock and <code>Release</code> for the one that gives it up. The protected data does not
+depend on the ordering argument. It is synchronized by mutual exclusion: a write made
+under the lock happens before the release, and the next holder cannot start before it
+observes that release. The failure ordering <code>Relaxed</code> applies to the load performed
+when the exchange fails, where no guarantee beyond the atomic’s own is needed.</p>
+<h3 id="the-trait-implementations"><a class="header" href="#the-trait-implementations">The trait implementations</a></h3>
+<p><code>unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}</code> tells the compiler that <code>&amp;SpinLock&lt;T&gt;</code>
+may be shared between threads. The bound is <code>T: Send</code>, not <code>T: Sync</code>, and it matches
+<code>std::sync::Mutex</code>. Through the lock, only one thread at a time can reach the value,
+so the value never needs to be accessed concurrently; it only needs to be movable
+between threads, because one thread may write it and another read it later.</p>
+<p><code>SpinLock&lt;T&gt;</code> is automatically <code>Send</code> when <code>T: Send</code>, because <code>AtomicBool</code> and
+<code>UnsafeCell&lt;T&gt;</code> are.</p>
+<h3 id="the-guard"><a class="header" href="#the-guard">The guard</a></h3>
+<p><code>SpinGuard</code> holds <code>&amp;'a SpinLock&lt;T&gt;</code>, and the lifetime ties it to the lock, so a guard
+cannot outlive its lock. <code>Deref</code> and <code>DerefMut</code> each contain one <code>unsafe</code> block that
+turns the <code>UnsafeCell</code>’s raw pointer into a reference. The <code>SAFETY</code> comments state the
+invariant that justifies both: holding a guard means this thread has exclusive access.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p><strong><code>try_lock_reports_contention</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>step</th><th><code>locked</code></th><th>result</th></tr>
+</thead>
+<tbody>
+<tr><td><code>SpinLock::new(1u32)</code></td><td><code>false</code></td><td></td></tr>
+<tr><td><code>let guard = lock.lock()</code></td><td><code>true</code></td><td>exchange succeeds</td></tr>
+<tr><td><code>lock.try_lock()</code></td><td><code>true</code></td><td>exchange fails, returns <code>None</code></td></tr>
+<tr><td><code>lock.is_locked()</code></td><td><code>true</code></td><td>returns <code>true</code></td></tr>
+<tr><td><code>drop(guard)</code></td><td><code>false</code></td><td><code>Drop</code> stores <code>false</code></td></tr>
+<tr><td><code>lock.try_lock()</code></td><td><code>true</code> for the temporary guard, then <code>false</code> when it is dropped at the end of the statement</td><td>returns <code>Some</code></td></tr>
+<tr><td><code>lock.is_locked()</code></td><td><code>false</code></td><td>returns <code>false</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>In <code>serializes_concurrent_increments</code>, eight threads each perform 1,000 increments of
+<code>*lock.lock() += 1</code>. Every increment reads and writes the counter under the lock, so
+the final value is exactly 8,000. Without the lock, lost updates would make it
+smaller.</p>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+</thead>
+<tbody>
+<tr><td><code>lock</code>, uncontended</td><td>one compare-and-swap</td><td>none</td></tr>
+<tr><td><code>lock</code>, contended</td><td>unbounded busy-waiting; the thread uses a full core while it waits</td><td>none</td></tr>
+<tr><td><code>try_lock</code></td><td>one compare-and-swap</td><td>none</td></tr>
+<tr><td>guard drop</td><td>one store</td><td>none</td></tr>
+<tr><td>memory</td><td></td><td><code>size_of::&lt;T&gt;()</code> plus one byte, rounded up to <code>T</code>’s alignment</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>The guard is <code>Sync</code> for any <code>T: Send</code>, which is unsound.</strong> <code>SpinGuard</code> has no explicit
+trait implementations, so the compiler derives them from its one field,
+<code>&amp;'a SpinLock&lt;T&gt;</code>. That reference is <code>Sync</code> whenever <code>SpinLock&lt;T&gt;</code> is, which is
+whenever <code>T: Send</code>. The guard therefore becomes <code>Sync</code> for a type such as
+<code>Cell&lt;i32&gt;</code>, which is <code>Send</code> but not <code>Sync</code>. Sharing <code>&amp;SpinGuard&lt;Cell&lt;i32&gt;&gt;</code> between
+two scoped threads lets both call <code>Cell::set</code> through <code>Deref</code> at the same time, a data
+race in safe code. The following program compiles against this lock:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let lock = SpinLock::new(Cell::new(0));
+let guard = lock.lock();
+std::thread::scope(|s| {
+    s.spawn(|| guard.set(1));
+    guard.set(2);
+});
+<span class="boring">}</span></code></pre>
+<p><code>std::sync::MutexGuard</code> avoids this with an explicit <code>unsafe impl&lt;T: ?Sized + Sync&gt; Sync for MutexGuard&lt;'_, T&gt;</code>. The smallest fix for <code>SpinGuard</code> is a marker field that
+makes the guard’s automatic <code>Sync</code> implementation require <code>T: Sync</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::marker::PhantomData;
+
+pub struct SpinGuard&lt;'a, T&gt; {
+    lock: &amp;'a SpinLock&lt;T&gt;,
+    // `&amp;mut T` is `Sync` only if `T: Sync`, so the guard is too.
+    _not_sync_unless_t_is: PhantomData&lt;&amp;'a mut T&gt;,
+}
+<span class="boring">}</span></code></pre>
+<p>Each place that constructs a guard then writes
+<code>SpinGuard { lock: self, _not_sync_unless_t_is: PhantomData }</code>. The same issue appears
+in the short spin lock in <code>drills.rs</code>, described in chapter 59.</p>
+<p><strong>Spinning wastes a core.</strong> A thread that cannot acquire the lock keeps running. If the
+holder is descheduled, or the critical section is long, waiting threads burn CPU time
+without progress. On a machine with more runnable threads than cores this can be much
+slower than a mutex that parks the thread. Spin locks suit very short critical
+sections on dedicated cores; <code>std::sync::Mutex</code> spins briefly and then parks, and is
+the right default.</p>
+<p><strong>No fairness.</strong> A thread that has waited a long time has no advantage over one that
+arrived a moment ago. Under steady contention, a thread can wait indefinitely.</p>
+<p><strong>No poisoning.</strong> A panic while the guard is held releases the lock through <code>Drop</code>, and
+the next thread sees whatever partial update the panicking thread left. Chapter 22
+explains why <code>Mutex</code> records that event.</p>
+<p><strong>Not reentrant.</strong> Calling <code>lock</code> twice on one thread without dropping the first guard
+spins forever.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A spin lock is an <code>AtomicBool</code> guarding an <code>UnsafeCell&lt;T&gt;</code>; <code>compare_exchange</code> lets
+exactly one thread set the flag.</li>
+<li><code>compare_exchange_weak</code> in a loop, with a <code>load</code>-and-<code>spin_loop</code> wait on failure, is
+the conventional acquire path.</li>
+<li>The guard releases the lock in <code>Drop</code>, so every exit from the critical section,
+including unwinding, unlocks it.</li>
+<li><code>unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt;</code> matches <code>Mutex</code> and is justified by
+mutual exclusion.</li>
+<li>The guard’s automatically derived <code>Sync</code> is too permissive; a <code>PhantomData&lt;&amp;mut T&gt;</code>
+field, or an explicit implementation bounded by <code>T: Sync</code>, closes the hole.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Mara Bos, <em>Rust Atomics and Locks</em>, O’Reilly Media, 2023, Chapter 4, “Building Our
+Own Spin Lock”.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak"><code>AtomicBool::compare_exchange_weak</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html"><code>std::cell::UnsafeCell</code></a> and <a href="https://doc.rust-lang.org/std/hint/fn.spin_loop.html"><code>std::hint::spin_loop</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/struct.MutexGuard.html"><code>MutexGuard</code></a>, for its <code>Send</code> and <code>Sync</code> implementations.</li>
+<li>The Rustonomicon, <a href="https://doc.rust-lang.org/nomicon/send-and-sync.html">Send and Sync</a>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="43-threads.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="45-semaphore.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="43-threads.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="45-semaphore.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,557 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>45. A Counting Semaphore - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="semaphore"><a class="header" href="#semaphore">45. A Counting Semaphore</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs"><code>src/problems/semaphore.rs</code></a>. Test it with <code>cargo test semaphore</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Implement <code>Semaphore::new(permits)</code> with:</p>
+<ul>
+<li><code>acquire_guard</code>, which blocks until a permit is free, takes it, and returns a guard
+that gives it back when dropped;</li>
+<li><code>try_acquire</code>, which takes a permit only if one is free now;</li>
+<li><code>try_acquire_timeout</code>, which waits at most a given duration;</li>
+<li><code>available_permits</code>, for metrics.</li>
+</ul>
+<p>At no time may more guards be alive than the semaphore has permits.</p>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>The state is one integer, <code>available</code>, in a <code>Mutex</code>. Taking a permit decrements it and
+releasing one increments it. A thread that finds <code>available == 0</code> waits on a
+<code>Condvar</code>, <code>released</code>, and every release signals that condition variable once.</p>
+<pre><code class="language-text">acquire_guard                           release (in SemaphoreGuard::drop)
+lock state                              lock state
+while available == 0:                   available += 1
+    state = released.wait(state)        released.notify_one()
+available -= 1
+return SemaphoreGuard
+</code></pre>
+<p><code>notify_one</code> is enough, because a release frees exactly one permit, so exactly one
+waiter can proceed. The <code>while</code> loop re-checks the count after every wake-up, because a
+wake-up can be spurious and another thread can take the permit between the signal and
+the moment the woken thread reacquires the lock.</p>
+<p>The guard is what makes the permit count trustworthy. Code written as “acquire, work,
+release” leaks a permit whenever the work returns early or panics. With a guard, the
+release runs in <code>Drop</code> on every path.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Counting semaphore built from `Mutex` + `Condvar`.
+//!
+//! A semaphore bounds how many callers may proceed at once without protecting any
+//! data. It is the primitive behind connection pools, per-account GPU slot limits,
+//! and bounded fan-out in an SDK or CLI.
+//!
+//! The RAII guard returns the permit on drop, so a panicking worker cannot leak a
+//! permit and slowly deadlock the pool.
+
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
+
+struct State {
+    available: usize,
+}
+
+/// A counting semaphore. Cloning is not provided; share one behind `Arc`.
+pub struct Semaphore {
+    state: Mutex&lt;State&gt;,
+    released: Condvar,
+}
+
+impl Semaphore {
+    /// Create a semaphore with `permits` permits available.
+    pub fn new(permits: usize) -&gt; Self {
+        Self {
+            state: Mutex::new(State { available: permits }),
+            released: Condvar::new(),
+        }
+    }
+
+    /// Block until a permit is available.
+    pub fn acquire(&amp;self) {
+        let _guard = self.acquire_guard();
+    }
+
+    /// Block until a permit is available, returning a guard that releases it.
+    pub fn acquire_guard(&amp;self) -&gt; SemaphoreGuard&lt;'_&gt; {
+        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        while state.available == 0 {
+            state = self.released.wait(state).expect("semaphore mutex poisoned");
+        }
+        state.available -= 1;
+        SemaphoreGuard { semaphore: self }
+    }
+
+    /// Take a permit only if one is free right now.
+    pub fn try_acquire(&amp;self) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        if state.available == 0 {
+            None
+        } else {
+            state.available -= 1;
+            Some(SemaphoreGuard { semaphore: self })
+        }
+    }
+
+    /// Take a permit, waiting at most `timeout`.
+    pub fn try_acquire_timeout(&amp;self, timeout: Duration) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        if state.available &gt; 0 {
+            state.available -= 1;
+            return Some(SemaphoreGuard { semaphore: self });
+        }
+
+        let (mut state, _timed_out) = self
+            .released
+            .wait_timeout(state, timeout)
+            .expect("semaphore mutex poisoned");
+
+        if state.available == 0 {
+            None
+        } else {
+            state.available -= 1;
+            Some(SemaphoreGuard { semaphore: self })
+        }
+    }
+
+    /// Permits currently free. Useful for metrics, not for control flow.
+    pub fn available_permits(&amp;self) -&gt; usize {
+        self.state
+            .lock()
+            .expect("semaphore mutex poisoned")
+            .available
+    }
+
+    fn release(&amp;self) {
+        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        state.available += 1;
+        self.released.notify_one();
+    }
+}
+
+/// Releases one permit when dropped.
+pub struct SemaphoreGuard&lt;'a&gt; {
+    semaphore: &amp;'a Semaphore,
+}
+
+impl Drop for SemaphoreGuard&lt;'_&gt; {
+    fn drop(&amp;mut self) {
+        self.semaphore.release();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::thread;
+
+    #[test]
+    fn never_exceeds_the_permit_count() {
+        let permits = 4;
+        let semaphore = Arc::new(Semaphore::new(permits));
+        let active = Arc::new(AtomicUsize::new(0));
+        let peak = Arc::new(AtomicUsize::new(0));
+
+        let mut handles = Vec::new();
+        for _ in 0..32 {
+            let semaphore = Arc::clone(&amp;semaphore);
+            let active = Arc::clone(&amp;active);
+            let peak = Arc::clone(&amp;peak);
+            handles.push(thread::spawn(move || {
+                let _guard = semaphore.acquire_guard();
+                let now = active.fetch_add(1, Ordering::SeqCst) + 1;
+                peak.fetch_max(now, Ordering::SeqCst);
+                thread::sleep(Duration::from_millis(1));
+                active.fetch_sub(1, Ordering::SeqCst);
+            }));
+        }
+        for handle in handles {
+            handle.join().expect("worker panicked");
+        }
+
+        assert!(peak.load(Ordering::SeqCst) &lt;= permits);
+        assert_eq!(semaphore.available_permits(), permits);
+    }
+
+    #[test]
+    fn guard_returns_the_permit_on_drop() {
+        let semaphore = Semaphore::new(1);
+        {
+            let _guard = semaphore.acquire_guard();
+            assert_eq!(semaphore.available_permits(), 0);
+        }
+        assert_eq!(semaphore.available_permits(), 1);
+    }
+
+    #[test]
+    fn try_acquire_reports_contention() {
+        let semaphore = Semaphore::new(1);
+        let first = semaphore.try_acquire().expect("first permit is free");
+        assert!(semaphore.try_acquire().is_none());
+        drop(first);
+        assert!(semaphore.try_acquire().is_some());
+    }
+
+    #[test]
+    fn timeout_gives_up_when_no_permit_arrives() {
+        let semaphore = Semaphore::new(0);
+        assert!(
+            semaphore
+                .try_acquire_timeout(Duration::from_millis(5))
+                .is_none()
+        );
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>State</code> is a struct with a single field rather than a bare <code>usize</code>. The indirection
+costs nothing and leaves room for more state, such as a closed flag, without changing
+every lock site.</p>
+<p><code>acquire_guard</code> returns <code>SemaphoreGuard&lt;'_&gt;</code>, whose lifetime borrows the semaphore. The
+guard cannot outlive the semaphore, and code that shares the semaphore between threads
+must therefore share it by reference, through <code>Arc</code> or a scope.</p>
+<p><code>try_acquire</code> returns <code>Option&lt;SemaphoreGuard&lt;'_&gt;&gt;</code>, so the caller either holds a permit
+or knows it does not, and cannot forget to release one it took.</p>
+<p><code>try_acquire_timeout</code> checks the count, and if no permit is free, waits once with
+<code>wait_timeout</code>. After the wait it checks the count again and returns <code>None</code> if it is
+still zero. The boolean that reports whether the wait timed out is ignored, because the
+count is the authoritative answer.</p>
+<p><code>release</code> is private. The only way to return a permit is to drop a guard, which rules
+out releasing a permit that was never taken.</p>
+<p><code>never_exceeds_the_permit_count</code> runs 32 threads against four permits. Each thread
+increments an <code>active</code> counter after acquiring, records the maximum with <code>fetch_max</code>,
+sleeps for a millisecond, and decrements. The test requires the recorded peak to be at
+most four and all permits to be back at the end.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p><strong>Three threads contending for a semaphore with two permits</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>time</th><th>thread</th><th>action</th><th><code>available</code> after</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>A</td><td><code>acquire_guard</code>: count is 2, take one</td><td>1</td></tr>
+<tr><td>2</td><td>B</td><td><code>acquire_guard</code>: count is 1, take one</td><td>0</td></tr>
+<tr><td>3</td><td>C</td><td><code>acquire_guard</code>: count is 0, <code>wait</code> releases the lock and parks</td><td>0</td></tr>
+<tr><td>4</td><td>A</td><td>guard dropped: <code>release</code> increments and calls <code>notify_one</code></td><td>1</td></tr>
+<tr><td>5</td><td>C</td><td>wakes, reacquires the lock, loop sees 1, takes it</td><td>0</td></tr>
+<tr><td>6</td><td>B</td><td>guard dropped</td><td>1</td></tr>
+<tr><td>7</td><td>C</td><td>guard dropped</td><td>2</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+</thead>
+<tbody>
+<tr><td><code>acquire_guard</code>, permit free</td><td>one lock acquisition</td><td>none</td></tr>
+<tr><td><code>acquire_guard</code>, no permit</td><td>blocks until a release; one context switch to wake</td><td>the parked thread’s stack</td></tr>
+<tr><td><code>try_acquire</code></td><td>one lock acquisition</td><td>none</td></tr>
+<tr><td>guard drop</td><td>one lock acquisition and one notification</td><td>none</td></tr>
+<tr><td>memory</td><td></td><td>one <code>Mutex&lt;usize&gt;</code> and one <code>Condvar</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong><code>acquire</code> does not hold a permit.</strong> Its body is <code>let _guard = self.acquire_guard();</code>.
+The guard is bound to <code>_guard</code> and dropped at the end of the function, so <code>acquire</code>
+waits until a permit is free, takes it, and returns it before the caller runs any code.
+A caller that writes <code>semaphore.acquire(); do_work();</code> has no concurrency limit at all.
+The method should either be removed or return the guard. The tests do not call it.</p>
+<p><strong>The timeout is not a deadline.</strong> <code>try_acquire_timeout</code> waits once. A spurious
+wake-up, or a notification whose permit is taken by another thread first, makes it
+return <code>None</code> before the timeout has elapsed. <code>Condvar::wait_timeout_while</code> re-checks
+the condition and continues waiting for the remaining time, and it is the idiomatic
+replacement:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn try_acquire_timeout(&amp;self, timeout: Duration) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+    let state = self.state.lock().expect("semaphore mutex poisoned");
+    let (mut state, result) = self
+        .released
+        .wait_timeout_while(state, timeout, |state| state.available == 0)
+        .expect("semaphore mutex poisoned");
+    if result.timed_out() {
+        return None;
+    }
+    state.available -= 1;
+    Some(SemaphoreGuard { semaphore: self })
+}
+<span class="boring">}</span></code></pre>
+<p><code>wait_timeout_while</code> returns immediately without waiting when a permit is already
+free, so the separate fast path is no longer needed.</p>
+<p><strong>No fairness.</strong> A thread that arrives just as a permit is released can take it ahead
+of one that has waited longer.</p>
+<p><strong>No way to change the permit count.</strong> A pool that grows or shrinks at run time needs
+an <code>add_permits</code> method, and a shutdown path needs a way to wake all waiters with an
+error.</p>
+<p><strong><code>available_permits</code> is stale on return.</strong> The documentation comment says so: the
+count can change before the caller reads it, so it is suitable for metrics and not for
+deciding whether to acquire.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A counting semaphore is a count under a <code>Mutex</code> plus a <code>Condvar</code> that waiters park on;
+each release notifies one waiter.</li>
+<li>The condition is re-checked in a <code>while</code> loop after every wake-up.</li>
+<li>A guard that releases in <code>Drop</code> makes it impossible to leak a permit on an early
+return or a panic, and a private <code>release</code> makes it impossible to release one twice.</li>
+<li><code>acquire</code> drops its guard before returning, so it does not limit concurrency.</li>
+<li><code>wait_timeout_while</code> implements a time-limited wait that tolerates spurious wake-ups.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Edsger W. Dijkstra, “Cooperating sequential processes”, technical report EWD-123,
+1965, which introduced semaphores.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/struct.Condvar.html#method.wait_timeout_while"><code>Condvar::wait_timeout_while</code></a>.</li>
+<li>Tokio, <a href="https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html"><code>tokio::sync::Semaphore</code></a>, the asynchronous equivalent with owned permits.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="44-spin-lock.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="46-bounded-queue.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="44-spin-lock.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="46-bounded-queue.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

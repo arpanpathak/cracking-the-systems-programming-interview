@@ -1,0 +1,781 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>56. A Minimal Async Runtime - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="async-runtime"><a class="header" href="#async-runtime">56. A Minimal Async Runtime</a></h1>
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs"><code>src/problems/async_mini.rs</code></a> and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/async_demo.rs"><code>src/bin/async_demo.rs</code></a>. Run the tests with <code>cargo test async_mini</code> and the demonstration with <code>cargo run --bin async_demo</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Using only the standard library:</p>
+<ol>
+<li>Implement <code>block_on(future)</code>, which runs a future on the current thread and returns
+its output, without spinning while the future is waiting.</li>
+<li>Implement two futures by hand: one that yields a given number of times before it
+completes, and one that completes after a wall-clock delay.</li>
+<li>Implement an executor that runs several spawned tasks, each polled again only after
+it has been woken.</li>
+</ol>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p><strong>The contract.</strong> A future has one method:</p>
+<pre><code class="language-text">fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt;
+</code></pre>
+<p><code>Poll::Ready(value)</code> means the future is finished. <code>Poll::Pending</code> means it cannot make
+progress now, and it carries an obligation: before returning <code>Pending</code>, the future must
+arrange for <code>cx.waker()</code> to be called when progress becomes possible. A runtime that
+receives <code>Pending</code> does not poll that future again until its waker is called.</p>
+<p><strong>Pinning.</strong> An <code>async</code> block that holds a reference to one of its own local variables
+across an <code>.await</code> becomes a self-referential struct. Moving it would invalidate the
+reference. <code>Pin&lt;&amp;mut Self&gt;</code> promises the future that it will not be moved again, which
+is why <code>poll</code> receives a pinned reference and why runtimes pin futures, typically with
+<code>Box::pin</code>, before polling them.</p>
+<p><strong>A waker for a thread.</strong> <code>block_on</code> has one future and one thread. Its waker can simply
+unpark that thread. The loop polls, and on <code>Pending</code> parks the thread until the waker
+unparks it.</p>
+<p><strong>A waker for a task.</strong> An executor with many tasks keeps a queue of tasks ready to be
+polled. A task’s waker pushes the task back onto that queue. The executor pops a task,
+polls it, and moves on; a task that returned <code>Pending</code> is not in the queue until
+something wakes it.</p>
+<p>The diagram below shows the executor’s cycle.</p>
+<pre><code class="language-text">spawn(future) ---&gt; queue: [task]
+                      |
+                      v
+run: pop task ---&gt; poll(future, Context with waker = task)
+                      |
+          +-----------+------------------+
+          v                              v
+   Poll::Ready                     Poll::Pending
+   mark completed                  the future stored or called the waker
+                                         |
+                           waker.wake() pushes the task back onto the queue
+</code></pre>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<h3 id="block_on"><a class="header" href="#block_on"><code>block_on</code></a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! A minimal async runtime, built from `Future`, `Waker`, and `Pin`.
+//!
+//! `.await` is not magic. A `Future` is a state machine with one method, `poll`,
+//! that returns `Ready(value)` or `Pending`; when it returns `Pending` it must
+//! arrange for the `Waker` in its `Context` to be called later. An executor is a
+//! loop that polls tasks and parks until a waker fires.
+//!
+//! This module implements that loop twice, from scratch and without a runtime
+//! dependency:
+//!
+//! - [`block_on`] drives one future on the current thread, parking on `Pending`;
+//! - [`MiniExecutor`] queues independent tasks and re-enqueues them when woken.
+//!
+//! It is deliberately small. What it makes concrete is the part interviewers ask
+//! about: why `poll` takes `Pin&lt;&amp;mut Self&gt;`, what `Pending` promises, and where
+//! `Send` matters for a multi-threaded runtime.
+
+use std::collections::VecDeque;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll, Wake, Waker};
+use std::thread;
+use std::time::Duration;
+
+/// Block the current thread until `future` completes.
+///
+/// The future is pinned on the heap so its address is stable across `await`
+/// points, and the thread parks whenever the future reports `Pending`. The waker
+/// unparks it, so the loop polls again only when there is a reason to.
+pub fn block_on&lt;F: Future&gt;(future: F) -&gt; F::Output {
+    let mut future = Box::pin(future);
+    let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
+    let mut context = Context::from_waker(&amp;waker);
+
+    loop {
+        match future.as_mut().poll(&amp;mut context) {
+            Poll::Ready(value) =&gt; return value,
+            // `park` may return spuriously, so the loop re-polls either way.
+            Poll::Pending =&gt; thread::park(),
+        }
+    }
+}
+
+/// Waker that unparks the thread which is driving the future.
+struct ThreadWaker(thread::Thread);
+
+impl Wake for ThreadWaker {
+    fn wake(self: Arc&lt;Self&gt;) {
+        self.0.unpark();
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        self.0.unpark();
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>Box::pin(future)</code> moves the future to the heap and returns <code>Pin&lt;Box&lt;F&gt;&gt;</code>. After that
+the future’s address does not change, so <code>poll</code> may be called on it repeatedly.
+<code>future.as_mut()</code> produces the <code>Pin&lt;&amp;mut F&gt;</code> that <code>poll</code> requires, without moving the box.</p>
+<p><code>Waker::from(Arc::new(ThreadWaker(thread::current())))</code> builds a waker from any type that
+implements the <code>Wake</code> trait, stable since Rust 1.51. Before <code>Wake</code>, building a waker
+required a hand-written virtual function table and <code>unsafe</code> code.</p>
+<p><code>thread::park</code> is safe against a lost wake-up. If the waker calls <code>unpark</code> before the
+thread parks, the thread receives a token, and the next <code>park</code> returns immediately.
+<code>park</code> may also return spuriously, which the loop tolerates because it simply polls again.</p>
+<h3 id="a-future-that-yields"><a class="header" href="#a-future-that-yields">A future that yields</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A future that yields to the executor `times` times before completing.
+///
+/// Completes with the number of times it yielded, which makes it easy to assert
+/// that a runtime actually suspended and resumed a task.
+pub struct YieldTimes {
+    remaining: usize,
+    yielded: usize,
+}
+
+impl YieldTimes {
+    pub fn new(times: usize) -&gt; Self {
+        Self {
+            remaining: times,
+            yielded: 0,
+        }
+    }
+}
+
+impl Future for YieldTimes {
+    type Output = usize;
+
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;usize&gt; {
+        // `YieldTimes` is `Unpin`, so a mutable reference is safe to take.
+        let this = self.get_mut();
+        if this.remaining == 0 {
+            return Poll::Ready(this.yielded);
+        }
+
+        this.remaining -= 1;
+        this.yielded += 1;
+        // Ask to be polled again; an executor that ignores this hangs.
+        context.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>YieldTimes</code> contains only two <code>usize</code> fields, so it implements <code>Unpin</code>, and
+<code>self.get_mut()</code> can turn <code>Pin&lt;&amp;mut Self&gt;</code> back into <code>&amp;mut Self</code> without <code>unsafe</code> code.</p>
+<p>Each <code>Pending</code> result is preceded by <code>context.waker().wake_by_ref()</code>. The future asks to be
+polled again immediately. Returning <code>Pending</code> without arranging a wake-up would leave the
+future suspended forever, which is the most common bug in hand-written futures.</p>
+<h3 id="a-future-that-waits-for-time"><a class="header" href="#a-future-that-waits-for-time">A future that waits for time</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct DelayState {
+    ready: bool,
+    waker: Option&lt;Waker&gt;,
+}
+
+/// A future that completes after a wall-clock duration.
+///
+/// A background thread sleeps and then wakes the task. Storing and waking the
+/// [`Waker`] — rather than spinning in `poll` — is the whole point: `poll` never
+/// blocks the executor thread.
+pub struct Delay {
+    state: Arc&lt;Mutex&lt;DelayState&gt;&gt;,
+}
+
+impl Delay {
+    pub fn new(duration: Duration) -&gt; Self {
+        let state = Arc::new(Mutex::new(DelayState {
+            ready: false,
+            waker: None,
+        }));
+
+        let thread_state = Arc::clone(&amp;state);
+        thread::spawn(move || {
+            thread::sleep(duration);
+            let waker = {
+                let mut guard = thread_state.lock().expect("delay mutex poisoned");
+                guard.ready = true;
+                guard.waker.take()
+            };
+            if let Some(waker) = waker {
+                waker.wake();
+            }
+        });
+
+        Self { state }
+    }
+}
+
+impl Future for Delay {
+    type Output = ();
+
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
+        let mut guard = self.state.lock().expect("delay mutex poisoned");
+        if guard.ready {
+            Poll::Ready(())
+        } else {
+            guard.waker = Some(context.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>Delay::new</code> starts a thread that sleeps and then sets <code>ready</code> and takes the stored waker,
+both under the mutex. <code>poll</code> checks <code>ready</code> and stores a clone of the current waker, also
+under the mutex. Because both sides hold the lock while they read or write the shared
+state, there is no moment at which the timer thread can see “no waker yet” after <code>poll</code>
+has decided to return <code>Pending</code>. Without the lock, a wake-up could be lost.</p>
+<p><code>poll</code> replaces the stored waker on every call. A future may be polled with a different
+waker each time, for example after being moved to another task, and it must wake the most
+recent one.</p>
+<p>The timer thread calls <code>waker.wake()</code> after releasing the lock. Calling a waker while
+holding a lock the woken task might also need is a common source of deadlock.</p>
+<h3 id="the-executor"><a class="header" href="#the-executor">The executor</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Task {
+    future: Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;,
+    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
+    completed: AtomicBool,
+}
+
+impl Wake for Task {
+    fn wake(self: Arc&lt;Self&gt;) {
+        // Re-enqueue the task. Cloning the `Arc` is a refcount bump, not a deep copy.
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(Arc::clone(&amp;self));
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(Arc::clone(self));
+    }
+}
+
+/// A single-threaded, `Send`-only executor.
+///
+/// Real runtimes add work stealing, timers, and I/O readiness. This keeps only the
+/// part that matters for explaining how `.await` makes progress: a queue of tasks
+/// where waking a task puts it back on the queue.
+#[derive(Default)]
+pub struct MiniExecutor {
+    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
+}
+
+impl MiniExecutor {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    /// Add a task to the executor.
+    pub fn spawn&lt;F&gt;(&amp;self, future: F)
+    where
+        F: Future&lt;Output = ()&gt; + Send + 'static,
+    {
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(future)),
+            queue: Arc::clone(&amp;self.queue),
+            completed: AtomicBool::new(false),
+        });
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(task);
+    }
+
+    /// Run until the queue is empty.
+    ///
+    /// A task that returns `Pending` without waking stays suspended, which is why
+    /// this returns rather than blocks: a runtime with timers or I/O would also
+    /// park on an event source.
+    pub fn run(&amp;self) {
+        loop {
+            let Some(task) = self
+                .queue
+                .lock()
+                .expect("executor queue poisoned")
+                .pop_front()
+            else {
+                return;
+            };
+
+            if task.completed.load(Ordering::Acquire) {
+                continue;
+            }
+
+            let waker = Waker::from(Arc::clone(&amp;task));
+            let mut context = Context::from_waker(&amp;waker);
+            let mut future = task.future.lock().expect("task mutex poisoned");
+            if future.as_mut().poll(&amp;mut context).is_ready() {
+                task.completed.store(true, Ordering::Release);
+            }
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>A <code>Task</code> holds its future as <code>Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;</code>. The
+<code>Wake</code> trait requires <code>Arc&lt;Task&gt;</code> to be <code>Send</code> and <code>Sync</code>, because a waker may be called
+from any thread. The <code>Mutex</code> makes the task <code>Sync</code>; the <code>Send</code> bound on the future makes it
+safe to poll the future from whichever thread holds the lock.</p>
+<p><code>spawn</code> requires <code>F: Future&lt;Output = ()&gt; + Send + 'static</code>. The future is stored in the
+task and outlives the call to <code>spawn</code>, so it cannot borrow from the caller, and it may be
+polled after a wake from another thread, so it must be <code>Send</code>. These are the same bounds
+that <code>tokio::spawn</code> imposes, for the same reasons.</p>
+<p><code>run</code> pops tasks until the queue is empty. <code>let Some(task) = ... else { return; }</code> takes
+the queue lock only for the <code>pop_front</code>, because the temporary guard is dropped at the end
+of the <code>let</code> statement. The lock must not be held while polling, because a future that
+wakes itself during <code>poll</code>, as <code>YieldTimes</code> does, pushes onto the same queue.</p>
+<p>The <code>completed</code> flag handles a task that is woken after it has finished. Its waker may
+still exist, held by a timer or a clone, and pushing it onto the queue must not poll a
+completed future again.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::AtomicUsize;
+    use std::time::Instant;
+
+    #[test]
+    fn block_on_drives_a_hand_written_future() {
+        assert_eq!(block_on(YieldTimes::new(3)), 3);
+    }
+
+    #[test]
+    fn block_on_polls_an_async_block() {
+        let total = block_on(async {
+            let a = YieldTimes::new(1).await;
+            let b = YieldTimes::new(2).await;
+            a + b
+        });
+        assert_eq!(total, 3);
+    }
+
+    #[test]
+    fn block_on_waits_for_a_delay() {
+        let start = Instant::now();
+        block_on(Delay::new(Duration::from_millis(30)));
+        assert!(start.elapsed() &gt;= Duration::from_millis(20));
+    }
+
+    #[test]
+    fn executor_runs_spawned_tasks_to_completion() {
+        let executor = MiniExecutor::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        for _ in 0..4 {
+            let counter = Arc::clone(&amp;counter);
+            executor.spawn(async move {
+                YieldTimes::new(2).await;
+                counter.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+
+        executor.run();
+        assert_eq!(counter.load(Ordering::SeqCst), 4);
+    }
+
+    #[test]
+    fn executor_polls_an_immediately_ready_task() {
+        let executor = MiniExecutor::new();
+        let flag = Arc::new(AtomicBool::new(false));
+
+        let task_flag = Arc::clone(&amp;flag);
+        executor.spawn(async move {
+            task_flag.store(true, Ordering::SeqCst);
+        });
+
+        executor.run();
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+<span class="boring">}</span></code></pre>
+<pre class="playground"><code class="language-rust">//! Runs the hand-written async runtime in [`nvidia_rust_interview_lab::problems::async_mini`].
+//!
+//! There is no Tokio here on purpose: the point is to show that `Future`, `Waker`,
+//! `Poll`, and `Pin` are enough to build an executor, and that `.await` is just
+//! sugar over a state machine that is polled.
+//!
+//! ```bash
+//! cargo run --bin async_demo
+//! ```
+
+use nvidia_rust_interview_lab::problems::async_mini::{Delay, MiniExecutor, YieldTimes, block_on};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
+
+fn main() {
+    println!("== block_on drives a hand-written future ==");
+    let yields = block_on(YieldTimes::new(3));
+    println!("YieldTimes suspended and resumed {yields} time(s)");
+
+    println!("\n== block_on drives an async block ==");
+    let total = block_on(async {
+        let first = YieldTimes::new(1).await;
+        let second = YieldTimes::new(2).await;
+        first + second
+    });
+    println!("async block finished with {total}");
+
+    println!("\n== block_on parks the thread until the waker fires ==");
+    let start = Instant::now();
+    block_on(Delay::new(Duration::from_millis(50)));
+    println!("Delay completed after {:?}", start.elapsed());
+
+    println!("\n== MiniExecutor runs independent tasks ==");
+    let executor = MiniExecutor::new();
+    let completed = Arc::new(AtomicUsize::new(0));
+
+    for id in 1..=3 {
+        let completed = Arc::clone(&amp;completed);
+        executor.spawn(async move {
+            YieldTimes::new(id).await;
+            completed.fetch_add(1, Ordering::SeqCst);
+            println!("task {id} completed after {id} yield(s)");
+        });
+    }
+
+    executor.run();
+    println!("{} task(s) completed", completed.load(Ordering::SeqCst));
+}</code></pre>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p>The demonstration program printed:</p>
+<pre><code class="language-text">== block_on drives a hand-written future ==
+YieldTimes suspended and resumed 3 time(s)
+
+== block_on drives an async block ==
+async block finished with 3
+
+== block_on parks the thread until the waker fires ==
+Delay completed after 50.291507ms
+
+== MiniExecutor runs independent tasks ==
+task 1 completed after 1 yield(s)
+task 2 completed after 2 yield(s)
+task 3 completed after 3 yield(s)
+3 task(s) completed
+</code></pre>
+<p><strong>The executor queue while running the three tasks</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>pop</th><th>task</th><th>poll result</th><th>wake</th><th>queue after</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>task 1</td><td><code>Pending</code>, no yields remain</td><td>re-enqueue 1</td><td><code>[2, 3, 1]</code></td></tr>
+<tr><td>2</td><td>task 2</td><td><code>Pending</code></td><td>re-enqueue 2</td><td><code>[3, 1, 2]</code></td></tr>
+<tr><td>3</td><td>task 3</td><td><code>Pending</code></td><td>re-enqueue 3</td><td><code>[1, 2, 3]</code></td></tr>
+<tr><td>4</td><td>task 1</td><td><code>Ready</code>, prints</td><td>none</td><td><code>[2, 3]</code></td></tr>
+<tr><td>5</td><td>task 2</td><td><code>Pending</code></td><td>re-enqueue 2</td><td><code>[3, 2]</code></td></tr>
+<tr><td>6</td><td>task 3</td><td><code>Pending</code></td><td>re-enqueue 3</td><td><code>[2, 3]</code></td></tr>
+<tr><td>7</td><td>task 2</td><td><code>Ready</code>, prints</td><td>none</td><td><code>[3]</code></td></tr>
+<tr><td>8</td><td>task 3</td><td><code>Pending</code></td><td>re-enqueue 3</td><td><code>[3]</code></td></tr>
+<tr><td>9</td><td>task 3</td><td><code>Ready</code>, prints</td><td>none</td><td><code>[]</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The round-robin order in the table explains why task 1 finishes first even though all
+three started together.</p>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td><code>block_on</code></td><td>one poll per wake-up; the thread sleeps between them</td></tr>
+<tr><td><code>YieldTimes</code></td><td><code>times + 1</code> polls</td></tr>
+<tr><td><code>Delay::new</code></td><td>one operating-system thread per delay</td></tr>
+<tr><td><code>MiniExecutor::run</code></td><td>one poll and two queue lock acquisitions per wake-up</td></tr>
+<tr><td>memory per task</td><td>one <code>Arc&lt;Task&gt;</code> holding the boxed future, a mutex, and a flag</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong><code>MiniExecutor::run</code> returns while tasks are still waiting.</strong> If a spawned task awaits a
+<code>Delay</code>, its first poll returns <code>Pending</code> and the queue empties before the timer fires, so
+<code>run</code> returns and the task never completes. <code>block_on</code> parks instead, and the <code>Delay</code>
+test therefore uses <code>block_on</code>. A complete executor parks on an event source when the queue
+is empty and has live tasks.</p>
+<p><strong>One thread per timer.</strong> <code>Delay</code> costs an operating-system thread, which defeats the
+purpose of an async runtime. Real runtimes keep one timer structure, such as a hashed
+wheel, and fire wakers from the event loop.</p>
+<p><strong>A reference cycle can leak tasks.</strong> Each <code>Task</code> holds an <code>Arc</code> of the queue, and the
+queue holds <code>Arc&lt;Task&gt;</code> values. If a <code>MiniExecutor</code> is dropped while tasks are still
+queued, the queue and those tasks keep each other alive and are never freed. Storing a
+<code>Weak</code> reference to the queue in each task breaks the cycle.</p>
+<p><strong>No <code>JoinHandle</code> and no cancellation.</strong> Spawned tasks return <code>()</code>, and the caller cannot
+wait for one or cancel it. Results must be communicated through shared state, as the
+tests do with atomics.</p>
+<p><strong>Single-threaded execution.</strong> <code>run</code> polls on the calling thread. The <code>Send</code> bounds are in
+place for a multi-threaded version, which would need several threads popping from the
+queue and, for good performance, per-thread queues with work stealing.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A future returns <code>Poll::Ready</code> when done or <code>Poll::Pending</code> after arranging for its
+waker to be called; a runtime polls it again only after that call.</li>
+<li><code>Pin</code> guarantees a future will not move, which self-referential <code>async</code> state machines
+require, and <code>Box::pin</code> provides it.</li>
+<li><code>block_on</code> pairs a poll loop with a waker that unparks the thread, and <code>thread::park</code>
+cannot lose an early wake-up.</li>
+<li>A hand-written future that returns <code>Pending</code> must store or call the waker, under the
+same lock that the waking side uses.</li>
+<li>An executor is a queue of tasks whose wakers re-enqueue them; <code>Send + 'static</code> bounds on
+<code>spawn</code> follow from storing tasks and waking them from other threads.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>The Rust Async Book, <a href="https://rust-lang.github.io/async-book/02_execution/01_chapter.html">Under the hood: executing futures and tasks</a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/future/trait.Future.html"><code>std::future::Future</code></a>, <a href="https://doc.rust-lang.org/std/task/trait.Wake.html"><code>std::task::Wake</code></a>, and <a href="https://doc.rust-lang.org/std/pin/index.html"><code>std::pin</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/thread/fn.park.html"><code>std::thread::park</code></a>, on the unpark token.</li>
+<li>Mara Bos, <em>Rust Atomics and Locks</em>, O’Reilly Media, 2023, Chapter 1, on thread parking.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="55-http-server.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="57-retry.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="55-http-server.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="57-retry.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
