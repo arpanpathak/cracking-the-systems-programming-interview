@@ -129,3 +129,4 @@ the list printed by `cargo test` reads as an index of the book.
 | `src/problems/graph_bfs.rs`, `src/problems/graph_dfs.rs` | 60 |
 | `src/problems/graph_dijkstra.rs` | 61 |
 | `src/bin/merge_k_sorted_lists_divide.rs` | 62 |
+| `src/problems/three_sum.rs` | 63 |
