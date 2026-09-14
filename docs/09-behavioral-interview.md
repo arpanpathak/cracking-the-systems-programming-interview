@@ -1,72 +1,126 @@
 # 09: Behavioral Interview
 
-Senior Cloud Software Engineer roles are cross-functional and senior. The
-behavioral loop assesses ownership, engineering judgment, collaboration, and the
-handling of ambiguity.
+Senior engineering roles on cloud platform teams are cross-functional: you work with
+backend, SRE, product, and partner teams, often on problems without a clear
+specification. The behavioral interview tests how you have handled that work in the
+past. Interviewers look for ownership, engineering judgment, collaboration, and your
+approach to ambiguity.
+
+This chapter explains how to structure an answer, lists the questions you should
+prepare for, and gives a complete example.
+
+**This chapter covers**
+
+- Structuring answers with the STAR format
+- Preparing a set of stories that covers the common themes
+- Common behavioral questions for systems engineering roles
+- A worked example about building a Kubernetes operator
+- Questions to ask the interviewer, and how to deliver answers
 
 ## The STAR format
 
-- **Situation**: one sentence of context.
-- **Task**: what the candidate owned.
-- **Action**: concrete steps, including technical decisions and trade-offs.
-- **Result**: a measured outcome.
+Structure each answer in four parts:
 
-## Stories mapped to company values
+| Part | Content | Length |
+|---|---|---|
+| **Situation** | The context: the team, the system, and the problem | One or two sentences |
+| **Task** | What you were responsible for | One sentence |
+| **Action** | The steps you took, including technical decisions and the alternatives you rejected | Most of the answer |
+| **Result** | The outcome, with numbers where possible, and what you learned | One or two sentences |
+
+Most weak answers spend too long on the situation and too little on the action. The
+interviewer is assessing what *you* did and why.
+
+## Prepare stories by theme
+
+Prepare six to eight stories before the interview. Many questions can be answered
+with the same story told from a different angle, so choose stories that cover
+several themes. The table gives an example story for each common theme:
 
 | Theme | Example story |
 |---|---|
-| Innovation | built a code generator that removed hundreds of hand-written SDK methods |
-| Impact | cut API p99 from 800ms to 200ms; unblocked GPU cluster onboarding |
-| Collaboration | worked with backend/API teams to design a v1 GPU workload API |
-| Excellence | added integration tests and caught a CRD breaking change before release |
-| Speed/agility | shipped a minimal CLI in a week, then iterated based on customer feedback |
-| Determination | debugged a rare GPU allocation race for days |
-| Inclusion | mentored junior engineers on Kubernetes controller patterns |
+| Innovation | Built a code generator that replaced hundreds of hand-written SDK methods |
+| Impact | Reduced API p99 latency from 800 ms to 200 ms, which unblocked onboarding for GPU clusters |
+| Collaboration | Worked with backend and API teams to design the first version of a GPU workload API |
+| Quality | Added integration tests that caught an incompatible CRD change before release |
+| Speed | Shipped a minimal CLI in one week, then improved it based on customer feedback |
+| Persistence | Spent several days finding the cause of a rare race condition in GPU allocation |
+| Mentoring | Taught junior engineers the patterns for writing Kubernetes controllers |
 
-## Common systems-style behavioral questions
+## Common questions
 
 1. Tell me about a complex cloud feature you designed and shipped.
-2. Tell me about a time you disagreed with a teammate or manager.
-3. How do you decide when to build vs buy vs open source?
-4. Describe a production incident you resolved. What was the root cause?
-5. How do you keep high code quality when deadlines are tight?
-6. Tell me about a time you had to explain a technical design to non-engineers.
-7. What is your experience contributing to open source?
-8. How do you handle ambiguous requirements?
-9. Tell me about a time a project failed. What did you do?
-10. Why this company? Why GPU cloud?
+2. Tell me about a time you disagreed with a teammate or manager. How was it resolved?
+3. How do you decide whether to build a component, buy it, or use an open-source
+   project?
+4. Describe a production incident you resolved. What was the root cause, and what
+   changed afterward?
+5. How do you maintain code quality when a deadline is tight?
+6. Tell me about a time you explained a technical design to people who are not
+   engineers.
+7. What is your experience contributing to open-source projects?
+8. How do you proceed when requirements are ambiguous?
+9. Tell me about a project that failed. What did you do, and what did you learn?
+10. Why do you want to work on GPU cloud infrastructure?
 
-## A worked story (cloud and operator)
+For questions about disagreement and failure, make sure the answer shows what you did
+to resolve the situation and what you would do differently. Do not blame others.
 
-> **Situation**: Our SaaS platform allowed users to create GPU inference endpoints, but
-> onboarding a new GPU type required manual per-cluster changes.
+## A worked example
+
+The following answer responds to question 1.
+
+> **Situation:** Our platform let customers create GPU inference endpoints, but
+> supporting a new GPU type required manual changes in every cluster.
 >
-> **Task**: I led the move from a custom Python provisioner to a Kubernetes operator.
+> **Task:** I led the replacement of our custom Python provisioning service with a
+> Kubernetes operator.
 >
-> **Action**: I designed a `GpuWorkload` CRD with status conditions, wrote the
-> controller-runtime reconciler, added finalizers to release cloud GPU reservations,
-> and generated SDK/CLI types from OpenAPI. I paired with SRE to test driver installs
-> on a real A100 cluster and added Kind tests for CPU-only CI.
+> **Action:** I designed a `GpuWorkload` custom resource with status conditions and
+> wrote the reconciler with controller-runtime. I added finalizers so that deleting a
+> workload released its GPU reservation in our cloud account, and I generated the SDK
+> and CLI types from our OpenAPI specification so they stayed consistent with the API.
+> I worked with the SRE team to test driver installation on a real A100 cluster, and I
+> added Kind-based tests so that CI could run without GPUs.
 >
-> **Result**: new GPU types became a config change; create-time p95 dropped 35%;
-> the same operator now runs in three regions.
+> **Result:** Supporting a new GPU type became a configuration change. The p95 time to
+> create an endpoint dropped by 35%, and the same operator now runs in three regions.
 
-## Questions for the interviewer
+The answer names specific technical decisions (status conditions, finalizers,
+generated types), explains why each one was made, describes work with another team,
+and ends with measurable results.
 
-- How do GPU cloud services use Kubernetes today: multi-cluster, virtual clusters, or both?
-- What is the team's relationship with GPU Operator and DGX Cloud?
-- How do SDK/CLI teams receive API requirements from backend teams?
-- What is the biggest scaling challenge for the team in the next year?
-- How are production incidents and on-call handled?
-- What does the team generate from OpenAPI/protobuf today?
-- What does success look like in the first six months?
+## Questions to ask the interviewer
+
+Prepare several questions. They show interest in the work and help you evaluate the
+team:
+
+- How does the team use Kubernetes today: many clusters, virtual clusters, or both?
+- How does the team work with the GPU Operator and other NVIDIA platform teams?
+- How do the SDK and CLI teams receive API requirements from the backend teams?
+- What is the team's largest scaling challenge for the next year?
+- How are on-call duties and production incidents handled?
+- What does the team currently generate from OpenAPI or Protocol Buffers?
+- What would success look like for this role after six months?
 
 ## Delivery
 
-- Attribution: state specific contributions rather than a collective "we".
-- Results are quantified wherever possible.
-- Ownership is shown by first-person verbs: drove, owned, shipped.
-- Learning is shown by describing what would be done differently.
-- Stories run under two minutes.
-- Technical terms are practised aloud: reconciler, finalizer, controller-runtime,
-  device plugin, MIG, DCGM.
+- **Describe your own contribution.** Say "I designed" and "I wrote" for your work,
+  and credit others by name or role for theirs. An answer that says only "we" does
+  not show what you did.
+- **Quantify results** wherever possible: latency, cost, time saved, incidents
+  prevented.
+- **Keep each answer under two minutes.** The interviewer will ask follow-up questions
+  if they want more detail.
+- **Say what you learned** and what you would do differently.
+- **Practice technical terms aloud** so that they come easily: reconciler, finalizer,
+  controller-runtime, device plugin, MIG, DCGM.
+
+## Summary
+
+- Use STAR, and spend most of the answer on your actions and decisions.
+- Prepare six to eight stories that together cover the common themes.
+- Show ownership with first-person statements, and show judgment by explaining the
+  alternatives you considered.
+- End each story with a measurable result and a lesson.
+- Prepare questions for the interviewer about the team's systems and challenges.

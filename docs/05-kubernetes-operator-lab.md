@@ -1,14 +1,31 @@
 # 05: Kubernetes Operator Lab (GpuWorkload), Step by Step
 
-The repository contains a Kubebuilder/controller-runtime operator in `operator/`.
-It compiles, has unit tests, generates CRDs and RBAC, and runs against a Kind
-cluster. The sections below follow the code in the order it executes.
+The `operator/` directory in this repository contains a working Kubernetes operator
+built with Kubebuilder and controller-runtime. It compiles, has unit tests, generates
+its CRD and RBAC manifests, and runs against a local Kind cluster.
+
+This chapter walks through that operator in the order its code runs: the API types,
+the reconciler, the manager, the generated configuration, and the tests. It then shows
+how to run it, how to explain it in an interview, and how to extend it.
+`04-kubernetes-operator.md` explains the underlying concepts; read it first if terms
+such as *reconcile* or *owner reference* are unfamiliar.
+
+**This chapter covers**
+
+- The `GpuWorkload` custom resource and the objects the operator creates from it
+- API type design: required fields, pointer fields, defaults, and status
+- The reconciler, step by step, including GPU resource requests and status updates
+- Two defects in the reconciler and how to fix them
+- The manager, RBAC markers, and unit tests with the fake client
+- Running the operator on Kind with `scripts/verify-kind.sh`
+- A summary you can give in an interview, and exercises that extend the lab
 
 ---
 
-## 1. What the lab builds
+## 1. What the operator does
 
-The operator defines a `GpuWorkload` custom resource:
+The operator adds a `GpuWorkload` resource to the cluster. The sample for Kind,
+`config/samples/gpucloud_v1_gpuworkload_kind.yaml`, is:
 
 ```yaml
 apiVersion: gpucloud.example.com/v1
@@ -24,18 +41,22 @@ spec:
   containerPort: 80
 ```
 
-The controller reconciles each `GpuWorkload` into:
+For each `GpuWorkload`, the controller maintains three things:
 
-- a `Deployment` named `<name>-gpu`,
-- a `Service` named `<name>-svc`,
-- CR status with ready/available replicas and standard conditions.
+| Object | Name | Purpose |
+|---|---|---|
+| `Deployment` | `<name>-gpu` | Runs the container, with GPU requests when `gpuCount` is greater than 0 |
+| `Service` | `<name>-svc` | Exposes the container inside the cluster |
+| The `GpuWorkload` status | | Ready and available replica counts, a phase, and an `Available` condition |
 
-On a real GPU cluster the sample uses `gpuCount: 1`, `runtimeClassName: nvidia`,
-and a Triton image so the pod can request `nvidia.com/gpu`.
+The second sample, `config/samples/gpucloud_v1_gpuworkload_gpu.yaml`, is for a real
+GPU cluster. It runs a Triton Inference Server image with `gpuCount: 1`,
+`runtimeClassName: nvidia`, a node selector for A100 nodes, and a toleration for the
+`nvidia.com/gpu` taint.
 
 ---
 
-## 2. Kubebuilder project structure
+## 2. Project structure
 
 ```text
 operator/
@@ -58,19 +79,20 @@ operator/
 └── Dockerfile
 ```
 
-The layout matters:
+The structure separates three concerns:
 
-- `api/v1` is the API contract; `internal/controller` is the behavior.
-- Generated files (`zz_generated.deepcopy.go`, CRD YAML, RBAC YAML) should be
-  regenerated with `make generate manifests` when API/controller markers change.
-- `config/` is a kustomize base; production overlay variations (dev, prod,
-  restricted) compose it.
+- **`api/v1/`** defines the API contract that users write against.
+- **`internal/controller/`** implements the behavior.
+- **`config/`** holds manifests. `crd/bases/` and `rbac/` are generated from markers
+  in the Go code; regenerate them with `make generate manifests` whenever you change a
+  type or marker. `samples/` contains example resources, and `manager/` contains the
+  operator's namespace.
 
 ---
 
-## 3. API types: `api/v1/gpuworkload_types.go`
+## 3. The API types: `api/v1/gpuworkload_types.go`
 
-### 3.1 Spec design
+### 3.1 The spec
 
 ```go
 type GpuWorkloadSpec struct {
@@ -88,7 +110,7 @@ type GpuWorkloadSpec struct {
 }
 ```
 
-Markers on the fields:
+Markers on the fields add validation and defaults to the generated schema:
 
 ```go
 // +kubebuilder:validation:Required
@@ -100,16 +122,21 @@ Image string `json:"image"`
 GpuCount int32 `json:"gpuCount,omitempty"`
 ```
 
-Observations:
+Each field reflects a design decision:
 
-- `Image` has no `omitempty` and is required; the CRD rejects objects without it.
-- `Replicas` is a pointer because `0` and "unset" are different. The controller
-  defaults unset to 1.
-- `GpuCount` defaults to 0, so CPU-only workloads need no explicit field.
-- `Tolerations` is a local type, not `corev1.Toleration`, keeping the API
-  dependency-light and giving a stable external schema.
+- **`Image` is required.** It has no `omitempty` tag and carries the `Required`
+  marker, so the API server rejects a `GpuWorkload` without an image.
+- **`Replicas` is a pointer.** A pointer distinguishes "not set" (`nil`) from an
+  explicit `0`. The controller uses 1 when the field is not set, and a user can still
+  scale to zero.
+- **`GpuCount` defaults to 0.** A CPU-only workload does not need to mention GPUs.
+- **`ServicePort` and `ContainerPort` default to 8000** in the schema, the HTTP port of
+  Triton Inference Server.
+- **`Tolerations` uses a type defined in this package** rather than
+  `corev1.Toleration`. The API exposes only the fields the operator supports, and its
+  schema does not change when the Kubernetes core types change.
 
-### 3.2 Status design
+### 3.2 The status
 
 ```go
 type GpuWorkloadStatus struct {
@@ -123,14 +150,15 @@ type GpuWorkloadStatus struct {
 }
 ```
 
-Status is separate from spec because users should not be able to write status
-through normal updates. The CRD marker enables the status subresource:
+The status subresource is enabled, so ordinary updates to the object cannot change
+the status, and only the controller, which has permission on `gpuworkloads/status`,
+writes it:
 
 ```go
 // +kubebuilder:subresource:status
 ```
 
-### 3.3 Root markers
+### 3.3 Type-level markers
 
 ```go
 // +kubebuilder:object:root=true
@@ -140,13 +168,14 @@ through normal updates. The CRD marker enables the status subresource:
 // +kubebuilder:printcolumn:name="Ready",type=integer,JSONPath=`.status.readyReplicas`
 ```
 
-`printcolumn` makes `kubectl get gpuworkload` show useful columns.
+The `printcolumn` markers add the phase, GPU count, and ready replicas to the output
+of `kubectl get gpuworkloads` (or `kubectl get gw`).
 
 ---
 
-## 4. Controller: `internal/controller/gpuworkload_controller.go`
+## 4. The controller: `internal/controller/gpuworkload_controller.go`
 
-### 4.1 Reconcile skeleton
+### 4.1 `Reconcile`
 
 ```go
 func (r *GpuWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -179,15 +208,17 @@ func (r *GpuWorkloadReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 ```
 
-Key points:
+The function follows the standard reconciler pattern:
 
-- It receives only a `NamespacedName`; it always fetches the latest object.
-- NotFound means the object was deleted. Because child objects have owner refs,
-  Kubernetes GC removes them; no manual delete is needed.
-- Returning an error causes the controller-runtime work queue to retry with
-  rate-limited backoff.
+1. **It reads the object by name.** The request contains only the namespace and name.
+2. **It returns success if the object no longer exists.** The Deployment and Service
+   have owner references to the `GpuWorkload`, so the garbage collector deletes them.
+   The controller does not need to.
+3. **It reconciles each child in turn.** Any error is returned, and the work queue
+   retries the request with exponential backoff.
+4. **It updates the status last,** after the children reflect the current spec.
 
-### 4.2 SetupWithManager
+### 4.2 `SetupWithManager`
 
 ```go
 func (r *GpuWorkloadReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -199,14 +230,15 @@ func (r *GpuWorkloadReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 ```
 
-- `For` triggers reconciles when a `GpuWorkload` changes.
-- `Owns` maps changes of owned Deployments/Services back to their controlling
-  `GpuWorkload`. That is how Deployment `AvailableReplicas` changes wake up this
-  controller so it can update status.
-- A `Watches` on nodes would allow the controller to react to node labels and GPU
-  availability without a custom resource changing.
+- **`For`** reconciles a `GpuWorkload` whenever it changes.
+- **`Owns`** maps changes to a Deployment or Service back to the `GpuWorkload` named in
+  its controller owner reference. When the Deployment's `availableReplicas` changes,
+  this watch triggers a reconcile, and the controller updates the status.
+- The controller does not watch nodes. Adding a `Watches` on `Node` objects would let
+  it react when GPU nodes are added or removed, without any change to a
+  `GpuWorkload`.
 
-### 4.3 reconcileDeployment
+### 4.3 `reconcileDeployment`
 
 ```go
 deployment := &appsv1.Deployment{
@@ -225,22 +257,25 @@ _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error 
 })
 ```
 
-`CreateOrUpdate` does three things:
+`CreateOrUpdate` reads the Deployment, applies the mutate function, and then creates
+the Deployment if it did not exist or updates it if the mutate function changed it.
+Inside the mutate function, the controller sets the owner reference, merges the
+user's labels with the operator's own labels, and fills in the Deployment spec: the
+replica count, the Pod template with the image, command, arguments, runtime class,
+node selector, tolerations, container port, and GPU resources.
 
-- It gets the current object if it exists.
-- The callback mutates the object to the desired state.
-- It creates or updates only when the desired state differs.
+Three details of the mutate function are important:
 
-Traps:
+- **The owner reference is set in the mutate function,** so it is present when the
+  Deployment is first created. A child created without it would not be garbage
+  collected with its `GpuWorkload`, and its events would not reach this controller.
+- **The Service preserves fields that the API server assigns.** `reconcileService`
+  copies `ClusterIP`, `ClusterIPs`, `IPFamilies`, and `IPFamilyPolicy` from the
+  existing Service before replacing its spec. Those fields are immutable after
+  creation, and clearing them would make every update fail.
+- **The Deployment spec is replaced as a whole.** See the first defect in section 4.7.
 
-- `SetControllerReference` must be called before creating a child, or the child
-  will not be garbage-collected with the parent.
-- `Deployment.Spec.Selector` is immutable after creation; a blind change on
-  update is rejected.
-- Service `ClusterIP` is allocated at creation and immutable; the lab preserves
-  existing fields before assigning `service.Spec`.
-
-### 4.4 GPU resource injection
+### 4.4 GPU resources
 
 ```go
 func gpuResources(gpuCount int32) corev1.ResourceRequirements {
@@ -255,9 +290,9 @@ func gpuResources(gpuCount int32) corev1.ResourceRequirements {
 }
 ```
 
-Both request and limit are required: extended resources require
-`requests == limits`, and device plugins and kubelet accounting use the allocated
-quantity. The Deployment's Pod template then contains:
+`nvidia.com/gpu` is an extended resource. Kubernetes requires extended resources in
+`limits`, and when `requests` is also set, the two must be equal. The function sets
+both to the same quantity, so the Pod template contains:
 
 ```yaml
 resources:
@@ -267,11 +302,14 @@ resources:
     nvidia.com/gpu: "1"
 ```
 
-### 4.5 Status update
+For a CPU-only workload, the function returns empty requirements, and the Pod can run
+on nodes without a GPU device plugin, such as the nodes of a Kind cluster.
 
-`updateStatus` fetches the current Deployment, reads `ReadyReplicas` and
-`AvailableReplicas`, builds a status struct, compares it with the latest CR
-status, and only writes when different.
+### 4.5 `updateStatus`
+
+`updateStatus` reads the Deployment, takes its `ReadyReplicas` and
+`AvailableReplicas`, builds a new status, and writes it only if it differs from the
+current status:
 
 ```go
 latest := &gpucloudv1.GpuWorkload{}
@@ -286,49 +324,84 @@ latest.Status = newStatus
 return r.Status().Update(ctx, latest)
 ```
 
-The second fetch matters: the object received at the top of `Reconcile` may be
-stale by the time status is written. Updating with a stale `resourceVersion`
-causes conflicts. The fresh fetch reduces conflicts and ensures status is based
-on the newest spec generation.
+The function reads the `GpuWorkload` again before writing. The object read at the
+start of `Reconcile` may be out of date by this point, and an update with an old
+`resourceVersion` fails with a conflict. Reading the latest version reduces conflicts,
+and the status's `ObservedGeneration` is taken from that latest object. A client
+compares `status.observedGeneration` with `metadata.generation` to check whether the
+status reflects the current spec.
 
-`ObservedGeneration` is set from `latest.Generation`; clients compare it with
-`metadata.generation` to know whether status reflects the current spec.
+### 4.6 The phase and condition helpers
 
-### 4.6 Phase and conditions helpers
+`phaseFor` and `conditionsFor` are pure functions: they take numbers and return values,
+without calling the API. Keeping them separate makes them easy to unit test and keeps
+`Reconcile` short.
 
-Pure helper functions (`phaseFor`, `conditionsFor`) are easy to unit test and
-keep `Reconcile` readable. `conditionsFor` uses `metav1.Condition` with Type,
-Status, Reason, Message, ObservedGeneration, and LastTransitionTime. In a
-production operator, condition helper code should preserve LastTransitionTime
-when the condition status has not changed; the lab sets `now` for simplicity so
-the code stays small.
+| Desired replicas | Ready | Available | `phaseFor` result |
+|---|---|---|---|
+| 0 | any | any | `""` |
+| 2 | 2 | 2 | `Ready` |
+| 3 | 2 | 2 | `Degraded` |
+| 3 | 0 | 0 | `Pending` |
+
+`conditionsFor` returns one `Available` condition, with reason `DeploymentAvailable`
+when all desired replicas are available and `NotAvailable` otherwise.
+
+### 4.7 Known defects
+
+The operator is intentionally small, and it has two defects that are worth
+understanding and fixing.
+
+**The Deployment selector includes user labels.** `reconcileDeployment` uses the
+merged labels, including `spec.labels` from the user, for both the Pod template and
+`spec.selector`. A Deployment's selector cannot change after creation. If a user edits
+`spec.labels` on an existing `GpuWorkload`, every later update of the Deployment is
+rejected, and the error repeats on each retry. The fix is to build the selector only
+from the labels the operator controls, `managedByLabel` and `workloadLabel`, and to
+apply the user's labels only to the Pod template and the Deployment's metadata.
+
+**`LastTransitionTime` is reset on every reconcile.** `conditionsFor` sets
+`LastTransitionTime` to the current time each time it runs. The timestamp should change
+only when the condition's status changes. Because of the new timestamp, the equality
+check in `updateStatus` almost never succeeds, so the controller writes the status on
+nearly every reconcile. The fix is to start from the existing conditions and call
+`meta.SetStatusCondition`, which keeps the previous timestamp when the status is
+unchanged.
+
+A related inefficiency: `reconcileDeployment` replaces the whole Deployment spec,
+including fields the API server fills with defaults, such as the rollout strategy. The
+mutated object therefore differs from the stored one on each reconcile, and
+`CreateOrUpdate` sends an update every time. Setting only the fields the operator owns,
+or using server-side apply, avoids those requests.
 
 ---
 
-## 5. Manager entrypoint: `cmd/main.go`
+## 5. The manager: `cmd/main.go`
 
-`cmd/main.go`:
+`cmd/main.go` starts the operator:
 
-1. builds a scheme with client-go types and `gpucloudv1`,
-2. creates a manager with metrics/health/leader-election options,
-3. registers the reconciler with `SetupWithManager`,
-4. adds `/healthz` and `/readyz` ping endpoints,
-5. starts the manager and blocks until SIGTERM/SIGINT.
+1. It builds a scheme containing the client-go types and the `gpucloud/v1` types.
+2. It creates a manager with the metrics address, health probe address, and leader
+   election options.
+3. It registers the reconciler with `SetupWithManager`.
+4. It adds `/healthz` and `/readyz` checks.
+5. It starts the manager, which runs until it receives `SIGTERM` or `SIGINT`.
 
-Points:
+Details to note:
 
-- `LeaderElectionID: "gpu-cloud-operator.example.com"` must be unique per
-  operator in a cluster.
-- Metrics bind address and health probe bind address are flags so tests/kind
-  can start on non-default ports.
-- `ctrl.GetConfigOrDie()` uses the in-cluster config when running as a Pod and
-  the `KUBECONFIG` when running locally.
+- **`LeaderElectionID: "gpu-cloud-operator.example.com"`** names the `Lease` object used
+  for leader election. It must be unique among the operators in a namespace.
+- **The metrics and health probe addresses are flags,** so the CI job and the Kind
+  script can run the operator on ports that do not conflict with other processes.
+- **`ctrl.GetConfigOrDie()`** uses the in-cluster service account configuration when
+  the operator runs in a Pod, and the `KUBECONFIG` environment variable or
+  `~/.kube/config` when it runs on your machine.
 
 ---
 
-## 6. RBAC and generated config
+## 6. RBAC markers and generated manifests
 
-The controller has kubebuilder RBAC markers:
+The controller declares the permissions it needs:
 
 ```go
 // +kubebuilder:rbac:groups=gpucloud.example.com,resources=gpuworkloads,verbs=get;list;watch;create;update;patch;delete
@@ -339,15 +412,16 @@ The controller has kubebuilder RBAC markers:
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 ```
 
-After `make manifests`, `config/rbac/role.yaml` contains the ClusterRole.
-Notice the separate verbs for `status` and `finalizers`; this is how the API
-server protects those subresources.
+`make manifests` writes these rules to `config/rbac/role.yaml` as a ClusterRole.
+Permissions on the `status` and `finalizers` subresources are listed separately
+because the API server authorizes each subresource independently. Permission to update
+`gpuworkloads` does not include permission to update `gpuworkloads/status`.
 
 ---
 
 ## 7. Unit tests: `gpuworkload_controller_test.go`
 
-The tests use controller-runtime's fake client:
+The tests run the reconciler against controller-runtime's in-memory fake client:
 
 ```go
 scheme := runtime.NewScheme()
@@ -361,86 +435,100 @@ c := fake.NewClientBuilder().
     Build()
 ```
 
-Tests verify:
+The two tests are:
 
-- Deployment and Service are created,
-- owner reference is set,
-- `runtimeClassName: nvidia` is present when requested,
-- `nvidia.com/gpu` is present for GPU workloads and absent for CPU workloads,
-- status contains the managed Deployment/Service names and a phase.
+| Test | What it verifies |
+|---|---|
+| `TestReconcileCreatesOwnedDeploymentServiceAndStatus` | The Deployment and Service are created with an owner reference, the runtime class and `nvidia.com/gpu` resources are set for a GPU workload, and the status records the child names and a phase |
+| `TestReconcileCpuWorkloadDoesNotRequestGPU` | A workload with `gpuCount: 0` produces a Pod template without `nvidia.com/gpu` |
 
-Limitations:
-
-- fake client does not run a real Deployment controller or informers,
-- it does not validate CRD schema,
-- it does not test watch/queue wiring,
-- it can still test reconcile logic, immutable-field preservation, and status
-  subresource behavior.
+The fake client has limits. It does not run the Deployment controller, so replicas
+never become ready. It does not validate objects against the CRD schema. It does not
+exercise the watches and work queue. It is well suited to testing reconcile logic, the
+objects the controller builds, and status subresource behavior. Section 10 suggests
+adding envtest to cover the rest.
 
 ---
 
-## 8. Run it live on Kind
+## 8. Running the operator on Kind
 
 ```bash
 scripts/verify-kind.sh
 ```
 
-The script:
+The script performs these steps:
 
-1. checks `go`, `kind`, `kubectl`,
-2. creates a Kind cluster named `systems-interview`,
-3. installs the CRD and waits for `Established`,
-4. runs `go test ./...`,
-5. builds and starts the operator locally,
-6. waits for `/healthz`,
-7. applies the CPU-safe sample,
-8. waits for the owned Deployment to roll out,
-9. prints CR/Deployment/Service/Pod/operator-log evidence.
+1. Checks that `go`, `kind`, and `kubectl` are installed.
+2. Creates a Kind cluster named `systems-interview`, unless it already exists.
+3. Installs the CRD and waits for it to be `Established`.
+4. Runs `go test ./...`.
+5. Builds the operator and starts it in the background.
+6. Waits for the operator's `/healthz` endpoint to respond.
+7. Applies the Kind sample.
+8. Waits for the `triton-kind-gpu` Deployment to finish rolling out, and for the
+   `GpuWorkload` status to report readiness.
+9. Prints the `GpuWorkload`, Deployment, Service, Pods, and operator log.
 
-The Kind sample uses `gpuCount: 0` because Kind nodes do not have GPU drivers or
-device plugins. On a real GPU cluster, GPU Operator is installed and the GPU sample
-is applied with `gpuCount: 1`.
-
----
-
-## 9. Explaining this operator
-
-The narrative:
-
-> "The operator exposes a `GpuWorkload` CRD with a small declarative spec. The
-> controller watches those CRs and the Deployments/Services it owns. On each
-> reconcile it reads the latest CR, creates or updates an owned Deployment that
-> injects `nvidia.com/gpu` limits when needed, creates or updates a Service,
-> then reads child status and writes it back to the CR with conditions and
-> observedGeneration. Children are controller-owned, so Kubernetes garbage
-> collects them when the CR is deleted. RBAC and CRD manifests are generated
-> from markers; unit tests use a fake client and E2E runs on Kind."
-
-Follow-up topics:
-
-- Adding a finalizer: set the finalizer string, handle the deletion timestamp
-  before child reconciliation, clean the external resource, remove the finalizer.
-- Rejecting `gpuCount > 8`: a CRD maximum marker, or a validating webhook where
-  the policy is cross-field.
-- Adding custom metrics: register a Prometheus counter or vector in the
-  reconciler, or use the controller-runtime metrics registry.
-- Deleting the operator: children remain, status becomes stale, and deletion with
-  finalizers blocks.
-- Owner references on the Deployment: garbage collection and watch mapping.
+The Kind sample sets `gpuCount: 0`, because Kind nodes have no GPU driver or device
+plugin. A Pod that requested `nvidia.com/gpu` would stay `Pending`. On a real GPU
+cluster with the GPU Operator installed, apply the GPU sample instead.
 
 ---
 
-## 10. Extensions to try
+## 9. Explaining the operator in an interview
 
-1. Add a **validating webhook** that rejects `gpuCount > maxGpus`.
-2. Add a **mutating webhook** that defaults `servicePort`/`containerPort`
-   based on the image's known inference port.
-3. Add a **finalizer** that deletes a cloud reservation and blocks CR deletion
-   until cleanup succeeds.
-4. Add a **second controller** or watch on nodes that pauses workloads when GPU
-   nodes disappear.
-5. Add **Prometheus metrics** for reconciliation duration, errors, and CR phase.
-6. Add **envtest** integration tests to validate generated CRD schema.
-7. Add a **conversion webhook** and a `v1alpha1` version to practice API
-   evolution.
-8. Add **leader election** (`--leader-elect`) and run two operator replicas.
+A concise description of the design:
+
+> "The operator adds a `GpuWorkload` CRD with a small declarative spec. The controller
+> watches `GpuWorkload` resources and the Deployments and Services they own. On each
+> reconcile, it reads the latest `GpuWorkload`, creates or updates a Deployment that
+> requests `nvidia.com/gpu` when the workload needs GPUs, creates or updates a
+> Service, and then copies the Deployment's replica counts into the status, with a
+> condition and `observedGeneration`. The children have controller owner references,
+> so Kubernetes deletes them when the `GpuWorkload` is deleted. The CRD and RBAC are
+> generated from markers. Unit tests use the fake client, and an end-to-end test runs
+> on Kind."
+
+Be ready for these follow-up questions:
+
+| Question | Answer |
+|---|---|
+| How would you add a finalizer? | Add the finalizer before creating any external resource. At the start of `Reconcile`, check `DeletionTimestamp`; if it is set, clean up the external resource, remove the finalizer, and return before reconciling the children |
+| How would you reject `gpuCount` above 8? | Add `+kubebuilder:validation:Maximum=8` to the field. Use a CEL rule for conditions involving several fields, and a validating webhook for policy that depends on external data |
+| How would you add custom metrics? | Register a Prometheus counter or histogram with the controller-runtime metrics registry and record values in the reconciler |
+| What happens if the operator is deleted? | The Deployments and Services continue to run. Status stops updating, spec changes are not applied, and any resource with a finalizer cannot finish deleting |
+| Why set owner references on the Deployment? | For garbage collection when the `GpuWorkload` is deleted, and so that `Owns` can map Deployment events to the right `GpuWorkload` |
+
+---
+
+## 10. Exercises
+
+1. Fix the two defects in section 4.7, and add tests that fail before the fix.
+2. Add a **validating webhook** that rejects `gpuCount` above a configured maximum.
+3. Add a **mutating webhook** that sets `servicePort` and `containerPort` from the
+   known port of the image, for example 8000 for Triton.
+4. Add a **finalizer** that releases a reservation in an external system and blocks
+   deletion until the release succeeds.
+5. Add a **watch on nodes** that sets a condition on workloads when no node matches
+   their GPU node selector.
+6. Add **Prometheus metrics** for reconcile duration, errors, and the number of
+   workloads in each phase.
+7. Add **envtest** integration tests that validate the generated CRD schema.
+8. Add a **`v1alpha1` version** and a conversion webhook to practice API versioning.
+9. Enable **leader election** with `--leader-elect`, run two replicas, and stop the
+   leader to observe the failover.
+
+## Summary
+
+- The operator turns each `GpuWorkload` into a Deployment and a Service, and reports
+  their state in the status.
+- The API types use a required field, a pointer for an optional count, schema defaults,
+  and a status subresource.
+- The reconciler reads the latest object, uses `CreateOrUpdate` with owner references
+  for each child, and writes the status only when it changes.
+- GPU workloads request `nvidia.com/gpu` in both `requests` and `limits` with equal
+  values.
+- The selector built from user labels and the reset condition timestamp are defects to
+  fix.
+- Unit tests use the fake client, and `scripts/verify-kind.sh` runs the full flow on
+  Kind.

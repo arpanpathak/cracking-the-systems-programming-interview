@@ -1,57 +1,76 @@
 # 03: Kubernetes Concepts, Deep Dive
 
-A request enters through the API server, is placed by the scheduler, and becomes a
-running container through the kubelet. This chapter follows that path, then covers
-the extension points, device plugins, and Dynamic Resource Allocation that GPU
-workloads depend on.
+Kubernetes interviews for platform roles test whether you understand how the system
+works, not only how to use `kubectl`. A request enters through the API server, is
+stored in etcd, is placed on a node by the scheduler, and becomes a running container
+through the kubelet. Controllers watch the results and keep the cluster converging
+toward the desired state.
 
-Operator material is in `docs/04-kubernetes-operator.md` and
-`docs/10-gpu-operator-kubebuilder-deep-dive.md`. Overlapping ground is linked
-rather than repeated.
+This chapter follows that path. It then covers networking, storage, the mechanisms
+that GPU workloads depend on (extended resources, device plugins, and Dynamic Resource
+Allocation), multi-tenancy, and a set of debugging scenarios.
+`04-kubernetes-operator.md` and `10-gpu-operator-kubebuilder-deep-dive.md` cover
+operators and the GPU Operator; this chapter links to them rather than repeating
+their content.
 
-> **Version note.** Current stable is Kubernetes **v1.37** (released 2026-08-26).
-> Feature states below are quoted with the version in which they changed. The
-> upstream documentation's `main` branch is one release ahead of stable, so the
-> Workload/PodGroup scheduling APIs described in §8.7 are beta features that a
-> given cluster may not have enabled.
+**This chapter covers**
+
+- The control plane components and the path of a write request through the API server
+- Authentication, authorization, admission, etcd, and API Priority and Fairness
+- Object metadata, finalizers, garbage collection, and server-side apply
+- Workload controllers, QoS classes, sidecars, and autoscaling
+- The Pod lifecycle, the scheduling framework, the kubelet, and eviction
+- Controllers and informers
+- Services, EndpointSlices, kube-proxy, DNS, CNI, and NetworkPolicy
+- Volumes, configuration, secrets, and quotas
+- GPU scheduling with extended resources, device plugins, DRA, and gang scheduling
+- Multi-tenancy and GPU cloud control planes
+- Debugging scenarios and interview questions
+
+> **Note:** This chapter describes Kubernetes v1.37, released on 2026-08-26. Feature
+> states are given with the release in which they changed. The upstream
+> documentation's `main` branch describes the next release, so some features in
+> section 8.7, such as the Workload and PodGroup scheduling APIs, are beta and may not
+> be enabled on a given cluster.
 
 ---
 
-## 1. Cluster architecture and the API server request path
+## 1. Cluster architecture and the API server
 
-### 1.1 The components and what each one owns
+### 1.1 Components
 
-Kubernetes is a set of cooperating control loops around one durable API. The
-components divide as follows:
+Kubernetes consists of control loops that coordinate through a single API. Each
+component has a defined responsibility:
 
-| Component | Owns | Talks to |
+| Component | Responsible for | Communicates with |
 |---|---|---|
-| `kube-apiserver` | The only component that reads/writes etcd; serves the REST API | etcd, all clients |
-| `etcd` | Durable cluster state (the source of truth) | API server only |
-| `kube-scheduler` | The binding decision: which node runs an unscheduled Pod | API server |
-| `kube-controller-manager` | Built-in controllers (Deployment, ReplicaSet, Job, Node lifecycle, EndpointSlice, GC, …) | API server |
-| `cloud-controller-manager` | Cloud-specific controllers: LBs, routes, node lifecycle | API server, cloud APIs |
-| `kubelet` | Pods on one node: sandbox, containers, volumes, probes, status | API server, CRI, CSI, device plugins |
-| `kube-proxy` (optional) | Service forwarding rules on a node | API server (via local watch) |
-| Container runtime (containerd/CRI-O) | Runs containers | kubelet over CRI |
+| `kube-apiserver` | Serving the REST API; the only component that reads and writes etcd | etcd and all clients |
+| `etcd` | Durable storage of all cluster state | The API server only |
+| `kube-scheduler` | Choosing a node for each unscheduled Pod | The API server |
+| `kube-controller-manager` | Built-in controllers: Deployment, ReplicaSet, Job, node lifecycle, EndpointSlice, garbage collection, and others | The API server |
+| `cloud-controller-manager` | Cloud-specific controllers: load balancers, routes, and node lifecycle | The API server and cloud APIs |
+| `kubelet` | Running the Pods on its node: sandboxes, containers, volumes, probes, and status | The API server, the container runtime (CRI), CSI drivers, and device plugins |
+| `kube-proxy` (optional) | Programming Service forwarding rules on its node | The API server |
+| Container runtime (containerd, CRI-O) | Running containers | The kubelet, over CRI |
 
-Add-ons such as CoreDNS, a CNI plugin, the device plugin, and the GPU
-Operator are ordinary workloads installed into `kube-system` or their own
-namespace.
+Add-ons such as CoreDNS, the CNI plugin, the NVIDIA device plugin, and the GPU
+Operator are ordinary workloads that run in `kube-system` or their own namespaces.
 
-Two design consequences follow:
+Two design principles follow from this architecture:
 
-1. **Everything is an API object.** A controller does not reach into a node and
-   flip a switch; it writes an object and another controller reacts. The GPU
-   Operator does not load `nvidia.ko` itself, it creates a driver DaemonSet.
-2. **The system is level-triggered.** Controllers compare desired state (spec) to
-   observed state and act until they match. They do not depend on seeing every
-   event, which is why a restarted controller re-reads the world and converges.
+1. **Components communicate through API objects.** A controller does not act on a node
+   directly. It writes an object, and another component reacts to it. The GPU Operator,
+   for example, does not load the `nvidia` kernel module itself; it creates a driver
+   DaemonSet, and the kubelet on each node runs the Pods that load it.
+2. **Controllers are level-triggered.** A controller compares desired state (the spec)
+   with observed state and acts until they match. It does not need to receive every
+   event, so a controller that restarts reads the current state and continues
+   correctly.
 
-### 1.2 A write request, end to end
+### 1.2 The path of a write request
 
-Every mutation, `kubectl apply`, a controller updating status, a kubelet posting
-node status, traverses the same pipeline in the API server:
+Every change to the cluster, whether `kubectl apply`, a controller updating status,
+or a kubelet reporting node status, passes through the same stages in the API server:
 
 ```text
 client (kubectl / controller / kubelet)
@@ -74,411 +93,431 @@ persist to etcd (with optimistic concurrency)
 watch event fan-out to all watchers
 ```
 
-The order matters. Mutating admission runs **before** validation, because
-mutation is where defaults and sidecars get injected, and an object that is later
-rejected never reaches etcd. A mutating webhook that rewrote a field after
-validation would let objects bypass it, which is why the order is fixed. Webhooks
-can be scoped by match conditions (GA in v1.30) and run under a failure policy:
-`Fail` (default) blocks the write if the webhook is unreachable, `Ignore` lets it
-through. A webhook with `Fail` and a short timeout is a common cause of
-cluster-wide outages.
+Mutating admission runs before validation, because mutation is where defaults and
+injected sidecars are added, and the final object must be validated. If a mutating
+webhook could change an object after validation, it could create objects that
+validation would have rejected.
 
-The API server is also the **only** writer to etcd. Clients never talk to etcd
-directly, which is what makes authorization, admission, and audit enforceable in
-one place.
+Webhooks can be limited to specific requests with match conditions (GA in v1.30), and
+each has a failure policy. With `Fail`, the default, the write is rejected if the
+webhook cannot be reached; with `Ignore`, the write proceeds. A webhook with
+`failurePolicy: Fail` that becomes unavailable blocks every write it matches, and it
+is a common cause of cluster-wide outages.
+
+Because the API server is the only component that writes to etcd, authorization,
+admission, and auditing are all enforced in one place.
 
 ### 1.3 Authentication
 
-The API server authenticates with, among others:
+The API server supports several authentication methods, including:
 
-- X.509 client certificates (kubelet, `admin.conf`, controller-manager),
-- bearer tokens / static token files,
-- OpenID Connect (human users, groups),
-- webhook token review,
-- ServiceAccount tokens.
+- X.509 client certificates, used by kubelets, controller components, and
+  administrator kubeconfig files
+- Bearer tokens
+- OpenID Connect, for human users and their groups
+- Webhook token review
+- ServiceAccount tokens, for workloads
 
-Inside the cluster, a Pod gets a ServiceAccount. Since v1.24 the kubelet projects a
-**short-lived, rotating, audience-bound token** via the `TokenRequest` API into a
-projected volume rather than using a static Secret. The token's audience and
-expiry are part of the volume spec, and the kubelet refreshes it before
-expiration. That is why long-running Pods do not hold credentials valid for years,
-and why `automountServiceAccountToken: false` is a real hardening step for Pods
-that never call the API.
+Each Pod runs as a ServiceAccount. Since v1.24, the kubelet obtains a short-lived,
+audience-bound token for it through the `TokenRequest` API and mounts it in a
+projected volume, instead of mounting a long-lived token stored in a Secret. The token
+specifies its audience and expiration, and the kubelet refreshes it before it expires.
+Long-running Pods therefore never hold a credential valid for years. For Pods that do
+not call the API, set `automountServiceAccountToken: false` to remove the credential
+entirely.
 
-The Node authorizer restricts a kubelet to objects related to its own node, and the
-`NodeRestriction` admission plugin stops a compromised kubelet from modifying other
-nodes or relabeling itself.
+The Node authorizer limits each kubelet to objects related to its own node, and the
+`NodeRestriction` admission plugin prevents a kubelet from modifying other nodes or
+changing protected labels on its own node.
 
 ### 1.4 Authorization
 
-RBAC is the default model: `Role`/`RoleBinding` are namespaced,
-`ClusterRole`/`ClusterRoleBinding` are cluster-scoped, and a `RoleBinding` may
-reference a `ClusterRole` to grant those permissions inside one namespace. Verbs
-are `get`, `list`, `watch`, `create`, `update`, `patch`, `delete`,
-`deletecollection`. Common traps:
+RBAC is the standard authorization mode:
 
-- `list`/`watch` are separate from `get`; a controller that can `get` but not
-  `list` will fail to populate its informer cache.
-- RBAC is purely additive, there are no deny rules. Restricting access means not
-  granting it, or using admission/authorization webhooks.
-- `system:masters` bypasses RBAC entirely, so it should not be granted.
+| Object | Scope |
+|---|---|
+| `Role` and `RoleBinding` | One namespace |
+| `ClusterRole` and `ClusterRoleBinding` | The whole cluster |
+| `RoleBinding` that references a `ClusterRole` | The `ClusterRole`'s permissions, within one namespace |
 
-Operators should follow least privilege. Kubebuilder generates RBAC from markers:
+The verbs are `get`, `list`, `watch`, `create`, `update`, `patch`, `delete`, and
+`deletecollection`. Three details cause frequent mistakes:
+
+- **`list` and `watch` are separate from `get`.** A controller with only `get`
+  permission cannot fill its informer cache, which lists and watches.
+- **RBAC has no deny rules.** Permissions only add up. To restrict access, do not grant
+  it, or enforce restrictions with admission policies.
+- **The `system:masters` group bypasses RBAC completely.** Do not grant membership in
+  it.
+
+Operators should request only the permissions they use. Kubebuilder generates RBAC
+rules from markers:
 
 ```go
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 ```
 
-### 1.5 Admission in practice
+### 1.5 Admission
 
-Admission enforces policy:
+Admission enforces policy on objects before they are stored:
 
-- **Built-ins:** `NamespaceLifecycle`, `LimitRanger` (applies LimitRange defaults
-  and caps), `ResourceQuota`, `ServiceAccount`, `NodeRestriction`,
-  `TaintNodesByCondition`, `Priority`, `StorageObjectInUseProtection`, and Pod
-  Security Admission (`baseline`/`restricted`).
-- **Mutating webhooks:** add defaults, sidecar containers, labels, and
-  annotations. They have side effects, so they must be idempotent and fast.
-- **Validating webhooks:** reject invalid domain objects. Prefer CRD `x-kubernetes-validations`
-  (CEL) or `ValidatingAdmissionPolicy` for rule-like checks, so that a webhook is
-  not required for a few field comparisons.
+- **Built-in admission plugins** include `NamespaceLifecycle`, `LimitRanger` (applies
+  LimitRange defaults and limits), `ResourceQuota`, `ServiceAccount`,
+  `NodeRestriction`, `TaintNodesByCondition`, `Priority`,
+  `StorageObjectInUseProtection`, and Pod Security Admission (the `baseline` and
+  `restricted` profiles).
+- **Mutating webhooks** add defaults, sidecar containers, labels, and annotations. They
+  can be called more than once for the same request, so they must be idempotent, and
+  they must respond quickly.
+- **Validating webhooks** reject objects that violate rules.
 
-For a CRD, structural-schema validation plus CEL expressions cover most cases.
-Custom webhooks are for cross-object or cluster-context checks that CEL cannot
-express. A validating webhook sees the object **after** mutation, so a default it
-depends on is already present.
+For simple rules, avoid webhooks. CEL validation rules in a CRD schema
+(`x-kubernetes-validations`) and `ValidatingAdmissionPolicy` objects run inside the
+API server and cannot become unavailable. Use a webhook for checks that depend on other
+objects or on data outside the request. A validating webhook receives the object after
+mutation, so defaults added by mutating admission are already present.
 
-### 1.6 etcd and watch
+### 1.6 etcd and watches
 
-etcd is a Raft-replicated key-value store. Writes are serialized through a leader
-and committed once a quorum (majority of members) acknowledges them. Practical
-consequences:
+etcd is a key-value store replicated with the Raft consensus algorithm. A leader orders
+all writes, and a write is committed when a majority of members (a *quorum*) has
+recorded it. This has several operational consequences:
 
-- Three members tolerate one failure; five tolerate two. Adding a third member to
-  a two-member cluster is not "one more failure", it restores quorum.
-- etcd is latency-sensitive. It needs fast local disks (SSD), and fsync latency
-  directly limits API server write throughput. A slow etcd shows up as slow
-  `kubectl apply`, slow controller convergence, and leader election churn.
-- The data directory grows with revisions; compaction and defragmentation are
-  operational tasks that have to be scheduled.
-- At-rest encryption is configured on the API server (now with KMS v2 as the
-  recommended provider). Encrypting Secrets at rest protects the etcd disk, not
-  the API; RBAC still governs who can read them.
+- **Cluster size.** A three-member cluster tolerates one failed member, and a
+  five-member cluster tolerates two. A two-member cluster tolerates none, because both
+  members are needed for a majority, so it is no more available than one member. Use an
+  odd number of members.
+- **Disk latency.** etcd calls `fsync` for every write, so disk latency limits the API
+  server's write throughput. Run etcd on fast local SSDs. A slow etcd appears as slow
+  `kubectl apply`, slow controller convergence, and repeated leader elections in
+  controllers.
+- **Maintenance.** etcd keeps old revisions until they are compacted, and its database
+  file must be defragmented to reclaim space. Schedule both.
+- **Encryption at rest.** The API server encrypts resources such as Secrets before
+  storing them, preferably with the KMS v2 provider. This protects the data on etcd's
+  disk. It does not restrict API access; RBAC still controls who can read Secrets.
 
-The API server keeps a **watch cache** (an in-memory, per-resource cache built on
-etcd watches) so that a `list` does not have to read etcd every time and a `watch`
-can stream changes from a recent `resourceVersion`. `resourceVersion` is an opaque
-etcd revision marker, not a timestamp or a counter to be used in arithmetic.
-Rules:
+The API server maintains a **watch cache** for each resource type, built from etcd
+watches. It serves most `list` requests without reading etcd, and it lets clients start
+a watch from a recent `resourceVersion`. A `resourceVersion` is an opaque marker; do not
+compare or compute with it.
 
-- On `update`, send the `resourceVersion` that was read. If another writer wrote
-  first, the write fails with **409 Conflict**. This is optimistic concurrency, and
-  a retry that does not re-read clobbers fields.
-- A `watch` started from a `resourceVersion` older than the cache retention gets
-  **410 Gone**; clients must re-list and then watch from the new `resourceVersion`.
-  client-go's Reflector does this.
-- List pagination uses `limit`/`continue`; watches can request bookmarks so
-  clients can advance their stored version without receiving an object per event.
+Rules for `resourceVersion`:
+
+- **Optimistic concurrency.** An `update` includes the `resourceVersion` the client
+  read. If another client wrote the object in the meantime, the update fails with
+  **409 Conflict**. The client must read the object again and reapply its change.
+  Retrying with the old object would overwrite the other client's change.
+- **Expired watches.** A watch that starts from a `resourceVersion` older than the
+  cache's history fails with **410 Gone**. The client must list again and watch from the
+  new `resourceVersion`. The client-go Reflector does this automatically.
+- **Pagination and bookmarks.** Lists are paginated with `limit` and `continue`. Watches
+  can request bookmark events, which update the client's `resourceVersion` without
+  sending objects, so a later reconnect does not start from an expired version.
 
 ### 1.7 API Priority and Fairness
 
-`APIPriorityAndFairness` (APF, stable v1.29) is a second gate behind admission and
-authorization. It classifies each request through a `FlowSchema` into a
-`PriorityLevelConfiguration`, and isolates concurrency per level. This prevents a
-runaway controller or a misbehaving client from starving the API. The default
-configuration includes distinct levels for leader election, node requests,
-built-in controllers, and the catch-all. If an operator starts hammering the API
-server with unbounded list/watch loops, APF will throttle it, and the symptom is
-`429` responses plus increasing request latency, not an immediate crash.
+API Priority and Fairness (APF, stable in v1.29) limits how many requests the API server
+processes concurrently, and it divides that capacity among classes of clients. Each
+request is matched by a `FlowSchema` to a `PriorityLevelConfiguration`, and each priority
+level has its own share of concurrency. The default configuration defines separate
+levels for leader election, node requests, built-in controllers, and other traffic.
+
+As a result, a misbehaving client, such as a controller that lists all objects in a
+tight loop, cannot prevent other clients from using the API. Its requests are queued and
+then rejected with `429 Too Many Requests`, and its latency increases, while other
+priority levels continue to be served.
 
 ### 1.8 Extending the API
 
-Two extension mechanisms exist:
+Kubernetes can be extended with new resource types in two ways:
 
-- **Custom resources (CRDs):** a new resource type is declared, the API server
-  serves it, and a controller is written against it. This is what operators use.
-- **Aggregation layer:** a separate API server is registered behind the main one,
-  which owns the storage and the behavior (used by metrics-server,
-  `custom.metrics.k8s.io`, and similar).
+- **CustomResourceDefinitions (CRDs).** You define a resource type, the API server stores
+  and serves it, and you write a controller for it. Operators use this approach.
+- **The aggregation layer.** You register a separate API server that handles a group of
+  resources itself, including storage. `metrics-server` and custom metrics adapters use
+  this approach.
 
-API versioning is at the *resource* level, not the field level: the API server
-converts between served versions and one storage version, so the same object can
-be read at `v1beta1` or `v1` during a migration window. Beta APIs may change;
-GA APIs (`v1`) carry a compatibility commitment, and the API version of a custom
-resource carries that commitment with it.
+API versions apply to whole resources, not to individual fields. The API server can
+serve several versions of a resource and convert between them and a single storage
+version, so during a migration the same object can be read as `v1beta1` or `v1`. Beta
+APIs can still change; `v1` APIs come with a compatibility commitment.
 
 ---
 
-## 2. Objects, metadata, and the API contract
+## 2. Objects and metadata
 
-### 2.1 The shape of every object
+### 2.1 Object structure
 
-Every Kubernetes object has `apiVersion`, `kind`, `metadata`, and (almost always)
-`spec` and `status`. The fields that carry operational meaning:
+Every object has `apiVersion`, `kind`, and `metadata`, and nearly every object has
+`spec` (the desired state) and `status` (the observed state). These fields carry
+operational meaning:
 
 | Field | Meaning |
 |---|---|
-| `metadata.name` / `namespace` | Identity. Names are unique per (group, kind, namespace). |
-| `metadata.labels` | Selectable key/value pairs; used by controllers to find objects. |
-| `metadata.annotations` | Non-identifying metadata; not selectable. |
-| `metadata.ownerReferences` | Parent/child links used by garbage collection. |
-| `metadata.finalizers` | Pre-deletion hooks; an object with a finalizer cannot be removed. |
-| `metadata.generation` | Bumped on spec changes (when the status subresource exists). |
-| `status.observedGeneration` | The generation the controller has processed. |
-| `metadata.managedFields` | Field ownership for server-side apply. |
-| `status.conditions` | Typed `True/False/Unknown` observations with reason/message. |
+| `metadata.name`, `metadata.namespace` | Identity. A name is unique for its resource type within a namespace |
+| `metadata.labels` | Key-value pairs that selectors can query |
+| `metadata.annotations` | Key-value metadata that cannot be selected on |
+| `metadata.ownerReferences` | Links from a dependent object to its owners, used by garbage collection |
+| `metadata.finalizers` | Keys that must be removed before the object can be deleted |
+| `metadata.generation` | Incremented when the spec changes |
+| `status.observedGeneration` | The generation that the controller last processed |
+| `metadata.managedFields` | Which field manager owns each field, for server-side apply |
+| `status.conditions` | Observations with a type, a `True`, `False`, or `Unknown` status, a reason, and a message |
 
-`generation` and `observedGeneration` show whether a controller has caught up. If
-`observedGeneration` lags `generation`, the controller has not finished handling
-the latest spec.
+If `status.observedGeneration` is lower than `metadata.generation`, the controller has
+not yet processed the latest spec change, and the status describes an older spec.
 
-### 2.2 Labels, selectors, and ownership
+### 2.2 Labels, selectors, and owner references
 
-Labels are how Kubernetes decouples producers from consumers. A Deployment's
-ReplicaSet finds its Pods with `spec.selector`; a Service finds endpoints the same
-way. Two consequences:
+Labels decouple objects from each other. A ReplicaSet finds its Pods with its
+`spec.selector`, and a Service finds its endpoints in the same way. Two rules follow:
 
-- **Selector immutability.** A Deployment/StatefulSet/DaemonSet selector is
-  immutable in `apps/v1`. Changing it would orphan or steal Pods, so the API
-  rejects it.
-- **Owner references are not labels.** Ownership is a graph (`ownerReferences`),
-  used for garbage collection, while labels are a flat index. A Service uses
-  labels to find EndpointSlices but *also* sets owner references on them. A
-  controller should not delete objects it merely matched by label.
+- **Workload selectors are immutable.** The selector of a Deployment, StatefulSet, or
+  DaemonSet cannot be changed in `apps/v1`. A changed selector could release Pods the
+  controller manages or adopt Pods it does not, so the API server rejects the change.
+- **Owner references, not labels, define ownership.** Labels are a flat index;
+  `ownerReferences` form a graph that garbage collection follows. A controller should
+  delete only objects it owns, not every object that matches a label.
 
-### 2.3 Namespaces are scope, not a security boundary
+### 2.3 Namespaces
 
-Namespaces scope names and are the unit for RBAC and quota, but they are not a
-kernel isolation mechanism. Without NetworkPolicy, Pods in different namespaces
-can talk freely; without admission controls, a privileged Pod can reach the host.
-"Namespace per tenant" is the start of a tenant model, not the whole model (see
-§9).
+A namespace scopes names and is the unit for RBAC bindings and resource quotas. It is
+not an isolation mechanism. Without NetworkPolicy, Pods in different namespaces can
+communicate freely, and without admission controls, a privileged Pod in any namespace
+can access its host. A namespace for each tenant is the starting point of a tenancy
+model, not the complete model (section 9).
 
 ### 2.4 Finalizers and deletion
 
-A finalizer is a string in `metadata.finalizers`. When an object that has
-finalizers is deleted, the API server sets `metadata.deletionTimestamp` but keeps
-the object; the owning controller performs its cleanup and then removes its
-finalizer, which releases the object. Failure modes are common:
+A finalizer is a string in `metadata.finalizers`. When a client deletes an object that
+has finalizers, the API server sets `metadata.deletionTimestamp` and keeps the object.
+The controller responsible for each finalizer performs its cleanup and removes its
+finalizer. When the list is empty, the API server deletes the object.
 
-- A controller that crashes before removing its finalizer leaves the object
-  **stuck in Terminating** forever.
-- Finalizers must be idempotent, because the controller can be restarted between
-  cleanup and finalizer removal.
-- Namespace deletion itself finalizes: a namespace stuck `Terminating` usually
-  means some object in it has an unresolved finalizer or an API that cannot be
-  reached.
+Problems with finalizers are common:
 
-### 2.5 Garbage collection and ownership
+- **Objects stuck in `Terminating`.** If the controller that owns a finalizer is not
+  running, or fails before removing it, the object is never deleted.
+- **Repeated cleanup.** A controller can restart after cleanup but before removing the
+  finalizer, so cleanup must be idempotent.
+- **Namespaces stuck in `Terminating`.** Namespace deletion waits for every object in the
+  namespace to be deleted. A namespace that does not finish deleting usually contains
+  an object with an unresolved finalizer, or has resources from an API service that is
+  unavailable.
 
-The garbage collector deletes objects whose owner references no longer resolve.
-Cross-namespace ownership is disallowed by design: a namespaced dependent may
-reference a namespaced owner only in its own namespace. The three deletion modes:
+### 2.5 Garbage collection
 
-- **Background (default):** the owner is deleted immediately; dependents are
-  collected afterward.
-- **Foreground:** the owner is marked `deletionTimestamp` with the
-  `foregroundDeletion` finalizer and stays visible until dependents are gone.
-- **Orphan:** dependents survive; their owner references are removed.
+The garbage collector deletes dependent objects whose owners no longer exist. A
+namespaced dependent can have owners only in its own namespace, or cluster-scoped
+owners. There are three deletion modes:
 
-`kubectl delete --cascade=foreground|background|orphan` selects the behavior.
-Server-side, the `blockOwnerDeletion` field on an owner reference controls whether
-a dependent can block foreground deletion.
+| Mode | Behavior |
+|---|---|
+| Background (default) | The owner is deleted immediately, and the garbage collector deletes dependents afterward |
+| Foreground | The owner receives a `deletionTimestamp` and the `foregroundDeletion` finalizer, and remains until dependents with `blockOwnerDeletion: true` are deleted |
+| Orphan | The owner is deleted, and the dependents remain with their owner references removed |
 
-### 2.6 The API surface worth knowing
+Choose the mode with `kubectl delete --cascade=background|foreground|orphan`.
 
-- **Discovery:** `GET /api`, `GET /apis`, and `kubectl api-resources` map
-  kind → group/version → REST plural.
-- **Inspection:** `kubectl explain pod.spec.containers --recursive` reads the
-  OpenAPI schema the API server publishes.
-- **Field selectors** are server-side filters on supported fields
-  (`metadata.name`, `metadata.namespace`, `status.phase`, …). They are not the
-  same as label selectors and are much cheaper than client-side filtering.
-- **Watch** is a long-lived streaming `GET` with `?watch=1`; controllers should
-  use it instead of polling.
-- **Dry-run** (`?dryRun=All`) runs the full admission and validation path without
-  persisting. It tests a webhook or an apply without writing anything.
-- **Server-side apply** tracks field ownership in `managedFields`; two controllers
-  that write the same field produce a conflict, which `--force-conflicts` resolves
-  explicitly rather than by clobbering.
+### 2.6 Useful API features
+
+- **Discovery.** `GET /api`, `GET /apis`, and `kubectl api-resources` list the available
+  groups, versions, kinds, and resource names.
+- **Schema inspection.** `kubectl explain pod.spec.containers --recursive` reads the
+  OpenAPI schema that the API server publishes.
+- **Field selectors** filter on the server by supported fields such as `metadata.name`,
+  `metadata.namespace`, and `status.phase`. They are different from label selectors and
+  much cheaper than filtering on the client.
+- **Watches** are long-running `GET` requests with `?watch=1` that stream changes.
+  Controllers use them instead of polling.
+- **Dry run** (`?dryRun=All`) runs the complete admission and validation path without
+  storing anything. Use it to test webhooks and manifests.
+- **Server-side apply** records field ownership in `managedFields`. When two managers
+  set the same field to different values, apply reports a conflict instead of silently
+  overwriting, and `--force-conflicts` takes ownership explicitly.
 
 ---
 
-## 3. Workload controllers and object semantics
+## 3. Workload resources
 
-Each controller owns a defined set of objects and creates others.
+### 3.1 Pods
 
-### 3.1 Pod
+The Pod is the smallest unit that Kubernetes schedules and runs:
 
-The Pod is the smallest deployable unit and the unit of scheduling:
+- **Shared network.** Containers in a Pod share one network namespace, and therefore one
+  IP address and `localhost`. They can also share volumes.
+- **The sandbox.** The kubelet starts a Pod by asking the container runtime to create a
+  sandbox. On Linux, the sandbox is a `pause` container that holds the network and IPC
+  namespaces; the application containers join them. The Pod's IP address therefore
+  exists before any application container starts. The `PodReadyToStartContainers`
+  condition (stable in v1.37, formerly `PodHasNetwork`) reports that the sandbox and
+  network are ready.
+- **Shared process namespace.** With `shareProcessNamespace: true`, containers in the
+  Pod can see each other's processes. This helps with debugging, but it changes signal
+  handling and the contents of `/proc`, and the `pause` process becomes PID 1.
+- **No survival across node loss.** A Pod is bound to its node. If the node fails, the
+  Pod is not moved; a workload controller creates a replacement.
 
-- Containers in a Pod share a network namespace (one IP, `localhost`), the Pod
-  sandbox, and any volumes mounted into several containers.
-- The kubelet starts a Pod by asking the runtime (CRI) for a **sandbox** first.
-  On Linux that sandbox is the `pause` container, which holds the network and IPC
-  namespaces and the pod-level cgroup. App containers join that sandbox. This is
-  why a Pod's IP exists before any app container starts, and why the
-  `PodReadyToStartContainers` condition (stable v1.37, formerly `PodHasNetwork`)
-  tracks sandbox and network setup.
-- Containers in a Pod can share a process namespace with
-  `shareProcessNamespace: true`, which is useful for debugging but changes signal
-  and `/proc` semantics.
-- A Pod does not survive the loss of its node. Anything that must outlive a node
-  belongs to a workload controller that recreates it.
+### 3.2 Requests, limits, and QoS classes
 
-### 3.2 QoS classes
+The combination of resource requests and limits in a Pod determines its quality of
+service (QoS) class:
 
-The scheduler and the kubelet both care about requests and limits, and the
-combination determines the Pod's QoS class:
-
-| QoS | Condition | Practical effect |
+| QoS class | Condition | Effect |
 |---|---|---|
-| `Guaranteed` | Every container has CPU and memory requests equal to limits (and both non-zero) | Least likely to be evicted; eligible for exclusive CPUs under the `static` CPU policy |
-| `Burstable` | At least one container has a request or limit, but not `Guaranteed` | Guaranteed its requests; can burst to limits/node capacity |
-| `BestEffort` | No requests or limits at all | First to be evicted under node pressure |
+| `Guaranteed` | Every container has CPU and memory requests equal to its limits, and all are set | Evicted last; eligible for exclusive CPUs with the `static` CPU Manager policy |
+| `Burstable` | At least one container has a CPU or memory request or limit, but the Pod is not `Guaranteed` | Receives its requests and can use more, up to its limits or the node's capacity |
+| `BestEffort` | No container has any CPU or memory request or limit | Evicted first under node pressure |
 
-Rules:
+Rules to remember:
 
-- **Requests** are what the scheduler accounts for; **limits** are what the
-  kernel enforces. A container over its memory limit is OOM-killed in its cgroup;
-  a container over its CPU limit is throttled, not killed.
-- The **effective Pod request** is the sum over app and sidecar containers, but
-  for init containers it is the *maximum* init request, plus pod overhead. A large
-  init container can therefore reserve resources the Pod never uses at runtime.
-- QoS is decided at creation and is immutable across in-place resize; a resize
-  that would change the class is rejected.
-- `memory.high`-based throttling and tiered memory protection are opt-in kubelet
-  behaviors (Memory QoS, beta v1.37).
+- **Requests are for scheduling; limits are enforced by the kernel.** A container that
+  exceeds its memory limit is killed by the cgroup OOM killer. A container that exceeds
+  its CPU limit is throttled, not killed.
+- **Init containers are counted differently.** The Pod's effective request is the larger
+  of two values: the sum of the requests of the application and sidecar containers, or
+  the largest request of any init container. Pod overhead is added to the result. A
+  large init container can therefore reserve resources that the running Pod never uses.
+- **QoS class does not change after creation.** An in-place resize that would change the
+  class is rejected.
+- **Memory QoS** (beta in v1.37) is an opt-in kubelet feature that uses cgroup v2
+  `memory.high` and memory protection settings.
 
 ### 3.3 Sidecar containers
 
-Native sidecars are init containers with `restartPolicy: Always`
-(`SidecarContainers`, beta v1.29, stable v1.33). They solve three problems:
+A native sidecar is an init container with `restartPolicy: Always` (the
+`SidecarContainers` feature: beta in v1.29, stable in v1.33). Native sidecars solve
+three problems that sidecars implemented as regular containers had:
 
-- **Ordering.** They start before app containers and are torn down after the app
-  containers have stopped, in reverse order, so a log shipper or proxy stays up
-  while the app drains.
-- **Job completion.** A sidecar does not prevent a Job from completing when the
-  main container exits.
-- **Restart semantics.** A sidecar restarts independently of the app container.
+- **Start and stop order.** Sidecars start before the application containers and stop
+  after them, in reverse order. A log shipper or proxy keeps running while the
+  application finishes its work.
+- **Job completion.** A sidecar does not keep a Job running after its main container
+  exits.
+- **Independent restarts.** A sidecar restarts on its own if it fails.
 
-Before native sidecars existed, sidecars were run as regular containers and
-`preStop` hooks were used to fake ordering. Running an Envoy proxy beside a Triton
-server and guaranteeing that it becomes ready first is now handled by a native
-sidecar with a startup and a readiness probe, not by a `preStop` sequence.
+For example, to run an Envoy proxy beside a Triton Inference Server and ensure that the
+proxy is ready first, declare the proxy as a native sidecar with a startup probe. Before
+native sidecars, this required workarounds with `preStop` hooks and scripts.
 
-### 3.4 ReplicaSet and Deployment
+### 3.4 ReplicaSets and Deployments
 
-A ReplicaSet is the simplest controller: it owns N Pods matching a selector and
-creates/deletes Pods until the count matches. A Deployment is a controller that
-manages ReplicaSets and owns rollout policy:
+A ReplicaSet keeps a specified number of Pods that match its selector, creating or
+deleting Pods as needed. A Deployment manages ReplicaSets and adds rollout behavior:
 
-- Editing `spec.template` creates a new ReplicaSet; scaling does not trigger a
+- **Rollouts.** Changing `spec.template` creates a new ReplicaSet and gradually moves
+  Pods to it. Changing only the replica count scales the current ReplicaSet without a
   rollout.
-- `strategy.rollingUpdate.maxSurge` (default 25%) and `maxUnavailable` (default
-  25%) bound how many extra/fewer Pods exist during a rollout.
-- `revisionHistoryLimit` controls how many old ReplicaSets are kept for rollback.
-- `progressDeadlineSeconds` (default 600) marks a rollout as failed if it makes no
-  progress; it does *not* roll back automatically.
-- `kubectl rollout status|history|undo|pause|resume` are the daily tools.
+- **Rollout speed.** `strategy.rollingUpdate.maxSurge` (default 25%) limits how many
+  extra Pods can exist during a rollout, and `maxUnavailable` (default 25%) limits how
+  many desired Pods can be unavailable.
+- **History.** `revisionHistoryLimit` sets how many old ReplicaSets are kept for
+  rollback.
+- **Failure detection.** If a rollout makes no progress for `progressDeadlineSeconds`
+  (default 600), the Deployment reports it as failed. It does not roll back
+  automatically.
+- **Commands.** `kubectl rollout status`, `history`, `undo`, `pause`, and `resume`.
 
-A rollback scales the old ReplicaSet up and the new one down. It does not restore
-application state, so a schema migration still has to be reversible.
+A rollback scales the previous ReplicaSet up and the current one down. It does not
+restore application data, so database schema changes must be reversible on their own.
 
-### 3.5 StatefulSet
+### 3.5 StatefulSets
 
-StatefulSet gives Pods **stable identity**, which GPU training and databases
-need:
+A StatefulSet gives each Pod a stable identity, which databases and distributed training
+jobs need:
 
-- Pods are named `<name>-<ordinal>` (`web-0`, `web-1`). `.spec.ordinals.start`
-  shifts the start ordinal; `.spec.serviceName` controls the governing headless
-  Service and DNS.
-- `podManagementPolicy: OrderedReady` (default) starts/stops Pods in order;
-  `Parallel` starts them together.
-- Each Pod can claim a stable PVC, and `persistentVolumeClaimRetentionPolicy`
-  controls whether those PVCs are deleted when the Pod or the StatefulSet is
-  deleted.
-- Updates default to `RollingUpdate` from the highest ordinal down;
-  `.spec.updateStrategy.rollingUpdate.maxUnavailable` allows more than one Pod at
-  a time, and `partition` canaries a subset.
-- `maxUnavailable` has been alpha since v1.24 and is beta (on by default) from
-  v1.35; it is not GA as of v1.37, so it has to be verified on the target cluster
-  before it is relied on. The `apps.kubernetes.io/pod-index` label carries the
-  ordinal for selectors.
+- **Stable names.** Pods are named `<statefulset-name>-<ordinal>`, such as `web-0` and
+  `web-1`. `.spec.ordinals.start` changes the first ordinal, and `.spec.serviceName`
+  names the headless Service that gives each Pod a DNS name.
+- **Ordering.** With `podManagementPolicy: OrderedReady` (default), Pods are created one
+  at a time in order and deleted in reverse order. With `Parallel`, they are created and
+  deleted together.
+- **Stable storage.** Each Pod can have its own PersistentVolumeClaim from
+  `volumeClaimTemplates`. `persistentVolumeClaimRetentionPolicy` controls whether the
+  claims are deleted when the StatefulSet is deleted or scaled down.
+- **Updates.** `RollingUpdate` (default) replaces Pods from the highest ordinal down.
+  `partition` limits the update to ordinals at or above a value, for canary releases.
+  `maxUnavailable` allows more than one Pod to be updated at a time; it was alpha from
+  v1.24 and is beta and enabled by default from v1.35, but it is not GA in v1.37, so
+  confirm it is enabled before depending on it.
+- **Ordinal label.** The `apps.kubernetes.io/pod-index` label holds each Pod's ordinal.
 
-For distributed training, rank and stable network identity are what the workload
-needs. A hand-rolled StatefulSet with `RANK=$(hostname | ...)` still works, but the
-direction in current releases is the Workload/PodGroup APIs plus gang scheduling
-(§8.7).
+Distributed training needs stable ranks and network identities. A StatefulSet that
+derives the rank from its hostname still works, but current releases are moving toward
+the Workload and PodGroup APIs with gang scheduling (section 8.7).
 
-### 3.6 DaemonSet
+### 3.6 DaemonSets
 
-A DaemonSet runs one Pod per eligible node, the right primitive for node-local
-agents: driver containers, `nvidia-container-toolkit`, the device plugin,
-DCGM exporter, CNI, node-exporter, log agents.
+A DaemonSet runs one Pod on each eligible node. It is the standard way to run node
+agents: GPU driver containers, the NVIDIA Container Toolkit, the device plugin, the DCGM
+exporter, CNI plugins, node-exporter, and log collectors.
 
-Scheduling details that matter on GPU nodes:
+Two details are important on GPU nodes:
 
-- The DaemonSet controller writes the Pod's `nodeAffinity` for `metadata.name`,
-  and the scheduler taints `node.kubernetes.io/not-ready`,
-  `unreachable`, `disk-pressure`, `memory-pressure`, `pid-pressure`, and
-  `unschedulable`; DaemonSet Pods get matching tolerations automatically so they
-  keep running on unhealthy nodes where their telemetry matters most.
-- `updateStrategy` is `RollingUpdate` (default) or `OnDelete`. RollingUpdate
-  supports `maxUnavailable` (default 1) and `maxSurge` (default 0); surge for
-  DaemonSets has been GA since v1.25. `OnDelete` leaves replacement to the
-  operator, which suits drivers that must not restart until a node is drained.
+- **DaemonSet Pods keep running on unhealthy nodes.** The DaemonSet controller pins each
+  Pod to its node with node affinity on `metadata.name`. The node lifecycle controller
+  adds taints such as `node.kubernetes.io/not-ready`, `unreachable`, `disk-pressure`,
+  `memory-pressure`, `pid-pressure`, and `unschedulable` to unhealthy nodes, and the
+  DaemonSet controller adds matching tolerations to its Pods automatically. Monitoring
+  agents therefore keep running on the nodes where they are most needed.
+- **Update strategy.** `RollingUpdate` (default) supports `maxUnavailable` (default 1) and
+  `maxSurge` (default 0; GA since v1.25). `OnDelete` replaces a Pod only when someone
+  deletes it, which suits drivers that must not restart until the node has been drained.
 
-### 3.7 Job and CronJob
+### 3.7 Jobs and CronJobs
 
-A Job runs Pods to completion:
+A Job runs Pods until a specified number complete successfully:
 
-- `completions` (how many successes), `parallelism` (how many at once),
-  `completionMode` (`NonIndexed` default or `Indexed`, which gives each Pod a
-  stable index used for sharding).
-- `backoffLimit` bounds retries; `activeDeadlineSeconds` bounds wall-clock time.
-- `podFailurePolicy` distinguishes retryable from fatal failures, so a `Failed` Pod
-  from a non-zero application exit can be marked fatal when the input is bad.
-- `ttlSecondsAfterFinished` lets the TTL controller delete a finished Job and its
-  Pods.
-- `successPolicy` and `podReplacementPolicy` define when a large Job counts as done
-  and how its failed Pods are replaced.
+| Field | Purpose |
+|---|---|
+| `completions` | The number of successful Pods required |
+| `parallelism` | The number of Pods that can run at once |
+| `completionMode` | `NonIndexed` (default) or `Indexed`, which gives each Pod a stable index for sharding work |
+| `backoffLimit` | The number of retries before the Job fails |
+| `activeDeadlineSeconds` | The maximum run time of the Job |
+| `podFailurePolicy` | Rules that mark some failures as fatal, such as a specific exit code for invalid input, and others as retryable |
+| `ttlSecondsAfterFinished` | Deletes the finished Job and its Pods after a delay |
+| `successPolicy`, `podReplacementPolicy` | When an indexed Job counts as successful, and when failed Pods are replaced |
 
 A CronJob creates Jobs on a schedule and adds:
 
-- `concurrencyPolicy: Allow|Forbid|Replace`; `Forbid` is the safe default for
-  GPU jobs that would collide over the same device set.
-- `startingDeadlineSeconds`: a run that is too late is skipped rather than piling up.
-- `timeZone`, the schedule is interpreted in this zone.
-- history limits (`successfulJobsHistoryLimit`, `failedJobsHistoryLimit`).
+- `concurrencyPolicy`: `Allow`, `Forbid`, or `Replace`. `Forbid` is the safe choice for GPU
+  jobs that would compete for the same devices.
+- `startingDeadlineSeconds`: a run that cannot start within this time is skipped rather
+  than started late.
+- `timeZone`: the time zone in which the schedule is interpreted.
+- `successfulJobsHistoryLimit` and `failedJobsHistoryLimit`.
 
-The missed-schedule rule: the controller counts missed schedules since the last
-successful one (or since creation); beyond 100 it logs and stops scheduling, and
-`startingDeadlineSeconds` decides how late a run may start.
+If the CronJob controller finds more than 100 missed schedules since the last run, it
+stops scheduling that CronJob and logs an error. Setting `startingDeadlineSeconds` limits
+how far back the controller counts.
 
 ### 3.8 Autoscaling
 
-- **HPA** scales replicas from metrics (CPU, memory, custom/external). It needs
-  the metrics API; the core `metrics-server` provides resource metrics.
-- **VPA** recommends or sets requests/limits. It does not work well with GPU
-  extended resources, because those are integer, non-overcommittable, and
-  frequently require a Pod replacement.
-- **Cluster infrastructure scaling** (Cluster Autoscaler, Karpenter, cloud node
-  pools) adds or removes nodes. It is a control loop *outside* the core, which
-  makes it an example of a controller that talks to an external API.
+- **The Horizontal Pod Autoscaler (HPA)** changes the replica count based on metrics:
+  CPU, memory, or custom and external metrics. Resource metrics come from
+  `metrics-server`.
+- **The Vertical Pod Autoscaler (VPA)** recommends or sets CPU and memory requests. It does
+  not manage extended resources such as GPUs, which are integers, cannot be overcommitted,
+  and usually require replacing the Pod to change.
+- **Node autoscalers** (Cluster Autoscaler, Karpenter, managed node pools) add and remove
+  nodes. They run outside the core control plane and act on a cloud provider's API.
 
-### 3.9 PodDisruptionBudget (PDB)
+### 3.9 PodDisruptionBudgets
 
-A PDB does not prevent disruptions; it prevents the **Eviction API** from
-disrupting more Pods than the budget allows. `minAvailable`/`maxUnavailable`
-define the budget, and `unhealthyPodEvictionPolicy: AlwaysAllow|IfHealthyBudget`
-decides whether unhealthy Pods count against it. Draining a node routes through
-the Eviction API, so a PDB is what keeps a rollout from taking out a quorum.
+A PodDisruptionBudget (PDB) limits voluntary disruptions made through the **Eviction
+API**; it cannot prevent a node from failing. `minAvailable` or `maxUnavailable` defines
+the budget. `unhealthyPodEvictionPolicy` (`IfHealthyBudget` or `AlwaysAllow`) controls
+whether Pods that are not ready can be evicted even when the budget is exhausted.
+`kubectl drain` evicts Pods through the Eviction API, so a PDB prevents a node
+maintenance operation from taking too many replicas of a quorum-based service down at
+once.
 
 ---
 
-## 4. Pod lifecycle, kubelet, scheduling, and eviction
+## 4. The Pod lifecycle, scheduling, and eviction
 
 ### 4.1 From `kubectl apply` to a running container
 
@@ -510,460 +549,467 @@ kubelet on the chosen node (it was watching for Pods bound to it)
 EndpointSlice controller adds the Ready Pod to the Service's endpoints
 ```
 
-Two details matter: the scheduler writes only `spec.nodeName` (the **Binding**
-subresource) and never starts containers; and the controllers that update status
-observe the Pod through their own watch, so the chain is asynchronous and
-eventually consistent.
+Two properties of this sequence are worth stating in an interview. The scheduler only
+writes `spec.nodeName` through the Binding subresource; it never starts containers. And
+each component observes the previous step through its own watch, so the whole sequence
+is asynchronous and eventually consistent.
 
-### 4.2 Pod phase vs container state
+### 4.2 Pod phase, container state, and conditions
 
-`status.phase` is a coarse summary:
-`Pending` → `Running` → `Succeeded`/`Failed`, with `Unknown` when the kubelet
-cannot be reached. `CrashLoopBackOff` and `Terminating` are `kubectl` display
-strings derived from container states and deletion timestamps, not phases. Each
-container has `Waiting`, `Running`, or `Terminated`, with a reason and exit code.
+`status.phase` is a coarse summary: `Pending`, `Running`, `Succeeded`, or `Failed`, or
+`Unknown` when the node cannot be reached. `CrashLoopBackOff` and `Terminating` are not
+phases. `kubectl` displays them based on container states and the deletion timestamp.
+Each container has its own state, `Waiting`, `Running`, or `Terminated`, with a reason and,
+for terminated containers, an exit code.
 
-Conditions (kubelet-managed) are the useful signal: `PodScheduled`,
-`PodReadyToStartContainers`, `Initialized`, `ContainersReady`, `Ready`,
-`DisruptionTarget`, `PodResizePending`, `PodResizeInProgress`.
+Pod conditions give more detail: `PodScheduled`, `PodReadyToStartContainers`,
+`Initialized`, `ContainersReady`, `Ready`, `DisruptionTarget`, `PodResizePending`, and
+`PodResizeInProgress`.
 
-`Ready` is the conjunction of all containers being ready *and* any
-`readinessGates` being `True`. Readiness gates are how a service mesh or a
-controller injects its own notion of "ready" without the kubelet knowing about it.
+A Pod is `Ready` when all its containers are ready and every condition listed in its
+`readinessGates` is `True`. Readiness gates let an external controller, such as a load
+balancer controller, add its own requirement for readiness.
 
-### 4.3 Scheduling: framework, not predicates
+### 4.3 The scheduling framework
 
-The scheduler (scheduling framework, stable v1.19) runs each Pod through a
-**scheduling cycle** (select a node) and a **binding cycle** (apply the decision).
-Cycles are serial per Pod; binding can run concurrently. The extension points:
+The scheduler processes each Pod in a **scheduling cycle**, which selects a node, followed
+by a **binding cycle**, which applies the decision. Scheduling cycles run one Pod at a
+time; binding cycles can run concurrently. Plugins implement the following extension
+points:
 
 | Extension point | Purpose |
 |---|---|
-| `PreEnqueue` | Gate entry to the active queue (used by scheduling gates, gang quorum) |
-| `QueueSort` | Order Pods in the queue (priority) |
-| `PreFilter` | Precompute state; fail the cycle early |
-| `Filter` | Reject infeasible nodes; runs concurrently per node |
-| `PostFilter` | Only if no node passed: preemption and similar recovery |
-| `PreScore` / `Score` / `NormalizeScore` | Rank feasible nodes |
-| `Reserve` / `Unreserve` | Reserve resources before binding; undo on failure |
-| `Permit` | Approve, deny, or wait (used by gang scheduling to hold a member) |
-| `PreBind` / `Bind` | Provision (e.g. volumes) and write the Binding |
-| `PostBind` | Informational cleanup |
+| `PreEnqueue` | Decide whether a Pod can enter the active queue; used by scheduling gates and gang scheduling |
+| `QueueSort` | Order the Pods in the queue, usually by priority |
+| `PreFilter` | Compute state for the cycle, or reject the Pod early |
+| `Filter` | Exclude nodes that cannot run the Pod; evaluated for nodes in parallel |
+| `PostFilter` | Runs only when no node passed `Filter`; preemption is implemented here |
+| `PreScore`, `Score`, `NormalizeScore` | Rank the feasible nodes |
+| `Reserve`, `Unreserve` | Reserve resources on the chosen node before binding, and release them if a later step fails |
+| `Permit` | Approve, deny, or delay binding; gang scheduling holds Pods here |
+| `PreBind`, `Bind` | Prepare resources such as volumes, then write the binding |
+| `PostBind` | Informational cleanup after a successful bind |
 
-Behaviors:
+Details to know:
 
-- `Reserve` happens before `Bind` to avoid races while the bind is in flight; if
-  anything later fails, `Unreserve` runs in reverse order and **must not fail**.
-- `Permit` is where gang scheduling holds a member until the rest of the gang is
-  ready.
-- The scheduler has a `QueueingHint` mechanism (stable v1.34) so that a Pod that
-  failed is only retried when a relevant event occurs, rather than on every
-  cluster change.
-- Multiple profiles, or a second scheduler, can run side by side; a Pod selects one
-  with `spec.schedulerName`.
+- **Reservation avoids races.** Resources are reserved before the asynchronous bind, so
+  the next scheduling cycle does not assign them again. If a later step fails,
+  `Unreserve` runs in reverse order, and it must not fail.
+- **Queueing hints** (stable in v1.34) let the scheduler retry an unschedulable Pod only
+  when an event that could make it schedulable occurs, instead of after every change in
+  the cluster.
+- **Multiple schedulers.** A cluster can run several scheduler profiles, or a second
+  scheduler. A Pod chooses one with `spec.schedulerName`.
 
-### 4.4 Node selection primitives
+### 4.4 Controlling placement
 
-From simplest to most expressive:
+From the simplest mechanism to the most expressive:
 
-- `spec.nodeName`: bypasses the scheduler (used for static Pods and tests).
-- `nodeSelector`: equality on node labels.
-- **Node affinity:** `requiredDuringSchedulingIgnoredDuringExecution` (hard) and
-  `preferredDuringSchedulingIgnoredDuringExecution` (soft, with weights), plus
-  `matchExpressions` operators (`In`, `NotIn`, `Exists`, `DoesNotExist`,
-  `Gt`, `Lt`).
-- **Inter-pod affinity/anti-affinity:** co-locate or separate Pods by
-  `topologyKey` (e.g. keeping replicas off the same node). This is O(n²)-ish at
-  scale, and topology spread constraints are the better tool where they apply.
-- **Topology spread constraints:** `maxSkew`, `topologyKey`, `whenUnsatisfiable`
-  (`DoNotSchedule`/`ScheduleAnyway`), `minDomains`, `nodeAffinityPolicy`,
-  `nodeTaintsPolicy`. This is how replicas are spread across zones.
-- **Taints and tolerations:** nodes repel Pods; effects are `NoSchedule`
-  (no new Pods), `PreferNoSchedule` (soft), and `NoExecute` (evict running Pods
-  that do not tolerate it). `tolerationSeconds` lets a Pod stay briefly after a
-  `NoExecute` taint appears, which is what gives a rolling node upgrade time.
-- **Priority and preemption:** a `PriorityClass` (non-namespaced, value ≤ 1e9
-  for user classes) lets the scheduler preempt lower-priority Pods when no node
-  fits. `preemptionPolicy: Never` opts a high-priority Pod out of preempting
-  others. The built-in `system-cluster-critical` (2000000000) and
-  `system-node-critical` (2000001000) classes protect control-plane add-ons.
+| Mechanism | Behavior |
+|---|---|
+| `spec.nodeName` | Assigns the Pod to a node directly, bypassing the scheduler |
+| `nodeSelector` | Requires node labels with exact values |
+| Node affinity | Required (`requiredDuringSchedulingIgnoredDuringExecution`) or weighted preferred (`preferredDuringSchedulingIgnoredDuringExecution`) rules, with the operators `In`, `NotIn`, `Exists`, `DoesNotExist`, `Gt`, and `Lt` |
+| Inter-Pod affinity and anti-affinity | Places Pods near or away from other Pods within a `topologyKey`, such as a node or zone. Expensive to evaluate in large clusters |
+| Topology spread constraints | Spreads Pods evenly across domains with `maxSkew`, `topologyKey`, `whenUnsatisfiable` (`DoNotSchedule` or `ScheduleAnyway`), `minDomains`, `nodeAffinityPolicy`, and `nodeTaintsPolicy`. Prefer them to anti-affinity for spreading replicas across zones |
+| Taints and tolerations | A taint repels Pods that do not tolerate it. `NoSchedule` blocks new Pods, `PreferNoSchedule` avoids placing them, and `NoExecute` also evicts running Pods. `tolerationSeconds` lets a Pod stay for a limited time after a `NoExecute` taint is added |
+| Priority and preemption | A `PriorityClass` (cluster-scoped; user-defined values up to 1,000,000,000) allows the scheduler to evict lower-priority Pods when no node fits. `preemptionPolicy: Never` gives a Pod high queue priority without preempting others. The built-in classes `system-cluster-critical` (2,000,000,000) and `system-node-critical` (2,000,001,000) protect essential add-ons |
 
-`kubectl cordon` marks a node unschedulable; `kubectl drain` cordons and evicts
-through the Eviction API so PDBs are respected.
+`kubectl cordon` marks a node unschedulable. `kubectl drain` cordons the node and evicts
+its Pods through the Eviction API, respecting PodDisruptionBudgets.
 
-### 4.5 Kubelet responsibilities
+### 4.5 The kubelet
 
-The kubelet is the node's reconciliation agent:
+The kubelet reconciles the Pods assigned to its node. It:
 
-- watches for Pods assigned to its node and admits/creates them,
-- calls CRI to run the sandbox and containers,
-- mounts volumes and calls CSI,
-- drives the device manager and DRA `NodePrepareResources`,
-- runs liveness/readiness/startup probes,
-- reports Pod and Node status (and a Lease heartbeat),
-- garbage-collects images and dead containers,
-- enforces eviction thresholds.
+- Watches for Pods bound to its node, and admits and starts them
+- Calls the container runtime through CRI to create sandboxes and containers
+- Mounts volumes, calling CSI drivers
+- Allocates devices through the device manager and calls DRA drivers'
+  `NodePrepareResources`
+- Runs startup, liveness, and readiness probes
+- Reports Pod status and node status, and renews the node's `Lease` as a heartbeat
+- Removes unused images and exited containers
+- Evicts Pods when node resources run low
 
-The kubelet uses **PLEG** (Pod Lifecycle Event Generator) to detect container state
-changes and a sync loop to reconcile. `EventedPLEG` can use runtime events instead
-of polling. A slow PLEG shows up as `PLEG is not healthy` and as node `NotReady`
-flapping.
+The kubelet detects container state changes with the Pod Lifecycle Event Generator
+(PLEG), which by default polls the runtime; `EventedPLEG` uses runtime events instead.
+When the runtime responds slowly, the kubelet reports `PLEG is not healthy`, and the node
+can alternate between `Ready` and `NotReady`.
 
-### 4.6 Probes and restart policy
+### 4.6 Probes and restarts
 
-- `startupProbe` gates the other probes while a slow container starts; if it never
-  succeeds, the container is restarted.
-- `livenessProbe` failure restarts the container.
-- `readinessProbe` failure removes the Pod from Service endpoints (it does not
-  restart anything).
-- Probes can be `exec`, `httpGet`, `tcpSocket`, or `grpc`. gRPC probes suit
-  Triton/KServe-style servers that expose gRPC health.
+| Probe | Effect of failure |
+|---|---|
+| `startupProbe` | Other probes are disabled until it succeeds. If it does not succeed in time, the container is restarted |
+| `livenessProbe` | The container is restarted |
+| `readinessProbe` | The Pod is removed from Service endpoints; nothing is restarted |
 
-Restart rules extend beyond the three pod-level values:
+Probes can use `exec`, `httpGet`, `tcpSocket`, or `grpc`. gRPC probes suit inference
+servers such as Triton that expose the gRPC health checking protocol.
 
-- Pod-level `restartPolicy` is `Always` (default), `OnFailure`, or `Never`, and
-  a container can override it (`ContainerRestartRules`, beta v1.35).
-- The kubelet backs off exponentially on repeated crashes, which is the state
-  reported as `CrashLoopBackOff`. The backoff is capped by
-  `KubeletCrashLoopBackOffMax` (beta v1.35).
-- A container that runs successfully for a while resets the backoff.
-- Sidecars always restart regardless of the Pod-level policy.
+Restart behavior:
 
-### 4.7 Termination order
+- The Pod's `restartPolicy` is `Always` (default), `OnFailure`, or `Never`. Individual
+  containers can override it with restart rules (`ContainerRestartRules`, beta in v1.35).
+- After repeated failures, the kubelet waits longer before each restart. `kubectl` shows
+  this waiting state as `CrashLoopBackOff`. `KubeletCrashLoopBackOffMax` (beta in v1.35)
+  makes the maximum delay configurable.
+- A container that runs successfully for long enough resets the delay.
+- Sidecar containers are always restarted, regardless of the Pod's restart policy.
 
-1. A delete sets `metadata.deletionTimestamp` and the grace period
-   (`terminationGracePeriodSeconds`, default 30s); the object stays visible as
-   `Terminating`.
-2. The control plane starts removing the Pod from `EndpointSlice` endpoints. The
-   endpoint is not deleted immediately: it gets `terminating: true` and
-   `ready: false` (for compatibility), while `serving` reflects actual readiness.
-   This window is what lets a load balancer drain connections.
-3. On the node, the kubelet runs each container's `preStop` hook (if any); if the
-   hook outlives the grace period, the kubelet grants about two extra seconds.
-4. The kubelet asks the runtime to send the container's stop signal, the
-   image's `STOPSIGNAL` if set (overridable per container with the
-   `ContainerStopSignals` feature), otherwise `SIGTERM`, to PID 1.
-5. When the grace period expires, the runtime sends `SIGKILL` to whatever is
-   left, the Pod moves to a terminal phase, and the API object is removed.
+### 4.7 Termination
 
-With sidecars, the kubelet waits for the last app container to stop before sending
-`TERM` to sidecars, then terminates them in reverse order. Regular containers alone
-do not provide that ordering.
+When a Pod is deleted, termination proceeds as follows:
 
-On GPU nodes, a CUDA process must handle `SIGTERM` and release its context. If it
-ignores the signal, the kubelet `SIGKILL`s it and the device plugin marks the device
-free, but a half-dead process holding the GPU can make the next Pod fail until the
-runtime cleans up. Graceful shutdown is a correctness requirement there.
+1. The API server sets `metadata.deletionTimestamp` and the grace period
+   (`terminationGracePeriodSeconds`, default 30 seconds). The Pod remains visible, and
+   `kubectl` shows it as `Terminating`.
+2. The EndpointSlice controller marks the Pod's endpoints `terminating: true` and
+   `ready: false`, while `serving` continues to reflect the Pod's readiness. Load
+   balancers that understand these conditions can drain existing connections instead of
+   cutting them.
+3. The kubelet runs each container's `preStop` hook, if one is defined. If the hook is
+   still running when the grace period ends, the kubelet extends the period once by
+   about two seconds.
+4. The kubelet has the runtime send the stop signal to each container's PID 1. The signal
+   is the image's `STOPSIGNAL` if set, which the `ContainerStopSignals` feature lets a
+   container override, and `SIGTERM` otherwise.
+5. When the grace period expires, the runtime sends `SIGKILL` to any remaining processes.
+   The Pod reaches a terminal phase, and the API object is removed.
 
-### 4.8 Node lifecycle and heartbeat failure
+With native sidecars, the kubelet stops the sidecars only after all application
+containers have stopped, and stops them in reverse order of their definition.
 
-Each node has a `Lease` in `kube-node-lease` that the kubelet renews. The node
-controller:
+On GPU nodes, a CUDA process should handle `SIGTERM` and release its GPU context. If it
+does not exit, it is killed with `SIGKILL`, and the device plugin considers the GPU free
+once the container is gone. A process that is still exiting can hold the GPU briefly and
+cause the next Pod on that GPU to fail. Handling `SIGTERM` correctly is therefore
+required for reliable GPU scheduling, not only good practice.
 
-- checks node status on `--node-monitor-period` (default 5s),
-- marks `Ready=False`/`Unknown` when heartbeats stop,
-- adds the corresponding taints (`node.kubernetes.io/not-ready`,
-  `unreachable`),
-- marks the node `Unknown` after `--node-monitor-grace-period` (default 40s), and
-  then lets the default 5-minute window elapse before starting **API-initiated
-  eviction** of the Pods (Pods get a default `NoExecute` toleration of 300s for
-  the `not-ready`/`unreachable` taints),
-- rate-limits evictions to `--node-eviction-rate` (default 0.1/s, i.e. one node
-  per 10s), and degrades further if more than
-  `--unhealthy-zone-threshold` (default 0.55) of a zone's nodes are unhealthy.
+### 4.8 Node heartbeats and failure
 
-If *all* zones are unhealthy, the node controller assumes a control-plane
-connectivity problem and stops evicting, so an outage of the control plane cannot
-trigger cluster-wide eviction. For a node that is shutting down cleanly,
-`GracefulNodeShutdown` (beta v1.21) lets the kubelet detect the event and terminate
-Pods within a configured grace period rather than let them die with the node.
+Each node has a `Lease` object in the `kube-node-lease` namespace, which the kubelet
+renews regularly. The node lifecycle controller in `kube-controller-manager`:
+
+- Checks node heartbeats every `--node-monitor-period` (default 5 seconds).
+- Sets the node's `Ready` condition to `Unknown` when no heartbeat has arrived within
+  `--node-monitor-grace-period` (default 40 seconds), and adds the
+  `node.kubernetes.io/unreachable` or `not-ready` taint with the `NoExecute` effect.
+- Lets Pods remain for their toleration period. By default, Pods receive a toleration of
+  300 seconds for these taints, so they are evicted about five minutes after the node
+  becomes unreachable.
+- Limits the rate of evictions with `--node-eviction-rate` (default 0.1 nodes per second,
+  one node every 10 seconds), and reduces the rate further when more than
+  `--unhealthy-zone-threshold` (default 55%) of a zone's nodes are unhealthy.
+
+If all zones are unhealthy, the controller assumes that the control plane has lost
+connectivity rather than that every node has failed, and it stops evicting. A control
+plane network problem therefore cannot cause the whole cluster to be evicted.
+
+For planned shutdowns, `GracefulNodeShutdown` (beta since v1.21) lets the kubelet detect
+the operating system shutdown and terminate Pods within a configured grace period.
 
 ### 4.9 Node-pressure eviction
 
-This is different from API-initiated eviction. The kubelet's eviction manager
-watches signals and evicts Pods on the node:
+Node-pressure eviction is performed by the kubelet, not through the Eviction API. The
+kubelet monitors eviction signals and evicts Pods when a threshold is crossed:
 
-- Signals: `memory.available`, `nodefs.available`, `nodefs.inodesFree`,
+- **Signals:** `memory.available`, `nodefs.available`, `nodefs.inodesFree`,
   `imagefs.available`, `imagefs.inodesFree`, `containerfs.available`,
-  `containerfs.inodesFree`, `pid.available`.
-- Hard eviction (`evictionHard`) triggers immediately at the threshold; soft
-  eviction (`evictionSoft`) only triggers after
+  `containerfs.inodesFree`, and `pid.available`.
+- **Hard thresholds** (`evictionHard`) cause immediate eviction. **Soft thresholds**
+  (`evictionSoft`) cause eviction only after the signal has stayed past the threshold for
   `evictionSoftGracePeriod`.
-- Default thresholds include `memory.available<100Mi`,
-  `nodefs.available<10%`, `imagefs.available<15%`, and inode thresholds on Linux.
-- Eviction order follows QoS and priority: `BestEffort` first, then
-  `Burstable` Pods exceeding their requests, then `Guaranteed`; within a class,
-  lower priority goes first. Only Pods **above their requests** are candidates
-  under resource pressure, which is why requests are a protection mechanism.
+- **Defaults** on Linux include `memory.available<100Mi`, `nodefs.available<10%`,
+  `imagefs.available<15%`, and `nodefs.inodesFree<5%`.
+- **Order.** The kubelet first considers Pods whose usage exceeds their requests, ordered
+  by priority and then by how far usage exceeds requests. `BestEffort` Pods have no
+  requests, so they are evicted first. A Pod that stays within its requests is evicted
+  only after all such Pods, so accurate requests protect a workload.
 
-`kubelet --eviction-hard` is separate from scheduler behavior: the scheduler
-placed the Pods, but the kubelet is the one that evicts when the node itself runs
-out.
-
----
-
-## 5. Controllers, informers, and reconciliation
-
-### 5.1 The pattern
-
-A controller watches one or more resource types, computes the difference between
-desired state (spec) and observed state (status/children), and acts through the
-API. It is:
-
-- **level-triggered:** it reconciles the whole object, not one event; missing an
-  event changes nothing because the next sync re-reads state;
-- **idempotent:** running reconcile twice with the same input is safe;
-- **self-healing:** if a child is deleted, the next reconcile recreates it.
-
-A reconcile is stateless with respect to the cluster: read the world, compute,
-write, return. Caching what the previous reconcile did and assuming it still holds
-is a common source of drift.
-
-### 5.2 The client-go layers
-
-Underneath `controller-runtime` (and most operators) is the client-go machinery:
-
-- **Reflector** does a `list` then a `watch` from the returned
-  `resourceVersion`. On `410 Gone` it re-lists. It is the only thing that talks to
-  the API for reads.
-- **DeltaFIFO** turns watch events into deltas.
-- **Indexer** stores objects in a thread-safe cache with configurable indexes
-  (by namespace, by owner, custom).
-- **Informer** (`SharedInformer`) delivers add/update/delete notifications from
-  that cache, so N controllers can share one watch and one cache.
-- **Workqueue** deduplicates keys, rate-limits retries with exponential backoff,
-  and supports delayed re-queuing. If ten updates for one Deployment arrive
-  during a reconcile, the queue still ends with one entry.
-
-Three consequences follow. Controllers **must not rely on receiving every event**;
-a cache may be slightly stale; and `resourceVersion` conflicts are expected.
-
-### 5.3 controller-runtime vocabulary
-
-- `Manager` owns clients, caches, and the leader-election lock.
-- `Reconciler.Reconcile(ctx, req)` receives a `NamespacedName`, fetches the
-  object, and returns a result (requeue after duration) or an error.
-- Predicates filter events (e.g. only reconcile on generation change, so status
-  writes do not cause a loop).
-- `client.Status().Update()` writes the status subresource; `client.Update()`
-  writes spec and metadata. Writing one through the other's client is a common bug.
-- `Owns()`/`Watches()` set up watches on child resources so that a changed child
-  re-triggers the parent's reconcile.
-- Finalizers are added/removed explicitly; removal must happen only after cleanup
-  succeeds.
-
-### 5.4 Consistency and field ownership
-
-Three mechanics prevent controllers from clobbering each other:
-
-1. **Optimistic concurrency:** updates carry `resourceVersion`; a stale write gets
-   `409 Conflict`.
-2. **Status subresource:** spec writes and status writes are separate endpoints,
-   so a controller reporting status cannot overwrite a user's spec.
-3. **Server-side apply:** `managedFields` records which manager owns which field.
-   If two managers own the same field, apply reports a conflict instead of
-   silently winning.
-
-For an operator, the practical rule is to read the latest object, mutate only the
-fields it manages, and let conflicts surface instead of retrying blindly. A field
-that must be owned is claimed through field management rather than by deleting
-another controller's value.
-
-The `Reconcile` body, `CreateOrUpdate` patterns, status conditions, and
-controller-runtime builder usage are in `docs/04-kubernetes-operator.md`.
+The scheduler placed the Pods, but it plays no part in node-pressure eviction. The
+kubelet acts on the node's actual resource use.
 
 ---
 
-## 6. Services, endpoints, and cluster networking
+## 5. Controllers and informers
 
-### 6.1 Service types and what they mean
+### 5.1 The controller pattern
+
+A controller watches one or more resource types, compares the desired state in each
+object's spec with the observed state, and makes changes through the API until they
+match. A well-written controller is:
+
+- **Level-triggered.** It reconciles the whole object rather than reacting to one event.
+  A missed event does not matter, because the next reconcile reads the current state.
+- **Idempotent.** Reconciling the same object twice with the same state produces the same
+  result.
+- **Self-healing.** If someone deletes a child object, the next reconcile recreates it.
+
+Each reconcile reads the current state, computes the necessary changes, writes them, and
+returns. A controller that keeps its own record of what it did previously, and assumes it
+is still true, drifts from the actual state of the cluster.
+
+### 5.2 client-go internals
+
+controller-runtime and most operators are built on client-go, which provides these layers:
+
+| Layer | Role |
+|---|---|
+| Reflector | Lists a resource type and then watches it from the returned `resourceVersion`. On `410 Gone`, it lists again. It is the only layer that reads from the API |
+| DeltaFIFO | A queue of changes produced from the watch events |
+| Indexer | A thread-safe local cache of objects, with indexes such as by namespace or by owner |
+| Informer (`SharedInformer`) | Updates the cache from the queue and delivers add, update, and delete notifications. Several controllers can share one informer, and therefore one watch and one cache |
+| Work queue | Holds object keys to reconcile. It deduplicates keys, retries failures with exponential backoff, and supports delayed requeues |
+
+If ten updates to one Deployment arrive while it is being reconciled, the work queue holds
+a single entry for it afterward. Controllers must therefore not depend on receiving every
+event. They must also expect the cache to be slightly out of date, and expect
+`resourceVersion` conflicts on writes.
+
+### 5.3 controller-runtime terms
+
+- **`Manager`** owns the clients, the shared cache, and leader election.
+- **`Reconciler.Reconcile(ctx, req)`** receives a namespace and name, reads the object,
+  and returns either a result, which can request a requeue after a delay, or an error.
+- **Predicates** filter events, for example to reconcile only when the spec generation
+  changes, so that the controller's own status updates do not trigger another reconcile.
+- **`client.Status().Update()`** writes the status subresource, and **`client.Update()`**
+  writes the spec and metadata. Using the wrong one is a common bug: the change is
+  silently ignored.
+- **`Owns()` and `Watches()`** watch child or related objects, so that a change to a child
+  triggers a reconcile of its owner.
+- **Finalizers** are added and removed explicitly, and a finalizer is removed only after
+  its cleanup succeeds.
+
+### 5.4 Avoiding conflicting writes
+
+Three mechanisms prevent controllers from overwriting each other's changes:
+
+1. **Optimistic concurrency.** Every update includes a `resourceVersion`, and an update
+   based on an old version fails with `409 Conflict`.
+2. **The status subresource.** The spec and the status are written through separate
+   endpoints, so a controller that writes status cannot overwrite a user's spec change.
+3. **Server-side apply.** `managedFields` records which manager owns each field. If two
+   managers try to set the same field, apply reports a conflict.
+
+In practice, an operator should read the latest object, change only the fields it
+manages, and handle conflicts by reading again rather than by retrying the same request.
+To take over a field that another manager owns, use server-side apply with forced
+ownership rather than repeatedly overwriting the other manager's value.
+
+`04-kubernetes-operator.md` covers the `Reconcile` function, `CreateOrUpdate`, status
+conditions, and the controller-runtime builder in detail.
+
+---
+
+## 6. Services and cluster networking
+
+### 6.1 Service types
 
 | Type | Behavior |
 |---|---|
-| `ClusterIP` | A stable virtual IP inside the cluster; the default |
-| `NodePort` | Allocates a port on every node and forwards to the Service |
-| `LoadBalancer` | Asks the cloud (via the service controller) for an external LB |
-| `ExternalName` | DNS CNAME to an external name; no proxying |
-| Headless (`clusterIP: None`) | No VIP; DNS returns the Pod IPs directly |
+| `ClusterIP` (default) | A stable virtual IP address reachable inside the cluster |
+| `NodePort` | Opens the same port on every node and forwards it to the Service |
+| `LoadBalancer` | Asks the cloud provider, through the service controller, for an external load balancer |
+| `ExternalName` | Returns a DNS CNAME record for an external name; no traffic is proxied |
+| Headless (`clusterIP: None`) | No virtual IP; DNS returns the IP addresses of the Pods |
 
-ClusterIPs are allocated by the API server from the service CIDR (a range
-separate from the pod CIDR) and released when the Service is deleted. Services
-that need external cleanup carry a `metadata.finalizers` entry, a
-`LoadBalancer` gets `service.kubernetes.io/load-balancer-cleanup`, which can hold
-the object in `Terminating` until the cloud LB is gone. Headless Services
-plus StatefulSet's `serviceName` are how `pod-0.svc` DNS names are produced.
+The API server allocates cluster IPs from the Service CIDR, a range separate from the Pod
+CIDR, and releases them when the Service is deleted. A `LoadBalancer` Service receives the
+`service.kubernetes.io/load-balancer-cleanup` finalizer, so it remains in `Terminating`
+until the cloud load balancer has been deleted. A headless Service named in a
+StatefulSet's `serviceName` gives each Pod a DNS name such as
+`web-0.web.default.svc.cluster.local`.
 
-`externalIPs` is deprecated (v1.36); an external load balancer or the Gateway API
-replaces it.
+The `externalIPs` field is deprecated as of v1.36. Use a load balancer or the Gateway API
+instead.
 
-### 6.2 EndpointSlices and readiness
+### 6.2 EndpointSlices
 
-The EndpointSlice controller (in `kube-controller-manager`) populates
-`EndpointSlice` objects from Pods that match a Service selector. Mechanics:
+The EndpointSlice controller in `kube-controller-manager` creates `EndpointSlice` objects
+that list the Pods matching each Service's selector:
 
-- Slices are grouped by IP family, protocol, port, and Service, up to
-  `--max-endpoints-per-slice` (default 100, max 1000).
-- Each endpoint has `ready`, `serving`, and `terminating` conditions.
-  `serving` maps to the Pod's `Readiness`; `terminating` is set when the Pod
-  receives a deletion timestamp. `ready` is effectively `serving && !terminating`.
-- kube-proxy consumes EndpointSlices, not the legacy `Endpoints` API. The
-  `Endpoints` API is deprecated (v1.33) and EndpointSlice mirroring is deprecated;
-  for selectorless Services, create EndpointSlices directly.
-- Endpoints can be duplicated across slices while updates propagate, so consumers
-  must aggregate and dedupe. kube-proxy's `EndpointSliceCache` is the reference.
+- **Slicing.** Endpoints are grouped by Service, IP family, protocol, and port, with up to
+  `--max-endpoints-per-slice` endpoints in each slice (default 100, maximum 1000). Small
+  slices keep updates small in large Services.
+- **Conditions.** Each endpoint has three conditions. `serving` reflects the Pod's
+  readiness. `terminating` is set when the Pod has a deletion timestamp. `ready` is
+  `serving` and not `terminating`.
+- **The legacy API.** kube-proxy uses EndpointSlices, not the older `Endpoints` API, which
+  is deprecated as of v1.33. EndpointSlice mirroring from `Endpoints` objects is also
+  deprecated; for a Service without a selector, create EndpointSlices directly.
+- **Duplicates.** While updates propagate, the same endpoint can appear in more than one
+  slice, so consumers must merge and deduplicate. kube-proxy's `EndpointSliceCache` is the
+  reference implementation.
 
-Before a slow-shutting-down Pod is removed, it becomes
-`terminating=true, ready=false` while `serving` still reflects whether it is
-answering. That gap is where connection draining happens.
+During termination, a Pod's endpoint becomes `terminating: true` and `ready: false`, while
+`serving` still shows whether the Pod responds. This interval is when load balancers can
+drain connections.
 
-### 6.3 How a Service routes traffic
+### 6.3 How Service traffic is forwarded
 
-kube-proxy programs node-level forwarding. There are three modes:
+kube-proxy programs forwarding on each node in one of three modes:
 
-- **`iptables`** (default in v1.37): installs iptables rules per Service and per
-  endpoint; a `ClusterIP` connection is DNATed to a chosen Pod IP:port, and
-  conntrack reverses the translation for replies. It is O(rules) and gets slow in
-  huge clusters, though modern sync (minSyncPeriod, partial sync) helps.
-- **`ipvs`**: a kernel hash-table load balancer. It was an experiment for higher
-  throughput and has more balancing algorithms, but the IPVS model fit the
-  Services API poorly. It is **deprecated**: the mode is deprecated as of v1.35,
-  the `KubeProxyIPVS` feature gate is deprecated in v1.37, support is disabled by
-  default from v1.40, and it will be removed in v1.43. It is not a choice for a new
-  cluster.
-- **`nftables`** (stable v1.33): an nftables-native implementation that replaces
-  both iptables and IPVS with better performance at scale. Upstream has said the
-  default will move to nftables in a future release; a mature v1.37 cluster is
-  still likely on iptables unless it opted in.
+- **`iptables`** (the default in v1.37). kube-proxy installs iptables rules for each
+  Service and endpoint. A connection to a cluster IP is translated with DNAT to one Pod's
+  IP and port, and conntrack reverses the translation for replies. Rule processing cost
+  grows with the number of rules, so very large clusters see slower updates, although
+  partial syncs and `minSyncPeriod` reduce the effect.
+- **`ipvs`**. kube-proxy uses the kernel's IPVS load balancer, which offers more balancing
+  algorithms. The IPVS model fits the Service API poorly, and the mode is being removed:
+  it is deprecated as of v1.35, the `KubeProxyIPVS` feature gate is deprecated in v1.37,
+  support is disabled by default from v1.40, and it will be removed in v1.43. Do not choose
+  it for a new cluster.
+- **`nftables`** (stable in v1.33). An implementation based on nftables that performs
+  better than iptables at scale. Upstream plans to make it the default in a future
+  release; a v1.37 cluster uses iptables unless configured otherwise.
 
-Other Service fields:
+Other Service fields that affect routing:
 
-- `sessionAffinity: ClientIP` pins a client to a backend for a duration.
-- `internalTrafficPolicy`/`externalTrafficPolicy: Local|Cluster` controls whether
-  node-local endpoints are preferred (topology-aware routing uses these).
-- `trafficDistribution` accepts `PreferSameZone` and `PreferSameNode` in current
-  releases (`PreferClose` is a deprecated alias for `PreferSameZone`); it expresses
-  a preference rather than the hard topology guarantee of the traffic policies.
-- `ipFamilyPolicy`/`ipFamilies` configure dual-stack.
+- `sessionAffinity: ClientIP` sends connections from the same client IP to the same
+  backend for a configurable time.
+- `internalTrafficPolicy` and `externalTrafficPolicy` set to `Local` send traffic only to
+  endpoints on the same node. `Cluster` uses all endpoints.
+- `trafficDistribution` accepts `PreferSameZone` and `PreferSameNode` (`PreferClose` is a
+  deprecated alias for `PreferSameZone`). It expresses a preference, and falls back to
+  other endpoints, unlike the strict `Local` traffic policies.
+- `ipFamilyPolicy` and `ipFamilies` configure dual-stack Services.
 
-Cilium can replace kube-proxy entirely with eBPF load balancing and policy in the
-kernel data path. The trade-off is operational complexity and a data path that is
-harder to inspect with `iptables -L`.
+Cilium can replace kube-proxy and implement Services and network policy with eBPF
+programs in the kernel. It scales better, but the forwarding state can no longer be
+inspected with `iptables -L`, and operating it requires eBPF-specific tools.
 
 ### 6.4 DNS
 
-CoreDNS serves cluster DNS. A Pod's `/etc/resolv.conf` points at the cluster DNS
-service, and the search domains allow short names. Two issues:
+CoreDNS provides cluster DNS. Each Pod's `/etc/resolv.conf` points to the cluster DNS
+Service and includes search domains for its namespace, so a Pod can resolve a Service by
+its short name.
 
-- `ndots:5` means a name with few dots is tried as `name.ns.svc.cluster.local`
-  first, generating extra queries; high-QPS workloads sometimes tune this or use
-  FQDNs.
-- `dnsPolicy` (`ClusterFirst` default, `Default`, `ClusterFirstWithHostNet`,
-  `None`) decides the resolver; host-networked Pods need attention.
+- **`ndots:5`.** A name with fewer than five dots is first tried with each search domain
+  appended, such as `api.example.com.default.svc.cluster.local`. Lookups of external names
+  therefore generate several extra queries. Workloads with high query rates use fully
+  qualified names with a trailing dot or lower `ndots` in `dnsConfig`.
+- **`dnsPolicy`.** `ClusterFirst` (default) uses cluster DNS. `Default` uses the node's
+  resolver. `ClusterFirstWithHostNet` is required for a Pod with `hostNetwork: true` to use
+  cluster DNS. `None` requires the Pod to supply its own `dnsConfig`.
 
-Headless Services and StatefulSets rely on DNS for stable identity; CoreDNS is a
-hard dependency for anything that resolves Service names.
+Any workload that resolves Service names depends on CoreDNS, and StatefulSets depend on it
+for stable Pod names.
 
-### 6.5 CNI and pod networking
+### 6.5 CNI and Pod networking
 
-The CNI plugin gives each Pod an IP and connectivity:
+The CNI plugin gives each Pod an IP address and connectivity. A typical plugin:
 
-1. create a veth pair; one end in the Pod's netns, one on the host,
-2. attach the host end to a bridge/OVS or a routing/encap device,
-3. assign the Pod IP (usually from the node's pod CIDR),
-4. install routes and, where supported, policy.
+1. Creates a veth pair, with one end in the Pod's network namespace and one on the host.
+2. Connects the host end to a bridge, Open vSwitch, or a routing or encapsulation device.
+3. Assigns the Pod an IP address, usually from the node's Pod CIDR.
+4. Adds routes and, if the plugin supports it, network policy rules.
 
-Options differ in routing model (overlay vs native/cloud routes), IPAM, MTU, and
-whether policy is enforced in iptables or eBPF. MTU mismatches cause
-hard-to-diagnose hangs with large frames and on RDMA/GPUDirect setups.
+CNI plugins differ in their routing model (overlay networks or native routing through the
+cloud network), IP address management, MTU, and whether they enforce policy with iptables
+or eBPF. An MTU that is too large for the underlying network causes connections that
+hang when large packets are sent. The problem is difficult to diagnose, and it also
+affects RDMA and GPUDirect configurations.
 
 ### 6.6 NetworkPolicy
 
-NetworkPolicy is a Pod-level firewall keyed on labels. Defaults matter: if no
-policy selects a Pod, all traffic is allowed; once a policy selects it, only
-allowed traffic flows (for the directions that policy covers). Policies are
-additive, there are no deny rules, and they are enforced by the CNI (Calico,
-Cilium, …), not by kube-proxy. For GPU clouds, a default-deny baseline in tenant
-namespaces plus explicit allow rules is the standard starting point.
+A NetworkPolicy is a firewall for Pods, selected by labels:
+
+- **Default allow.** A Pod that no policy selects accepts all traffic.
+- **Selection enables isolation.** Once any policy selects a Pod for a direction, ingress
+  or egress, only traffic that some policy allows in that direction is permitted.
+- **Policies are additive.** The standard API has no deny rules; the allowed traffic is the
+  union of all matching policies.
+- **The CNI plugin enforces policies.** A plugin without policy support, such as a basic
+  bridge plugin, ignores them silently. Calico and Cilium enforce them.
+
+For a GPU cloud, start each tenant namespace with a default-deny policy and add explicit
+allow rules.
 
 ---
 
 ## 7. Storage, configuration, and secrets
 
-### 7.1 PersistentVolumes, PVCs, and StorageClasses
+### 7.1 PersistentVolumes, claims, and StorageClasses
 
-- A **PVC** is a namespaced request (size, access mode, storage class).
-- A **PV** is the cluster-scoped resource; binding ties them together.
-- A **StorageClass** defines the provisioner (CSI driver), parameters, reclaim
-  policy, and volume binding mode.
+| Object | Scope | Role |
+|---|---|---|
+| PersistentVolumeClaim (PVC) | Namespace | A request for storage: size, access mode, and StorageClass |
+| PersistentVolume (PV) | Cluster | A piece of storage. The control plane binds a PV to a PVC |
+| StorageClass | Cluster | The provisioner (a CSI driver), its parameters, the reclaim policy, and the binding mode |
 
-Points that matter:
+Properties to know:
 
-- **Access modes:** `ReadWriteOnce` (one node), `ReadOnlyMany`, `ReadWriteMany`
-  (driver-dependent), and `ReadWriteOncePod` (one Pod, stricter than RWO).
-- **Reclaim policy:** `Delete` (remove backing storage) or `Retain` (keep it; an
-  admin must clean up manually). `Recycle` is deprecated.
-- **Volume binding mode:** `Immediate` vs `WaitForFirstConsumer`. The latter is
-  essential when the storage is zonal, because it delays binding until the Pod's
-  node (and therefore zone) is known.
-- **Expansion:** PVCs can grow if the StorageClass has
-  `allowVolumeExpansion: true` and the driver supports it.
-- **Snapshots:** `VolumeSnapshotClass`/`VolumeSnapshot` via CSI.
-- **CSI** is the standard driver interface; in-tree drivers have been migrated or
-  removed. A CSI driver can be a DaemonSet (node plugin) plus a controller
-  Deployment (provisioner, attacher, resizer).
+- **Access modes.** `ReadWriteOnce` allows one node to mount the volume for writing.
+  `ReadOnlyMany` allows many nodes to read it. `ReadWriteMany` allows many nodes to write
+  it, if the driver supports that. `ReadWriteOncePod` allows only one Pod.
+- **Reclaim policy.** `Delete` removes the underlying storage when the PVC is deleted.
+  `Retain` keeps it for manual cleanup. `Recycle` is deprecated.
+- **Binding mode.** `Immediate` binds the PVC when it is created. `WaitForFirstConsumer`
+  waits until a Pod using the PVC is scheduled. Use it for zonal storage, so the volume is
+  created in the zone where the Pod runs.
+- **Expansion.** A PVC can be enlarged if its StorageClass sets
+  `allowVolumeExpansion: true` and the driver supports expansion.
+- **Snapshots.** `VolumeSnapshotClass` and `VolumeSnapshot` create snapshots through CSI.
+- **CSI.** The Container Storage Interface is the standard driver interface, and the
+  former in-tree drivers have been migrated to CSI. A CSI driver typically runs as a
+  DaemonSet on each node plus a controller Deployment for provisioning, attaching, and
+  resizing.
 
-GPU training usually wants high-throughput shared storage (Lustre, Weka, NFS, or
-cloud parallel filesystems) mounted read-only for datasets, and a fast local
-scratch volume for checkpoints.
+GPU training usually reads datasets from high-throughput shared storage, such as Lustre,
+Weka, NFS, or a cloud parallel file system, and writes checkpoints to fast local storage.
 
 ### 7.2 ConfigMaps and Secrets
 
-- ConfigMaps hold non-sensitive config, consumable as env vars, files, or
-  command-line args.
-- Secrets hold sensitive bytes. They are **base64-encoded, not encrypted** by
-  default; encryption at rest (KMS v2), RBAC, and an external store (Vault, a cloud
-  secret manager) each cover a different part of that gap.
-- Both can be `immutable: true`, which improves performance (no watch fan-out on
-  change) at the cost of requiring a new object to update.
-- Projected volumes combine sources (ConfigMap, Secret, Downward API,
-  ServiceAccount token) into one mount.
+- **ConfigMaps** hold configuration that is not sensitive. Pods consume them as
+  environment variables, files, or command-line arguments.
+- **Secrets** hold sensitive data. Their values are **base64-encoded, not encrypted**.
+  Encryption at rest with KMS v2 protects the data in etcd, RBAC controls who can read it
+  through the API, and an external secret store such as Vault or a cloud secret manager
+  keeps it out of the cluster.
+- **Immutable objects.** Setting `immutable: true` stops the kubelet from watching the
+  object for changes, which reduces API server load in large clusters. To change the data,
+  create a new object.
+- **Projected volumes** combine several sources, such as ConfigMaps, Secrets, the Downward
+  API, and ServiceAccount tokens, into one directory.
 
-ServiceAccount tokens are the security-sensitive case: since v1.24 the kubelet
-projects short-lived, audience-bound, auto-rotating tokens via `TokenRequest`,
-rather than mounting a static Secret. Long-lived static tokens still exist but are
-discouraged. `automountServiceAccountToken: false` on Pods that never call the API
-removes an unused credential from them.
+ServiceAccount tokens are handled as described in section 1.3: short-lived,
+audience-bound, and rotated automatically.
 
-### 7.3 Quota and limit ranges
+### 7.3 ResourceQuota and LimitRange
 
-- **ResourceQuota** caps aggregate consumption per namespace (compute, storage,
-  object counts) and can be scoped (`BestEffort`, `NotBestEffort`, `Terminating`,
-  `NotTerminating`, `PriorityClass`, `CrossNamespacePodAffinity`). A quota also
-  forces Pods to declare requests/limits for the constrained resources.
-- **LimitRange** supplies defaults and per-Pod/per-container min/max, and can
-  enforce a default request/limit ratio. It is admission-time policy, not a
-  scheduler feature.
+- **ResourceQuota** limits total resource use in a namespace: compute resources, storage,
+  and object counts. A quota can apply to a subset of Pods through scopes such as
+  `BestEffort`, `NotBestEffort`, `Terminating`, `NotTerminating`, `PriorityClass`, and
+  `CrossNamespacePodAffinity`. When a quota limits a resource, every new Pod must specify a
+  request or limit for that resource.
+- **LimitRange** sets default requests and limits, minimum and maximum values per container
+  or Pod, and a maximum ratio of limit to request. It is enforced by admission when Pods
+  are created, not by the scheduler.
 
-For GPU clouds, quota at the Kubernetes layer is necessary but not sufficient. A
-reservations and billing system is also required, because `nvidia.com/gpu` quota is
-a blunt instrument and MIG or time-slicing change what a "GPU" is.
+For a GPU cloud, Kubernetes quota is necessary but not sufficient. A quota on
+`nvidia.com/gpu` counts devices without distinguishing a whole GPU from a MIG instance or a
+time-sliced replica, and it knows nothing about reservations or billing. The control plane
+needs its own reservation and billing system.
 
 ---
 
-## 8. Scheduling GPU workloads: extended resources, device plugins, and DRA
+## 8. Scheduling GPU workloads
 
 ### 8.1 Extended resources
 
-`nvidia.com/gpu` is an **extended resource**: a fully-qualified resource name
-outside `kubernetes.io`. Rules:
+`nvidia.com/gpu` is an **extended resource**: a resource with a fully qualified name
+outside the `kubernetes.io` domain. Extended resources have specific rules:
 
-- Integer only, no overcommit, no fractional values.
-- It must be specified in `limits`; if `requests` is also specified, it must equal
-  the limit (the API defaults the request to the limit).
-- Devices cannot be shared between containers via the extended-resource path;
-  each requested unit is exclusive.
-- The scheduler treats the quantity as an opaque integer. It does **not** know
-  which physical GPU it is; that mapping happens later at the node.
+- **Integers only.** They cannot be requested in fractions and cannot be overcommitted.
+- **Limits are required.** An extended resource must appear in `limits`. If `requests` is
+  also set, it must equal the limit; if it is omitted, it defaults to the limit.
+- **No sharing through this path.** Each unit is allocated to one container.
+- **Opaque to the scheduler.** The scheduler counts units on each node but does not know
+  which physical GPU a unit represents. The kubelet and the device plugin choose the device
+  on the node.
 
 ```yaml
 apiVersion: v1
@@ -979,14 +1025,14 @@ spec:
           nvidia.com/gpu: 1     # integer; no requests value needed
 ```
 
-A GPU request is usually accompanied by CPU and memory requests, because the
-scheduler packs by those. A Pod that requests one GPU but no CPU or memory is
-`BestEffort` for both and competes with other Pods for them.
+Set CPU and memory requests for GPU Pods as well. QoS classes consider only CPU and memory,
+so a Pod that requests a GPU but no CPU or memory is `BestEffort`: the scheduler does not
+reserve CPU or memory for it, and it is among the first Pods evicted under node pressure.
 
 ### 8.2 How a device plugin works
 
-A device plugin is a node-local gRPC server, usually a DaemonSet, that registers
-with the kubelet over a Unix socket:
+A device plugin is a gRPC server on each node, usually deployed as a DaemonSet, that
+registers with the kubelet through a Unix socket:
 
 ```text
 Device plugin (DaemonSet, privileged, mounts /var/lib/kubelet/device-plugins)
@@ -1004,47 +1050,52 @@ AllocateResponse: device nodes, mounts, env vars, annotations, or CDI device nam
 container runtime injects the GPU; container starts with CUDA available
 ```
 
-API surface (from the upstream device plugin docs):
+The plugin implements these methods:
 
-- `GetDevicePluginOptions`, which optional RPCs the plugin supports.
-- `ListAndWatch`, streams the device list and health changes.
-- `Allocate`, returns the runtime changes for a container.
-- `GetPreferredAllocation`, optional hint for grouping devices (e.g. NVLink
-  peers or same NUMA node).
-- `PreStartContainer`, optional device reset/prep before each start.
+| Method | Purpose |
+|---|---|
+| `GetDevicePluginOptions` | Reports which optional methods the plugin supports |
+| `ListAndWatch` | Streams the list of devices and their health |
+| `Allocate` | Returns the runtime settings for the devices assigned to a container |
+| `GetPreferredAllocation` | Optional. Suggests which devices to assign together, such as GPUs connected by NVLink or on the same NUMA node |
+| `PreStartContainer` | Optional. Prepares or resets devices before a container starts |
 
-Registration ordering matters: the plugin must be serving gRPC **before** it calls
-`Register` on `/var/lib/kubelet/device-plugins/kubelet.sock`. If the kubelet
-restarts, it deletes the sockets in that directory, so the plugin must watch for
-that condition and re-register. `ListAndWatch` is also how a device that fails (Xid error,
-ECC, over-temperature) is marked unhealthy: the kubelet decrements *allocatable*
-(not capacity), so no new Pods are placed there, while already-assigned Pods keep
-the device and typically crash.
+Operational details:
 
-Since v1.31 the device plugin API can return **fully-qualified CDI device names**
-(`DevicePluginCDIDevices`, GA v1.31), and the container runtime injects through
-CDI. This replaces the older environment-variable injection model.
+- **Registration order.** The plugin must be serving its gRPC socket before it calls
+  `Register` on `/var/lib/kubelet/device-plugins/kubelet.sock`, because the kubelet
+  connects back immediately.
+- **Kubelet restarts.** When the kubelet restarts, it deletes the sockets in the device
+  plugin directory. The plugin must detect this and register again.
+- **Device failures.** When a GPU fails, for example with an Xid error, uncorrectable ECC
+  errors, or overheating, the plugin reports it as unhealthy through `ListAndWatch`. The
+  kubelet reduces the node's *allocatable* count, not its capacity, so no new Pods are
+  assigned the device. Pods already using it keep it and usually fail.
+- **CDI device names.** Since v1.31 (`DevicePluginCDIDevices`, GA), a plugin can return
+  fully qualified CDI device names in its `Allocate` response. The container runtime then
+  adds the devices through CDI rather than through environment variables read by a runtime
+  hook.
 
-### 8.3 What the node advertises
+### 8.3 GPU resources and labels on a node
 
-After a healthy plugin registers, `kubectl describe node <gpu-node>` shows
-`nvidia.com/gpu` under Capacity and Allocatable. When it is missing there are three
-causes: the plugin is not registered, it is not healthy, or the driver is missing.
+When a device plugin is registered and healthy, `kubectl describe node <gpu-node>` shows
+`nvidia.com/gpu` under `Capacity` and `Allocatable`. If it is missing, the plugin is not
+registered, the plugin reports no healthy devices, or the driver is not working.
 
-Resource names currently in use:
+The NVIDIA device plugin can advertise these resource names:
 
-- `nvidia.com/gpu`, whole GPUs.
-- `nvidia.com/mig-<slice>g.<memory>gb`, MIG devices under the `mixed` strategy.
-- Time-sliced or MPS replicas advertised under a renamed resource such as
-  `nvidia.com/gpu.shared` (plugin configuration; `renameByDefault: true`).
+| Resource name | Meaning |
+|---|---|
+| `nvidia.com/gpu` | Whole GPUs, or MIG instances with the `single` strategy |
+| `nvidia.com/mig-<slices>g.<memory>gb` | MIG instances of a specific profile, with the `mixed` strategy |
+| A renamed resource such as `nvidia.com/gpu.shared` | Time-sliced or MPS replicas, when the plugin is configured with `renameByDefault: true` |
 
-Node labels for placement are produced by GPU Feature Discovery (GFD) and Node
-Feature Discovery (NFD), for example `nvidia.com/gpu.product`,
-`nvidia.com/gpu.memory`, `nvidia.com/gpu.count`, `nvidia.com/gpu.family`,
-`nvidia.com/gpu.replicas`, `nvidia.com/gpu.sharing-strategy`,
-`nvidia.com/mig.capable`, `nvidia.com/mig.strategy`, and CUDA driver/runtime
-version labels. A hard-coded label list is unreliable; the labels on the node
-itself enumerate what is present:
+GPU Feature Discovery and Node Feature Discovery add node labels for placement, such as
+`nvidia.com/gpu.product`, `nvidia.com/gpu.memory`, `nvidia.com/gpu.count`,
+`nvidia.com/gpu.family`, `nvidia.com/gpu.replicas`, `nvidia.com/gpu.sharing-strategy`,
+`nvidia.com/mig.capable`, `nvidia.com/mig.strategy`, and CUDA driver and runtime versions.
+The exact set depends on the version and configuration, so list the labels on a node
+rather than relying on a fixed list:
 
 ```bash
 kubectl get node <node> -o json \
@@ -1052,7 +1103,7 @@ kubectl get node <node> -o json \
            | select(.key | startswith("nvidia.com/")) | "\(.key)=\(.value)"'
 ```
 
-A node selector or affinity then targets those labels, e.g.:
+Select nodes with those labels in a node selector or affinity rule:
 
 ```yaml
 spec:
@@ -1062,184 +1113,180 @@ spec:
 
 ### 8.4 MIG, time-slicing, and MPS
 
-GPUs support several sharing models, and the Kubernetes mapping differs:
+GPUs can be shared in several ways, and each maps to Kubernetes differently:
 
-- **MIG (Multi-Instance GPU)** partitions a GPU into isolated instances with
-  dedicated memory and SM slices. With the device plugin's `migStrategy: single`,
-  each MIG instance is advertised as `nvidia.com/gpu`; with `mixed`, whole GPUs
-  and MIG instances are advertised separately (`nvidia.com/gpu` for whole GPUs
-  and `nvidia.com/mig-<slice>g.<memory>gb` for instances). MIG gives memory
-  isolation, which matters for multi-tenant inference.
-- **CUDA time-slicing** lets several containers share one GPU, interleaved in
-  time. It gives no memory isolation and no fault isolation: one workload's OOM
-  or illegal access can affect the others. Configured in the plugin config with
-  `replicas`; the plugin advertises that many logical devices.
-- **MPS (Multi-Process Service)** is an alternative sharing mechanism; the vendor's
-  plugin notes time-slicing and MPS are mutually exclusive and that the sharing
-  strategy is applied to all GPUs on a node, not per GPU.
+- **MIG (Multi-Instance GPU)** divides a supported GPU into instances with dedicated memory
+  and compute. With the device plugin's `migStrategy: single`, every MIG instance is
+  advertised as `nvidia.com/gpu`. With `mixed`, whole GPUs are advertised as
+  `nvidia.com/gpu` and each MIG profile has its own resource name,
+  `nvidia.com/mig-<slices>g.<memory>gb`. MIG isolates memory and faults between instances,
+  which multi-tenant inference requires.
+- **Time-slicing** lets several containers share a GPU by taking turns. It provides no
+  memory isolation and no fault isolation: one workload that exhausts GPU memory or
+  crashes the GPU context can affect the others. The plugin configuration sets `replicas`,
+  and the plugin advertises that many units for each GPU.
+- **MPS (Multi-Process Service)** runs several processes in a shared GPU context, with
+  configurable limits on memory and compute share. In the NVIDIA device plugin,
+  time-slicing and MPS cannot be used together, and the sharing strategy applies to all
+  GPUs on a node.
 
-The trade-off: MIG is for tenants that must not affect each other; time-slicing is
-for best-effort oversubscription where isolation is not a requirement.
+Use MIG when tenants must not affect each other. Use time-slicing or MPS for workloads
+where higher utilization matters more than isolation.
 
-The GPU Operator's implementation of these modes, MIG manager, GFD labels, and
-the node lifecycle, is in `docs/10-gpu-operator-kubebuilder-deep-dive.md`.
+`10-gpu-operator-kubebuilder-deep-dive.md` describes how the GPU Operator configures these
+modes.
 
-### 8.5 NUMA and topology managers
+### 8.5 NUMA alignment
 
-GPU performance depends on where the GPU, its memory, and the NIC sit relative to
-the CPU and memory. Several kubelet managers cooperate:
+GPU performance depends on the placement of the GPU, the CPU cores, the memory, and the
+network card relative to each other. Several kubelet components align them:
 
-- **CPU Manager** (`static` policy) gives `Guaranteed` Pods with integer CPU
-  requests exclusive cores.
-- **Topology Manager** aligns CPU, memory, and device allocations to the same NUMA
-  node according to a policy (`none`, `best-effort`, `restricted`, `single-numa-node`).
-  Device plugins supply the NUMA hints via `TopologyInfo`; a plugin that omits
-  them makes alignment impossible.
-- **Memory Manager** makes memory and hugepages NUMA-aligned.
+- **The CPU Manager** with the `static` policy gives exclusive CPU cores to containers in
+  `Guaranteed` Pods that request whole CPUs.
+- **The Topology Manager** aligns CPU, memory, and device allocations to the same NUMA
+  node, according to its policy: `none`, `best-effort`, `restricted`, or
+  `single-numa-node`. Device plugins provide NUMA information in `TopologyInfo`; without
+  it, the Topology Manager cannot align devices.
+- **The Memory Manager** allocates memory and huge pages from specific NUMA nodes.
 
-For a low-latency inference node, the goal is exclusive cores, GPU, and NIC on one
-NUMA node, with the correct PCIe/NVLink topology. That is a platform-level setup
-rather than a Pod-level flag.
+A low-latency inference node aims to give each workload exclusive cores, its GPU, and its
+network card on one NUMA node, with the GPUs connected appropriately over PCIe or NVLink.
+This requires node configuration, not only fields in the Pod spec.
 
 ### 8.6 Dynamic Resource Allocation (DRA)
 
-DRA decouples resource allocation from the scheduler's integer counting.
-
-API objects (`resource.k8s.io/v1`):
+DRA replaces integer counting with structured requests for devices. Its API objects are
+in `resource.k8s.io/v1`:
 
 | Object | Role |
 |---|---|
-| `DeviceClass` | A category of devices plus CEL selectors and optional `extendedResourceName` |
-| `ResourceClaim` | A request for specific devices; can be shared by referencing Pods |
-| `ResourceClaimTemplate` | A template from which the control plane generates a per-Pod `ResourceClaim` |
-| `ResourceSlice` | A driver-published inventory of devices on nodes, with attributes and capacity |
+| `DeviceClass` | A category of devices, with CEL selectors and an optional `extendedResourceName` |
+| `ResourceClaim` | A request for devices. Several Pods can reference the same claim |
+| `ResourceClaimTemplate` | A template from which a separate `ResourceClaim` is created for each Pod |
+| `ResourceSlice` | A driver-published list of devices on a node, with their attributes and capacity |
 
-Workflow:
+The allocation process:
 
-1. The driver creates `ResourceSlice` objects describing devices and their
-   attributes.
-2. A user or workload operator creates a `ResourceClaimTemplate` (per-Pod) or a
-   `ResourceClaim` (shared).
-3. A controller generates `ResourceClaim`s from templates.
-4. The scheduler filters nodes by which `ResourceSlice`s can satisfy the claim,
-   then allocates devices into the claim's status using structured parameters
-   (first-fit, lexicographic by pool/slice name, drivers can prioritize by
-   naming).
-5. The kubelet calls the driver's `NodePrepareResources`; the driver prepares the
-   device and returns CDI devices.
-6. On cleanup the kubelet calls `NodeUnprepareResources`.
+1. A DRA driver publishes `ResourceSlice` objects that describe the devices on each node.
+2. A user or controller creates a `ResourceClaimTemplate` for per-Pod devices, or a
+   `ResourceClaim` for devices shared by several Pods.
+3. The control plane creates a `ResourceClaim` for each Pod from its template.
+4. The scheduler finds nodes whose `ResourceSlice` devices satisfy the claim and records
+   the chosen devices in the claim's status.
+5. The kubelet calls the driver's `NodePrepareResources`, and the driver prepares the
+   devices and returns CDI device names.
+6. When the Pod ends, the kubelet calls `NodeUnprepareResources`.
 
-What it changes:
+What DRA adds compared with device plugins:
 
-- Constraints can be **expressed in CEL** (`device.attributes[...].memory > ...`)
-  instead of inventing one extended resource per device shape.
-- **Arbitrary device attributes and capacity** can be requested, not just an
-  integer count.
-- Claims have a lifecycle independent of Pods, so a claim can outlive a Pod or be
-  shared among Pods.
-- **Partitionable devices** (`DRAPartitionableDevices`, beta v1.36) let one
-  physical device back multiple advertised devices (the MIG-style use case).
-- **Extended resource allocation by DRA** (`DRAExtendedResource`: alpha v1.34,
-  beta v1.36, stable v1.37) lets a `DeviceClass` declare an
-  `extendedResourceName`, so existing Pods that request `example.com/gpu: 2`
-  keep working while the allocation is handled by DRA. A special
-  `deviceclass.resource.kubernetes.io/<class>` resource name allocates from any
-  DeviceClass without a hand-written claim.
-- **Prioritized requests** (`DRAPrioritizedList`, stable v1.36) let a claim list
-  alternatives, and the scheduler picks the first available.
-- The PodResources API exposes DRA allocations, so monitoring can map a device to
-  a Pod.
-
-The two mechanisms differ as follows:
+- **Constraints written in CEL** on device attributes, for example selecting devices with
+  more than a certain amount of memory, instead of defining a resource name for every
+  device model.
+- **Requests for attributes and capacity,** not only a count.
+- **Claims with their own lifecycle.** A claim can outlive a Pod or be shared by several
+  Pods.
+- **Partitionable devices** (`DRAPartitionableDevices`, beta in v1.36), which let one
+  physical device be offered as several devices, as MIG does.
+- **Extended resources backed by DRA** (`DRAExtendedResource`: alpha in v1.34, beta in
+  v1.36, stable in v1.37). A `DeviceClass` can declare an `extendedResourceName`, so
+  existing Pods that request, for example, `example.com/gpu: 2` continue to work while DRA
+  performs the allocation. The special resource name
+  `deviceclass.resource.kubernetes.io/<class>` allocates from a device class without a
+  separate claim.
+- **Prioritized alternatives** (`DRAPrioritizedList`, stable in v1.36), so a claim can
+  list acceptable device types in order of preference.
+- **Monitoring integration.** The kubelet's PodResources API reports DRA allocations, so
+  monitoring agents can attribute a device to a Pod.
 
 | | Device plugin | DRA |
 |---|---|---|
-| Allocation model | Integer extended resource | Structured parameters from `ResourceSlice` |
-| Constraints | Fixed resource names + node labels | CEL over device attributes/capacity |
-| Lifecycle | Tied to Pod scheduling | Independent claims, shareable, templated |
-| Maturity | Stable and ubiquitous | Stable core since v1.34; features still landing |
-| Fit | Whole GPUs, MIG via named resources | Heterogeneous devices, MIG-style partitioning, advanced placement |
+| Allocation model | Integer extended resource | Structured parameters matched against `ResourceSlice` devices |
+| Constraints | Resource names and node labels | CEL expressions over device attributes and capacity |
+| Lifecycle | Tied to the Pod | Independent claims that can be shared or created from templates |
+| Maturity | Stable and widely deployed | Core API stable since v1.34; more features still arriving |
+| Suited to | Whole GPUs, and MIG through named resources | Mixed device types, dynamic partitioning, and complex placement |
 
-In current production deployments the GPU Operator still uses the device plugin
-path, while its capabilities are being migrated to DRA.
+In current production deployments, the GPU Operator still uses the device plugin, and
+NVIDIA is developing DRA support in parallel.
 
-### 8.7 Gang scheduling and the Workload API
+### 8.7 Gang scheduling
 
-Distributed training needs **all-or-nothing** placement: if a job needs 8 ranks
-across 8 GPUs and only 7 nodes are free, starting 7 ranks wastes GPU-hours while
-the last waits, and can deadlock. The `GangScheduling` plugin (introduced alpha
-v1.35) implements this, and in v1.37 it was folded into the **`GenericWorkload`**
-feature gate (alpha v1.35, beta v1.37, disabled by default) together with the
-`Workload` and `PodGroup` APIs and workload-aware preemption.
+Distributed training needs **all-or-nothing** placement. If a job needs eight workers and
+only seven can be placed, the seven that start hold their GPUs while waiting for the
+eighth, wasting capacity, and two partially placed jobs can block each other
+indefinitely.
 
-Mechanism, as documented upstream:
+The `GangScheduling` scheduler plugin (alpha in v1.35) implements all-or-nothing
+placement. In v1.37 it is part of the `GenericWorkload` feature gate (alpha in v1.35, beta
+in v1.37, disabled by default), together with the `Workload` and `PodGroup` APIs and
+workload-aware preemption. As documented upstream, it works as follows:
 
-1. Pods are held in `PreEnqueue` until the referenced `PodGroup` exists and the
-   number of Pods reaches the policy's `minCount`.
-2. Once quorum exists, the scheduler evaluates placements for the group in a
-   single atomic scheduling cycle; a `PlacementFeasible` check tracks whether the
-   `minCount` constraint is still satisfiable.
-3. If at least `minCount` Pods can be placed, they bind; otherwise none are
-   scheduled and they wait, freeing resources for other work.
+1. The scheduler holds Pods at `PreEnqueue` until their `PodGroup` exists and the number of
+   Pods in it reaches the policy's `minCount`.
+2. The scheduler then evaluates the group's placement in a single scheduling cycle, and a
+   `PlacementFeasible` check tracks whether `minCount` can still be satisfied.
+3. If at least `minCount` Pods can be placed, they are bound. Otherwise, none are bound,
+   and the resources remain available for other workloads.
 
-`CompositePodGroup` (alpha v1.37) extends this hierarchically: groups of groups
-with a `minGroupCount`, which models replicated multi-component training. Where the
-feature is not enabled, the same all-or-nothing requirement can be met through the
-scheduler's `Permit` extension point.
+`CompositePodGroup` (alpha in v1.37) adds groups of groups with a `minGroupCount`, for
+training jobs made of several replicated components. On clusters without these features,
+a custom scheduler plugin can implement all-or-nothing placement at the `Permit` extension
+point, which is how projects such as Volcano and the scheduler-plugins coscheduling plugin
+have done it.
 
-### 8.8 Putting it together for a GPU node
+### 8.8 Requirements for a working GPU Pod
 
-A working GPU Pod requires, in order:
+A GPU Pod runs successfully only when all of the following are in place, in this order:
 
-1. A supported kernel and driver on the host (or in a driver container).
-2. The container toolkit, so the runtime injects driver libraries and
-   device nodes.
-3. A healthy device plugin advertising `nvidia.com/gpu` (or a DRA driver
-   publishing `ResourceSlice`s).
-4. Node labels so the scheduler can pick the right GPU product/profile.
-5. A Pod request in `limits`, plus CPU/memory requests for sane packing.
-6. A container image whose CUDA user-space is compatible with the host driver.
+1. A supported GPU driver on the host, installed directly or by a driver container.
+2. The NVIDIA Container Toolkit, so the runtime can add driver libraries and device nodes
+   to containers.
+3. A healthy device plugin advertising `nvidia.com/gpu`, or a DRA driver publishing
+   `ResourceSlice` objects.
+4. Node labels that identify the GPU model and configuration.
+5. A Pod that requests the GPU in `limits`, with CPU and memory requests.
+6. A container image whose CUDA version the host driver supports.
 
-The GPU Operator automates steps 1–4 and is covered in
-`docs/10-gpu-operator-kubebuilder-deep-dive.md`.
+The GPU Operator automates steps 1 through 4; see
+`10-gpu-operator-kubebuilder-deep-dive.md`.
 
 ---
 
 ## 9. Multi-tenancy and GPU cloud control planes
 
-### 9.1 Soft vs hard multi-tenancy
+### 9.1 Soft and hard multi-tenancy
 
-Upstream's security documentation does not settle on a single definition of
-multi-tenancy. The distinction that matters here:
+The Kubernetes documentation does not define a single model of multi-tenancy. A useful
+distinction is:
 
-- **Soft multi-tenancy:** tenants are mutually trusting (different teams in one
-  company). Namespaces, RBAC, quotas, and NetworkPolicy are usually sufficient.
-- **Hard multi-tenancy:** tenants may be adversarial (a public GPU cloud).
-  Soft controls are not sufficient, and the boundary has to be stronger: dedicated
-  nodes, sandboxed runtimes (gVisor, Kata), separate clusters, or VMs.
+- **Soft multi-tenancy.** Tenants trust each other, such as teams in one company.
+  Namespaces, RBAC, quotas, and NetworkPolicy are usually sufficient.
+- **Hard multi-tenancy.** Tenants may be hostile, as in a public GPU cloud. The boundary
+  must be stronger: dedicated nodes, sandboxed runtimes such as gVisor or Kata Containers,
+  separate clusters, or virtual machines.
 
-Namespaces are not a security boundary. A privileged Pod, a hostPath mount, or a
-container escape crosses them. Pod Security Admission (`baseline`/`restricted`)
-raises the floor, but a hard boundary requires isolation at the kernel or
-hypervisor layer.
+A namespace is not a security boundary. A privileged Pod, a `hostPath` volume, or a
+container escape crosses it. Pod Security Admission with the `baseline` or `restricted`
+profile prevents the most dangerous Pod configurations, but a hard boundary requires
+isolation at the kernel or hypervisor level.
 
-### 9.2 Controls to layer
+### 9.2 Controls by layer
 
-| Layer | Control |
+| Layer | Controls |
 |---|---|
-| Identity | OIDC/OIDC-projected identities, RBAC least privilege, no shared cluster-admin |
-| Admission | Pod Security Admission, LimitRange, ResourceQuota, ValidatingAdmissionPolicy, tenant-scoped webhooks |
-| Network | Default-deny NetworkPolicy per namespace, egress policy, separate CNI for tenant traffic |
-| Compute | Quota, priority classes, node taints, dedicated node pools, MIG for GPU isolation |
-| Runtime | seccomp, AppArmor/SELinux, read-only rootfs, no privileged, sandboxed runtime classes |
-| Storage | Per-tenant StorageClasses and CSI credentials; avoid hostPath |
-| Control plane | APF to prevent noisy-neighbor API starvation; audit logging |
-| Data plane fairness | QoS, PCI/NUMA alignment, GPU sharing policy (MIG vs time-slicing) |
+| Identity | OIDC for users, projected ServiceAccount tokens for workloads, least-privilege RBAC, no shared `cluster-admin` |
+| Admission | Pod Security Admission, LimitRange, ResourceQuota, ValidatingAdmissionPolicy, and tenant-aware webhooks |
+| Network | A default-deny NetworkPolicy in each namespace, egress policies, and separate networks for tenant traffic where needed |
+| Compute | Quotas, priority classes, taints, dedicated node pools, and MIG for GPU isolation |
+| Runtime | seccomp, AppArmor or SELinux, read-only root filesystems, no privileged containers, and sandboxed runtime classes |
+| Storage | StorageClasses and CSI credentials for each tenant; no `hostPath` volumes |
+| Control plane | API Priority and Fairness to limit one tenant's API load; audit logging |
+| Workload fairness | QoS classes, NUMA alignment, and a GPU sharing policy (MIG or time-slicing) |
 
-### 9.3 A GPU cloud control plane on top of Kubernetes
+### 9.3 A GPU cloud control plane built on Kubernetes
 
-A service like "provision me 4 A100s for 8 hours" is not a single Kubernetes
-object. A typical layering:
+A request such as "four A100 GPUs for eight hours" does not map to a single Kubernetes
+object. A typical design has several layers:
 
 ```text
 Tenant-facing API (REST/gRPC/SDK/CLI)
@@ -1255,25 +1302,27 @@ Kubernetes: Namespace, ResourceQuota, CRs (e.g. GpuWorkload), Job/StatefulSet, P
 GPU nodes: GPU Operator, device plugin or DRA, MIG/time-slicing, DCGM metrics
 ```
 
-Design points:
+Design considerations:
 
-- **Quota is two-layered.** Kubernetes `ResourceQuota` is necessary but not
-  sufficient; the product needs reservations and billing, which live outside
-  Kubernetes and must reconcile with it.
-- **Placement is a policy problem.** Scheduling by GPU product or MIG profile, by
-  topology, by tenant fairness, and by cost are different objectives, and a
-  scheduler optimizes one of them explicitly.
-- **Failure must be survivable.** A node can be lost at any time, so a workload
-  with a reservation has to be rescheduled, and the reservation must not leak.
-- **The API must be idempotent.** A "create job" API needs idempotency keys and
-  reconciliation, because retries are inevitable.
-- **Observability is part of the product.** DCGM metrics, per-tenant attribution,
-  and GPU health (Xid/ECC) determine whether billing is possible and whether SLAs
-  can be kept.
+- **Quota has two layers.** Kubernetes `ResourceQuota` limits each cluster, but the
+  product also needs reservations and billing outside Kubernetes, kept consistent with the
+  clusters.
+- **Placement has several objectives.** Matching a GPU model or MIG profile, respecting
+  topology, sharing capacity fairly among tenants, and minimizing cost can conflict, and the
+  placement system has to choose which to prioritize.
+- **Node failures are routine.** A workload with a reservation must be rescheduled when its
+  node fails, and its reservation must not be lost or counted twice.
+- **The API must be idempotent.** Clients retry, so a create request needs an idempotency
+  key and a reconciliation process.
+- **Observability is part of the product.** DCGM metrics, usage attributed to tenants, and
+  GPU health data such as Xid and ECC errors are required for billing and for meeting
+  service-level agreements.
+
+`06-system-design-cloud-gpu.md` develops this design as a system design interview answer.
 
 ---
 
-## 10. Practical kubectl, client-go, and apply semantics
+## 10. kubectl, client-go, and apply
 
 ### 10.1 kubectl commands
 
@@ -1309,14 +1358,13 @@ kubectl get pod <pod> -o jsonpath='{.status.phase}{"\n"}'
 kubectl get pvc -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\n"}{end}'
 ```
 
-`kubectl debug` with an ephemeral container (`EphemeralContainers`, stable
-v1.25) provides a shell in a distroless container: it adds a container to the
-running Pod rather than restarting it, so the workload is not disturbed.
+`kubectl debug` adds an ephemeral container (`EphemeralContainers`, stable in v1.25) to a
+running Pod without restarting it. Use it to get a shell and debugging tools in a Pod whose
+image has no shell, such as a distroless image.
 
-### 10.2 Talking to the API without kubectl
+### 10.2 Calling the API directly
 
-`kubectl` is an HTTP client with authentication. The same requests can be made
-with `curl` and a token or client certificate:
+`kubectl` is an authenticated HTTP client. You can make the same requests with `curl`:
 
 ```bash
 APISERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
@@ -1324,48 +1372,48 @@ TOKEN=$(kubectl create token default)
 curl -sS -H "Authorization: Bearer $TOKEN" "$APISERVER/api/v1/namespaces/default/pods" | jq '.items[].metadata.name'
 ```
 
-It is the same path every SDK takes, and it makes the role of certs, bearer tokens,
-and API group paths concrete.
+Every Kubernetes client library sends requests like these. Making one by hand shows how
+bearer tokens and API group paths work. Depending on the cluster, `curl` may also need the
+cluster's CA certificate (`--cacert`), and the `default` ServiceAccount needs RBAC
+permission to list Pods.
 
-### 10.3 client-go vs controller-runtime
+### 10.3 client-go and controller-runtime
 
-- `client-go` provides typed clients, informers, listers, and work queues. It is
-  the foundation.
-- `controller-runtime` (Kubebuilder/Operator SDK) wraps the informer/cache/queue
-  machinery behind a `Manager` and a `Reconciler`, and adds
-  scheme registration, watches, leader election, metrics, and webhook helpers.
+- **client-go** provides typed clients, informers, listers, and work queues. It is the
+  foundation of Go tooling for Kubernetes.
+- **controller-runtime**, used by Kubebuilder and the Operator SDK, wraps the informers,
+  cache, and work queue in a `Manager` and a `Reconciler`, and adds scheme registration,
+  watch configuration, leader election, metrics, and webhook support.
 
-An operator uses `controller-runtime`. A CLI or a small client needs only a plain
-`client-go` clientset.
+Use controller-runtime for an operator. A CLI or a simple client needs only a client-go
+clientset.
 
-### 10.4 Apply semantics
+### 10.4 Create, replace, apply, and patch
 
-- `kubectl create` fails if the object exists.
-- `kubectl replace` overwrites the whole object, which is destructive when the
-  full spec is not available.
-- `kubectl apply` is a PATCH. Client-side apply diffs against a stored
-  `last-applied-configuration` annotation; server-side apply uses `managedFields`
-  and field ownership.
-- `kubectl patch` supports strategic merge, JSON merge, and JSON patch. Status is
-  written with a PATCH on the status subresource.
+| Command | Behavior |
+|---|---|
+| `kubectl create` | Fails if the object already exists |
+| `kubectl replace` | Replaces the whole object. Fields that you omit are removed |
+| `kubectl apply` | Sends a patch. Client-side apply compares with the `last-applied-configuration` annotation; server-side apply (`--server-side`) uses `managedFields` and field ownership |
+| `kubectl patch` | Applies a strategic merge patch, JSON merge patch, or JSON patch. Add `--subresource=status` to patch the status |
 
-The operator-relevant rule: server-side apply or a precise patch is preferable to
-read-modify-write when only part of an object is owned. Where read-modify-write is
-required, `409 Conflict` is handled by re-reading and recomputing rather than by
-retrying the same stale body.
+For an operator that owns only part of an object, use server-side apply or a targeted patch
+rather than reading, modifying, and updating the whole object. When a read-modify-update
+cycle is necessary, handle `409 Conflict` by reading the object again and recomputing the
+change, not by resending the same request.
 
 ---
 
-## 11. Failure and debugging scenarios
+## 11. Debugging scenarios
 
-The diagnosis follows a **layered triage**: API state → scheduler decision →
-kubelet/runtime → node → GPU. `nvidia-smi` is only meaningful once the Pod has been
-scheduled at all.
+Work through the layers in order: the API object, the scheduler's decision, the kubelet and
+container runtime, the node, and finally the GPU. There is no reason to run `nvidia-smi`
+for a Pod that has not been scheduled.
 
-### 11.1 Pod stuck in `Pending`
+### 11.1 A Pod stuck in `Pending`
 
-`Pending` means the Pod is not running; it may or may not be scheduled. The events
-on the Pod carry the scheduler's precise reason.
+A `Pending` Pod is not running. It may not be scheduled, or it may be scheduled with its
+containers not yet created. The Pod's events contain the scheduler's reason.
 
 ```bash
 kubectl describe pod <pod>            # read Events and Conditions
@@ -1376,22 +1424,17 @@ kubectl get pvc
 kubectl get resourcequota,limitrange -n <ns>
 ```
 
-Categories and their signals:
+| Cause | Typical message or signal |
+|---|---|
+| Not enough resources | `0/3 nodes are available: 3 Insufficient nvidia.com/gpu` |
+| Taints or affinity | `node(s) had untolerated taint`, or `node(s) didn't match Pod's node affinity/selector` |
+| Volumes | `pod has unbound immediate PersistentVolumeClaims`, or a volume zone conflict |
+| Quota or LimitRange | The API server rejects the Pod, so no Pod exists. Look for a `FailedCreate` event on the owning ReplicaSet or Job |
+| Scheduling gates | `spec.schedulingGates` (stable in v1.30) keeps the Pod out of the scheduling queue until a controller removes the gate |
 
-- **Insufficient resources:** `0/3 nodes are available: 3 Insufficient nvidia.com/gpu`.
-- **Taints/affinity:** `node(s) had untolerated taint` or
-  `didn't match node selector/affinity`.
-- **Volume:** `pod has unbound immediate PersistentVolumeClaims` or a topology
-  conflict.
-- **Quota/limit range:** the API server rejects the Pod at admission, so the
-  symptom is a `FailedCreate` event on the owning ReplicaSet or Job rather than a
-  scheduler message.
-- **Scheduling gate:** `spec.schedulingGates` (stable v1.30) deliberately holds
-  the Pod out of the queue until a controller removes the gate.
+### 11.2 A Pod stuck in `ContainerCreating`
 
-### 11.2 Pod scheduled but stuck in `ContainerCreating`
-
-The kubelet is responsible from this point:
+The Pod is scheduled, and the kubelet on its node is responsible for the next steps:
 
 ```bash
 kubectl describe pod <pod>                 # image pull, volume mount, sandbox events
@@ -1401,12 +1444,13 @@ crictl logs <container-id>
 journalctl -u containerd -n 200 --no-pager
 ```
 
-Common causes: image pull auth or network, a CSI mount that never attaches, a
-CNI sandbox failure, or a device plugin/DRA prepare failure. On GPU nodes, a
-`FailedCreatePodSandBox` with a driver/runtime error message usually means the runtime hook or
-CDI setup, not the scheduler.
+Common causes are image pull failures (credentials or network), a CSI volume that never
+attaches or mounts, a CNI failure creating the Pod sandbox, and a device plugin or DRA
+driver failure. On GPU nodes, a `FailedCreatePodSandBox` event with a driver or runtime
+error usually indicates a problem with the runtime hook or the CDI configuration, not with
+scheduling.
 
-### 11.3 `CrashLoopBackOff`
+### 11.3 A container in `CrashLoopBackOff`
 
 ```bash
 kubectl logs <pod> --previous
@@ -1414,14 +1458,18 @@ kubectl get pod <pod> -o jsonpath='{.status.containerStatuses[*].lastState}'
 kubectl describe pod <pod>
 ```
 
-The exit code identifies the cause: `137` is SIGKILL (often OOM or a failed
-liveness probe), `143` is SIGTERM. If `lastState.terminated.reason` is `OOMKilled`,
-the memory limit is too low or the workload leaks; check the cgroup OOM counter as
-well (`/sys/fs/cgroup/.../memory.events`). If the exit code is application-specific,
-the fault is in the application. `CrashLoopBackOff` itself is only the kubelet's
-backoff, not a diagnosis.
+Start with the exit code of the last terminated container:
 
-### 11.4 Node `NotReady`
+- **137** means the process received `SIGKILL`. If `lastState.terminated.reason` is
+  `OOMKilled`, the memory limit is too low or the process leaks memory; the `oom_kill`
+  counter in the container's cgroup `memory.events` file confirms it. Otherwise, check for a
+  failing liveness probe.
+- **143** means the process received `SIGTERM`.
+- **Other codes** come from the application; read its logs.
+
+`CrashLoopBackOff` describes the kubelet's restart delay. It is a symptom, not a diagnosis.
+
+### 11.4 A node in `NotReady`
 
 ```bash
 kubectl get node <node> -o yaml | grep -A20 conditions
@@ -1432,11 +1480,13 @@ df -h; free -h; uptime
 dmesg -T | tail -50
 ```
 
-Causes: kubelet stopped, runtime down, disk or inode pressure, PID exhaustion,
-network partition, or a kernel issue. The node controller marks `Ready=Unknown`
-when heartbeats stop, even if the kubelet is running but starved.
+Possible causes include a stopped kubelet, a failed container runtime, disk or inode
+exhaustion, process ID exhaustion, a network partition between the node and the control
+plane, and kernel problems. The node controller sets `Ready` to `Unknown` whenever
+heartbeats stop, including when the kubelet is running but cannot reach the API server or
+is starved of CPU.
 
-### 11.5 Service has endpoints but connections fail
+### 11.5 A Service with endpoints that does not respond
 
 ```bash
 kubectl get endpointslice -l kubernetes.io/service-name=<svc> -o yaml
@@ -1445,13 +1495,15 @@ kubectl get pod -o wide -l <selector>
 kubectl exec -it <client> -- wget -qO- <podIP>:<targetPort>   # bypass the Service
 ```
 
-In order: whether the endpoint list contains a `ready` endpoint, whether
-`targetPort` matches the container port, and whether the CNI enforces a
-NetworkPolicy that blocks the client. If direct Pod IP works but the Service VIP
-does not, the problem is in kube-proxy/CNI forwarding or conntrack, not the
-application.
-Terminating endpoints (`serving: true, ready: false`) are a frequent source of
-"some requests fail during a rollout".
+Check, in order:
+
+1. The EndpointSlices contain at least one endpoint with `ready: true`.
+2. The Service's `targetPort` matches the port the container listens on.
+3. No NetworkPolicy blocks traffic from the client.
+
+If connecting to the Pod IP works but connecting to the Service IP does not, the problem is
+in kube-proxy, the CNI plugin's forwarding, or conntrack, not in the application. If only
+some requests fail during a rollout, look for traffic still reaching terminating endpoints.
 
 ### 11.6 DNS failures
 
@@ -1462,13 +1514,13 @@ kubectl get pods -n kube-system -l k8s-app=kube-dns
 kubectl logs -n kube-system -l k8s-app=kube-dns
 ```
 
-Typical causes: CoreDNS down/overloaded, `ndots` causing excessive lookups,
-NetworkPolicy blocking UDP/TCP 53, or a `dnsPolicy` mismatch on host-networked
-Pods.
+Typical causes are CoreDNS Pods that are down or overloaded, excessive lookups caused by
+`ndots`, a NetworkPolicy that blocks UDP or TCP port 53, and a Pod with `hostNetwork: true`
+that lacks `dnsPolicy: ClusterFirstWithHostNet`.
 
-### 11.7 GPU pod cannot see the GPU
+### 11.7 A GPU Pod cannot use the GPU
 
-Order of checks mirrors §8.8:
+The checks follow the requirements in section 8.8:
 
 ```bash
 # 1. Host sees the GPU?
@@ -1492,12 +1544,16 @@ dmesg -T | grep -i xid
 nvidia-smi -q -d ECC,PAGE_RETIREMENT
 ```
 
-If the resource is advertised but the Pod is `Pending`, the issue is capacity or
-selection. If it is scheduled but `nvidia-smi` is missing, the runtime/toolkit
-injection failed. If `nvidia-smi` works but workloads fail, the remaining causes are
-CUDA/driver compatibility and Xid errors.
+Interpret the results:
 
-### 11.8 Controller or API problems
+- The node advertises GPUs, but the Pod is `Pending`: the problem is capacity or node
+  selection.
+- The Pod runs, but `nvidia-smi` is missing or finds no devices: the container toolkit did
+  not add the GPU to the container.
+- `nvidia-smi` works, but the workload fails: check CUDA and driver compatibility, and look
+  for Xid errors.
+
+### 11.8 Controller and API server problems
 
 ```bash
 kubectl -n <ns> logs deploy/<operator> --tail=200
@@ -1506,130 +1562,150 @@ kubectl get lease -A
 kubectl get --raw /metrics | grep apiserver_request_total | head
 ```
 
-Symptoms and causes:
-
-- Objects stuck `Terminating` → orphaned finalizer.
-- Controller hot-looping → reconcile triggered by its own status writes; addressed
-  with predicates.
-- `409 Conflict` storms → conflicting writers; addressed with field ownership.
-- API latency and `429` → APF throttling or etcd pressure.
-- Leader election flapping → etcd latency or clock skew.
-
----
-
-## 12. Questions with answer sketches
-
-### From `kubectl apply` to a running Pod
-
-API server: TLS/authn → RBAC authz → mutating admission (defaults, sidecar
-injection) → schema validation → validating admission → conversion → persist to
-etcd with optimistic concurrency → watch event. The Deployment controller creates
-a ReplicaSet with an ownerReference; the ReplicaSet controller creates Pods. The
-scheduler runs PreFilter/Filter/PostFilter/Score, reserves, and writes
-`spec.nodeName` via the Binding subresource. The kubelet on that node admits the
-Pod, mounts volumes, asks CRI for a sandbox, configures CNI networking, starts
-init containers, sidecars, then app containers, and updates status/conditions. The
-EndpointSlice controller adds ready Pods to Service endpoints. Everything after
-etcd is asynchronous and eventually consistent.
-
-*Follow-up:* what happens if the Deployment controller is down when an object is
-applied. The object persists; when the controller restarts it lists existing
-Deployments and reconciles them, because controllers are level-triggered.
-
-### A node that dies under a running Pod
-
-The kubelet stops renewing its Lease. The node controller marks the node
-`Ready=Unknown` and adds `node.kubernetes.io/unreachable` (NoExecute), which
-evicts Pods that do not tolerate it; after the grace period it issues API
-evictions for the rest, rate-limited per zone. The owning ReplicaSet/StatefulSet
-controller creates replacement Pods elsewhere if capacity exists. The old Pod
-objects may linger until eviction completes, which is why "the Pod is still there
-but the node is gone" is expected.
-
-### A stuck Deployment rollout
-
-The rollout waits on new ReplicaSet Pods becoming Ready. The causes are image pull,
-probes, resource requests against node capacity, taints and tolerations, PVC
-binding, quota, and `maxUnavailable`. `kubectl rollout status` plus events identify
-the stage, and `progressDeadlineSeconds` also matters: a rollout marked failed does
-not roll back automatically.
-
-### How a Service selects healthy Pods
-
-The EndpointSlice controller matches the Service selector against Pod labels and
-only includes Pods that are Ready (and, for compatibility, marks terminating ones
-`ready=false` while exposing `serving`). kube-proxy/Cilium programs forwarding
-from those endpoints. A Pod that fails readiness drops out of endpoints without
-being restarted.
-
-### GPU requests in the scheduling cycle
-
-Each node advertises an integer `nvidia.com/gpu` allocatable after a healthy
-device plugin registers. The scheduler counts it like CPU/memory
-(integer, non-overcommittable), places the Pod on a node with capacity, and the
-kubelet later calls the plugin's `Allocate` to turn the integer into specific
-device nodes, mounts, and CDI names. With DRA, the scheduler instead matches
-`ResourceSlice`s using structured parameters and CEL constraints.
-
-*Follow-up:* where the device plugin runs and what selects the device. It is a
-DaemonSet registered with the kubelet over a Unix socket; the kubelet calls
-`Allocate` after scheduling, and the plugin picks the device, optionally informed
-by `GetPreferredAllocation` and NUMA topology.
-
-### Device plugin or DRA for MIG
-
-Today, the device plugin with `migStrategy: mixed` is the common,
-battle-tested path and it advertises `nvidia.com/mig-<slice>g.<memory>gb`. For new
-designs that need richer constraints, dynamic profiles, or claims that outlive
-Pods, DRA is the strategic choice; partitionable devices (beta v1.36) are the
-DRA-native MIG-style model, and DRA-extended-resource (stable v1.37) keeps
-existing `nvidia.com/gpu` requests working. Which path applies depends on the
-driver and the cluster.
-
-### Gang scheduling for training
-
-Partial placement wastes resources and can deadlock. The scheduler's
-`Permit` extension point holds a member until the group is approved, and the
-`Workload`/`PodGroup` APIs (beta v1.37 under `GenericWorkload`) express
-`minCount`/`minGroupCount`. Without it, 7 of 8 ranks may start and block the
-cluster.
-
-### Requests and limits
-
-Requests drive scheduling and QoS; limits drive kernel enforcement. Exceeding a
-memory limit causes a cgroup OOM kill; exceeding a CPU limit causes throttling.
-Requests are also the protection line for eviction: a Pod within its requests is
-less likely to be evicted under pressure.
-
-### etcd and the effect of its latency
-
-etcd is the durable source of truth, replicated by Raft and written only by the
-API server. Slow etcd means slow writes, slow watch fan-out, and leader-election
-churn across controllers; running workloads keep running for a while because the
-kubelet and runtime do not need etcd to keep containers alive. If etcd is lost
-without a backup, cluster state is lost.
-
-### Isolating two teams on one GPU cluster
-
-Soft: namespace per team, RBAC least privilege, ResourceQuota/LimitRange, Pod
-Security Admission at `restricted`, default-deny NetworkPolicy, separate service
-accounts, audit. Hard: dedicated node pools with taints/tolerations, MIG for GPU
-memory/fault isolation, sandboxed runtimes (gVisor/Kata) or separate clusters,
-and per-tenant admission. A namespace is not a security boundary.
-
-### A hot-looping controller and a slow API server
-
-Causes to check: whether status writes re-trigger reconcile, whether the work queue
-is flooded by a wide label selector, whether the controller writes on every pass
-instead of only on change, and whether it re-lists instead of using the informer
-cache. APF throttling shows as `429`, and the work-queue metrics show the rest; rate
-limiting and event filtering address both.
+| Symptom | Likely cause and fix |
+|---|---|
+| Objects stuck in `Terminating` | A finalizer that no running controller removes |
+| A controller reconciling constantly | Its own status writes trigger reconciles; add a predicate or write status only when it changes |
+| Many `409 Conflict` errors | Several writers modify the same fields; use server-side apply and field ownership |
+| High API latency and `429` responses | API Priority and Fairness throttling, or etcd under load |
+| Leader election changing frequently | etcd latency, or network problems between the controller and the API server |
 
 ---
 
-## 13. Primary sources
+## 12. Interview questions
 
-The upstream documentation is authoritative.
+### What happens between `kubectl apply` and a running Pod?
+
+The API server authenticates the request, authorizes it with RBAC, runs mutating
+admission (defaults and sidecar injection), validates the object against its schema, runs
+validating admission, converts it to the storage version, and writes it to etcd with
+optimistic concurrency. Watchers are notified. The Deployment controller creates a
+ReplicaSet with an owner reference, and the ReplicaSet controller creates Pods. The
+scheduler filters and scores nodes, reserves resources, and writes `spec.nodeName` through
+the Binding subresource. The kubelet on that node admits the Pod, mounts volumes, asks the
+runtime to create a sandbox, configures networking through CNI, starts init containers,
+sidecars, and application containers, and updates the Pod's status. The EndpointSlice
+controller adds the Pod to the Service's endpoints when it is ready. Every step after the
+write to etcd is asynchronous.
+
+*Follow-up: what if the Deployment controller is not running when you apply?* The
+Deployment is stored. When the controller starts, it lists all Deployments and reconciles
+each one, because controllers are level-triggered.
+
+### What happens when a node fails while running Pods?
+
+The kubelet stops renewing its `Lease`. After the grace period, the node lifecycle
+controller sets the node's `Ready` condition to `Unknown` and adds the
+`node.kubernetes.io/unreachable` taint with the `NoExecute` effect. Pods are evicted when
+their toleration for the taint expires, 300 seconds by default, at a rate limited per zone.
+The owning controllers create replacement Pods on other nodes if capacity is available. The
+old Pod objects can remain visible until eviction completes, so seeing Pods on a node that
+no longer exists is expected for a few minutes.
+
+### Why is a Deployment rollout stuck?
+
+The rollout waits for Pods in the new ReplicaSet to become ready. Common reasons are image
+pull failures, failing readiness probes, requests that do not fit on any node, taints,
+unbound PVCs, quota, and a `maxUnavailable` setting that allows no progress. Use
+`kubectl rollout status` and the events to find the stage. After
+`progressDeadlineSeconds`, the Deployment is marked as failed, but it is not rolled back
+automatically.
+
+### How does a Service route only to healthy Pods?
+
+The EndpointSlice controller lists the Pods that match the Service's selector and sets
+each endpoint's conditions from the Pod's readiness and termination state. kube-proxy, or
+a replacement such as Cilium, forwards traffic only to ready endpoints. A Pod that fails
+its readiness probe is removed from the endpoints without being restarted.
+
+### How are GPU requests scheduled?
+
+A healthy device plugin makes the node advertise an integer `nvidia.com/gpu` allocatable
+count. The scheduler treats the count like any other integer resource that cannot be
+overcommitted and places the Pod on a node with enough units. The kubelet then calls the
+plugin's `Allocate` method, which maps the units to specific devices and returns the device
+nodes, mounts, or CDI names. With DRA, the scheduler instead matches `ResourceSlice` devices
+against the claim's structured parameters and CEL constraints.
+
+*Follow-up: where does the device plugin run, and what chooses the device?* It runs as a
+DaemonSet and registers with the kubelet over a Unix socket. The kubelet's device manager
+chooses the devices, optionally guided by `GetPreferredAllocation` and NUMA topology, and
+calls `Allocate`.
+
+### Should MIG be exposed through the device plugin or DRA?
+
+The device plugin with `migStrategy: mixed` is the established approach and advertises a
+resource name for each MIG profile. For new designs that need richer constraints, dynamic
+partitioning, or claims that outlive Pods, DRA is the direction upstream is taking:
+partitionable devices (beta in v1.36) model MIG-style partitioning directly, and
+DRA-backed extended resources (stable in v1.37) keep existing `nvidia.com/gpu` requests
+working. The choice depends on the drivers available and the cluster's version.
+
+### Why does distributed training need gang scheduling?
+
+If only some workers are placed, they hold GPUs while waiting for the rest, and two
+partially placed jobs can wait on each other indefinitely. Gang scheduling places all
+required Pods or none. The `Workload` and `PodGroup` APIs (beta in v1.37, behind the
+`GenericWorkload` feature gate) express the minimum group size with `minCount` and
+`minGroupCount`; custom schedulers implement the same behavior at the `Permit` extension
+point.
+
+### What is the difference between requests and limits?
+
+Requests determine scheduling and QoS class; limits are enforced by the kernel. A container
+that exceeds its memory limit is OOM-killed, and one that exceeds its CPU limit is
+throttled. Requests also affect node-pressure eviction: Pods that use more than their
+requests are evicted before Pods that stay within them.
+
+### What happens if etcd is slow or lost?
+
+etcd stores all cluster state, is replicated with Raft, and is written only by the API
+server. When it is slow, writes are slow, watch notifications are delayed, and controllers
+repeatedly lose leader election. Running containers continue, because the kubelet and
+container runtime do not need etcd to keep them running, but nothing new can be scheduled
+or changed. If etcd is lost without a backup, the cluster state is lost.
+
+### How would you isolate two teams on one GPU cluster?
+
+For teams that trust each other: a namespace per team, least-privilege RBAC, ResourceQuota
+and LimitRange, Pod Security Admission with the `restricted` profile, a default-deny
+NetworkPolicy, separate ServiceAccounts, and audit logging. For stronger isolation, add
+dedicated node pools with taints and tolerations, MIG for GPU memory and fault isolation,
+sandboxed runtimes or separate clusters, and tenant-aware admission policies. A namespace
+alone is not a security boundary.
+
+### A controller is reconciling constantly and the API server is slow. What do you check?
+
+Check whether the controller's own status writes trigger new reconciles, whether a broad
+watch fills the work queue, whether the controller writes on every reconcile instead of only
+when something changed, and whether it lists from the API instead of using its informer
+cache. API Priority and Fairness throttling appears as `429` responses, and the work queue
+metrics show the controller's backlog. Predicates, comparing before writing, and rate
+limiting address these causes.
+
+---
+
+## Summary
+
+- The API server is the only writer to etcd. Every request passes through authentication,
+  authorization, mutating admission, validation, and validating admission before it is
+  stored.
+- Controllers are level-triggered and idempotent. client-go informers cache objects, and
+  work queues deduplicate and retry work.
+- The scheduler only binds Pods to nodes. The kubelet runs Pods, reports status, and evicts
+  Pods under node pressure.
+- Requests drive scheduling, QoS, and eviction order; limits are enforced by the kernel.
+- EndpointSlices, kube-proxy, CoreDNS, and the CNI plugin together make Services reachable,
+  and NetworkPolicy is enforced only by CNI plugins that support it.
+- GPUs are extended resources advertised by device plugins. DRA adds structured,
+  attribute-based allocation, and gang scheduling provides all-or-nothing placement.
+- Namespaces are not a security boundary; hard multi-tenancy needs node, runtime, or
+  cluster-level isolation.
+- Debug from the API object down through the scheduler, kubelet, node, and GPU.
+
+## Further reading
+
+The upstream documentation is the authoritative source.
 
 - Kubernetes documentation, concepts: <https://kubernetes.io/docs/concepts/>
   - Cluster architecture: <https://kubernetes.io/docs/concepts/architecture/>
@@ -1649,16 +1725,16 @@ The upstream documentation is authoritative.
   - Multi-tenancy: <https://kubernetes.io/docs/concepts/security/multi-tenancy/>
   - API Priority and Fairness: <https://kubernetes.io/docs/concepts/cluster-administration/flow-control/>
   - Feature gates (version history): <https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/>
-- Enhancement proposals (KEPs): <https://github.com/kubernetes/enhancements>
-  - Scheduling framework, KEP-624
-  - Sidecar containers, KEP-753
-  - Dynamic Resource Allocation, KEP-4381
-- Books worth reading end to end (not summaries):
-  - *Kubernetes: Up and Running*, Burns, Beda, Hightower
-  - *Kubernetes in Action*, Marko Lukša
-  - *Programming Kubernetes*, Hausenblas, Schimanski (operators, client-go)
-  - *Designing Distributed Systems*, Brendan Burns (controller patterns)
-- Upstream:
-  - device plugin: <https://github.com/NVIDIA/k8s-device-plugin>
+- Kubernetes Enhancement Proposals: <https://github.com/kubernetes/enhancements>
+  - KEP-624: Scheduling framework
+  - KEP-753: Sidecar containers
+  - KEP-4381: Dynamic Resource Allocation with structured parameters
+- Books:
+  - Brendan Burns, Joe Beda, Kelsey Hightower, and Lachlan Evenson, *Kubernetes: Up and Running*
+  - Marko Lukša, *Kubernetes in Action*
+  - Michael Hausenblas and Stefan Schimanski, *Programming Kubernetes*, on client-go and operators
+  - Brendan Burns, *Designing Distributed Systems*, on controller and sidecar patterns
+- NVIDIA projects:
+  - Device plugin: <https://github.com/NVIDIA/k8s-device-plugin>
   - GPU Operator: <https://github.com/NVIDIA/gpu-operator>
   - GPU Feature Discovery: <https://github.com/NVIDIA/gpu-feature-discovery>
