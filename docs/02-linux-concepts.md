@@ -1,17 +1,25 @@
-# 02: Linux Concepts: A Deep Dive
+# 02: Linux Concepts, Deep Dive
 
-Understanding Linux systems in the context of container orchestration requires examining node-level operations, such as Pod scheduling, device visibility, and node troubleshooting. These behaviors are governed by kernel objects, system calls, data structures, and command-line utilities detailed in this chapter.
+Linux systems questions concern what happens on a node when a Pod is scheduled,
+why a container can or cannot see a device, and how a misbehaving node is found.
+The answers are in the kernel objects, syscalls, data structures, and commands
+below.
 
 ## How to read this chapter
 
-Each mechanism is presented in four steps:
+Each mechanism is presented in four steps.
 
-1. **The Problem:** The issue that arises without the mechanism.
-2. **The Mechanism:** The kernel data structure or algorithm that resolves the issue.
-3. **Implementation:** A concise C program demonstrating the concept, occasionally accompanied by a Rust equivalent using the `libc` crate.
-4. **Output:** The program's output alongside corresponding external command outputs.
+1. **The problem.** What goes wrong without the mechanism.
+2. **The mechanism.** The kernel data structure or algorithm that solves it.
+3. **A program.** A short C program, and in some sections the same thing in Rust
+   through the `libc` crate.
+4. **Output.** What the program prints, next to the command that shows the same
+   thing from outside the process.
 
-All code listings were compiled and executed on an NVIDIA Jetson (aarch64, Linux 5.15) using gcc 11.4.0 and rustc 1.96 nightly. The outputs provided are exact reproductions. Note that on aarch64, the system call instruction is `svc` (rather than `syscall`), and memory addresses are 48-bit. While specific numerical values differ on x86-64 architectures, the underlying mechanisms remain identical.
+Every listing was compiled and run; the outputs are copied, not invented. The
+machine was a Jetson (aarch64, Linux 5.15), gcc 11.4.0, rustc 1.96 nightly. On
+aarch64 the system call instruction is `svc`, not `syscall`, and the addresses
+printed below are 48-bit. On x86-64 the numbers differ; the mechanisms do not.
 
 ```bash
 gcc -O2 -Wall -Wextra -o fork_cow fork_cow.c   # the C programs
@@ -20,24 +28,26 @@ cargo run --release --bin syscall_cost         # the Rust ones, libc is already 
 
 ## Further reading
 
-The following texts provide comprehensive background and serve as the foundational references for the concepts discussed in this chapter.
+Nothing here is a substitute for these. They are the source for the full argument
+behind any section below.
 
-| Source | Utility |
+| Source | What it is good for |
 |---|---|
-| Arpaci-Dusseau, *Operating Systems: Three Easy Pieces* (free at `ostep.org`) | Provides a clear introduction to virtual memory, scheduling, and concurrency. Recommended as an initial resource for foundational terminology. |
-| Bryant & O'Hallaron, *Computer Systems: A Programmer's Perspective* | Connects C code to machine code and the memory hierarchy. Chapters 8 and 9 detail the mechanics of page faults. |
-| Tanenbaum & Bos, *Modern Operating Systems* | A canonical survey that compares Linux with other kernel architectures. |
-| Silberschatz, Galvin & Gagne, *Operating System Concepts* | Standard academic textbook. Useful for precise definitions of concepts such as working set, thrashing, and demand paging. |
-| Kerrisk, *The Linux Programming Interface* | Serves as an exhaustive reference for the system call boundary, detailing calls, errors, and edge cases. Best utilized as a reference dictionary. |
-| Stevens & Rago, *Advanced Programming in the UNIX Environment* | A foundational text on signals, process control, and I/O idioms. |
-| Love, *Linux Kernel Development* | An overview of the kernel's internal data structures, authored by a former scheduler maintainer. |
-| Bovet & Cesati, *Understanding the Linux Kernel* | Provides deep technical insights into page-table and VFS internals. |
-| Corbet, Rubini & Kroah-Hartman, *Linux Device Drivers* | Details how drivers interface with the kernel, which is relevant for GPU driver integration. |
-| Drepper, "What Every Programmer Should Know About Memory" (2007) | A comprehensive, freely available account of caches, TLBs, and NUMA architectures. |
-| Ritchie & Thompson, "The UNIX Time-Sharing System" (CACM, 1974) | The foundational paper explaining the design of UNIX process and file abstractions. |
-| Saltzer & Kaashoek, *Principles of Computer System Design* | Covers naming, layering, and fault containment, explaining the architectural rationale behind system abstractions. |
+| Arpaci-Dusseau, *Operating Systems: Three Easy Pieces* (free at `ostep.org`) | The clearest first pass on virtual memory, scheduling and concurrency. Read this first if the rest reads like vocabulary. |
+| Bryant & O'Hallaron, *Computer Systems: A Programmer's Perspective* | Ties C code to machine code and the memory hierarchy. Chapters 8 and 9 are what a page fault actually does. |
+| Tanenbaum & Bos, *Modern Operating Systems* | The canonical survey, and the one that compares Linux with other kernels rather than assuming it. |
+| Silberschatz, Galvin & Gagne, *Operating System Concepts* | The course textbook. Use it to get definitions exact: working set, thrashing, demand paging. |
+| Kerrisk, *The Linux Programming Interface* | The reference for the syscall boundary: every call, every error, every edge case. A dictionary, not a read-through. |
+| Stevens & Rago, *Advanced Programming in the UNIX Environment* | Older, still unmatched on signals, process control and I/O idioms. |
+| Love, *Linux Kernel Development* | A short tour of the kernel's own data structures by a former scheduler maintainer. |
+| Bovet & Cesati, *Understanding the Linux Kernel* | Dated but deep. Where to go for page-table and VFS internals. |
+| Corbet, Rubini & Kroah-Hartman, *Linux Device Drivers* | How drivers attach to the kernel, which is where the GPU driver lives. |
+| Drepper, "What Every Programmer Should Know About Memory" (2007) | Still the best free account of caches, TLBs and NUMA. |
+| Ritchie & Thompson, "The UNIX Time-Sharing System" (CACM, 1974) | Six pages that explain why the process and file abstractions look like this. |
+| Saltzer & Kaashoek, *Principles of Computer System Design* | Naming, layering and fault containment: the "why" behind the abstractions. |
 
-The quotations from Linus Torvalds included below are historical, attributed, and dated. They are provided to illustrate the design philosophies that inform the surrounding technical sections.
+The quotations from Linus Torvalds below are short, attributed and dated. They are
+here because each one states a position the surrounding section then argues from.
 
 ---
 
@@ -45,43 +55,75 @@ The quotations from Linus Torvalds included below are historical, attributed, an
 
 ### 1.1 The kernel's unit of execution is a task
 
-On Linux, both processes and threads are represented by the same kernel structure: `task_struct`. What is conventionally referred to as a process is typically a **thread group**: one or more tasks sharing the same Thread Group ID (`TGID`). In user space:
+On Linux, both processes and threads are represented by the same kernel
+structure: `task_struct`. What we call a process is usually a **thread group**:
+one or more tasks sharing the same Thread Group ID (`TGID`). In user space:
 
 - `getpid()` returns the TGID of the calling task (the "process ID").
-- `gettid()` returns the kernel task ID (`PID` in `/proc/<pid>/status`, representing `Tgid` vs `Pid`).
-- `ps -Lf` and `top -H` display individual tasks and threads.
+- `gettid()` returns the kernel task ID (`PID` in `/proc/<pid>/status`, i.e. `Tgid` vs `Pid`).
+- `ps -Lf` and `top -H` show individual tasks/threads.
 
-In `ps -eo pid,tid,ppid,comm`, the `pid` column represents the process ID and `tid` represents the thread ID. For a single-threaded process, these values are identical.
+In `ps -eo pid,tid,ppid,comm`, the `pid` column is the process ID and `tid` is the
+thread ID. For a single-threaded process they are the same number.
 
-Utilizing a unified structure extends beyond convenience. Maintaining separate process and thread tables would require every scheduling decision, signal delivery, and credential check to first determine the appropriate table context. By utilizing a single `task_struct` with a `tgid` field, a "thread" is defined as a relationship between tasks rather than a distinct object type. This design allows `kill(2)` to address either a specific thread or an entire thread group depending on the ID format, and explains why `/proc/<tgid>/task/<tid>` exists as a directory rather than a separate filesystem.
+A single structure matters beyond convenience: separate process and thread tables
+would force every scheduling decision, signal delivery and credential check to ask
+which table it is looking at. With one `task_struct` and a `tgid` field, "thread"
+becomes a relationship between tasks rather than a second kind of object. It is also
+why `kill(2)` can address a thread or a whole thread group depending on how the id
+is formed, and why `/proc/<tgid>/task/<tid>` exists as a directory rather than a
+separate filesystem.
 
-Regarding the importance of data structures over code implementation, Linus Torvalds noted (git mailing list, 27 July 2006):
+Linus Torvalds, on why the shape of the data matters more than the shape of the code
+(git mailing list, 27 July 2006):
 
-> I will, in fact, claim that the difference between a bad programmer and a good one is whether he considers his code or his data structures more important. Bad programmers worry about the code. Good programmers worry about data structures and their relationships.
+> I will, in fact, claim that the difference between a bad programmer and a good one
+> is whether he considers his code or his data structures more important. Bad
+> programmers worry about the code. Good programmers worry about data structures and
+> their relationships.
 
-The scheduler, signal handling, cgroup accounting, and the `/proc` filesystem are all views onto this single object. Consequently, analyzing process behavior generally involves determining which field of the `task_struct` was modified and by which subsystem.
+The scheduler, the signal code, the accounting in cgroups and the `/proc` tree are all
+views onto this one object, so questions about process behaviour are usually questions
+about which field of it changed and who changed it.
 
 ### 1.2 `fork()`, `vfork()`, and `clone()`
 
-- `fork()` creates a child task by duplicating the parent's address space, file-descriptor table, signal handlers, and most other process state. The duplication is virtualized through **copy-on-write (COW)**: both parent and child initially reference the same physical pages, which are marked read-only. When either process attempts a write, the kernel duplicates the specific page. This mechanism makes `fork()` highly efficient for small processes and dictates that memory usage (`PSS`) should not be calculated simply as `RSS(parent) + RSS(child)`.
-- `vfork()` originally suspended the parent until the child called `exec()` or `exit()`. It is rarely required in modern systems because COW already renders `fork()` highly efficient.
-- `clone()` is the low-level system call utilized by pthreads and container runtimes. Flags dictate which resources are shared with the child. `clone(CLONE_THREAD)` creates a thread, while `clone(CLONE_NEWPID|CLONE_NEWNS|...)` creates a process within new namespaces, which is the mechanism `runc` uses to initialize a container.
+- `fork()` creates a child task by copying the parent's address space,
+  file-descriptor table, signal handlers, and most other process state. The
+  copy is virtualized through **copy-on-write (COW)**: both parent and child
+  initially point at the same physical pages marked read-only. When either one
+  writes, the kernel duplicates the page. This is why `fork()` is cheap for
+  small children and why memory usage (`PSS`) should not be computed as
+  `RSS(parent) + RSS(child)`.
+- `vfork()` originally suspended the parent until the child called `exec()`
+  or `exit()`; it is rarely needed today because COW already makes `fork()`
+  cheap.
+- `clone()` is the low-level syscall used by pthreads and container runtimes.
+  Flags select what is shared with the child. `clone(CLONE_THREAD)` creates a
+  thread; `clone(CLONE_NEWPID|CLONE_NEWNS|...)` creates a process in new
+  namespaces, which is what `runc` does to start a container.
 
-**In the Linux kernel, threads are implemented as processes that share an address space, file descriptors, and signal handlers, rather than as a distinct kernel abstraction.**
+**Threads are processes that share an address space, file descriptors, and signal
+handlers; they are not a separate kernel concept.**
 
-#### Copy-on-write mechanics
+#### What copy-on-write does
 
-`fork()` performs no physical memory copying at the moment of the call. It marks the parent's writable pages as read-only in *both* page tables. The first process to attempt a write triggers a protection fault, prompting the kernel to duplicate that specific page and provide a writable mapping. The following program demonstrates this: the parent and child print the *same* virtual address holding *different* values. This is possible because the printed address is virtual, while the underlying physical frame was duplicated upon the first write.
+`fork()` copies nothing at the moment of the call. It marks the parent's writable
+pages read-only in *both* page tables; the first writer among the two takes a
+protection fault, and the kernel duplicates that one page and hands out a writable
+mapping. The program below makes the consequence visible: parent and child print the
+*same* address holding *different* values, which is only possible because the address
+printed is virtual and the physical frame behind it was duplicated on the first write.
 
 ```c
-/* fork_cow.c: the child receives a private copy of the parent's memory. */
+/* fork_cow.c: the child gets a private copy of the parent's memory. */
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 int main(void)
 {
-    int value = 42;                     /* located on the parent's stack */
+    int value = 42;                     /* on the parent's stack */
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -90,11 +132,11 @@ int main(void)
     }
 
     if (pid == 0) {
-        value = 99;                     /* writes to the private copy */
+        value = 99;                     /* writes to a private copy */
         printf("child : pid=%d value=%d address=%p\n",
                (int)getpid(), value, (void *)&value);
-        fflush(stdout);                 /* flush before _exit, otherwise output is lost */
-        _exit(0);                       /* exit() would also flush and run atexit handlers */
+        fflush(stdout);                 /* flush before _exit, or this line is lost */
+        _exit(0);                       /* exit() would flush too, and run atexit handlers */
     }
 
     waitpid(pid, NULL, 0);
@@ -110,19 +152,23 @@ child : pid=1939075 value=99 address=0xffffeb225404
 parent: pid=1939074 value=42 address=0xffffeb225404
 ```
 
-Two processes share one virtual address but hold two distinct values. Examining `cat /proc/<pid>/smaps` reveals the copied page as a dirty anonymous page charged to each process independently, which is precisely what `PSS` accounts for and `RSS` does not.
+Two processes, one address, two values. `cat /proc/<pid>/smaps` shows the copied page
+as a dirty anonymous page charged to each process separately, which is exactly what
+`PSS` accounts for and `RSS` does not.
 
-**A critical detail in this listing is the `fflush` call.** Standard output directed to a pipe is block-buffered, and `_exit(2)` bypasses the standard I/O flush. Consequently, a program that prints in the child process and subsequently calls `_exit` will lose the buffered output without generating an error:
+**The trap in that listing is the `fflush`.** Stdout to a pipe is block-buffered, and
+`_exit(2)` does not run the stdio flush. A program that prints in the child and then
+calls `_exit` loses the output with no error to explain it:
 
 ```c
-/* lost.c: the child's output is lost due to missing flush. */
+/* lost.c: the child's output disappears. */
 #include <stdio.h>
 #include <unistd.h>
 
 int main(void)
 {
-    printf("child\n");   /* remains in the buffer */
-    _exit(0);            /* does not flush the buffer */
+    printf("child\n");   /* sits in the buffer */
+    _exit(0);            /* does not flush it */
 }
 ```
 
@@ -131,27 +177,33 @@ $ gcc -O2 -o lost lost.c && echo "captured: [$(./lost)]"
 captured: []
 ```
 
-This relates to a common class of bugs involving stdio buffer locks during a fork: because the buffer was duplicated by the fork, the data may be lost or printed multiple times depending on lock states.
+This is the same class of bug as writing to a forked child while a lock on the stdio
+buffer is held: the buffer was duplicated by the fork, so the data is either lost or
+printed twice.
 
-#### Rust implementation
+#### The same thing in Rust
 
-Rust accesses `fork(2)` via the `libc` crate. A strict constraint applies to the child process post-fork: POSIX permits only async-signal-safe functions between `fork()` and `exec()`. This excludes most of `std::io`, as those functions may acquire locks and modify buffers that were duplicated during the fork. The following implementation utilizes `write(2)` directly to comply with this constraint.
+Rust reaches `fork(2)` through the `libc` crate. The constraint is on what the child
+may do afterwards: POSIX permits only async-signal-safe functions between `fork()`
+and `exec()`. That excludes nearly everything in `std::io`, because those functions
+may take locks and touch buffers that the fork duplicated. The listing therefore
+writes with `write(2)` directly.
 
 ```rust
 //! fork_cow.rs
 use libc::{fork, getpid, waitpid};
 
-/// Use `write(2)` directly: after `fork()`, only async-signal-safe calls are permitted in
-/// the child. `println!` does not meet this requirement.
+/// `write(2)` directly: after `fork()` only async-signal-safe calls belong in the
+/// child. `println!` is not one of them.
 fn raw_print(text: &str) {
     // SAFETY: `text` is valid for `text.len()` bytes for the duration of the call.
     unsafe { libc::write(1, text.as_ptr() as *const libc::c_void, text.len()) };
 }
 
 fn main() {
-    let mut value: i32 = 42; // located on the parent's stack
+    let mut value: i32 = 42; // on the parent's stack
 
-    // SAFETY: single-threaded execution; the child performs one write() then _exit().
+    // SAFETY: single-threaded, and the child performs one write() then _exit().
     let pid = unsafe { fork() };
 
     if pid < 0 {
@@ -167,11 +219,11 @@ fn main() {
             value,
             &value as *const i32
         ));
-        // SAFETY: _exit skips destructors and the stdio flush.
+        // SAFETY: _exit skips destructors and the stdio flush, which is the point.
         unsafe { libc::_exit(0) };
     }
 
-    // SAFETY: `pid` corresponds to the child created above.
+    // SAFETY: `pid` is the child created above.
     unsafe { waitpid(pid, std::ptr::null_mut(), 0) };
     println!(
         "parent: pid={} value={} address={:p}",
@@ -188,37 +240,51 @@ child : pid=1938714 value=99 address=0xffffd94eee74
 parent: pid=1938713 value=42 address=0xffffd94eee74
 ```
 
-Invoking `fork` from a multithreaded process carries significant risks. The `std::process::Command` API exists to abstract this complexity, utilizing `posix_spawn` or a managed `fork` and `exec` sequence to ensure the child never executes arbitrary Rust code between the two system calls.
+Calling `fork` from a process that already has other threads is dangerous, and
+`std::process::Command` exists so that this is rarely written by hand: it uses
+`posix_spawn` or `fork` plus `exec`, so the child never runs arbitrary Rust between
+the two.
 
 ### 1.3 `exec()` replaces the process image
 
-`execve(path, argv, envp)` does not allocate a new PID. It destroys the current process's address space, loads the new program, and begins execution at the entry point. The file descriptor table persists unless `FD_CLOEXEC` is set on a descriptor; this flag ensures the descriptor is closed automatically during the `exec` call. Server applications typically set `O_CLOEXEC` on sockets and files to prevent descriptor leaks.
+`execve(path, argv, envp)` does not create a new PID. It destroys the current
+process's address space and loads the new program, then starts execution at its
+entry point. The file descriptor table survives unless `FD_CLOEXEC` is set on a
+descriptor; that flag causes the descriptor to close automatically during
+`exec`. Servers therefore set `O_CLOEXEC` on sockets and files.
 
-Typical shell execution sequence:
+Typical shell sequence:
 
 ```text
 bash
- └─ fork()              # child bash process created
-     └─ execve("curl")  # child retains PID but replaces image with curl
+ └─ fork()              # child bash process
+     └─ execve("curl")  # child keeps PID but becomes curl
 ```
 
-### 1.4 System call mechanics
+### 1.4 What happens during a system call
 
-User-space programs cannot access hardware or kernel memory directly. A function such as `read()` transitions through the C library (or a raw `syscall` instruction) via the following steps:
+A userspace program cannot touch hardware or kernel memory directly. A function
+such as `read()` goes through the C library (or raw `syscall` instruction) and:
 
-1. The syscall number and arguments are placed in registers.
-2. The `syscall` (x86-64) or `svc` (AArch64) instruction is executed.
+1. Places the syscall number and arguments in registers.
+2. Executes `syscall` (x86-64) or `svc` (AArch64).
 3. The CPU traps into kernel mode.
-4. The kernel validates arguments, copies data from user pointers, executes the operation on the current task's kernel stack, and copies results back.
-5. Control returns to user mode with the result in a register.
+4. The kernel validates arguments, copies data from user pointers, executes the
+   operation on the current task's kernel stack, copies results back.
+5. Control returns to user mode with a result in a register.
 
-If a system call blocks (e.g., waiting for network data), the kernel transitions the task to a sleep state, allowing the scheduler to execute another runnable task.
+The kernel may sleep the task if the syscall blocks (e.g. waiting for network
+data). When that happens, the scheduler runs another runnable task.
 
-`strace` is a diagnostic tracer that intercepts these system calls, useful for identifying performance bottlenecks or failure causes.
+`strace` is a tracer that intercepts these syscalls and can reveal why a program is
+slow or why it fails.
 
-#### Context switch overhead
+#### What the crossing costs
 
-The aforementioned steps constitute the complete system call mechanism. The performance overhead arises from the privilege level transition: the CPU saves the user context, switches to the kernel stack, executes the entry path, and restores the user context. This transition cost is incurred before the actual operation begins, rendering even minimal system calls measurable in terms of latency.
+The steps above are the whole mechanism. What makes it expensive is that it is a
+privilege transition: the CPU saves the user context, switches to the kernel stack,
+runs the entry path, and switches back. That cost is paid before the operation itself
+does any work, which is why even a call that does almost nothing is measurable.
 
 ```rust
 //! syscall_cost.rs
@@ -228,7 +294,7 @@ use std::time::Instant;
 const ITERATIONS: u32 = 1_000_000;
 
 fn main() {
-    // Warm up: initial calls incur costs for page faults and lazy symbol resolution.
+    // Warm up: the first calls pay for page faults and lazy symbol resolution.
     for _ in 0..10_000 {
         black_box(unsafe { libc::getpid() });
     }
@@ -254,45 +320,66 @@ $ cargo run --release --bin syscall_cost
 229.0 ns per call
 ```
 
-This measurement is specific to the hardware, kernel version, and CPU frequency governor of the test machine. Minor variations (e.g., a 10% spread) are normal for fixed instructions, which is why empirical measurements must always be accompanied by the environmental context.
+That number belongs to one machine, one kernel, one frequency governor. This
+repository's own `src/bin/syscall_overhead.rs` reports 207.6 ns for the same call on
+the same host at a different moment. A ten percent spread on a fixed instruction is
+the answer to how fast a syscall is, which is why every measured figure here is
+printed beside the machine that produced it.
 
-Practical implications include the high relative cost of crossing the kernel boundary for small payloads. A server issuing one `read()` per 8 bytes spends more time on context transitions than on memory copying. Techniques such as batching (`sendmmsg`, `recvmmsg`, `io_uring`), memory mapping (`mmap`), and user-space networking (DPDK) are designed to amortize this transition cost. The `strace -c` utility aggregates these transitions, making it a primary tool for diagnosing syscall-bound applications.
+The practical consequences: a server that issues one `read()` per 8 bytes pays more for
+crossings than for copying. Batching (`sendmmsg`, `recvmmsg`, `io_uring`), mapping
+instead of reading (`mmap`), and user-space networking (DPDK) all buy back the same
+transition. `strace -c` counts the crossings the kernel actually handled, which is why
+it is the first tool for "why is this syscall-bound".
 
-#### API stability
+#### Why this interface cannot change
 
-The system call numbers, argument layouts, and error conventions (`-1` alongside `errno`) are fixed per architecture and constitute a published, stable interface. Binaries compiled against older kernel versions continue to function because of this strict backward compatibility.
+The syscall number, the argument layout and the error convention (`-1` plus `errno`)
+are fixed for the architecture, and they are a published interface. Binaries compiled
+years ago against a kernel that no longer exists still run because of it.
 
-Regarding the strict maintenance of backward compatibility in the user-space API, Linus Torvalds stated (LKML, 23 December 2012):
+Linus Torvalds, on a proposed change that would have broken that interface (LKML,
+23 December 2012):
 
 > WE DO NOT BREAK USERSPACE!
 >
-> Seriously. We've been doing this for decades. The fact that you don't understand why is not an excuse.
+> Seriously. We've been doing this for decades. The fact that you don't understand why
+> is not an excuse.
 
-The architectural principle is clear: extending a public API requires additive changes rather than modifications, and versioning must be applied to any interface that cannot be safely extended.
+The transferable rule: extending a public API means adding rather than modifying,
+and giving a version to anything that cannot be added. That is the same decision at
+a much smaller scale.
 
 ### 1.5 Process states, zombies, and orphans
 
-The `STAT` column in `ps` indicates the current process state:
+The `STAT` column in `ps` is the state:
 
 | State | Meaning |
 |---|---|
 | `R` | Running or runnable |
-| `S` | Interruptible sleep (waiting for I/O or an event) |
-| `D` | Uninterruptible sleep (typically waiting on kernel I/O) |
-| `T` | Stopped (via `SIGSTOP`) |
-| `Z` | Zombie: exited but not yet reaped by the parent |
+| `S` | Interruptible sleep (waiting for I/O/event) |
+| `D` | Uninterruptible sleep (usually waiting on kernel I/O) |
+| `T` | Stopped (`SIGSTOP`) |
+| `Z` | Zombie: exited but not yet reaped by parent |
 | `I` | Idle kernel thread |
 
-A **zombie** is a task that has terminated, but its `task_struct` is retained until the parent invokes `wait()`. The kernel preserves the exit status for the parent to collect. If a parent never calls `wait()`, the child remains a zombie. If the parent terminates first, the child is reparented to `init` or `systemd` (PID 1), which subsequently reaps it.
+A **zombie** is a task that has exited but whose `task_struct` is kept until the
+parent calls `wait()`. The kernel must preserve the exit status for the parent.
+If a parent never calls `wait()`, the child remains a zombie. If the parent
+dies, the child is reparented to `init`/`systemd` (PID 1), which reaps it.
 
-A process in **D-state** cannot be terminated until the underlying kernel I/O operation completes. Storage or network failures frequently result in D-state processes; resolving the issue requires addressing the underlying device rather than sending `kill -9`.
+A **D-state** process cannot be killed until the kernel I/O completes. Storage and
+network hangs produce D-state processes, and the fix is the underlying device
+rather than `kill -9`.
 
-#### Monitoring state transitions
+#### Watching the state field change
 
-Field 3 of `/proc/<pid>/stat` contains a single character representing the state, identical to the `STAT` column in `ps`. The following program forks a child, deliberately omits the reaping step, and reads the state field to demonstrate zombie persistence.
+Field 3 of `/proc/<pid>/stat` is a single character, and it is the same character `ps`
+prints in its `STAT` column. The program below forks a child, deliberately does *not*
+reap it, and reads that field.
 
 ```c
-/* zombie.c: an exited child remains in the process table until reaped. */
+/* zombie.c: an exited child stays in the process table until it is reaped. */
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -327,14 +414,14 @@ int main(void)
     }
 
     if (pid == 0)
-        _exit(0);                       /* child terminates immediately */
+        _exit(0);                       /* the child is gone in microseconds */
 
     printf("parent %d, child %d has exited\n", (int)getpid(), (int)pid);
-    sleep(1);                           /* allow child to exit first */
+    sleep(1);                           /* let the child exit first */
     show_state("exited, not reaped", pid);
     show_state("still not reaped", pid);
 
-    waitpid(pid, NULL, 0);              /* child is reaped here */
+    waitpid(pid, NULL, 0);              /* only now is the child reaped */
     show_state("after waitpid", pid);
     return 0;
 }
@@ -348,23 +435,32 @@ still not reaped: state 'Z'
 after waitpid: /proc/1939372/stat is gone
 ```
 
-Although the child has no remaining code to execute, it continues to occupy a slot in the process table, which the `Z` state indicates. `waitpid(2)` collects the exit status, allowing the kernel to finally release the `task_struct`. Omitting the `sleep` often results in the first read showing `R` or `S`, as the parent may execute the read before the child is scheduled to exit. Due to this race condition, verifying a zombie state requires polling the status rather than relying on a single read.
+The child has no code left to run, yet it still occupies a slot in the process table;
+that is what `Z` reports. `waitpid(2)` collects the exit status and the kernel finally
+releases the `task_struct`. Without the `sleep`, the first read often shows `R` or `S`
+instead, because the parent can reach the read before the child has been scheduled.
+That race is why "is it a zombie" is answered by re-reading rather than by reading once.
 
-Two operational consequences arise from this behavior. First, a container whose PID 1 fails to reap orphans will accumulate zombies until the process-table limit is reached; this constitutes an application defect rather than a kernel issue. Second, while a zombie consumes negligible memory, it holds a PID, which is a finite resource governed by `/proc/sys/kernel/pid_max`.
+Two consequences. A container whose PID 1 does not reap orphans
+accumulates zombies until the process-table limit is reached; that is a container bug,
+not a kernel one. And a zombie costs almost no memory but does hold a PID, which is
+finite (`/proc/sys/kernel/pid_max`).
 
 ### 1.6 Signals and process control
 
-Signals function as software interrupts. Key signals include:
+Signals are software interrupts. Key signals:
 
-- `SIGTERM` (15): Requests graceful termination, allowing the process to clean up resources.
-- `SIGKILL` (9): Forces immediate termination; cannot be caught or blocked.
-- `SIGSTOP` (19) / `SIGCONT` (18): Suspends and resumes execution.
-- `SIGHUP` (1): Indicates terminal closure or requests a daemon configuration reload.
-- `SIGCHLD`: Sent to a parent when a child stops or exits.
+- `SIGTERM` (15): ask the process to exit; the process can clean up.
+- `SIGKILL` (9): cannot be caught or blocked; kernel destroys the task.
+- `SIGSTOP` (19) / `SIGCONT` (18): stop/continue.
+- `SIGHUP` (1): often means terminal closed or daemon reload.
+- `SIGCHLD`: sent to parent when a child stops or exits.
 
-Container runtimes utilize signals for lifecycle management. For instance, Kubernetes sends `SIGTERM` to PID 1 in a pod, waits for the `terminationGracePeriodSeconds` duration, and then issues `SIGKILL` if the process has not exited.
+Container runtimes use signals to stop containers: Kubernetes first sends
+`SIGTERM` to PID 1 in the pod, waits `terminationGracePeriodSeconds`, then sends
+`SIGKILL`.
 
-Relevant diagnostic commands:
+Commands to try:
 
 ```bash
 ps -eo pid,tid,ppid,stat,comm --sort=-%cpu | head
@@ -381,29 +477,33 @@ renice -n -5 -p 1234
 
 ### 2.1 Virtual memory
 
-Every process operates within its own virtual address space, defined by `mm_struct` and page tables. The CPU translates virtual addresses to physical addresses via page tables, utilizing a Translation Lookaside Buffer (TLB) to cache recent translations. This architecture provides:
+Every process has its own virtual address space described by `mm_struct` and
+page tables. The CPU translates virtual addresses to physical addresses through
+the page tables, with a TLB caching recent translations. This gives:
 
-- Isolation (preventing processes from accessing each other's memory).
-- Lazy allocation.
-- Shared file pages.
-- Copy-on-write semantics.
-- Memory overcommit capabilities.
+- isolation (one process cannot read another process's memory),
+- lazy allocation,
+- shared file pages,
+- copy-on-write,
+- overcommit.
 
-Typical 64-bit user address space layout (not to scale):
+Typical 64-bit user address space (not to scale):
 
 ```text
 0x0000_0000_0000_0000
 ├── text (executable code)
 ├── data / BSS
-├── heap (grows upward via brk)
-├── mmap region (shared libraries, mapped files, thread stacks, arenas)
-├── stack (grows downward)
+├── heap (grows up via brk)
+├── mmap region (shared libs, mmap files, threads, arenas)
+├── stack (grows down)
 └── vsyscall / vvar / ... (kernel-exported pages)
 ```
 
-#### Address translation mechanics
+#### How a virtual address becomes a physical one
 
-On 64-bit architectures, the hardware utilizes 48 bits of an address (with upper bits serving as sign extension). These 48 bits are divided into five fields: four 9-bit table indices and a 12-bit page offset. The 12-bit offset dictates the standard 4 KiB page size.
+On a 64-bit machine the hardware uses 48 bits of an address (the upper bits are sign
+extension), and those 48 bits are split into five fields: four 9-bit table indices and
+a 12-bit page offset. The 12-bit offset is why a page is 4 KiB.
 
 ```text
 47      39 38      30 29      21 20      12 11        0
@@ -412,31 +512,49 @@ On 64-bit architectures, the hardware utilizes 48 bits of an address (with upper
 +-----------+-----------+-----------+-----------+-----------+
 ```
 
-Translation traverses the hierarchy sequentially: the PGD entry points to a PUD table, the PUD entry to a PMD table, the PMD entry to a PTE table, and the PTE contains the physical frame number. The offset is passed through untranslated. This process requires up to four dependent memory reads per translation, underscoring the necessity of the TLB and explaining why TLB misses are expensive events tracked by tools like `perf stat -e dTLB-load-misses`.
+Translation walks the levels in order: the PGD entry names a PUD table, the PUD entry a
+PMD table, the PMD entry a PTE table, and the PTE holds the physical frame number. The
+offset is copied through untranslated. That is up to four dependent memory reads per
+translation, which is why the TLB exists and why a TLB miss is the expensive
+event measured by tools like `perf stat -e dTLB-load-misses`.
 
-To contextualize the structure: nine bits per level means a single PTE table describes 512 pages. Multiplying 512 by 4 KiB yields 2 MiB of address space per table. Each table occupies exactly one page (512 entries × 8 bytes = 4096 bytes). Empty branches are not allocated, meaning a process accessing only a few megabytes of memory does not materialize page tables for the rest of the address space, rendering a 128 TiB virtual address space economically viable.
+Two numbers make the structure concrete. Nine bits per level means one PTE table
+describes 512 pages, and 512 × 4 KiB is 2 MiB of address space per table. Each table is
+itself exactly one page, because 512 entries × 8 bytes = 4096 bytes. Empty branches are
+never allocated, so a process that touches a few megabytes never materialises the
+tables for the rest, which is what makes a 128 TiB address space affordable.
 
-Consequently, the features listed above are all manifestations of the same underlying mechanism. Isolation, lazy allocation, shared libraries, and copy-on-write semantics all depend on resolving a single question: which physical frame a page table entry references, and whether multiple entries reference the same frame.
+The payoff is that every item in the list above is the same mechanism seen from a
+different angle. Isolation, lazy allocation, shared libraries and copy-on-write are all
+answers to one question: which physical frame does this entry point at, and who else's
+entry points at the same frame?
 
 ### 2.2 Pages, page faults, and RSS
 
-Memory is managed in discrete pages (typically 4 KiB, alongside 2 MiB or 1 GiB huge pages). When a program requests memory via `malloc(1 GiB)`, the kernel generally records the virtual address space allocation without immediately assigning physical memory. The first write to a page triggers a **page fault**, prompting the kernel to allocate and map a physical page.
+Memory is managed in pages (usually 4 KiB; also 2 MiB/1 GiB huge pages). When a
+program calls `malloc(1 GiB)`, the kernel usually does not allocate physical
+memory immediately. It records virtual address space. The first write to a page
+triggers a **page fault**; the kernel allocates a physical page and maps it.
 
-Page fault classifications:
+Page fault types:
 
-- **Minor fault**: The page is already resident in memory (e.g., in the page cache or as a COW page) and only requires a new PTE.
-- **Major fault**: The kernel must retrieve the page from a backing store (disk or network).
-- **Protection fault**: Triggered by COW operations, read-only mappings, or access violations.
-- **Segmentation fault**: Attempted access to a virtual address lacking a valid mapping.
+- **Minor fault**: the page is already in memory (e.g. file page in page cache,
+  COW page) and only needs a new PTE.
+- **Major fault**: the kernel must read the page from disk/network.
+- **Protection fault**: could be COW, read-only mapping, or a bug.
+- **Segmentation fault**: access to a virtual address with no valid mapping.
 
-Relevant memory metrics:
+Measurements:
 
-- **VSZ** (Virtual Size): The total mapped virtual address space, including non-resident libraries and mappings.
-- **RSS** (Resident Set Size): The physical pages currently mapped to the process.
-- **PSS** (Proportional Set Size): RSS divided proportionally among processes sharing a page (available in `/proc/<pid>/smaps_rollup`).
-- **Page cache**: File-backed pages cached by the kernel. It is standard for `free` to report most memory as "used" by the cache, which is reclaimed automatically under memory pressure.
+- **VSZ** (virtual size): entire mapped virtual address space, including
+  libraries and mappings not resident.
+- **RSS** (resident set size): physical pages currently mapped to the process.
+- **PSS** (proportional set size): RSS divided among processes sharing a page
+  (`/proc/<pid>/smaps_rollup`).
+- Page cache: file-backed pages cached by the kernel; it is normal for `free`
+  to show most memory "used" by cache. The cache is reclaimed under pressure.
 
-Diagnostic commands:
+Commands:
 
 ```bash
 cat /proc/self/status
@@ -446,12 +564,16 @@ free -h
 vmstat 1 5
 ```
 
-#### Measuring page faults
+#### Counting the faults yourself
 
-The kernel maintains per-process fault counters, allowing empirical measurement of paging behavior. `getrusage(RUSAGE_SELF)` returns `ru_minflt` and `ru_majflt`; these values correspond to fields 10 and 12 in `/proc/<pid>/stat` and the output of `ps -o min_flt,maj_flt`. The following program maps 64 MiB of anonymous memory and writes to the entire region twice.
+The kernel keeps per-process counters, so the fault behaviour described above can be
+measured rather than asserted. `getrusage(RUSAGE_SELF)` returns `ru_minflt` and
+`ru_majflt`; `ps -o min_flt,maj_flt` and `/proc/<pid>/stat` fields 10 and 12 read the
+same numbers. The program maps 64 MiB of anonymous memory and writes to all of it
+twice.
 
 ```c
-/* faults.c: measuring kernel page fault counters. */
+/* faults.c: the kernel counts the page faults a process takes. */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
@@ -479,12 +601,12 @@ int main(void)
     }
 
     getrusage(RUSAGE_SELF, &before);
-    memset(p, 1, len);                      /* initial touch of every page */
+    memset(p, 1, len);                      /* first touch of every page */
     getrusage(RUSAGE_SELF, &after);
     delta("first touch", &before, &after);
 
     getrusage(RUSAGE_SELF, &before);
-    memset(p, 2, len);                      /* pages are already resident */
+    memset(p, 2, len);                      /* already resident */
     getrusage(RUSAGE_SELF, &after);
     delta("second write", &before, &after);
 
@@ -501,11 +623,19 @@ second write  minor +0 major +0
 mapped 67108864 bytes = 16384 pages of 4096
 ```
 
-The arithmetic aligns precisely: 64 MiB ÷ 4 KiB equals 16,384 pages, and the initial memory access triggered exactly one minor fault per page. The second pass over the identical range generated zero faults because the pages were already resident and the PTEs were established. The `major` fault count remains zero for anonymous memory, confirming that no data was read from a backing store.
+The arithmetic checks out exactly: 64 MiB ÷ 4 KiB = 16384 pages, and the first touch
+took exactly one minor fault per page. The second pass over the same range took none,
+because the pages were already resident and the PTEs already existed. The count of
+`major` faults is zero for anonymous memory, which is the expected result: nothing had
+to be read from a backing store.
 
-This principle also applies to the `mmap` of a *file*. In that scenario, the initial touch results in a minor fault if the page is present in the page cache, or a major fault if it must be read from disk. Monitoring `majflt` is highly valuable in production environments, as sustained major faults indicate that the application's working set exceeds available RAM.
+That is also the correct way to think about `mmap` of a *file*. There the first touch
+is a minor fault if the page is already in the page cache and a major fault if it is
+not, so the same program run against a file will move the count between the two columns
+depending on cache state. That is what makes `majflt` a useful signal in production:
+sustained major faults mean the working set no longer fits in RAM.
 
-#### Rust implementation of fault counters
+#### The same counters in Rust
 
 ```rust
 //! faults.rs
@@ -567,24 +697,36 @@ second write: minor +0 major +0
 bytes: 67108864 = 16384 pages
 ```
 
-This program bypasses the user-space allocator. Because `mmap` is the underlying system call for `malloc`, invoking it directly removes allocator overhead from the measurement. Diagnosing heap issues requires the allocator to be active, whereas analyzing kernel accounting does not.
+That program never asks the allocator for memory. `mmap` is the syscall underneath
+`malloc`, and going straight to it removes the allocator from the measurement.
+Reasoning about a heap problem requires `malloc` in the picture; reasoning about the
+kernel's accounting does not.
 
 ### 2.3 `malloc`, `brk`, and `mmap`
 
-The glibc `malloc` implementation manages heap **arenas**. Small allocations are drawn from arenas that expand via `brk` or `mmap`, whereas large allocations utilize `mmap` directly and are unmapped immediately upon `free`. Because memory remains virtual until accessed, allocating massive buffers is inexpensive, but touching the entirety of the buffer can trigger the OOM killer if cgroup or host limits are breached.
+Glibc `malloc` manages heap **arenas**. Small allocations come from arenas that
+grow with `brk`/`mmap`; large allocations use `mmap` directly and are unmapped
+on `free`. Because memory is virtual until touched, allocating a huge buffer is
+cheap, but touching all of it can cause the OOM killer to act if cgroup/host
+limits are exceeded.
 
-Operational considerations for cloud services:
+Consequences for cloud services:
 
-- Allocate memory lazily or utilize explicit memory pools if latency spikes are unacceptable.
-- Monitor `RssAnon` (anonymous memory) to track actual process memory consumption.
-- A memory leak in a container may not immediately reflect in `top` RSS if the leaked pages are never subsequently accessed.
+- Allocate memory lazily or via explicit pools if latency spikes matter.
+- Watch `RssAnon` (anonymous memory) for actual process memory.
+- A memory leak in one container may not be visible in `top` RSS immediately if
+  the pages are never touched again.
 
-#### Allocation strategies
+#### Where the bytes come from
 
-`brk` and `mmap` represent distinct memory acquisition methods, and glibc dynamically selects between them. The default threshold (`M_MMAP_THRESHOLD`) is 128 KiB: requests exceeding this size are served by `mmap` and released upon `free`, while smaller requests are drawn from the heap extended by `brk`. The following program outputs the program break and the mapping count in `/proc/self/maps` surrounding small and large allocations.
+`brk` and `mmap` are two different places to obtain memory, and glibc chooses between
+them. Its threshold, `M_MMAP_THRESHOLD`, is 128 KiB by default: a larger request is
+served by `mmap` and released on `free`, a smaller one comes from the heap that `brk`
+extends. The program below prints the program break and the number of mappings in
+`/proc/self/maps` around one small and one large allocation.
 
 ```c
-/* heap.c: glibc utilizes brk for small blocks and mmap for large allocations. */
+/* heap.c: glibc grows the brk area for small blocks and calls mmap for large ones. */
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -632,68 +774,117 @@ start    brk=0xaaaaef254000 mappings=16
 freed    brk=0xaaaaef275000 mappings=16
 ```
 
-Three behaviors are evident in the output. The 64 KiB block was allocated from the heap: `brk` advanced, and the mapping count remained static. The 8 MiB block exhibited the opposite behavior: `brk` remained unchanged, the mapping count increased from 16 to 17, and the address was placed in the high region of the address space, which is characteristic of `mmap`. Following `free`, the large mapping was removed, but `brk` did not retract, as glibc retains the expanded heap for future reuse.
+Three things are visible in that output. The 64 KiB block came from the heap: `brk`
+moved, and the mapping count did not change. The 8 MiB block did the opposite: `brk` is
+identical before and after, the mapping count went from 16 to 17, and the address sits
+far away in the high part of the address space, which is where `mmap` places mappings.
+After `free`, the large mapping is gone but `brk` has not moved, because glibc keeps the
+heap it has already grown in order to reuse it.
 
-This memory retention behavior is particularly significant in production environments. A process that repeatedly allocates and frees large buffers maintains a stable mapping count rather than returning memory to the OS between calls. Similarly, a process allocating numerous small objects retains both the pages and the `brk` address for its lifecycle. Neither behavior constitutes a traditional "lost pointer" memory leak, and neither manifests as growing `RSS` unless the memory is actively touched. This explains scenarios where `RSS` appears stable, yet a container is OOM-killed; the termination is typically caused by a cgroup limit set below the peak *touched* memory set, rather than a leak.
+That last point is the one that matters in production. A process that repeatedly
+allocates and frees large buffers holds a stable mapping count rather than returning
+memory between calls. A process that allocates many small objects keeps both the pages
+and the `brk` address for its lifetime. Neither is a leak in the "lost pointer" sense,
+and neither shows up as growing `RSS` unless the memory was actually touched. It is also
+why "`RSS` is flat but the container was OOM-killed" is normally a cgroup limit set
+below the peak *touched* set rather than a leak.
 
-### 2.4 Overcommit and the OOM killer
+### 2.4 Overcommit and OOM killer
 
-The Linux kernel permits `malloc` to succeed even when physical RAM is insufficient. This is governed by the overcommit mode (`0` for heuristic, `1` for always overcommit, `2` for never overcommit). When physical memory is exhausted, the kernel invokes the Out-Of-Memory (OOM) killer, which evaluates process scores and terminates a task to reclaim memory.
+The Linux kernel can allow `malloc` to succeed even when there is not enough
+physical RAM (mode `0` heuristic overcommit, `1` always overcommit, `2` never
+overcommit). When memory runs out, the kernel invokes the OOM killer, which
+scores processes and kills one to free memory.
 
-In containerized environments, memory limits are enforced via **cgroup v2**. When a cgroup exceeds `memory.max`, the kernel first attempts to reclaim pages within that specific cgroup. If reclamation fails, the cgroup OOM killer is invoked. Consequently, a container exceeding its limit does not necessarily compromise the entire node. Relevant kernel messages in `dmesg` appear as `Memory cgroup out of memory: Killed process ...`.
+In containers, memory limits are enforced by **cgroup v2**. When a cgroup
+exceeds `memory.max`, the kernel reclaims pages inside that cgroup, then invokes
+the cgroup OOM killer for that cgroup. A container does not necessarily take
+down the whole node. `dmesg` shows messages like
+`Memory cgroup out of memory: Killed process ...`.
 
-#### The rationale for memory overcommit
+#### Why Linux overcommits
 
-Memory overcommit represents a divergence between the Linux kernel's memory model and traditional textbook models. While a conventional allocator denies requests when resources are exhausted, Linux allocates virtual address space that may exceed available physical backing. This design accommodates `fork`-heavy workloads (which would otherwise fail constantly if every child required full physical backing) and reflects the reality that most programs reserve significantly more memory than they actively touch. The mode is configured via `vm.overcommit_memory` (defaulting to `0`, heuristic).
+Overcommit is where the kernel's model and the textbook model diverge. A textbook
+allocator refuses when the resource is exhausted. Linux hands out address space it may
+not be able to back, for two reasons: a `fork`-heavy workload would fail constantly if
+every child had to be fully fundable, and most programs reserve far more than they
+touch. The mode is selected by `vm.overcommit_memory` (`0` heuristic, `1` always, `2`
+never), and the default is the heuristic.
 
-A critical implication is that a non-NULL return from `malloc` does not guarantee physical memory availability. Failure manifests later as an OOM kill, with the victim selected by `oom_score` rather than the process that requested the memory. To prevent the heuristic from terminating critical host processes, production systems apply a `memory.max` limit to the cgroup, confining OOM kills to the specific container that exceeded its allocation.
+The consequence is that a non-NULL return from `malloc` is not a promise. The failure
+arrives later, as an OOM kill, and the process chosen to die is selected by `oom_score`
+rather than by whoever requested the memory. That is why production systems set a
+`memory.max` on the cgroup: it confines the kill to the container that overspent instead
+of letting the heuristic choose among every process on the node.
 
-On the divergence between theoretical models and practical implementation, Linus Torvalds noted (*The Linux Edge*, in *Open Sources*, O'Reilly, 1999):
+Linus Torvalds, on why the deployed behaviour wins even when the theory is cleaner
+(*The Linux Edge*, in *Open Sources*, O'Reilly, 1999):
 
 > Theory and practice sometimes clash. Theory loses. Every single time.
 
-Both the design and its deviations are operationally significant. Overcommit mechanics, `oom_score` calculations, and the delta between `VmSize` and `VmRSS` are direct consequences of this architecture.
+The model and the deviation both matter. Overcommit, `oom_score`, and the gap between
+`VmSize` and `VmRSS` follow from the design above.
 
 ### 2.5 Huge pages and NUMA
 
-- **Huge pages** reduce TLB misses and page-table overhead for large memory regions, which is critical for specific HPC and database workloads. Kubernetes natively supports `hugepages-2Mi` and `hugepages-1Gi` as schedulable resources.
-- **NUMA** (Non-Uniform Memory Access) architectures dictate that memory attached to a specific CPU socket is accessed faster by CPUs on that same socket. GPU servers exhibit strong NUMA characteristics; PCIe/NVLink topology and GPU memory locality heavily influence data transfer performance. The `numactl --hardware` command maps nodes and access distances.
+- **Huge pages** reduce TLB misses and page-table overhead for large memory
+  regions (important for some HPC/database workloads). Kubernetes supports
+  `hugepages-2Mi`/`hugepages-1Gi` as resources.
+- **NUMA** means memory attached to one CPU socket is faster for CPUs on that
+  socket. GPU servers are strongly NUMA: PCIe/NVLink topology and GPU memory
+  locality affect data transfer. `numactl --hardware` shows nodes and distances.
 
-GPU-specific memory considerations:
+GPU-related memory points:
 
-- CUDA pinned (page-locked) host memory facilitates DMA without bounce buffers and is explicitly configured as non-swappable.
-- GPUs utilize dedicated HBM memory. While `nvidia-smi` reports used and free GPU memory, this is distinct from host RSS.
-- GPUDirect Storage enables DMA transfers directly from storage to GPU memory, bypassing host memory entirely.
+- CUDA pinned (page-locked) host memory allows DMA without bounce buffers; it
+  is deliberately non-swappable.
+- GPUs have their own HBM memory; `nvidia-smi` shows used/free memory, but that
+  is not host RSS.
+- GPUDirect Storage can DMA from storage to GPU memory,
+  bypassing host memory.
 
 ---
 
 ## 3. Namespaces, cgroups, and containers
 
-### 3.1 Namespace isolation mechanics
+### 3.1 What a namespace isolates
 
-Namespaces provide processes with isolated views of system resources. The `clone()` and `unshare()` system calls accept namespace flags, while `setns()` attaches a process to an existing namespace. Fundamentally, a container comprises a set of processes operating within new namespaces, constrained by cgroup limits.
+Namespaces give processes a different view of system resources. `clone()` and
+`unshare()` accept namespace flags; `setns()` joins an existing namespace. A
+container is, at minimum, a set of processes in new namespaces plus cgroup
+limits.
 
 | Namespace | Flag | Isolates |
 |---|---|---|
-| Mount | `CLONE_NEWNS` | Mount points and filesystem hierarchy |
-| PID | `CLONE_NEWPID` | Process IDs (PID 1 inside is distinct from host PID 1) |
-| Network | `CLONE_NEWNET` | Network interfaces, routing tables, firewalls, and sockets |
-| UTS | `CLONE_NEWUTS` | Hostname and NIS domain name |
+| Mount | `CLONE_NEWNS` | Mount points and filesystem view |
+| PID | `CLONE_NEWPID` | Process IDs; PID 1 inside is not host PID 1 |
+| Network | `CLONE_NEWNET` | Network interfaces, routes, firewall, sockets |
+| UTS | `CLONE_NEWUTS` | Hostname and NIS domain |
 | IPC | `CLONE_NEWIPC` | System V IPC and POSIX message queues |
-| User | `CLONE_NEWUSER` | User and group IDs (enabling unprivileged namespaces) |
-| Cgroup | `CLONE_NEWCGROUP` | View of the cgroup hierarchy root |
+| User | `CLONE_NEWUSER` | User and group IDs (unprivileged namespaces) |
+| Cgroup | `CLONE_NEWCGROUP` | View of cgroup hierarchy root |
 | Time | `CLONE_NEWTIME` | Clock offsets |
 
-PID namespace nuance: A process within a new PID namespace perceives itself as PID 1, while the host kernel tracks it under a different PID. By default, `ps` executed inside a container only enumerates processes within that specific PID namespace.
+PID namespace nuance: a process inside a new PID namespace sees itself as PID 1,
+but the host sees it with another PID. `ps` inside a container only shows
+processes in that PID namespace by default.
 
-#### Implementation details of namespaces
+#### A namespace is a pointer, not a copy
 
-The underlying mechanism is more streamlined than the associated terminology might imply. The kernel maintains a single namespace object per type (e.g., `struct uts_namespace`, `struct pid_namespace`), and each task holds a pointer to its respective objects. System calls that resolve names—such as `gethostname`, `kill`, `mount`, or `socket`—resolve them through the namespace referenced by the calling task. Creating a namespace allocates a fresh object and updates the task's pointer. No data is copied, and isolation does not rely on a hypervisor boundary. This architectural choice allows containers to initialize in milliseconds, but it also means that a kernel vulnerability accessible via a namespace affects the host directly, rather than being contained within a guest environment.
+The mechanism is smaller than the vocabulary suggests. The kernel keeps one namespace
+object per type (a `struct uts_namespace`, a `struct pid_namespace`, and so on) and each
+task holds a pointer to one of them. Every system call that resolves a name, whether
+`gethostname`, `kill`, `mount` or `socket`, resolves it through the namespace the calling
+task points at. Creating a namespace allocates a fresh object and repoints one task.
+Nothing is copied, and nothing is isolated behind a hypervisor boundary. That is why a
+container starts in milliseconds, and also why a kernel bug reachable through a
+namespace is a host bug rather than a guest bug.
 
-The UTS namespace is the most straightforward to demonstrate, as it primarily manages a single field (the hostname). The following program requests an isolated copy of this field.
+UTS is the smallest namespace to demonstrate, because it holds a single field. The
+program below asks for its own copy of that field.
 
 ```c
-/* ns.c: the UTS namespace manages the hostname, allowing process-level isolation. */
+/* ns.c: the UTS namespace holds the hostname, so a process can have its own. */
 #define _GNU_SOURCE
 #include <errno.h>
 #include <sched.h>
@@ -713,7 +904,7 @@ int main(void)
 
     if (unshare(CLONE_NEWUTS) != 0) {
         printf("unshare(CLONE_NEWUTS) = -1 errno=%d (%s)\n", errno, strerror(errno));
-        printf("this requires CAP_SYS_ADMIN. Alternative execution:\n");
+        printf("this needs CAP_SYS_ADMIN, so try:\n");
         printf("  unshare --user --map-root-user --uts ./ns\n");
         return 1;
     }
@@ -730,16 +921,19 @@ int main(void)
 }
 ```
 
-Execution as an unprivileged user yields a permission error:
+Run as an ordinary user it fails:
 
 ```text
 $ gcc -O2 -o ns ns.c && ./ns
 unshare(CLONE_NEWUTS) = -1 errno=1 (Operation not permitted)
-this requires CAP_SYS_ADMIN. Alternative execution:
+this needs CAP_SYS_ADMIN, so try:
   unshare --user --map-root-user --uts ./ns
 ```
 
-Namespace creation is a privileged operation because namespaces form the foundation of process confinement. Unprivileged users can bypass this restriction utilizing the user namespace, which can be created without elevated privileges. Inside the user namespace, the user's UID is mapped to root, granting the capabilities required to create the remaining namespaces.
+Creating a namespace is privileged, because namespaces are what confinement is built
+from. The route available to an unprivileged user is the user namespace: it can be
+created without privilege, and inside it the user's uid is mapped to root, which
+grants the capability needed to create the rest.
 
 ```text
 $ unshare --user --map-root-user --uts ./ns
@@ -747,27 +941,33 @@ hostname before: yahboom
 hostname after : in-a-namespace
 ```
 
-This sequence illustrates the mechanics of `docker run` for unprivileged users and the foundation of rootless containers. The runtime does not execute privileged operations on the user's behalf; rather, the user namespace grants the necessary privileges within a strictly confined scope.
+That pair of results explains how `docker run` works for an ordinary user, and why
+rootless containers exist. The runtime does not perform a privileged operation on
+the user's behalf; the user namespace grants the privileges it needs inside a scope
+it cannot escape.
 
 ### 3.2 cgroups v2: accounting and limiting
 
-cgroup v2 (`/sys/fs/cgroup`) organizes processes into a hierarchical tree. Primary controllers include:
+cgroup v2 (`/sys/fs/cgroup`) organizes processes into a tree. Key controllers:
 
-- `cpu.max`: Defined as `$MAX_PERIOD $PERIOD` (e.g., `50000 100000` allocates 50% of one CPU).
-- `memory.max`: Hard memory limit. `memory.current` and `memory.events` report usage and OOM counts.
-- `memory.high`: Throttling threshold applied before the hard limit is reached.
-- `io.max`: I/O bandwidth and IOPS limitations.
-- `pids.max`: Maximum allowed tasks and threads.
-- `cpuset.cpus` / `cpuset.mems`: CPU and memory affinity constraints.
-- `misc.max`: Miscellaneous resources managed via the misc controller.
+- `cpu.max`: `$MAX_PERIOD $PERIOD`, e.g. `50000 100000` = 50% of one CPU.
+- `memory.max`: hard memory limit; `memory.current`, `memory.events` show
+  pressure/oom counts.
+- `memory.high`: throttle above threshold before hard limit.
+- `io.max`: I/O bandwidth/IOPS limits.
+- `pids.max`: max tasks/threads.
+- `cpuset.cpus` / `cpuset.mems`: CPU/memory affinity.
+- `misc.max`: miscellaneous resources charged through the misc controller.
 
-cgroup v2 operational rules:
+cgroup v2 rules:
 
-- **No internal processes rule**: A cgroup containing child cgroups cannot simultaneously hold processes. `cgroup.subtree_control` is used to delegate controllers to child cgroups.
-- The kernel attributes process resource usage to the cgroup containing it. Upon fork, the child inherits the parent's cgroup membership unless explicitly migrated.
-- `memory.events` tracks `oom_kill`, `max`, and `high` threshold counters.
+- The no-internal-processes rule: a cgroup that has child cgroups cannot also hold
+  processes. `cgroup.subtree_control` delegates a controller to the children.
+- The kernel charges a process to the cgroup that contains it; when a process
+  forks, the child stays in the parent's cgroup unless moved.
+- `memory.events` contains `oom_kill`, `max`, `high` counters.
 
-Diagnostic commands:
+Commands:
 
 ```bash
 cat /proc/self/cgroup
@@ -779,32 +979,47 @@ cat /sys/fs/cgroup/pids.max
 systemd-cgls
 ```
 
-### 3.3 Container lifecycle: Image to execution
+### 3.3 From container image to running container
 
-When Kubernetes schedules a Pod, the kubelet instructs the Container Runtime Interface (CRI) daemon (e.g., containerd) to initialize a sandbox (pause container) and subsequent application containers. The high-level execution flow is as follows:
+When Kubernetes schedules a Pod, the kubelet asks the CRI runtime (containerd)
+to start a sandbox (pause container) and then containers. High-level flow:
 
 1. `containerd` receives the CRI request.
-2. It constructs an OCI bundle from the image: assembling the rootfs from image layers and generating a configuration file detailing mounts, environment variables, commands, namespaces, cgroup paths, and device access.
-3. `containerd` invokes the OCI runtime (e.g., `runc`) via `runc create`.
-4. `runc` establishes namespaces using `clone()`/`unshare()`, configures cgroup membership, applies mounts, and executes `pivot_root` into the container rootfs.
-5. `runc` initiates the container process via `exec`.
-6. The process executes with a restricted system view. PID 1 inside the container is typically the primary application or a minimal init process.
+2. It creates an OCI bundle from the image: rootfs from image layers, config
+   with mounts, env, command, namespaces, cgroup path, devices.
+3. `containerd` invokes `runc` (or another OCI runtime) via `runc create`.
+4. `runc` creates the namespaces with `clone()`/`unshare()`, sets cgroup
+   membership, applies mounts and `pivot_root` into the container rootfs.
+5. `runc` starts the container process via `exec`.
+6. The process runs with a restricted view; PID 1 inside the container is
+   normally the application or a tiny init process.
 
-The pause (sandbox) container retains the network namespace and shared infrastructure, enabling application containers within the same Pod to share localhost networking and volumes.
+The pause/sandbox container holds the network namespace and other shared
+infrastructure so the app containers in a Pod can share localhost and volumes.
 
-### 3.4 Container runtime device injection
+### 3.4 Container runtime specifics
 
-By default, a container lacks access to `/dev/nvidia*` devices and CUDA user-space libraries. The GPU Operator and NVIDIA Container Toolkit automate this integration. At a foundational level, `nvidia-container-cli` executes the following steps:
+A container by default has no access to `/dev/nvidia*` and no CUDA driver
+user-space libraries. The GPU
+Operator and container toolkit automate it. At a low level,
+`nvidia-container-cli` performs:
 
-1. Detects the host driver version and verifies CUDA compatibility.
-2. Mounts the driver's user-space libraries (`libcuda.so`, `libnvidia-ml.so`, etc.) into the container filesystem.
-3. Creates and bind-mounts GPU device nodes (`/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-modeset`, and MIG devices) into the container.
-4. Injects required environment variables (`NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`).
-5. For MIG configurations, exposes the requested compute instance device node.
+1. Detect the host driver version and CUDA compatibility.
+2. Mount the driver's user-space libraries (`libcuda.so`, `libnvidia-ml.so`,
+   etc.) into the container.
+3. Create/bind-mount the GPU device nodes (`/dev/nvidia0`, `/dev/nvidiactl`,
+   `/dev/nvidia-uvm`, `/dev/nvidia-modeset`, MIG devices) into the container.
+4. Set environment variables (`NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`).
+5. For MIG, expose the requested compute instance device node.
 
-The container continues to execute on the host kernel; the driver's kernel module resides exclusively on the host. The container receives access to the identical kernel driver alongside matching user-space libraries. This architecture necessitates strict compatibility between the host driver version and the CUDA version utilized within the container.
+The container still runs on the host kernel; the driver's kernel module lives
+on the host. The container gets the same kernel driver plus user-space libraries
+that match it. This is why the driver version inside containers and the CUDA
+version must be compatible.
 
-The Kubernetes device plugin, rather than the container runtime, dictates GPU assignment. The kubelet invokes the plugin's `Allocate` RPC post-scheduling; the plugin returns device IDs and environment variables, which the runtime subsequently utilizes to inject the devices.
+The device plugin, not the runtime, decides which GPUs are assigned. The kubelet
+calls the plugin's `Allocate` RPC after scheduling; the plugin returns device
+IDs and environment variables; the runtime uses them to inject devices.
 
 ---
 
@@ -812,25 +1027,31 @@ The Kubernetes device plugin, rather than the container runtime, dictates GPU as
 
 ### 4.1 VFS and core objects
 
-The Linux Virtual File System (VFS) abstracts underlying filesystem implementations. Core objects include:
+The Linux VFS abstracts filesystems. Core objects:
 
-- `super_block`: Represents a mounted filesystem.
-- `inode`: Stores file metadata (owner, permissions, size, block pointers).
-- `dentry`: Directory entry mapping a string name to an inode; heavily cached by the VFS.
-- `file`: Represents an open file description, maintaining the current offset, flags, and operation methods.
+- `super_block`: represents a mounted filesystem.
+- `inode`: metadata for a file (owner, mode, size, block pointers).
+- `dentry`: directory entry mapping a name to an inode; cached by VFS.
+- `file`: open file description with current offset, flags, and methods.
 
-`stat` retrieves inode metadata; `df` reports filesystem utilization; `lsof` enumerates open files.
+`stat` reads inode metadata; `df` reports filesystem usage; `lsof` shows open
+files.
 
-#### Object relationships and nesting
+#### What those four objects are
 
-These objects operate in a nested hierarchy. A `super_block` owns a collection of `inode`s. An `inode` lacks an inherent name. A `dentry` assigns a name to an inode within a specific directory. A `file` provides a per-open-descriptor view, maintaining an independent offset.
+They nest. A `super_block` owns a set of `inode`s. An `inode` has no name. A `dentry` is
+what gives an inode a name inside a directory. A `file` is a per-open-descriptor view
+with its own offset. That structure explains three things that otherwise look like
+trivia: two processes can hold the same file open at different offsets (two `file`
+objects, one `inode`), renaming a file does not change the inode it refers to (the name
+moved, the inode did not), and a hard link is a second `dentry` pointing at the same
+`inode`, which is why hard links cannot cross filesystems.
 
-This nested structure clarifies several fundamental filesystem behaviors: two processes can hold the same file open at different offsets (resulting in two `file` objects referencing one `inode`); renaming a file alters the `dentry` but leaves the underlying `inode` unchanged; and a hard link is simply a secondary `dentry` pointing to an existing `inode`, which inherently prevents hard links from crossing filesystem boundaries.
-
-At the system call boundary, failures are reported using a standard convention: a return value of `-1` accompanied by a thread-local `errno` variable. This thread-local storage ensures `errno` remains safe for use in multithreaded applications.
+At the syscall boundary this becomes an error convention: failure is `-1` with `errno`
+set, and `errno` is thread-local, which is what makes it usable from a threaded program.
 
 ```c
-/* errno.c: the system call boundary reports failure via -1 and errno. */
+/* errno.c: the syscall boundary reports failure with -1 plus errno. */
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -849,7 +1070,7 @@ static void try_open(const char *path)
     }
     printf("open(\"%s\") = %d\n", path, fd);
 
-    n = read(fd, buf, sizeof buf - 1);      /* may return fewer bytes than requested */
+    n = read(fd, buf, sizeof buf - 1);      /* may return fewer bytes than asked */
     if (n > 0) {
         buf[n] = '\0';
         if (buf[n - 1] == '\n')
@@ -863,7 +1084,7 @@ int main(void)
 {
     try_open("/definitely/not/here");
     try_open("/etc/hostname");
-    try_open("/etc/shadow");                /* exists, but lacks read permissions for this uid */
+    try_open("/etc/shadow");                /* exists, but not readable by this uid */
     return 0;
 }
 ```
@@ -876,23 +1097,38 @@ open("/etc/hostname") = 3
 open("/etc/shadow") = -1 errno=13 (Permission denied)
 ```
 
-The output demonstrates three distinct failure modes. `ENOENT` (2) and `EACCES` (13) represent different conditions that a caller must distinguish, which is the primary rationale for the existence of `errno` rather than a generic failure code. The assigned descriptor is 3 rather than 1 because 0, 1, and 2 are reserved for standard input, output, and error. The descriptor table functions as a small integer namespace per process, and exhausting it (`EMFILE`) is a common failure mode in server applications. Finally, `read` returned 8 bytes; the system call is permitted to return fewer bytes than requested. A robust reader must implement a loop to handle partial reads. Incorrectly handling short reads—either by treating them as fatal errors or as the end-of-file—is a frequent source of bugs in systems programming.
+Three distinct failures appear in those four lines. `ENOENT` (2) and `EACCES` (13) are
+different conditions that a caller must be able to distinguish, which is the reason `errno`
+exists instead of a single "it failed" return. The descriptor is 3 rather than 1 because
+0, 1 and 2 are already stdin, stdout and stderr: the descriptor table is a small integer
+namespace per process, and exhausting it is a failure mode (`EMFILE`) in servers.
+And `read` returned 8 bytes; it is permitted to return fewer bytes than requested at any
+time, so a correct reader loops. Treating a short read as an error, or as end-of-file, is
+one of the most common bugs in systems code.
 
 ### 4.2 Filesystems relevant to Kubernetes
 
-- **ext4/xfs**: Standard local disk filesystems.
-- **tmpfs**: RAM-backed filesystem, utilized for `emptyDir` volumes with `medium: Memory` and `/dev/shm`.
-- **overlayfs**: Combines lower read-only image layers with an upper writable layer; the standard rootfs implementation for containerd and Docker.
-- **FUSE**: User-space filesystems (utilized by certain CSI drivers and tools like gcsfuse).
-- **Network filesystems**: NFS and cloud-native CSI volumes (e.g., EBS, EFS, PVCs).
+- **ext4/xfs**: local disk filesystems.
+- **tmpfs**: RAM-backed, used for emptyDir with `medium: Memory` and `/dev/shm`.
+- **overlayfs**: combines lower image layers and an upper writable layer; used
+  by containerd/Docker for image rootfs.
+- **FUSE**: user-space filesystems (e.g. some CSI drivers, gcsfuse).
+- **Network filesystems**: NFS, and cloud CSI volumes (EBS/EFS/PVC).
 
-**Overlayfs copy-up behavior**: When a container modifies a file present in a lower image layer, the kernel copies the file to the upper layer prior to executing the write. Deleting a file from a lower layer generates a "whiteout" file in the upper layer. Consequently, the initial write to a large file residing in a lower layer incurs significant I/O overhead.
+Overlayfs copy-up: when a container modifies a file that exists in a lower
+image layer, the kernel copies it to the upper layer before the write. Deleting
+a lower file creates a whiteout in the upper layer. This is why writing to a
+large lower-layer file inside a container can be expensive on first touch.
 
 ### 4.3 Mount propagation
 
-Mount events can propagate between mount namespaces, categorized as `shared`, `slave`, `private`, or `unbindable`. Kubernetes relies on this mechanism for `hostPath` volumes and for the container runtime to inject devices and libraries. Executing `mount --make-rshared /` is standard practice on nodes to ensure mounts created within containers remain visible to required host subsystems. Misconfigured propagation frequently results in "device or resource busy" errors or invisible mounts.
+Mounts can propagate between mount namespaces (`shared`, `slave`, `private`,
+`unbindable`). Kubernetes uses this for hostPath volumes and for the container
+runtime to inject devices/libraries. `mount --make-rshared /` is common on nodes
+so that mounts created in containers are visible where needed. Misconfigured
+propagation causes "device or resource busy" and invisible mounts.
 
-Diagnostic commands:
+Commands:
 
 ```bash
 mount | grep -E 'overlay|nvidia|/var/lib/kubelet'
@@ -902,12 +1138,15 @@ findmnt -R /var/lib/kubelet | head -50
 
 ### 4.4 I/O stack and pressure
 
-The I/O path traverses: process system call → VFS → filesystem → block layer → device driver. The page cache absorbs read and write operations; dirty pages are asynchronously flushed by per-device writeback threads. Storage performance metrics include:
+I/O path: process syscall → VFS → filesystem → block layer → device driver.
+Page cache absorbs reads/writes; dirty pages are written back later by per-device
+writeback threads. Storage performance:
 
-- `iostat -x 1`: Reports `%util`, `await`, and `svctm`.
-- `pidstat -d 1`: Reports per-process I/O statistics.
-- `/proc/pressure/io`, `/proc/pressure/memory`, `/proc/pressure/cpu`: Expose Pressure Stall Information (PSI), providing more actionable metrics than raw utilization percentages.
-- `iotop`: Displays real-time, per-process I/O consumption.
+- `iostat -x 1` shows `%util`, await, svctm.
+- `pidstat -d 1` shows per-process I/O.
+- `/proc/pressure/io`, `/proc/pressure/memory`, `/proc/pressure/cpu` expose PSI
+  (Pressure Stall Information), which is more meaningful than raw utilization.
+- `iotop` shows per-process I/O in real time.
 
 ---
 
@@ -915,7 +1154,10 @@ The I/O path traverses: process system call → VFS → filesystem → block lay
 
 ### 5.1 Sockets and TCP
 
-A socket represents a network endpoint identified by an IP address and port. `socket()` creates the endpoint, `bind()` assigns an address, `listen()` marks it as passive, `accept()` returns a newly connected socket, and `connect()` initiates an outbound connection. `ss` is the standard utility for socket inspection:
+A socket is an endpoint identified by IP:port. `socket()` creates it,
+`bind()` assigns an address, `listen()` marks it passive, `accept()` returns a
+new connected socket, and `connect()` initiates an outbound connection. `ss`
+is the modern way to inspect sockets:
 
 ```bash
 ss -tulpn
@@ -923,33 +1165,42 @@ ss -tan state established
 ss -tnp | grep :443
 ```
 
-The TCP state machine for server-side connections follows the sequence:
+TCP state machine for server-side connections:
 `LISTEN → SYN_RECV → ESTABLISHED → FIN_WAIT/CLOSE_WAIT → ...`.
 
-Critical TCP states:
+TCP details:
 
-- `CLOSE_WAIT`: Indicates the remote side closed the connection, but the local application has not yet closed its socket. A high count typically indicates an application-level resource leak.
-- `TIME_WAIT`: A normal state following an active close, designed to allow delayed packets to expire. High `TIME_WAIT` counts are generally benign unless ephemeral ports or socket descriptors are exhausted.
-- `somaxconn` / backlog: Dictates the maximum number of pending connections the kernel will queue.
+- `CLOSE_WAIT` sockets mean the remote side closed but the local application has
+  not closed its socket; a leak usually indicates the app forgot to close.
+- `TIME_WAIT` is normal after active close; it allows delayed packets to die.
+  Large TIME_WAIT counts are not automatically a problem unless sockets or
+  ephemeral ports are exhausted.
+- `somaxconn`/backlog limits how many pending connections the kernel queues.
 
 ### 5.2 Packet path through a Linux host
 
-Outbound path: Application → socket buffer → TCP/IP stack → routing → netfilter (`iptables`/`nftables`) → neighbor/ARP → NIC driver → physical wire.
+Application → socket buffer → TCP/IP stack → routing → netfilter
+(`iptables`/`nftables`) → neighbor/ARP → NIC driver → wire.
 
-Inbound path: The NIC DMAs packets into ring buffers and raises an interrupt (or relies on NAPI polling). The kernel parses headers, executes netfilter/prerouting rules, and either forwards the packet or delivers it to the target socket.
+For incoming packets, the NIC DMA's into ring buffers, raises an interrupt (or
+NAPI polls), the kernel parses headers, runs netfilter/prerouting, forwards or
+delivers to a socket.
 
 ### 5.3 Netfilter, conntrack, iptables/nftables
 
-Netfilter hooks are kernel interception points for packet filtering and Network Address Translation (NAT). `iptables` manages tables (`filter`, `nat`, `mangle`, `raw`) and chains. `conntrack` maintains connection state, enabling rules such as `-m conntrack --ctstate ESTABLISHED,RELATED`.
+Netfilter hooks are points in the kernel where packet filtering/NAT happens.
+`iptables` manages tables (`filter`, `nat`, `mangle`, `raw`) and chains.
+`conntrack` tracks connection state so `-m conntrack --ctstate ESTABLISHED,RELATED`
+works.
 
-Kubernetes networking implementations:
+In Kubernetes:
 
-- Services utilizing `kube-proxy` in iptables mode perform DNAT to selected Pod IPs.
-- `ClusterIP` traffic is NATed; return traffic is un-NATed via conntrack.
-- NetworkPolicy is frequently implemented by CNI plugins (Calico/Cilium) using iptables or eBPF.
-- Cilium can bypass iptables entirely, utilizing eBPF for service load balancing and policy enforcement.
+- Services can use iptables (kube-proxy): DNAT to a selected Pod IP.
+- `ClusterIP` traffic is NATed; replies are un-NATed via conntrack.
+- NetworkPolicy is often implemented by Calico/Cilium in iptables/eBPF.
+- Cilium can bypass iptables and use eBPF for service load balancing and policy.
 
-Diagnostic commands:
+Commands:
 
 ```bash
 iptables -L -n -v
@@ -958,18 +1209,18 @@ conntrack -L | head
 nft list ruleset | head
 ```
 
-### 5.4 Network namespaces, veth, bridges, and CNI
+### 5.4 Network namespaces, veth, bridges, CNI
 
-Each Kubernetes Pod is typically assigned a dedicated network namespace. The Container Network Interface (CNI) plugin executes the following sequence:
+Each Kubernetes Pod usually has its own network namespace. The CNI plugin:
 
-1. Creates a virtual ethernet (veth) pair.
-2. Places one end of the veth pair into the Pod's network namespace.
-3. Attaches the host end to a bridge, Open vSwitch (OVS), or virtual routing/encapsulation device.
-4. Assigns an IP address (typically drawn from the node's Pod CIDR).
-5. Configures routing tables and applies network policies.
-6. Reports the interface and IP configuration back to the kubelet.
+1. Creates a veth pair.
+2. Puts one end in the Pod's network namespace.
+3. Attaches the other end to a bridge/OVS or a virtual routing/encap device.
+4. Assigns an IP address (usually from the node's pod CIDR).
+5. Adds routes and maybe policy.
+6. Reports the interface/IP to the kubelet.
 
-Network topology layout:
+The layout:
 
 ```text
 Pod netns                    Host netns
@@ -980,11 +1231,15 @@ Pod netns                    Host netns
                              └─────────────────────────┘
 ```
 
-The `localhost` interface inside a pod resolves exclusively to the pod's network namespace, not the underlying host node.
+`localhost` inside a pod is the pod network namespace only, not the node.
 
-### 5.5 DNS resolution
+### 5.5 DNS
 
-Pods utilize CoreDNS (or an equivalent cluster DNS service). DNS resolution inside a pod initially consults `/etc/resolv.conf`, which points to the cluster DNS endpoint. Search domains enable the use of short service names. A common configuration issue arises when `ndots:5` is set, generating excessive DNS queries for external names, or when host networking bypasses the cluster DNS configuration.
+Pods use CoreDNS (or another DNS service). DNS resolution inside a pod first
+consults `/etc/resolv.conf`, which points to the cluster DNS. Search domains
+allow short service names. Common problem: pod DNS works but host networking
+does not use the cluster DNS, or `ndots:5` causes extra DNS queries for every
+name.
 
 ---
 
@@ -992,29 +1247,30 @@ Pods utilize CoreDNS (or an equivalent cluster DNS service). DNS resolution insi
 
 ### 6.1 Systematic triage order
 
-Diagnostic procedures should follow a layered approach, from the node infrastructure down to specific hardware accelerators:
+The order is layered, from the node down to the GPU:
 
 1. **Node availability**: `kubectl get node`, `kubectl describe node`.
-2. **Load and resource baselines**: `uptime`, `free -h`, `df -h`, `top`.
-3. **Kernel and device logs**: `dmesg -T | tail`.
-4. **Container runtime**: `crictl ps -a`, `journalctl -u containerd`.
-5. **Kubelet status**: `journalctl -u kubelet`, inspect `/var/lib/kubelet`.
+2. **Load/resource basics**: `uptime`, `free -h`, `df -h`, `top`.
+3. **Kernel/device messages**: `dmesg -T | tail`.
+4. **Runtime**: `crictl ps -a`, `journalctl -u containerd`.
+5. **Kubelet**: `journalctl -u kubelet`, `/var/lib/kubelet`.
 6. **Application logs**: `kubectl logs`, `kubectl describe pod`.
-7. **GPU-specific diagnostics**: `nvidia-smi`, device plugin logs, allocatable resources, Xid errors, and ECC errors.
+7. **GPU-specific**: `nvidia-smi`, device plugin logs, allocatable resources,
+   Xid errors, ECC errors.
 
 ### 6.2 Scenario: Pods stuck in `Pending`
 
-A `Pending` state indicates the scheduler has failed to place the Pod. Common causes include:
+Pending means the scheduler has not placed the Pod. Common causes:
 
-- Insufficient CPU, memory, or GPU resources across all available nodes.
-- No node satisfies `nodeSelector`, node affinity, or toleration requirements.
-- `nvidia.com/gpu` is missing from the node's allocatable resources.
-- Namespace `ResourceQuota` or `LimitRange` restrictions block admission.
-- An unbound PersistentVolumeClaim (PVC) causes scheduling failure post-node filtering.
-- The node is tainted with `NoSchedule`, and the pod lacks the corresponding toleration.
-- The `kube-scheduler` pod is down or marked unschedulable.
+- No node has enough CPU/memory/GPU.
+- No node matches `nodeSelector`, affinity, or tolerations.
+- `nvidia.com/gpu` is not in node allocatable.
+- ResourceQuota/LimitRange in namespace blocks admission.
+- PVC is unbound, causing scheduling failure after node filtering.
+- The node is tainted `NoSchedule` and the pod lacks toleration.
+- The scheduler itself is down or unschedulable.
 
-Diagnostic commands:
+Commands that reveal the reason:
 
 ```bash
 kubectl describe pod <pod>
@@ -1024,53 +1280,59 @@ kubectl get events -A --sort-by=.lastTimestamp
 kubectl get pvc
 ```
 
-### 6.3 Scenario: Pod scheduled but stuck in `ContainerCreating`
+### 6.3 Scenario: Pod scheduled but `ContainerCreating`
 
-This state indicates the kubelet is actively processing the pod but encountering friction:
+The kubelet is involved at this stage:
 
-- **Image pull errors**: Review `kubectl describe pod` events.
-- **Storage mount failures**: Check events and `journalctl -u kubelet`.
-- **Runtime start failures**: Inspect `crictl ps -a` and `journalctl -u containerd`.
-- **Device plugin allocation failure**: `kubectl describe pod` may report `Failed to create pod sandbox` or `Allocate failed`.
+- Image pull errors: `kubectl describe pod`.
+- Storage mount failures: events, `journalctl -u kubelet`.
+- Runtime start failures: `crictl ps -a`, `journalctl -u containerd`.
+- Device plugin allocation failure: `kubectl describe pod` may show
+  `Failed to create pod sandbox` or `Allocate failed`.
 
-### 6.4 Scenario: Pod in `CrashLoopBackOff`
+### 6.4 Scenario: Pod `CrashLoopBackOff`
 
-- `kubectl logs <pod> --previous` retrieves the logs from the terminated container instance.
-- Exit code 137 indicates `SIGKILL` (frequently caused by OOM kills or failed liveness probes); exit code 143 indicates `SIGTERM`.
-- If exit code 137 is accompanied by `OOMKilled` in the pod status, inspect the memory limits and `memory.events`.
-- If liveness probes are failing, `kubectl describe pod` will detail the probe failure reasons.
+- `kubectl logs <pod> --previous` shows the crash reason from the previous
+  container.
+- Exit code 137 is SIGKILL (often OOM or a liveness kill); 143 is SIGTERM.
+- If exit code 137 with OOMKilled in status, inspect memory limit and
+  `memory.events`.
+- If liveness probe fails, `kubectl describe pod` shows probe failures.
 
 ### 6.5 Scenario: GPU node cannot allocate GPUs
 
-Execute the following diagnostic sequence:
+The order of checks:
 
-1. **Verify host driver visibility:**
+1. **Driver visible on host?**
    ```bash
    nvidia-smi
    ```
-   If absent, the driver module is unloaded or the node requires a reboot post-installation.
+   If not, driver module not loaded or node needs reboot after driver install.
 
-2. **Verify device plugin status:**
+2. **Device plugin running?**
    ```bash
    kubectl get pods -n gpu-operator -l app=nvidia-device-plugin-daemonset
    kubectl logs -n gpu-operator -l app=nvidia-device-plugin-daemonset
    ```
 
-3. **Verify node resource advertisement:**
+3. **Node resource advertised?**
    ```bash
    kubectl describe node | grep -A5 'nvidia.com/gpu'
    ```
-   If `Allocatable` is missing, plugin registration failed to complete.
+   If `Allocatable` is missing, plugin registration did not complete.
 
-4. **Verify Pod request alignment:** `nvidia.com/gpu` is an extended resource. It must be defined in `limits`, and Kubernetes mandates `limits == requests` for extended resources.
+4. **Pod request matches allocatable?** `nvidia.com/gpu` is an extended
+   resource: it must be in `limits`, and Kubernetes requires `limits == requests`
+   for extended resources.
 
-5. **Verify runtime injection:**
+5. **Runtime injection works?**
    ```bash
    kubectl exec <pod> -- nvidia-smi
    ```
-   If the binary is missing, the container toolkit or GPU Operator failed to configure runtime hooking.
+   If the binary is missing, the container toolkit/GPU Operator did not
+   install runtime hooking correctly.
 
-6. **Check for hardware or kernel errors:**
+6. **Hardware/kernel errors?**
    ```bash
    dmesg | grep -i xid
    dmesg | grep -i nvidia
@@ -1079,11 +1341,13 @@ Execute the following diagnostic sequence:
    nvidia-smi --query-gpu=timestamp,name,pci.bus_id,utilization.gpu,memory.used,temperature.gpu,power.draw --format=csv
    ```
 
-Xid errors are diagnostic messages emitted by the NVIDIA driver; specific Xid numbers correspond to distinct hardware or software faults. The concurrent presence of Xid and ECC errors strongly indicates a hardware or driver fault, effectively ruling out a Kubernetes configuration issue.
+Xid errors are GPU error messages emitted by the driver; different Xid numbers
+have different meanings. The presence of Xid errors plus ECC errors is a strong
+signal of a hardware or driver fault, not a Kubernetes configuration problem.
 
-### 6.6 Scenario: High CPU utilization with no obvious process
+### 6.6 Scenario: high CPU but no obvious process
 
-Diagnostic commands:
+Commands:
 
 ```bash
 top -b -n1 -H | head -20
@@ -1093,7 +1357,9 @@ cat /proc/loadavg
 ps -eo pid,stat,wchan:30,comm
 ```
 
-The `wchan` column indicates the kernel function in which a task is currently blocked. A process in state `R` exhibiting high CPU usage may be spinning in user space or kernel space. Utilize `perf top` for sampling, or capture a stack trace:
+`wchan` shows the kernel function a task is blocked in. A process in
+`R` with high CPU may be spinning; sample with `perf top` or capture a
+stack:
 
 ```bash
 perf record -F 99 -g -p <pid> -- sleep 10
@@ -1104,92 +1370,112 @@ perf report
 
 ## 7. Performance tools and observability
 
-| Layer | Tool | Metrics to monitor |
+| Layer | Tool | What to look for |
 |---|---|---|
 | CPU | `top`, `pidstat -u`, `perf top` | %usr vs %sys, context switches, runnable threads |
-| CPU scheduler | `/proc/pressure/cpu`, `cat /sys/fs/cgroup/cpu.stat` | Runnable pressure, throttling events |
-| Memory | `free`, `/proc/pressure/memory`, `valgrind massif` | PSI, anonymous vs file-backed memory, swap usage, OOM events |
-| Disk | `iostat -x`, `pidstat -d`, `/proc/pressure/io` | I/O await, %util, per-process I/O volume |
-| Network | `sar -n DEV`, `ss`, `tcpdump`, `ethtool -S` | Packet drops, TCP retransmits, queue saturation |
-| Syscalls | `strace -f -tt`, `ltrace` | Blocked calls, `EAGAIN` spin loops |
-| Tracing | `perf trace`, `bpftrace`, `ftrace` | Kernel-level execution paths |
-| Containers | `crictl stats`, `systemd-cgtop` | Per-pod and per-container resource consumption |
+| CPU scheduler | `/proc/pressure/cpu`, `cat /sys/fs/cgroup/cpu.stat` | runnable pressure, throttling |
+| Memory | `free`, `/proc/pressure/memory`, `valgrind massif` | PSI, anon vs file, swap, OOM events |
+| Disk | `iostat -x`, `pidstat -d`, `/proc/pressure/io` | await, %util, per-process IO |
+| Network | `sar -n DEV`, `ss`, `tcpdump`, `ethtool -S` | drops, retransmits, queue full |
+| Syscalls | `strace -f -tt`, `ltrace` | blocked calls, EAGAIN loops |
+| Tracing | `perf trace`, `bpftrace`, `ftrace` | kernel-level explanations |
+| Containers | `crictl stats`, `systemd-cgtop` | per-pod/per-container usage |
 
-### ftrace and bpftrace examples
+### ftrace/bpftrace examples
 
 ```bash
-# Trace process execution
+# Trace process creation
 bpftrace -e 'tracepoint:sched:sched_process_exec { printf("%s %s\n", comm, args->filename); }'
 
-# Trace openat system calls
+# Trace openat syscalls
 bpftrace -e 'tracepoint:syscalls:sys_enter_openat { printf("%s %s\n", comm, str(args->filename)); }'
 
-# Query cgroup OOM events
+# Show cgroup OOM events
 grep oom_kill /sys/fs/cgroup/memory.events
 ```
 
-### Appropriate use cases for `perf`
+### When to use `perf`
 
-- High CPU utilization with an unknown owner: `perf top`.
-- Diagnosing lock contention: `perf lock`.
-- Querying hardware performance counters: `perf stat`.
-- Generating flame graphs from `perf record` output.
+- High CPU with unknown owner: `perf top`.
+- Looking for lock contention: `perf lock`.
+- Hardware counters: `perf stat`.
+- Flame graphs from `perf record` output.
 
 ---
 
-## 8. Container vs. VM architecturalural differences
+## 8. Container/VM differences in one picture
 
-| Aspect | Container | Virtual Machine (VM) |
+| Aspect | Container | VM |
 |---|---|---|
-| Isolation boundary | Kernel namespaces, cgroups, seccomp | Hardware virtualization (e.g., KVM) |
-| Kernel architecture | Shared host kernel | Dedicated guest kernel |
-| Boot latency | Milliseconds (process initialization) | Seconds (full kernel boot) |
-| Device access | Mediated by runtime and device cgroups | Virtual devices or PCIe passthrough |
-| Attack surface | System calls filtered by seccomp/AppArmor | Full kernel interface exposed to guest |
-| GPU integration | Device plugin + container runtime hooks | vGPU, MIG, or PCIe passthrough |
+| Isolation boundary | kernel namespaces/cgroups/seccomp | hardware virtualisation (KVM) |
+| Kernel | shared host kernel | separate guest kernel |
+| Boot time | milliseconds (process start) | seconds (kernel boot) |
+| Device access | mediated by runtime/device cgroup | virtual devices/passthrough |
+| Attack surface | syscalls filtered by seccomp/apparmor | full kernel interface |
+| GPU options | device plugin + container runtime | vGPU, MIG, PCIe passthrough |
 
-GPU cloud infrastructure spans both models: Kubernetes pods utilizing device plugins and MIG for containerized workloads, alongside dedicated GPU instances and VMs for tenants requiring absolute hardware control.
+GPU cloud products span both models: Kubernetes pods with device
+plugins/MIG for container workloads, and GPU instances/VMs for customers who
+need full control.
 
 ---
 
-## 9. Technical summaries and operational concepts
+## 9. Questions with answer sketches
 
-### `docker run` execution sequence
+### `docker run`, step by step
 
-1. The Docker client communicates with dockerd/containerd.
-2. The image is pulled and unpacked into an OCI rootfs (utilizing overlayfs).
-3. The runtime establishes namespaces and cgroups, and prepares mounts and device nodes.
-4. `runc` initiates the primary process as PID 1 within the new namespaces.
-5. The process operates with a restricted view of host processes, network interfaces, mounts, and hardware resources.
+1. Docker client talks to dockerd/containerd.
+2. Image is pulled and unpacked into an OCI rootfs (overlayfs).
+3. Runtime creates namespaces/cgroup, prepares mounts/devices.
+4. `runc` starts the process as PID 1 in the new namespaces.
+5. The process has a restricted view of processes, network, mounts, and
+   resources.
 
-### Cgroup memory limit enforcement
+### How a cgroup memory limit kills a container
 
-The kernel attributes anonymous and page-cache memory to the respective cgroup. When `memory.current` exceeds `memory.max`, the kernel initiates memory reclamation. If reclamation fails to reduce usage below the threshold, the cgroup OOM killer terminates a process. The container exits (frequently with code 137), and `kubectl describe pod` will report `OOMKilled`.
+The kernel charges anonymous and page-cache pages to the cgroup. When
+`memory.current` exceeds `memory.max`, the kernel reclaims, and if it cannot
+bring usage below the limit it performs a cgroup OOM kill. The container exits,
+often with code 137. `kubectl describe pod` shows `OOMKilled`.
 
-### Shared kernel with isolated PID namespace
+### Shared kernel, separate PID namespace
 
-A container shares the host kernel (hence `uname` outputs match the host), but operates within a distinct PID namespace. Consequently, `ps` enumerates only the PIDs resident within that specific namespace. Without a PID namespace, the container would have visibility into host processes; Kubernetes defaults to isolating PID namespaces for pods to prevent cross-pod interference.
+It shares the host kernel (so `uname` matches), but it is in a new PID namespace,
+so `ps` only sees PIDs inside that namespace. Without a PID namespace, it could
+see host processes; Kubernetes normally isolates PID namespaces for pods.
 
-### Linux memory reporting (`free`)
+### Why `free` reports little free memory
 
-Linux utilizes available RAM for the page cache and reclaims it dynamically under memory pressure. Therefore, "free" memory is not an accurate indicator of system health. Operational monitoring should prioritize available memory, Pressure Stall Information (PSI), and cgroup utilization metrics.
+Linux uses free RAM for page cache and reclaims it on demand. "Free" memory is
+not a useful health metric; check available memory, PSI, and cgroup usage
+instead.
 
-### Containers versus Virtual Machines
+### Containers and VMs
 
-Containers are standard Linux processes constrained by kernel-enforced isolation mechanisms (namespaces and cgroups). VMs execute distinct operating system kernels atop virtualized hardware. Containers share the host kernel, resulting in lower overhead, whereas VMs provide stricter isolation boundaries and the ability to run heterogeneous operating systems.
+Containers are processes with kernel-enforced isolation; VMs run separate
+kernels on virtual hardware. Containers share the host kernel and are lighter;
+VMs provide stronger isolation and can run different OS kernels.
 
-### Zombie processes and reaping
+### Zombies and reaping
 
-A zombie is a terminated task whose parent has failed to invoke `wait()`. The `init` process (PID 1) adopts orphaned children and reaps them. A container utilizing a defective init process may accumulate zombies within its isolated PID namespace, eventually exhausting the namespace's PID limit.
+A zombie is an exited task whose parent has not called `wait()`. `init`/PID 1
+adopts orphaned children and reaps them. A container with a broken init process
+can leak zombies inside its PID namespace.
 
-### Debugging GPU allocation failures
+### Debugging a GPU node that cannot allocate GPUs
 
-The standard diagnostic sequence involves verifying: host `nvidia-smi` output, driver module status, device plugin pod health and logs, `nvidia.com/gpu` allocatable resources on the node, Pod resource limit definitions, container runtime toolkit/GPU Operator state, and finally, hardware-level Xid/ECC errors.
+The order: host `nvidia-smi`, driver module, device plugin pods and logs,
+`nvidia.com/gpu` allocatable on the node, Pod resource limits, container runtime
+toolkit/GPU Operator state, then Xid/ECC hardware errors.
 
-### The Page Cache
+### The page cache
 
-The page cache stores file contents in RAM. Read operations hit the cache, bypassing disk I/O; write operations are buffered in the cache and flushed asynchronously. Manually dropping the page cache is rarely a valid performance optimization, as it discards highly utilized cached data, forcing subsequent reads to incur disk latency penalties.
+The page cache caches file contents in RAM. Reads hit it and avoid disk; writes
+are buffered in it and written back later. Dropping it is rarely a performance
+fix; it discards useful cache, and the read costs are paid again.
 
-### Connection Tracking (conntrack)
+### conntrack
 
-Conntrack maintains connection state to facilitate NAT and firewall operations. The `kube-proxy` iptables mode relies on conntrack to reverse DNAT operations on return traffic. If the conntrack table reaches capacity (`nf_conntrack_max`), new connections will fail or be dropped. Monitoring `nf_conntrack_count` relative to the maximum limit is critical for high-throughput nodes.
+Conntrack tracks connection state for NAT/firewall. kube-proxy's iptables mode
+uses it to reverse DNAT replies. If conntrack table fills, new connections fail
+or are dropped; monitor `nf_conntrack_count` vs `nf_conntrack_max`.
