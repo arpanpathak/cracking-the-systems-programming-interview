@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-22468012.js";
+            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -178,18 +178,18 @@
                         <h1 id="binary-search-tree"><a class="header" href="#binary-search-tree">8. Binary Search Tree</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs"><code>src/bin/bst_clean.rs</code></a>. Run it with <code>cargo run --bin bst_clean</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Build an ordered tree, a binary search tree, supporting insertion, membership,
-removal, and a range query. Removal is the interesting one, because a node with
-two children cannot simply be unlinked: something has to take its place without
-breaking the ordering.</p>
+<p>Implement a binary search tree with four operations: <code>insert</code>, <code>contains</code>, <code>remove</code>,
+and <code>range</code>, which returns the values in a closed interval. Removal has a case the
+others do not: a node with two children cannot be unlinked without a replacement that
+preserves the ordering.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>The ordering invariant is the whole structure:</p>
+<p>The ordering invariant defines the structure:</p>
 <pre><code class="language-text">for every node:  every value in the left subtree  &lt;  the node's value
                  every value in the right subtree &gt;  the node's value
 </code></pre>
-<p>A lookup follows one path from the root, discarding a subtree at each comparison.
-An in-order traversal reads the values in ascending order, which is the standard
-way to test that the invariant holds.</p>
+<p>A lookup follows one path from the root and discards a subtree at each comparison. An
+in-order traversal reads the values in ascending order, which is the usual way to test
+that the invariant holds.</p>
 <p>Removal has three shapes:</p>
 <pre><code class="language-text">delete a leaf                the link becomes Empty
 
@@ -359,23 +359,23 @@ fn main() {
     println!("After removals: {:#?}", bst);
 }</code></pre>
 <p>The type is its own node. <code>BST&lt;T&gt;</code> is either <code>Empty</code> or a node with two boxed
-subtrees, so <code>Box&lt;BST&lt;T&gt;&gt;</code> is the link type and there is no separate wrapper
-struct. The <code>Default</code> derive with <code>#[default]</code> on <code>Empty</code> gives <code>BST::default()</code>
-as an empty tree.</p>
-<p><code>match val.cmp(value)</code> produces three arms for the three comparison results. Using
-<code>cmp</code> rather than a pair of comparisons means the ordering is decided once per
-node, and the <code>Ordering::Equal</code> arm is explicit at every call site.</p>
-<p><code>remove</code> handles the two-children case by moving the smallest value out of the
-right subtree into the node being deleted. <code>right.remove_min()</code> returns that
-value, and the <code>unwrap</code> is safe because the branch is only reached when the right
-subtree is non-empty. The node structure is untouched: values move, links stay.</p>
-<p><code>std::mem::take(right)</code> replaces the right subtree with <code>Empty</code> and returns the
-old one. <code>*self = *std::mem::take(right)</code> then moves the subtree into the node,
-which detaches the whole subtree from its old position in one assignment.</p>
-<p><code>range_helper</code> prunes: a subtree entirely below <code>low</code> is only searched on its
-right, and one entirely above <code>high</code> is only searched on its left. The lifetime
-parameter is written <code>'a</code> and ties the references in <code>acc</code> to the tree that
-<code>self</code> borrows, which is what allows the returned vector to outlive the call.</p>
+subtrees, so <code>Box&lt;BST&lt;T&gt;&gt;</code> is the link type and there is no separate wrapper struct.
+The <code>Default</code> derive with <code>#[default]</code> on <code>Empty</code> gives <code>BST::default()</code> as an empty
+tree.</p>
+<p><code>match val.cmp(value)</code> produces one arm per comparison result. Using <code>cmp</code> rather than
+a pair of comparisons decides the ordering once per node, and the <code>Ordering::Equal</code> arm
+is explicit at every call site.</p>
+<p><code>remove</code> handles the two-children case by moving the smallest value out of the right
+subtree into the node being deleted. <code>right.remove_min()</code> returns that value, and the
+<code>unwrap</code> is safe because the branch is reached only when the right subtree is
+non-empty. Values move; links stay.</p>
+<p><code>std::mem::take(right)</code> replaces the right subtree with <code>Empty</code> and returns the old
+one. <code>*self = *std::mem::take(right)</code> then moves the subtree into the node, which
+detaches it from its old position in one assignment.</p>
+<p><code>range_helper</code> prunes: a subtree entirely below <code>low</code> is searched on its right only,
+and one entirely above <code>high</code> on its left only. The lifetime parameter <code>'a</code> ties the
+references in <code>acc</code> to the tree that <code>self</code> borrows, which is what allows the returned
+vector to outlive the call.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">bst_clean output, with the tree built by main:
 
@@ -408,52 +408,32 @@ remove(&amp;99)  -&gt; false   the descent ends at Empty
 </tbody>
 </table>
 </div>
-<p><code>h</code> is the height. The tree does not balance, so <code>h</code> is <code>O(log n)</code> only when the
-input arrives in an order that produces a balanced shape, and <code>O(n)</code> when it
-arrives sorted.</p>
+<p><code>h</code> is the height. The tree does not balance, so <code>h</code> is <code>O(log n)</code> only when the input
+arrives in an order that produces a balanced shape, and <code>O(n)</code> when it arrives sorted.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>The file has no tests.</strong> <code>src/bin/bst_clean.rs</code> contains no <code>#[cfg(test)]</code>
-module, and <code>main</code> prints values without asserting anything, so a break in the
-ordering invariant shows up as output on the terminal rather than as a failing
-test. <code>cargo test</code> reports no test for this file. The behaviour to pin down is the
-ordering invariant and the three removal shapes; a test that inserts a known
-sequence, removes a leaf, a one-child node, and a two-child node, and asserts the
+<p><strong>The file has no tests.</strong> <code>src/bin/bst_clean.rs</code> contains no <code>#[cfg(test)]</code> module, and
+<code>main</code> prints values without asserting anything, so a break in the ordering invariant
+appears as terminal output rather than as a failing test. The behaviour to pin down is
+the ordering invariant and the three removal shapes; a test that inserts a known
+sequence, removes a leaf, a one-child node and a two-child node, and asserts the
 in-order traversal after each step covers all of it.</p>
-<p><strong>The tree does not balance.</strong> Inserting 1 to 1000 in ascending order produces a
-chain of height 1000, and every operation becomes linear. A production ordered
-collection uses a red-black tree or a B-tree; the standard library’s <code>BTreeMap</code>
-is the one to reach for.</p>
-<p><strong>Removal by successor does not balance either.</strong> Repeated deletions under this
-rule can leave a tree taller than the input would suggest, and the effect is
-measurable over a long sequence of insertions and deletions.</p>
-<p><strong><code>remove_min</code> contains an <code>unreachable!()</code> arm.</strong> The branch is genuinely
-unreachable: the guard <code>left.is_empty()</code> and the pattern <code>Self::Node</code> together
-guarantee that the taken node is a node. The arm exists because the compiler
-cannot see that, and <code>unreachable!()</code> records that guarantee, but it is a
-panic path in a function whose caller does not expect one.</p>
-<p><strong><code>remove</code> panics if the tree has a node whose left child is empty and whose right
-child is not <code>Node</code>.</strong> The two-child branch calls <code>right.remove_min().unwrap()</code>,
-and <code>remove_min</code> returns <code>None</code> only for an empty subtree. The <code>unwrap</code> cannot
-fail while the invariant holds; it is a second panic path.</p>
-<p><strong>The value type needs <code>Ord</code>, and the range query needs <code>PartialOrd</code>.</strong> Those are
-the correct bounds. A caller with a type that is only <code>PartialOrd</code>, such as a
-floating-point number, cannot use the tree at all, because <code>insert</code> matches on
+<p><strong>The tree does not balance.</strong> Inserting 1 to 1000 in ascending order produces a chain
+of height 1000, and every operation becomes linear. A production ordered collection
+uses a red-black tree or a B-tree; the standard library’s <code>BTreeMap</code> is the one to
+reach for.</p>
+<p><strong>Removal by successor does not balance either.</strong> Repeated deletions under this rule
+can leave a tree taller than the input would suggest.</p>
+<p><strong><code>remove_min</code> contains an <code>unreachable!()</code> arm.</strong> The branch is genuinely unreachable:
+the guard <code>left.is_empty()</code> and the pattern <code>Self::Node</code> together guarantee that the
+taken node is a node. The arm exists because the compiler cannot see that, and
+<code>unreachable!()</code> records the guarantee, but it is a panic path in a function whose
+caller does not expect one.</p>
+<p><strong><code>remove</code> panics if the invariant is broken.</strong> The two-child branch calls
+<code>right.remove_min().unwrap()</code>, and <code>remove_min</code> returns <code>None</code> only for an empty
+subtree. The <code>unwrap</code> cannot fail while the tree is ordered; it is a second panic path.</p>
+<p><strong>The value type needs <code>Ord</code>.</strong> A caller with a type that is only <code>PartialOrd</code>, such as
+a floating-point number, cannot use the tree at all, because <code>insert</code> matches on
 <code>Ordering</code> and <code>f64</code> does not implement <code>Ord</code>.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Removal has three shapes. Removing a leaf and removing a node with one child are
-bookkeeping; removing a node with two children is the case the ordering
-invariant makes interesting.</li>
-<li>The replacement value is the next value in order, which is also the minimum of
-the right subtree. The first description states why the invariant survives the
-substitution.</li>
-<li>The tree does not balance. A sorted input produces a chain, so <code>O(h)</code> becomes
-<code>O(n)</code>, and <code>BTreeMap</code> is the standard library structure that keeps the
-<code>O(log n)</code> bound under any insertion order.</li>
-<li>The file has no tests. <code>main</code> prints values without asserting them, so a fault
-in the ordering invariant appears as output on the terminal rather than as a
-failing test.</li>
-</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,

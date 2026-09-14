@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-22468012.js";
+            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -178,14 +178,14 @@
                         <h1 id="trie"><a class="header" href="#trie">10. Trie</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs"><code>src/problems/trie.rs</code></a>. Test it with <code>cargo test trie</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Store a set of strings so that two questions are cheap: is this exact string
-present, and does any stored string begin with this prefix. The second question is
-the reason the structure exists; a hash map answers the first in constant time and
-the second only by scanning every key.</p>
+<p>Store a set of strings so that two questions are cheap: whether an exact string is
+present, and whether any stored string begins with a given prefix. A hash map answers
+the first in constant time and the second only by scanning every key, which is the
+reason for the structure.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Each node holds a map from a character to a child node, plus a flag saying whether
-the path that ends at this node spells a stored string. A string is present when
-walking its characters from the root succeeds and the final node has the flag set.</p>
+<p>Each node holds a map from a character to a child node, plus a flag saying whether the
+path that ends at this node spells a stored string. A string is present when walking
+its characters from the root succeeds and the final node has the flag set.</p>
 <pre><code class="language-text">words: "gpu", "gpucloud"
 
            (root)
@@ -206,9 +206,9 @@ walking its characters from the root succeeds and the final node has the flag se
               |
               d   &lt;- terminal: "gpucloud" is a word
 </code></pre>
-<p>The flag is what distinguishes a stored word from a prefix of a longer word.
-Without it, <code>"gp"</code> and <code>"gpu"</code> would be indistinguishable, and <code>search("gp")</code>
-would report <code>true</code>.</p>
+<p>The flag is what distinguishes a stored word from a prefix of a longer word. Without
+it, <code>"gp"</code> and <code>"gpu"</code> would be indistinguishable, and <code>search("gp")</code> would report
+<code>true</code>.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -283,15 +283,14 @@ mod tests {
 <span class="boring">}</span></code></pre>
 <p><code>insert</code> walks with <code>&amp;mut</code> and creates children on demand:
 <code>node.children.entry(ch).or_default()</code> inserts an empty node the first time the
-character is seen and returns a mutable reference to the existing one otherwise.
-The walk ends with a mutable reference to the final node, and one assignment sets
-the flag.</p>
+character is seen and returns a mutable reference to the existing one otherwise. The
+walk ends with a mutable reference to the final node, and one assignment sets the flag.</p>
 <p><code>find_node</code> is the read-only counterpart, and it uses <code>?</code> to leave the loop early:
 <code>node.children.get(&amp;ch)?</code> returns <code>None</code> from the function when the character is
 absent. That one expression replaces a conditional and a <code>return</code>.</p>
-<p><code>is_some_and(|node| node.terminal)</code> combines two questions into one expression:
-does the path exist, and is its end a word. Without the second part, <code>search</code>
-would answer the same question as <code>starts_with</code>.</p>
+<p><code>is_some_and(|node| node.terminal)</code> combines two questions into one expression: does
+the path exist, and is its end a word. Without the second part, <code>search</code> would answer
+the same question as <code>starts_with</code>.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">insert("gpu")
   node = root
@@ -328,34 +327,20 @@ search("gpucloudapi")
 <p><code>k</code> counts characters, because <code>word.chars()</code> iterates over Unicode scalar values.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p><strong>One node per distinct character position.</strong> The structure stores a <code>HashMap</code> per
-node, and a <code>HashMap</code> is larger than the characters it holds. A set of strings
-with no shared prefixes occupies more memory than the same strings in a vector. A
-radix tree compresses chains of single-child nodes and recovers most of that
-space; the file does not implement one.</p>
+node, and a <code>HashMap</code> is larger than the characters it holds. A set of strings with no
+shared prefixes occupies more memory than the same strings in a vector. A radix tree
+compresses chains of single-child nodes and recovers most of that space; the file does
+not implement one.</p>
 <p><strong>There is no deletion.</strong> Removing a word means clearing a terminal flag and then
 pruning the nodes that are no longer on any path to a word. Neither operation is
 present, so the only way to empty the structure is to drop it.</p>
-<p><strong>There is no query that returns the words under a prefix.</strong> <code>starts_with</code> answers
-a boolean, and a caller that wants the completions must write its own traversal.
-The structure supports the query; the API does not expose it.</p>
-<p><strong>The node type is not public, and neither is the root.</strong> A caller cannot inspect
-the tree’s shape, count its nodes, or measure its memory from outside the module.
-For a teaching structure that is a defensible choice, and it means a memory
-question can only be answered by reading the source.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The trie’s advantage over a hash map is prefix queries in <code>O(k)</code>. Its cost is one
-node per character position, each holding a <code>HashMap</code> larger than the characters
-it contains, so a set of strings with no shared prefixes occupies more memory
-than the same strings in a vector. A radix tree compresses chains of single-child
-nodes and recovers part of that space; the file does not implement one.</li>
-<li>The terminal flag is what distinguishes a stored key from a prefix of a longer
-key. A key can be both at once, so the flag cannot be inferred from the presence
-of children.</li>
-<li><code>find_node</code> returns <code>Option&lt;&amp;Node&gt;</code> and <code>search</code> post-processes it, which
-separates the traversal from the question asked of it. One traversal answers both
-<code>search</code> and <code>starts_with</code>.</li>
-</ul>
+<p><strong>There is no query that returns the words under a prefix.</strong> <code>starts_with</code> answers a
+boolean, and a caller that wants the completions must write its own traversal. The
+structure supports the query; the API does not expose it.</p>
+<p><strong>The node type is not public, and neither is the root.</strong> A caller cannot inspect the
+tree’s shape, count its nodes, or measure its memory from outside the module. For a
+teaching structure that is a defensible choice, and it means a memory question can only
+be answered by reading the source.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Edward Fredkin, “Trie memory”, <em>Communications of the ACM</em> 3(9), 1960, pages

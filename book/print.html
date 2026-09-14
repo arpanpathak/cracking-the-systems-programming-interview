@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-22468012.js";
+            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -183,15 +183,14 @@ any better.</p>
 <p>Bjarne Stroustrup, <em>Foundations of C++</em>, ECOOP 2012</p>
 </blockquote>
 <h2 id="what-this-book-is"><a class="header" href="#what-this-book-is">What this book is</a></h2>
-<p>This book reads one repository of Rust, <code>rust-interview-lab</code>, one file at a time.
-Each chapter covers one file: the problem, the design, the code as the repository
-holds it, a trace of that code on a concrete input, the cost of each operation, and
-the inputs the code does not handle.</p>
-<p>The files are working programs and modules. Each is short enough to read in full,
-and each carries its own tests.</p>
+<p>The subject is one Rust repository, <code>rust-interview-lab</code>. Its files cover the working
+material of a systems interview: data structures, caches, concurrency primitives,
+file and directory handling, and the network code a service needs.</p>
+<p>Each chapter takes one file, prints it as the repository holds it, and works through
+the design, a trace on a concrete input, the cost of each operation, and the cases the
+code does not handle. The tests appear with the code.</p>
 <p>The repository is at
-<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a>. Every
-chapter links the source file it reads.</p>
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a>.</p>
 <h2 id="what-you-need-to-know"><a class="header" href="#what-you-need-to-know">What you need to know</a></h2>
 <p>The book assumes that you can read Rust and that you know what <code>Vec</code>, <code>HashMap</code>,
 <code>Option</code> and <code>Result</code> are. Every structure the text uses is built in the text.
@@ -1527,18 +1526,18 @@ against the mirrored sequence would test the whole tree in one line.</p>
 <h1 id="binary-search-tree"><a class="header" href="#binary-search-tree">8. Binary Search Tree</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs"><code>src/bin/bst_clean.rs</code></a>. Run it with <code>cargo run --bin bst_clean</code>.</em></p>
 <h2 id="problem-statement-7"><a class="header" href="#problem-statement-7">Problem Statement</a></h2>
-<p>Build an ordered tree, a binary search tree, supporting insertion, membership,
-removal, and a range query. Removal is the interesting one, because a node with
-two children cannot simply be unlinked: something has to take its place without
-breaking the ordering.</p>
+<p>Implement a binary search tree with four operations: <code>insert</code>, <code>contains</code>, <code>remove</code>,
+and <code>range</code>, which returns the values in a closed interval. Removal has a case the
+others do not: a node with two children cannot be unlinked without a replacement that
+preserves the ordering.</p>
 <h2 id="designing-a-solution-7"><a class="header" href="#designing-a-solution-7">Designing a Solution</a></h2>
-<p>The ordering invariant is the whole structure:</p>
+<p>The ordering invariant defines the structure:</p>
 <pre><code class="language-text">for every node:  every value in the left subtree  &lt;  the node's value
                  every value in the right subtree &gt;  the node's value
 </code></pre>
-<p>A lookup follows one path from the root, discarding a subtree at each comparison.
-An in-order traversal reads the values in ascending order, which is the standard
-way to test that the invariant holds.</p>
+<p>A lookup follows one path from the root and discards a subtree at each comparison. An
+in-order traversal reads the values in ascending order, which is the usual way to test
+that the invariant holds.</p>
 <p>Removal has three shapes:</p>
 <pre><code class="language-text">delete a leaf                the link becomes Empty
 
@@ -1708,23 +1707,23 @@ fn main() {
     println!("After removals: {:#?}", bst);
 }</code></pre>
 <p>The type is its own node. <code>BST&lt;T&gt;</code> is either <code>Empty</code> or a node with two boxed
-subtrees, so <code>Box&lt;BST&lt;T&gt;&gt;</code> is the link type and there is no separate wrapper
-struct. The <code>Default</code> derive with <code>#[default]</code> on <code>Empty</code> gives <code>BST::default()</code>
-as an empty tree.</p>
-<p><code>match val.cmp(value)</code> produces three arms for the three comparison results. Using
-<code>cmp</code> rather than a pair of comparisons means the ordering is decided once per
-node, and the <code>Ordering::Equal</code> arm is explicit at every call site.</p>
-<p><code>remove</code> handles the two-children case by moving the smallest value out of the
-right subtree into the node being deleted. <code>right.remove_min()</code> returns that
-value, and the <code>unwrap</code> is safe because the branch is only reached when the right
-subtree is non-empty. The node structure is untouched: values move, links stay.</p>
-<p><code>std::mem::take(right)</code> replaces the right subtree with <code>Empty</code> and returns the
-old one. <code>*self = *std::mem::take(right)</code> then moves the subtree into the node,
-which detaches the whole subtree from its old position in one assignment.</p>
-<p><code>range_helper</code> prunes: a subtree entirely below <code>low</code> is only searched on its
-right, and one entirely above <code>high</code> is only searched on its left. The lifetime
-parameter is written <code>'a</code> and ties the references in <code>acc</code> to the tree that
-<code>self</code> borrows, which is what allows the returned vector to outlive the call.</p>
+subtrees, so <code>Box&lt;BST&lt;T&gt;&gt;</code> is the link type and there is no separate wrapper struct.
+The <code>Default</code> derive with <code>#[default]</code> on <code>Empty</code> gives <code>BST::default()</code> as an empty
+tree.</p>
+<p><code>match val.cmp(value)</code> produces one arm per comparison result. Using <code>cmp</code> rather than
+a pair of comparisons decides the ordering once per node, and the <code>Ordering::Equal</code> arm
+is explicit at every call site.</p>
+<p><code>remove</code> handles the two-children case by moving the smallest value out of the right
+subtree into the node being deleted. <code>right.remove_min()</code> returns that value, and the
+<code>unwrap</code> is safe because the branch is reached only when the right subtree is
+non-empty. Values move; links stay.</p>
+<p><code>std::mem::take(right)</code> replaces the right subtree with <code>Empty</code> and returns the old
+one. <code>*self = *std::mem::take(right)</code> then moves the subtree into the node, which
+detaches it from its old position in one assignment.</p>
+<p><code>range_helper</code> prunes: a subtree entirely below <code>low</code> is searched on its right only,
+and one entirely above <code>high</code> on its left only. The lifetime parameter <code>'a</code> ties the
+references in <code>acc</code> to the tree that <code>self</code> borrows, which is what allows the returned
+vector to outlive the call.</p>
 <h2 id="intuition-7"><a class="header" href="#intuition-7">Intuition</a></h2>
 <pre><code class="language-text">bst_clean output, with the tree built by main:
 
@@ -1757,52 +1756,32 @@ remove(&amp;99)  -&gt; false   the descent ends at Empty
 </tbody>
 </table>
 </div>
-<p><code>h</code> is the height. The tree does not balance, so <code>h</code> is <code>O(log n)</code> only when the
-input arrives in an order that produces a balanced shape, and <code>O(n)</code> when it
-arrives sorted.</p>
+<p><code>h</code> is the height. The tree does not balance, so <code>h</code> is <code>O(log n)</code> only when the input
+arrives in an order that produces a balanced shape, and <code>O(n)</code> when it arrives sorted.</p>
 <h2 id="limitations-7"><a class="header" href="#limitations-7">Limitations</a></h2>
-<p><strong>The file has no tests.</strong> <code>src/bin/bst_clean.rs</code> contains no <code>#[cfg(test)]</code>
-module, and <code>main</code> prints values without asserting anything, so a break in the
-ordering invariant shows up as output on the terminal rather than as a failing
-test. <code>cargo test</code> reports no test for this file. The behaviour to pin down is the
-ordering invariant and the three removal shapes; a test that inserts a known
-sequence, removes a leaf, a one-child node, and a two-child node, and asserts the
+<p><strong>The file has no tests.</strong> <code>src/bin/bst_clean.rs</code> contains no <code>#[cfg(test)]</code> module, and
+<code>main</code> prints values without asserting anything, so a break in the ordering invariant
+appears as terminal output rather than as a failing test. The behaviour to pin down is
+the ordering invariant and the three removal shapes; a test that inserts a known
+sequence, removes a leaf, a one-child node and a two-child node, and asserts the
 in-order traversal after each step covers all of it.</p>
-<p><strong>The tree does not balance.</strong> Inserting 1 to 1000 in ascending order produces a
-chain of height 1000, and every operation becomes linear. A production ordered
-collection uses a red-black tree or a B-tree; the standard library’s <code>BTreeMap</code>
-is the one to reach for.</p>
-<p><strong>Removal by successor does not balance either.</strong> Repeated deletions under this
-rule can leave a tree taller than the input would suggest, and the effect is
-measurable over a long sequence of insertions and deletions.</p>
-<p><strong><code>remove_min</code> contains an <code>unreachable!()</code> arm.</strong> The branch is genuinely
-unreachable: the guard <code>left.is_empty()</code> and the pattern <code>Self::Node</code> together
-guarantee that the taken node is a node. The arm exists because the compiler
-cannot see that, and <code>unreachable!()</code> records that guarantee, but it is a
-panic path in a function whose caller does not expect one.</p>
-<p><strong><code>remove</code> panics if the tree has a node whose left child is empty and whose right
-child is not <code>Node</code>.</strong> The two-child branch calls <code>right.remove_min().unwrap()</code>,
-and <code>remove_min</code> returns <code>None</code> only for an empty subtree. The <code>unwrap</code> cannot
-fail while the invariant holds; it is a second panic path.</p>
-<p><strong>The value type needs <code>Ord</code>, and the range query needs <code>PartialOrd</code>.</strong> Those are
-the correct bounds. A caller with a type that is only <code>PartialOrd</code>, such as a
-floating-point number, cannot use the tree at all, because <code>insert</code> matches on
+<p><strong>The tree does not balance.</strong> Inserting 1 to 1000 in ascending order produces a chain
+of height 1000, and every operation becomes linear. A production ordered collection
+uses a red-black tree or a B-tree; the standard library’s <code>BTreeMap</code> is the one to
+reach for.</p>
+<p><strong>Removal by successor does not balance either.</strong> Repeated deletions under this rule
+can leave a tree taller than the input would suggest.</p>
+<p><strong><code>remove_min</code> contains an <code>unreachable!()</code> arm.</strong> The branch is genuinely unreachable:
+the guard <code>left.is_empty()</code> and the pattern <code>Self::Node</code> together guarantee that the
+taken node is a node. The arm exists because the compiler cannot see that, and
+<code>unreachable!()</code> records the guarantee, but it is a panic path in a function whose
+caller does not expect one.</p>
+<p><strong><code>remove</code> panics if the invariant is broken.</strong> The two-child branch calls
+<code>right.remove_min().unwrap()</code>, and <code>remove_min</code> returns <code>None</code> only for an empty
+subtree. The <code>unwrap</code> cannot fail while the tree is ordered; it is a second panic path.</p>
+<p><strong>The value type needs <code>Ord</code>.</strong> A caller with a type that is only <code>PartialOrd</code>, such as
+a floating-point number, cannot use the tree at all, because <code>insert</code> matches on
 <code>Ordering</code> and <code>f64</code> does not implement <code>Ord</code>.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Removal has three shapes. Removing a leaf and removing a node with one child are
-bookkeeping; removing a node with two children is the case the ordering
-invariant makes interesting.</li>
-<li>The replacement value is the next value in order, which is also the minimum of
-the right subtree. The first description states why the invariant survives the
-substitution.</li>
-<li>The tree does not balance. A sorted input produces a chain, so <code>O(h)</code> becomes
-<code>O(n)</code>, and <code>BTreeMap</code> is the standard library structure that keeps the
-<code>O(log n)</code> bound under any insertion order.</li>
-<li>The file has no tests. <code>main</code> prints values without asserting them, so a fault
-in the ordering invariant appears as output on the terminal rather than as a
-failing test.</li>
-</ul>
 <h2 id="references-7"><a class="header" href="#references-7">References</a></h2>
 <ul>
 <li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
@@ -1817,8 +1796,8 @@ Search Trees”.</li>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs"><code>src/problems/binary_search.rs</code></a>. Test it with
 <code>cargo test binary_search</code>.</em></p>
 <h2 id="problem-statement-8"><a class="header" href="#problem-statement-8">Problem Statement</a></h2>
-<p>A sorted slice of distinct values has been rotated by an unknown amount. Find the
-index of a target value in <code>O(log n)</code>, or report that it is absent.</p>
+<p>A sorted slice of distinct values has been rotated by an unknown amount. Find the index
+of a target value in <code>O(log n)</code>, or report that it is absent.</p>
 <pre><code class="language-text">[4, 5, 6, 7, 0, 1, 2]        a rotation of [0, 1, 2, 4, 5, 6, 7]
      sorted      sorted
 </code></pre>
@@ -1828,10 +1807,9 @@ index of a target value in <code>O(log n)</code>, or report that it is absent.</
 <p>the target, if it is present, lies in <code>nums[low..high]</code>.</p>
 </blockquote>
 <p>In a rotated array, at least one half of any range is sorted. Testing
-<code>nums[low] &lt;= nums[mid]</code> says which half. If the left half is sorted, a range test
-decides whether the target can be in it; if it cannot, the target must be in the
-right half. The test costs one comparison, which is what keeps the loop
-logarithmic.</p>
+<code>nums[low] &lt;= nums[mid]</code> says which half. If the left half is sorted, one range test
+decides whether the target can be in it; if it cannot, the target is in the right half.
+That test is one comparison, which is what keeps the loop logarithmic.</p>
 <pre><code class="language-text">nums = [4, 5, 6, 7, 0, 1, 2]        target = 0
 
 low  high  mid  nums[mid]  left sorted?  decision
@@ -1898,16 +1876,15 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>high</code> starts at <code>nums.len()</code>, not at <code>nums.len() - 1</code>, because the range is
-half-open. That choice removes the special case for an empty slice: <code>low == high == 0</code> and the loop does not run.</p>
-<p><code>let mid = low + (high - low) / 2</code> avoids the overflow that <code>(low + high) / 2</code>
-would have in a debug build for a slice near the maximum length. The midpoint
-satisfies <code>low &lt;= mid &lt; high</code>, so <code>nums[mid]</code> and <code>nums[high - 1]</code> are both in
-bounds.</p>
-<p>The three tests of the left half are written as value comparisons, not as searches.
-<code>nums[low] &lt;= target &amp;&amp; target &lt; nums[mid]</code> is a half-open interval test: the
-lower bound is inclusive and the upper bound is exclusive, matching the range
-convention used throughout.</p>
+<p><code>high</code> starts at <code>nums.len()</code>, not at <code>nums.len() - 1</code>, because the range is half-open.
+That choice removes the special case for an empty slice: <code>low == high == 0</code> and the
+loop does not run.</p>
+<p><code>let mid = low + (high - low) / 2</code> avoids the overflow that <code>(low + high) / 2</code> would
+have in a debug build for a slice near the maximum length. The midpoint satisfies
+<code>low &lt;= mid &lt; high</code>, so <code>nums[mid]</code> and <code>nums[high - 1]</code> are both in bounds.</p>
+<p><code>nums[low] &lt;= target &amp;&amp; target &lt; nums[mid]</code> is a half-open interval test: the lower
+bound is inclusive and the upper bound exclusive, matching the convention used by the
+loop range.</p>
 <h2 id="intuition-8"><a class="header" href="#intuition-8">Intuition</a></h2>
 <pre><code class="language-text">nums = [4, 5, 6, 7, 0, 1, 2]        target = 3, absent
 
@@ -1931,34 +1908,19 @@ low  high  mid  nums[mid]  left sorted?  test                              next
 </table>
 </div>
 <h2 id="limitations-8"><a class="header" href="#limitations-8">Limitations</a></h2>
-<p><strong>Repeated values break the sorted-half test.</strong> With duplicates, <code>nums[low] &lt;= nums[mid]</code> can be true for both halves, so the code can discard the half holding
-the target. On <code>[1, 1, 1, 0, 1]</code> the search for <code>0</code> fails. The function is correct
-only for strictly increasing inputs, which the problem statement guarantees and
-the documentation does not mention.</p>
-<p><strong>The returned index is not the first or the last match.</strong> With duplicates, any
-index holding the target is a valid answer for the problem as stated, and callers
-that want a boundary need a different function.</p>
-<p><strong>The slice must be sorted and then rotated, not merely rotated.</strong> An arbitrary
-input that happens to be two ascending runs is not enough; the runs must be the
-tail and the head of one sorted sequence, which is what makes the value ranges
-meaningful.</p>
-<p><strong>There is no test for a two-element rotation.</strong> <code>[2, 1]</code> is the smallest input
-where <code>nums[low] == nums[mid]</code> is false and the sorted-half test must choose
-correctly. That input is the one the <code>&lt;</code> versus
-<code>&lt;=</code> in <code>left_is_sorted</code> controls.</p>
-<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
-<ul>
-<li>The loop invariant is that the target lies in <code>nums[low..high]</code> if it lies
-anywhere.</li>
-<li>At least one half is sorted. The rotation point lies in one half or the other,
-and the half that does not contain it is a contiguous piece of the original
-sorted array.</li>
-<li>The half-open range convention is used consistently. Mixing <code>high = nums.len()</code>
-with <code>nums[high]</code> is the usual source of an out-of-bounds index here.</li>
-<li>Duplicates are not handled. On <code>[1, 1, 1, 0, 1]</code> the search for <code>0</code> fails,
-because <code>nums[low] &lt;= nums[mid]</code> can hold for both halves, so the function is
-correct only for strictly increasing input.</li>
-</ul>
+<p><strong>Repeated values break the sorted-half test.</strong> With duplicates, <code>nums[low] &lt;= nums[mid]</code>
+can hold for both halves, so the code can discard the half holding the target. On
+<code>[1, 1, 1, 0, 1]</code> the search for <code>0</code> fails. The function is correct only for strictly
+increasing inputs, which the problem statement guarantees and the documentation does
+not mention.</p>
+<p><strong>The returned index is not the first or the last match.</strong> With duplicates, any index
+holding the target satisfies the problem as stated. A caller that needs a boundary
+needs a different function.</p>
+<p><strong>The slice must be a rotation of one sorted array, not two ascending runs.</strong> The runs
+have to be the tail and the head of a single sorted sequence, which is what makes the
+range tests meaningful.</p>
+<p><strong>There is no test for a two-element rotation.</strong> <code>[2, 1]</code> is the smallest input where
+<code>nums[low] == nums[mid]</code> is false and the sorted-half test has to choose correctly.</p>
 <h2 id="references-8"><a class="header" href="#references-8">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.slice.html#method.binary_search"><code>slice::binary_search</code></a>, the unrotated case.</li>
@@ -1968,14 +1930,14 @@ correct only for strictly increasing input.</li>
 <h1 id="trie"><a class="header" href="#trie">10. Trie</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs"><code>src/problems/trie.rs</code></a>. Test it with <code>cargo test trie</code>.</em></p>
 <h2 id="problem-statement-9"><a class="header" href="#problem-statement-9">Problem Statement</a></h2>
-<p>Store a set of strings so that two questions are cheap: is this exact string
-present, and does any stored string begin with this prefix. The second question is
-the reason the structure exists; a hash map answers the first in constant time and
-the second only by scanning every key.</p>
+<p>Store a set of strings so that two questions are cheap: whether an exact string is
+present, and whether any stored string begins with a given prefix. A hash map answers
+the first in constant time and the second only by scanning every key, which is the
+reason for the structure.</p>
 <h2 id="designing-a-solution-9"><a class="header" href="#designing-a-solution-9">Designing a Solution</a></h2>
-<p>Each node holds a map from a character to a child node, plus a flag saying whether
-the path that ends at this node spells a stored string. A string is present when
-walking its characters from the root succeeds and the final node has the flag set.</p>
+<p>Each node holds a map from a character to a child node, plus a flag saying whether the
+path that ends at this node spells a stored string. A string is present when walking
+its characters from the root succeeds and the final node has the flag set.</p>
 <pre><code class="language-text">words: "gpu", "gpucloud"
 
            (root)
@@ -1996,9 +1958,9 @@ walking its characters from the root succeeds and the final node has the flag se
               |
               d   &lt;- terminal: "gpucloud" is a word
 </code></pre>
-<p>The flag is what distinguishes a stored word from a prefix of a longer word.
-Without it, <code>"gp"</code> and <code>"gpu"</code> would be indistinguishable, and <code>search("gp")</code>
-would report <code>true</code>.</p>
+<p>The flag is what distinguishes a stored word from a prefix of a longer word. Without
+it, <code>"gp"</code> and <code>"gpu"</code> would be indistinguishable, and <code>search("gp")</code> would report
+<code>true</code>.</p>
 <h2 id="implementation-9"><a class="header" href="#implementation-9">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2073,15 +2035,14 @@ mod tests {
 <span class="boring">}</span></code></pre>
 <p><code>insert</code> walks with <code>&amp;mut</code> and creates children on demand:
 <code>node.children.entry(ch).or_default()</code> inserts an empty node the first time the
-character is seen and returns a mutable reference to the existing one otherwise.
-The walk ends with a mutable reference to the final node, and one assignment sets
-the flag.</p>
+character is seen and returns a mutable reference to the existing one otherwise. The
+walk ends with a mutable reference to the final node, and one assignment sets the flag.</p>
 <p><code>find_node</code> is the read-only counterpart, and it uses <code>?</code> to leave the loop early:
 <code>node.children.get(&amp;ch)?</code> returns <code>None</code> from the function when the character is
 absent. That one expression replaces a conditional and a <code>return</code>.</p>
-<p><code>is_some_and(|node| node.terminal)</code> combines two questions into one expression:
-does the path exist, and is its end a word. Without the second part, <code>search</code>
-would answer the same question as <code>starts_with</code>.</p>
+<p><code>is_some_and(|node| node.terminal)</code> combines two questions into one expression: does
+the path exist, and is its end a word. Without the second part, <code>search</code> would answer
+the same question as <code>starts_with</code>.</p>
 <h2 id="intuition-9"><a class="header" href="#intuition-9">Intuition</a></h2>
 <pre><code class="language-text">insert("gpu")
   node = root
@@ -2118,34 +2079,20 @@ search("gpucloudapi")
 <p><code>k</code> counts characters, because <code>word.chars()</code> iterates over Unicode scalar values.</p>
 <h2 id="limitations-9"><a class="header" href="#limitations-9">Limitations</a></h2>
 <p><strong>One node per distinct character position.</strong> The structure stores a <code>HashMap</code> per
-node, and a <code>HashMap</code> is larger than the characters it holds. A set of strings
-with no shared prefixes occupies more memory than the same strings in a vector. A
-radix tree compresses chains of single-child nodes and recovers most of that
-space; the file does not implement one.</p>
+node, and a <code>HashMap</code> is larger than the characters it holds. A set of strings with no
+shared prefixes occupies more memory than the same strings in a vector. A radix tree
+compresses chains of single-child nodes and recovers most of that space; the file does
+not implement one.</p>
 <p><strong>There is no deletion.</strong> Removing a word means clearing a terminal flag and then
 pruning the nodes that are no longer on any path to a word. Neither operation is
 present, so the only way to empty the structure is to drop it.</p>
-<p><strong>There is no query that returns the words under a prefix.</strong> <code>starts_with</code> answers
-a boolean, and a caller that wants the completions must write its own traversal.
-The structure supports the query; the API does not expose it.</p>
-<p><strong>The node type is not public, and neither is the root.</strong> A caller cannot inspect
-the tree’s shape, count its nodes, or measure its memory from outside the module.
-For a teaching structure that is a defensible choice, and it means a memory
-question can only be answered by reading the source.</p>
-<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
-<ul>
-<li>The trie’s advantage over a hash map is prefix queries in <code>O(k)</code>. Its cost is one
-node per character position, each holding a <code>HashMap</code> larger than the characters
-it contains, so a set of strings with no shared prefixes occupies more memory
-than the same strings in a vector. A radix tree compresses chains of single-child
-nodes and recovers part of that space; the file does not implement one.</li>
-<li>The terminal flag is what distinguishes a stored key from a prefix of a longer
-key. A key can be both at once, so the flag cannot be inferred from the presence
-of children.</li>
-<li><code>find_node</code> returns <code>Option&lt;&amp;Node&gt;</code> and <code>search</code> post-processes it, which
-separates the traversal from the question asked of it. One traversal answers both
-<code>search</code> and <code>starts_with</code>.</li>
-</ul>
+<p><strong>There is no query that returns the words under a prefix.</strong> <code>starts_with</code> answers a
+boolean, and a caller that wants the completions must write its own traversal. The
+structure supports the query; the API does not expose it.</p>
+<p><strong>The node type is not public, and neither is the root.</strong> A caller cannot inspect the
+tree’s shape, count its nodes, or measure its memory from outside the module. For a
+teaching structure that is a defensible choice, and it means a memory question can only
+be answered by reading the source.</p>
 <h2 id="references-9"><a class="header" href="#references-9">References</a></h2>
 <ul>
 <li>Edward Fredkin, “Trie memory”, <em>Communications of the ACM</em> 3(9), 1960, pages
@@ -2327,7 +2274,7 @@ function, and a caller must not depend on a particular order.</p>
 to the in-degree of vertex 1 and the same edge is relaxed twice, so the counts
 stay consistent and the result is unaffected. Nothing reports the duplication,
 which a caller might want to know about.</p>
-<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li>The invariant is that the in-degree array counts the unplaced predecessors of
 each vertex. The remainder of the algorithm follows from it.</li>
@@ -2503,7 +2450,7 @@ reconstruct the combination.</p>
 <p><strong><code>i32</code> bounds both the amount and the answer.</strong> An amount above <code>i32::MAX</code> cannot
 be passed, and the conversion <code>count as i32</code> is safe only because the answer is at
 most the amount.</p>
-<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
+<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <ul>
 <li>The recurrence decides on the last coin: <code>dp[total]</code> is one more than the best
 <code>dp[total - coin]</code>, which is what makes the table a dynamic program rather than a
@@ -2684,7 +2631,7 @@ element. The other test sorts before comparing, which is the right pattern;
 <p><strong>There is no way to stop the search early or to stream the results.</strong> A caller
 that wants the first <code>k</code> subsets, or wants to search for a subset with a property,
 must collect all of them first.</p>
-<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
 <li>The recording happens at the start of each call, before the loop. That is what
 produces the empty subset and what makes every node of the recursion tree
@@ -2873,7 +2820,7 @@ array-based representation holds the same data in one allocation, at the cost of
 not being a linked list.</p>
 <p><strong>The value type is fixed at <code>i32</code>.</strong> Nothing in the algorithm depends on the
 value type, and the declaration is not generic.</p>
-<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
+<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <ul>
 <li>The loop body is three lines, and <code>take</code> is the part that requires explanation.
 The successor has to leave the node before the node can be re-pointed, which is
@@ -3087,7 +3034,7 @@ follows is not.</strong> The two facts belong together: the operation the API ad
 is cheap, and the work the program does when the list is released is not.</p>
 <p><strong>There is no <code>Clone</code>, no <code>Debug</code>, and no iterator.</strong> A caller cannot print the
 list, cannot copy it, and cannot write <code>for value in &amp;list</code>.</p>
-<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
+<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <ul>
 <li><code>List::new</code> has no <code>Default</code> implementation, which is the pattern Clippy’s
 <code>new_without_default</code> lint reports. A caller writing a generic function over many
@@ -3523,7 +3470,7 @@ flag to each node, which is two more machine words per element.</p>
 expected value is written.</strong> <code>main</code> prints values and asserts nothing, and the
 tests cover the same behaviour. The two comments in <code>main</code> are documentation rather
 than checks.</p>
-<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
+<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
 <ul>
 <li>One direction of the link has to be weak. Two strong links between a pair of
 nodes would keep the pair alive after the list released it, so <code>prev</code> is a
@@ -3794,7 +3741,7 @@ entries could be over capacity, it would leave some of them in place.</p>
 unreachable in practice, at a billion accesses per second it takes about 584 years
 , and the consequence of reaching it would be a misidentified stale event rather
 than memory unsafety.</p>
-<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
+<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
 <ul>
 <li>Two structures hold the state. The map holds values and the current generation
 of each key; the queue holds access events.</li>
@@ -4064,7 +4011,7 @@ loud.</p>
 <p><strong>No test pins the recency order after a sequence of several operations.</strong> The two
 tests cover one eviction and one update. The invariant that the list is consistent
 with its ends is not checked anywhere.</p>
-<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
+<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <ul>
 <li>The two cache designs differ in what bounds them. This one bounds storage by the
 capacity and returns references; the design in Chapter 17 bounds storage by the
@@ -4356,7 +4303,7 @@ with a written list would catch a missing or an extra pattern.</p>
 <p><strong><code>parse_gpu_count</code> accepts a value that overflows <code>u32</code> as a parse failure
 rather than as a distinct error.</strong> <code>"4294967296"</code> and <code>"four"</code> produce the same
 variant, so a caller cannot tell a malformed field from an out-of-range one.</p>
-<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
+<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <ul>
 <li>An enumeration makes the transition table exhaustive, because a <code>match</code> without
 a fall-through arm fails to build when a variant is added.</li>
@@ -4551,7 +4498,7 @@ and nothing in this design provides one.</p>
 result depend on how the operating system scheduled the test thread: on a loaded
 machine the sleep may return later than requested, which only makes the assertion
 more likely to pass, and a bucket whose rate were too high would not be caught.</p>
-<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
+<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
 <ul>
 <li>A token bucket allows a burst of the capacity and holds a smooth long-run rate.
 A fixed window allows twice the configured rate across a window boundary.</li>
@@ -4793,7 +4740,7 @@ order, cannot use this function.</p>
 <p><strong>The closure must be <code>'static</code>.</strong> <code>F: Fn(T) -&gt; R + Send + Sync + 'static</code> means the
 mapper cannot borrow anything from the caller’s stack. Scoped threads would lift
 that restriction, and they would also let <code>T</code> and <code>R</code> borrow.</p>
-<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
+<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
 <ul>
 <li>Two channels carry the work. The index recorded with each job and returned with
 each result is the mechanism that restores the input order.</li>
@@ -5113,7 +5060,7 @@ panics, which is the opposite of what poisoning is for.</p>
 the only failure that can occur is a panic, and a panic cannot be converted into
 <code>Box&lt;dyn Error&gt;</code> by <code>?</code>. <code>join()</code> returns <code>Result&lt;T, Box&lt;dyn Any + Send&gt;&gt;</code>, and
 <code>Box&lt;dyn Any + Send&gt;</code> does not implement <code>Error</code>.</p>
-<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
+<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
 <ul>
 <li>Poisoning records that a panic occurred while the guard was held. It repairs
 nothing and it does not deny access to the data.</li>
@@ -5399,7 +5346,7 @@ Moving it into <code>src/problems/</code> would export it with the rest of the p
 <code>count_islands</code> cannot accept a predicate, which would let a caller count something
 other than strict equality, for example, a region of cells above a threshold. The
 predicate version is the same code with <code>land</code> replaced by a closure.</p>
-<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
+<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
 <ul>
 <li>A flood fill visits exactly one connected component, so the number of fills is
 the number of components.</li>
@@ -5637,7 +5584,7 @@ warning.</strong> Running <code>cargo run --bin syscall_overhead</code> prints a
 for an unused function in the library. The warning comes from <code>merge_intervals2</code>,
 which Chapter 5 identifies, and it appears in this chapter’s output because Cargo
 compiles the whole crate.</p>
-<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
+<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
 <ul>
 <li><code>getpid</code> gives a floor for the cost of crossing the process boundary. It is not
 the cost a service would see per request.</li>
@@ -5859,7 +5806,7 @@ the end of the scope, not at the shadowing statement.</p>
 that took <code>&amp;mut String</code> and appended to the caller’s buffer would allocate less,
 and the tests would be the same. For a demonstration the difference is irrelevant;
 it is the kind of allocation that shows up in a profile.</p>
-<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
+<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
 <ul>
 <li><code>let</code> introduces a binding and <code>mut</code> allows a place to be written. The two are
 independent.</li>
@@ -6036,7 +5983,7 @@ line is yielded even when it has no terminator.</p>
 <p><strong>The two writers ignore the returned length.</strong> <code>writeln!</code> can write fewer bytes
 than requested; the callers rely on <code>io::Write</code> to report that as an error, and
 neither program checks how many bytes reached the file.</p>
-<h2 id="summary-18"><a class="header" href="#summary-18">Summary</a></h2>
+<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
 <ul>
 <li><code>fs::write</code> replaces contents, <code>OpenOptions</code> with <code>append(true)</code> adds to them,
 and the difference is the flag rather than a separate function.</li>
@@ -6210,7 +6157,7 @@ and sort them, which the programs do not do.</p>
 <p><strong>Relative names depend on the working directory.</strong> Both directory programs walk
 <code>"."</code>, so their output changes with the directory they are started in, and
 <code>list_directory</code> does not recurse.</p>
-<h2 id="summary-19"><a class="header" href="#summary-19">Summary</a></h2>
+<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
 <ul>
 <li><code>Path</code> and <code>PathBuf</code> are the borrowed and owned forms of a path, and <code>join</code> is
 the non-mutating builder against <code>push</code>.</li>
@@ -6337,7 +6284,7 @@ directory unchanged needs a temporary directory and a final rename.</p>
 prints <code>Display</code> for <code>io::Error</code>, which includes the operating system message but
 not the path. Adding the path is the caller’s job, because the error does not
 carry it.</p>
-<h2 id="summary-20"><a class="header" href="#summary-20">Summary</a></h2>
+<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
 <ul>
 <li><code>copy</code>, <code>rename</code> and <code>remove_file</code> are the mutating operations, and <code>rename</code> is
 the atomic replacement primitive within one filesystem.</li>
@@ -6573,7 +6520,7 @@ program’s location.</p>
 <p><strong>Precedence between sources is not implemented.</strong> A flag over an environment
 variable over a file over a default is the usual order, and a tool that reads more
 than one source has to state that order somewhere. This parser has one source.</p>
-<h2 id="summary-21"><a class="header" href="#summary-21">Summary</a></h2>
+<h2 id="summary-18"><a class="header" href="#summary-18">Summary</a></h2>
 <ul>
 <li><code>env::args()</code> yields <code>String</code> values whose first item is the invocation name;
 <code>skip(1)</code> is the boundary between the program and its arguments.</li>
@@ -6825,7 +6772,7 @@ threads can be adjacent. The set of lines is fixed; the order is not.</p>
 and the tests that would catch a missing <code>while</code> are the ones that run a producer
 and a consumer concurrently rather than the ones that assert on a single-threaded
 push and pop.</p>
-<h2 id="summary-22"><a class="header" href="#summary-22">Summary</a></h2>
+<h2 id="summary-19"><a class="header" href="#summary-19">Summary</a></h2>
 <ul>
 <li>A mutex makes the deque shared; condition variables make waiting possible.</li>
 <li>The condition is re-checked in a <code>while</code> loop, because a wake-up does not
@@ -7036,7 +6983,7 @@ remainder one element at a time.</p>
 reads a contiguous range, which is the friendly case. A false-sharing problem
 would appear if threads wrote partial sums into adjacent fields of one object,
 which this program avoids by returning each sum through <code>join</code>.</p>
-<h2 id="summary-23"><a class="header" href="#summary-23">Summary</a></h2>
+<h2 id="summary-20"><a class="header" href="#summary-20">Summary</a></h2>
 <ul>
 <li><code>thread::scope</code> allows the workers to borrow the input, which removes the
 <code>Arc&lt;Vec&lt;T&gt;&gt;</code> the naive version would need.</li>
@@ -7291,7 +7238,7 @@ the two heaps cannot do without locating that value in one of them.</p>
 eleven values. The differential test compares against a sort, so it catches a
 rebalancing error on those eleven steps, but a random or exhaustive stream would
 cover more of the state space than a fixed array does.</p>
-<h2 id="summary-24"><a class="header" href="#summary-24">Summary</a></h2>
+<h2 id="summary-21"><a class="header" href="#summary-21">Summary</a></h2>
 <ul>
 <li>Two heaps hold the lower and upper halves, and <code>Reverse</code> turns the second into
 a min-heap.</li>
@@ -7483,7 +7430,7 @@ not carry the assumption to a general string.</p>
 <p><strong>The largest test input is nine bytes.</strong> The tests establish the two parities and
 the round trip. A larger input, or one built to exercise the exact midpoint of an
 even-length string, would test the loop bound more of the way.</p>
-<h2 id="summary-25"><a class="header" href="#summary-25">Summary</a></h2>
+<h2 id="summary-22"><a class="header" href="#summary-22">Summary</a></h2>
 <ul>
 <li>Byte reversal is <code>O(n)</code> time and <code>O(1)</code> space, and only the ASCII precondition
 makes it a valid <code>String</code> transformation.</li>
@@ -7728,7 +7675,7 @@ an endpoint, so that two callers cannot collide by choosing the same string. Thi
 store treats the key as global.</p>
 <p><strong><code>K: Clone</code> is an unused bound.</strong> It constrains callers without buying anything.
 The bound can be removed with no other change to the implementation.</p>
-<h2 id="summary-26"><a class="header" href="#summary-26">Summary</a></h2>
+<h2 id="summary-23"><a class="header" href="#summary-23">Summary</a></h2>
 <ul>
 <li>A <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> gives at-most-once execution per key and a cached
 result for every later call with that key.</li>

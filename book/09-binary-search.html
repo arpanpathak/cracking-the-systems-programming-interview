@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-22468012.js";
+            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,8 +179,8 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs"><code>src/problems/binary_search.rs</code></a>. Test it with
 <code>cargo test binary_search</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>A sorted slice of distinct values has been rotated by an unknown amount. Find the
-index of a target value in <code>O(log n)</code>, or report that it is absent.</p>
+<p>A sorted slice of distinct values has been rotated by an unknown amount. Find the index
+of a target value in <code>O(log n)</code>, or report that it is absent.</p>
 <pre><code class="language-text">[4, 5, 6, 7, 0, 1, 2]        a rotation of [0, 1, 2, 4, 5, 6, 7]
      sorted      sorted
 </code></pre>
@@ -190,10 +190,9 @@ index of a target value in <code>O(log n)</code>, or report that it is absent.</
 <p>the target, if it is present, lies in <code>nums[low..high]</code>.</p>
 </blockquote>
 <p>In a rotated array, at least one half of any range is sorted. Testing
-<code>nums[low] &lt;= nums[mid]</code> says which half. If the left half is sorted, a range test
-decides whether the target can be in it; if it cannot, the target must be in the
-right half. The test costs one comparison, which is what keeps the loop
-logarithmic.</p>
+<code>nums[low] &lt;= nums[mid]</code> says which half. If the left half is sorted, one range test
+decides whether the target can be in it; if it cannot, the target is in the right half.
+That test is one comparison, which is what keeps the loop logarithmic.</p>
 <pre><code class="language-text">nums = [4, 5, 6, 7, 0, 1, 2]        target = 0
 
 low  high  mid  nums[mid]  left sorted?  decision
@@ -260,16 +259,15 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>high</code> starts at <code>nums.len()</code>, not at <code>nums.len() - 1</code>, because the range is
-half-open. That choice removes the special case for an empty slice: <code>low == high == 0</code> and the loop does not run.</p>
-<p><code>let mid = low + (high - low) / 2</code> avoids the overflow that <code>(low + high) / 2</code>
-would have in a debug build for a slice near the maximum length. The midpoint
-satisfies <code>low &lt;= mid &lt; high</code>, so <code>nums[mid]</code> and <code>nums[high - 1]</code> are both in
-bounds.</p>
-<p>The three tests of the left half are written as value comparisons, not as searches.
-<code>nums[low] &lt;= target &amp;&amp; target &lt; nums[mid]</code> is a half-open interval test: the
-lower bound is inclusive and the upper bound is exclusive, matching the range
-convention used throughout.</p>
+<p><code>high</code> starts at <code>nums.len()</code>, not at <code>nums.len() - 1</code>, because the range is half-open.
+That choice removes the special case for an empty slice: <code>low == high == 0</code> and the
+loop does not run.</p>
+<p><code>let mid = low + (high - low) / 2</code> avoids the overflow that <code>(low + high) / 2</code> would
+have in a debug build for a slice near the maximum length. The midpoint satisfies
+<code>low &lt;= mid &lt; high</code>, so <code>nums[mid]</code> and <code>nums[high - 1]</code> are both in bounds.</p>
+<p><code>nums[low] &lt;= target &amp;&amp; target &lt; nums[mid]</code> is a half-open interval test: the lower
+bound is inclusive and the upper bound exclusive, matching the convention used by the
+loop range.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">nums = [4, 5, 6, 7, 0, 1, 2]        target = 3, absent
 
@@ -293,34 +291,19 @@ low  high  mid  nums[mid]  left sorted?  test                              next
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>Repeated values break the sorted-half test.</strong> With duplicates, <code>nums[low] &lt;= nums[mid]</code> can be true for both halves, so the code can discard the half holding
-the target. On <code>[1, 1, 1, 0, 1]</code> the search for <code>0</code> fails. The function is correct
-only for strictly increasing inputs, which the problem statement guarantees and
-the documentation does not mention.</p>
-<p><strong>The returned index is not the first or the last match.</strong> With duplicates, any
-index holding the target is a valid answer for the problem as stated, and callers
-that want a boundary need a different function.</p>
-<p><strong>The slice must be sorted and then rotated, not merely rotated.</strong> An arbitrary
-input that happens to be two ascending runs is not enough; the runs must be the
-tail and the head of one sorted sequence, which is what makes the value ranges
-meaningful.</p>
-<p><strong>There is no test for a two-element rotation.</strong> <code>[2, 1]</code> is the smallest input
-where <code>nums[low] == nums[mid]</code> is false and the sorted-half test must choose
-correctly. That input is the one the <code>&lt;</code> versus
-<code>&lt;=</code> in <code>left_is_sorted</code> controls.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The loop invariant is that the target lies in <code>nums[low..high]</code> if it lies
-anywhere.</li>
-<li>At least one half is sorted. The rotation point lies in one half or the other,
-and the half that does not contain it is a contiguous piece of the original
-sorted array.</li>
-<li>The half-open range convention is used consistently. Mixing <code>high = nums.len()</code>
-with <code>nums[high]</code> is the usual source of an out-of-bounds index here.</li>
-<li>Duplicates are not handled. On <code>[1, 1, 1, 0, 1]</code> the search for <code>0</code> fails,
-because <code>nums[low] &lt;= nums[mid]</code> can hold for both halves, so the function is
-correct only for strictly increasing input.</li>
-</ul>
+<p><strong>Repeated values break the sorted-half test.</strong> With duplicates, <code>nums[low] &lt;= nums[mid]</code>
+can hold for both halves, so the code can discard the half holding the target. On
+<code>[1, 1, 1, 0, 1]</code> the search for <code>0</code> fails. The function is correct only for strictly
+increasing inputs, which the problem statement guarantees and the documentation does
+not mention.</p>
+<p><strong>The returned index is not the first or the last match.</strong> With duplicates, any index
+holding the target satisfies the problem as stated. A caller that needs a boundary
+needs a different function.</p>
+<p><strong>The slice must be a rotation of one sorted array, not two ascending runs.</strong> The runs
+have to be the tail and the head of a single sorted sequence, which is what makes the
+range tests meaningful.</p>
+<p><strong>There is no test for a two-element rotation.</strong> <code>[2, 1]</code> is the smallest input where
+<code>nums[low] == nums[mid]</code> is false and the sorted-half test has to choose correctly.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.slice.html#method.binary_search"><code>slice::binary_search</code></a>, the unrotated case.</li>
