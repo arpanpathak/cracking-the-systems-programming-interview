@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5dd93e33.js";
+            window.path_to_searchindex_js = "searchindex-22ab09d0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-51322f12.js"></script>
@@ -390,6 +390,7 @@ the list printed by <code>cargo test</code> reads as an index of the book.</p>
 <tr><td><code>src/problems/graph_dijkstra.rs</code></td><td>61</td></tr>
 <tr><td><code>src/bin/merge_k_sorted_lists_divide.rs</code></td><td>62</td></tr>
 <tr><td><code>src/problems/three_sum.rs</code></td><td>63</td></tr>
+<tr><td><code>src/bin/false_sharing.rs</code></td><td>48</td></tr>
 </tbody>
 </table>
 </div>
@@ -12651,6 +12652,86 @@ closure captures <code>counter</code>, a <code>&amp;Unpadded</code> or <code>&am
 <p><code>Ordering::Relaxed</code> is correct for independent counters, as chapter 43 explained. The
 choice of ordering does not affect the false-sharing result, which comes from the
 writes to memory, not from the atomic protocol.</p>
+<h3 id="false-sharing-inside-one-struct"><a class="header" href="#false-sharing-inside-one-struct">False sharing inside one struct</a></h3>
+<p>A second program isolates the effect with two counters and no vector:
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/false_sharing.rs"><code>src/bin/false_sharing.rs</code></a>. Run it with
+<code>cargo run --release --bin false_sharing</code>.</p>
+<pre class="playground"><code class="language-rust">use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread;
+use std::time::{Duration, Instant};
+
+const ITERS: u64 = 20_000_000;
+
+/// Both counters are guaranteed to live inside one 64-byte cache line.
+#[repr(align(64))]
+struct SameLine {
+    a: AtomicU64,
+    b: AtomicU64,
+}
+
+/// Each of these occupies its own 64-byte block.
+#[repr(align(64))]
+struct Padded(AtomicU64);
+
+fn time&lt;F: FnOnce()&gt;(f: F) -&gt; Duration {
+    let t = Instant::now();
+    f();
+    t.elapsed()
+}
+
+fn main() {
+    // ---- 1. False sharing: two counters on the same cache line ----
+    let same = SameLine { a: AtomicU64::new(0), b: AtomicU64::new(0) };
+
+    let d1 = time(|| {
+        thread::scope(|s| {
+            s.spawn(|| for _ in 0..ITERS { same.a.fetch_add(1, Ordering::Relaxed); });
+            s.spawn(|| for _ in 0..ITERS { same.b.fetch_add(1, Ordering::Relaxed); });
+        });
+    });
+
+    // ---- 2. Padded: same work, but counters are on separate cache lines ----
+    let p0 = Padded(AtomicU64::new(0));
+    let p1 = Padded(AtomicU64::new(0));
+
+    let d2 = time(|| {
+        thread::scope(|s| {
+            s.spawn(|| for _ in 0..ITERS { p0.0.fetch_add(1, Ordering::Relaxed); });
+            s.spawn(|| for _ in 0..ITERS { p1.0.fetch_add(1, Ordering::Relaxed); });
+        });
+    });
+
+    println!("same cache line (false sharing): {:?}", d1);
+    println!("padded (separate lines):         {:?}", d2);
+}</code></pre>
+<p><code>SameLine</code> holds two <code>AtomicU64</code> fields, 8 bytes each, and <code>#[repr(align(64))]</code> aligns the
+struct to a 64-byte boundary. Its size is rounded up to 64 bytes, so both fields are
+guaranteed to start inside the same 64-byte cache line. The first experiment gives one
+counter to each of two threads. The threads never touch each other’s field, yet every
+<code>fetch_add</code> by one thread invalidates the other core’s cached copy of the line, and the
+next write on that core must fetch the line again.</p>
+<p><code>Padded</code> wraps a single <code>AtomicU64</code> and is also aligned to 64 bytes, so <code>p0</code> and <code>p1</code> each
+occupy their own 64-byte block and start on different cache lines. The second experiment
+performs the same forty million increments with no shared line.</p>
+<p>Both experiments use <code>thread::scope</code>, so the closures borrow <code>same</code>, <code>p0</code>, and <code>p1</code> from
+the stack without <code>Arc</code>, and the scope joins both threads before <code>time</code> reads the clock.
+<code>time</code> accepts any <code>FnOnce()</code> and returns the elapsed <code>Duration</code>.</p>
+<p>A release build on the NVIDIA Jetson board, run three times, printed:</p>
+<pre><code class="language-text">same cache line (false sharing): 1.251460811s
+padded (separate lines):         149.715657ms
+
+same cache line (false sharing): 1.389555737s
+padded (separate lines):         151.341589ms
+
+same cache line (false sharing): 1.189698031s
+padded (separate lines):         154.447719ms
+</code></pre>
+<p>The padded version was about eight times faster in every run, although both do exactly
+the same work. The only difference is whether the two counters share a cache line.</p>
+<p>The program assumes a 64-byte cache line, which holds for the Cortex-A78AE and most x86
+processors. On a processor with 128-byte lines, such as Apple’s M-series, <code>SameLine</code>
+still shares a line, and <code>Padded</code> would need <code>#[repr(align(128))]</code> to separate the two
+counters with certainty.</p>
 <h2 id="intuition-47"><a class="header" href="#intuition-47">Intuition</a></h2>
 <p>Release builds on the Cortex-A78AE printed:</p>
 <pre><code class="language-text">4194304 elements, 32 MiB
