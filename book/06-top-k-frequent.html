@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b641e624.js";
+            window.path_to_searchindex_js = "searchindex-22468012.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -180,17 +180,16 @@
 <code>cargo test top_k_frequent</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
 <p>Given a slice of integers and a number <code>k</code>, return the <code>k</code> values that occur most
-often. The result order is only defined if the function states how ties are
-broken, and the file’s ordering answers that question by construction: the heap
-key is the pair <code>(count, value)</code>, compared lexicographically, so a larger value
-wins a tie.</p>
+often. The result order is defined only if the function states how ties are broken.
+This implementation keys the heap on <code>(count, value)</code>, compared lexicographically, so
+a larger value wins a tie.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <p>Two passes. The first counts occurrences in a hash map. The second moves every
 <code>(count, value)</code> pair into a <code>BinaryHeap</code> and pops the largest keys.</p>
-<p><code>BinaryHeap</code> in Rust is a max-heap, so pushing <code>(count, num)</code> and popping puts the
-highest count first. That is the opposite of the min-heap-with-size-<code>k</code> design
-that keeps <code>O(m log k)</code> time, and the file chooses the simpler of the two. The
-cost table below states what that choice costs.</p>
+<p><code>BinaryHeap</code> in Rust is a max-heap, so the pairs come out in descending count and, for
+equal counts, in descending value. The alternative, a min-heap holding at most <code>k</code>
+entries, costs <code>O(m log k)</code> time and <code>O(k)</code> space and is not implemented here. The
+cost table states what the simpler choice costs.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -242,17 +241,14 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>*counts.entry(num).or_insert(0) += 1</code> is the counting idiom. <code>entry</code> looks up or
-inserts, <code>or_insert(0)</code> supplies the initial count, and the dereference lets the
-increment write through the returned <code>&amp;mut usize</code>. The map is searched once per
-element.</p>
-<p><code>counts.into_iter()</code> consumes the map and yields owned pairs, which avoids
-borrowing it while the heap is built. <code>map(|(num, count)| (count, num))</code> reverses
-each pair so that the heap’s ordering applies to the count first; this is the
-whole tie-break rule.</p>
-<p><code>while result.len() &lt; k</code> with <code>None =&gt; break</code> handles <code>k</code> larger than the number
-of distinct values. The heap empties and the loop stops, leaving a result shorter
-than <code>k</code>.</p>
+<p><code>*counts.entry(num).or_insert(0) += 1</code> looks up the count or inserts zero, then
+increments through the returned <code>&amp;mut usize</code>. The map is searched once per element
+rather than twice.</p>
+<p><code>counts.into_iter()</code> consumes the map and yields owned pairs, so the heap is built
+without borrowing the map. <code>map(|(num, count)| (count, num))</code> reverses each pair so
+that the count is the first component of the key, which is the tie-break rule.</p>
+<p><code>while result.len() &lt; k</code> with <code>None =&gt; break</code> handles a <code>k</code> larger than the number of
+distinct values: the heap empties, the loop stops, and the result is shorter than <code>k</code>.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">nums = [1, 1, 1, 2, 2, 3]     k = 2
 
@@ -278,40 +274,26 @@ The heap still holds (1, 3), which is not popped.
 </tbody>
 </table>
 </div>
-<p>The heap holds every distinct value, not <code>k</code> of them. For a slice of a million
-elements with half a million distinct values and <code>k = 10</code>, the program builds a
-heap of half a million entries to return ten. The bounded variant keeps a
-min-heap of size <code>k</code> and discards each element smaller than the current root,
-which is <code>O(m log k)</code> and needs <code>O(k)</code> space. The file does not implement it, and
-the comment in the file states the trade in one line: <code>O(n log n) worst case; acceptable and readable</code>.</p>
+<p>The heap holds one entry per distinct value rather than <code>k</code> entries. For a slice of a
+million elements with half a million distinct values and <code>k = 10</code>, the program builds a
+heap of half a million entries to return ten. A min-heap bounded at <code>k</code> entries, which
+discards each element smaller than its root, costs <code>O(m log k)</code> time and <code>O(k)</code> space.
+The file does not implement it.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p><strong>The heap is unbounded in the number of distinct values.</strong> Every distinct value
-counted becomes an entry in the heap, so the structure holds <code>m</code> entries at its
-largest, where <code>m</code> is the number of distinct values in the input.</p>
-<p><strong>The result order depends on the heap’s internal comparison and nothing else.</strong>
-The pair ordering makes the order deterministic, and the first test sorts the
-result before asserting, so the file never pins the order. A caller that prints
-the result directly sees the order the heap produced, which is by descending count
-and then by descending value.</p>
-<p><strong>A <code>k</code> of zero returns an empty vector.</strong> <code>Vec::with_capacity(0)</code> allocates
-nothing and the loop does not run, so the answer is empty rather than a panic. The
-file has no test for it.</p>
-<p><strong>The tie-break rule is not documented.</strong> A reader has to derive it from
-<code>(count, num)</code> and from the fact that <code>BinaryHeap</code> is a max-heap. Two sentences in
-the module documentation would make it part of the contract rather than a
-consequence of the implementation.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The tie-break rule is part of the specification. “The <code>k</code> most frequent” is
-incomplete where counts are equal, and this implementation resolves a tie in
-favour of the larger value, because the heap orders <code>(count, value)</code> pairs and
-is a max-heap.</li>
-<li>Two heap designs are available. A heap holding every distinct value costs
-<code>O(m log m)</code>; a heap bounded at <code>k</code> entries costs <code>O(m log k)</code>. This file uses
-the bounded heap, and the result is therefore in heap order rather than sorted.</li>
-<li><code>counts.entry(num).or_insert(0) += 1</code> performs one map lookup rather than a
-lookup followed by an insertion.</li>
-</ul>
+counted becomes an entry, so the structure holds <code>m</code> entries at its largest, where <code>m</code>
+is the number of distinct values in the input.</p>
+<p><strong>The result order is fixed by the heap comparison and nothing else.</strong> The pair
+ordering makes it deterministic, and the first test sorts the result before asserting,
+so the file never pins the order. A caller that prints the result directly sees
+descending count and then descending value.</p>
+<p><strong>A <code>k</code> of zero returns an empty vector.</strong> <code>Vec::with_capacity(0)</code> allocates nothing
+and the loop does not run, so the answer is empty rather than a panic. The file has no
+test for it.</p>
+<p><strong>The tie-break rule is not documented.</strong> A reader has to derive it from <code>(count, num)</code>
+and from the fact that <code>BinaryHeap</code> is a max-heap. Two sentences in the module
+documentation would make it part of the contract rather than a consequence of the
+implementation.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html"><code>BinaryHeap</code></a>, which documents that the heap is a max-heap.</li>

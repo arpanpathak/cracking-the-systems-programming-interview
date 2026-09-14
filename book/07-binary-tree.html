@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b641e624.js";
+            window.path_to_searchindex_js = "searchindex-22468012.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,22 +179,20 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs"><code>src/problems/binary_tree.rs</code></a>. Test it with
 <code>cargo test binary_tree</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Represent a binary tree of integers, then compute its depth, mirror it in place,
-and produce its three depth-first traversals. No allocation during the traversals,
-and no recursion beyond what the shape of the type requires.</p>
+<p>Represent a binary tree of integers, compute its depth, mirror it in place, and
+produce its three depth-first traversals.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <p>The type is an algebraic data type with two variants:</p>
 <pre><code class="language-text">Tree = Empty
      | Node { value: i32, left: Box&lt;Tree&gt;, right: Box&lt;Tree&gt; }
 </code></pre>
-<p>Two consequences follow from writing it this way rather than with nullable
-pointers.</p>
+<p>Two properties follow from this representation rather than from nullable pointers.</p>
 <p><strong>A node always has both children.</strong> There is no state in which the left child is
 absent and the right one is present, because the <code>Node</code> variant has no optional
-fields. Every function that matches on <code>Tree::Node</code> can bind <code>left</code> and <code>right</code>
-without testing them.</p>
-<p><strong>The recursion is in the type.</strong> A <code>Node</code> owns its children, and each child is
-boxed, so the size of a <code>Tree</code> value does not depend on how many nodes exist:</p>
+fields. Every function that matches on <code>Tree::Node</code> binds <code>left</code> and <code>right</code> without
+testing them.</p>
+<p><strong>The recursion is in the type.</strong> A <code>Node</code> owns its children, and each child is boxed,
+so the size of a <code>Tree</code> value does not depend on how many nodes exist:</p>
 <pre><code class="language-text">stack                              heap
 +---------------------+
 | Tree::Node          |            +---------------------------+
@@ -210,8 +208,8 @@ boxed, so the size of a <code>Tree</code> value does not depend on how many node
                                    |   right -&gt; Node(7)        |
                                    +---------------------------+
 </code></pre>
-<p>Each arrow is one eight-byte ownership pointer. The <code>Empty</code> variant is a
-discriminant with no payload, so it occupies no heap space.</p>
+<p>Each arrow is one eight-byte ownership pointer. The <code>Empty</code> variant is a discriminant
+with no payload, so it occupies no heap space.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -363,19 +361,18 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>invert</code> swaps the two children after recursing into both. <code>std::mem::swap(left, right)</code> exchanges the two <code>Box</code> values, which swaps two pointers per node and
-moves no subtree. Swapping before recursing would also be correct; the two
-subtrees are independent, so the order is a matter of taste.</p>
 <p><code>max_depth</code> uses <code>..</code> in the pattern to ignore <code>value</code>, and computes
-<code>1 + left.max_depth().max(right.max_depth())</code> without a binding for the child
-depths. <code>Ord::max</code> on two <code>usize</code> values is a single instruction.</p>
-<p>The three collection helpers take <code>&amp;mut Vec&lt;i32&gt;</code>. Returning a new vector from
-each recursive call would copy the whole output at every level of the tree, which
-turns a linear traversal into a quadratic one.</p>
+<code>1 + left.max_depth().max(right.max_depth())</code> without a binding for the child depths.
+<code>Ord::max</code> on two <code>usize</code> values is a single instruction.</p>
+<p><code>invert</code> swaps the two children after recursing into both. <code>std::mem::swap(left, right)</code>
+exchanges the two <code>Box</code> values, which swaps two pointers per node and moves no subtree.
+Swapping before recursing would also be correct; the two subtrees are independent.</p>
+<p>The three collection helpers take <code>&amp;mut Vec&lt;i32&gt;</code>. Returning a new vector from each
+recursive call would copy the whole output at every level of the tree, which turns a
+linear traversal into a quadratic one.</p>
 <p>The test helpers <code>leaf</code> and <code>node</code> exist because building a tree means writing
 <code>Box::new</code> at every level, and the constructors keep the shape of the sample tree
-readable. The constructors are in the test module, so they are not part of the
-library’s API.</p>
+readable. They are in the test module, so they are not part of the library’s API.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">sample tree
          3
@@ -413,39 +410,27 @@ invert     left and right exchanged at every node
 </tbody>
 </table>
 </div>
-<p><code>h</code> is the height of the tree: <code>O(log n)</code> when the tree is balanced and <code>O(n)</code>
-when it is a chain.</p>
+<p><code>h</code> is the height of the tree: <code>O(log n)</code> when the tree is balanced and <code>O(n)</code> when it
+is a chain.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>A deep tree exhausts the stack.</strong> All five methods recurse, so each uses one
-stack frame per level. A left-leaning tree of a few hundred thousand nodes
-overflowing the default thread stack aborts the process, because a stack overflow
-is not a panic that unwinds. The traversals cannot be reformulated iteratively
-without an explicit work list, and <code>#[derive(Clone)]</code> has the same problem: the
-derived <code>clone</code> recurses as well.</p>
-<p><strong>The derived destructor recurses too.</strong> Dropping a deep tree follows the boxes,
-one frame per level, for the same reason. Freeing the memory is therefore as
-unsafe for a deep tree as cloning it.</p>
-<p><strong>The value type is fixed at <code>i32</code>.</strong> Every method works for any type, and making
-the declaration generic is one change to the <code>enum</code> and one to each signature,
-but the file as written is not generic.</p>
-<p><strong><code>Tree</code> has no <code>PartialOrd</code>, no iteration, and no <code>len</code>.</strong> A caller that needs
-the node count writes a recursive helper or a loop with a work list.</p>
-<p><strong>The test for <code>invert</code> inspects two values and not the shape.</strong> It checks that
-the roots of the two subtrees were exchanged, which is enough to catch an <code>invert</code>
-that does nothing, and not enough to catch one that swaps the children of the root
-only. Asserting <code>tree.preorder()</code> against the mirrored sequence would test the
-whole tree in one line.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The type itself removes the empty case: both children of a <code>Node</code> are present,
-so no function tests for a missing one.</li>
-<li>A traversal order is named by where the value is visited. Pre-order visits it
-before the children, in-order between them, and post-order after them.</li>
-<li>The stack cost is <code>O(h)</code>, and <code>h</code> takes two values. A balanced tree gives
-<code>O(log n)</code> and a chain gives <code>O(n)</code>.</li>
-<li>The <code>Box</code> is what makes the type finite. A <code>Node</code> holding another <code>Node</code>
-directly would have infinite size, and the compiler rejects the declaration.</li>
-</ul>
+<p><strong>A deep tree exhausts the stack.</strong> All five methods recurse, so each uses one stack
+frame per level. A left-leaning tree of a few hundred thousand nodes overflowing the
+default thread stack aborts the process, because a stack overflow is not a panic that
+unwinds. The traversals cannot be reformulated iteratively without an explicit work
+list, and <code>#[derive(Clone)]</code> has the same problem: the derived <code>clone</code> recurses as
+well.</p>
+<p><strong>The derived destructor recurses too.</strong> Dropping a deep tree follows the boxes, one
+frame per level, for the same reason. Freeing the memory is therefore as unsafe for a
+deep tree as cloning it.</p>
+<p><strong>The value type is fixed at <code>i32</code>.</strong> Every method works for any type, and making the
+declaration generic is one change to the <code>enum</code> and one to each signature, but the file
+as written is not generic.</p>
+<p><strong><code>Tree</code> has no <code>PartialOrd</code>, no iteration, and no <code>len</code>.</strong> A caller that needs the node
+count writes a recursive helper or a loop with a work list.</p>
+<p><strong>The test for <code>invert</code> inspects two values and not the shape.</strong> It checks that the
+roots of the two subtrees were exchanged, which catches an <code>invert</code> that does nothing
+and not one that swaps the children of the root only. Asserting <code>tree.preorder()</code>
+against the mirrored sequence would test the whole tree in one line.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">Defining an enum</a>.</li>

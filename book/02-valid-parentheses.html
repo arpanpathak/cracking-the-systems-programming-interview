@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b641e624.js";
+            window.path_to_searchindex_js = "searchindex-22468012.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,41 +179,27 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs"><code>src/problems/valid_parentheses.rs</code></a>. Test it with
 <code>cargo test valid_parentheses</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Given a string built from the six delimiter characters <code>()[]{}</code>, decide whether
-every opening delimiter is eventually closed by its own kind, with the pairs
-properly nested. Any other character makes the string invalid.</p>
-<p>The problem is the smallest useful model of a task that appears throughout
-programming: deciding whether a sequence is well formed. A text editor does it to
-highlight matching braces, a configuration loader does it before parsing a
-document, and a compiler does it before it can build an expression tree. The rules
-are what make a stack the natural tool, and the exercise is the shortest route to
-seeing why a counter is not enough.</p>
+<p>Given a string built from the six delimiter characters <code>()[]{}</code>, decide whether every
+opening delimiter is closed by its own kind, with the pairs properly nested. Any
+other character makes the string invalid.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Two conditions have to hold when the scan reaches the end of the string. No closing
-delimiter may appear when the delimiter it has to match is not the most recent
-unmatched one, and nothing may remain unmatched.</p>
-<p>The second condition is easy to satisfy with a counter, and the first is not.
-Consider <code>([)]</code>. Every kind of delimiter appears in matching quantities, so a count
-of openings and closings reports balance, and the string is nevertheless invalid:
-the <code>)</code> closes the <code>(</code> while the <code>[</code> is still open. Correctness depends on the
-<em>order</em> of the unmatched openings rather than only on their number, and a value that
-remembers an ordered sequence of pending openings is exactly a stack.</p>
-<p>The stack holds the opening delimiters whose counterpart has not yet been seen, with
-the most recently opened on top. That is the delimiter a closing character has to match, so
-the scan maintains the invariant</p>
-<blockquote>
-<p>the stack contains the unmatched opening delimiters, in the order they appeared,</p>
-</blockquote>
-<p>after every character. An opening delimiter is pushed. A closing delimiter pops the
-top and checks its kind. If the stack is empty when a closing delimiter arrives,
-there was nothing for it to close, and the string is invalid at that point. When the
-scan finishes, the stack has to be empty, because anything left in it is an opening
-delimiter with no matching opener.</p>
-<p>The machine this scan describes has a name. It is a pushdown automaton, the weakest
-kind of machine that recognises a language in which nesting has to be matched. Its
-counterpart is a finite automaton, which has no stack, and that is why a regular
-expression cannot decide this question: no finite pattern can count arbitrarily deep
-nesting.</p>
+<p>Two conditions must hold. A closing delimiter may appear only when the delimiter it
+must match is the most recent unmatched opening, and nothing may remain unmatched at
+the end of the scan.</p>
+<p>A counter of openings and closings satisfies the second condition and not the first.
+In <code>([)]</code> every kind of delimiter appears in matching quantity, so a counter reports
+balance, and the string is invalid because <code>)</code> closes <code>(</code> while <code>[</code> is still open.
+Correctness depends on the order of the unmatched openings, and an ordered sequence
+of pending openings is a stack.</p>
+<p>The stack holds the opening delimiters whose counterpart has not been seen, with the
+most recently opened on top. That entry is the delimiter a closing character must
+match. An opening delimiter is pushed. A closing delimiter pops the top and compares
+its kind. A closing delimiter that arrives at an empty stack has nothing to close, and
+the string is invalid at that point. When the scan finishes the stack must be empty,
+because anything left in it is an opening delimiter with no counterpart.</p>
+<p>The scan is a pushdown automaton, the weakest machine that recognises a language with
+matched nesting. A finite automaton has no stack and cannot decide the question, so no
+regular expression can match arbitrarily deep nesting.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -268,15 +254,12 @@ mod tests {
     
 }
 <span class="boring">}</span></code></pre>
-<p>The capacity hint is <code>s.len()</code>, the byte length of the string. A character count is
-never larger than a byte count, so the hint is an upper bound on the entries the
-loop can push, and the vector never grows while the scan runs. For text outside
-ASCII the hint over-allocates by the ratio between the two lengths: a few bytes of
-waste measured against the cost of a reallocation in the worst case.</p>
-<p><code>expected</code> is a map from each closing delimiter to the opening delimiter it must
-match. Building it once per call keeps the pairing in one structure rather than in
-one <code>match</code> arm per delimiter; adding a pair to the grammar is a longer array
-rather than a longer <code>match</code>.</p>
+<p>The capacity hint is <code>s.len()</code>, the byte length of the string. A character count never
+exceeds a byte count, so the hint bounds the number of pushes and the vector does not
+grow during the scan. For text outside ASCII the hint over-allocates.</p>
+<p><code>expected</code> maps each closing delimiter to the opening delimiter it must match. The
+pairing sits in one structure rather than in one <code>match</code> arm per delimiter, so adding
+a pair to the grammar extends the array rather than the <code>match</code>.</p>
 <p>The loop has two arms. The first pushes every opening delimiter. The second is the
 catch-all arm the compiler requires, and it performs the comparison for every other
 character:</p>
@@ -288,13 +271,12 @@ character:</p>
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>stack.pop()</code> returns <code>Option&lt;char&gt;</code>, and <code>.as_ref()</code> turns it into <code>Option&lt;&amp;char&gt;</code>
-so that it can be compared with <code>expected.get(&amp;ch)</code>, which has the same type. The
-guard returns <code>false</code> whenever the two options differ, which covers a mismatched
-delimiter and a closing delimiter on an empty stack. The next section shows the case
-it does not cover.</p>
-<p>The function ends with <code>stack.is_empty()</code>. Without that expression, a string of
-opening delimiters alone would be accepted and <code>"("</code> would be reported as valid.</p>
+<p><code>stack.pop()</code> returns <code>Option&lt;char&gt;</code>, and <code>.as_ref()</code> turns it into <code>Option&lt;&amp;char&gt;</code> for
+comparison with <code>expected.get(&amp;ch)</code>, which has the same type. The guard returns <code>false</code>
+whenever the two options differ, which covers a mismatched delimiter and a closing
+delimiter on an empty stack. The next section states the case it does not cover.</p>
+<p><code>stack.is_empty()</code> at the end rejects a string of opening delimiters alone. Without it,
+<code>"("</code> would be reported as valid.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">input: {[()]}
 
@@ -302,7 +284,7 @@ char  stack before   pop result   stack after   value returned
  {      []            -            [{]
  [      [{]           -            [{[]
  (      [{[]          -            [{[()]
- )      [{[()]        Some('(')    [{[]
+ )      [{[()]        Some('(')    [{[]           -
  ]      [{[ ]         Some('[')    [{
  }      [{]           Some('{')    []
 end                                                       true
@@ -311,19 +293,17 @@ end                                                       true
 
 char  stack before   pop result   stack after   value returned
  (      []            -            [(]
- [      [(]           -            [([]
+ [      [(]           -            [([]          -
  )      [([]          Some('[')    [(]           -
  ]      [(]           Some('(')    []            false
 
-The delimiters appear in matching quantities and are nested in the wrong order, so
-the scan reports the failure at the final character.
+The delimiters appear in matching quantities and in the wrong nesting order, so the
+scan reports the failure at the final character.
 </code></pre>
 <pre><code class="language-text">input: )
 
 char  stack before   pop result   stack after   value returned
  )      []            None          []            false
-
-A closing delimiter with an empty stack ends the scan immediately.
 </code></pre>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
@@ -338,52 +318,32 @@ A closing delimiter with an empty stack ends the scan immediately.
 </tbody>
 </table>
 </div>
-<p>The worst case is a string such as <code>"(((("</code>, where the stack grows with the input.
-The typical case is far smaller, because the stack holds only the openings that have
-not yet been closed, which is the nesting depth at the cursor rather than the length
-of the string.</p>
+<p>The worst case is a string such as <code>"(((("</code>, where the stack grows with the input. The
+typical case is smaller, because the stack holds only the openings that have not been
+closed, which is the nesting depth at the cursor rather than the length of the string.</p>
 <p>The scan is iterative, so nesting depth is bounded by available memory rather than by
-the thread’s stack. A recursive version of the same algorithm would exhaust the stack
-on a deeply nested string, which means a program that validates a document supplied
-by a user would have a denial-of-service condition. This is the one place in the book
-where an iterative formulation is a robustness requirement rather than a preference,
-and it costs nothing: the loop is as short as the recursion would be.</p>
+the thread’s stack. A recursive formulation would exhaust the stack on a deeply nested
+string, which is a denial-of-service condition in a program that validates a document
+supplied by a user.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>A character outside the alphabet is accepted when the stack is empty.</strong> The
-catch-all arm compares two <code>Option&lt;&amp;char&gt;</code> values. For a character that is not one
-of the six delimiters, <code>expected.get(&amp;ch)</code> is <code>None</code>. If the stack is also empty,
-<code>stack.pop().as_ref()</code> is <code>None</code> as well, so the two are equal and the scan
-continues instead of rejecting the character. <code>is_valid("abc")</code> and <code>is_valid("()x")</code>
-therefore return <code>true</code>. The defect does not appear when the stack is non-empty,
-because a popped <code>Some(...)</code> can never equal <code>None</code>, so the same character is
-rejected after an opening delimiter. No test in the file covers an input of this
-kind, which is why the behaviour is easy to miss.</p>
-<p>The function returns <code>bool</code>, so it cannot say where the failure occurred. A parser
+<p><strong>A character outside the alphabet is accepted when the stack is empty.</strong> The catch-all
+arm compares two <code>Option&lt;&amp;char&gt;</code> values. For a character that is not one of the six
+delimiters, <code>expected.get(&amp;ch)</code> is <code>None</code>. If the stack is also empty,
+<code>stack.pop().as_ref()</code> is <code>None</code>, the two are equal, and the scan continues instead of
+rejecting the character. <code>is_valid("abc")</code> and <code>is_valid("()x")</code> therefore return
+<code>true</code>. The case does not arise when the stack is non-empty, because a popped
+<code>Some(...)</code> never equals <code>None</code>, so the same character is rejected after an opening
+delimiter. No test in the file covers an input of this kind.</p>
+<p>The function returns <code>bool</code>, so it cannot report where the failure occurred. A parser
 that reports “unmatched <code>(</code> at offset 12” needs the position. A version returning
-<code>Result&lt;(), usize&gt;</code> carries it with one change: iterate with <code>enumerate</code> and return
-the index in place of <code>false</code>.</p>
-<p>The capacity hint is measured in bytes while the stack stores characters. For a
-string of three-byte characters the allocation is three times larger than the
-characters can justify, and the vector’s length still never exceeds the character
-count. The bound is safe and the allocation is loose.</p>
-<p>The stack element type is <code>char</code>, one Unicode scalar value per entry. The algorithm
-does not need that. A version that reports positions would push the index of the
-opening character instead, and the comparisons would be against indices rather than
-against characters.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The invariant is that the stack holds the unmatched openings in order, with the
-most recent on top. Every branch of the loop preserves it, and the final
-<code>is_empty</code> is the statement that nothing was left unmatched.</li>
-<li>Counting delimiters is not sufficient. <code>([)]</code> has matching counts and no valid
-parse, which is what the stack is for.</li>
-<li>The scan rejects a closing delimiter whose opener is not on top, a closing
-delimiter with an empty stack, and a non-empty stack at the end.</li>
-<li>A character outside the alphabet is rejected only while the stack is non-empty.
-With an empty stack it is accepted, which is the defect described in Limitations.</li>
-<li>The scan is a pushdown automaton, which is why a regular expression cannot decide
-the question.</li>
-</ul>
+<code>Result&lt;(), usize&gt;</code> carries it with one change: iterate with <code>enumerate</code> and return the
+index in place of <code>false</code>.</p>
+<p>The capacity hint is measured in bytes while the stack stores characters. For a string
+of three-byte characters the allocation is three times larger than the characters can
+justify, and the vector’s length still never exceeds the character count.</p>
+<p>The stack element type is <code>char</code>, one Unicode scalar value per entry. The algorithm does
+not require that. A version that reports positions would push the index of the opening
+character, and the comparisons would be between indices.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html#method.pop"><code>Vec::pop</code></a>, on the <code>Option</code> it returns.</li>
