@@ -1,16 +1,35 @@
 # 11: Rust Senior Interview Guide, Part 1: Collections, Idioms, ADTs, Smart Pointers
 
-The theme is **idiomatic Rust: types that make invalid states unrepresentable,
-pattern matching in place of `if-else` chains, and owned or borrowed data designed
-from the start.** The code is written to be reproduced from memory.
+In a senior Rust interview, working code is expected. What distinguishes a strong
+answer is the choice of types: a collection whose costs match the access pattern, an
+`enum` that makes invalid states impossible to construct, and ownership that is decided
+when the data structure is designed rather than patched later with clones.
+
+This is the first of three Rust guides. It covers the standard collections, the naming
+and API conventions from the Rust API Guidelines, algebraic data types with pattern
+matching, and smart pointers. The examples are short enough to write from memory in an
+interview.
+
+**This chapter covers**
+
+- How each standard collection is stored, what its operations cost, and when to use it
+- Naming, documentation, derives, constructors, errors, and builders in idiomatic Rust
+- Modeling states and errors with `enum` and `match`
+- `Box`, `Rc`, `Arc`, `RefCell`, `Mutex`, `RwLock`, and `Weak`, and how to choose among them
+- What the `Send` and `Sync` traits mean
 
 ---
 
-## 1. Standard collections: internal representation, complexity, and when to use each
+## 1. The standard collections
 
-### 1.1 `Vec<T>`, contiguous growable array
+For each collection, this section describes its memory layout, the cost of its main
+operations, when to choose it, an example, and common mistakes. The layout explains
+the costs, so learn them together.
 
-Internal representation:
+### 1.1 `Vec<T>`: a growable array
+
+A `Vec` stores its elements in one contiguous heap allocation. The `Vec` value itself
+holds a pointer, a length, and a capacity:
 
 ```text
 ptr ─────► [ T | T | T | ... unused capacity ]
@@ -18,16 +37,17 @@ len = used elements
 capacity = allocated slots
 ```
 
-- `push`/`pop`: amortized O(1)
-- `insert`/`remove` at index `i`: O(n)
-- Indexing by position: O(1)
-- Iteration: O(n)
-- Memory: 3 words + capacity * size_of::<T>()
+| Operation | Cost |
+|---|---|
+| `push`, `pop` | O(1) amortized |
+| `insert`, `remove` at index `i` | O(n), because later elements shift |
+| Index access | O(1) |
+| Iteration | O(n), with good cache behavior |
+| Memory | Three machine words, plus `capacity * size_of::<T>()` on the heap |
 
-When to use: the default sequential collection. `LinkedList` is almost never the
-better choice.
-
-Runnable example:
+**When to use it.** `Vec` is the default choice for any sequence. It is also usually the
+right choice when you are considering a linked list, because contiguous memory makes
+iteration and most modifications faster in practice.
 
 ```rust
 fn main() {
@@ -52,29 +72,32 @@ fn main() {
 }
 ```
 
-Gotchas:
+**Common mistakes:**
 
-- `Vec` may reallocate when `len == capacity`; `with_capacity` avoids that when
-  the size is known.
-- Iterating while removing by index is easy to get wrong; `retain`, `drain`, or
-  `collect` avoid it.
-- `v[i]` panics on out-of-bounds; `v.get(i)` returns `Option<&T>`.
-- `Vec` of `bool`/small ints is not bit-packed; `bitvec` packs them when that
-  matters.
+- **Unnecessary reallocation.** When `len` reaches `capacity`, `push` allocates a larger
+  buffer and moves every element. Use `Vec::with_capacity` when you know the final size.
+- **Removing elements by index inside a loop.** Each removal shifts the remaining
+  indexes. Use `retain` to remove elements that match a condition, or `drain` to remove a
+  range.
+- **Panicking on an invalid index.** `v[i]` panics when `i` is out of bounds;
+  `v.get(i)` returns `Option<&T>`.
+- **Expecting bit packing.** A `Vec<bool>` uses one byte per element. Use a crate such as
+  `bitvec` if you need one bit per element.
 
-### 1.2 `VecDeque<T>`, ring buffer
+### 1.2 `VecDeque<T>`: a double-ended queue
 
-Internal representation: one or two contiguous buffers managed as a circular
-buffer.
+A `VecDeque` stores elements in a ring buffer: a single allocation in which the
+elements can wrap around from the end back to the start.
 
-- `push_front`/`pop_front`: O(1)
-- `push_back`/`pop_back`: O(1)
-- index access: O(1), but not guaranteed to be contiguous
-- `make_contiguous()` can move elements
+| Operation | Cost |
+|---|---|
+| `push_front`, `pop_front`, `push_back`, `pop_back` | O(1) amortized |
+| Index access | O(1) |
+| `make_contiguous()` | O(n); rearranges the elements into one slice |
 
-When to use: queue/worker pool, sliding window, BFS, retry queues.
-
-Runnable example:
+**When to use it.** Use `VecDeque` for FIFO queues, work queues in a worker pool, BFS,
+sliding windows, and retry queues: any case where you add at one end and remove at the
+other.
 
 ```rust
 use std::collections::VecDeque;
@@ -98,30 +121,32 @@ fn main() {
 }
 ```
 
-Gotchas:
+**Common mistakes:**
 
-- `VecDeque` is not `Vec`, so `sort` is not available directly (drain into `Vec`).
-- A "ring buffer" still stores all elements; capacity does not shrink unless
-  `shrink_to_fit` is called.
+- **Expecting a single slice.** Because the elements can wrap around, `VecDeque` does not
+  dereference to `&[T]`. Call `as_slices()` to get the two parts, or
+  `make_contiguous()` to get one slice, which you can then sort.
+- **Expecting memory to be released.** The buffer keeps its capacity after elements are
+  removed. Call `shrink_to_fit` if a queue that was once large should release memory.
 
-### 1.3 `LinkedList<T>`, doubly linked list
+### 1.3 `LinkedList<T>`: a doubly linked list
 
-Internal representation: individually heap-allocated nodes with `prev`/`next`
-pointers. In `std`, a `LinkedList` is doubly linked and supports O(1)
-push/pop at both ends.
+Each element is a separate heap allocation with pointers to the previous and next
+nodes.
 
-- push/pop front/back: O(1)
-- access by index: O(n)
-- split/append: O(1)
+| Operation | Cost |
+|---|---|
+| Push and pop at either end | O(1) |
+| Access by position | O(n) |
+| `append` another list | O(1) |
+| `split_off(at)` | O(min(at, len - at)), to walk to the split point |
 
-When to use: **almost never** in normal code. `VecDeque` is faster and more
-cache-friendly. Exceptions are rare algorithms that need guaranteed O(1)
-splice/merge without copying or stable node identity.
-
-`Vec` wins because of cache locality. A linked list is a red flag in most designs,
-and appears here only as a way to test ownership.
-
-Runnable example:
+**When to use it.** Rarely. `VecDeque` supports the same operations at both ends and is
+faster, because its elements are adjacent in memory and a linked list requires a pointer
+dereference, often a cache miss, for each element. A linked list is justified only when
+you need O(1) splicing of whole lists or nodes whose addresses never change. In
+interviews, linked lists appear mainly to test your understanding of ownership; see
+`13-rust-guide-part3-gotchas-linkedlist-interview.md`.
 
 ```rust
 use std::collections::LinkedList;
@@ -142,24 +167,24 @@ fn main() {
 }
 ```
 
-Gotchas:
+**Common mistakes:**
 
-- Poor cache locality; pointer chasing.
-- No indexing (`list[0]` does not compile).
-- `split_off` is O(n) for index positions because it must walk the list.
+- **Using it for performance.** Iteration is slower than for `Vec` or `VecDeque`.
+- **Indexing.** `LinkedList` does not implement indexing, so `list[0]` does not compile.
 
-### 1.4 `HashMap<K, V>`, hash table
+### 1.4 `HashMap<K, V>`: a hash table
 
-Internal representation: hash table with open addressing or hashbrown/SwissTable
-in modern Rust. Uses a randomly seeded SipHash by default to resist HashDoS.
+The standard `HashMap` is a port of Google's SwissTable design (the `hashbrown` crate),
+an open-addressing table that stores control bytes alongside the entries. By default it
+hashes keys with SipHash-1-3 using a random key, which prevents attackers from choosing
+keys that all collide (a HashDoS attack).
 
-- `get`/`insert`/`remove`: O(1) average
-- iteration order: unspecified and randomized per process
-- `entry` API is the idiomatic way to insert-or-update
+| Operation | Cost |
+|---|---|
+| `get`, `insert`, `remove` | O(1) expected |
+| Iteration | O(capacity), in an unspecified order that varies between runs |
 
-When to use: lookup by key, counts, caches, indexes.
-
-Runnable example:
+**When to use it.** Use `HashMap` for lookups by key, counters, caches, and indexes.
 
 ```rust
 use std::collections::HashMap;
@@ -180,26 +205,35 @@ fn main() {
 }
 ```
 
-Gotchas:
+The `entry` API performs an insert-or-update with a single lookup.
+`*quotas.entry(key).or_insert(4) += 1` inserts 4 if the key is absent and then increments
+the value.
 
-- Iteration order is nondeterministic, and code that depends on it is broken.
-- `HashMap` default hasher is slower than a custom `FxHash` for performance
-  workloads, but switching only pays off when profiling says it matters.
-- Borrowing conflicts between `get` and `insert` are resolved with `entry` or by
-  cloning keys.
+**Common mistakes:**
 
-### 1.5 `BTreeMap<K, V>`, sorted map
+- **Depending on iteration order.** The order can change between runs. Sort the keys, or
+  use `BTreeMap`, when output must be deterministic, for example in tests.
+- **Changing the hasher without measurement.** A faster non-cryptographic hasher such as
+  `FxHash` can speed up maps with integer keys, but it removes the HashDoS protection.
+  Change it only when profiling shows hashing is a bottleneck and the keys are not
+  controlled by users.
+- **Borrow conflicts.** Code such as "get, and if missing, insert" can hold a borrow from
+  `get` while calling `insert`. The `entry` API avoids the conflict.
 
-Internal representation: B-tree.
+### 1.5 `BTreeMap<K, V>`: an ordered map
 
-- get/insert/remove: O(log n)
-- iteration: sorted by key
-- supports range queries: `range`, `range_mut`
+A `BTreeMap` is a B-tree: each node holds several sorted keys, which keeps the tree shallow
+and makes good use of the CPU cache.
 
-When to use: ordered iteration, prefix/range scans, deterministic behavior,
-small n (BTreeMap can beat HashMap at tiny sizes due to no hashing).
+| Operation | Cost |
+|---|---|
+| `get`, `insert`, `remove` | O(log n) |
+| Iteration | O(n), in key order |
+| `range`, `range_mut` | O(log n) to find the start, then O(1) per element |
 
-Runnable example:
+**When to use it.** Use `BTreeMap` when you need ordered iteration, range queries,
+deterministic output, or the first or last key. For small maps, it can also be faster
+than `HashMap` because it does not hash.
 
 ```rust
 use std::collections::BTreeMap;
@@ -221,22 +255,22 @@ fn main() {
 }
 ```
 
-Gotchas:
+**Common mistakes:**
 
-- Keys must implement `Ord`.
-- No average O(1) lookup; still excellent in practice for many workloads.
+- **Using key types without `Ord`.** Keys must implement `Ord`. `f64` does not; wrap it in
+  a type that defines a total order if you need floating-point keys.
 
-### 1.6 `HashSet<T>`, hash set
+### 1.6 `HashSet<T>`: a hash set
 
-Internal representation: `HashMap<T, ()>`.
+A `HashSet<T>` is a `HashMap<T, ()>`.
 
-- insert/remove/contains: O(1) average
-- iteration: unordered
-- `is_subset`, `union`, `intersection`, `difference` available
+| Operation | Cost |
+|---|---|
+| `insert`, `remove`, `contains` | O(1) expected |
+| `union`, `intersection`, `difference`, `is_subset` | Proportional to the sizes of the sets |
 
-When to use: deduplication, membership tests, visited sets in graph search.
-
-Runnable example:
+**When to use it.** Use `HashSet` for deduplication, membership tests, and visited sets in
+graph searches.
 
 ```rust
 use std::collections::HashSet;
@@ -255,23 +289,19 @@ fn main() {
 }
 ```
 
-Gotchas:
+**Common mistakes:**
 
-- Iteration order is random.
-- Sorted membership uses `BTreeSet`.
-- Borrowing: `HashSet<&str>` and `HashSet<String>` have different ergonomics.
+- **Depending on iteration order,** as with `HashMap`. Use `BTreeSet` for sorted order.
+- **Choosing the element type without considering lifetimes.** A `HashSet<&str>` borrows
+  from strings that must outlive the set; a `HashSet<String>` owns its elements. Both can
+  be queried with a `&str`.
 
-### 1.7 `BTreeSet<T>`, sorted set
+### 1.7 `BTreeSet<T>`: an ordered set
 
-Internal representation: `BTreeMap<T, ()>`.
+A `BTreeSet<T>` is a `BTreeMap<T, ()>`. Its operations cost O(log n), iteration is sorted,
+and it supports range queries.
 
-- insert/remove/contains: O(log n)
-- iteration sorted
-- range queries
-
-When to use: sorted unique values or range scans.
-
-Runnable example:
+**When to use it.** Use `BTreeSet` for sorted unique values and range scans.
 
 ```rust
 use std::collections::BTreeSet;
@@ -290,18 +320,22 @@ fn main() {
 }
 ```
 
-### 1.8 `BinaryHeap<T>`, priority queue
+### 1.8 `BinaryHeap<T>`: a priority queue
 
-Internal representation: implicit binary heap in a `Vec`.
+A `BinaryHeap` stores a binary heap in a `Vec`: the children of the element at index `i`
+are at indexes `2i + 1` and `2i + 2`.
 
-- `push`: O(log n) amortized
-- `pop` (max): O(log n)
-- `peek`: O(1)
-- max-heap by default; min-heap with `Reverse<T>`
+| Operation | Cost |
+|---|---|
+| `push` | O(log n) worst case, O(1) on average |
+| `pop` | O(log n) |
+| `peek` | O(1) |
 
-When to use: top-k, scheduling, Dijkstra.
+`BinaryHeap` is a **max-heap**: `pop` returns the largest element. For a min-heap, wrap
+elements in `std::cmp::Reverse`.
 
-Runnable example:
+**When to use it.** Use `BinaryHeap` for top-k problems, scheduling by priority or
+deadline, and Dijkstra's algorithm.
 
 ```rust
 use std::cmp::Reverse;
@@ -322,38 +356,50 @@ fn main() {
 }
 ```
 
-Gotchas:
+**Common mistakes:**
 
-- `BinaryHeap` does not provide arbitrary removal/update efficiently.
-- A min-heap needs `Reverse`.
-- To avoid allocating a new `Reverse` each time, store `Reverse<MyType>`.
+- **Expecting to update or remove arbitrary elements.** `BinaryHeap` has no efficient
+  operation for either. A common workaround is to push a new entry and ignore stale
+  entries when they are popped.
+- **Forgetting that it is a max-heap.** Use `Reverse` for a min-heap. `Reverse` is a
+  zero-cost wrapper: it changes only the comparison and adds no allocation or size.
 
-### 1.9 Collection cheat sheet
+### 1.9 Summary table
 
-| Need | Collection | Complexity | Note |
+| Need | Collection | Main cost | Note |
 |---|---|---|---|
-| Default sequential | `Vec<T>` | O(1) push/pop amortized | cache-friendly |
-| Queue/deque/BFS | `VecDeque<T>` | O(1) ends | ring buffer |
-| Ordered key-value | `BTreeMap<K,V>` | O(log n) | range queries |
-| Unordered key-value | `HashMap<K,V>` | O(1) avg | random order |
-| Dedup membership | `HashSet<T>` | O(1) avg | random order |
-| Sorted membership | `BTreeSet<T>` | O(log n) | range queries |
-| Priority queue | `BinaryHeap<T>` | O(log n) push/pop | max heap |
-| Insertion at both ends | `LinkedList<T>` | O(1) ends, O(n) access | avoid in practice |
+| Any sequence | `Vec<T>` | O(1) amortized push and pop | Contiguous; cache-friendly |
+| Queue, deque, BFS | `VecDeque<T>` | O(1) at both ends | Ring buffer |
+| Ordered key-value | `BTreeMap<K, V>` | O(log n) | Range queries |
+| Unordered key-value | `HashMap<K, V>` | O(1) expected | Unspecified order |
+| Membership, deduplication | `HashSet<T>` | O(1) expected | Unspecified order |
+| Sorted membership | `BTreeSet<T>` | O(log n) | Range queries |
+| Priority queue | `BinaryHeap<T>` | O(log n) pop | Max-heap |
+| Splicing lists | `LinkedList<T>` | O(1) at ends, O(n) access | Rarely the best choice |
 
 ---
 
-## 2. Idiomatic Rust coding standards (Rust API Guidelines)
+## 2. Idiomatic Rust APIs
+
+The conventions in this section come from the Rust API Guidelines. Following them makes
+your code look familiar to other Rust developers, and interviewers notice when it does
+not.
 
 ### 2.1 Naming
 
-- `snake_case`: functions, methods, variables, modules
-- `CamelCase`: types, enum variants, traits
-- `SCREAMING_SNAKE_CASE`: constants and statics
-- `&self` methods read only; `&mut self` mutates; `self` consumes
-- Boolean-like methods: `is_empty()`, `contains()`, `has_...`
-- Conversion names: `as_` (cheap, borrowed), `to_` (expensive, owned), `into_`
-  (consuming, owned)
+| Item | Convention | Example |
+|---|---|---|
+| Functions, methods, variables, modules | `snake_case` | `gpu_count` |
+| Types, traits, enum variants | `CamelCase` | `GpuWorkload` |
+| Constants and statics | `SCREAMING_SNAKE_CASE` | `DEFAULT_GPU_COUNT` |
+| Boolean queries | `is_`, `has_`, or a verb | `is_empty()`, `contains()` |
+| Cheap borrowed conversion | `as_` | `as_str()` |
+| Expensive or owned conversion | `to_` | `to_string()` |
+| Conversion that consumes `self` | `into_` | `into_inner()` |
+| Getters | The field name, without `get_` | `image()` |
+
+The receiver shows what a method does with the value: `&self` reads it, `&mut self`
+modifies it, and `self` consumes it.
 
 ```rust
 const DEFAULT_GPU_COUNT: u32 = 1;
@@ -374,9 +420,10 @@ impl GpuWorkload {
 
 ### 2.2 Documentation
 
-- `///` documents the item after it.
-- `//!` documents the module or crate.
-- A doc-test example belongs on any non-trivial API.
+- `///` documents the item that follows it.
+- `//!` documents the enclosing module or crate, and goes at the top of the file.
+- Include an example for any public function whose use is not obvious. Examples in doc
+  comments are compiled and run by `cargo test`, so they stay correct.
 
 ```rust
 /// Returns the number of complete GPU jobs of size `requested` that fit in
@@ -391,7 +438,10 @@ pub fn jobs_that_fit(requested: u32, available: u32) -> u32 {
 }
 ```
 
-### 2.3 Derive common traits
+The example function divides by `requested`, so it panics when `requested` is zero. A
+production version would document that in a `# Panics` section or return an `Option`.
+
+### 2.3 Deriving common traits
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -405,31 +455,44 @@ impl SchedulerConfig {
 }
 ```
 
-Which derives apply:
+Derive a trait when its meaning is correct for the type:
 
-- `Debug` almost always.
-- `Clone` when cheap or API callers need copies.
-- `PartialEq`/`Eq` when equality is meaningful.
-- `Hash` if used in `HashSet`/`HashMap`.
-- `Default` when zero-value config is valid.
+| Trait | Derive it when |
+|---|---|
+| `Debug` | Almost always; it is needed for `{:?}` and for test failure messages |
+| `Clone` | Callers need copies, and copying is not surprisingly expensive |
+| `PartialEq`, `Eq` | Field-by-field equality is the right definition of equality |
+| `Hash` | The type is used as a `HashMap` key or `HashSet` element; it must agree with `Eq` |
+| `Default` | An all-default value is a valid configuration |
+
+The Rust API Guidelines recommend that public types implement the common traits eagerly,
+because users of your crate cannot add them later.
 
 ### 2.4 Constructors
 
-- `new()` for primary constructor.
-- `with_capacity()` for collections/config where capacity is known.
-- `from_...` for conversions.
-- `Default` for zero-value configurations.
-- Builder for many optional fields.
+| Constructor | Use |
+|---|---|
+| `new()` | The primary constructor |
+| `with_capacity(n)` | Collections, or types that preallocate |
+| `from_...()`, or `impl From<T>` | Conversions from another type |
+| `Default` | Types with a sensible default value |
+| A builder | Types with many optional fields |
 
 ### 2.5 Errors
 
-- Library: custom error `enum` with `thiserror`.
-- Binary/application: `anyhow`.
-- Public API: return `Result<T, Self::Error>` with a typed error.
-- Never `unwrap()` in production unless the invariant is locally proven. Where
-  that is unavoidable, `expect("message with invariant")` records the reason.
+- **Libraries** define an error `enum` for their failure cases, commonly with the
+  `thiserror` crate, so callers can match on the cause.
+- **Applications** often use `anyhow::Result` and add context as errors propagate.
+- **Public functions that can fail** return `Result<T, E>` with a specific error type.
+- **Avoid `unwrap()` in production code** unless a local invariant guarantees success. In
+  that case, prefer `expect("...")` with a message that states the invariant.
 
-### 2.6 Builder pattern
+`12-rust-guide-part2-errors-concurrency-sdk.md` covers error handling in detail.
+
+### 2.6 The builder pattern
+
+A builder lets callers set only the fields they need and validates the result once, in
+`build`:
 
 ```rust
 #[derive(Debug, Clone)]
@@ -482,15 +545,21 @@ fn main() -> Result<(), String> {
 }
 ```
 
+The setters take `self` by value and return it, so calls can be chained. `build`
+returns an error when a required field is missing, so an invalid `WorkloadSpec` cannot be
+created.
+
 ---
 
 ## 3. Algebraic data types and pattern matching
 
-Rust structs are product types: they combine fields. Enums are sum types: a
-value is exactly one variant. Together they form ADTs, which model domains
-without illegal states.
+A `struct` is a *product type*: a value contains all of its fields. An `enum` is a *sum
+type*: a value is exactly one of its variants, and each variant can carry its own data.
+Combining the two lets you model a domain so that invalid combinations cannot be
+represented. For example, a failure reason exists only in the `Failed` state, rather
+than as an optional field that might be set in any state.
 
-### 3.1 Typed state with `enum`
+### 3.1 States as an `enum`
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -528,7 +597,14 @@ impl WorkloadState {
 }
 ```
 
-### 3.2 `match` over `if-else`
+`match` must be exhaustive. If you add a variant to `WorkloadState`, every `match` that
+does not handle it fails to compile, so the compiler lists every place that needs to
+change. `can_transition_to` matches on a tuple of the current and next states, which
+expresses the allowed transitions as a table.
+
+### 3.2 `match` instead of `if`-`else` chains
+
+`match` can test ranges and literal patterns directly:
 
 ```rust
 fn classify(status_code: u16) -> &'static str {
@@ -547,7 +623,8 @@ fn main() {
 
 ### 3.3 `if let` and `while let`
 
-`if let` fits when only one variant matters and the `else` arm is trivial:
+Use `if let` when you care about one pattern and the other case is simple. Use
+`while let` to loop for as long as a pattern matches, such as draining a queue:
 
 ```rust
 let mut queue = std::collections::VecDeque::from([1, 2, 3]);
@@ -563,7 +640,9 @@ if let Some(value) = queue.pop_front() {
 }
 ```
 
-### 3.4 Matching on data-carrying variants
+### 3.4 Matching variants that carry data
+
+Patterns bind the fields of a variant to local names:
 
 ```rust
 #[derive(Debug)]
@@ -584,7 +663,13 @@ fn message(error: &ApiError) -> String {
 }
 ```
 
-### 3.5 Guards
+In a real library, implement `std::fmt::Display` for `ApiError` rather than a separate
+`message` function, so the error works with `{}` formatting and with `?` conversions.
+
+### 3.5 Match guards
+
+A guard adds a condition to a pattern. Arms are tried in order, so put the more specific
+arm first:
 
 ```rust
 fn error_severity(err: &ApiError) -> &'static str {
@@ -601,25 +686,29 @@ fn error_severity(err: &ApiError) -> &'static str {
 
 ## 4. Smart pointers and interior mutability
 
-### 4.1 Mental model
+### 4.1 Choosing a pointer type
 
-| Type | Ownership | Mutability | Thread-safe | Use |
+| Type | Ownership | Mutation | Can cross threads | Use |
 |---|---|---|---|---|
-| `Box<T>` | single owner | mutable if owner is `mut` | yes if `T: Send` | heap allocation, recursive types, trait objects |
-| `Rc<T>` | shared owner, non-atomic count | immutable | **no** | same-thread sharing |
-| `Arc<T>` | shared owner, atomic count | immutable | yes | multi-thread sharing |
-| `RefCell<T>` | single owner | runtime checked | **no** | interior mutability in one thread |
-| `Mutex<T>` | single owner | blocking lock | yes | shared mutable state |
-| `RwLock<T>` | single owner | read/write locks | yes | many readers, rare writer |
-| `Weak<T>` | non-owning reference | n/a | n/a | break cycles |
+| `Box<T>` | One owner | Through the owner | If `T: Send` | Heap allocation, recursive types, trait objects |
+| `Rc<T>` | Shared; non-atomic reference count | Shared references only | **No** | Shared ownership within one thread |
+| `Arc<T>` | Shared; atomic reference count | Shared references only | If `T: Send + Sync` | Shared ownership across threads |
+| `RefCell<T>` | One owner | Through `&self`, checked at run time | Can move, cannot be shared | Interior mutability within one thread |
+| `Mutex<T>` | One owner, usually inside an `Arc` | Through a lock guard | Yes | Shared mutable state across threads |
+| `RwLock<T>` | One owner, usually inside an `Arc` | Many readers or one writer | Yes | Read-heavy shared state |
+| `Weak<T>` | Does not own | Must be upgraded first | Like `Rc` or `Arc` | Back references, breaking cycles |
+
+The common combinations are `Rc<RefCell<T>>` for shared mutable data in one thread and
+`Arc<Mutex<T>>` for shared mutable data across threads.
 
 ### 4.2 `Box<T>`
 
-`Box` allocates on the heap. It is needed for:
+`Box` puts a value on the heap and owns it. You need it for:
 
-- recursive types (tree/list)
-- trait objects (`Box<dyn Error>`)
-- moving large data while keeping stack small
+- **Recursive types.** A type cannot contain itself directly, because its size would be
+  infinite. A `Box` has a fixed size.
+- **Trait objects.** `Box<dyn Error>` holds a value of any type that implements the trait.
+- **Large values** that you want to move without copying many bytes.
 
 ```rust
 #[derive(Debug)]
@@ -643,9 +732,11 @@ fn main() {
 
 ### 4.3 `Rc<T>` and `RefCell<T>`
 
-`Rc` gives shared ownership but no mutation. `RefCell` adds runtime borrow
-checking. The combination `Rc<RefCell<T>>` is the classic graph/list building
-block inside one thread.
+`Rc` lets several owners share one value; the value is dropped when the last `Rc` is
+dropped. Through an `Rc` you get only shared references, so you cannot modify the value.
+`RefCell` provides mutation through a shared reference by moving the borrow check to run
+time: `borrow()` and `borrow_mut()` track active borrows and panic if the rules are
+broken. Together, `Rc<RefCell<T>>` gives shared, mutable data within one thread.
 
 ```rust
 use std::cell::RefCell;
@@ -663,10 +754,17 @@ fn main() {
 }
 ```
 
-Gotcha: `borrow()` panics if a mutable borrow is already active, so holding a
-`Ref`/`RefMut` across another call that borrows the same `RefCell` panics.
+> **Warning:** `borrow_mut()` panics if any other borrow of the same `RefCell` is active,
+> and `borrow()` panics if a mutable borrow is active. The most common cause is holding a
+> `Ref` or `RefMut` guard in a variable while calling a function that borrows the same
+> cell. Keep guards in the smallest possible scope, or use `try_borrow_mut()` to get a
+> `Result` instead of a panic.
 
 ### 4.4 `Arc<T>` and `Mutex<T>`
+
+`Arc` is the thread-safe version of `Rc`: its reference count is updated with atomic
+operations. `Mutex` provides mutation through a lock. Together they share mutable state
+between threads:
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -694,18 +792,28 @@ fn main() {
 }
 ```
 
-Gotchas:
+Guidelines for using a mutex:
 
-- A mutex guard should be held as briefly as possible.
-- Unknown or async code should not be called while holding a guard.
-- `try_lock()` where blocking is not acceptable.
-- Poisoning: if a thread panics while holding the guard, later `lock()` returns
-  `Err(PoisonError)`. Recovery is `into_inner()`, or the error can be propagated.
+- **Hold the guard briefly.** The lock is released when the guard is dropped, at the end
+  of its scope. Copy out what you need and let the guard go.
+- **Do not call unknown code while holding the guard.** A callback that tries to take the
+  same lock deadlocks.
+- **Do not hold a `std::sync::Mutex` guard across an `.await`.** The task can be suspended
+  while holding the lock. Use `tokio::sync::Mutex` if a lock must be held across an
+  await point.
+- **Use `try_lock()`** when waiting for the lock is not acceptable.
+- **Understand poisoning.** If a thread panics while holding the guard, the mutex is
+  marked poisoned, and later calls to `lock()` return `Err(PoisonError)`. You can recover
+  the data with `into_inner()` on the error, or propagate the failure.
+
+For a simple counter like this one, `AtomicU32` avoids the lock entirely.
 
 ### 4.5 `RwLock<T>`
 
-Many readers, occasional writer. `RwLock` suits workloads where reads dominate
-and the critical section is short.
+An `RwLock` allows many readers at the same time or one writer. It helps when reads are
+much more frequent than writes and each read holds the lock for a meaningful amount of
+time. For very short critical sections, a `Mutex` is often faster, because an `RwLock`
+has more bookkeeping.
 
 ```rust
 use std::sync::{Arc, RwLock};
@@ -731,14 +839,25 @@ fn main() {
 }
 ```
 
-Gotcha: writer starvation is possible under heavy read load, so read sections
-should be short.
+> **Warning:** This example does not compile as written. The second `let config` shadows
+> the original `Arc`, and the reader's `move` closure takes ownership of it, so the
+> writer's `Arc::clone(&config)` uses a moved value (error E0382). Give each clone its own
+> name, for example `let reader_config = Arc::clone(&config);` and
+> `let writer_config = Arc::clone(&config);`, and use those names inside the closures.
 
-### 4.6 `Weak<T>` breaks cycles
+Whether writers can be starved by a continuous stream of readers depends on the
+operating system's lock implementation. Keep read sections short.
 
-If `A` owns `B` and `B` owns `A` via `Rc`, neither is ever freed, so back-edges
-use `Weak`. This is why the doubly linked list in this repo stores `Weak` for
-`prev`.
+### 4.6 `Weak<T>`
+
+If two values own each other through `Rc`, their reference counts never reach zero, and
+neither is freed. A `Weak` pointer refers to a value without owning it, so it does not
+keep the value alive. To use the value, call `upgrade()`, which returns `None` if the
+value has already been dropped.
+
+Use `Rc` for references from parent to child and `Weak` for references from child to
+parent. The doubly linked list in this repository stores its `prev` pointers as `Weak`
+for the same reason.
 
 ```rust
 use std::cell::RefCell;
@@ -766,21 +885,33 @@ fn main() {
 }
 ```
 
+The child's reference to its parent is weak, so the child does not keep the parent
+alive: when every `Rc` to the parent is dropped, the parent is freed, and the child's
+`upgrade()` then returns `None`.
+
 ### 4.7 `Send` and `Sync`
 
-- `Send`: type can be moved to another thread.
-- `Sync`: type can be shared by reference across threads (`&T` is `Send`).
+Two marker traits determine what can cross thread boundaries:
 
-Implications:
+- **`Send`**: a value of the type can be moved to another thread.
+- **`Sync`**: a shared reference `&T` can be used from several threads at once.
+  Equivalently, `T` is `Sync` if `&T` is `Send`.
 
-- `Rc<T>` is neither `Send` nor `Sync`.
-- `Arc<T>` is `Send + Sync` if `T: Send + Sync`.
-- `RefCell<T>` is `Send` only if `T: Send`, but not `Sync`.
-- `Mutex<T>` is `Sync` if `T: Send`.
-- Raw pointers are neither by default; unsafe wrapper types must document safety.
+The compiler implements both automatically for types whose fields all implement them.
 
-A custom type is `Send + Sync` when it only composes `Send + Sync` fields. A
-compile-time assertion checks that:
+| Type | `Send` | `Sync` | Reason |
+|---|---|---|---|
+| `Rc<T>` | No | No | The reference count is not atomic |
+| `Arc<T>` | If `T: Send + Sync` | If `T: Send + Sync` | The count is atomic, and the value is shared |
+| `RefCell<T>` | If `T: Send` | No | The borrow flag is not synchronized |
+| `Mutex<T>` | If `T: Send` | If `T: Send` | The lock synchronizes access |
+| Raw pointers | No | No | The compiler cannot know how they are used |
+
+A type that wraps raw pointers must implement `Send` or `Sync` manually with `unsafe
+impl`, and document why that is sound.
+
+To confirm at compile time that a type can be shared across threads, write a function
+with the bound and call it in a test:
 
 ```rust
 fn assert_send_sync<T: Send + Sync>() {}
@@ -795,14 +926,21 @@ fn scheduler_is_send_sync() {
 }
 ```
 
+If someone later adds an `Rc` field to `Scheduler`, this test stops compiling.
+
 ---
 
 ## 5. Summary
 
-- Internal representation is what explains the complexity of `Vec`, `VecDeque`,
-  `HashMap`, `BTreeMap`, and `BinaryHeap`.
-- `entry()` is the idiom for hash-map insert-or-update.
-- State and errors are modelled with `enum` + `match`.
-- `Rc<RefCell<T>>` covers single-thread graphs and lists; `Arc<Mutex<T>>` covers
-  shared multithread state; `Weak` breaks cycles.
-- Cache locality is why `Vec`/`VecDeque` usually beat `LinkedList`.
+- The memory layout of each collection explains its costs. `Vec` and `VecDeque` are
+  contiguous and usually faster than `LinkedList`.
+- Use `HashMap` for expected O(1) lookup and `BTreeMap` for ordering and ranges. The
+  `entry` API performs insert-or-update with one lookup.
+- Follow the API Guidelines' naming conventions, derive common traits, and use builders
+  for types with many optional fields.
+- Model states and errors with `enum`, and let exhaustive `match` find every place that
+  must handle a new variant.
+- Use `Rc<RefCell<T>>` for shared mutable data in one thread, `Arc<Mutex<T>>` across
+  threads, and `Weak` for back references.
+- `Send` and `Sync` are derived from a type's fields; `Rc` and `RefCell` prevent a type
+  from being shared across threads.

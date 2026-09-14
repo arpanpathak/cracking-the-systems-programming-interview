@@ -1,41 +1,64 @@
 # 10: GPU Operator & Kubebuilder Deep Dive
 
-The GPU Operator combines Kubernetes controllers, CRDs, DaemonSets, node feature
-discovery, device plugins, container runtime configuration, MIG, monitoring, and
-validation. The sections below cover how the parts fit together and which practices
-transfer to a Kubebuilder project.
+A Kubernetes node with an NVIDIA GPU cannot run GPU workloads until several pieces of
+software are installed and configured on it. The NVIDIA GPU Operator automates that
+work. It is also one of the largest operators in common use, and its design shows how
+an operator coordinates many node-level components, handles partial failure, and
+reports status.
 
-> Version note: GPU Operator evolves quickly. Modern releases expose a
-> `ClusterPolicy` custom resource (often named `cluster-policy`) and are
-> installed with a Helm chart. Some older releases were driven entirely by Helm
-> values. Component names also change across releases. The architecture and
-> reasoning below are stable; exact names, labels, and flags should be verified
-> against the release under discussion.
+This chapter explains what each GPU Operator component does, how a GPU node and a GPU
+Pod move through the system, and how GPUs are shared. It then lists the design
+practices that apply to any operator you build with Kubebuilder, and ends with a
+troubleshooting guide and interview questions.
 
----
+> **Note:** The GPU Operator changes quickly. Current releases are installed with a
+> Helm chart and configured through a `ClusterPolicy` custom resource, usually named
+> `cluster-policy`. Component names, labels, and configuration fields change between
+> releases. The architecture described here is stable, but check exact names and flags
+> against the documentation for the release you use.
 
-## 1. What the GPU Operator solves
+**This chapter covers**
 
-A GPU node is not useful to Kubernetes until several node-level pieces exist:
-
-1. The kernel driver is installed and loaded on the host.
-2. The user-space driver libraries are available to containers.
-3. The container runtime knows how to inject GPU devices/libraries.
-4. A device plugin advertises `nvidia.com/gpu` to the kubelet.
-5. The node is labelled so the scheduler can find the right GPU product/MIG
-   profile.
-6. Monitoring can export DCGM metrics.
-7. Validation that a GPU workload can run.
-
-Doing this by hand across a cluster is slow and error-prone. The GPU Operator
-turns it into declarative cluster state: when a GPU node joins, components are
-reconciled onto it automatically.
+- The node-level software a GPU node needs, and why an operator manages it
+- The GPU Operator's components: NFD, the driver, the container toolkit, the device plugin, GPU Feature Discovery, the MIG manager, DCGM, and the validator
+- The device plugin API and the path from a Pod's GPU request to a device in the container
+- Whole GPUs, MIG, time-slicing, MPS, and vGPU
+- Operator design practices demonstrated by the GPU Operator
+- Troubleshooting GPU allocation and GPU access in containers
 
 ---
 
-## 2. Deployment model and reconciliation
+## 1. The problem the GPU Operator solves
 
-Typical install:
+Before Kubernetes can schedule GPU workloads on a node, all of the following must be
+true:
+
+1. The NVIDIA kernel driver is installed and loaded on the host.
+2. The driver's user-space libraries, such as `libcuda.so`, can be made available to
+   containers.
+3. The container runtime is configured to add GPU devices and libraries to containers.
+4. A device plugin advertises `nvidia.com/gpu` to the kubelet, so the node reports GPU
+   capacity.
+5. The node has labels that describe its GPUs, so workloads can select a GPU model or
+   MIG configuration.
+6. GPU metrics are exported for monitoring.
+7. A test workload has confirmed that the whole stack works.
+
+Doing this by hand on every node is slow, and it has to be repeated when nodes are
+added, reimaged, or upgraded. The GPU Operator turns the requirements into declarative
+cluster state: when a GPU node joins the cluster, the operator deploys and configures
+each component on it automatically.
+
+---
+
+## 2. Installation and the reconciliation model
+
+Install the operator with Helm:
+
+```bash
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+helm repo update
+```
 
 ```bash
 helm install gpu-operator nvidia/gpu-operator \
@@ -43,16 +66,9 @@ helm install gpu-operator nvidia/gpu-operator \
   --create-namespace
 ```
 
-The Helm chart installs:
-
-- a namespace (`gpu-operator`),
-- CRDs (notably `ClusterPolicy`),
-- the GPU Operator controller Deployment (manager),
-- RBAC,
-- service accounts,
-- configuration for the operator.
-
-A typical installation produces:
+The chart installs the `gpu-operator` namespace, the CRDs (including `ClusterPolicy`),
+the operator's controller Deployment, its service accounts and RBAC, and a default
+`ClusterPolicy`:
 
 ```bash
 kubectl get clusterpolicy
@@ -60,111 +76,107 @@ NAME             AGE
 cluster-policy   2m
 ```
 
-The `ClusterPolicy` object is the desired state. The GPU Operator controller
-watches it (and nodes/daemonsets) and reconciles the actual node-level
-components. This is the Kubebuilder/controller-runtime model from
-`docs/04-kubernetes-operator.md`: a custom resource is the API contract; a
-controller turns it into built-in Kubernetes objects.
+The `ClusterPolicy` object is the desired state for GPU software across the cluster.
+The operator's controller, built on controller-runtime, watches the `ClusterPolicy`,
+the cluster's nodes, and the resources it creates, and reconciles the node-level
+components to match. This is the model described in `04-kubernetes-operator.md`: a
+custom resource is the API, and a controller turns it into built-in Kubernetes objects.
 
 ```text
 User
- │ helm install / kubectl edit clusterpolicy
+ │ helm install, or kubectl edit clusterpolicy
  ▼
-ClusterPolicy CR (declarative desired state)
+ClusterPolicy (desired state)
  │
  ▼
-GPU Operator controller (Kubebuilder/controller-runtime manager)
- │  reads ClusterPolicy + node labels + component status
- │  watches owned DaemonSets/Deployments/Jobs
+GPU Operator controller (controller-runtime manager)
+ │  reads the ClusterPolicy, node labels, and component status
+ │  watches the DaemonSets and other objects it owns
  ▼
-DaemonSets + Deployments + Jobs + ConfigMaps
+DaemonSets, Deployments, ConfigMaps, and RuntimeClass
  │
- ├── Node Feature Discovery ──► labels nodes
- ├── Driver DaemonSet        ──► kernel driver/user libs
- ├── Container Toolkit       ──► runtime config + CDI
- ├── Device Plugin DaemonSet ──► advertises nvidia.com/gpu
- ├── GPU Feature Discovery   ──► GPU labels
- ├── MIG Manager             ──► partitions GPUs
- ├── DCGM Exporter           ──► metrics
- └── Validator               ──► end-to-end check
+ ├── Node Feature Discovery   ──► labels nodes that have NVIDIA PCI devices
+ ├── Driver                   ──► loads the kernel driver, provides user-space libraries
+ ├── Container Toolkit        ──► configures the container runtime and CDI
+ ├── Device Plugin            ──► advertises nvidia.com/gpu to the kubelet
+ ├── GPU Feature Discovery    ──► labels nodes with GPU model, memory, and MIG details
+ ├── MIG Manager              ──► applies MIG partition layouts
+ ├── DCGM Exporter            ──► exports GPU metrics to Prometheus
+ └── Operator Validator       ──► confirms each layer works
 ```
 
 ---
 
-## 3. Component-by-component breakdown
+## 3. The components
 
-### 3.1 GPU Operator controller
+### 3.1 The operator controller
 
-Responsibilities:
+The controller has these responsibilities:
 
-- reconcile `ClusterPolicy`,
-- create/update the component DaemonSets/Deployments,
-- react to nodes joining/leaving and label changes,
-- manage enable/disable flags (driver, toolkit, device plugin, DCGM, MIG, etc.),
-- report operator/component status.
+- Reconcile the `ClusterPolicy`.
+- Create and update a DaemonSet or other objects for each enabled component.
+- React when nodes are added, removed, or relabeled.
+- Enable or disable components according to fields such as `driver.enabled`,
+  `toolkit.enabled`, and `devicePlugin.enabled`. A cluster whose nodes already have a
+  driver installed, for example, sets `driver.enabled: false`.
+- Order the components, because each one depends on the ones before it.
+- Report the state of each component in the `ClusterPolicy` status.
 
-Kubebuilder/controller-runtime patterns here:
+The controller-runtime patterns it uses:
 
-- **One manager with many watches.** The controller may watch `ClusterPolicy`,
-  nodes, and owned DaemonSets, and map relevant events to reconciles.
-- **Declarative component enablement.** A field such as
-  `driver.enabled` / `devicePlugin.enabled` changes what children are created.
-- **Status carries state.** The ClusterPolicy/operator status tells users which
-  components are deployed, what version, and what failed.
-- **Upgrades are rollouts.** The operator does not replace a running driver in
-  place; it rolls out DaemonSets with node lifecycle handling.
+| Pattern | How the GPU Operator uses it |
+|---|---|
+| One manager with several watches | Watches the `ClusterPolicy`, nodes, and owned DaemonSets, and maps each event to a reconcile |
+| Declarative enablement | A boolean field in the spec controls whether a component's objects exist |
+| Status reports progress | The `ClusterPolicy` status shows whether the stack is `ready` or still `notReady` |
+| Upgrades are rollouts | A new driver version is rolled out node by node, not replaced in place on all nodes at once |
 
 ### 3.2 Node Feature Discovery (NFD)
 
-NFD detects hardware features and labels nodes. GPU Operator can deploy NFD
-workers as a DaemonSet. Features discovered include PCI devices, kernel
-modules, CPUs, and network devices. GPU-related output might label nodes
-with PCI vendor/device info used by later components.
+NFD detects hardware and kernel features on each node and records them as node labels:
+PCI devices, CPU features, kernel modules, and more. The GPU Operator can deploy NFD
+itself, or use an existing installation.
 
-The operator needs to distinguish GPU nodes from CPU nodes.
-Rather than assuming every node has a GPU, it reacts to labels produced by NFD
-(or by node metadata in cloud environments).
+The operator uses these labels to decide which nodes need GPU components. A node with
+an NVIDIA PCI device receives a label such as
+`feature.node.kubernetes.io/pci-10de.present=true` (`10de` is NVIDIA's PCI vendor ID),
+and the operator marks the node with `nvidia.com/gpu.present=true`. The component
+DaemonSets select nodes with that label, so CPU-only nodes do not run them.
 
-An operator that deploys per-node DaemonSets often starts by watching node
-labels, and NFD is one way to produce those labels.
+Selecting nodes by discovered labels is a general technique for any operator that
+deploys per-node software only to certain hardware.
 
-### 3.3 Driver DaemonSet
+### 3.3 The driver
 
-The driver component installs/manages the kernel driver and user-space
-libraries on each GPU node.
+The driver component runs a container on each GPU node that installs and loads the
+NVIDIA kernel driver and provides the user-space libraries. Running the driver as a
+container lets the operator manage its version without building it into the node
+image, but it is complex:
 
-On bare metal or non-custom cloud images this is complex:
+- The kernel module must be built for, or match, the node's exact kernel version.
+- The driver container must be privileged, because it loads kernel modules and writes
+  to host paths such as `/run/nvidia`.
+- Loading a new driver requires that no process is using the GPU, so running GPU
+  workloads must be stopped first.
+- After installation, the node must be validated before GPU workloads are scheduled
+  on it.
 
-- the driver must match the kernel version,
-- DKMS may be used to build the module for the running kernel,
-- the node may need a reboot or module reload,
-- driver containers are privileged because they must access host kernel
-  modules, `/lib/modules`, `/usr/src`, `/run/nvidia`, etc.,
-- after install, the node should be validated before workloads are scheduled.
+If the node image already contains the driver, as on many managed Kubernetes services,
+disable this component.
 
-The operator encodes this lifecycle instead of requiring an admin to run an
-installer per node.
+### 3.4 The container toolkit
 
-GPU Operator labels and fields:
+The NVIDIA Container Toolkit makes the host's GPUs usable inside containers. The toolkit
+component:
 
-- driver version,
-- CUDA driver version labels,
-- node state (driver ready/not ready),
-- `nvidia.com/gpu.present`, product, memory, etc. produced by GPU Feature
-  Discovery (below).
+- Installs the NVIDIA container runtime and configures containerd or CRI-O to use it.
+- Creates a `RuntimeClass` named `nvidia` that selects that runtime handler.
+- In current versions, generates **Container Device Interface (CDI)** specifications,
+  such as `/var/run/cdi/nvidia.yaml`. A CDI specification lists, for each GPU, the
+  device nodes, library mounts, and environment variables to add to a container, so
+  any CDI-aware runtime can add GPUs without an NVIDIA-specific hook.
 
-### 3.4 Container toolkit / runtime component
-
-The toolkit makes the host's GPU visible to containers. Components:
-
-- installs or configures the container runtime,
-- may configure containerd (`nvidia-container-runtime`), CRI-O, or Docker,
-- creates/updates a `RuntimeClass` named `nvidia` (or similar) when requested,
-- modern versions can generate **CDI (Container Device Interface)** specs under
-  `/etc/cdi` so that containers can request `nvidia.com/gpu=0`-style CDI
-  devices without a custom runtime.
-
-RuntimeClass example in a workload:
+A workload that uses the runtime class specifies:
 
 ```yaml
 runtimeClassName: nvidia
@@ -173,142 +185,151 @@ resources:
     nvidia.com/gpu: 1
 ```
 
-If CDI is enabled, the runtime can inject the device based on CDI annotations
-and specs. Older/non-CDI flows use the container runtime hook:
-`nvidia-container-cli` mounts driver libraries and device nodes into the
-container based on `NVIDIA_VISIBLE_DEVICES`.
+Without CDI, the NVIDIA runtime calls `nvidia-container-cli` before the container
+starts. It reads `NVIDIA_VISIBLE_DEVICES` and mounts the corresponding device nodes and
+driver libraries into the container.
 
-### 3.5 Device Plugin
+### 3.5 The device plugin
 
-The device plugin is the Kubernetes extension point for node resources that are
-not CPU/memory. It runs as a DaemonSet on GPU nodes and registers with the
-local kubelet over a Unix socket.
+A device plugin is the Kubernetes extension point for hardware resources other than CPU
+and memory. The NVIDIA device plugin runs as a DaemonSet on GPU nodes and communicates
+with the kubelet over gRPC on a Unix socket.
 
-The device plugin gRPC API:
+The device plugin API has five methods:
 
-- `GetDevicePluginOptions`
-- `ListAndWatch`, return the list of devices (IDs + health) and stream changes.
-- `Allocate`, called when a Pod using the devices is admitted; return
-  container runtime settings: environment variables, mounts, devices.
-- `GetPreferredAllocation`, optional, helps the scheduler choose devices.
-- `PreStartContainer`, optional.
+| Method | Purpose |
+|---|---|
+| `GetDevicePluginOptions` | Tells the kubelet which optional methods the plugin implements |
+| `ListAndWatch` | Streams the list of devices, with their IDs and health, and sends an update whenever a device's health changes |
+| `GetPreferredAllocation` | Optional. Suggests which specific devices to assign, for example GPUs connected by NVLink |
+| `Allocate` | Called when a container is being created with devices assigned. Returns the environment variables, mounts, device nodes, or CDI device names for those devices |
+| `PreStartContainer` | Optional. Performs device-specific setup before the container starts |
 
-Registration flow:
+Registration and allocation proceed as follows:
 
-1. Device plugin starts and connects to kubelet via
-   `/var/lib/kubelet/device-plugins/kubelet.sock`.
-2. Kubelet registers the plugin and learns the resource name
-   (`nvidia.com/gpu`) and device list.
-3. Kubelet updates node `capacity` and `allocatable` for the resource.
-4. Scheduler uses the extended resource to place Pods.
-5. On Pod admission, kubelet calls `Allocate` for the requested devices.
-6. The plugin returns the concrete device nodes, mounts, and environment
-   needed for the container runtime.
+1. The plugin starts, opens its own gRPC socket, and registers with the kubelet through
+   `/var/lib/kubelet/device-plugins/kubelet.sock`, giving its resource name,
+   `nvidia.com/gpu`.
+2. The kubelet connects back and calls `ListAndWatch`.
+3. The kubelet sets the node's `capacity` and `allocatable` for `nvidia.com/gpu` to the
+   number of healthy devices.
+4. The scheduler places Pods by comparing their requests with each node's allocatable
+   count. The scheduler sees only a number, not individual GPUs.
+5. When the kubelet admits a Pod, its device manager chooses specific devices for each
+   container and calls `Allocate` with their IDs.
+6. The plugin returns the runtime settings for those devices, and the kubelet passes
+   them to the container runtime.
 
-The GPU Operator does not schedule Pods; it installs the plugin that lets the
-scheduler and kubelet perform GPU allocation. The scheduler only counts integers;
-the device plugin converts those integers into specific devices at allocate time.
+The GPU Operator does not schedule Pods. It installs the device plugin, and the
+scheduler and kubelet use it to allocate GPUs.
+
+If the kubelet restarts, it removes its socket and every plugin must register again.
+The NVIDIA plugin watches the socket directory and re-registers automatically.
 
 ### 3.6 GPU Feature Discovery (GFD)
 
-GFD discovers GPU properties on each node and labels it. Examples:
+GFD runs on each GPU node and adds labels that describe the GPUs:
 
-- product name (e.g. `NVIDIA-A100-SXM4-80GB`),
-- memory size,
-- GPU count,
-- driver/CUDA version,
-- MIG capability/profile.
+| Label | Example value |
+|---|---|
+| `nvidia.com/gpu.product` | `NVIDIA-A100-SXM4-80GB` |
+| `nvidia.com/gpu.memory` | `81920` (MiB) |
+| `nvidia.com/gpu.count` | `8` |
+| `nvidia.com/cuda.driver.major` | `550` |
+| `nvidia.com/mig.capable` | `true` |
 
-These labels let users express node selection in Pod specs:
+Workloads use these labels to select hardware:
 
 ```yaml
 nodeSelector:
   nvidia.com/gpu.product: NVIDIA-A100
 ```
 
-They also let cluster autoscalers, billing, and scheduling policies make
-product-aware decisions.
+The label value must match exactly. In this example, the value would need to be
+`NVIDIA-A100-SXM4-80GB` to match the node in the table above. Autoscalers, billing
+systems, and scheduling policies also use these labels to make decisions based on the
+GPU model.
 
-### 3.7 MIG manager
+### 3.7 The MIG manager
 
-MIG (Multi-Instance GPU) partitions supported GPUs into isolated compute
-instances with dedicated memory and compute slices. The MIG manager can:
+Multi-Instance GPU (MIG) divides a supported GPU, such as an A100 or H100, into as many
+as seven GPU instances. Each instance has dedicated memory and compute and its own
+fault isolation. The MIG manager:
 
-- configure MIG mode on GPUs,
-- create/delete GPU instances and compute instances,
-- keep configuration consistent across reboots,
-- expose MIG devices to the device plugin.
+- Enables or disables MIG mode on each GPU.
+- Creates the GPU instances described by a named layout, selected with the
+  `nvidia.com/mig.config` node label.
+- Stops the GPU clients on the node while it changes the layout, then restarts them.
+- Reapplies the layout after a reboot.
 
-MIG strategies:
+The device plugin exposes MIG instances according to a *MIG strategy*:
 
-- **none**: no MIG partitioning; whole GPUs are exposed.
-- **single**: all GPUs use the same MIG profile; each slice becomes a schedulable
-  unit of `nvidia.com/gpu` (or a MIG-specific resource).
-- **mixed**: individual MIG devices with different profiles are exposed; this is
-  more flexible but more complex for scheduling/labels.
+| Strategy | Resources advertised |
+|---|---|
+| `none` | Whole GPUs as `nvidia.com/gpu`; MIG is not used |
+| `single` | Every GPU on the node uses the same profile, and each MIG instance is advertised as `nvidia.com/gpu` |
+| `mixed` | GPUs can use different profiles, and each profile has its own resource name, such as `nvidia.com/mig-1g.10gb` or `nvidia.com/mig-3g.40gb` |
 
-MIG is not a software emulation; it provides hardware isolation of compute,
-memory, and fault domains. It is different from **time-slicing**, which lets
-multiple Pods share one GPU over time without memory isolation.
+MIG isolation is enforced by the GPU hardware. Time-slicing, described in section 6,
+shares a GPU in software without memory isolation.
 
-### 3.8 DCGM exporter
+### 3.8 DCGM and the DCGM exporter
 
-DCGM (Data Center GPU Manager) exposes GPU telemetry: utilization, memory,
-temperature, power, clocks, PCIe throughput, Xid/ECC counters, MIG usage, etc.
-The exporter runs as a DaemonSet and produces Prometheus metrics, which
-Grafana/Prometheus scrape.
+NVIDIA Data Center GPU Manager (DCGM) collects GPU telemetry and health information.
+The DCGM exporter runs as a DaemonSet and publishes the data as Prometheus metrics.
+Commonly used metrics include:
 
-Metric categories:
+| Metric | Meaning |
+|---|---|
+| `DCGM_FI_DEV_GPU_UTIL` | GPU utilization, in percent |
+| `DCGM_FI_DEV_MEM_COPY_UTIL` | Memory bus utilization, in percent |
+| `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_FREE` | Framebuffer memory used and free, in MiB |
+| `DCGM_FI_DEV_GPU_TEMP` | GPU temperature, in degrees Celsius |
+| `DCGM_FI_DEV_POWER_USAGE` | Power draw, in watts |
+| `DCGM_FI_DEV_XID_ERRORS` | The most recent Xid error code |
+| `DCGM_FI_DEV_ECC_SBE_VOL_TOTAL`, `DCGM_FI_DEV_ECC_DBE_VOL_TOTAL` | Single-bit and double-bit ECC errors |
 
-- `DCGM_FI_DEV_GPU_UTIL`,
-- `DCGM_FI_DEV_MEM_COPY_UTIL`,
-- `DCGM_FI_DEV_ENC_UTIL`,
-- `DCGM_FI_DEV_MEMORY_USED` / `DCGM_FI_DEV_MEMORY_FREE`,
-- `DCGM_FI_DEV_GPU_TEMP`,
-- `DCGM_FI_DEV_POWER_USAGE`,
-- `DCGM_FI_DEV_XID_ERRORS`,
-- `DCGM_FI_DEV_ECC_CURRENT`,
-- MIG device counters.
+The exporter adds Pod, namespace, and container labels to each metric, so usage can be
+attributed to workloads. Control plane monitoring, billing, and node health checks use
+these metrics.
 
-These feed control-plane monitoring, billing, and node-health checks.
+### 3.9 The operator validator
 
-### 3.9 Validator
+The validator confirms that each layer works before workloads rely on it. It runs as a
+DaemonSet whose init containers check, in order, that the driver is loaded, that the
+container toolkit is configured, that a CUDA sample runs in a container, and that the
+device plugin advertises GPUs. Each successful step writes a status file that the next
+component waits for.
 
-The GPU Operator validator runs after components are installed to prove the
-GPU stack works end to end. It may:
-
-- create a small CUDA workload on a GPU node,
-- check that the container can see the GPU,
-- verify driver, runtime, device plugin, and monitoring integration.
-
-The validator demonstrates an operator pattern: a rollout is not proven healthy by
-DaemonSets reporting ready, so the operator runs a workload probe.
-
----
-
-## 4. Lifecycle of a GPU node under the operator
-
-1. Node joins the cluster (or is labelled as having a GPU).
-2. NFD labels the node with PCI/GPU-related features.
-3. GPU Operator sees the labels and/or ClusterPolicy and ensures the driver,
-   toolkit, device plugin, DCGM, MIG, and validator components are scheduled to
-   that node.
-4. The driver DaemonSet installs/loads the driver.
-5. The toolkit configures the container runtime/RuntimeClass/CDI.
-6. The device plugin starts, registers with kubelet, and advertises
-   `nvidia.com/gpu` (and MIG resources if enabled).
-7. GFD labels GPU product/memory/count.
-8. The validator runs and marks the node/operator state healthy.
-9. Users create Pods requesting `nvidia.com/gpu`; the scheduler places them;
-   kubelet calls `Allocate`; the runtime injects devices.
-
-Node reboots require drivers to reload, MIG configuration to persist, and the
-device plugin to re-register with the kubelet. The operator's DaemonSets and
-stateful reconciliation handle this.
+The validator demonstrates a general principle: a DaemonSet reporting its Pods as
+ready does not prove that the feature works. An operator can run a small workload that
+exercises the real path.
 
 ---
 
-## 5. GPU scheduling path from Pod to device
+## 4. The lifecycle of a GPU node
+
+1. A node with GPUs joins the cluster.
+2. NFD labels the node with its PCI devices.
+3. The GPU Operator marks the node as a GPU node, and the component DaemonSets schedule
+   Pods on it.
+4. The driver Pod builds or loads the kernel driver.
+5. The toolkit Pod configures the container runtime, the `nvidia` RuntimeClass, and CDI.
+6. The device plugin registers with the kubelet and advertises `nvidia.com/gpu`, or MIG
+   resources.
+7. GPU Feature Discovery adds labels for the GPU model, memory, and count.
+8. The validator confirms the stack, and DCGM begins exporting metrics.
+9. Users create Pods that request `nvidia.com/gpu`. The scheduler places them, the
+   kubelet calls `Allocate`, and the runtime adds the devices to the containers.
+
+When a node reboots, the driver must be loaded again, the MIG layout must be reapplied,
+and the device plugin must register again. Because each component is a DaemonSet Pod
+that repeats its setup when it starts, the node returns to a working state without
+manual steps.
+
+---
+
+## 5. From a Pod's GPU request to a device
 
 ```text
 Pod spec
@@ -317,94 +338,94 @@ Pod spec
       nvidia.com/gpu: 1
         │
         ▼
-API server admission / scheduler
-  scheduler sees nvidia.com/gpu in node allocatable
+Scheduler
+  chooses a node whose allocatable nvidia.com/gpu covers the request
         │
         ▼
-Kubelet (node)
-  admits Pod, calls Device Plugin Allocate
+Kubelet on that node
+  admits the Pod; the device manager selects a GPU and calls Allocate
         │
         ▼
-Device plugin returns:
-  env: NVIDIA_VISIBLE_DEVICES=GPU-<uuid>
-  mounts/device nodes
+Device plugin returns
+  NVIDIA_VISIBLE_DEVICES=GPU-<uuid>, or a CDI device name such as nvidia.com/gpu=<uuid>
         │
         ▼
-Container runtime (containerd/CRI-O + container toolkit/CDI)
-  injects /dev/nvidia*, libcuda, etc.
+Container runtime (containerd or CRI-O, with the NVIDIA runtime or CDI)
+  adds /dev/nvidia* device nodes and driver libraries such as libcuda.so
         │
         ▼
-Pod container runs nvidia-smi/CUDA successfully
+The container runs nvidia-smi or a CUDA application
 ```
 
-**Extended resources must be specified as limits**, and for extended resources
-Kubernetes requires requests == limits when requests are omitted. The Pod in the
-sample above is valid because the resource appears in `limits`.
+`nvidia.com/gpu` is an extended resource, and Kubernetes requires extended resources
+to be specified in `limits`. If `requests` is omitted, it defaults to the limit; if it
+is specified, it must equal the limit. The Pod above is valid because the resource
+appears in `limits`.
 
 ---
 
-## 6. MIG, time-slicing, and vGPU compared
+## 6. Ways to share GPUs
 
-| Sharing mode | Isolation | Typical use |
+| Mode | Isolation | Typical use |
 |---|---|---|
-| Whole GPU (`nvidia.com/gpu=1`) | Strong | One large workload per GPU |
-| MIG | Hardware isolation of compute/memory | Multiple medium workloads, QoS-sensitive |
-| Time-slicing | Software time-sharing only; no memory isolation | Interactive/dev workloads, oversubscription |
-| vGPU | Virtual GPU in virtualized environments | VMs with accelerated graphics/compute |
+| Whole GPU (`nvidia.com/gpu: 1`) | Complete: one workload owns the GPU | Training and large inference workloads |
+| MIG | Hardware isolation of memory, compute, and faults | Several medium workloads with predictable performance |
+| Time-slicing | None for memory or faults; workloads take turns on the GPU | Development, notebooks, and light inference where oversubscription is acceptable |
+| MPS (Multi-Process Service) | Shared GPU context with configurable limits on compute share and memory; a fault can affect other clients | Many small inference processes that need higher throughput than time-slicing |
+| vGPU | Virtual GPUs assigned to virtual machines by the hypervisor | GPU-accelerated VMs |
 
-MIG does not increase total GPU memory; each instance gets a slice of it.
-Time-slicing can oversubscribe the GPU, and two Pods may interfere in compute and
-memory, so it is not a hard isolation boundary.
+- MIG does not add memory. Each instance receives a fixed part of the GPU's memory.
+- With time-slicing, the device plugin advertises each physical GPU as several
+  `nvidia.com/gpu` replicas. Workloads that share a GPU can run out of memory because of
+  each other, and their latency varies with each other's load.
 
 ---
 
-## 7. Kubebuilder/controller-runtime takeaways from GPU Operator
+## 7. Operator design practices from the GPU Operator
 
-The GPU Operator architecture demonstrates these patterns, which apply to any
-operator:
+These practices apply to any operator you build with Kubebuilder:
 
-1. **The control-plane API is separate from node-level machinery.** The
-   `ClusterPolicy`/CR is control plane; DaemonSets are data plane.
-2. **Events drive reconciliation.** Node labels, owned DaemonSets, CR changes, and
-   version or config changes all feed it.
-3. **Status subresources and conditions report state.** A component operator tells
-   users whether the desired version is deployed, available, degraded, or
-   validating.
-4. **Partial failure is represented per node.** A driver install can fail on one
-   node while other nodes succeed, so status has to carry per-node and
-   per-component state rather than one global boolean.
-5. **Node-local work maps to DaemonSets.** Any per-node component (driver, plugin,
-   exporter, MIG config) maps naturally to a DaemonSet with node selectors and
+1. **Separate the API from node-level work.** The `ClusterPolicy` is the control plane
+   API; the DaemonSets do the work on each node.
+2. **Reconcile on every relevant change.** Node labels, owned DaemonSets, the custom
+   resource, and configuration changes all trigger reconciliation.
+3. **Report state with status and conditions.** Users need to know whether the desired
+   version is deployed, available, degraded, or still being validated.
+4. **Represent partial failure.** A driver can fail on one node while others succeed.
+   Status must identify which components and nodes are unhealthy rather than report a
+   single boolean.
+5. **Use DaemonSets for per-node components,** with node selectors based on discovered
    labels.
-6. **Generated ConfigMaps belong to the controller.** Mutable desired state in a
-   ConfigMap that other actors edit drifts away from the CR.
-7. **Validation lives in the operator.** Validator pods that exercise the GPU path
-   catch what `kubectl get pods` cannot.
-8. **Upgrades and rollback are coordinated.** Driver, toolkit, and plugin versions
-   are coupled; the operator coordinates them rather than letting each DaemonSet
-   drift.
-9. **Metrics and events make failures visible.** Node-state transitions, driver
-   failures, and allocation failures need to be observable and alertable.
-10. **Leader election bounds external writes.** Multiple manager replicas can run,
-    but only one reconciles external state at a time.
+6. **Own the configuration you generate.** If other people or tools edit a ConfigMap
+   that the operator generates, the cluster drifts from the custom resource. The
+   operator should overwrite such changes or read configuration only from its API.
+7. **Validate with real workloads.** A validation Pod that uses the GPU catches failures
+   that Pod readiness does not.
+8. **Coordinate upgrades of coupled components.** The driver, toolkit, and device plugin
+   versions depend on each other, so the operator upgrades them in a controlled order.
+9. **Make failures observable.** Expose metrics and Kubernetes events for component
+   state changes, driver failures, and allocation failures.
+10. **Use leader election** so that only one controller replica changes cluster state at a
+    time.
 
 ---
 
-## 8. Troubleshooting checklist
+## 8. Troubleshooting
 
-### `nvidia.com/gpu` is not allocatable on the node
+### `nvidia.com/gpu` is missing from the node's allocatable resources
 
-- Is the device plugin pod running? `kubectl get pods -n gpu-operator -o wide`.
-- Is the device plugin registered? Check its logs for `Starting FS watcher`,
-  `Starting OS watcher`, `ListAndWatch`, `Registered with kubelet`.
-- Is kubelet restarted recently and plugin did not re-register?
-  `journalctl -u kubelet | grep -i plugin`.
-- Is `nvidia-smi` healthy on the host? If the driver is down, the plugin cannot
-  list devices.
-- Does the node have a GPU? If it is a CPU-only node, allocatable will not have
-  `nvidia.com/gpu`; that is expected.
+- Check that the device plugin Pod is running on the node:
+  `kubectl get pods -n gpu-operator -o wide --field-selector spec.nodeName=<node>`.
+- Read the device plugin logs for registration errors or a failure to load NVML (the
+  NVIDIA Management Library), which usually means the driver is not ready.
+- Check that the driver works on the host with `nvidia-smi`. If the driver is not
+  loaded, the plugin cannot list any devices.
+- If the kubelet restarted recently, check that the plugin registered again:
+  `journalctl -u kubelet | grep -i "device plugin"`.
+- Confirm that the node has a GPU. A CPU-only node is not expected to report
+  `nvidia.com/gpu`.
 
-### Pod stuck `Pending` with `0/1 nodes available`
+### A Pod is `Pending` with `0/N nodes are available`
 
 ```bash
 kubectl describe pod <pod>
@@ -412,72 +433,95 @@ kubectl describe node <node> | grep -A5 'Allocatable'
 kubectl get nodes -l nvidia.com/gpu.present=true
 ```
 
-Causes:
+Common causes:
 
-- no node with the requested GPU product label,
-- insufficient allocatable GPUs,
-- taints/tolerations,
-- node selector mismatches,
-- a resource request above node allocatable.
+- No node has a GPU product label that matches the Pod's node selector.
+- The nodes with matching GPUs have no unallocated GPUs.
+- The GPU nodes have a taint that the Pod does not tolerate.
+- The Pod requests more GPUs than any single node has.
+- With the `mixed` MIG strategy, the Pod requests `nvidia.com/gpu` but the nodes
+  advertise MIG profile resources instead.
 
-### Pod starts but `nvidia-smi` fails inside
+### The Pod runs, but `nvidia-smi` fails inside the container
 
-- Does the RuntimeClass exist? `kubectl get runtimeclass nvidia`.
-- Is the container toolkit configured for the runtime?
-  `kubectl logs -n gpu-operator <toolkit pod>`.
-- Does the Pod have the device plugin environment injection?
+- Check that the runtime class exists: `kubectl get runtimeclass nvidia`.
+- Read the container toolkit logs:
+  `kubectl logs -n gpu-operator <toolkit-pod>`.
+- Check whether the device environment was set:
   `kubectl exec <pod> -- env | grep NVIDIA`.
-- Are driver libraries compatible with the CUDA container image?
-  `kubectl exec <pod> -- nvidia-smi` and check driver/CUDA versions.
+- Check that the host driver supports the CUDA version in the image. `nvidia-smi` on
+  the host shows the highest CUDA version the driver supports.
 
-### GPU errors
+### GPU hardware errors
 
-- `dmesg | grep -i xid`
-- `nvidia-smi -q -d ECC`
-- `nvidia-smi -q -d PAGE_RETIREMENT`
-- `kubectl logs -n gpu-operator <dcgm-exporter>`
+```bash
+dmesg -T | grep -i xid
+nvidia-smi -q -d ECC
+nvidia-smi -q -d ROW_REMAPPER        # Ampere and newer
+nvidia-smi -q -d PAGE_RETIREMENT     # older architectures
+kubectl logs -n gpu-operator <dcgm-exporter-pod>
+```
 
 ---
 
-## 9. Questions with answer sketches
+## 9. Interview questions
 
-### How a Pod gets a GPU
+### How does a Pod get a GPU?
 
-The Pod requests `nvidia.com/gpu` as a limit. The scheduler places it on a node
-with allocatable GPUs. The kubelet calls the device plugin's `Allocate`,
-which returns device nodes/mounts/env. The container runtime injects them and
-the application sees a usable GPU.
+The Pod requests `nvidia.com/gpu` in its limits. The scheduler places it on a node with
+enough allocatable GPUs. The kubelet's device manager selects specific GPUs and calls the
+device plugin's `Allocate` method, which returns the device IDs as environment variables
+or CDI device names. The container runtime uses them to add the device nodes and driver
+libraries to the container, and the application can use the GPU.
 
-### What the device plugin does
+### What does the device plugin do?
 
-It registers a resource with kubelet, streams device health via
-`ListAndWatch`, and translates requested device counts into concrete GPU
-devices at `Allocate` time.
+It registers the `nvidia.com/gpu` resource with the kubelet, reports the list of devices
+and their health through `ListAndWatch`, and, at allocation time, translates the
+kubelet's choice of devices into the settings the container runtime needs.
 
-### Device plugin against runtime toolkit
+### What is the difference between the device plugin and the container toolkit?
 
-The device plugin is the Kubernetes scheduler/kubelet integration. The
-container toolkit/runtime is the lower-level mechanism that makes GPU devices
-and libraries visible inside a container after allocation. The GPU Operator
-deploys both.
+The device plugin integrates with Kubernetes: it tells the kubelet how many GPUs exist
+and which ones a container receives. The container toolkit integrates with the container
+runtime: it makes the assigned GPUs and the driver libraries visible inside the
+container. The GPU Operator deploys both.
 
-### Driver updates without disrupting workloads
+### How are drivers upgraded without disrupting workloads?
 
-The mechanics are release-specific, but the approach is node lifecycle management:
-nodes are drained or cordoned (or the DaemonSet rollout is relied on), the new
-driver is installed and loaded, it is validated, and new GPU Pods are then allowed.
-Running containers are not mutated; the operator manages node-level components and
-lets Kubernetes schedule around the maintenance.
+A driver cannot be replaced while processes use the GPU. The GPU Operator's upgrade
+controller upgrades a limited number of nodes at a time: it cordons each node, drains or
+waits for its GPU Pods, replaces the driver Pod, validates the node, and uncordons it.
+The policy is configured in the `ClusterPolicy`, including how many nodes may upgrade in
+parallel. Running containers are never modified in place; Kubernetes reschedules
+workloads around the nodes being upgraded.
 
-### Why most components are DaemonSets
+### Why are most components DaemonSets?
 
-Driver, toolkit, device plugin, DCGM exporter, and MIG manager all need to run
-on every GPU node (or a subset selected by labels). A DaemonSet is the native
-Kubernetes primitive for "exactly one pod per matched node," with node rollout
-and scheduling semantics.
+The driver, toolkit, device plugin, DCGM exporter, and MIG manager must each run exactly
+once on every GPU node. A DaemonSet runs one Pod on each node that matches its selector,
+starts a Pod automatically on new nodes, and supports rolling updates.
 
-### Applying GPU Operator concepts to another operator
+### How would you apply the GPU Operator's design to another operator?
 
-The design is the same: desired state as a CR; watches on node labels and owned
-resources; DaemonSets for per-node components; status conditions with
-observedGeneration; validators; and DCGM-style operational metrics.
+Define the desired state as a custom resource. Watch node labels and the resources you
+own. Use DaemonSets for per-node components. Report status with conditions and
+`observedGeneration`, including per-node failures. Validate with real workloads, and
+export operational metrics.
+
+---
+
+## Summary
+
+- A GPU node needs a driver, a configured container runtime, a device plugin, labels,
+  monitoring, and validation. The GPU Operator installs and manages all of them from a
+  `ClusterPolicy`.
+- NFD and GPU Feature Discovery label nodes; the operator uses the labels to target
+  DaemonSets at GPU nodes.
+- The scheduler counts GPUs as integers. The kubelet and device plugin choose specific
+  devices, and the container toolkit makes them visible in the container.
+- MIG provides hardware isolation; time-slicing and MPS share a GPU with weaker
+  isolation.
+- The GPU Operator shows practices that apply to any operator: status that represents
+  partial failure, DaemonSets for node-level work, validation with real workloads, and
+  coordinated upgrades.
