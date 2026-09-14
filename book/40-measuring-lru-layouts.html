@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+            window.path_to_searchindex_js = "searchindex-872ceb07.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ce4c8d76.js"></script>
+        <script src="toc-b7d46df8.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -699,6 +699,36 @@ counts and the program would stop before printing a time.</p>
 <p><code>&lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant()</code> is fully qualified syntax. It is
 needed because <code>variant</code> is an associated function with no <code>self</code>, and the type has
 no inherent function of that name to fall back on.</p>
+<h3 id="the-arena-cache-as-a-standalone-program"><a class="header" href="#the-arena-cache-as-a-standalone-program">The arena cache as a standalone program</a></h3>
+<p>The repository also holds the arena cache as a runnable program,
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs"><code>src/bin/lru_cache_arena.rs</code></a>. Its <code>Node</code>, <code>LruCache</code>,
+<code>touch</code>, <code>get</code>, <code>put</code>, and tests are the same as <code>src/problems/lru_cache_easy.rs</code>, which
+chapter 18 prints in full; its test module is named <code>tests_for_lru</code>. It adds a <code>main</code>
+that runs the eviction sequence traced in chapter 18. Run it with
+<code>cargo run --bin lru_cache_arena</code>.</p>
+<pre class="playground"><code class="language-rust">fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&amp;"B")); // None
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
+}</code></pre>
+<p>The program prints:</p>
+<pre><code class="language-text">get A = Some(10)
+get B = None
+get A = Some(10)
+get C = Some(30)
+get A = Some(99)
+</code></pre>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>The recorded result from <code>BENCHMARKS.md</code>, release build, on an NVIDIA Jetson board
 with an 8-core Cortex-A78AE:</p>
