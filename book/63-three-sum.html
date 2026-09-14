@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>10. Trie - Coding Interviews for Cracked Rustaceans</title>
+        <title>63. Three Sum - Coding Interviews for Cracked Rustaceans</title>
 
 
         <!-- Custom HTML head -->
@@ -175,89 +175,85 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="trie"><a class="header" href="#trie">10. Trie</a></h1>
-<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs"><code>src/problems/trie.rs</code></a>. Test it with <code>cargo test trie</code>.</em></p>
+                        <h1 id="three-sum"><a class="header" href="#three-sum">63. Three Sum</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs"><code>src/problems/three_sum.rs</code></a>. Test it with <code>cargo test three_sum</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Store a set of strings so that two questions are cheap: whether an exact string is
-present, and whether any stored string begins with a given prefix. A hash map answers
-the first in constant time and the second only by scanning every key, which is the
-reason for the structure.</p>
+<p>Given a list of integers and a target, return every unique triplet of values that adds
+up to the target. Two triplets with the same three values count once, whatever positions
+they came from, and the triplets are returned with their values in ascending order.</p>
+<p>Checking every triple of positions costs <code>n(n - 1)(n - 2) / 6</code> sums, which is <code>O(n³)</code>,
+and removing duplicate triplets afterwards needs extra storage.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Each node holds a map from a character to a child node, plus a flag saying whether the
-path that ends at this node spells a stored string. A string is present when walking
-its characters from the root succeeds and the final node has the flag set.</p>
-<pre><code class="language-text">words: "gpu", "gpucloud"
-
-           (root)
-              |
-              g
-              |
-              p
-              |
-              u   &lt;- terminal: "gpu" is a word
-              |
-              c
-              |
-              l
-              |
-              o
-              |
-              u
-              |
-              d   &lt;- terminal: "gpucloud" is a word
+<p>Sort the values first. Sorting makes two things cheap: duplicates sit next to each other,
+and for a fixed first value the remaining pair can be found with two pointers instead of
+a nested loop.</p>
+<p>For each position <code>i</code>, the pair must add up to <code>target - numbers[i]</code> among the values to
+the right of <code>i</code>. Start <code>left</code> just after <code>i</code> and <code>right</code> at the end:</p>
+<pre><code class="language-text">sum &lt; target   the smallest candidate is too small: move left one step right
+sum &gt; target   the largest candidate is too large: move right one step left
+sum == target  record the triplet, skip equal neighbors on both sides, move both
 </code></pre>
-<p>The flag is what distinguishes a stored word from a prefix of a longer word. Without
-it, <code>"gp"</code> and <code>"gpu"</code> would be indistinguishable, and <code>search("gp")</code> would report
-<code>true</code>.</p>
+<p>Each step discards one candidate that can no longer be part of a triplet with
+<code>numbers[i]</code>, so the inner loop is linear and the whole algorithm is <code>O(n²)</code>.</p>
+<p>The three-way decision maps directly onto <code>Ord::cmp</code>, which returns <code>Ordering::Less</code>,
+<code>Greater</code>, or <code>Equal</code>. Importing the variants with
+<code>use std::cmp::Ordering::{Equal, Greater, Less};</code> lets the <code>match</code> name them without the
+<code>Ordering::</code> prefix, and the compiler checks that all three cases are handled.</p>
+<p>Duplicates are skipped in two places. A first value equal to the previous one is
+skipped, because it would find the same pairs again. After a match, <code>left</code> and <code>right</code>
+step past values equal to the ones just used, so the same pair is not recorded twice for
+this first value.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>//! Trie / prefix tree.
+</span>//! Three Sum: every unique triplet of values that adds up to a target.
 //!
-//! Relevant to NVIDIA-style SDK/CLI/codegen work: autocomplete, filtering GPU
-//! SKUs, command completion, and prefix matching.
+//! Sort, fix the first value, then close in on the other two with two pointers.
+//! Takes the vector by value and sorts it in place: O(n^2) time, no extra space
+//! beyond the result.
 
-use std::collections::HashMap;
+// Import the variants directly into scope
+use std::cmp::Ordering::{Equal, Greater, Less};
 
-#[derive(Default)]
-pub struct Trie {
-    root: Node,
-}
+pub fn three_sum(mut numbers: Vec&lt;i32&gt;, target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
+    numbers.sort_unstable();
 
-#[derive(Default)]
-struct Node {
-    children: HashMap&lt;char, Node&gt;,
-    terminal: bool,
-}
+    let mut results = Vec::new();
+    let target = i64::from(target);
 
-impl Trie {
-    pub fn new() -&gt; Self {
-        Self::default()
-    }
-
-    pub fn insert(&amp;mut self, word: &amp;str) {
-        let mut node = &amp;mut self.root;
-        for ch in word.chars() {
-            node = node.children.entry(ch).or_default();
+    for i in 0..numbers.len() {
+        // Skip a first value that was already used, so triplets stay unique.
+        if i &gt; 0 &amp;&amp; numbers[i] == numbers[i - 1] {
+            continue;
         }
-        node.terminal = true;
-    }
 
-    pub fn search(&amp;self, word: &amp;str) -&gt; bool {
-        self.find_node(word).is_some_and(|node| node.terminal)
-    }
+        let (mut left, mut right) = (i + 1, numbers.len().saturating_sub(1));
+        while left &lt; right {
+            // Widen to i64 so the sum of three i32 values cannot overflow.
+            let current_sum =
+                i64::from(numbers[i]) + i64::from(numbers[left]) + i64::from(numbers[right]);
 
-    pub fn starts_with(&amp;self, prefix: &amp;str) -&gt; bool {
-        self.find_node(prefix).is_some()
-    }
+            match current_sum.cmp(&amp;target) {
+                Less =&gt; left += 1,
+                Greater =&gt; right -= 1,
+                Equal =&gt; {
+                    results.push((numbers[i], numbers[left], numbers[right]));
 
-    fn find_node(&amp;self, word: &amp;str) -&gt; Option&lt;&amp;Node&gt; {
-        let mut node = &amp;self.root;
-        for ch in word.chars() {
-            node = node.children.get(&amp;ch)?;
+                    while left &lt; right &amp;&amp; numbers[left] == numbers[left + 1] {
+                        left += 1;
+                    }
+                    while left &lt; right &amp;&amp; numbers[right] == numbers[right - 1] {
+                        right -= 1;
+                    }
+
+                    left += 1;
+                    right -= 1;
+                }
+            }
         }
-        Some(node)
     }
+
+    results
 }
 
 #[cfg(test)]
@@ -265,101 +261,134 @@ mod tests {
     use super::*;
 
     #[test]
-    fn trie_insert_search_and_prefix() {
-        let mut trie = Trie::new();
-        trie.insert("gpu");
-        trie.insert("gpucloud");
+    fn finds_all_unique_triplets() {
+        let result = three_sum(vec![-1, 0, 1, 2, -1, -4], 0);
+        assert_eq!(result, vec![(-1, -1, 2), (-1, 0, 1)]);
+    }
 
-        assert!(trie.search("gpu"));
-        assert!(trie.search("gpucloud"));
-        assert!(!trie.search("gp"));
-        assert!(!trie.search("gpucloudapi"));
+    #[test]
+    fn skips_duplicates_on_every_position() {
+        assert_eq!(three_sum(vec![0, 0, 0, 0], 0), vec![(0, 0, 0)]);
+        assert_eq!(three_sum(vec![-2, 0, 0, 2, 2], 0), vec![(-2, 0, 2)]);
+    }
 
-        assert!(trie.starts_with("gp"));
-        assert!(trie.starts_with("gpucloud"));
-        assert!(!trie.starts_with("h100"));
+    #[test]
+    fn supports_a_non_zero_target() {
+        assert_eq!(
+            three_sum(vec![1, 2, 3, 4, 5], 9),
+            vec![(1, 3, 5), (2, 3, 4)]
+        );
+    }
+
+    #[test]
+    fn returns_nothing_when_no_triplet_exists() {
+        assert!(three_sum(vec![1, 2, 3], 100).is_empty());
+        assert!(three_sum(vec![1, 2], 3).is_empty());
+        assert!(three_sum(vec![], 0).is_empty());
+    }
+
+    #[test]
+    fn does_not_overflow_on_extreme_values() {
+        assert_eq!(
+            three_sum(vec![i32::MAX, i32::MAX, i32::MIN], i32::MAX - 1),
+            vec![(i32::MIN, i32::MAX, i32::MAX)]
+        );
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>insert</code> walks with <code>&amp;mut</code> and creates children on demand:
-<code>node.children.entry(ch).or_default()</code> inserts an empty node the first time the
-character is seen and returns a mutable reference to the existing one otherwise. The
-walk ends with a mutable reference to the final node, and one assignment sets the flag.</p>
-<p><code>find_node</code> is the read-only counterpart, and it uses <code>?</code> to leave the loop early:
-<code>node.children.get(&amp;ch)?</code> returns <code>None</code> from the function when the character is
-absent. That one expression replaces a conditional and a <code>return</code>.</p>
-<p><code>is_some_and(|node| node.terminal)</code> combines two questions into one expression: does
-the path exist, and is its end a word. Without the second part, <code>search</code> would answer
-the same question as <code>starts_with</code>.</p>
+<p><code>three_sum</code> takes <code>numbers: Vec&lt;i32&gt;</code> by value and sorts it in place with
+<code>sort_unstable</code>. The caller hands over the vector, so the function needs no copy. A
+caller that wants to keep its data passes a clone explicitly. <code>sort_unstable</code> is faster
+than <code>sort</code> and allocates nothing; stability does not matter for integers.</p>
+<p><code>numbers.len().saturating_sub(1)</code> gives the last index without underflowing when the
+vector is empty. For every <code>i</code>, <code>left</code> starts at <code>i + 1</code>, so for the last two positions
+<code>left &gt;= right</code> and the inner loop does not run.</p>
+<p>The sum is computed in <code>i64</code>. Three <code>i32</code> values can add up to about three times
+<code>i32::MAX</code>, which overflows an <code>i32</code>: a debug build would panic and a release build would
+wrap to a wrong answer. <code>i64::from</code> widens each value losslessly, and the target is
+widened once before the loop.</p>
+<p>Inside the <code>Equal</code> arm, <code>results.push((numbers[i], numbers[left], numbers[right]))</code>
+records the values. The two <code>while</code> loops check <code>left &lt; right</code> before indexing
+<code>left + 1</code> and <code>right - 1</code>, so neither can step past the other or read outside the pair’s
+range. The final <code>left += 1; right -= 1;</code> moves both pointers off the values just used.</p>
+<p>The tests cover the standard example, inputs that are all duplicates, a non-zero target,
+inputs with no answer or fewer than three values, and extreme values whose sum would
+overflow <code>i32</code>.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<pre><code class="language-text">insert("gpu")
-  node = root
-  'g' -&gt; root.children has no 'g', so it is created; node = that node
-  'p' -&gt; created; node = that node
-  'u' -&gt; created; node = that node
-  node.terminal = true
+<pre><code class="language-text">three_sum(vec![-1, 0, 1, 2, -1, -4], 0)
 
-insert("gpucloud")
-  'g', 'p', 'u' all exist, so the walk reuses the nodes built above
-  'c', 'l', 'o', 'u', 'd' are created
-  node.terminal = true
+sorted: [-4, -1, -1, 0, 1, 2]
+index:    0   1   2  3  4  5
 
-search("gp")        the walk succeeds, the final node's terminal flag is false
-                    -&gt; false
-starts_with("gp")   the walk succeeds -&gt; true
-search("gpucloudapi")
-                    'a' is absent after "gpucloud" -&gt; the walk returns None
-                    -&gt; false
+i  first  left right  sum   cmp      action
+0   -4     1    5     -3    Less     left = 2
+0   -4     2    5     -3    Less     left = 3
+0   -4     3    5     -2    Less     left = 4
+0   -4     4    5     -1    Less     left = 5, loop ends
+1   -1     2    5      0    Equal    push (-1, -1, 2); no equal neighbors; left = 3, right = 4
+1   -1     3    4      0    Equal    push (-1, 0, 1); left = 4, right = 3, loop ends
+2   -1                               same as numbers[1], skip
+3    0     4    5      3    Greater  right = 4, loop ends
+4    1     5    5                    left == right, loop does not run
+5    2     6    5                    left &gt; right, loop does not run
+
+result: [(-1, -1, 2), (-1, 0, 1)]
 </code></pre>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
 </thead>
 <tbody>
-<tr><td><code>insert</code></td><td><code>O(k)</code> expected</td><td>one node per character not already present</td></tr>
-<tr><td><code>search</code></td><td><code>O(k)</code> expected</td><td>none</td></tr>
-<tr><td><code>starts_with</code></td><td><code>O(k)</code> expected</td><td>none</td></tr>
+<tr><td>Time</td><td><code>O(n²)</code></td><td>the sort is <code>O(n log n)</code>; each of the <code>n</code> first values runs a linear two-pointer scan</td></tr>
+<tr><td>Space</td><td><code>O(1)</code> extra</td><td>the vector is sorted in place; the result holds one tuple per unique triplet</td></tr>
 </tbody>
 </table>
 </div>
-<p><code>k</code> counts characters, because <code>word.chars()</code> iterates over Unicode scalar values.</p>
+<p><code>sort_unstable</code> sorts in place without allocating, so the only allocation is the result.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>One node per distinct character position.</strong> The structure stores a <code>HashMap</code> per
-node, and a <code>HashMap</code> is larger than the characters it holds. A set of strings with no
-shared prefixes occupies more memory than the same strings in a vector. A radix tree
-compresses chains of single-child nodes and recovers most of that space; the file does
-not implement one.</p>
-<p><strong>There is no deletion.</strong> Removing a word means clearing a terminal flag and then
-pruning the nodes that are no longer on any path to a word. Neither operation is
-present, so the only way to empty the structure is to drop it.</p>
-<p><strong>There is no query that returns the words under a prefix.</strong> <code>starts_with</code> answers a
-boolean, and a caller that wants the completions must write its own traversal. The
-structure supports the query; the API does not expose it.</p>
-<p><strong>The node type is not public, and neither is the root.</strong> A caller cannot inspect the
-tree’s shape, count its nodes, or measure its memory from outside the module. For a
-teaching structure that is a defensible choice, and it means a memory question can only
-be answered by reading the source.</p>
+<p><strong>The caller’s vector is consumed.</strong> Taking <code>Vec&lt;i32&gt;</code> by value avoids a copy, and the
+caller loses the original order. A version that borrows <code>&amp;mut [i32]</code> would also sort in
+place without a copy, and would make the reordering visible at the call site, since the
+caller’s slice comes back sorted.</p>
+<p><strong>Values, not indices, are returned.</strong> After sorting, positions no longer refer to the
+caller’s data, so the function returns the values. A problem that asks for the original
+indices needs the positions carried through the sort, for example by sorting
+<code>(value, index)</code> pairs.</p>
+<p><strong><code>O(n²)</code> is the expected bound for this problem.</strong> A hash-set approach has the same
+asymptotic cost and more overhead, and makes duplicate handling harder. For very large
+inputs with a small value range, counting values can do better.</p>
+<p><strong>The skip loops are subtle.</strong> Removing the <code>left &lt; right</code> guard lets <code>left + 1</code> or
+<code>right - 1</code> read past the pair’s range and, in an input such as <code>[0, 0, 0]</code>, index out of
+bounds. The guard must come before the comparison, which <code>&amp;&amp;</code> guarantees by evaluating
+left to right.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Sorting turns Three Sum into <code>n</code> two-pointer scans, for <code>O(n²)</code> time.</li>
+<li><code>match current_sum.cmp(&amp;target)</code> with <code>Less</code>, <code>Greater</code>, and <code>Equal</code> imported into scope
+states the three moves directly, and the match is checked for exhaustiveness.</li>
+<li>Skipping an equal first value, and equal neighbors after a match, keeps each triplet
+unique without a set.</li>
+<li>Taking the vector by value and sorting it in place avoids a copy; widening to <code>i64</code>
+keeps the sum from overflowing.</li>
+</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
-<li>Edward Fredkin, “Trie memory”, <em>Communications of the ACM</em> 3(9), 1960, pages
-490–499.</li>
-<li>Donald E. Knuth, <em>The Art of Computer Programming</em>, Volume 3, 2nd edition,
-Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.entry"><code>HashMap::entry</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/option/enum.Option.html#method.is_some_and"><code>Option::is_some_and</code></a>, stabilised in Rust 1.70.0.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/cmp/trait.Ord.html#tymethod.cmp"><code>Ord::cmp</code></a> and <a href="https://doc.rust-lang.org/std/cmp/enum.Ordering.html"><code>std::cmp::Ordering</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable"><code>slice::sort_unstable</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.usize.html#method.saturating_sub"><code>usize::saturating_sub</code></a>.</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="09-binary-search.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="62-merge-k-sorted-lists.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="11-topological-sort.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="references.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -369,11 +398,11 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="09-binary-search.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="62-merge-k-sorted-lists.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="11-topological-sort.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="references.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
