@@ -5,15 +5,15 @@
 
 ## Problem Statement
 
-Limit how often a caller may do something, allow a burst, and do it safely from
-several threads. The interface is one question: may I do it now?
+Limit how often a caller may do something, allow a burst, and do it safely from several
+threads. The interface is one question: may I do it now?
 
 ## Designing a Solution
 
-A token bucket holds at most `capacity` tokens and refills at `rate` tokens per
-second. Each accepted request removes one token; a request that arrives with fewer
-than one token available is refused. The bucket therefore admits a burst of up to
-`capacity` requests and then holds the sustained rate at `rate`.
+A token bucket holds at most `capacity` tokens and refills at `rate` tokens per second.
+Each accepted request removes one token; a request that arrives with fewer than one token
+available is refused. The bucket therefore admits a burst of up to `capacity` requests
+and then holds the sustained rate at `rate`.
 
 ```text
 tokens = 3.0, capacity = 5.0, rate = 1.0/s, last_refill = t
@@ -27,9 +27,9 @@ t + 1.5s   try_acquire   refill adds 1.5, so 1.5 >= 1.0  true, tokens = 0.5
 t + 10.0s  try_acquire   refill is capped at capacity, so the result is 5.0
 ```
 
-The refill is computed from the elapsed time rather than by a timer thread. A
-timer thread would cost one thread per bucket and would make the bucket's state
-depend on how the scheduler ran that thread.
+The refill is computed from the elapsed time rather than by a timer thread. A timer
+thread would cost one thread per bucket and would make the bucket's state depend on how
+the scheduler ran that thread.
 
 ## Implementation
 
@@ -113,15 +113,15 @@ mod tests {
 }
 ```
 
-`try_acquire` takes `&self` rather than `&mut self`. That is what allows one bucket
-to be shared by reference across threads; the mutation happens behind the `Mutex`.
+`try_acquire` takes `&self` rather than `&mut self`. That is what allows one bucket to be
+shared by reference across threads; the mutation happens behind the `Mutex`.
 
-The four statements inside the lock are the whole algorithm: read the clock, add
-the tokens that time has earned, cap at the capacity, and take one if there is one.
+The four statements inside the lock are the whole algorithm: read the clock, add the
+tokens that time has earned, cap at the capacity, and take one if there is one.
 `last_refill` is updated on every call, so no interval is counted twice.
 
-The lock is held across a clock read and a floating-point multiply, which is the
-shortest critical section this design permits.
+The lock is held across a clock read and a floating-point multiply, which is the shortest
+critical section this design permits.
 
 ## Intuition
 
@@ -157,52 +157,32 @@ call 8 at t0 + 1s:
 
 ## Limitations
 
-**`new` panics on an invalid configuration.** `capacity == 0` and `rate_per_sec <=
-0.0` both assert, and a rate read from a configuration file is external input. The
-assertions also accept `f64::NAN` for the rate, because every comparison with `NAN`
-is false: `rate_per_sec > 0.0` is false for `NAN`, so that case does panic, and
-`f64::INFINITY` passes and makes every request succeed. The validation is therefore
-neither complete nor reported.
+**`new` panics on an invalid configuration.** `capacity == 0` and `rate_per_sec <= 0.0`
+both assert, and a rate read from a configuration file is external input. The rate test
+also rejects `f64::NAN`, because every comparison with `NAN` is false, so the assertion
+fires. `f64::INFINITY` passes the same test and makes every request succeed, because the
+refill is capped at the capacity on the first call and the bucket then stays full. The
+validation is therefore incomplete and the failure is a panic rather than a value.
 
-**`self.state.lock().unwrap()` panics if a thread panicked while holding the
-lock.** One failed request handler would then take down every later caller that
-touches this bucket, which is the failure-propagation pattern Chapter 22 exists to
-avoid.
+**`self.state.lock().unwrap()` panics if a thread panicked while holding the lock.** One
+failed request handler would then take down every later caller that touches this bucket.
+Chapter 22 describes the recovery pattern that avoids this.
 
-**There is no blocking acquisition.** A caller that is refused must sleep and try
-again, and the bucket offers no way to learn how long to sleep, so the retry policy
-lives in the caller and every caller invents one.
+**There is no blocking acquisition.** A caller that is refused must sleep and try again,
+and the bucket offers no way to learn how long to sleep, so the retry policy lives in the
+caller and every caller invents one.
 
-**`try_acquire` reads the clock on every call.** `Instant::now()` is cheap, and on
-some platforms it goes through the vDSO rather than a system call; Chapter 24
-measures a system call, and the two are not the same measurement. A bucket that is
-called millions of times per second spends a measurable fraction of its time in
-the clock.
+**`try_acquire` reads the clock on every call.** `Instant::now()` is cheap, and on some
+platforms it goes through the vDSO rather than a system call. A bucket that is called
+millions of times per second spends a measurable fraction of its time in the clock.
 
-**The bucket is per-process.** Two processes sharing a limit need a shared store,
-and nothing in this design provides one.
+**The bucket is per-process.** Two processes sharing a limit need a shared store, and
+nothing in this design provides one.
 
-**The test sleeps for a second.** That makes the test suite slower and makes the
-result depend on how the operating system scheduled the test thread: on a loaded
-machine the sleep may return later than requested, which only makes the assertion
-more likely to pass, and a bucket whose rate were too high would not be caught.
-
-## Summary
-
-- A token bucket allows a burst of the capacity and holds a smooth long-run rate.
-  A fixed window allows twice the configured rate across a window boundary.
-- The refill is computed from the elapsed time on each call rather than by a timer
-  thread, so the bucket holds no background task.
-- The mutex protects one clock read and one multiplication, which is the whole of
-  the critical section.
-- `new` asserts on the configuration, so a capacity of zero or a rate of zero
-  panics, and `f64::INFINITY` passes the rate test. `self.state.lock().unwrap()`
-  panics if a thread panicked while holding the lock, which propagates one failed
-  request to every later caller. A `Result` from `new`, and recovery from a
-  poisoned lock as described in Chapter 22, remove both.
-- There is no blocking acquisition. A refused caller must sleep and retry, and the
-  bucket reports no interval to sleep for, so the retry policy lives in the caller.
-- The bucket is per-process; two processes sharing a limit need a shared store.
+**The test sleeps for a second.** That makes the test suite slower and makes the result
+depend on how the operating system scheduled the test thread. On a loaded machine the
+sleep may return later than requested, which only makes the assertion more likely to pass,
+so a bucket whose rate were too high would not be caught.
 
 ## References
 

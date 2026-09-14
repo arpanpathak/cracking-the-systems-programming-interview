@@ -5,16 +5,15 @@
 
 ## Problem Statement
 
-Model the lifecycle of a workload that an SDK exposes, so that the legal
-transitions are stated once and an illegal transition is refused with a reason.
-Then model the errors the same API returns, so that a caller can decide whether to
-retry without parsing a message.
+Model the lifecycle of a workload that an SDK exposes, so that the legal transitions are
+stated once and an illegal transition is refused with a reason. Then model the errors the
+same API returns, so that a caller can decide whether to retry without parsing a message.
 
 ## Designing a Solution
 
-An enumeration rather than a status code. A status code makes the set of legal
-values a convention that lives in a document; an enumeration makes it a type, and a
-`match` that omits a case does not compile.
+An enumeration rather than a status code. A status code makes the set of legal values a
+convention that lives in a document; an enumeration makes it a type, and a `match` that
+omits a case does not compile.
 
 ```text
               +--------------------------------------+
@@ -27,10 +26,10 @@ Pending ---> Provisioning ---> Running ---> Terminating ---> Terminated
    +<------------+        a failed workload may be retried
 ```
 
-The same argument applies to the error type. A retry decision depends on facts,
-the delay a server asked for, the status code it returned, so those facts are
-attached to the variants that need them. A caller that matches on `RateLimited`
-has the delay in hand.
+The same argument applies to the error type. A retry decision depends on facts, such as
+the delay a server asked for and the status code it returned, so those facts are attached
+to the variants that need them. A caller that matches on `RateLimited` has the delay in
+hand.
 
 ## Implementation
 
@@ -191,26 +190,26 @@ mod tests {
 
 `can_transition_to` matches on the pair `(self, next)`, listing every permitted
 transition as an alternative pattern. The whole rule set is one expression, and the
-fall-through arm catches everything else, including a self-transition such as
-`Running` to `Running`.
+fall-through arm catches everything else, including a self-transition such as `Running`
+to `Running`.
 
-A self-transition is refused rather than treated as a no-op. A controller that
-reports a transition it did not perform writes an audit log that cannot be trusted,
-and refusing the case costs one line.
+A self-transition is refused rather than treated as a no-op. A controller that reports a
+transition it did not perform writes an audit log that cannot be trusted, and refusing
+the case costs one line.
 
-`is_retryable` uses `matches!` with a range pattern: `status: 500..=599` is
+`is_retryable` uses `matches!` with a range pattern: a status in `500..=599` is
 retryable, everything else is not. `NotFound` and `Unauthorized` are not retryable
 because waiting does not change them: the resource still does not exist and the
 credential is still expired.
 
-`parse_gpu_count` trims the field, distinguishes an empty field from an
-unparseable one in the message, and quotes the received text with `{raw:?}` so that
-trailing whitespace is visible. The error variant carries a message; the variant
-itself is what a caller matches on.
+`parse_gpu_count` trims the field, distinguishes an empty field from an unparseable one
+in the message, and quotes the received text with `{raw:?}` so that trailing whitespace
+is visible. The error variant carries a message; the variant itself is what a caller
+matches on.
 
-The repository's version of this function is named for the employer's product line,
-and its error messages name the field after that product. This edition names the
-field `gpuCount` and leaves the logic unchanged.
+The repository's version of this function is named for the employer's product line, and
+its error messages name the field after that product. This edition names the field
+`gpuCount` and leaves the logic unchanged.
 
 ## Intuition
 
@@ -258,50 +257,29 @@ parse_gpu_count("-1")    parse::<u32> fails on the sign        -> Err(InvalidReq
 
 ## Limitations
 
-**`can_transition_to` returns `Result<(), String>`.** A refused transition is a
-value a caller may want to match on, to log it, to count it, or to distinguish
-"illegal transition" from "the workload no longer exists", and a `String` cannot
-be matched. It also allocates on every refusal. The fix is a small error type with
-two fields, `from` and `next`, which is what the state machine already has in the
-form of `WorkloadState`.
+**`can_transition_to` returns `Result<(), String>`.** A refused transition is a value a
+caller may want to match on, to log it, to count it, or to distinguish "illegal
+transition" from "the workload no longer exists", and a `String` cannot be matched. It
+also allocates on every refusal. The fix is a small error type with two fields, `from`
+and `next`, both of which the state machine already has.
 
 **`user_message` allocates for every call, including the two variants that need no
-formatting.** `Unauthorized` returns `to_string()` of a constant. A `Display`
-implementation writes into the caller's buffer and allocates nothing, which is the
-idiomatic way to expose a message.
+formatting.** `Unauthorized` returns a `to_string()` of a constant. A `Display`
+implementation writes into the caller's buffer and allocates nothing.
 
-**`is_retryable` treats any status in `500..=599` as retryable, and a `Server`
-variant carrying a `4xx` status as not retryable.** That is defensible for this
-error type, and the range test is doing double duty: it is also asserting that the
-`Server` variant holds a server-side status. Nothing enforces that at construction
-time.
+**`is_retryable` treats any status in `500..=599` as retryable, and a `Server` variant
+carrying a `4xx` status as not retryable.** The range test is doing double duty: it also
+asserts that the `Server` variant holds a server-side status, and nothing enforces that at
+construction time.
 
-**The transition table is tested by example, not exhaustively.** The test checks
-four transitions. There are thirty-six ordered pairs of six states, and the table
-permits twelve of them. A test that loops over all pairs and compares each answer
-with a written list would catch a missing or an extra pattern.
+**The transition table is tested by example, not exhaustively.** The test checks four
+transitions. There are thirty-six ordered pairs of six states, and the table permits
+twelve of them. A test that loops over all pairs and compares each answer with a written
+list would catch a missing or an extra pattern.
 
-**`parse_gpu_count` accepts a value that overflows `u32` as a parse failure
-rather than as a distinct error.** `"4294967296"` and `"four"` produce the same
-variant, so a caller cannot tell a malformed field from an out-of-range one.
-
-## Summary
-
-- An enumeration makes the transition table exhaustive, because a `match` without
-  a fall-through arm fails to build when a variant is added.
-- A self-transition is refused rather than treated as a no-op, and the table states
-  that explicitly.
-- The error variants carry data because the retry delay and the status code are
-  inputs to a decision.
-- `can_transition_to` returns `Result<(), String>`. A `String` cannot be matched,
-  so a caller cannot distinguish an illegal transition from a workload that no
-  longer exists, and the refusal allocates. An error type carrying `from` and
-  `next` would remove both problems.
-- `user_message` allocates on every call, including the variants that need no
-  formatting, where a `Display` implementation would write into the caller's
-  buffer.
-- `parse_gpu_count` reports an out-of-range value and a malformed one as the
-  same variant.
+**`parse_gpu_count` reports a value that overflows `u32` as a parse failure.** `"4294967296"`
+and `"four"` produce the same variant, so a caller cannot tell a malformed field from an
+out-of-range one.
 
 ## References
 

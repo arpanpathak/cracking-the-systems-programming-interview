@@ -58,10 +58,9 @@ rust-interview-lab/
 └── benchmarking_examples/           the measured structures and the benchmark
 ```
 
-Two files in `src/problems/` are empty, `hash_map.rs` and `lru_cache_easy.rs`, and
-nothing in the crate refers to either. Chapter 18 describes the array-backed cache
-those two names were intended for; that implementation now lives in
-`benchmarking_examples/cache/arena.rs`.
+One file in `src/problems/` is empty, `hash_map.rs`, and nothing in the crate refers to
+it. Chapter 18 reads `lru_cache_easy.rs`, the array-backed cache that keeps its entries
+in a `Vec` and links them by index.
 
 ## Modules and programs
 
