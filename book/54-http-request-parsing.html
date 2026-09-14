@@ -1,0 +1,829 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>54. Parsing HTTP/1.1 Requests - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="http-request-parsing"><a class="header" href="#http-request-parsing">54. Parsing HTTP/1.1 Requests</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs"><code>src/problems/http_request.rs</code></a>. Test it with <code>cargo test http_request</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Given a byte slice that begins at the start of a request, return a <code>Request</code> containing
+the method, target, version, headers, and body, or an error that says why no request
+could be produced. The parser must:</p>
+<ul>
+<li>return <code>Incomplete</code> when the bytes so far are a valid prefix of a request;</li>
+<li>reject a request line with a missing, extra, or unknown part;</li>
+<li>require exactly one <code>Host</code> header for HTTP/1.1;</li>
+<li>reject obsolete header line folding;</li>
+<li>reject a request with both <code>Content-Length</code> and <code>Transfer-Encoding</code>;</li>
+<li>decode chunked bodies, and bound header and body sizes.</li>
+</ul>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>An HTTP/1.1 request has three parts:</p>
+<pre><code class="language-text">POST /v1/gpu-workloads HTTP/1.1\r\n          request line
+Host: api.example.com\r\n                    header lines
+Content-Length: 13\r\n
+\r\n                                         empty line ends the head
+{"gpuCount":1}                               body, framed by the headers
+</code></pre>
+<p><strong>Find the end of the head first.</strong> The head ends at the first <code>\r\n\r\n</code>. Until those
+four bytes arrive, the request is incomplete, unless the bytes already exceed the header
+limit, in which case the request is too large. Everything before that point is split into
+lines.</p>
+<p><strong>Parse the head as text only where the grammar is text.</strong> The request line and header
+names and values are converted to <code>&amp;str</code> with <code>from_utf8</code>, and invalid UTF-8 is a
+malformed request. The body stays as bytes.</p>
+<p><strong>Decide the body length from exactly one source.</strong> The body is framed either by
+<code>Content-Length</code>, a decimal byte count, or by <code>Transfer-Encoding: chunked</code>, a sequence of
+hexadecimal-length chunks ending with a zero-length chunk. RFC 9112 requires a server to
+treat a request carrying both as an error, because a proxy that honours one and a server
+that honours the other would split the same bytes into different requests. That
+disagreement is the basis of request smuggling.</p>
+<p><strong>Bound everything.</strong> A header section larger than 16 KiB, or a body larger than 8 MiB,
+is rejected before the parser allocates for it.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! HTTP/1.1 request parsing: request line, headers, and body framing.
+//!
+//! The framing checks are the point. `Content-Length` together with
+//! `Transfer-Encoding` is rejected as ambiguous (request smuggling), as are
+//! obsolete line folding and a missing `Host`. Header and body sizes are bounded
+//! so a slow client cannot hold a connection open.
+
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Method {
+    Get,
+    Head,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Options,
+}
+
+impl Method {
+    pub fn parse(token: &amp;str) -&gt; Option&lt;Self&gt; {
+        Some(match token {
+            "GET" =&gt; Self::Get,
+            "HEAD" =&gt; Self::Head,
+            "POST" =&gt; Self::Post,
+            "PUT" =&gt; Self::Put,
+            "PATCH" =&gt; Self::Patch,
+            "DELETE" =&gt; Self::Delete,
+            "OPTIONS" =&gt; Self::Options,
+            _ =&gt; return None,
+        })
+    }
+
+    pub fn is_safe(self) -&gt; bool {
+        matches!(self, Self::Get | Self::Head | Self::Options)
+    }
+
+    pub fn is_idempotent(self) -&gt; bool {
+        matches!(
+            self,
+            Self::Get | Self::Head | Self::Options | Self::Put | Self::Delete
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Version {
+    Http10,
+    Http11,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Limits {
+    pub max_header_bytes: usize,
+    pub max_body_bytes: usize,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Self {
+        Self {
+            max_header_bytes: 16 * 1024,
+            max_body_bytes: 8 * 1024 * 1024,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Request {
+    pub method: Method,
+    pub target: String,
+    pub version: Version,
+    pub headers: Vec&lt;(String, String)&gt;,
+    pub body: Vec&lt;u8&gt;,
+}
+
+impl Request {
+    /// First header value matching `name`, case-insensitively.
+    pub fn header(&amp;self, name: &amp;str) -&gt; Option&lt;&amp;str&gt; {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// HTTP/1.1 reuses the connection unless `Connection: close`; HTTP/1.0 only
+    /// reuses it with `Connection: keep-alive`.
+    pub fn should_keep_alive(&amp;self) -&gt; bool {
+        let connection = self.header("connection").unwrap_or("");
+        let has = |token: &amp;str| {
+            connection
+                .split(',')
+                .any(|part| part.trim().eq_ignore_ascii_case(token))
+        };
+        match self.version {
+            Version::Http11 =&gt; !has("close"),
+            Version::Http10 =&gt; has("keep-alive"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseError {
+    /// Not a complete request yet; read more and retry.
+    Incomplete,
+    Malformed(&amp;'static str),
+    MissingHost,
+    /// `Content-Length` and `Transfer-Encoding` were both present.
+    AmbiguousBodyLength,
+    UnsupportedTransferEncoding,
+    PayloadTooLarge,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Incomplete =&gt; write!(f, "incomplete request"),
+            Self::Malformed(reason) =&gt; write!(f, "malformed request: {reason}"),
+            Self::MissingHost =&gt; write!(f, "HTTP/1.1 requires exactly one Host header"),
+            Self::AmbiguousBodyLength =&gt; {
+                write!(
+                    f,
+                    "Content-Length and Transfer-Encoding are mutually exclusive"
+                )
+            }
+            Self::UnsupportedTransferEncoding =&gt; write!(f, "unsupported Transfer-Encoding"),
+            Self::PayloadTooLarge =&gt; write!(f, "request exceeds configured limits"),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+/// Parse one request from the start of `input`.
+pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    let Some(header_end) = input.windows(4).position(|window| window == b"\r\n\r\n") else {
+        return Err(if input.len() &gt; limits.max_header_bytes {
+            ParseError::PayloadTooLarge
+        } else {
+            ParseError::Incomplete
+        });
+    };
+    if header_end + 4 &gt; limits.max_header_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+
+    let head = &amp;input[..header_end];
+    let body_start = header_end + 4;
+
+    let mut lines = head
+        .split(|byte| *byte == b'\n')
+        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
+
+    let request_line = std::str::from_utf8(lines.next().ok_or(ParseError::Malformed("empty"))?)
+        .map_err(|_| ParseError::Malformed("request line"))?;
+    let mut parts = request_line.split(' ');
+    let method = Method::parse(parts.next().ok_or(ParseError::Malformed("method"))?)
+        .ok_or(ParseError::Malformed("unknown method"))?;
+    let target = parts.next().ok_or(ParseError::Malformed("target"))?;
+    let version = match parts.next() {
+        Some("HTTP/1.1") =&gt; Version::Http11,
+        Some("HTTP/1.0") =&gt; Version::Http10,
+        _ =&gt; return Err(ParseError::Malformed("version")),
+    };
+    if parts.next().is_some() || target.is_empty() {
+        return Err(ParseError::Malformed("request line"));
+    }
+
+    let mut headers = Vec::new();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        if matches!(line.first(), Some(b' ') | Some(b'\t')) {
+            return Err(ParseError::Malformed("obsolete line folding"));
+        }
+        let colon = line
+            .iter()
+            .position(|byte| *byte == b':')
+            .ok_or(ParseError::Malformed("header without colon"))?;
+        let name = std::str::from_utf8(&amp;line[..colon])
+            .map_err(|_| ParseError::Malformed("header name"))?;
+        if name.is_empty() || name.bytes().any(|byte| byte.is_ascii_whitespace()) {
+            return Err(ParseError::Malformed("invalid header name"));
+        }
+        let value = std::str::from_utf8(&amp;line[colon + 1..])
+            .map_err(|_| ParseError::Malformed("header value"))?;
+        headers.push((name.to_string(), value.trim().to_string()));
+    }
+
+    if version == Version::Http11
+        &amp;&amp; headers
+            .iter()
+            .filter(|(name, _)| name.eq_ignore_ascii_case("host"))
+            .count()
+            != 1
+    {
+        return Err(ParseError::MissingHost);
+    }
+
+    let body = parse_body(input, body_start, &amp;headers, limits)?;
+
+    Ok(Request {
+        method,
+        target: target.to_string(),
+        version,
+        headers,
+        body,
+    })
+}
+
+fn parse_body(
+    input: &amp;[u8],
+    body_start: usize,
+    headers: &amp;[(String, String)],
+    limits: Limits,
+) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let collect = |name: &amp;str| -&gt; Vec&lt;&amp;str&gt; {
+        headers
+            .iter()
+            .filter(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+            .collect()
+    };
+    let transfer_encoding = collect("transfer-encoding");
+    let content_length = collect("content-length");
+
+    // Two framing headers is the classic request-smuggling setup.
+    if !transfer_encoding.is_empty() &amp;&amp; !content_length.is_empty() {
+        return Err(ParseError::AmbiguousBodyLength);
+    }
+
+    if !transfer_encoding.is_empty() {
+        let joined = transfer_encoding.join(",");
+        let codings: Vec&lt;&amp;str&gt; = joined
+            .split(',')
+            .map(str::trim)
+            .filter(|token| !token.is_empty())
+            .collect();
+        let all_chunked = codings
+            .iter()
+            .all(|token| token.eq_ignore_ascii_case("chunked"));
+        if !all_chunked
+            || !codings
+                .last()
+                .is_some_and(|t| t.eq_ignore_ascii_case("chunked"))
+        {
+            return Err(ParseError::UnsupportedTransferEncoding);
+        }
+        return decode_chunked(&amp;input[body_start..], limits.max_body_bytes);
+    }
+
+    if content_length.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut lengths = content_length.iter().map(|value| {
+        value
+            .trim()
+            .parse::&lt;usize&gt;()
+            .map_err(|_| ParseError::Malformed("invalid Content-Length"))
+    });
+    let first = lengths.next().expect("non-empty")?;
+    if lengths.any(|length| length != Ok(first)) {
+        return Err(ParseError::Malformed("conflicting Content-Length"));
+    }
+    if first &gt; limits.max_body_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+    let end = body_start + first;
+    if input.len() &lt; end {
+        return Err(ParseError::Incomplete);
+    }
+    Ok(input[body_start..end].to_vec())
+}
+
+fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let mut cursor = 0;
+    let mut body = Vec::new();
+
+    loop {
+        let line_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+        let size_token = data[cursor..line_end]
+            .split(|byte| *byte == b';')
+            .next()
+            .unwrap_or(&amp;[]);
+        let size = usize::from_str_radix(
+            std::str::from_utf8(size_token)
+                .map_err(|_| ParseError::Malformed("chunk size"))?
+                .trim(),
+            16,
+        )
+        .map_err(|_| ParseError::Malformed("chunk size"))?;
+        cursor = line_end + 2;
+
+        if size == 0 {
+            // Consume trailers up to the final empty line.
+            loop {
+                let trailer_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+                let is_empty = trailer_end == cursor;
+                cursor = trailer_end + 2;
+                if is_empty {
+                    return Ok(body);
+                }
+            }
+        }
+
+        if body.len() + size &gt; max_body {
+            return Err(ParseError::PayloadTooLarge);
+        }
+        let chunk_end = cursor
+            .checked_add(size)
+            .ok_or(ParseError::Malformed("chunk overflow"))?;
+        if chunk_end + 2 &gt; data.len() {
+            return Err(ParseError::Incomplete);
+        }
+        body.extend_from_slice(&amp;data[cursor..chunk_end]);
+        if &amp;data[chunk_end..chunk_end + 2] != b"\r\n" {
+            return Err(ParseError::Malformed("chunk not CRLF-terminated"));
+        }
+        cursor = chunk_end + 2;
+    }
+}
+
+fn find_crlf(data: &amp;[u8], from: usize) -&gt; Option&lt;usize&gt; {
+    data.get(from..)?
+        .windows(2)
+        .position(|window| window == b"\r\n")
+        .map(|offset| offset + from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(raw: &amp;[u8]) -&gt; Result&lt;Request, ParseError&gt; {
+        parse_request(raw, Limits::default())
+    }
+
+    #[test]
+    fn parses_a_get_and_a_post_with_content_length() {
+        let get = parse(b"GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\nAccept: */*\r\n\r\n")
+            .expect("valid");
+        assert_eq!(get.method, Method::Get);
+        assert_eq!(get.header("HOST"), Some("api"));
+        assert!(get.body.is_empty());
+        assert!(get.should_keep_alive());
+
+        let post = parse(b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 5\r\n\r\nhello")
+            .expect("valid");
+        assert_eq!(post.body, b"hello");
+        assert!(!post.method.is_idempotent());
+    }
+
+    #[test]
+    fn decodes_chunked_bodies() {
+        let raw = b"POST /u HTTP/1.1\r\nHost: api\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n";
+        assert_eq!(parse(raw).expect("valid").body, b"hello world");
+    }
+
+    #[test]
+    fn rejects_ambiguous_framing_and_bad_framing() {
+        let smuggling = b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\nhello";
+        assert_eq!(parse(smuggling), Err(ParseError::AmbiguousBodyLength));
+
+        let gzip = b"POST / HTTP/1.1\r\nHost: api\r\nTransfer-Encoding: gzip\r\n\r\n";
+        assert_eq!(parse(gzip), Err(ParseError::UnsupportedTransferEncoding));
+    }
+
+    #[test]
+    fn rejects_missing_host_and_line_folding() {
+        assert_eq!(
+            parse(b"GET / HTTP/1.1\r\nAccept: */*\r\n\r\n"),
+            Err(ParseError::MissingHost)
+        );
+        let folded = b"GET / HTTP/1.1\r\nHost: api\r\nX-A: 1\r\n continued\r\n\r\n";
+        assert!(matches!(parse(folded), Err(ParseError::Malformed(_))));
+    }
+
+    #[test]
+    fn reports_incomplete_and_enforces_limits() {
+        assert_eq!(
+            parse(b"GET / HTTP/1.1\r\nHost: api\r\n"),
+            Err(ParseError::Incomplete)
+        );
+        let limits = Limits {
+            max_header_bytes: 1024,
+            max_body_bytes: 10,
+        };
+        let raw = b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 999\r\n\r\n";
+        assert_eq!(parse_request(raw, limits), Err(ParseError::PayloadTooLarge));
+    }
+
+    #[test]
+    fn http_1_0_needs_keep_alive_opt_in() {
+        let raw = b"GET / HTTP/1.0\r\n\r\n";
+        assert!(!parse(raw).expect("valid").should_keep_alive());
+        let raw = b"GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
+        assert!(parse(raw).expect("valid").should_keep_alive());
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="methods-versions-and-the-request-type"><a class="header" href="#methods-versions-and-the-request-type">Methods, versions, and the request type</a></h3>
+<p><code>Method::parse</code> uses <code>Some(match token { ... _ =&gt; return None })</code>. Every arm except the
+last produces a <code>Method</code>, and the last returns from the function, so the <code>match</code>
+expression has type <code>Method</code> and the whole body fits in one expression.</p>
+<p><code>is_safe</code> and <code>is_idempotent</code> encode RFC 9110’s definitions. <code>PUT</code> and <code>DELETE</code> are
+idempotent but not safe, and <code>POST</code> and <code>PATCH</code> are neither. Chapter 57 uses the same
+distinction to decide which requests may be retried.</p>
+<p><code>Request::header</code> compares names with <code>eq_ignore_ascii_case</code>, because HTTP header names
+are case-insensitive, and returns the first match.</p>
+<p><code>should_keep_alive</code> splits the <code>Connection</code> header on commas, because the header is a
+list, and applies the default for each version: HTTP/1.1 keeps connections open unless
+told to close, and HTTP/1.0 closes them unless told to keep them alive.</p>
+<h3 id="errors"><a class="header" href="#errors">Errors</a></h3>
+<p><code>ParseError</code> is <code>Copy</code>. <code>Malformed</code> carries a <code>&amp;'static str</code> reason rather than a
+<code>String</code>, so constructing an error never allocates. A client can make the parser fail
+on purpose, and failing should cost as little as possible.</p>
+<h3 id="the-request-line-and-headers"><a class="header" href="#the-request-line-and-headers">The request line and headers</a></h3>
+<p><code>let Some(header_end) = ... else { ... }</code> handles the missing terminator first, choosing
+between <code>PayloadTooLarge</code> and <code>Incomplete</code> by the input length.</p>
+<p>The head is split on <code>\n</code> with each line’s trailing <code>\r</code> removed by <code>strip_suffix</code>. The
+request line is split on single spaces into exactly three parts. <code>parts.next().is_some()</code>
+after the version rejects a fourth part, and <code>target.is_empty()</code> rejects the empty target
+that two consecutive spaces produce.</p>
+<p>Header lines beginning with a space or tab are obsolete line folding, which RFC 9112
+says a server must reject or replace; this parser rejects them. A header name must be
+non-empty and free of whitespace, which rejects <code>Host : api</code>, a form some servers accept
+and others do not.</p>
+<p>The <code>Host</code> check counts matching headers and requires exactly one, for HTTP/1.1 only.</p>
+<h3 id="body-framing"><a class="header" href="#body-framing">Body framing</a></h3>
+<p><code>collect</code> is a closure that returns every value of a header. Collecting all values rather
+than the first is required for framing: two <code>Content-Length</code> headers with different
+values are rejected as <code>conflicting Content-Length</code>, while two with the same value are
+accepted, as RFC 9112 permits.</p>
+<p>For <code>Transfer-Encoding</code>, all values are joined and split on commas. The only coding the
+parser supports is <code>chunked</code>, and it must be the final coding. Anything else is
+<code>UnsupportedTransferEncoding</code>.</p>
+<p><code>lengths.next().expect("non-empty")?</code> combines two operations. <code>expect</code> documents that
+the iterator cannot be empty, because the function returned earlier for an empty list,
+and <code>?</code> propagates a parse failure of the first value.</p>
+<h3 id="chunked-decoding"><a class="header" href="#chunked-decoding">Chunked decoding</a></h3>
+<p>Each chunk begins with a hexadecimal size, optionally followed by <code>;</code> and chunk
+extensions, which the parser ignores. A size of zero ends the body; the loop then skips
+trailer lines until an empty line. For a non-zero size, the parser checks the body limit,
+checks that the chunk and its trailing <code>\r\n</code> are fully present, copies the chunk, and
+verifies the <code>\r\n</code>.</p>
+<p><code>find_crlf</code> uses <code>data.get(from..)?</code>, which returns <code>None</code> rather than panicking when
+<code>from</code> is past the end of the data.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p><strong>Parsing a chunked <code>POST</code> from the test <code>decodes_chunked_bodies</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>stage</th><th>input examined</th><th>result</th></tr>
+</thead>
+<tbody>
+<tr><td>find head end</td><td>up to the first <code>\r\n\r\n</code></td><td><code>header_end</code> found</td></tr>
+<tr><td>request line</td><td><code>POST /u HTTP/1.1</code></td><td><code>Method::Post</code>, target <code>/u</code>, <code>Http11</code></td></tr>
+<tr><td>headers</td><td><code>Host: api</code>, <code>Transfer-Encoding: chunked</code></td><td>two headers; exactly one <code>Host</code></td></tr>
+<tr><td>framing</td><td><code>transfer-encoding</code> present, no <code>content-length</code></td><td>chunked</td></tr>
+<tr><td>chunk 1</td><td><code>5\r\nhello\r\n</code></td><td>size 5, body <code>hello</code></td></tr>
+<tr><td>chunk 2</td><td><code>6\r\n world\r\n</code></td><td>size 6, body <code>hello world</code></td></tr>
+<tr><td>last chunk</td><td><code>0\r\n\r\n</code></td><td>size 0; empty trailer line ends the body</td></tr>
+<tr><td>result</td><td></td><td><code>Ok(Request { body: b"hello world", .. })</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>For the smuggling test, both <code>Content-Length: 5</code> and <code>Transfer-Encoding: chunked</code> are
+present, and <code>parse_body</code> returns <code>AmbiguousBodyLength</code> before looking at the body.</p>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Stage</th><th>Time</th><th>Space</th></tr>
+</thead>
+<tbody>
+<tr><td>finding the head</td><td><code>O(n)</code> over the bytes received</td><td>none</td></tr>
+<tr><td>request line and headers</td><td><code>O(head length)</code></td><td>one <code>String</code> pair per header</td></tr>
+<tr><td><code>Content-Length</code> body</td><td><code>O(body length)</code></td><td>one copy of the body</td></tr>
+<tr><td>chunked body</td><td><code>O(body length)</code> plus <code>O(chunks)</code> line searches</td><td>one growing <code>Vec&lt;u8&gt;</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>A chunk size near <code>usize::MAX</code> panics in a debug build.</strong> In <code>decode_chunked</code>, the check
+<code>body.len() + size &gt; max_body</code> adds before comparing. A client that sends one valid chunk
+and then a chunk size of <code>ffffffffffffffff</code> makes the addition overflow. With overflow
+checks enabled, as in a debug build, the parser panics; the following request triggers
+it:</p>
+<pre><code class="language-text">POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\nffffffffffffffff\r\n
+</code></pre>
+<p>In a release build the sum wraps, passes the size check, and the later <code>checked_add</code>
+reports <code>Malformed</code>, so the outcome depends on the build profile. Comparing without
+adding removes the problem:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>if size &gt; max_body - body.len() {
+    return Err(ParseError::PayloadTooLarge);
+}
+<span class="boring">}</span></code></pre>
+<p><code>body.len()</code> never exceeds <code>max_body</code>, so the subtraction cannot underflow.</p>
+<p><strong>The head is searched again on every call.</strong> A server that calls <code>parse_request</code> after
+each read rescans all the bytes received so far for <code>\r\n\r\n</code>. For a client that sends
+a 16 KiB head one byte at a time, that is quadratic work bounded by the header limit. A
+parser that remembers where it stopped avoids it.</p>
+<p><strong>Header names are not validated as tokens.</strong> RFC 9110 restricts header names to a set
+of token characters. The parser rejects only empty names and names containing
+whitespace, so names such as <code>X(Y)</code> are accepted.</p>
+<p><strong><code>Transfer-Encoding</code> is accepted for HTTP/1.0.</strong> The chunked coding was introduced in
+HTTP/1.1, and RFC 9112 advises treating its presence in a 1.0 request as a framing
+error.</p>
+<p><strong>One request per call.</strong> The parser does not report how many bytes it consumed, so a
+caller cannot find the start of a pipelined second request in the same buffer. Returning
+the consumed length alongside the <code>Request</code> would allow it.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Parse the head only after the terminating empty line has arrived; report <code>Incomplete</code>
+until then and <code>PayloadTooLarge</code> if the limit is exceeded first.</li>
+<li>Convert only the textual parts of a request to <code>&amp;str</code>, and keep the body as bytes.</li>
+<li>Reject a request that carries both <code>Content-Length</code> and <code>Transfer-Encoding</code>, and
+reject conflicting <code>Content-Length</code> values, to close the ambiguities behind request
+smuggling.</li>
+<li>Bound header and body sizes before allocating, and use allocation-free error values
+in code that untrusted input can drive to failure.</li>
+<li>Size arithmetic on untrusted numbers must not overflow; compare against the remaining
+budget instead of adding to the amount used.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, Sections 5.1 and 9.2.</li>
+<li>RFC 9112, <em>HTTP/1.1</em>, 2022, Sections 6 and 7, on message body length and chunked
+transfer coding.</li>
+<li>James Kettle, “HTTP Desync Attacks: Request Smuggling Reborn”, PortSwigger Research,
+2019.</li>
+<li>The <code>httparse</code> crate, <a href="https://docs.rs/httparse/latest/httparse/">documentation</a>, a
+zero-copy incremental parser.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="53-epoll-echo-server.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="55-http-server.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="53-epoll-echo-server.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="55-http-server.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

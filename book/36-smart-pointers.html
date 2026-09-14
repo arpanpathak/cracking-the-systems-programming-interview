@@ -1,0 +1,589 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>36. Smart Pointers and Interior Mutability - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="smart-pointers"><a class="header" href="#smart-pointers">36. Smart Pointers and Interior Mutability</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs"><code>src/problems/smart_pointers.rs</code></a>. Test it with <code>cargo test smart_pointers</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>Five situations recur in systems code:</p>
+<ol>
+<li>A type contains itself, such as an expression tree.</li>
+<li>Two parts of one thread need to change the same value.</li>
+<li>A child needs to reach its parent without keeping the parent alive.</li>
+<li>Several threads need to change the same value.</li>
+<li>A function usually returns its input unchanged and occasionally needs a modified copy.</li>
+</ol>
+<p>Each has a type designed for it, and choosing the wrong one produces either a compile
+error or a run-time failure. The module documentation summarises the choices in a
+table, reproduced here.</p>
+<p><strong>What each pointer type provides</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Ownership</th><th>Mutation</th><th>Across threads</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Box&lt;T&gt;</code></td><td>single</td><td>through <code>&amp;mut</code></td><td>if <code>T: Send</code></td></tr>
+<tr><td><code>Rc&lt;T&gt;</code></td><td>shared, non-atomic count</td><td>no</td><td>no</td></tr>
+<tr><td><code>Arc&lt;T&gt;</code></td><td>shared, atomic count</td><td>no</td><td>if <code>T: Send + Sync</code></td></tr>
+<tr><td><code>RefCell&lt;T&gt;</code></td><td>single</td><td>checked at run time</td><td>no</td></tr>
+<tr><td><code>Mutex&lt;T&gt;</code></td><td>single</td><td>blocking lock</td><td>yes</td></tr>
+<tr><td><code>Weak&lt;T&gt;</code></td><td>non-owning</td><td>no</td><td>as <code>Rc</code> or <code>Arc</code></td></tr>
+<tr><td><code>Cow&lt;'a, T&gt;</code></td><td>borrowed or owned</td><td>no</td><td>as the borrow</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>The types combine along two axes. The first axis is ownership: <code>Box</code> has one owner,
+<code>Rc</code> and <code>Arc</code> have many, and <code>Weak</code> has none. The second is mutation through a shared
+reference, which Rust forbids by default and permits only through a cell: <code>RefCell</code>
+checks borrows at run time on one thread, and <code>Mutex</code> enforces exclusion with a lock
+across threads.</p>
+<p>The common pairings follow from those axes:</p>
+<ul>
+<li><code>Rc&lt;RefCell&lt;T&gt;&gt;</code> for shared, mutable state inside one thread, such as the doubly
+linked list in chapter 16.</li>
+<li><code>Arc&lt;Mutex&lt;T&gt;&gt;</code> for shared, mutable state between threads, such as the counters and
+queues in chapters 21, 22, and 30.</li>
+<li><code>Rc</code> forward and <code>Weak</code> backward whenever two objects refer to each other, so that
+the reference counts can reach zero.</li>
+</ul>
+<p><code>Cow</code> is on a different axis. It is not about sharing; it lets a function defer the
+decision to allocate until it knows whether an allocation is needed.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<p>The module contains five short examples and a test for each. The file begins with the
+table from the Problem Statement in its documentation comment and the imports, shown
+below.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Smart pointers and interior mutability.
+//!
+//! Each pointer type answers a different ownership question, and picking the
+//! wrong one shows up as either a compile error or a runtime bug.
+//!
+//! | Type | Ownership | Mutation | Across threads |
+//! |---|---|---|---|
+//! | `Box&lt;T&gt;` | single | through `&amp;mut` | if `T: Send` |
+//! | `Rc&lt;T&gt;` | shared, non-atomic count | no | no |
+//! | `Arc&lt;T&gt;` | shared, atomic count | no | if `T: Send + Sync` |
+//! | `RefCell&lt;T&gt;` | single | runtime checked | no |
+//! | `Mutex&lt;T&gt;` | single | blocking lock | yes |
+//! | `Weak&lt;T&gt;` | non-owning | no | as `Arc` |
+//! | `Cow&lt;'a, T&gt;` | borrow or own | no | as the borrow |
+//!
+//! Two rules cover most decisions. `Rc`/`RefCell` is for graphs and caches inside
+//! one thread; `Arc`/`Mutex` is for state shared between threads. `Weak` exists to
+//! break reference cycles, because two strong references in a cycle never reach a
+//! count of zero and the memory is never freed.
+
+use std::borrow::Cow;
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
+use std::sync::{Arc, Mutex};
+use std::thread;
+<span class="boring">}</span></code></pre>
+<h3 id="box-for-a-recursive-type"><a class="header" href="#box-for-a-recursive-type"><code>Box</code> for a recursive type</a></h3>
+<p>A type that contains itself by value would have infinite size. <code>Box&lt;Expr&gt;</code> is one
+pointer wide whatever the expression contains, so <code>Expr</code> has a finite size.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A recursive type needs indirection, because `Expr` cannot contain itself by
+/// value. `Box` provides the fixed-size indirection.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Expr {
+    Lit(i64),
+    Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;),
+}
+
+/// Evaluate an expression tree.
+pub fn eval(expr: &amp;Expr) -&gt; i64 {
+    match expr {
+        Expr::Lit(value) =&gt; *value,
+        Expr::Add(left, right) =&gt; eval(left) + eval(right),
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>eval(left)</code> receives a <code>&amp;Box&lt;Expr&gt;</code>, and deref coercion turns it into the <code>&amp;Expr</code> the
+function expects, so the recursive calls need no explicit dereference.</p>
+<h3 id="rcrefcellt-inside-one-thread"><a class="header" href="#rcrefcellt-inside-one-thread"><code>Rc&lt;RefCell&lt;T&gt;&gt;</code> inside one thread</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Shared mutation inside one thread, with `Rc` for aliasing and `RefCell` for
+/// the runtime borrow check.
+pub fn shared_counter_with_rc_refcell() -&gt; i32 {
+    let counter = Rc::new(RefCell::new(0));
+    let alias = Rc::clone(&amp;counter);
+
+    *alias.borrow_mut() += 1;
+    *counter.borrow_mut() += 10;
+
+    *counter.borrow()
+}
+<span class="boring">}</span></code></pre>
+<p><code>Rc::clone(&amp;counter)</code> increments a reference count and returns a second handle to the
+same allocation; it does not copy the integer. <code>borrow_mut</code> returns a <code>RefMut</code> guard
+that dereferences to <code>&amp;mut i32</code>. Each guard is a temporary that ends with its
+statement, so the two mutable borrows never overlap and neither panics. The function
+returns 11.</p>
+<p>If the two guards were alive at the same time, for example
+<code>let a = alias.borrow_mut(); let b = counter.borrow_mut();</code>, the second call would
+panic with <code>already borrowed</code>. The compiler cannot see the conflict because both
+handles are shared references; <code>RefCell</code> checks it at run time instead.</p>
+<h3 id="weak-for-a-back-reference"><a class="header" href="#weak-for-a-back-reference"><code>Weak</code> for a back-reference</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A node whose parent link is weak, so a child does not keep its parent alive.
+pub struct TreeNode {
+    pub value: i32,
+    parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;,
+}
+
+impl TreeNode {
+    /// A node with no parent.
+    pub fn root(value: i32) -&gt; Rc&lt;Self&gt; {
+        Rc::new(Self {
+            value,
+            parent: RefCell::new(Weak::new()),
+        })
+    }
+
+    /// A node that points back weakly at `parent`.
+    pub fn child_of(parent: &amp;Rc&lt;Self&gt;, value: i32) -&gt; Rc&lt;Self&gt; {
+        Rc::new(Self {
+            value,
+            parent: RefCell::new(Rc::downgrade(parent)),
+        })
+    }
+
+    /// The parent's value, or `None` once the parent has been dropped.
+    pub fn parent_value(&amp;self) -&gt; Option&lt;i32&gt; {
+        self.parent.borrow().upgrade().map(|parent| parent.value)
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>Rc::downgrade(parent)</code> creates a <code>Weak</code> that does not contribute to the strong count.
+When the last <code>Rc</code> to the parent is dropped, the parent is freed even though the child
+still holds the <code>Weak</code>. <code>upgrade</code> then returns <code>None</code>, and <code>parent_value</code> reports
+absence rather than reading freed memory.</p>
+<p>The <code>parent</code> field is a <code>RefCell&lt;Weak&lt;TreeNode&gt;&gt;</code>. This module only reads the cell,
+but the cell is what would let a parent be attached or replaced after the child is
+created, through a shared <code>Rc&lt;TreeNode&gt;</code>.</p>
+<h3 id="arcmutext-across-threads"><a class="header" href="#arcmutext-across-threads"><code>Arc&lt;Mutex&lt;T&gt;&gt;</code> across threads</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Shared mutation across threads, with `Arc` for ownership and `Mutex` for
+/// exclusive access.
+pub fn total_with_arc_mutex(threads: usize, per_thread: usize) -&gt; usize {
+    let total = Arc::new(Mutex::new(0usize));
+    let mut handles = Vec::with_capacity(threads);
+
+    for _ in 0..threads {
+        let total = Arc::clone(&amp;total);
+        handles.push(thread::spawn(move || {
+            for _ in 0..per_thread {
+                let mut guard = total.lock().expect("mutex poisoned");
+                *guard += 1;
+            }
+        }));
+    }
+
+    for handle in handles {
+        handle.join().expect("worker panicked");
+    }
+
+    *total.lock().expect("mutex poisoned")
+}
+<span class="boring">}</span></code></pre>
+<p><code>Arc</code> is the thread-safe version of <code>Rc</code>: its reference count is updated with atomic
+operations, so handles can be cloned and dropped on different threads. <code>Mutex</code>
+provides the exclusive access that <code>RefCell</code> provides on one thread, and it blocks
+rather than panics when the value is already borrowed.</p>
+<p>The lock is taken once per increment. That is correct and slow: each increment pays
+for a lock acquisition. Chapter 43 replaces the mutex with an <code>AtomicUsize</code> for this
+exact workload.</p>
+<h3 id="cow-to-allocate-only-when-necessary"><a class="header" href="#cow-to-allocate-only-when-necessary"><code>Cow</code> to allocate only when necessary</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Borrow when no change is needed, allocate only when there is one.
+///
+/// `Cow` is the idiomatic return type for a function that usually passes its
+/// input through unchanged.
+pub fn normalize(input: &amp;str, uppercase: bool) -&gt; Cow&lt;'_, str&gt; {
+    if uppercase &amp;&amp; input.bytes().any(|byte| byte.is_ascii_lowercase()) {
+        Cow::Owned(input.to_uppercase())
+    } else {
+        Cow::Borrowed(input)
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>The function scans the bytes once. If uppercasing is not requested, or the input has
+no lowercase ASCII letter, it returns <code>Cow::Borrowed(input)</code> and allocates nothing.
+Otherwise it allocates the uppercased <code>String</code>. A caller treats both cases the same way,
+because <code>Cow&lt;str&gt;</code> dereferences to <code>&amp;str</code>, and a caller that needs ownership calls
+<code>into_owned</code>.</p>
+<p>The lifetime in <code>Cow&lt;'_, str&gt;</code> is elided to the lifetime of <code>input</code>, which is what ties
+a borrowed result to the argument it came from.</p>
+<p>The last listing shows the tests, one per example.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn boxed_expression_evaluates() {
+        let expr = Expr::Add(Box::new(Expr::Lit(1)), Box::new(Expr::Lit(2)));
+        assert_eq!(eval(&amp;expr), 3);
+    }
+
+    #[test]
+    fn rc_refcell_shares_mutation_within_a_thread() {
+        assert_eq!(shared_counter_with_rc_refcell(), 11);
+    }
+
+    #[test]
+    fn weak_parent_link_does_not_keep_the_parent_alive() {
+        let root = TreeNode::root(1);
+        let child = TreeNode::child_of(&amp;root, 2);
+
+        assert_eq!(child.parent_value(), Some(1));
+        drop(root);
+        assert_eq!(child.parent_value(), None);
+    }
+
+    #[test]
+    fn arc_mutex_sums_concurrent_updates() {
+        assert_eq!(total_with_arc_mutex(8, 250), 2_000);
+    }
+
+    #[test]
+    fn cow_borrows_and_owns_as_needed() {
+        assert!(matches!(normalize("A100", true), Cow::Borrowed(_)));
+        assert!(matches!(normalize("a100", true), Cow::Owned(_)));
+        assert_eq!(normalize("a100", true), "A100");
+        assert_eq!(normalize("a100", false), "a100");
+    }
+}
+<span class="boring">}</span></code></pre>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p>The weak-parent test is the one that shows a pointer type changing state over time.
+The table below records the reference counts at each step.</p>
+<p><strong>Counts during <code>weak_parent_link_does_not_keep_the_parent_alive</code></strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>step</th><th>strong count of <code>root</code></th><th>weak count of <code>root</code></th><th><code>child.parent_value()</code></th></tr>
+</thead>
+<tbody>
+<tr><td><code>let root = TreeNode::root(1)</code></td><td>1</td><td>0</td><td>not called</td></tr>
+<tr><td><code>let child = TreeNode::child_of(&amp;root, 2)</code></td><td>1</td><td>1</td><td><code>Some(1)</code></td></tr>
+<tr><td><code>drop(root)</code></td><td>0, the node is dropped</td><td>1, the allocation remains until the <code>Weak</code> is gone</td><td><code>None</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The allocation that held the parent’s control block is released when the child, and
+with it the last <code>Weak</code>, is dropped at the end of the test. The <code>TreeNode</code> value
+itself was dropped at <code>drop(root)</code>.</p>
+<p>The <code>Cow</code> test produces the following results:</p>
+<pre><code class="language-text">normalize("A100", true)   no lowercase byte      Cow::Borrowed("A100")
+normalize("a100", true)   'a' is lowercase       Cow::Owned("A100")
+normalize("a100", false)  uppercase not wanted   Cow::Borrowed("a100")
+</code></pre>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Box::new</code></td><td>one allocation</td><td>the value plus nothing</td></tr>
+<tr><td><code>Rc::clone</code>, <code>Rc</code> drop</td><td>one non-atomic increment or decrement</td><td>two counts per allocation</td></tr>
+<tr><td><code>Arc::clone</code>, <code>Arc</code> drop</td><td>one atomic increment or decrement</td><td>two counts per allocation</td></tr>
+<tr><td><code>RefCell::borrow_mut</code></td><td>one flag check and write</td><td>one <code>isize</code> flag per cell</td></tr>
+<tr><td><code>Mutex::lock</code></td><td>uncontended: one atomic operation; contended: a system call</td><td>a few bytes of lock state</td></tr>
+<tr><td><code>Weak::upgrade</code></td><td>one count check and increment</td><td>none</td></tr>
+<tr><td><code>normalize</code></td><td><code>O(n)</code> scan, plus <code>O(n)</code> copy when owned</td><td>zero or one allocation</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong><code>Rc&lt;RefCell&lt;T&gt;&gt;</code> moves errors from compile time to run time.</strong> A borrow conflict in
+the <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> example is a panic, not a compile error. Code that can be written with plain
+ownership and <code>&amp;mut</code> should be, and the arena in chapter 18 shows a design that avoids
+<code>RefCell</code> altogether.</p>
+<p><strong><code>Arc&lt;Mutex&lt;T&gt;&gt;</code> serializes the work it protects.</strong> In the <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> example, eight threads
+spend most of their time waiting for one lock. The type makes sharing safe; it does
+not make it fast.</p>
+<p><strong><code>Weak</code> does not prevent cycles on its own.</strong> It is a tool for breaking them, and the
+program has to choose which link is weak. Two <code>Rc</code> links in a cycle leak both values,
+and no warning is issued.</p>
+<p><strong><code>normalize</code> looks only for ASCII lowercase letters.</strong> An input such as <code>"straße"</code> has
+lowercase letters, and so is converted, but an input consisting only of non-ASCII
+lowercase letters such as <code>"é"</code> is returned borrowed and unchanged even though
+<code>to_uppercase</code> would change it. The check and the conversion disagree on what
+“lowercase” means.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li><code>Box</code> gives a recursive type a finite size and has a single owner.</li>
+<li><code>Rc</code> shares ownership within a thread, and <code>Arc</code> shares it across threads with
+atomic counts.</li>
+<li><code>RefCell</code> and <code>Mutex</code> allow mutation through a shared handle; <code>RefCell</code> panics on a
+conflicting borrow, and <code>Mutex</code> blocks.</li>
+<li><code>Weak</code> observes without owning, which lets back-references coexist with reference
+counting; <code>upgrade</code> returns <code>None</code> after the target is dropped.</li>
+<li><code>Cow</code> returns a borrow when no change is needed and allocates only when one is.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch15-00-smart-pointers.html">Smart pointers</a>.</li>
+<li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch15-06-reference-cycles.html">Reference cycles can leak memory</a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/rc/index.html"><code>std::rc</code></a>, <a href="https://doc.rust-lang.org/std/cell/index.html"><code>std::cell</code></a>, and <a href="https://doc.rust-lang.org/std/sync/struct.Arc.html"><code>std::sync::Arc</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/borrow/enum.Cow.html"><code>std::borrow::Cow</code></a>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="35-adt-idioms.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="37-fibonacci.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="35-adt-idioms.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="37-fibonacci.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,874 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>59. Interview Drills - Coding Interviews for Cracked Rustaceans</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A Zero-Cost Abstraction Obsession Anatomy">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-be3a2d66.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ce4c8d76.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Coding Interviews for Cracked Rustaceans</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="drills"><a class="header" href="#drills">59. Interview Drills</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs"><code>src/problems/drills.rs</code></a>. Test it with <code>cargo test drills</code>.</em></p>
+<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
+<p>The other chapters read complete, tested modules. In an interview there is time for
+perhaps forty lines. The file <code>drills.rs</code> collects the version of ten exercises that
+fits that budget, written to be typed from memory:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Drill</th><th>Full treatment</th></tr>
+</thead>
+<tbody>
+<tr><td>Thread-safe counter with <code>Arc&lt;Mutex&gt;</code></td><td>Chapters 36 and 43</td></tr>
+<tr><td>Scoped parallel sum</td><td>Chapters 31 and 43</td></tr>
+<tr><td>Spin lock</td><td>Chapter 44</td></tr>
+<tr><td>Semaphore</td><td>Chapter 45</td></tr>
+<tr><td>Bounded blocking queue with close</td><td>Chapters 30 and 46</td></tr>
+<tr><td>Thread pool</td><td>Chapter 21</td></tr>
+<tr><td>Retry with exponential backoff</td><td>Chapter 57</td></tr>
+<tr><td>Consistent hashing ring</td><td>Chapter 42</td></tr>
+<tr><td>HTTP request head parser</td><td>Chapter 54</td></tr>
+<tr><td>Newtype and routing enumeration</td><td>Chapters 35 and 55</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
+<p>Each drill should be written in 30 to 45 minutes without looking at the file, and then
+compared with it. After writing it, state the failure modes and how you would test them.
+The short versions keep the core mechanism of each design and drop everything a caller
+could live without in an interview: accessors, timeouts, typed errors, and most
+documentation.</p>
+<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Short answers to the common prompts, sized for a live round.
+//!
+//! Each item is a standalone implementation of roughly the length you would write
+//! in an interview. The modules next to this one are reference versions with the
+//! long explanations and full test suites; this file is what you type.
+
+use std::cell::UnsafeCell;
+use std::collections::VecDeque;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
+// --- Thread-safe counter (Arc + Mutex) ---
+
+pub fn count_parallel(threads: usize, per_thread: usize) -&gt; usize {
+    let counter = Arc::new(Mutex::new(0usize));
+    let handles: Vec&lt;_&gt; = (0..threads)
+        .map(|_| {
+            let counter = Arc::clone(&amp;counter);
+            thread::spawn(move || {
+                for _ in 0..per_thread {
+                    *counter.lock().expect("poisoned") += 1;
+                }
+            })
+        })
+        .collect();
+
+    for handle in handles {
+        handle.join().expect("worker panicked");
+    }
+    *counter.lock().expect("poisoned")
+}
+
+// --- Scoped threads (borrow instead of Arc) ---
+
+pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
+    let chunk_size = values.len().div_ceil(4).max(1);
+    thread::scope(|scope| {
+        values
+            .chunks(chunk_size)
+            .map(|chunk| {
+                scope.spawn(move || chunk.iter().map(|value| i64::from(*value)).sum::&lt;i64&gt;())
+            })
+            .map(|handle| handle.join().expect("worker panicked"))
+            .sum()
+    })
+}
+
+// --- Spin lock from an atomic ---
+
+pub struct SpinLock&lt;T&gt; {
+    locked: AtomicBool,
+    value: UnsafeCell&lt;T&gt;,
+}
+
+unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}
+
+impl&lt;T&gt; SpinLock&lt;T&gt; {
+    pub const fn new(value: T) -&gt; Self {
+        Self {
+            locked: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    pub fn lock(&amp;self) -&gt; SpinGuard&lt;'_, T&gt; {
+        while self.locked.swap(true, Ordering::Acquire) {
+            std::hint::spin_loop();
+        }
+        SpinGuard { lock: self }
+    }
+}
+
+pub struct SpinGuard&lt;'a, T&gt; {
+    lock: &amp;'a SpinLock&lt;T&gt;,
+}
+
+impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
+    fn drop(&amp;mut self) {
+        self.lock.locked.store(false, Ordering::Release);
+    }
+}
+
+impl&lt;T&gt; Deref for SpinGuard&lt;'_, T&gt; {
+    type Target = T;
+    fn deref(&amp;self) -&gt; &amp;T {
+        unsafe { &amp;*self.lock.value.get() }
+    }
+}
+
+impl&lt;T&gt; DerefMut for SpinGuard&lt;'_, T&gt; {
+    fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
+        unsafe { &amp;mut *self.lock.value.get() }
+    }
+}
+
+// --- Semaphore (acquire blocks) ---
+
+pub struct Semaphore {
+    permits: Mutex&lt;usize&gt;,
+    released: Condvar,
+}
+
+impl Semaphore {
+    pub fn new(permits: usize) -&gt; Self {
+        Self {
+            permits: Mutex::new(permits),
+            released: Condvar::new(),
+        }
+    }
+
+    pub fn acquire(&amp;self) {
+        let mut permits = self.permits.lock().expect("poisoned");
+        while *permits == 0 {
+            permits = self.released.wait(permits).expect("poisoned");
+        }
+        *permits -= 1;
+    }
+
+    pub fn try_acquire(&amp;self) -&gt; bool {
+        let mut permits = self.permits.lock().expect("poisoned");
+        if *permits == 0 {
+            false
+        } else {
+            *permits -= 1;
+            true
+        }
+    }
+
+    pub fn release(&amp;self) {
+        *self.permits.lock().expect("poisoned") += 1;
+        self.released.notify_one();
+    }
+}
+
+// --- Bounded blocking queue (backpressure + close) ---
+
+pub struct BlockingQueue&lt;T&gt; {
+    inner: Mutex&lt;Inner&lt;T&gt;&gt;,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+struct Inner&lt;T&gt; {
+    items: VecDeque&lt;T&gt;,
+    capacity: usize,
+    closed: bool,
+}
+
+impl&lt;T&gt; BlockingQueue&lt;T&gt; {
+    pub fn new(capacity: usize) -&gt; Self {
+        Self {
+            inner: Mutex::new(Inner {
+                items: VecDeque::new(),
+                capacity,
+                closed: false,
+            }),
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+
+    pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
+        let mut inner = self.inner.lock().expect("poisoned");
+        loop {
+            if inner.closed {
+                return Err(item);
+            }
+            if inner.items.len() &lt; inner.capacity {
+                inner.items.push_back(item);
+                self.not_empty.notify_one();
+                return Ok(());
+            }
+            inner = self.not_full.wait(inner).expect("poisoned");
+        }
+    }
+
+    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut inner = self.inner.lock().expect("poisoned");
+        loop {
+            if let Some(item) = inner.items.pop_front() {
+                self.not_full.notify_one();
+                return Some(item);
+            }
+            if inner.closed {
+                return None;
+            }
+            inner = self.not_empty.wait(inner).expect("poisoned");
+        }
+    }
+
+    pub fn close(&amp;self) {
+        let mut inner = self.inner.lock().expect("poisoned");
+        inner.closed = true;
+        drop(inner);
+        self.not_empty.notify_all();
+        self.not_full.notify_all();
+    }
+}
+
+// --- Thread pool (fixed workers + channel) ---
+
+pub struct ThreadPool {
+    sender: Option&lt;mpsc::Sender&lt;Box&lt;dyn FnOnce() + Send + 'static&gt;&gt;&gt;,
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    pub fn new(size: usize) -&gt; Self {
+        let (sender, receiver) = mpsc::channel::&lt;Box&lt;dyn FnOnce() + Send + 'static&gt;&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let workers = (0..size)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    loop {
+                        let Ok(job) = receiver.lock().expect("poisoned").recv() else {
+                            return;
+                        };
+                        job();
+                    }
+                })
+            })
+            .collect();
+        Self {
+            sender: Some(sender),
+            workers,
+        }
+    }
+
+    pub fn execute(&amp;self, job: impl FnOnce() + Send + 'static) {
+        self.sender
+            .as_ref()
+            .expect("pool dropped")
+            .send(Box::new(job))
+            .expect("worker gone");
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
+}
+
+// --- Retry with exponential backoff ---
+
+pub fn retry&lt;T, E&gt;(
+    max_attempts: u32,
+    mut operation: impl FnMut() -&gt; Result&lt;T, E&gt;,
+    retryable: impl Fn(&amp;E) -&gt; bool,
+) -&gt; Result&lt;T, E&gt; {
+    let mut delay = Duration::from_millis(25);
+    let mut attempt = 0;
+    loop {
+        match operation() {
+            Ok(value) =&gt; return Ok(value),
+            Err(error) =&gt; {
+                attempt += 1;
+                if attempt &gt;= max_attempts || !retryable(&amp;error) {
+                    return Err(error);
+                }
+                thread::sleep(delay);
+                delay = (delay * 2).min(Duration::from_secs(1));
+            }
+        }
+    }
+}
+
+// --- Consistent hashing ring ---
+
+#[derive(Default)]
+pub struct HashRing {
+    points: Vec&lt;(u64, String)&gt;,
+}
+
+impl HashRing {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    pub fn add(&amp;mut self, node: &amp;str, replicas: usize) {
+        for replica in 0..replicas {
+            self.points.push((hash(node, replica), node.to_string()));
+        }
+        self.points.sort_unstable_by_key(|(point, _)| *point);
+    }
+
+    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;str&gt; {
+        if self.points.is_empty() {
+            return None;
+        }
+        let hash = hash(key, 0);
+        let index = self.points.partition_point(|(point, _)| *point &lt;= hash) % self.points.len();
+        Some(self.points[index].1.as_str())
+    }
+}
+
+fn hash(input: &amp;str, replica: usize) -&gt; u64 {
+    let mut hasher = DefaultHasher::new();
+    hasher.write(input.as_bytes());
+    hasher.write_usize(replica);
+    hasher.finish()
+}
+
+// --- HTTP request head ---
+
+pub struct RequestHead {
+    pub method: String,
+    pub target: String,
+    pub headers: Vec&lt;(String, String)&gt;,
+}
+
+pub fn parse_request_head(input: &amp;str) -&gt; Option&lt;RequestHead&gt; {
+    let mut lines = input.split("\r\n");
+    let mut request_line = lines.next()?.split(' ');
+    let method = request_line.next()?.to_string();
+    let target = request_line.next()?.to_string();
+    if request_line.next()? != "HTTP/1.1" {
+        return None;
+    }
+
+    let mut headers = Vec::new();
+    for line in lines {
+        if line.is_empty() {
+            break;
+        }
+        let (name, value) = line.split_once(':')?;
+        headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
+    }
+    Some(RequestHead {
+        method,
+        target,
+        headers,
+    })
+}
+
+// --- Newtype and enum ADT ---
+
+pub struct Port(u16);
+
+impl Port {
+    pub fn new(value: u16) -&gt; Result&lt;Self, &amp;'static str&gt; {
+        (1..=u16::MAX)
+            .contains(&amp;value)
+            .then_some(Self(value))
+            .ok_or("port must be non-zero")
+    }
+
+    pub fn get(self) -&gt; u16 {
+        self.0
+    }
+}
+
+pub enum Route {
+    Health,
+    List,
+    ById(String),
+}
+
+impl Route {
+    pub fn parse(path: &amp;str) -&gt; Option&lt;Self&gt; {
+        match path {
+            "/healthz" =&gt; Some(Self::Health),
+            "/v1/gpu-workloads" =&gt; Some(Self::List),
+            _ =&gt; path
+                .strip_prefix("/v1/gpu-workloads/")
+                .map(|id| Self::ById(id.to_string())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::AtomicUsize;
+
+    #[test]
+    fn counter_scoped_sum_and_spin_lock() {
+        assert_eq!(count_parallel(4, 100), 400);
+        assert_eq!(parallel_sum(&amp;[1, 2, 3, 4]), 10);
+
+        let lock = Arc::new(SpinLock::new(0usize));
+        let handles: Vec&lt;_&gt; = (0..4)
+            .map(|_| {
+                let lock = Arc::clone(&amp;lock);
+                thread::spawn(move || {
+                    for _ in 0..100 {
+                        *lock.lock() += 1;
+                    }
+                })
+            })
+            .collect();
+        for handle in handles {
+            handle.join().expect("worker panicked");
+        }
+        assert_eq!(*lock.lock(), 400);
+    }
+
+    #[test]
+    fn semaphore_queue_and_pool() {
+        let semaphore = Semaphore::new(1);
+        assert!(semaphore.try_acquire());
+        assert!(!semaphore.try_acquire());
+        semaphore.release();
+        assert!(semaphore.try_acquire());
+
+        let queue = BlockingQueue::new(1);
+        assert_eq!(queue.push(1), Ok(()));
+        queue.close();
+        assert_eq!(queue.pop(), Some(1));
+        assert_eq!(queue.pop(), None);
+        assert_eq!(queue.push(2), Err(2));
+
+        let pool = ThreadPool::new(3);
+        let counter = Arc::new(AtomicUsize::new(0));
+        for _ in 0..100 {
+            let counter = Arc::clone(&amp;counter);
+            pool.execute(move || {
+                counter.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+        drop(pool);
+        assert_eq!(counter.load(Ordering::SeqCst), 100);
+    }
+
+    #[test]
+    fn retry_ring_http_and_adt() {
+        let mut attempts = 0;
+        let ok = retry(
+            3,
+            || {
+                attempts += 1;
+                if attempts &lt; 3 { Err("transient") } else { Ok(7) }
+            },
+            |_| true,
+        );
+        assert_eq!(ok, Ok(7));
+
+        let mut attempts = 0;
+        let bad: Result&lt;(), &amp;str&gt; = retry(
+            3,
+            || {
+                attempts += 1;
+                Err("permanent")
+            },
+            |_| false,
+        );
+        assert!(bad.is_err());
+        assert_eq!(attempts, 1);
+
+        let mut ring = HashRing::new();
+        ring.add("a", 64);
+        ring.add("b", 64);
+        let before = ring.get("job-1").map(str::to_string);
+        ring.add("c", 64);
+        let after = ring.get("job-1").map(str::to_string);
+        assert!(after == before || after.as_deref() == Some("c"));
+
+        let head =
+            parse_request_head("GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\n\r\n").expect("valid");
+        assert_eq!(
+            (head.method.as_str(), head.target.as_str()),
+            ("GET", "/v1/gpu-workloads")
+        );
+        assert_eq!(head.headers[0], ("host".to_string(), "api".to_string()));
+        assert!(parse_request_head("GET / HTTP/2\r\n\r\n").is_none());
+
+        assert!(Port::new(8080).is_ok());
+        assert!(Port::new(0).is_err());
+        assert!(matches!(Route::parse("/healthz"), Some(Route::Health)));
+        assert!(matches!(
+            Route::parse("/v1/gpu-workloads/wl-1"),
+            Some(Route::ById(id)) if id == "wl-1"
+        ));
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="counter-and-parallel-sum"><a class="header" href="#counter-and-parallel-sum">Counter and parallel sum</a></h3>
+<p><code>count_parallel</code> is the <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code> counter from chapter 36, with the lock taken
+once per increment. The final <code>*counter.lock().expect("poisoned")</code> reads the total after
+every thread has been joined.</p>
+<p><code>parallel_sum</code> is shorter than chapter 43’s version, and it is not parallel. The iterator
+chain <code>.map(|chunk| scope.spawn(...)).map(|handle| handle.join()...).sum()</code> is lazy:
+<code>sum</code> pulls the first element, which spawns the first thread and immediately joins it,
+and only then pulls the second. The four chunks are summed one after another on four
+threads. The result is correct and the test passes, so the problem is easy to miss.
+Collecting the handles into a <code>Vec</code> before joining, as chapter 43’s version does, starts
+every thread before waiting for any.</p>
+<h3 id="spin-lock-and-semaphore"><a class="header" href="#spin-lock-and-semaphore">Spin lock and semaphore</a></h3>
+<p>The spin lock uses <code>swap(true, Ordering::Acquire)</code> in a loop rather than
+<code>compare_exchange_weak</code>. <code>swap</code> stores <code>true</code> whether or not the lock was free and
+returns the previous value, so the loop exits when the previous value was <code>false</code>. It is
+shorter to write and performs a write on every attempt, which chapter 44’s version
+avoids while waiting. The <code>unsafe</code> blocks have no <code>SAFETY</code> comments, and <code>SpinGuard</code> has
+the same automatically derived <code>Sync</code> implementation that chapter 44 shows to be
+unsound.</p>
+<p>The semaphore has no guard. <code>acquire</code> and <code>release</code> are separate calls, so a caller that
+returns early between them leaks a permit. Chapter 45’s version returns a guard.</p>
+<h3 id="queue-and-thread-pool"><a class="header" href="#queue-and-thread-pool">Queue and thread pool</a></h3>
+<p><code>BlockingQueue</code> is chapter 46’s closable queue without its accessors. <code>new</code> does not check
+the capacity, so <code>BlockingQueue::new(0)</code> produces a queue on which every <code>push</code> waits
+forever.</p>
+<p><code>ThreadPool</code> sends boxed closures, <code>Box&lt;dyn FnOnce() + Send + 'static&gt;</code>, over one channel.
+Each worker runs <code>let Ok(job) = receiver.lock().expect("poisoned").recv() else { return; };</code>.
+The temporary <code>MutexGuard</code> in that statement is dropped at the end of the <code>let</code>
+statement, before <code>job()</code> runs, so workers execute jobs in parallel. <code>Drop</code> for the pool
+takes the sender out of its <code>Option</code> and drops it, which makes every worker’s <code>recv</code> fail
+and its loop end, and then joins the workers. A job that panics ends its worker thread,
+and <code>let _ = worker.join()</code> discards the panic.</p>
+<h3 id="retry-hash-ring-http-head-and-small-types"><a class="header" href="#retry-hash-ring-http-head-and-small-types">Retry, hash ring, HTTP head, and small types</a></h3>
+<p><code>retry</code> takes the retryability test as a closure instead of a trait, doubles a delay that
+starts at 25 ms, and caps it at one second. It has no jitter.</p>
+<p><code>HashRing::get</code> computes the owner index as <code>partition_point(...) % self.points.len()</code>,
+which wraps an index equal to the length to zero in one expression. Keys are hashed with
+the same function as virtual nodes, using replica number 0.</p>
+<p><code>parse_request_head</code> returns <code>Option</code>, so a caller cannot tell why a head was rejected.
+It lowercases header names on the way in, which makes later lookups case-insensitive
+without <code>eq_ignore_ascii_case</code>.</p>
+<p><code>Port::new</code> accepts any non-zero <code>u16</code>. The standard library’s <code>NonZeroU16</code> expresses the
+same invariant with no custom type, and <code>NonZeroU16::new(value)</code> returns <code>Option</code>.
+<code>Route::parse</code> combines exact matches with <code>strip_prefix</code> in the catch-all arm.</p>
+<p>The tests are grouped three to a function. <code>retry_ring_http_and_adt</code> checks the hash ring
+with the same property as chapter 42: after adding node <code>c</code>, a key either keeps its owner
+or moves to <code>c</code>.</p>
+<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
+<p><strong><code>parallel_sum(&amp;[1, 2, 3, 4])</code> as the lazy chain runs it</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>sum</code> pulls</th><th>action</th><th>threads alive</th></tr>
+</thead>
+<tbody>
+<tr><td>element 1</td><td>spawn a thread for <code>[1]</code>, then join it: 1</td><td>0</td></tr>
+<tr><td>element 2</td><td>spawn a thread for <code>[2]</code>, then join it: 2</td><td>0</td></tr>
+<tr><td>element 3</td><td>spawn a thread for <code>[3]</code>, then join it: 3</td><td>0</td></tr>
+<tr><td>element 4</td><td>spawn a thread for <code>[4]</code>, then join it: 4</td><td>0</td></tr>
+<tr><td>end</td><td>return 10</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+<p>No two threads are ever alive at the same time.</p>
+<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
+<p>Each drill has the same asymptotic cost as its full version; the chapters listed in the
+table in the Problem Statement give the details. <code>parallel_sum</code> costs <code>O(n)</code> work as intended, but
+its wall-clock time is that of a sequential sum plus four thread creations.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<p><strong>What the short versions leave out</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Drill</th><th>Omitted, compared with the full version</th></tr>
+</thead>
+<tbody>
+<tr><td><code>count_parallel</code></td><td>nothing essential</td></tr>
+<tr><td><code>parallel_sum</code></td><td>the lazy chain joins each thread before spawning the next</td></tr>
+<tr><td><code>SpinLock</code></td><td><code>try_lock</code>, <code>SAFETY</code> comments; the guard is <code>Sync</code> for <code>T: Send</code></td></tr>
+<tr><td><code>Semaphore</code></td><td>RAII guard, timeout</td></tr>
+<tr><td><code>BlockingQueue</code></td><td>capacity check, <code>try_pop</code>, accessors</td></tr>
+<tr><td><code>ThreadPool</code></td><td>reporting of panicked jobs</td></tr>
+<tr><td><code>retry</code></td><td>jitter, <code>Retry-After</code></td></tr>
+<tr><td><code>HashRing</code></td><td>removal, duplicate detection, shared name storage</td></tr>
+<tr><td><code>parse_request_head</code></td><td>body framing, limits, typed errors</td></tr>
+<tr><td><code>Port</code>, <code>Route</code></td><td>typed errors; <code>NonZeroU16</code> would suffice for <code>Port</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A drill is the version of an exercise that fits an interview’s time budget; the full
+chapters show what a production version adds.</li>
+<li>Iterator chains are lazy. Spawning and joining threads in one chain runs them
+sequentially, and the result is still correct, so only timing reveals it.</li>
+<li>Shortened <code>unsafe</code> code keeps the soundness obligations of the full version, including
+the <code>Send</code> and <code>Sync</code> implementations of guard types.</li>
+<li>Guards that release in <code>Drop</code> are worth their few extra lines, even in a drill.</li>
+</ul>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#laziness"><code>Iterator</code></a>, on laziness.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/num/type.NonZeroU16.html"><code>std::num::NonZeroU16</code></a>.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="58-http-client.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="references.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="58-http-client.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="references.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
