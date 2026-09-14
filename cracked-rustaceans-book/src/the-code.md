@@ -70,10 +70,9 @@ or one pair of a type and its policy, and each ends with a `#[cfg(test)] mod tes
 so the list printed by `cargo test` reads as an index of this book.
 
 Twenty-two are programs. Files under `src/bin/` are separate crates that link the
-library, and each has a `main` function. Several of the newest ones are not
-finished: `command_line_args`, `median_finder` and `reverse_string` stop at a
-placeholder entry point, so their chapters read the type or function the file
-defines and state the limitation in place of a run.
+library, and each has a `main` function that runs without arguments. Most of them
+also carry the tests for the code they contain, so `cargo test` exercises the
+programs as well as the library.
 
 ## What the files have in common
 

@@ -47,19 +47,80 @@ fn reverse_str(s: &mut String) {
 }
 
 fn main() {
+    for value in ["abcd", "abc", "a", "rust"] {
+        let mut s = String::from(value);
+        reverse_str(&mut s);
+        println!("{value:>6} -> {s}");
+    }
+}
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_even_length_string_is_reversed() {
+        let mut s = String::from("abcd");
+        reverse_str(&mut s);
+        assert_eq!(s, "dcba");
+    }
+
+    #[test]
+    fn an_odd_length_string_keeps_its_middle_byte() {
+        let mut s = String::from("abc");
+        reverse_str(&mut s);
+        assert_eq!(s, "cba");
+    }
+
+    #[test]
+    fn a_single_byte_is_unchanged() {
+        let mut s = String::from("a");
+        reverse_str(&mut s);
+        assert_eq!(s, "a");
+    }
+
+    #[test]
+    fn the_buffer_is_reused() {
+        let mut s = String::from("abcd");
+        let capacity = s.capacity();
+        let address = s.as_ptr();
+        reverse_str(&mut s);
+        assert_eq!(s.capacity(), capacity);
+        assert_eq!(s.as_ptr(), address);
+    }
+
+    #[test]
+    fn reversing_twice_restores_the_string() {
+        let mut s = String::from("interview");
+        reverse_str(&mut s);
+        reverse_str(&mut s);
+        assert_eq!(s, "interview");
+    }
+
+    #[test]
+    #[should_panic]
+    fn non_ascii_input_panics() {
+        let mut s = String::from("café");
+        reverse_str(&mut s);
+    }
 }
 ```
 
-The file's `main` is empty, so the listing ends at the function.
+The listing is the whole file. Taken in order:
 
-`assert!(s.is_ascii())` walks the string before the reversal. It is `O(n)`, which
-does not change the overall bound, and it runs before the unsafe block rather than
-inside it, so the panic leaves the string untouched.
-
-`bytes.swap(start, end)` is `slice::swap`, which exchanges two elements without
-moving either out. A manual exchange through a temporary would be three
-assignments on `u8`; `swap` states the intent and compiles to the same place.
+- `assert!(s.is_ascii())` walks the string before the reversal. It is `O(n)`, which
+  does not change the overall bound, and it runs before the unsafe block rather than
+  inside it, so the panic leaves the string untouched.
+- `bytes.swap(start, end)` is `slice::swap`, which exchanges two elements without
+  moving either out. A manual exchange through a temporary would be three
+  assignments on `u8`; `swap` states the intent and compiles to the same place.
+- `main` reverses four strings and prints each result, so one run shows the even
+  case, the odd case, the single byte, and a second four-letter word.
+- The tests cover both parities, the single byte, the in-place property, and the
+  round trip. `the_buffer_is_reused` reads the capacity and the address before and
+  after and requires both to be unchanged, which is what separates this function
+  from one that builds a new `String`. `non_ascii_input_panics` is marked
+  `#[should_panic]`, so the assertion is checked rather than assumed.
 
 ## Intuition
 
@@ -88,6 +149,17 @@ after    c  b  a
 The middle byte of an odd-length string is never moved, which is why the loop
 condition is `start < end` rather than `start <= end`.
 
+The program prints:
+
+```text
+  abcd -> dcba
+   abc -> cba
+     a -> a
+  rust -> tsur
+```
+
+The buffer is the same allocation in every line. Only the bytes inside it move.
+
 ## Time and Space Complexity
 
 | Resource | Cost | Condition |
@@ -97,7 +169,8 @@ condition is `start < end` rather than `start <= end`.
 | Allocations | zero | the `String` keeps its buffer |
 
 The reversal itself is `n / 2` swaps, and it is performed in place, so the
-buffer's address and capacity do not change.
+buffer's address and capacity do not change. The assertion adds a second pass over
+the bytes, which is the price of the safe wrapper around the unsafe block.
 
 ## Limitations
 
@@ -109,7 +182,8 @@ characters, and rebuild the `String`, which allocates.
 **Empty input panics.** With `bytes.len() == 0`, the expression `bytes.len() - 1`
 underflows. In a debug build that panics with an arithmetic error; in a release
 build it wraps and the following `swap` is out of bounds. The function needs a
-check for an empty string, and it does not have one.
+check for an empty string, and it does not have one, so the tests do not cover the
+empty case either.
 
 **The `unsafe` block is sound only because of the assertion above it.** Removing
 the assertion makes the function undefined behaviour on any non-ASCII input. The
@@ -120,8 +194,9 @@ the check has to drop the unsafe approach as well.
 same. For text that passes the assertion they cannot differ, but a reader should
 not carry the assumption to a general string.
 
-**The file's `main` is empty.** Nothing runs when the program starts, so the
-function is only reachable from a test or another program.
+**The largest test input is nine bytes.** The tests establish the two parities and
+the round trip. A larger input, or one built to exercise the exact midpoint of an
+even-length string, would test the loop bound more of the way.
 
 ## Summary
 
@@ -131,6 +206,8 @@ function is only reachable from a test or another program.
   ahead of it is what discharges the obligation recorded in the `SAFETY` comment.
 - The loop runs `n / 2` times and leaves the middle byte of an odd-length string
   in place.
+- The program reverses four strings and prints them, and the tests check both
+  parities, the single byte, the unchanged allocation, and the round trip.
 - Empty and non-ASCII inputs are not handled: the first panics on the subtraction,
   and the second is refused by the assertion.
 

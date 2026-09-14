@@ -11,6 +11,8 @@
     --accent-deep: #0c325c;
     --accent-soft: #e9f0f8;
     --accent-line: #b9cbe0;
+    --ink: #12161c;
+    --code-ink: #0f1a24;
 
     /* Sidebar and link colours, so the browser edition matches the print one. */
     --links: #14508c;
@@ -29,9 +31,9 @@ html {
 
 body {
     font-family: var(--text-face);
-    font-size: 1.6rem;
-    line-height: 1.7;
-    color: #191919;
+    font-size: 1.72rem;
+    line-height: 1.72;
+    color: var(--ink);
 }
 
 .content {
@@ -84,26 +86,36 @@ pre {
 }
 
 code {
-    font-size: 0.84em;
+    font-size: 0.88em;
+    color: var(--code-ink);
 }
 
 pre {
-    font-size: 0.82em;
-    line-height: 1.5;
+    font-size: 0.88em;
+    line-height: 1.52;
+    color: var(--code-ink);
     background: #f6f8fa;
     border-left: 4px solid var(--accent);
     padding: 0.9em 1.1em;
     border-radius: 4px;
 }
 
+/* Never hyphenate a name, a path, or a listing. */
+a,
+code,
+pre {
+    hyphens: none;
+}
+
 :not(pre) > code {
     background: var(--accent-soft);
-    padding: 0.12em 0.32em;
+    padding: 0.14em 0.36em;
     border-radius: 3px;
+    color: var(--code-ink);
 }
 
 table {
-    font-size: 0.95em;
+    font-size: 1em;
     border-collapse: collapse;
     margin-block: 1.4em;
 }
@@ -126,5 +138,5 @@ blockquote {
     font-style: normal;
     border-left: 4px solid var(--accent);
     padding-left: 1em;
-    color: #2b3540;
+    color: #1c2530;
 }
