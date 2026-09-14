@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0bff135c.js";
+            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-a5b67c94.js"></script>
+        <script src="toc-250744b1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -362,9 +362,9 @@ rather than a minimum of zero, which is the distinction that a sentinel value wo
 lose.</p>
 <p>The structure has no <code>len</code> and no <code>is_empty</code>. A caller cannot ask how many entries
 the stack holds, and the two fields are private, so the depth is not observable from
-outside the module. The integration tests in Chapter 26 build their own stacks for
-this reason, and an application that needs the depth has to track it alongside the
-structure or wait for the accessor to be added.</p>
+outside the module. A caller can push, pop, read the top and read the minimum, and
+nothing else; an application that needs the depth has to track it alongside the
+structure, or wait for the accessor to be added.</p>
 <p>The value type is <code>i32</code>. Making the structure generic over a type <code>T</code> with the
 <code>Ord</code> bound requires a type parameter on the struct, the implementation, and the two
 vectors, and the comparison in <code>push</code> is the only operation that needs the bound.

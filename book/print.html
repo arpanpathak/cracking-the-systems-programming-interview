@@ -37,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0bff135c.js";
+            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-a5b67c94.js"></script>
+        <script src="toc-250744b1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,14 +183,14 @@ any better.</p>
 <p>Bjarne Stroustrup, <em>Foundations of C++</em>, ECOOP 2012</p>
 </blockquote>
 <h2 id="why-this-book"><a class="header" href="#why-this-book">Why this book</a></h2>
-<p>An interview for a systems role rarely turns on whether a candidate can name the
-right data structure. It turns on the sentence that follows. Why is this
-representation cheaper than the other one? What does the abstraction hide, and
-what does it charge for hiding it? Which input does it not survive?</p>
-<p>Those questions are hard to practise from a list of exercises, because a list
-gives the answer and leaves the reasoning out. This book works from the other
-direction. It takes one repository of running Rust — data structures, caches,
-concurrency primitives, and the file and network code a service needs — and reads
+<p>A systems interview is less about whether a candidate can name the right data
+structure than about the sentence that follows the name. The interviewer asks why
+one representation is cheaper than another, what an abstraction hides, and which
+input breaks it.</p>
+<p>A list of exercises does not practise that reasoning, because the list gives the
+answer and leaves the argument out. This book works in the other direction. It
+takes one repository of running Rust, covering data structures, caches,
+concurrency primitives, and the file and network code a service needs, and reads
 it the way an interviewer reads an answer: one file at a time, with the cost of
 every operation and the inputs that break it written down.</p>
 <h2 id="who-this-book-is-for"><a class="header" href="#who-this-book-is-for">Who this book is for</a></h2>
@@ -226,8 +226,7 @@ question is ownership. Chapters 19 to 25 cover concurrency and the operating
 system, including a program that measures the cost of a system call. Chapters 26
 to 29 cover files, directories and command-line arguments. Chapters 30 and 31 cover
 coordination and parallelism. Chapters 32 and 33 return to sequences with a running
-median and an in-place reversal. Chapter 34 covers idempotent operations, and
-Chapter 35 closes the book with the integration tests.</p>
+median and an in-place reversal. Chapter 34 covers idempotent operations.</p>
 <p>Read straight through for the argument, or follow one part for a topic. The index
 and the cross-references in each chapter are enough to read out of order.</p>
 <h2 id="the-repository"><a class="header" href="#the-repository">The repository</a></h2>
@@ -243,10 +242,8 @@ cargo run --bin list_directory
 cargo run --bin bounded_buffer
 cargo run --release --bin parallel_sum
 </code></pre>
-<p>The listings reproduce the files as the repository holds them. Two chapters depart
-from that. Chapter 18 prints a test with an assertion added, and Chapter 35 prints
-an integration test file that is no longer in the repository; both chapters say so
-where they appear.</p>
+<p>The listings reproduce the files as the repository holds them. Chapter 18 prints a
+test with an assertion added, and says so where it appears.</p>
 <h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <p>A trace is a table with one row per step. Where a structure needs a picture rather
 than a table, boxes inside a frame are values on the stack, and boxes to the right
@@ -356,9 +353,6 @@ library, and each has a <code>main</code> function. Several of the newest ones a
 finished: <code>command_line_args</code>, <code>median_finder</code> and <code>reverse_string</code> stop at a
 placeholder entry point, so their chapters read the type or function the file
 defines and state the limitation in place of a run.</p>
-<p>Chapter 35 reads an integration test file that exercised the library through its
-exported names. That file is no longer part of the repository, and the checks it
-performed now live as unit tests beside the code they test.</p>
 <h2 id="what-the-files-have-in-common"><a class="header" href="#what-the-files-have-in-common">What the files have in common</a></h2>
 <p>Four conventions run through the code. They are stated once here so that the
 chapters need not repeat them.</p>
@@ -374,8 +368,8 @@ different answers to the question of who owns the next node, namely <code>Box</c
 with <code>Weak</code>, and a vector of indices, and each answer is visible in the type rather
 than in a comment.</p>
 <p><strong>Tests beside the code.</strong> A unit test that reaches a private item is a licence to
-change that item. The integration tests in Chapter 35 exercised the same behaviour
-through the public API, which is what checks the re-exports.</p>
+change that item. Each module keeps its own tests in a <code>#[cfg(test)] mod tests</code>, so
+the list printed by <code>cargo test</code> reads as an index of the book.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="two-sum"><a class="header" href="#two-sum">1. Two Sum</a></h1>
 <p><em>Source file: <a href="../rust-interview-lab/src/problems/two_sum.rs"><code>src/problems/two_sum.rs</code></a>. Test it with <code>cargo test two_sum</code>.</em></p>
@@ -993,9 +987,9 @@ rather than a minimum of zero, which is the distinction that a sentinel value wo
 lose.</p>
 <p>The structure has no <code>len</code> and no <code>is_empty</code>. A caller cannot ask how many entries
 the stack holds, and the two fields are private, so the depth is not observable from
-outside the module. The integration tests in Chapter 26 build their own stacks for
-this reason, and an application that needs the depth has to track it alongside the
-structure or wait for the accessor to be added.</p>
+outside the module. A caller can push, pop, read the top and read the minimum, and
+nothing else; an application that needs the depth has to track it alongside the
+structure, or wait for the accessor to be added.</p>
 <p>The value type is <code>i32</code>. Making the structure generic over a type <code>T</code> with the
 <code>Ord</code> bound requires a type parameter on the struct, the implementation, and the two
 vectors, and the comparison in <code>push</code> is the only operation that needs the bound.
@@ -7493,17 +7487,59 @@ returned <code>v</code> and let the map own a clone, or that used the previous v
 <p>The <code>K: Clone</code> bound is present but unused: <code>get</code> borrows the key and <code>insert</code>
 moves it, and neither needs a copy. <code>V: Clone</code> is required, because both the hit
 path and the store path copy the value.</p>
-<p>The second file, <code>idempotent_operation_with_error_progagation.rs</code>, is the same
-implementation with the error type given a name. It declares
-<code>type RuntimeError = Box&lt;dyn std::error::Error&gt;;</code> and uses the alias in every
-signature, so the repeated spelling appears once:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>type RuntimeError = Box&lt;dyn std::error::Error&gt;;
-<span class="boring">}</span></code></pre>
-<p>That is a readability change only. The early return on an error, the lock held
-across the operation, and the rule that only successes are stored are identical in
-both files.</p>
+<h3 id="the-variant-with-a-named-error-type"><a class="header" href="#the-variant-with-a-named-error-type">The variant with a named error type</a></h3>
+<p>The repository holds a second version of the same type,
+<code>idempotent_operation_with_error_progagation.rs</code>. It differs in one way: the error
+type is given a name, <code>RuntimeError</code>, and the alias is used in every signature.</p>
+<pre class="playground"><code class="language-rust">use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::Mutex;
+
+type RuntimeError = Box&lt;dyn std::error::Error&gt;;
+
+pub struct Idempotent&lt;K, V&gt; {
+    store: Mutex&lt;HashMap&lt;K, V&gt;&gt;,
+}
+
+impl&lt;K, V&gt; Idempotent&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new() -&gt; Self {
+        Self { store: Mutex::new(HashMap::new()) }
+    }
+
+    pub fn execute&lt;F&gt;(&amp;self, key: K, f: F) -&gt; Result&lt;V, RuntimeError&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;V, RuntimeError&gt;,
+    {
+        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(&amp;key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key, v.clone());
+        Ok(v)
+    }
+}
+
+fn main() -&gt; Result&lt;(), RuntimeError&gt; {
+    let idem = Idempotent::new();
+
+    let charge = || -&gt; Result&lt;String, RuntimeError&gt; {
+        println!("charging card...");
+        Ok("txn_42".into())
+    };
+
+    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
+    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
+    Ok(())
+}</code></pre>
+<p>The alias names the error in one place, so a change to the error type is a change
+to one line and the signatures stay short. The behaviour is the same in both
+files: the early return on an error, the lock held across the operation, and the
+rule that only successes are stored.</p>
 <h2 id="intuition-33"><a class="header" href="#intuition-33">Intuition</a></h2>
 <p>Two sequential calls with the same key, tracing the map:</p>
 <pre><code class="language-text">execute("order-1", charge)          store = {}
@@ -7605,353 +7641,7 @@ faithful model of the pattern rather than a production idempotency layer.</li>
 <li>RFC 9110, <a href="https://www.rfc-editor.org/rfc/rfc9110.html">HTTP Semantics</a>, Section 9.2.2, on idempotent methods.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="integration-tests"><a class="header" href="#integration-tests">35. Integration Tests</a></h1>
-<p><em>Source file: <code>tests/problems.rs</code>, an integration test file that is no longer part
-of the repository. The checks it performed now live as unit tests beside the code
-they test.</em></p>
-<blockquote>
-<p>Program testing can be used to show the presence of bugs, but never to
-show their absence!</p>
-<p>, Edsger W. Dijkstra, <em>Notes on Structured Programming</em>, EWD249, 1970</p>
-</blockquote>
-<h2 id="problem-statement-34"><a class="header" href="#problem-statement-34">Problem Statement</a></h2>
-<p>Everything in the chapters so far is reached through the library’s public names:
-<code>two_sum</code>, <code>Tree</code>, <code>Trie</code>, <code>MinStack</code>, <code>map_order</code>, and the rest. This file calls
-each of them from outside the crate, which is the only place where the exported API
-is the API a caller sees.</p>
-<h2 id="designing-a-solution-34"><a class="header" href="#designing-a-solution-34">Designing a Solution</a></h2>
-<p>A Rust package has two kinds of test, and the difference is ownership.</p>
-<p>A unit test lives inside the module it tests, behind <code>#[cfg(test)]</code>. It can reach
-private items, which is what makes it useful for invariants: a test of <code>MinStack</code>
-can read <code>values</code> and <code>mins</code> and assert that the two vectors have equal lengths,
-which no caller could do. It is compiled only when the crate is under test.</p>
-<p>An integration test lives in <code>tests/</code>. It links the library as an external crate,
-so it sees exactly what a caller sees: public types, public functions, and the
-re-exported names. A module that is public but not re-exported is invisible to it.</p>
-<pre><code class="language-text">tests/problems.rs
-  use rust_interview_lab::problems::binary_tree::Tree;
-  use rust_interview_lab::{coin_change, two_sum, MinStack, Trie, ...};
-
-        |  the crate boundary: only `pub` items exist on this side
-        v
-src/lib.rs
-  pub mod problems;
-  pub use problems::two_sum::two_sum;
-  pub use problems::min_stack::MinStack;
-  ...
-
-  each module's `#[cfg(test)] mod tests` sits inside, with access to the
-  private items of that module
-</code></pre>
-<p>The two files therefore test different things. The unit tests test the
-implementation, including its internal invariants. This file tests the interface,
-including the re-exports. A rename of a re-exported name breaks this file and not
-the unit tests, which is how the compiler reports a change that a caller depends
-on.</p>
-<h2 id="implementation-34"><a class="header" href="#implementation-34">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Integration tests for the Rust interview lab.
-//!
-//! Covers DSA/LeetCode-style functions, cloud concurrency primitives, and
-//! idiomatic `enum`/ADT pattern matching.
-
-use rust_interview_lab::problems::binary_tree::Tree;
-use rust_interview_lab::problems::linked_list::ListNode;
-use rust_interview_lab::problems::lru_cache::LruCache;
-use rust_interview_lab::problems::rate_limiter::TokenBucket;
-use rust_interview_lab::problems::state_machine::{ApiError, WorkloadState};
-use rust_interview_lab::problems::worker_pool::map_order;
-use rust_interview_lab::{
-    coin_change, is_valid, length_of_longest_substring, merge_intervals, reverse_list,
-    search_rotated, subsets, top_k_frequent, topological_sort, two_sum, MinStack, Trie,
-};
-use std::time::Duration;
-
-#[test]
-fn two_sum_returns_indices() {
-    assert_eq!(two_sum(&amp;[2, 7, 11, 15], 9), Some((0, 1)));
-    assert_eq!(two_sum(&amp;[3, 2, 4], 6), Some((1, 2)));
-    assert_eq!(two_sum(&amp;[1, 2], 7), None);
-}
-
-#[test]
-fn valid_parentheses_checks_balanced_strings() {
-    assert!(is_valid("()[]{}"));
-    assert!(is_valid("{[()]}"));
-    assert!(!is_valid("([)]"));
-    assert!(!is_valid("(]"));
-}
-
-#[test]
-fn merge_intervals_handles_overlap() {
-    assert_eq!(
-        merge_intervals(vec![(1, 3), (2, 6), (8, 10), (15, 18)]),
-        vec![(1, 6), (8, 10), (15, 18)]
-    );
-}
-
-#[test]
-fn top_k_frequent_returns_most_common() {
-    let mut top = top_k_frequent(&amp;[1, 1, 1, 2, 2, 3], 2);
-    top.sort_unstable();
-    assert_eq!(top, vec![1, 2]);
-}
-
-#[test]
-fn min_stack_supports_constant_time_min() {
-    let mut stack = MinStack::new();
-    stack.push(-2);
-    stack.push(0);
-    stack.push(-3);
-    assert_eq!(stack.get_min(), Some(-3));
-    stack.pop();
-    assert_eq!(stack.top(), Some(0));
-    assert_eq!(stack.get_min(), Some(-2));
-}
-
-#[test]
-fn binary_tree_methods_work() {
-    fn leaf(value: i32) -&gt; Tree {
-        Tree::Node {
-            value,
-            left: Box::new(Tree::Empty),
-            right: Box::new(Tree::Empty),
-        }
-    }
-
-    fn node(value: i32, left: Tree, right: Tree) -&gt; Tree {
-        Tree::Node {
-            value,
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    let mut tree = node(3, leaf(9), node(20, leaf(15), leaf(7)));
-
-    assert_eq!(tree.max_depth(), 3);
-    assert_eq!(tree.preorder(), vec![3, 9, 20, 15, 7]);
-    assert_eq!(tree.inorder(), vec![9, 3, 15, 20, 7]);
-    assert_eq!(tree.postorder(), vec![9, 15, 7, 20, 3]);
-
-    tree.invert();
-    match &amp;tree {
-        Tree::Node { left, right, .. } =&gt; {
-            match left.as_ref() {
-                Tree::Node { value, .. } =&gt; assert_eq!(*value, 20),
-                _ =&gt; panic!("expected left node"),
-            }
-            match right.as_ref() {
-                Tree::Node { value, .. } =&gt; assert_eq!(*value, 9),
-                _ =&gt; panic!("expected right node"),
-            }
-        }
-        _ =&gt; panic!("expected node"),
-    }
-}
-
-#[test]
-fn trie_supports_prefix_lookup() {
-    let mut trie = Trie::new();
-    trie.insert("repl");
-    trie.insert("replace");
-    assert!(trie.search("repl"));
-    assert!(!trie.search("rep"));
-    assert!(trie.starts_with("repla"));
-    assert!(!trie.starts_with("commit"));
-}
-
-#[test]
-fn sliding_window_finds_longest_unique() {
-    assert_eq!(length_of_longest_substring("abcabcbb"), 3);
-    assert_eq!(length_of_longest_substring("bbbbb"), 1);
-}
-
-#[test]
-fn topological_sort_orders_dependencies() {
-    let order = topological_sort(4, &amp;[(0, 1), (0, 2), (1, 3), (2, 3)]).unwrap();
-    assert_eq!(order.len(), 4);
-    assert!(order[0] == 0);
-}
-
-#[test]
-fn linked_list_reversal_works() {
-    assert_eq!(
-        ListNode::to_vec(reverse_list(ListNode::from_slice(&amp;[1, 2, 3, 4]))),
-        vec![4, 3, 2, 1]
-    );
-}
-
-#[test]
-fn lru_cache_end_to_end() {
-    let mut cache = LruCache::new(2);
-    cache.put("node-alpha".to_string(), "machine-1".to_string());
-    cache.put("node-beta".to_string(), "machine-2".to_string());
-
-    assert_eq!(
-        cache.get(&amp;"node-alpha".to_string()),
-        Some("machine-1".to_string())
-    );
-    cache.put("node-gamma".to_string(), "machine-3".to_string());
-
-    assert_eq!(cache.get(&amp;"node-beta".to_string()), None);
-    assert_eq!(
-        cache.get(&amp;"node-alpha".to_string()),
-        Some("machine-1".to_string())
-    );
-    assert_eq!(
-        cache.get(&amp;"node-gamma".to_string()),
-        Some("machine-3".to_string())
-    );
-}
-
-#[test]
-fn token_bucket_allows_burst_then_rejects() {
-    let limiter = TokenBucket::new(10, 1.0);
-
-    for _ in 0..10 {
-        assert!(limiter.try_acquire());
-    }
-    assert!(!limiter.try_acquire());
-}
-
-#[test]
-fn worker_pool_preserves_order_for_cloud_calls() {
-    let workloads: Vec&lt;String&gt; = (1..=50).map(|i| format!("workload-{i}")).collect();
-
-    let statuses = map_order(8, workloads, |name| format!("{name}:Running"));
-
-    assert_eq!(statuses.len(), 50);
-    assert_eq!(statuses[0], "workload-1:Running");
-    assert_eq!(statuses[49], "workload-50:Running");
-}
-
-#[test]
-fn state_machine_and_api_errors_are_clean_adt_patterns() {
-    assert!(WorkloadState::Pending
-        .can_transition_to(WorkloadState::Provisioning)
-        .is_ok());
-    assert!(WorkloadState::Running
-        .can_transition_to(WorkloadState::Running)
-        .is_err());
-
-    let error = ApiError::RateLimited {
-        retry_after: Duration::from_millis(250),
-    };
-    assert!(error.is_retryable());
-    assert!(error.user_message().contains("250"));
-}
-
-#[test]
-fn binary_search_works_on_rotated_array() {
-    assert_eq!(search_rotated(&amp;[4, 5, 6, 7, 0, 1, 2], 0), Some(4));
-    assert_eq!(search_rotated(&amp;[4, 5, 6, 7, 0, 1, 2], 3), None);
-}
-
-#[test]
-fn dynamic_programming_coin_change_works() {
-    assert_eq!(coin_change(&amp;[1, 2, 5], 11), Some(3));
-    assert_eq!(coin_change(&amp;[2], 3), None);
-}
-
-#[test]
-fn backtracking_generates_subsets() {
-    let all = subsets(vec![1, 2, 3]);
-    assert_eq!(all.len(), 8);
-    assert!(all.contains(&amp;vec![1, 3]));
-}
-<span class="boring">}</span></code></pre>
-<p>Two imports reach past the re-exports:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use rust_interview_lab::problems::binary_tree::Tree;
-use rust_interview_lab::problems::linked_list::ListNode;
-<span class="boring">}</span></code></pre>
-<p><code>Tree</code> and <code>ListNode</code> are re-exported from the crate root as well, and the module
-path is used here because a reader of the test wants to see where the type lives.
-Both paths work, and the tests are exercising both forms.</p>
-<p>The name in the import path is the package name from <code>Cargo.toml</code> with hyphens
-replaced by underscores. The repository’s package name carries the employer’s
-name; this edition prints <code>rust_interview_lab</code> in its place, and the substitution
-is the only difference from the file in the repository. Every path, type, and
-function name in the listing is otherwise unchanged.</p>
-<p>The <code>lru_cache_end_to_end</code> test is the one to read closely, because it tests the
-eviction order through the public API:</p>
-<pre><code class="language-text">cache capacity 2
-
-put "node-alpha" -&gt; "machine-1"     cache: {alpha}
-put "node-beta" -&gt; "machine-2"     cache: {alpha, beta}
-get "node-alpha" -&gt; Some(...)       cache: {beta, alpha}   the read moves alpha to MRU
-put "node-gamma" -&gt; "machine-3"     cache: {alpha, gamma}   beta is the LRU entry
-get "node-beta" -&gt; None
-</code></pre>
-<p>The test asserts the eviction of <code>node-beta</code>, which is the behaviour a caller
-depends on. If the <code>get</code> did not update recency, the eviction would remove
-<code>node-alpha</code> instead and the assertion would fail.</p>
-<h2 id="time-and-space-complexity-34"><a class="header" href="#time-and-space-complexity-34">Time and Space Complexity</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Resource</th><th>Cost</th></tr>
-</thead>
-<tbody>
-<tr><td>Compilation</td><td>one additional crate per integration test file, linked against the library</td></tr>
-<tr><td>Run time</td><td>twenty tests, no sleeping except where a module test sleeps; the whole file runs in well under a second</td></tr>
-</tbody>
-</table>
-</div>
-<p><code>cargo test</code> compiles the library once, then each integration test file as its own
-crate. The repository has one such file, so the cost is one extra link.</p>
-<h2 id="limitations-34"><a class="header" href="#limitations-34">Limitations</a></h2>
-<p><strong>The file names the employer in every import path.</strong> The package name is part of
-the crate, and an integration test cannot avoid it: there is no alias for a
-crate name in a <code>use</code> path. This edition leaves the paths as the repository has
-them and replaces the employer’s name only in prose and in test data.</p>
-<p><strong>The tests use data that names products.</strong> The cache test’s keys are product
-SKUs and the trie test’s words are product names in the repository. This edition
-replaces them with <code>node-alpha</code>-style keys and the <code>repl</code>/<code>replace</code> pair, so that
-the assertions test the same behaviour without the names.</p>
-<p><strong>Each test asserts the behaviour it was written for and nothing more.</strong> For
-example, <code>topological_sort_orders_dependencies</code> checks that the first element is
-<code>0</code> and that the order is complete; it does not check that every edge points
-forward, which is the property that defines the function. A stronger test walks the
-edges and asserts the indices.</p>
-<p><strong>The file tests nineteen of the twenty-one library modules.</strong> <code>backtracking</code>,
-<code>binary_search</code>, <code>binary_tree</code>, <code>dp</code>, <code>graph_topology</code>, <code>linked_list</code>,
-<code>lru_cache</code>, <code>merge_intervals</code>, <code>min_stack</code>, <code>rate_limiter</code>, <code>sliding_window</code>,
-<code>state_machine</code>, <code>top_k_frequent</code>, <code>trie</code>, <code>two_sum</code>, <code>valid_parentheses</code>, and
-<code>worker_pool</code> are covered. The two missing modules are <code>lru_cache_easy</code>, whose
-tests are stubs, and <code>hash_map</code>, which is empty. <code>migrate</code>-style coverage for the
-first of those would mean choosing one of the two cache designs as the API, and
-the repository deliberately exports neither.</p>
-<p><strong>No test covers the two cache designs against each other.</strong> They solve the same
-problem, and a differential test would run both over the same sequence of
-operations and compare the entries they hold. Two implementations of the same
-interface should agree on every operation.</p>
-<h2 id="summary-34"><a class="header" href="#summary-34">Summary</a></h2>
-<ul>
-<li>A unit test calls <code>crate::problems::two_sum::two_sum</code>, and a caller writes
-<code>two_sum</code>. An integration test file is the only place where the re-exports are
-exercised the way a caller exercises them.</li>
-<li>The two kinds of test see different things. A unit test reaches private items,
-and an integration test sees only the exported names, which is what a user of the
-crate sees. That boundary is the reason for having both.</li>
-<li>The cache test is a sequence of five operations, each of which evicts a
-determinable entry, which is what makes it a test of recency rather than of
-storage.</li>
-<li>Two gaps remain. There is no coverage list, and there is no differential test
-that runs the two cache designs over the same sequence of operations and compares
-the entries they hold.</li>
-</ul>
-<h2 id="references-34"><a class="header" href="#references-34">References</a></h2>
-<ul>
-<li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch11-03-test-organization.html">Test organization</a>, on unit tests and integration tests.</li>
-<li>The Cargo Book, <a href="https://doc.rust-lang.org/cargo/reference/cargo-targets.html">Targets</a>.</li>
-<li>The Rust Reference, <a href="https://doc.rust-lang.org/reference/conditional-compilation.html"><code>cfg(test)</code></a>.</li>
-</ul>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="references-35"><a class="header" href="#references-35">References</a></h1>
+<h1 id="references-34"><a class="header" href="#references-34">References</a></h1>
 <h2 id="how-to-read-this-list"><a class="header" href="#how-to-read-this-list">How to read this list</a></h2>
 <p>Sources are grouped by kind, and each entry says where the claim it supports
 appears. Language and library claims cite the document that specifies the
@@ -7965,17 +7655,12 @@ list is in alphabetical order by surname.</p>
 <li><strong>The Rust Book.</strong> The Rust Project Developers. <a href="https://doc.rust-lang.org/book/">https://doc.rust-lang.org/book/</a>.
 Cited for monomorphisation (Chapter 1), enumerations (Chapter 7), boxes
 (Chapters 7, 14), <code>Rc</code> and <code>RefCell</code> (Chapter 16), shadowing and mutability
-(Chapter 25), command-line arguments (Chapter 29), and test organisation
-(Chapter 35).</li>
+(Chapter 25), and command-line arguments (Chapter 29).</li>
 <li><strong>The Rust Reference.</strong> The Rust Project Developers.
-<a href="https://doc.rust-lang.org/reference/">https://doc.rust-lang.org/reference/</a>. Cited for names and scopes (Chapter 25)
-and conditional compilation (Chapter 35).</li>
+<a href="https://doc.rust-lang.org/reference/">https://doc.rust-lang.org/reference/</a>. Cited for names and scopes (Chapter 25).</li>
 <li><strong>The Rustonomicon.</strong> The Rust Project Developers.
 <a href="https://doc.rust-lang.org/nomicon/">https://doc.rust-lang.org/nomicon/</a>. Cited for the rules an <code>unsafe</code> block
 relies on (Chapters 24, 33).</li>
-<li><strong>The Cargo Book.</strong> The Rust Project Developers.
-<a href="https://doc.rust-lang.org/cargo/reference/cargo-targets.html">https://doc.rust-lang.org/cargo/reference/cargo-targets.html</a>. Cited for package
-and test targets (Chapter 35).</li>
 <li><strong>Rust API Guidelines.</strong> The Rust Project Developers.
 <a href="https://rust-lang.github.io/api-guidelines/">https://rust-lang.github.io/api-guidelines/</a>. Cited for documentation requirements
 and for the naming of conversion methods.</li>
@@ -8000,11 +7685,6 @@ Stein.</strong> <em>Introduction to Algorithms</em>, 4th edition. MIT Press, 202
 binary search trees (Chapter 8), dynamic programming (Chapters 12, 13), breadth-
 first search (Chapter 23), priority queues (Chapter 32), and topological sort
 (Chapter 11).</li>
-<li><strong>Dijkstra, Edsger W.</strong> “Notes on Structured Programming”, EWD249, 1970.
-Circulated as a report and reprinted in <em>Structured Programming</em> (Dahl, Dijkstra,
-Hoare), Academic Press, 1972. The source of the sentence about testing quoted in
-Chapter 35. The same argument appears in his Turing Award lecture, “The Humble
-Programmer”, <em>Communications of the ACM</em> 15(10), 1972, pages 859–866.</li>
 <li><strong>Fredkin, Edward.</strong> “Trie memory”. <em>Communications of the ACM</em> 3(9), 1960,
 pages 490–499. The paper that introduced the structure in Chapter 10.</li>
 <li><strong>Hoare, C. A. R.</strong> “Null References: The Billion Dollar Mistake”. Presentation
@@ -8034,7 +7714,7 @@ the preface.</li>
 pages 64–68.</li>
 </ul>
 <h2 id="quotations-in-this-book"><a class="header" href="#quotations-in-this-book">Quotations in this book</a></h2>
-<p>Five sentences are quoted from other people, each in a place where the quotation
+<p>Four sentences are quoted from other people, each in a place where the quotation
 states something the surrounding chapter then uses.</p>
 <div class="table-wrapper">
 <table>
@@ -8046,7 +7726,6 @@ states something the surrounding chapter then uses.</p>
 <tr><td>Chapter 12</td><td>Null references as a mistake that has cost a great deal</td><td>Hoare, QCon London, 2009</td></tr>
 <tr><td>Chapter 22</td><td>A distributed system as one in which a machine you did not know about can stop yours</td><td>Lamport, “Distribution”, 1987</td></tr>
 <tr><td>Chapter 24</td><td>“Latency lags bandwidth”</td><td>Patterson, <em>Communications of the ACM</em>, 2004</td></tr>
-<tr><td>Chapter 35</td><td>Testing as a way to show the presence of bugs and never their absence</td><td>Dijkstra, “Notes on Structured Programming”, EWD249, 1970</td></tr>
 </tbody>
 </table>
 </div>
@@ -8057,7 +7736,7 @@ paraphrase presented as a quotation.</p>
 <h1 id="index"><a class="header" href="#index">Index</a></h1>
 <h2 id="a"><a class="header" href="#a">A</a></h2>
 <ul>
-<li><strong><code>ApiError</code></strong>, error enumeration carrying data, <a href="#state-machine">19</a>, <a href="#integration-tests">35</a></li>
+<li><strong><code>ApiError</code></strong>, error enumeration carrying data, <a href="#state-machine">19</a></li>
 <li><strong><code>Arc</code></strong>, shared ownership across threads, <a href="#worker-pool">21</a>, <a href="#mutex-poisoning">22</a>, <a href="#bounded-buffer">30</a></li>
 <li><strong><code>args</code></strong>, the command-line boundary, <a href="#command-line-arguments">29</a></li>
 <li><strong><code>assert!</code></strong>, refusal of an empty input as a design decision, <a href="#worker-pool">21</a></li>
@@ -8071,7 +7750,7 @@ paraphrase presented as a quotation.</p>
 <li><strong><code>BinaryHeap</code></strong>, a max-heap, so pairs sort by the first field, <a href="#top-k-frequent">6</a>, <a href="#running-median">32</a></li>
 <li><strong>binary search</strong>, half-open range and the sorted-half test, <a href="#binary-search">9</a></li>
 <li><strong>binary search tree</strong>, ordering invariant, three removal shapes, <a href="#binary-search-tree">8</a></li>
-<li><strong>binary tree</strong>, algebraic data type with boxed children, <a href="#binary-tree">7</a>, <a href="#integration-tests">35</a></li>
+<li><strong>binary tree</strong>, algebraic data type with boxed children, <a href="#binary-tree">7</a></li>
 <li><strong><code>black_box</code></strong>, keeping a measurement alive, <a href="#syscall-overhead">24</a></li>
 <li><strong>bounded buffer</strong>, one mutex and two condition variables, <a href="#bounded-buffer">30</a></li>
 <li><strong><code>Box</code></strong>, one ownership pointer, one allocation, <a href="#binary-tree">7</a>, <a href="#reverse-linked-list">14</a>, <a href="#singly-linked-list">15</a></li>
@@ -8135,7 +7814,6 @@ paraphrase presented as a quotation.</p>
 <li><strong>in-degree</strong>, the counter Kahn’s algorithm waits on, <a href="#topological-sort">11</a></li>
 <li><strong>index-linked list</strong>, nodes in a vector, links as integers, <a href="#lru-cache-array">18</a></li>
 <li><strong><code>Instant</code></strong>, the clock a limiter trusts, <a href="#rate-limiter">20</a>; the clock a measurement reads, <a href="#parallel-sum">31</a></li>
-<li><strong>integration test</strong>, what the crate boundary hides, <a href="#integration-tests">35</a></li>
 <li><strong>interior mutability</strong>, mutation behind a shared reference, <a href="#doubly-linked-list">16</a></li>
 <li><strong>invariant</strong>, a sentence true before and after every operation, <a href="#min-stack">3</a>, <a href="#binary-search">9</a>, <a href="#subsets">13</a>, <a href="#running-median">32</a></li>
 </ul>
@@ -8226,7 +7904,6 @@ paraphrase presented as a quotation.</p>
 <h2 id="u"><a class="header" href="#u">U</a></h2>
 <ul>
 <li><strong><code>unsafe</code></strong>, the obligation a <code>SAFETY</code> comment states, <a href="#syscall-overhead">24</a>, <a href="#reverse-string">33</a></li>
-<li><strong>unit test</strong>, access to private items, <a href="#integration-tests">35</a></li>
 <li><strong><code>upgrade</code></strong>, turning a weak pointer into a strong one, <a href="#doubly-linked-list">16</a></li>
 </ul>
 <h2 id="v"><a class="header" href="#v">V</a></h2>

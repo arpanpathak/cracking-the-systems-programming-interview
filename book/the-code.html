@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0bff135c.js";
+            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-a5b67c94.js"></script>
+        <script src="toc-250744b1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -243,9 +243,6 @@ library, and each has a <code>main</code> function. Several of the newest ones a
 finished: <code>command_line_args</code>, <code>median_finder</code> and <code>reverse_string</code> stop at a
 placeholder entry point, so their chapters read the type or function the file
 defines and state the limitation in place of a run.</p>
-<p>Chapter 35 reads an integration test file that exercised the library through its
-exported names. That file is no longer part of the repository, and the checks it
-performed now live as unit tests beside the code they test.</p>
 <h2 id="what-the-files-have-in-common"><a class="header" href="#what-the-files-have-in-common">What the files have in common</a></h2>
 <p>Four conventions run through the code. They are stated once here so that the
 chapters need not repeat them.</p>
@@ -261,8 +258,8 @@ different answers to the question of who owns the next node, namely <code>Box</c
 with <code>Weak</code>, and a vector of indices, and each answer is visible in the type rather
 than in a comment.</p>
 <p><strong>Tests beside the code.</strong> A unit test that reaches a private item is a licence to
-change that item. The integration tests in Chapter 35 exercised the same behaviour
-through the public API, which is what checks the re-exports.</p>
+change that item. Each module keeps its own tests in a <code>#[cfg(test)] mod tests</code>, so
+the list printed by <code>cargo test</code> reads as an index of the book.</p>
 
                     </main>
 

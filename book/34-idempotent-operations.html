@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0bff135c.js";
+            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-a5b67c94.js"></script>
+        <script src="toc-250744b1.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -263,17 +263,59 @@ returned <code>v</code> and let the map own a clone, or that used the previous v
 <p>The <code>K: Clone</code> bound is present but unused: <code>get</code> borrows the key and <code>insert</code>
 moves it, and neither needs a copy. <code>V: Clone</code> is required, because both the hit
 path and the store path copy the value.</p>
-<p>The second file, <code>idempotent_operation_with_error_progagation.rs</code>, is the same
-implementation with the error type given a name. It declares
-<code>type RuntimeError = Box&lt;dyn std::error::Error&gt;;</code> and uses the alias in every
-signature, so the repeated spelling appears once:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>type RuntimeError = Box&lt;dyn std::error::Error&gt;;
-<span class="boring">}</span></code></pre>
-<p>That is a readability change only. The early return on an error, the lock held
-across the operation, and the rule that only successes are stored are identical in
-both files.</p>
+<h3 id="the-variant-with-a-named-error-type"><a class="header" href="#the-variant-with-a-named-error-type">The variant with a named error type</a></h3>
+<p>The repository holds a second version of the same type,
+<code>idempotent_operation_with_error_progagation.rs</code>. It differs in one way: the error
+type is given a name, <code>RuntimeError</code>, and the alias is used in every signature.</p>
+<pre class="playground"><code class="language-rust">use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::Mutex;
+
+type RuntimeError = Box&lt;dyn std::error::Error&gt;;
+
+pub struct Idempotent&lt;K, V&gt; {
+    store: Mutex&lt;HashMap&lt;K, V&gt;&gt;,
+}
+
+impl&lt;K, V&gt; Idempotent&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new() -&gt; Self {
+        Self { store: Mutex::new(HashMap::new()) }
+    }
+
+    pub fn execute&lt;F&gt;(&amp;self, key: K, f: F) -&gt; Result&lt;V, RuntimeError&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;V, RuntimeError&gt;,
+    {
+        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(&amp;key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key, v.clone());
+        Ok(v)
+    }
+}
+
+fn main() -&gt; Result&lt;(), RuntimeError&gt; {
+    let idem = Idempotent::new();
+
+    let charge = || -&gt; Result&lt;String, RuntimeError&gt; {
+        println!("charging card...");
+        Ok("txn_42".into())
+    };
+
+    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
+    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
+    Ok(())
+}</code></pre>
+<p>The alias names the error in one place, so a change to the error type is a change
+to one line and the signatures stay short. The behaviour is the same in both
+files: the early return on an error, the lock held across the operation, and the
+rule that only successes are stored.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>Two sequential calls with the same key, tracing the map:</p>
 <pre><code class="language-text">execute("order-1", charge)          store = {}
@@ -383,7 +425,7 @@ faithful model of the pattern rather than a production idempotency layer.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="35-integration-tests.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="references.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -397,7 +439,7 @@ faithful model of the pattern rather than a production idempotency layer.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="35-integration-tests.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="references.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
