@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2abfced0.js";
+            window.path_to_searchindex_js = "searchindex-b641e624.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -176,12 +176,12 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="sliding-window"><a class="header" href="#sliding-window">4. Longest Substring Without Repeating Characters</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/sliding_window.rs"><code>src/problems/sliding_window.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs"><code>src/problems/sliding_window.rs</code></a>. Test it with
 <code>cargo test sliding_window</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
 <p>Given a text, return the length of the longest contiguous substring that contains
-no repeated character. The answer is a length, not the substring, which lets the
-implementation discard the content of the window and keep only its start.</p>
+no repeated character. The answer is a length, not the substring, so the
+implementation can discard the contents of the window and keep only its start.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <p>Maintain a window <code>[start, end)</code> over the characters and a map from each character
 to the last index where it was seen. Extend the window by one character at a time.
@@ -197,12 +197,12 @@ end  char  window       last_seen          longest
  4    e    [wke]        {e:4}              3
  5    w    [ew]         start = 2 + 1 = 3  3
 </code></pre>
-<p>The line that carries the algorithm is <code>start = start.max(previous + 1)</code>. The
-<code>max</code> is not defensive coding. A character may have been seen, left the window,
-and been seen again; in that case its recorded index is <em>before</em> <code>start</code>, and
-assigning <code>previous + 1</code> unconditionally would move the window backwards and
-re-scan characters that have already been counted. <code>start</code> is monotonic, and that
-monotonicity is what makes the scan linear.</p>
+<p>The line that carries the algorithm is <code>start = start.max(previous + 1)</code>. The <code>max</code>
+is required, not defensive. A character may have been seen, left the window, and
+been seen again; its recorded index is then before <code>start</code>, and assigning
+<code>previous + 1</code> unconditionally would move the window backwards and count characters
+that were already counted. <code>start</code> is monotonic, and that monotonicity is what makes
+the scan linear.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -249,8 +249,7 @@ outside ASCII.</p>
 <p><code>if let Some(&amp;previous) = last_seen.get(&amp;ch)</code> copies the index out of the map, so
 the borrow ends at the end of the <code>if let</code> and the <code>insert</code> below is allowed.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p>A case where the repeat has left the window, which is the case the <code>max</code> exists
-for:</p>
+<p>A case where the repeat has left the window, which is the case the <code>max</code> exists for:</p>
 <pre><code class="language-text">"abba"
 
 end  char  previous   start before   start after   window    longest
@@ -277,31 +276,20 @@ and count "abb" as a window.
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p><strong>The map is sized by a byte count.</strong> <code>HashMap::with_capacity(s.len())</code> uses the
-byte length as the capacity hint, which over-allocates for multi-byte text. The
-hint is safe because a byte count bounds a character count.</p>
-<p><strong>The answer is a length, and the substring is discarded.</strong> A caller that needs
-the text of the longest window must record <code>start</code> alongside <code>longest</code> and slice
-the original at the end. That change is two lines and is not in the file.</p>
-<p><strong>Non-ASCII text is measured in characters, not in grapheme clusters.</strong> A
-combining sequence such as <code>e</code> followed by a combining acute accent is two scalar
-values, so the function counts it as two characters. A user-facing length would
-need grapheme segmentation, which the standard library does not provide.</p>
-<p><strong>The map keeps an entry per distinct character ever seen.</strong> Entries for
-characters that have left the window are not removed, so the space bound is over
-the whole text rather than over the current window. An implementation that
-removes entries on eviction would bound memory by the window instead.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The <code>max</code> on the first match is required for correctness. Without it the
-function fails on <code>"abba"</code>.</li>
-<li><code>start</code> is monotonic, which is what reduces the scan to a single pass with no
-backtracking and an <code>O(n)</code> bound.</li>
-<li>The space bound is <code>O(min(n, alphabet))</code> rather than <code>O(n)</code>. For <code>char</code> keys the
-alphabet cannot exceed 1,112,064, the number of Unicode scalar values.</li>
-<li>Lengths are counted in scalar values, so a combining sequence counts as two. A
-user-visible length would need grapheme segmentation, which the standard library
-does not provide.</li>
-</ul>
+byte length as the capacity hint, which over-allocates for multi-byte text. The hint
+is safe because a byte count bounds a character count.</p>
+<p><strong>The answer is a length, and the substring is discarded.</strong> A caller that needs the
+text of the longest window must record <code>start</code> alongside <code>longest</code> and slice the
+original at the end. That change is two lines and is not in the file.</p>
+<p><strong>Non-ASCII text is measured in characters, not in grapheme clusters.</strong> A combining
+sequence such as <code>e</code> followed by a combining acute accent is two scalar values, so
+the function counts it as two characters. A user-facing length would need grapheme
+segmentation, which the standard library does not provide.</p>
+<p><strong>The map keeps an entry per distinct character ever seen.</strong> Entries for characters
+that have left the window are not removed, so the space bound is over the whole text
+rather than over the current window. An implementation that removes entries on
+eviction would bound memory by the window instead. For <code>char</code> keys the map cannot
+hold more than 1,112,064 entries, the number of Unicode scalar values.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.str.html#method.chars"><code>str::chars</code></a>.</li>

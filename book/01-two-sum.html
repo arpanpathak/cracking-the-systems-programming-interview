@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2abfced0.js";
+            window.path_to_searchindex_js = "searchindex-b641e624.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -176,42 +176,29 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="two-sum"><a class="header" href="#two-sum">1. Two Sum</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/two_sum.rs"><code>src/problems/two_sum.rs</code></a>. Test it with <code>cargo test two_sum</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/two_sum.rs"><code>src/problems/two_sum.rs</code></a>. Test it with <code>cargo test two_sum</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
 <p>Given a slice of integers and a target value, return the indices of two positions
-whose values sum to the target, or report that no such pair exists. The usual
-statement of the problem guarantees that at most one answer exists, and permits
-the two positions to hold the same value as long as they are different positions.</p>
-<p>The straightforward solution compares every element with every element after it.
-For a slice of length <code>n</code>, that is <code>n(n-1)/2</code> comparisons, which is <code>O(n²)</code>. The
-cost is easy to underestimate because the code is short. A slice of a million
-elements, an ordinary size for a batch job, would need about five hundred billion
-comparisons; at one comparison per nanosecond that is more than six days. The rest
-of this chapter reduces that to a single pass.</p>
+whose values sum to the target, or report that no such pair exists. The inputs this
+function handles contain at most one such pair. The two positions may hold the same
+value provided the positions differ.</p>
+<p>Comparing every element with every element after it costs <code>n(n - 1) / 2</code>
+comparisons for a slice of length <code>n</code>, which is <code>O(n²)</code>. One million elements is
+about five hundred billion comparisons.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>The useful observation is that for a given element <code>x</code> the value of its complement is
-not unknown. If the pair sums to a target <code>t</code>, then the complement of <code>x</code> is exactly
-<code>t - x</code>. That value is determined by <code>x</code> and <code>t</code> before any search takes place.</p>
-<p>This changes the shape of the work. The naive solution asks a <em>search</em> question,
-“is there an element equal to <code>t - x</code> somewhere in the rest of the slice?”, and
-every answer costs a scan of what remains. The reformulated solution asks a
-<em>membership</em> question, “have I already seen <code>t - x</code>?”, and membership is the
-question a hash table answers in constant expected time.</p>
+<p>For an element <code>x</code> and a target <code>t</code>, the value that completes the pair is <code>t - x</code>.
+It follows from <code>x</code> and <code>t</code> alone, so finding it requires no search.</p>
+<p>The direct method asks whether <code>t - x</code> occurs anywhere in the remainder of the
+slice, and every answer costs a scan. Recording each element as it is passed
+replaces the scan with a hash-table lookup: when the cursor reaches the second
+element of a pair, the first element is already in the table.</p>
 <pre><code class="language-text">x        the element under the cursor
 t - x    the only value that would complete a pair with x
 </code></pre>
-<p>Walking the slice once and recording each element as it is passed therefore
-suffices. When the cursor reaches the second element of a pair, the first element
-is already in the table and the pair can be reported. Nothing earlier in the walk
-could have reported that pair, because at that point only one of its two halves had
-been seen.</p>
-<p>Two decisions in the representation follow from the problem statement. The table
-maps a value to the <em>position</em> where that value was found, because the answer is a
-pair of indices and not a pair of values. And the table is keyed by the element’s
-own value rather than by its complement, because the role an element plays depends
-on what comes after it: the same element may be the second half of one pair and the
-first half of another, so it has to be findable by its own value when a later
-element arrives.</p>
+<p>The table maps a value to the position where it was found, because the answer is a
+pair of indices. It is keyed by the element’s own value rather than by the
+complement, because one element can be the second half of one pair and the first
+half of another.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -250,54 +237,42 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p>The signature returns <code>Option&lt;(usize, usize)&gt;</code>, so the absence of a pair is part of
-the answer. A caller cannot mistake an index of zero for a failure, because the
-indices exist only inside <code>Some</code>. Both are <code>usize</code>, which is what <code>enumerate</code>
-produces and what a slice accepts.</p>
-<p>The map is created with <code>HashMap::with_capacity(nums.len())</code>. Without the hint the
-table rehashes as it fills, moving every entry each time it grows, and the number
-of such movements is logarithmic in the final size. The hint is an upper bound on
-the entries the loop can insert, so with it the table allocates once.</p>
-<p>The loop header, <code>for (idx, &amp;num) in nums.iter().enumerate()</code>, reads from the
-inside out. <code>nums.iter()</code> yields <code>&amp;i32</code>. <code>enumerate</code> pairs each element with its
-position, yielding <code>(usize, &amp;i32)</code>. The pattern in the loop header destructures
-that pair, and the <code>&amp;</code> in <code>&amp;num</code> copies the integer out of the reference, so the
-body works with <code>num: i32</code> rather than with a borrow. Copying an <code>i32</code> is a load
-from the slice that the loop needed anyway.</p>
-<p>The lookup <code>seen.get(&amp;(target - num))</code> computes the complement and searches for it
-in one expression. <code>get</code> takes a reference to the key, which is why the complement
-is written inside <code>&amp;(...)</code>. An intermediate binding would be equally clear, and
-would name a value used once. The borrow of <code>seen</code> that <code>get</code> returns ends with the
-<code>match</code>, and that is what allows the <code>None</code> arm to take a mutable borrow of the same
-map.</p>
-<p>The pattern <code>Some(&amp;prev)</code> copies the stored index out of the reference that <code>get</code>
-returned. Writing <code>Some(prev)</code> would attempt to move a <code>usize</code> out of a map the
-caller does not own, and the borrow checker refuses it.</p>
+<p>The return type is <code>Option&lt;(usize, usize)&gt;</code>. Absence is part of the answer, and a
+caller cannot read index zero as a failure because the indices exist only inside
+<code>Some</code>. Both are <code>usize</code>, which is what <code>enumerate</code> produces and what indexes a
+slice.</p>
+<p><code>HashMap::with_capacity(nums.len())</code> bounds the number of entries the loop can
+insert. Without the hint the table rehashes as it grows, and the hint removes that
+work.</p>
+<p><code>nums.iter()</code> yields <code>&amp;i32</code>, <code>enumerate</code> pairs each reference with its position, and
+the pattern <code>(idx, &amp;num)</code> destructures that pair, copying the integer out of the
+reference.</p>
+<p><code>seen.get(&amp;(target - num))</code> computes the complement and looks it up in one
+expression; <code>get</code> takes a reference to the key. The borrow that <code>get</code> returns ends
+with the <code>match</code>, which is what allows the <code>None</code> arm to insert into the same map.</p>
+<p><code>Some(&amp;prev)</code> copies the stored index out of the returned reference. <code>Some(prev)</code>
+would move a <code>usize</code> out of a map the function does not own.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p>The first trace uses the slice from the test suite, where the pair is completed on
-the second element.</p>
+<p>The first trace uses the slice from the test suite. The pair completes on the
+second element.</p>
 <pre><code class="language-text">nums = [2, 7, 11, 15]      target = 9
 
 step  idx  num   complement 9-num   present in the map?   map after the step
  1     0    2         7              no                   {2: 0}
  2     1    7         2              yes, at index 0      return Some((0, 1))
 </code></pre>
-<p>The second trace covers the case the problem statement is written to permit: two
-positions holding the same value.</p>
+<p>The second trace has two positions holding the same value. The positions differ,
+which the answer requires; the values are equal, which the input permits.</p>
 <pre><code class="language-text">nums = [3, 3]              target = 6
 
 step  idx  num   complement 6-num   present in the map?   map after the step
  1     0    3         3              no                   {3: 0}
  2     1    3         3              yes, at index 0      return Some((0, 1))
-
-The two positions are distinct, which the answer requires; the two values are
-equal, which the problem statement allows.
 </code></pre>
-<p>A third case is worth following for what it does not do. With <code>nums = [1, 2, 3]</code>
-and <code>target = 100</code>, every complement is negative, no lookup succeeds, and the loop
-runs to the end with three entries in the map. The function then returns <code>None</code>,
-and the map is released when the function returns. The memory used by the search
-therefore depends on the input, and not on whether an answer exists.</p>
+<p>With <code>nums = [1, 2, 3]</code> and <code>target = 100</code>, every complement is negative, no lookup
+succeeds, and the loop ends with three entries in the map. The map is released when
+the function returns, so the memory used follows the input rather than whether a
+pair exists.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
@@ -310,34 +285,26 @@ therefore depends on the input, and not on whether an answer exists.</p>
 </tbody>
 </table>
 </div>
-<p>The time bound is expected rather than guaranteed. A hash table computes a hash of
-the key, uses part of it to select a bucket, and probes from there. When keys
-distribute evenly the average number of probes per operation is a small constant,
-close to one in the standard library’s implementation. When keys collide
-systematically, every operation inside a colliding group degenerates into a scan,
-and <code>n</code> insertions cost <code>O(n²)</code> in total.</p>
-<p>The standard library’s default hasher is SipHash-1-3 with a key chosen at random
-for each map. That is what keeps the worst case out of reach of an attacker who
-supplies the input: which keys collide depends on a seed the attacker cannot
-observe. A program that installs its own hasher, as programs that hash integers do
-for speed, gives up that protection, and the expected bound then becomes a claim
-the program’s own input can break.</p>
-<p>Space is <code>O(n)</code> because the table holds an entry per distinct value visited, and in
-the worst case every element is distinct and no pair exists. For a slice of
-integers the table is larger than the input. A million <code>i32</code> values occupy four
-megabytes, while a map of a million entries carries a key, a value, and the table’s
-own bookkeeping for each one. The memory cost of the faster algorithm is the price
-of the membership test, and it is paid in full when the answer is absent.</p>
+<p>The time bound is expected rather than guaranteed. A hash table hashes the key,
+selects a bucket from part of the hash, and probes from there. Evenly distributed
+keys give a small constant number of probes per operation. Keys that collide
+systematically turn every operation in a colliding group into a scan, and <code>n</code>
+insertions cost <code>O(n²)</code> in total.</p>
+<p>The standard library’s default hasher is SipHash-1-3 with a key chosen at random for
+each map, so which keys collide depends on a seed the program cannot observe. A
+program that installs its own hasher, as programs that hash integers do for speed,
+gives up that property, and the expected bound becomes a claim its input can break.</p>
+<p>Space is <code>O(n)</code> because the table holds one entry per distinct value visited, and an
+input with no pair keeps every element distinct. For a slice of integers the table
+is larger than the input: a million <code>i32</code> values occupy four megabytes, while a map
+of a million entries stores a key, a value, and the table’s bookkeeping for each.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p>The subtraction <code>target - num</code> is arithmetic on <code>i32</code>, and it can overflow. The
-case is reachable with a single element: <code>two_sum(&amp;[i32::MIN], 0)</code> evaluates
-<code>0 - i32::MIN</code>, and <code>i32::MIN</code> has no counterpart of the opposite sign that fits in
-an <code>i32</code>. In a debug build that expression panics with an arithmetic overflow. In a
-release build the same expression wraps, the wrapped value is a number no element
-can hold, and the function returns <code>None</code>. The two build profiles therefore
-disagree about the same input, which means a program tested in debug and shipped in
-release can change behaviour on a value that arrived from a file or a network. The
-remedy is one call:</p>
+<p>The subtraction <code>target - num</code> can overflow. <code>two_sum(&amp;[i32::MIN], 0)</code> evaluates
+<code>0 - i32::MIN</code>, and no <code>i32</code> holds that value. A debug build panics with an
+arithmetic overflow. A release build wraps, the wrapped value matches no element,
+and the function returns <code>None</code>. The two profiles therefore disagree on the same
+input, and a program tested in debug and shipped in release can change behaviour on
+a value read from a file or a socket. <code>checked_sub</code> reports the case instead:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let complement = match target.checked_sub(num) {
@@ -348,38 +315,21 @@ remedy is one call:</p>
     }
 };
 <span class="boring">}</span></code></pre>
-<p><code>checked_sub</code> reports the impossible case instead of overflowing, and the element
-that has no complement is still recorded, because a later element may need to
-find it.</p>
-<p>The map keeps the most recent index for a repeated value, since the <code>None</code> arm
-writes with <code>insert</code> and an existing key is overwritten. When a pair is completed
-by the second occurrence of a value, the index returned is the one the first
-occurrence recorded, so the answer is correct. The detail matters only if the
-contract changes: a caller that asks for the pair whose first index is smallest, or
-for every pair, needs evidence that this function discards.</p>
-<p>Only one pair is reported. The function returns as soon as the second element of
-any pair is reached, so on an input containing several valid pairs the answer
-depends on the order of the elements rather than on a property of the pairs. Two
-related problems look like this one and need different code. Reporting every pair
-requires the loop to continue and the map to hold every index for each value.
-Reporting the pair closest to the front of the slice requires the earliest index to
-be kept, which turns the <code>None</code> arm into <code>seen.entry(num).or_insert(idx)</code>.</p>
-<p>The element type is fixed at <code>i32</code> and the index type at <code>usize</code>. Nothing in the
-algorithm depends on either choice, but the signature fixes both, so a slice of
-<code>i64</code>, or of a type that is not <code>Copy</code>, cannot be passed without changing the
-declaration.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The complement of an element is determined by the target, so the search for a
-complement becomes a membership test among the elements already seen. That
-reformulation is what makes the one-pass loop possible.</li>
-<li>The cost is expected <code>O(n)</code> rather than guaranteed <code>O(n)</code>, and the assumption
-behind the bound is that the hash function distributes keys evenly. The worst
-case is <code>O(n²)</code> with a hasher that collides.</li>
-<li><code>target - num</code> overflows on adversarial input. The expression passes every test
-written with small positive numbers and fails on the first input near <code>i32::MIN</code>.
-Chapter 9 makes the same point about the midpoint of a range.</li>
-</ul>
+<p>The element that has no complement is still recorded, because a later element may
+need to find it.</p>
+<p><code>insert</code> overwrites the index of a repeated value, so the map keeps the most recent
+position. A pair completed by the second occurrence returns the index the first
+occurrence recorded, which is the answer the function promises. A caller that needs
+the pair with the smallest first index, or every pair, requires information this
+function discards.</p>
+<p>The function returns as soon as it reaches the second element of any pair, so on an
+input with several valid pairs the answer depends on the order of the elements.
+Reporting every pair requires the loop to continue and the map to hold every index
+for each value. Reporting the pair with the earliest first index requires
+<code>seen.entry(num).or_insert(idx)</code> in place of <code>insert</code>.</p>
+<p>The element type is <code>i32</code> and the index type is <code>usize</code>. The algorithm depends on
+neither choice, but the signature fixes both, so a slice of <code>i64</code>, or of a type that
+is not <code>Copy</code>, cannot be passed without changing the declaration.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html"><code>HashMap</code></a>, on the default hasher and its random seed.</li>

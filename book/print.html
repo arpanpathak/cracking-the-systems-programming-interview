@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2abfced0.js";
+            window.path_to_searchindex_js = "searchindex-b641e624.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -182,55 +182,42 @@
 any better.</p>
 <p>Bjarne Stroustrup, <em>Foundations of C++</em>, ECOOP 2012</p>
 </blockquote>
-<h2 id="why-this-book"><a class="header" href="#why-this-book">Why this book</a></h2>
-<p>A systems interview is less about whether a candidate can name the right data
-structure than about the sentence that follows the name. The interviewer asks why
-one representation is cheaper than another, what an abstraction hides, and which
-input breaks it.</p>
-<p>A list of exercises does not practise that reasoning, because the list gives the
-answer and leaves the argument out. This book works in the other direction. It
-takes one repository of running Rust, covering data structures, caches,
-concurrency primitives, and the file and network code a service needs, and reads
-it the way an interviewer reads an answer: one file at a time, with the cost of
-every operation and the inputs that break it written down.</p>
-<h2 id="who-this-book-is-for"><a class="header" href="#who-this-book-is-for">Who this book is for</a></h2>
+<h2 id="what-this-book-is"><a class="header" href="#what-this-book-is">What this book is</a></h2>
+<p>This book reads one repository of Rust, <code>rust-interview-lab</code>, one file at a time.
+Each chapter covers one file: the problem, the design, the code as the repository
+holds it, a trace of that code on a concrete input, the cost of each operation, and
+the inputs the code does not handle.</p>
+<p>The files are working programs and modules. Each is short enough to read in full,
+and each carries its own tests.</p>
+<p>The repository is at
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a>. Every
+chapter links the source file it reads.</p>
+<h2 id="what-you-need-to-know"><a class="header" href="#what-you-need-to-know">What you need to know</a></h2>
 <p>The book assumes that you can read Rust and that you know what <code>Vec</code>, <code>HashMap</code>,
-<code>Option</code> and <code>Result</code> are. It assumes nothing else. Every structure the text uses
-is built in the text, and every cost claim is either derived on the page or
-measured by a program printed beside it.</p>
-<p>If you are preparing for a senior systems or cloud engineering interview, the
-chapters are the interview slowed down: the problem statement, the design, the
-implementation, the intuition, the cost, and the limits, in that order. If you are
-reading for the code alone, each chapter stands on its own.</p>
+<code>Option</code> and <code>Result</code> are. Every structure the text uses is built in the text.
+Every cost claim is derived on the page or measured by a program printed beside it.</p>
 <h2 id="how-the-chapters-are-built"><a class="header" href="#how-the-chapters-are-built">How the chapters are built</a></h2>
-<p>Most chapters follow the same movements.</p>
-<p><strong>Problem Statement.</strong> The input, the output, and the boundary cases that decide
-whether an answer is complete.</p>
-<p><strong>Designing a Solution.</strong> The mechanism the solution rests on, and the reason it
-is correct.</p>
+<p><strong>Problem Statement.</strong> The input, the output, and the boundary cases.</p>
+<p><strong>Designing a Solution.</strong> The mechanism the solution rests on.</p>
 <p><strong>Implementation.</strong> The file the chapter reads, followed by a reading of its
 decisions.</p>
-<p><strong>Intuition.</strong> The state of the program after each step on a concrete input, as a
-table or a diagram.</p>
+<p><strong>Intuition.</strong> The state of the program after each step on a concrete input.</p>
 <p><strong>Time and Space Complexity.</strong> The cost of each operation, with the condition
-stated in the same row when a bound holds only under an assumption.</p>
-<p><strong>Limitations.</strong> The cases the code does not handle, the assumptions it makes about its
-input, and the resources it does not bound.</p>
+stated in the same row when a bound depends on an assumption.</p>
+<p><strong>Limitations.</strong> The cases the code does not handle and the resources it does not
+bound.</p>
 <p>A chapter that measures rather than traces prints the program that produced the
-figure, so that the number can be reproduced.</p>
+figure.</p>
 <h2 id="how-the-book-is-organised"><a class="header" href="#how-the-book-is-organised">How the book is organised</a></h2>
-<p>The chapters are grouped by subject. Chapters 1 to 13 cover the problems of the
-standard interview repertoire: array and string work, trees, graphs, recursion and
-search. Chapters 14 to 18 cover linked structures and caches, in which the deciding
-question is ownership. Chapters 19 to 25 cover concurrency and the operating
-system, including a program that measures the cost of a system call. Chapters 26
-to 29 cover files, directories and command-line arguments. Chapters 30 and 31 cover
-coordination and parallelism. Chapters 32 and 33 return to sequences with a running
-median and an in-place reversal. Chapter 34 covers idempotent operations.</p>
-<p>Read straight through for the argument, or follow one part for a topic. The index
-and the cross-references in each chapter are enough to read out of order.</p>
+<p>Chapters 1 to 13 cover arrays, strings, trees, graphs, recursion and search.
+Chapters 14 to 18 cover linked structures and caches. Chapters 19 to 25 cover
+concurrency and the operating system. Chapters 26 to 29 cover files, directories
+and command-line arguments. Chapters 30 and 31 cover coordination and parallelism.
+Chapters 32 and 33 cover a running median and an in-place reversal. Chapter 34
+covers idempotent operations.</p>
 <h2 id="the-repository"><a class="header" href="#the-repository">The repository</a></h2>
-<p>The code is the repository <code>rust-interview-lab</code>. To run it:</p>
+<p>The code is in <code>rust-interview-lab</code>:</p>
+<p><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a></p>
 <pre><code class="language-bash">cd rust-interview-lab
 cargo test                          # library and program tests
 cargo run --bin count_islands
@@ -243,7 +230,7 @@ cargo run --bin bounded_buffer
 cargo run --release --bin parallel_sum
 </code></pre>
 <p>The listings reproduce the files as the repository holds them. Chapter 18 prints a
-test with an assertion added, and says so where it appears.</p>
+test with an assertion added, and says so.</p>
 <h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <p>A trace is a table with one row per step. Where a structure needs a picture rather
 than a table, boxes inside a frame are values on the stack, and boxes to the right
@@ -267,22 +254,17 @@ states the assumption in the same row:</p>
 </tbody>
 </table>
 </div>
-<p>A measured figure names the machine that produced it, because a measurement
-without its environment cannot be reproduced.</p>
+<p>A measured figure names the machine that produced it.</p>
 <h2 id="what-this-book-does-not-cover"><a class="header" href="#what-this-book-does-not-cover">What this book does not cover</a></h2>
-<p>It is not a Rust tutorial. It does not teach the language from the beginning, and
-it does not survey the ecosystem. It is not a catalogue of interview questions:
-the subject is the reasoning around each program, not the answer to it. And it is
-not a Kubernetes or GPU manual; the operator and the cluster work live in the
-repository and in the study guides beside it, not in these chapters.</p>
+<p>It is not a Rust tutorial, an ecosystem survey, or a catalogue of interview
+questions. The operator and the cluster work are in the repository and in the study
+guides beside it.</p>
 <h2 id="acknowledgments"><a class="header" href="#acknowledgments">Acknowledgments</a></h2>
 <p>The claims about the Rust language and its standard library rest on the
 documentation the Rust Project Developers maintain: the <em>Rust Book</em>, the <em>Rust
 Reference</em>, the <em>Rustonomicon</em>, the standard library reference, and the API
 Guidelines. The algorithms are attributed in each chapter and listed with their
-sources in the References. The epigraph is Bjarne Stroustrup’s statement of the
-zero-overhead principle, and the quotations that follow it in the chapters are
-attributed where they appear.</p>
+sources in the References.</p>
 <p><em>Arpan Pathak</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="the-code"><a class="header" href="#the-code">The Code</a></h1>
@@ -371,42 +353,29 @@ change that item. Each module keeps its own tests in a <code>#[cfg(test)] mod te
 the list printed by <code>cargo test</code> reads as an index of the book.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="two-sum"><a class="header" href="#two-sum">1. Two Sum</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/two_sum.rs"><code>src/problems/two_sum.rs</code></a>. Test it with <code>cargo test two_sum</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/two_sum.rs"><code>src/problems/two_sum.rs</code></a>. Test it with <code>cargo test two_sum</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
 <p>Given a slice of integers and a target value, return the indices of two positions
-whose values sum to the target, or report that no such pair exists. The usual
-statement of the problem guarantees that at most one answer exists, and permits
-the two positions to hold the same value as long as they are different positions.</p>
-<p>The straightforward solution compares every element with every element after it.
-For a slice of length <code>n</code>, that is <code>n(n-1)/2</code> comparisons, which is <code>O(n²)</code>. The
-cost is easy to underestimate because the code is short. A slice of a million
-elements, an ordinary size for a batch job, would need about five hundred billion
-comparisons; at one comparison per nanosecond that is more than six days. The rest
-of this chapter reduces that to a single pass.</p>
+whose values sum to the target, or report that no such pair exists. The inputs this
+function handles contain at most one such pair. The two positions may hold the same
+value provided the positions differ.</p>
+<p>Comparing every element with every element after it costs <code>n(n - 1) / 2</code>
+comparisons for a slice of length <code>n</code>, which is <code>O(n²)</code>. One million elements is
+about five hundred billion comparisons.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>The useful observation is that for a given element <code>x</code> the value of its complement is
-not unknown. If the pair sums to a target <code>t</code>, then the complement of <code>x</code> is exactly
-<code>t - x</code>. That value is determined by <code>x</code> and <code>t</code> before any search takes place.</p>
-<p>This changes the shape of the work. The naive solution asks a <em>search</em> question,
-“is there an element equal to <code>t - x</code> somewhere in the rest of the slice?”, and
-every answer costs a scan of what remains. The reformulated solution asks a
-<em>membership</em> question, “have I already seen <code>t - x</code>?”, and membership is the
-question a hash table answers in constant expected time.</p>
+<p>For an element <code>x</code> and a target <code>t</code>, the value that completes the pair is <code>t - x</code>.
+It follows from <code>x</code> and <code>t</code> alone, so finding it requires no search.</p>
+<p>The direct method asks whether <code>t - x</code> occurs anywhere in the remainder of the
+slice, and every answer costs a scan. Recording each element as it is passed
+replaces the scan with a hash-table lookup: when the cursor reaches the second
+element of a pair, the first element is already in the table.</p>
 <pre><code class="language-text">x        the element under the cursor
 t - x    the only value that would complete a pair with x
 </code></pre>
-<p>Walking the slice once and recording each element as it is passed therefore
-suffices. When the cursor reaches the second element of a pair, the first element
-is already in the table and the pair can be reported. Nothing earlier in the walk
-could have reported that pair, because at that point only one of its two halves had
-been seen.</p>
-<p>Two decisions in the representation follow from the problem statement. The table
-maps a value to the <em>position</em> where that value was found, because the answer is a
-pair of indices and not a pair of values. And the table is keyed by the element’s
-own value rather than by its complement, because the role an element plays depends
-on what comes after it: the same element may be the second half of one pair and the
-first half of another, so it has to be findable by its own value when a later
-element arrives.</p>
+<p>The table maps a value to the position where it was found, because the answer is a
+pair of indices. It is keyed by the element’s own value rather than by the
+complement, because one element can be the second half of one pair and the first
+half of another.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -445,54 +414,42 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p>The signature returns <code>Option&lt;(usize, usize)&gt;</code>, so the absence of a pair is part of
-the answer. A caller cannot mistake an index of zero for a failure, because the
-indices exist only inside <code>Some</code>. Both are <code>usize</code>, which is what <code>enumerate</code>
-produces and what a slice accepts.</p>
-<p>The map is created with <code>HashMap::with_capacity(nums.len())</code>. Without the hint the
-table rehashes as it fills, moving every entry each time it grows, and the number
-of such movements is logarithmic in the final size. The hint is an upper bound on
-the entries the loop can insert, so with it the table allocates once.</p>
-<p>The loop header, <code>for (idx, &amp;num) in nums.iter().enumerate()</code>, reads from the
-inside out. <code>nums.iter()</code> yields <code>&amp;i32</code>. <code>enumerate</code> pairs each element with its
-position, yielding <code>(usize, &amp;i32)</code>. The pattern in the loop header destructures
-that pair, and the <code>&amp;</code> in <code>&amp;num</code> copies the integer out of the reference, so the
-body works with <code>num: i32</code> rather than with a borrow. Copying an <code>i32</code> is a load
-from the slice that the loop needed anyway.</p>
-<p>The lookup <code>seen.get(&amp;(target - num))</code> computes the complement and searches for it
-in one expression. <code>get</code> takes a reference to the key, which is why the complement
-is written inside <code>&amp;(...)</code>. An intermediate binding would be equally clear, and
-would name a value used once. The borrow of <code>seen</code> that <code>get</code> returns ends with the
-<code>match</code>, and that is what allows the <code>None</code> arm to take a mutable borrow of the same
-map.</p>
-<p>The pattern <code>Some(&amp;prev)</code> copies the stored index out of the reference that <code>get</code>
-returned. Writing <code>Some(prev)</code> would attempt to move a <code>usize</code> out of a map the
-caller does not own, and the borrow checker refuses it.</p>
+<p>The return type is <code>Option&lt;(usize, usize)&gt;</code>. Absence is part of the answer, and a
+caller cannot read index zero as a failure because the indices exist only inside
+<code>Some</code>. Both are <code>usize</code>, which is what <code>enumerate</code> produces and what indexes a
+slice.</p>
+<p><code>HashMap::with_capacity(nums.len())</code> bounds the number of entries the loop can
+insert. Without the hint the table rehashes as it grows, and the hint removes that
+work.</p>
+<p><code>nums.iter()</code> yields <code>&amp;i32</code>, <code>enumerate</code> pairs each reference with its position, and
+the pattern <code>(idx, &amp;num)</code> destructures that pair, copying the integer out of the
+reference.</p>
+<p><code>seen.get(&amp;(target - num))</code> computes the complement and looks it up in one
+expression; <code>get</code> takes a reference to the key. The borrow that <code>get</code> returns ends
+with the <code>match</code>, which is what allows the <code>None</code> arm to insert into the same map.</p>
+<p><code>Some(&amp;prev)</code> copies the stored index out of the returned reference. <code>Some(prev)</code>
+would move a <code>usize</code> out of a map the function does not own.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p>The first trace uses the slice from the test suite, where the pair is completed on
-the second element.</p>
+<p>The first trace uses the slice from the test suite. The pair completes on the
+second element.</p>
 <pre><code class="language-text">nums = [2, 7, 11, 15]      target = 9
 
 step  idx  num   complement 9-num   present in the map?   map after the step
  1     0    2         7              no                   {2: 0}
  2     1    7         2              yes, at index 0      return Some((0, 1))
 </code></pre>
-<p>The second trace covers the case the problem statement is written to permit: two
-positions holding the same value.</p>
+<p>The second trace has two positions holding the same value. The positions differ,
+which the answer requires; the values are equal, which the input permits.</p>
 <pre><code class="language-text">nums = [3, 3]              target = 6
 
 step  idx  num   complement 6-num   present in the map?   map after the step
  1     0    3         3              no                   {3: 0}
  2     1    3         3              yes, at index 0      return Some((0, 1))
-
-The two positions are distinct, which the answer requires; the two values are
-equal, which the problem statement allows.
 </code></pre>
-<p>A third case is worth following for what it does not do. With <code>nums = [1, 2, 3]</code>
-and <code>target = 100</code>, every complement is negative, no lookup succeeds, and the loop
-runs to the end with three entries in the map. The function then returns <code>None</code>,
-and the map is released when the function returns. The memory used by the search
-therefore depends on the input, and not on whether an answer exists.</p>
+<p>With <code>nums = [1, 2, 3]</code> and <code>target = 100</code>, every complement is negative, no lookup
+succeeds, and the loop ends with three entries in the map. The map is released when
+the function returns, so the memory used follows the input rather than whether a
+pair exists.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
@@ -505,34 +462,26 @@ therefore depends on the input, and not on whether an answer exists.</p>
 </tbody>
 </table>
 </div>
-<p>The time bound is expected rather than guaranteed. A hash table computes a hash of
-the key, uses part of it to select a bucket, and probes from there. When keys
-distribute evenly the average number of probes per operation is a small constant,
-close to one in the standard library’s implementation. When keys collide
-systematically, every operation inside a colliding group degenerates into a scan,
-and <code>n</code> insertions cost <code>O(n²)</code> in total.</p>
-<p>The standard library’s default hasher is SipHash-1-3 with a key chosen at random
-for each map. That is what keeps the worst case out of reach of an attacker who
-supplies the input: which keys collide depends on a seed the attacker cannot
-observe. A program that installs its own hasher, as programs that hash integers do
-for speed, gives up that protection, and the expected bound then becomes a claim
-the program’s own input can break.</p>
-<p>Space is <code>O(n)</code> because the table holds an entry per distinct value visited, and in
-the worst case every element is distinct and no pair exists. For a slice of
-integers the table is larger than the input. A million <code>i32</code> values occupy four
-megabytes, while a map of a million entries carries a key, a value, and the table’s
-own bookkeeping for each one. The memory cost of the faster algorithm is the price
-of the membership test, and it is paid in full when the answer is absent.</p>
+<p>The time bound is expected rather than guaranteed. A hash table hashes the key,
+selects a bucket from part of the hash, and probes from there. Evenly distributed
+keys give a small constant number of probes per operation. Keys that collide
+systematically turn every operation in a colliding group into a scan, and <code>n</code>
+insertions cost <code>O(n²)</code> in total.</p>
+<p>The standard library’s default hasher is SipHash-1-3 with a key chosen at random for
+each map, so which keys collide depends on a seed the program cannot observe. A
+program that installs its own hasher, as programs that hash integers do for speed,
+gives up that property, and the expected bound becomes a claim its input can break.</p>
+<p>Space is <code>O(n)</code> because the table holds one entry per distinct value visited, and an
+input with no pair keeps every element distinct. For a slice of integers the table
+is larger than the input: a million <code>i32</code> values occupy four megabytes, while a map
+of a million entries stores a key, a value, and the table’s bookkeeping for each.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p>The subtraction <code>target - num</code> is arithmetic on <code>i32</code>, and it can overflow. The
-case is reachable with a single element: <code>two_sum(&amp;[i32::MIN], 0)</code> evaluates
-<code>0 - i32::MIN</code>, and <code>i32::MIN</code> has no counterpart of the opposite sign that fits in
-an <code>i32</code>. In a debug build that expression panics with an arithmetic overflow. In a
-release build the same expression wraps, the wrapped value is a number no element
-can hold, and the function returns <code>None</code>. The two build profiles therefore
-disagree about the same input, which means a program tested in debug and shipped in
-release can change behaviour on a value that arrived from a file or a network. The
-remedy is one call:</p>
+<p>The subtraction <code>target - num</code> can overflow. <code>two_sum(&amp;[i32::MIN], 0)</code> evaluates
+<code>0 - i32::MIN</code>, and no <code>i32</code> holds that value. A debug build panics with an
+arithmetic overflow. A release build wraps, the wrapped value matches no element,
+and the function returns <code>None</code>. The two profiles therefore disagree on the same
+input, and a program tested in debug and shipped in release can change behaviour on
+a value read from a file or a socket. <code>checked_sub</code> reports the case instead:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let complement = match target.checked_sub(num) {
@@ -543,38 +492,21 @@ remedy is one call:</p>
     }
 };
 <span class="boring">}</span></code></pre>
-<p><code>checked_sub</code> reports the impossible case instead of overflowing, and the element
-that has no complement is still recorded, because a later element may need to
-find it.</p>
-<p>The map keeps the most recent index for a repeated value, since the <code>None</code> arm
-writes with <code>insert</code> and an existing key is overwritten. When a pair is completed
-by the second occurrence of a value, the index returned is the one the first
-occurrence recorded, so the answer is correct. The detail matters only if the
-contract changes: a caller that asks for the pair whose first index is smallest, or
-for every pair, needs evidence that this function discards.</p>
-<p>Only one pair is reported. The function returns as soon as the second element of
-any pair is reached, so on an input containing several valid pairs the answer
-depends on the order of the elements rather than on a property of the pairs. Two
-related problems look like this one and need different code. Reporting every pair
-requires the loop to continue and the map to hold every index for each value.
-Reporting the pair closest to the front of the slice requires the earliest index to
-be kept, which turns the <code>None</code> arm into <code>seen.entry(num).or_insert(idx)</code>.</p>
-<p>The element type is fixed at <code>i32</code> and the index type at <code>usize</code>. Nothing in the
-algorithm depends on either choice, but the signature fixes both, so a slice of
-<code>i64</code>, or of a type that is not <code>Copy</code>, cannot be passed without changing the
-declaration.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The complement of an element is determined by the target, so the search for a
-complement becomes a membership test among the elements already seen. That
-reformulation is what makes the one-pass loop possible.</li>
-<li>The cost is expected <code>O(n)</code> rather than guaranteed <code>O(n)</code>, and the assumption
-behind the bound is that the hash function distributes keys evenly. The worst
-case is <code>O(n²)</code> with a hasher that collides.</li>
-<li><code>target - num</code> overflows on adversarial input. The expression passes every test
-written with small positive numbers and fails on the first input near <code>i32::MIN</code>.
-Chapter 9 makes the same point about the midpoint of a range.</li>
-</ul>
+<p>The element that has no complement is still recorded, because a later element may
+need to find it.</p>
+<p><code>insert</code> overwrites the index of a repeated value, so the map keeps the most recent
+position. A pair completed by the second occurrence returns the index the first
+occurrence recorded, which is the answer the function promises. A caller that needs
+the pair with the smallest first index, or every pair, requires information this
+function discards.</p>
+<p>The function returns as soon as it reaches the second element of any pair, so on an
+input with several valid pairs the answer depends on the order of the elements.
+Reporting every pair requires the loop to continue and the map to hold every index
+for each value. Reporting the pair with the earliest first index requires
+<code>seen.entry(num).or_insert(idx)</code> in place of <code>insert</code>.</p>
+<p>The element type is <code>i32</code> and the index type is <code>usize</code>. The algorithm depends on
+neither choice, but the signature fixes both, so a slice of <code>i64</code>, or of a type that
+is not <code>Copy</code>, cannot be passed without changing the declaration.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html"><code>HashMap</code></a>, on the default hasher and its random seed.</li>
@@ -584,7 +516,7 @@ Chapter 9 makes the same point about the midpoint of a range.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="valid-parentheses"><a class="header" href="#valid-parentheses">2. Valid Parentheses</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/valid_parentheses.rs"><code>src/problems/valid_parentheses.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs"><code>src/problems/valid_parentheses.rs</code></a>. Test it with
 <code>cargo test valid_parentheses</code>.</em></p>
 <h2 id="problem-statement-1"><a class="header" href="#problem-statement-1">Problem Statement</a></h2>
 <p>Given a string built from the six delimiter characters <code>()[]{}</code>, decide whether
@@ -778,7 +710,7 @@ count. The bound is safe and the allocation is loose.</p>
 does not need that. A version that reports positions would push the index of the
 opening character instead, and the comparisons would be against indices rather than
 against characters.</p>
-<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li>The invariant is that the stack holds the unmatched openings in order, with the
 most recent on top. Every branch of the loop preserves it, and the final
@@ -800,43 +732,31 @@ the question.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="min-stack"><a class="header" href="#min-stack">3. Min Stack</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/min_stack.rs"><code>src/problems/min_stack.rs</code></a>. Test it with <code>cargo test min_stack</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs"><code>src/problems/min_stack.rs</code></a>. Test it with <code>cargo test min_stack</code>.</em></p>
 <h2 id="problem-statement-2"><a class="header" href="#problem-statement-2">Problem Statement</a></h2>
-<p>Support four operations on a stack, <code>push</code>, <code>pop</code>, <code>top</code>, and <code>get_min</code>, with
-each of them in constant time. The first three are what a stack always provides.
-The fourth is the whole problem: the smallest value currently in the stack, also in
-constant time.</p>
-<p>A single vector of values cannot do it. The minimum of the stack is easy to track
-while values are only added: keep a running smallest value and update it on each
-push. Popping destroys it. When the smallest value leaves the stack, the next
-smallest is whatever the second smallest was at that moment, and that value was
-overwritten by the running minimum when the smaller one arrived. The information
-needed to answer the question after a pop is information the running minimum
-discarded.</p>
+<p>Implement a stack with four operations: <code>push</code>, <code>pop</code>, <code>top</code>, and <code>get_min</code>. Each
+runs in <code>O(1)</code> time. The first three are the standard stack operations. <code>get_min</code>
+returns the smallest value currently on the stack.</p>
+<p>A <code>Vec&lt;i32&gt;</code> together with a variable holding the current minimum does not satisfy
+the bound. The variable is correct while values are pushed. A <code>pop</code> that removes the
+current minimum leaves the previous minimum unavailable, because the variable was
+overwritten when the smaller value was pushed.</p>
 <h2 id="designing-a-solution-2"><a class="header" href="#designing-a-solution-2">Designing a Solution</a></h2>
-<p>The fix is to stop tracking one minimum and start recording the minimum at every
-depth. Keep a second vector, the same length as the first, in which entry <code>i</code> holds
-the smallest value among the first <code>i + 1</code> entries of the stack.</p>
+<p>Store the minimum at every depth. A second vector, the same length as the first,
+records at index <code>i</code> the smallest value among <code>values[0..=i]</code>.</p>
 <pre><code class="language-text">values          3   1   4   1   5
 mins            3   1   1   1   1
                 ^   ^
                 |   the smallest of 3, 1
                 the smallest of 3
 </code></pre>
-<p>The invariant is the sentence</p>
-<blockquote>
-<p><code>mins[i]</code> is the minimum of <code>values[0..=i]</code>.</p>
-</blockquote>
-<p>Two facts follow from it, and between them they explain the whole implementation.
-The answer to <code>get_min</code> is the last entry of <code>mins</code>, because the last index covers
-the whole stack. And <code>pop</code> can remove the last entry of each vector and remain
-consistent, because after removing index <code>i</code> from both, the invariant still holds
-for every remaining index. Nothing has to be recomputed, because what was recorded
-at each depth happens to be exactly what is needed at that depth.</p>
-<p>Push does not compute a minimum; it records the decision that was made at the new
-depth. The value appended to <code>mins</code> is either the incoming value, if it is smaller
-than everything already there, or the previous minimum, if it is not. Both are
-available in constant time, which is where the constant time bound comes from.</p>
+<p>The invariant is <code>mins[i] == min(values[0..=i])</code>. Two consequences cover the
+implementation. <code>get_min</code> returns the last entry of <code>mins</code>, because the last index
+covers the whole stack. <code>pop</code> removes the last entry from both vectors, and the
+invariant still holds for every remaining index, so nothing is recomputed.</p>
+<p><code>push</code> appends to <code>mins</code> either the incoming value, when it is smaller than the
+current minimum, or the current minimum otherwise. Both are available in constant
+time, which is where the bound comes from.</p>
 <h2 id="implementation-2"><a class="header" href="#implementation-2">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -905,25 +825,21 @@ mod tests {
 }
 <span class="boring">}</span></code></pre>
 <p><code>MinStack::new</code> returns <code>Self::default()</code>, so the constructor and the <code>Default</code>
-implementation cannot drift apart. The derive provides <code>Default</code>, and <code>new</code> is the
-name callers expect.</p>
+implementation cannot disagree.</p>
 <p><code>push</code> matches on the last entry of <code>mins</code> with a guard. <code>Some(&amp;min) if min &lt;= val</code>
-handles the case where the stack is non-empty and the incoming value is not
-smaller, in which case the previous minimum is repeated. The underscore arm covers
-both remaining cases at once: the stack is empty, so there is no previous minimum,
-or the incoming value is strictly smaller, so it becomes the new minimum. In both,
-the value pushed is <code>val</code>.</p>
-<p>The comparison is <code>&lt;=</code> rather than <code>&lt;</code>. With <code>&lt;</code> the two arms would still be
-correct for the minimum, because equal values give the same answer. The choice
-matters for the variant that stores counts, where equality against the current
-minimum is what increments the count instead of appending an entry.</p>
-<p><code>pop</code> discards the last entry of each vector and returns the value from the first.
-Both vectors lose exactly one element per call, so the equal-length invariant is
-maintained by construction, and the discarded entry of <code>mins</code> is never read.</p>
-<p><code>top</code> and <code>get_min</code> use <code>copied</code>, which turns <code>Option&lt;&amp;i32&gt;</code> into <code>Option&lt;i32&gt;</code> by
-copying the value out of the reference. Without it the returned <code>&amp;i32</code> would borrow
-the stack, and a caller could not push while holding the result, a restriction
-that a four-line accessor should not impose.</p>
+handles a non-empty stack whose incoming value is not smaller, and repeats the
+previous minimum. The underscore arm covers the empty stack and the strictly smaller
+value; in both, the value pushed is <code>val</code>.</p>
+<p>The comparison is <code>&lt;=</code> rather than <code>&lt;</code>. With <code>&lt;</code> the arms remain correct for the
+minimum, because equal values give the same answer. The choice matters for the
+variant that stores counts, where equality with the current minimum increments the
+count instead of appending an entry.</p>
+<p><code>pop</code> removes the last entry of each vector and returns the value from the first.
+Both vectors lose one element per call, so the equal-length invariant holds by
+construction, and the discarded entry of <code>mins</code> is never read.</p>
+<p><code>top</code> and <code>get_min</code> use <code>copied</code>, which turns <code>Option&lt;&amp;i32&gt;</code> into <code>Option&lt;i32&gt;</code>.
+Without it the returned reference would borrow the stack and prevent a push while
+the result is held.</p>
 <h2 id="intuition-2"><a class="header" href="#intuition-2">Intuition</a></h2>
 <pre><code class="language-text">call              values          mins              returns
 push(-2)          [-2]            [-2]              -
@@ -937,14 +853,11 @@ pop()             [-2]            [-2]              Some(0)
 pop()             []              []                Some(-2)
 get_min()         []              []                None
 </code></pre>
-<p>The sequence in the test suite exercises the case the running-minimum design would
-fail: after <code>-3</code> is popped, <code>get_min</code> reports <code>-2</code>, the value that was second
-smallest. A single tracked minimum would still report <code>-3</code>, a value no longer in
-the stack.</p>
-<p>The second test covers equality. Two equal values are pushed and one is popped; the
-minimum after the pop is still that value, because the surviving entry also records
-it. Both vectors held two entries and one remains, so the derivation of the
-invariant is unaffected by the repetition.</p>
+<p>The trace exercises the case a single tracked minimum would fail. After <code>-3</code> is
+popped, <code>get_min</code> reports <code>-2</code>, which was the second smallest value. A single
+tracked minimum would report <code>-3</code>, a value no longer on the stack.</p>
+<p>The second test pushes two equal values and pops one. The minimum after the pop is
+still that value, because the surviving entry records it.</p>
 <h2 id="time-and-space-complexity-2"><a class="header" href="#time-and-space-complexity-2">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
@@ -960,62 +873,37 @@ invariant is unaffected by the repetition.</p>
 </table>
 </div>
 <p>Push is amortised rather than constant because a <code>Vec</code> occasionally reallocates and
-moves its elements. The event is rare and the capacity doubles, so <code>n</code> pushes
-perform <code>O(n)</code> total movement, which is the amortised <code>O(1)</code> the caller receives.</p>
-<p>The structure stores two integers per element to hold one. For a stack of a million
-entries that is eight megabytes instead of four. The overhead is the price of the
-constant time minimum, and it is the measurement to give when someone asks what the
-approach costs. The alternative is described under failure modes: it stores a pair
-per <em>run</em> of equal minimum values rather than a value per element, which is smaller
-when the minimum repeats and equal to or larger than this design when it does not.</p>
+moves its elements. The capacity doubles, so <code>n</code> pushes perform <code>O(n)</code> total
+movement.</p>
+<p>The structure stores two integers per element to hold one. A stack of one million
+entries occupies eight megabytes instead of four. The alternative under Limitations
+stores a pair per run of equal minima, which uses less space when the minimum
+repeats and no more when it does not.</p>
 <h2 id="limitations-2"><a class="header" href="#limitations-2">Limitations</a></h2>
-<p>The memory overhead is proportional to the number of elements rather than to the
-number of distinct minimum values. A stack whose minimum changes on every push,
-which is what an increasing sequence produces, records the incoming value every
-time, and both vectors hold distinct entries. A stack whose minimum never changes
+<p>The memory overhead is proportional to the number of elements, not to the number of
+distinct minimum values. An increasing sequence changes the minimum on every push
+and records a distinct value each time. A sequence whose minimum never changes
 records the same value repeatedly, and the second vector is redundant. A design that
-stores <code>(value, repeat_count)</code> pairs, appending an entry only when the minimum
-strictly decreases and incrementing the count when it is repeated, holds fewer
-entries on inputs with repeated minima and never more than one entry per element.
-That variant is not implemented here, and the gain appears only on inputs where the
-minimum repeats.</p>
-<p>Pop on an empty stack returns <code>None</code> and changes nothing: <code>Option::pop</code> on an empty
-<code>Vec</code> returns <code>None</code> without panicking, and both vectors are left empty. <code>top</code> and
-<code>get_min</code> also return <code>None</code> on an empty stack, so an empty stack reports no minimum
-rather than a minimum of zero, which is the distinction that a sentinel value would
-lose.</p>
-<p>The structure has no <code>len</code> and no <code>is_empty</code>. A caller cannot ask how many entries
-the stack holds, and the two fields are private, so the depth is not observable from
-outside the module. A caller can push, pop, read the top and read the minimum, and
-nothing else; an application that needs the depth has to track it alongside the
-structure, or wait for the accessor to be added.</p>
-<p>The value type is <code>i32</code>. Making the structure generic over a type <code>T</code> with the
-<code>Ord</code> bound requires a type parameter on the struct, the implementation, and the two
-vectors, and the comparison in <code>push</code> is the only operation that needs the bound.
-Nothing in the algorithm depends on the values being integers, and nothing in it
-depends on <code>Copy</code> either: the second vector stores cloned values, which would need a
-<code>Clone</code> bound on the same type parameter.</p>
-<p>The order of the two pushes in <code>push</code>, <code>mins</code> first, then <code>values</code>, is an aspect
-of the invariant that the type system does not enforce. The code appends to <code>mins</code>
-before it appends to <code>values</code>, so if the second append could fail, the vectors would
-differ in length and the invariant would be broken. In Rust an allocation failure
-aborts the process rather than returning an error, so the case is not reachable
-through this function. The invariant holds because of the order of two adjacent
-statements rather than because of anything the compiler checks, and a reader
-verifying the structure should know that.</p>
-<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
-<ul>
-<li>The invariant is that <code>mins[i]</code> is the minimum of <code>values[0..=i]</code>. Every question
-about the design follows from it.</li>
-<li>A single tracked minimum is not sufficient: the value that the running minimum
-overwrites is the value needed after the pop, which is the problem the parallel
-vector solves.</li>
-<li>The cost is constant amortised time and two integers per element. The time bound
-alone does not decide whether the structure is usable for a large stack.</li>
-<li>The <code>(value, count)</code> pair is an alternative that occupies less memory when
-consecutive values repeat, and the shape of the input decides between the two
-designs. Only the bound changes if the variant is requested.</li>
-</ul>
+stores <code>(value, repeat_count)</code> pairs, appending only when the minimum strictly
+decreases and incrementing the count when it repeats, holds fewer entries on inputs
+with repeated minima and never more than one entry per element. That variant is not
+implemented here.</p>
+<p><code>pop</code> on an empty stack returns <code>None</code> and changes nothing. <code>top</code> and <code>get_min</code> also
+return <code>None</code> on an empty stack, so an empty stack reports no minimum rather than a
+minimum of zero.</p>
+<p>The structure has no <code>len</code> and no <code>is_empty</code>, and both fields are private, so the
+depth is not observable outside the module. A caller can push, pop, read the top and
+read the minimum, and nothing else. An application that needs the depth has to track
+it separately.</p>
+<p>The value type is <code>i32</code>. Making the structure generic over a type <code>T: Ord</code> requires
+a type parameter on the struct, the implementation, and both vectors; the comparison
+in <code>push</code> is the only operation that needs the bound. The second vector stores cloned
+values, which would also require <code>Clone</code>.</p>
+<p><code>push</code> appends to <code>mins</code> before <code>values</code>. If the second append could fail, the
+vectors would differ in length and the invariant would break. Rust aborts the process
+on allocation failure, so the case is unreachable through this function. The
+invariant holds because of the order of two adjacent statements, which the compiler
+does not check.</p>
 <h2 id="references-2"><a class="header" href="#references-2">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html#method.last"><code>Vec::last</code></a>.</li>
@@ -1024,12 +912,12 @@ designs. Only the bound changes if the variant is requested.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="sliding-window"><a class="header" href="#sliding-window">4. Longest Substring Without Repeating Characters</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/sliding_window.rs"><code>src/problems/sliding_window.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs"><code>src/problems/sliding_window.rs</code></a>. Test it with
 <code>cargo test sliding_window</code>.</em></p>
 <h2 id="problem-statement-3"><a class="header" href="#problem-statement-3">Problem Statement</a></h2>
 <p>Given a text, return the length of the longest contiguous substring that contains
-no repeated character. The answer is a length, not the substring, which lets the
-implementation discard the content of the window and keep only its start.</p>
+no repeated character. The answer is a length, not the substring, so the
+implementation can discard the contents of the window and keep only its start.</p>
 <h2 id="designing-a-solution-3"><a class="header" href="#designing-a-solution-3">Designing a Solution</a></h2>
 <p>Maintain a window <code>[start, end)</code> over the characters and a map from each character
 to the last index where it was seen. Extend the window by one character at a time.
@@ -1045,12 +933,12 @@ end  char  window       last_seen          longest
  4    e    [wke]        {e:4}              3
  5    w    [ew]         start = 2 + 1 = 3  3
 </code></pre>
-<p>The line that carries the algorithm is <code>start = start.max(previous + 1)</code>. The
-<code>max</code> is not defensive coding. A character may have been seen, left the window,
-and been seen again; in that case its recorded index is <em>before</em> <code>start</code>, and
-assigning <code>previous + 1</code> unconditionally would move the window backwards and
-re-scan characters that have already been counted. <code>start</code> is monotonic, and that
-monotonicity is what makes the scan linear.</p>
+<p>The line that carries the algorithm is <code>start = start.max(previous + 1)</code>. The <code>max</code>
+is required, not defensive. A character may have been seen, left the window, and
+been seen again; its recorded index is then before <code>start</code>, and assigning
+<code>previous + 1</code> unconditionally would move the window backwards and count characters
+that were already counted. <code>start</code> is monotonic, and that monotonicity is what makes
+the scan linear.</p>
 <h2 id="implementation-3"><a class="header" href="#implementation-3">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1097,8 +985,7 @@ outside ASCII.</p>
 <p><code>if let Some(&amp;previous) = last_seen.get(&amp;ch)</code> copies the index out of the map, so
 the borrow ends at the end of the <code>if let</code> and the <code>insert</code> below is allowed.</p>
 <h2 id="intuition-3"><a class="header" href="#intuition-3">Intuition</a></h2>
-<p>A case where the repeat has left the window, which is the case the <code>max</code> exists
-for:</p>
+<p>A case where the repeat has left the window, which is the case the <code>max</code> exists for:</p>
 <pre><code class="language-text">"abba"
 
 end  char  previous   start before   start after   window    longest
@@ -1125,31 +1012,20 @@ and count "abb" as a window.
 </div>
 <h2 id="limitations-3"><a class="header" href="#limitations-3">Limitations</a></h2>
 <p><strong>The map is sized by a byte count.</strong> <code>HashMap::with_capacity(s.len())</code> uses the
-byte length as the capacity hint, which over-allocates for multi-byte text. The
-hint is safe because a byte count bounds a character count.</p>
-<p><strong>The answer is a length, and the substring is discarded.</strong> A caller that needs
-the text of the longest window must record <code>start</code> alongside <code>longest</code> and slice
-the original at the end. That change is two lines and is not in the file.</p>
-<p><strong>Non-ASCII text is measured in characters, not in grapheme clusters.</strong> A
-combining sequence such as <code>e</code> followed by a combining acute accent is two scalar
-values, so the function counts it as two characters. A user-facing length would
-need grapheme segmentation, which the standard library does not provide.</p>
-<p><strong>The map keeps an entry per distinct character ever seen.</strong> Entries for
-characters that have left the window are not removed, so the space bound is over
-the whole text rather than over the current window. An implementation that
-removes entries on eviction would bound memory by the window instead.</p>
-<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
-<ul>
-<li>The <code>max</code> on the first match is required for correctness. Without it the
-function fails on <code>"abba"</code>.</li>
-<li><code>start</code> is monotonic, which is what reduces the scan to a single pass with no
-backtracking and an <code>O(n)</code> bound.</li>
-<li>The space bound is <code>O(min(n, alphabet))</code> rather than <code>O(n)</code>. For <code>char</code> keys the
-alphabet cannot exceed 1,112,064, the number of Unicode scalar values.</li>
-<li>Lengths are counted in scalar values, so a combining sequence counts as two. A
-user-visible length would need grapheme segmentation, which the standard library
-does not provide.</li>
-</ul>
+byte length as the capacity hint, which over-allocates for multi-byte text. The hint
+is safe because a byte count bounds a character count.</p>
+<p><strong>The answer is a length, and the substring is discarded.</strong> A caller that needs the
+text of the longest window must record <code>start</code> alongside <code>longest</code> and slice the
+original at the end. That change is two lines and is not in the file.</p>
+<p><strong>Non-ASCII text is measured in characters, not in grapheme clusters.</strong> A combining
+sequence such as <code>e</code> followed by a combining acute accent is two scalar values, so
+the function counts it as two characters. A user-facing length would need grapheme
+segmentation, which the standard library does not provide.</p>
+<p><strong>The map keeps an entry per distinct character ever seen.</strong> Entries for characters
+that have left the window are not removed, so the space bound is over the whole text
+rather than over the current window. An implementation that removes entries on
+eviction would bound memory by the window instead. For <code>char</code> keys the map cannot
+hold more than 1,112,064 entries, the number of Unicode scalar values.</p>
 <h2 id="references-3"><a class="header" href="#references-3">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.str.html#method.chars"><code>str::chars</code></a>.</li>
@@ -1158,7 +1034,7 @@ does not provide.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="merge-intervals"><a class="header" href="#merge-intervals">5. Merge Intervals</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/merge_intervals.rs"><code>src/problems/merge_intervals.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs"><code>src/problems/merge_intervals.rs</code></a>. Test it with
 <code>cargo test merge_intervals</code>.</em></p>
 <h2 id="problem-statement-4"><a class="header" href="#problem-statement-4">Problem Statement</a></h2>
 <p>Given a list of closed intervals <code>[start, end]</code>, return the list of maximal
@@ -1295,7 +1171,7 @@ nothing checks that it agrees with the other one. A one-line assertion,
 interval is <code>previous.1.max(end)</code>, so no arithmetic is performed and no overflow
 is possible. The bound of <code>i32</code> matters only in the sense that a caller with
 larger times cannot use the function.</p>
-<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
+<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <ul>
 <li>Whether intervals that touch are merged is a specification decision rather than
 a detail of the implementation. It changes one comparison from <code>&lt;</code> to <code>&lt;=</code>, and
@@ -1314,7 +1190,7 @@ one a new interval can overlap.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="top-k-frequent"><a class="header" href="#top-k-frequent">6. Top K Frequent Elements</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/top_k_frequent.rs"><code>src/problems/top_k_frequent.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/top_k_frequent.rs"><code>src/problems/top_k_frequent.rs</code></a>. Test it with
 <code>cargo test top_k_frequent</code>.</em></p>
 <h2 id="problem-statement-5"><a class="header" href="#problem-statement-5">Problem Statement</a></h2>
 <p>Given a slice of integers and a number <code>k</code>, return the <code>k</code> values that occur most
@@ -1438,7 +1314,7 @@ file has no test for it.</p>
 <code>(count, num)</code> and from the fact that <code>BinaryHeap</code> is a max-heap. Two sentences in
 the module documentation would make it part of the contract rather than a
 consequence of the implementation.</p>
-<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
 <li>The tie-break rule is part of the specification. “The <code>k</code> most frequent” is
 incomplete where counts are equal, and this implementation resolves a tie in
@@ -1458,7 +1334,7 @@ lookup followed by an insertion.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="binary-tree"><a class="header" href="#binary-tree">7. Binary Tree</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/binary_tree.rs"><code>src/problems/binary_tree.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs"><code>src/problems/binary_tree.rs</code></a>. Test it with
 <code>cargo test binary_tree</code>.</em></p>
 <h2 id="problem-statement-6"><a class="header" href="#problem-statement-6">Problem Statement</a></h2>
 <p>Represent a binary tree of integers, then compute its depth, mirror it in place,
@@ -1717,7 +1593,7 @@ the roots of the two subtrees were exchanged, which is enough to catch an <code>
 that does nothing, and not enough to catch one that swaps the children of the root
 only. Asserting <code>tree.preorder()</code> against the mirrored sequence would test the
 whole tree in one line.</p>
-<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
+<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <ul>
 <li>The type itself removes the empty case: both children of a <code>Node</code> are present,
 so no function tests for a missing one.</li>
@@ -1736,7 +1612,7 @@ directly would have infinite size, and the compiler rejects the declaration.</li
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="binary-search-tree"><a class="header" href="#binary-search-tree">8. Binary Search Tree</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/bst_clean.rs"><code>src/bin/bst_clean.rs</code></a>. Run it with <code>cargo run --bin bst_clean</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs"><code>src/bin/bst_clean.rs</code></a>. Run it with <code>cargo run --bin bst_clean</code>.</em></p>
 <h2 id="problem-statement-7"><a class="header" href="#problem-statement-7">Problem Statement</a></h2>
 <p>Build an ordered tree, a binary search tree, supporting insertion, membership,
 removal, and a range query. Removal is the interesting one, because a node with
@@ -1999,7 +1875,7 @@ fail while the invariant holds; it is a second panic path.</p>
 the correct bounds. A caller with a type that is only <code>PartialOrd</code>, such as a
 floating-point number, cannot use the tree at all, because <code>insert</code> matches on
 <code>Ordering</code> and <code>f64</code> does not implement <code>Ord</code>.</p>
-<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
+<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <ul>
 <li>Removal has three shapes. Removing a leaf and removing a node with one child are
 bookkeeping; removing a node with two children is the case the ordering
@@ -2025,7 +1901,7 @@ Search Trees”.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="binary-search"><a class="header" href="#binary-search">9. Binary Search on a Rotated Array</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/binary_search.rs"><code>src/problems/binary_search.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs"><code>src/problems/binary_search.rs</code></a>. Test it with
 <code>cargo test binary_search</code>.</em></p>
 <h2 id="problem-statement-8"><a class="header" href="#problem-statement-8">Problem Statement</a></h2>
 <p>A sorted slice of distinct values has been rotated by an unknown amount. Find the
@@ -2157,7 +2033,7 @@ meaningful.</p>
 where <code>nums[low] == nums[mid]</code> is false and the sorted-half test must choose
 correctly. That input is the one the <code>&lt;</code> versus
 <code>&lt;=</code> in <code>left_is_sorted</code> controls.</p>
-<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
+<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
 <ul>
 <li>The loop invariant is that the target lies in <code>nums[low..high]</code> if it lies
 anywhere.</li>
@@ -2177,7 +2053,7 @@ correct only for strictly increasing input.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="trie"><a class="header" href="#trie">10. Trie</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/trie.rs"><code>src/problems/trie.rs</code></a>. Test it with <code>cargo test trie</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs"><code>src/problems/trie.rs</code></a>. Test it with <code>cargo test trie</code>.</em></p>
 <h2 id="problem-statement-9"><a class="header" href="#problem-statement-9">Problem Statement</a></h2>
 <p>Store a set of strings so that two questions are cheap: is this exact string
 present, and does any stored string begin with this prefix. The second question is
@@ -2343,7 +2219,7 @@ The structure supports the query; the API does not expose it.</p>
 the tree’s shape, count its nodes, or measure its memory from outside the module.
 For a teaching structure that is a defensible choice, and it means a memory
 question can only be answered by reading the source.</p>
-<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
+<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
 <ul>
 <li>The trie’s advantage over a hash map is prefix queries in <code>O(k)</code>. Its cost is one
 node per character position, each holding a <code>HashMap</code> larger than the characters
@@ -2368,7 +2244,7 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="topological-sort"><a class="header" href="#topological-sort">11. Topological Sort</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/graph_topology.rs"><code>src/problems/graph_topology.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs"><code>src/problems/graph_topology.rs</code></a>. Test it with
 <code>cargo test graph_topology</code>.</em></p>
 <h2 id="problem-statement-10"><a class="header" href="#problem-statement-10">Problem Statement</a></h2>
 <p>Given a directed graph, produce an ordering of its vertices in which every edge
@@ -2538,7 +2414,7 @@ function, and a caller must not depend on a particular order.</p>
 to the in-degree of vertex 1 and the same edge is relaxed twice, so the counts
 stay consistent and the result is unaffected. Nothing reports the duplication,
 which a caller might want to know about.</p>
-<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
+<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <ul>
 <li>The invariant is that the in-degree array counts the unplaced predecessors of
 each vertex. The remainder of the algorithm follows from it.</li>
@@ -2564,7 +2440,7 @@ ACM</em> 5(11), 1962, pages 558–562.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="coin-change"><a class="header" href="#coin-change">12. Coin Change</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/dp.rs"><code>src/problems/dp.rs</code></a>. Test it with <code>cargo test dp</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/dp.rs"><code>src/problems/dp.rs</code></a>. Test it with <code>cargo test dp</code>.</em></p>
 <blockquote>
 <p>I call it my billion-dollar mistake. It was the invention of the null
 reference in 1965.</p>
@@ -2714,7 +2590,7 @@ reconstruct the combination.</p>
 <p><strong><code>i32</code> bounds both the amount and the answer.</strong> An amount above <code>i32::MAX</code> cannot
 be passed, and the conversion <code>count as i32</code> is safe only because the answer is at
 most the amount.</p>
-<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
+<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <ul>
 <li>The recurrence decides on the last coin: <code>dp[total]</code> is one more than the best
 <code>dp[total - coin]</code>, which is what makes the table a dynamic program rather than a
@@ -2741,7 +2617,7 @@ Programming”.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="subsets"><a class="header" href="#subsets">13. Subsets</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/backtracking.rs"><code>src/problems/backtracking.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/backtracking.rs"><code>src/problems/backtracking.rs</code></a>. Test it with
 <code>cargo test backtracking</code>.</em></p>
 <h2 id="problem-statement-12"><a class="header" href="#problem-statement-12">Problem Statement</a></h2>
 <p>Given a list of distinct values, return every subset. A list of <code>n</code> values has
@@ -2895,7 +2771,7 @@ element. The other test sorts before comparing, which is the right pattern;
 <p><strong>There is no way to stop the search early or to stream the results.</strong> A caller
 that wants the first <code>k</code> subsets, or wants to search for a subset with a property,
 must collect all of them first.</p>
-<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
+<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
 <ul>
 <li>The recording happens at the start of each call, before the loop. That is what
 produces the empty subset and what makes every node of the recursion tree
@@ -2921,7 +2797,7 @@ recurrences, and Chapter 14 on the same recursive-search structure.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="reverse-linked-list"><a class="header" href="#reverse-linked-list">14. Reverse a Linked List</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/linked_list.rs"><code>src/problems/linked_list.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs"><code>src/problems/linked_list.rs</code></a>. Test it with
 <code>cargo test linked_list</code>.</em></p>
 <h2 id="problem-statement-13"><a class="header" href="#problem-statement-13">Problem Statement</a></h2>
 <p>Reverse a singly linked list in place and return its new head. In place means no
@@ -3084,7 +2960,7 @@ array-based representation holds the same data in one allocation, at the cost of
 not being a linked list.</p>
 <p><strong>The value type is fixed at <code>i32</code>.</strong> Nothing in the algorithm depends on the
 value type, and the declaration is not generic.</p>
-<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
+<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
 <ul>
 <li>The loop body is three lines, and <code>take</code> is the part that requires explanation.
 The successor has to leave the node before the node can be re-pointed, which is
@@ -3104,7 +2980,7 @@ removes that hazard.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="singly-linked-list"><a class="header" href="#singly-linked-list">15. Singly Linked List</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/singly_linked_list.rs"><code>src/bin/singly_linked_list.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs"><code>src/bin/singly_linked_list.rs</code></a>. Run it with
 <code>cargo run --bin singly_linked_list</code>.</em></p>
 <h2 id="problem-statement-14"><a class="header" href="#problem-statement-14">Problem Statement</a></h2>
 <p>Build a list whose node set is described by an algebraic data type, with constant
@@ -3298,7 +3174,7 @@ follows is not.</strong> The two facts belong together: the operation the API ad
 is cheap, and the work the program does when the list is released is not.</p>
 <p><strong>There is no <code>Clone</code>, no <code>Debug</code>, and no iterator.</strong> A caller cannot print the
 list, cannot copy it, and cannot write <code>for value in &amp;list</code>.</p>
-<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
+<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
 <ul>
 <li><code>List::new</code> has no <code>Default</code> implementation, which is the pattern Clippy’s
 <code>new_without_default</code> lint reports. A caller writing a generic function over many
@@ -3321,7 +3197,7 @@ same manual <code>Drop</code> implementation removes it.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="doubly-linked-list"><a class="header" href="#doubly-linked-list">16. Doubly Linked List</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/ll.rs"><code>src/bin/ll.rs</code></a>. Run it with <code>cargo run --bin ll</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs"><code>src/bin/ll.rs</code></a>. Run it with <code>cargo run --bin ll</code>.</em></p>
 <h2 id="problem-statement-15"><a class="header" href="#problem-statement-15">Problem Statement</a></h2>
 <p>Build a list with constant time insertion and removal at both ends. A singly
 linked list cannot remove from the back in constant time, because reaching the
@@ -3734,7 +3610,7 @@ flag to each node, which is two more machine words per element.</p>
 expected value is written.</strong> <code>main</code> prints values and asserts nothing, and the
 tests cover the same behaviour. The two comments in <code>main</code> are documentation rather
 than checks.</p>
-<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
+<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
 <ul>
 <li>One direction of the link has to be weak. Two strong links between a pair of
 nodes would keep the pair alive after the list released it, so <code>prev</code> is a
@@ -3764,7 +3640,7 @@ strong reference to the next.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="lru-cache"><a class="header" href="#lru-cache">17. LRU Cache</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/lru_cache.rs"><code>src/problems/lru_cache.rs</code></a>. Test it with <code>cargo test lru_cache::</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs"><code>src/problems/lru_cache.rs</code></a>. Test it with <code>cargo test lru_cache::</code>.</em></p>
 <h2 id="problem-statement-16"><a class="header" href="#problem-statement-16">Problem Statement</a></h2>
 <p>A cache with a fixed capacity that evicts the least recently used entry. <code>get</code> and
 <code>put</code> must be in expected <code>O(1)</code>, and a <code>get</code> must count as a use.</p>
@@ -4005,7 +3881,7 @@ entries could be over capacity, it would leave some of them in place.</p>
 unreachable in practice, at a billion accesses per second it takes about 584 years
 , and the consequence of reaching it would be a misidentified stale event rather
 than memory unsafety.</p>
-<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
+<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
 <ul>
 <li>Two structures hold the state. The map holds values and the current generation
 of each key; the queue holds access events.</li>
@@ -4029,7 +3905,7 @@ cached value out of the map and forces the <code>V: Clone</code> bound. A signat
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="lru-cache-array"><a class="header" href="#lru-cache-array">18. LRU Cache, Array-Backed</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/lru_cache_easy.rs"><code>src/problems/lru_cache_easy.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs"><code>src/problems/lru_cache_easy.rs</code></a>. Test it with
 <code>cargo test lru_cache_easy</code>.</em></p>
 <h2 id="problem-statement-17"><a class="header" href="#problem-statement-17">Problem Statement</a></h2>
 <p>The same problem as the previous chapter, solved a second way: a fixed-capacity
@@ -4275,7 +4151,7 @@ loud.</p>
 <p><strong>No test pins the recency order after a sequence of several operations.</strong> The two
 tests cover one eviction and one update. The invariant that the list is consistent
 with its ends is not checked anywhere.</p>
-<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
+<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
 <ul>
 <li>The two cache designs differ in what bounds them. This one bounds storage by the
 capacity and returns references; the design in Chapter 17 bounds storage by the
@@ -4302,7 +4178,7 @@ tests cover one eviction and one update.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="state-machine"><a class="header" href="#state-machine">19. Workload State Machine</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/state_machine.rs"><code>src/problems/state_machine.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs"><code>src/problems/state_machine.rs</code></a>. Test it with
 <code>cargo test state_machine</code>.</em></p>
 <h2 id="problem-statement-18"><a class="header" href="#problem-statement-18">Problem Statement</a></h2>
 <p>Model the lifecycle of a workload that an SDK exposes, so that the legal
@@ -4567,7 +4443,7 @@ with a written list would catch a missing or an extra pattern.</p>
 <p><strong><code>parse_gpu_count</code> accepts a value that overflows <code>u32</code> as a parse failure
 rather than as a distinct error.</strong> <code>"4294967296"</code> and <code>"four"</code> produce the same
 variant, so a caller cannot tell a malformed field from an out-of-range one.</p>
-<h2 id="summary-18"><a class="header" href="#summary-18">Summary</a></h2>
+<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
 <ul>
 <li>An enumeration makes the transition table exhaustive, because a <code>match</code> without
 a fall-through arm fails to build when a variant is added.</li>
@@ -4593,7 +4469,7 @@ same variant.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="rate-limiter"><a class="header" href="#rate-limiter">20. Token Bucket Rate Limiter</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/rate_limiter.rs"><code>src/problems/rate_limiter.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs"><code>src/problems/rate_limiter.rs</code></a>. Test it with
 <code>cargo test rate_limiter</code>.</em></p>
 <h2 id="problem-statement-19"><a class="header" href="#problem-statement-19">Problem Statement</a></h2>
 <p>Limit how often a caller may do something, allow a burst, and do it safely from
@@ -4762,7 +4638,7 @@ and nothing in this design provides one.</p>
 result depend on how the operating system scheduled the test thread: on a loaded
 machine the sleep may return later than requested, which only makes the assertion
 more likely to pass, and a bucket whose rate were too high would not be caught.</p>
-<h2 id="summary-19"><a class="header" href="#summary-19">Summary</a></h2>
+<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
 <ul>
 <li>A token bucket allows a burst of the capacity and holds a smooth long-run rate.
 A fixed window allows twice the configured rate across a window boundary.</li>
@@ -4787,7 +4663,7 @@ bucket reports no interval to sleep for, so the retry policy lives in the caller
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="worker-pool"><a class="header" href="#worker-pool">21. Worker Pool</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/problems/worker_pool.rs"><code>src/problems/worker_pool.rs</code></a>. Test it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs"><code>src/problems/worker_pool.rs</code></a>. Test it with
 <code>cargo test worker_pool</code>.</em></p>
 <h2 id="problem-statement-20"><a class="header" href="#problem-statement-20">Problem Statement</a></h2>
 <p>Apply a function to every element of a vector using a bounded number of threads,
@@ -5004,7 +4880,7 @@ order, cannot use this function.</p>
 <p><strong>The closure must be <code>'static</code>.</strong> <code>F: Fn(T) -&gt; R + Send + Sync + 'static</code> means the
 mapper cannot borrow anything from the caller’s stack. Scoped threads would lift
 that restriction, and they would also let <code>T</code> and <code>R</code> borrow.</p>
-<h2 id="summary-20"><a class="header" href="#summary-20">Summary</a></h2>
+<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
 <ul>
 <li>Two channels carry the work. The index recorded with each job and returned with
 each result is the mechanism that restores the input order.</li>
@@ -5029,7 +4905,7 @@ stack. Scoped threads would lift that restriction.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="mutex-poisoning"><a class="header" href="#mutex-poisoning">22. Mutex Poisoning</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/mutex_poisoning.rs"><code>src/bin/mutex_poisoning.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs"><code>src/bin/mutex_poisoning.rs</code></a>. Run it with
 <code>cargo run --bin mutex_poisoning</code>.</em></p>
 <blockquote>
 <p>A distributed system is one in which the failure of a computer you didn’t
@@ -5324,7 +5200,7 @@ panics, which is the opposite of what poisoning is for.</p>
 the only failure that can occur is a panic, and a panic cannot be converted into
 <code>Box&lt;dyn Error&gt;</code> by <code>?</code>. <code>join()</code> returns <code>Result&lt;T, Box&lt;dyn Any + Send&gt;&gt;</code>, and
 <code>Box&lt;dyn Any + Send&gt;</code> does not implement <code>Error</code>.</p>
-<h2 id="summary-21"><a class="header" href="#summary-21">Summary</a></h2>
+<h2 id="summary-18"><a class="header" href="#summary-18">Summary</a></h2>
 <ul>
 <li>Poisoning records that a panic occurred while the guard was held. It repairs
 nothing and it does not deny access to the data.</li>
@@ -5351,7 +5227,7 @@ panics, which is the opposite of what poisoning is for.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="counting-islands"><a class="header" href="#counting-islands">23. Counting Islands</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/count_islands.rs"><code>src/bin/count_islands.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs"><code>src/bin/count_islands.rs</code></a>. Run it with
 <code>cargo run --bin count_islands</code>.</em></p>
 <h2 id="problem-statement-22"><a class="header" href="#problem-statement-22">Problem Statement</a></h2>
 <p>Given a rectangular grid of cells, count the connected regions of a chosen value.
@@ -5610,7 +5486,7 @@ Moving it into <code>src/problems/</code> would export it with the rest of the p
 <code>count_islands</code> cannot accept a predicate, which would let a caller count something
 other than strict equality, for example, a region of cells above a threshold. The
 predicate version is the same code with <code>land</code> replaced by a closure.</p>
-<h2 id="summary-22"><a class="header" href="#summary-22">Summary</a></h2>
+<h2 id="summary-19"><a class="header" href="#summary-19">Summary</a></h2>
 <ul>
 <li>A flood fill visits exactly one connected component, so the number of fills is
 the number of components.</li>
@@ -5642,7 +5518,7 @@ because the land value is taken by value and no predicate is accepted.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="syscall-overhead"><a class="header" href="#syscall-overhead">24. Syscall Overhead</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/syscall_overhead.rs"><code>src/bin/syscall_overhead.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/syscall_overhead.rs"><code>src/bin/syscall_overhead.rs</code></a>. Run it with
 <code>cargo run --release --bin syscall_overhead</code>.</em></p>
 <blockquote>
 <p>Latency lags bandwidth.</p>
@@ -5848,7 +5724,7 @@ warning.</strong> Running <code>cargo run --bin syscall_overhead</code> prints a
 for an unused function in the library. The warning comes from <code>merge_intervals2</code>,
 which Chapter 5 identifies, and it appears in this chapter’s output because Cargo
 compiles the whole crate.</p>
-<h2 id="summary-23"><a class="header" href="#summary-23">Summary</a></h2>
+<h2 id="summary-20"><a class="header" href="#summary-20">Summary</a></h2>
 <ul>
 <li><code>getpid</code> gives a floor for the cost of crossing the process boundary. It is not
 the cost a service would see per request.</li>
@@ -5870,7 +5746,7 @@ loop, and the minimum over several batches. Neither is present.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="shadowing"><a class="header" href="#shadowing">25. Shadowing and Mutation</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/shadowing.rs"><code>src/bin/shadowing.rs</code></a>. Run it with <code>cargo run --bin shadowing</code>.</em></p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/shadowing.rs"><code>src/bin/shadowing.rs</code></a>. Run it with <code>cargo run --bin shadowing</code>.</em></p>
 <h2 id="problem-statement-24"><a class="header" href="#problem-statement-24">Problem Statement</a></h2>
 <p>Two constructs look similar in source and behave differently: giving a name a new
 value with <code>let</code>, and changing the value a binding already holds.</p>
@@ -6070,7 +5946,7 @@ the end of the scope, not at the shadowing statement.</p>
 that took <code>&amp;mut String</code> and appended to the caller’s buffer would allocate less,
 and the tests would be the same. For a demonstration the difference is irrelevant;
 it is the kind of allocation that shows up in a profile.</p>
-<h2 id="summary-24"><a class="header" href="#summary-24">Summary</a></h2>
+<h2 id="summary-21"><a class="header" href="#summary-21">Summary</a></h2>
 <ul>
 <li><code>let</code> introduces a binding and <code>mut</code> allows a place to be written. The two are
 independent.</li>
@@ -6092,9 +5968,9 @@ accident produces no warning.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="files-and-io"><a class="header" href="#files-and-io">26. Reading and Writing Files</a></h1>
-<p><em>Source files: <a href="../rust-interview-lab/src/bin/read_write_file.rs"><code>src/bin/read_write_file.rs</code></a>,
-<a href="../rust-interview-lab/src/bin/append_to_file_open_options.rs"><code>src/bin/append_to_file_open_options.rs</code></a>, and
-<a href="../rust-interview-lab/src/bin/readfile_line_by_line.rs"><code>src/bin/readfile_line_by_line.rs</code></a>. Run them with
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_write_file.rs"><code>src/bin/read_write_file.rs</code></a>,
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/append_to_file_open_options.rs"><code>src/bin/append_to_file_open_options.rs</code></a>, and
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/readfile_line_by_line.rs"><code>src/bin/readfile_line_by_line.rs</code></a>. Run them with
 <code>cargo run --bin read_write_file</code>,
 <code>cargo run --bin append_to_file_open_options</code>, and
 <code>cargo run --bin readfile_line_by_line</code>.</em></p>
@@ -6247,7 +6123,7 @@ line is yielded even when it has no terminator.</p>
 <p><strong>The two writers ignore the returned length.</strong> <code>writeln!</code> can write fewer bytes
 than requested; the callers rely on <code>io::Write</code> to report that as an error, and
 neither program checks how many bytes reached the file.</p>
-<h2 id="summary-25"><a class="header" href="#summary-25">Summary</a></h2>
+<h2 id="summary-22"><a class="header" href="#summary-22">Summary</a></h2>
 <ul>
 <li><code>fs::write</code> replaces contents, <code>OpenOptions</code> with <code>append(true)</code> adds to them,
 and the difference is the flag rather than a separate function.</li>
@@ -6268,8 +6144,8 @@ are not independent of where they are started.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="paths-and-directories"><a class="header" href="#paths-and-directories">27. Paths and Directory Traversal</a></h1>
-<p><em>Source files: <a href="../rust-interview-lab/src/bin/path_buff.rs"><code>src/bin/path_buff.rs</code></a>, <a href="../rust-interview-lab/src/bin/list_directory.rs"><code>src/bin/list_directory.rs</code></a>, and
-<a href="../rust-interview-lab/src/bin/recusrive_directory_walk.rs"><code>src/bin/recusrive_directory_walk.rs</code></a>. Run them with
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/path_buff.rs"><code>src/bin/path_buff.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs"><code>src/bin/list_directory.rs</code></a>, and
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/recusrive_directory_walk.rs"><code>src/bin/recusrive_directory_walk.rs</code></a>. Run them with
 <code>cargo run --bin path_buff</code>, <code>cargo run --bin list_directory</code>, and
 <code>cargo run --bin recusrive_directory_walk</code>.</em></p>
 <h2 id="problem-statement-26"><a class="header" href="#problem-statement-26">Problem Statement</a></h2>
@@ -6421,7 +6297,7 @@ and sort them, which the programs do not do.</p>
 <p><strong>Relative names depend on the working directory.</strong> Both directory programs walk
 <code>"."</code>, so their output changes with the directory they are started in, and
 <code>list_directory</code> does not recurse.</p>
-<h2 id="summary-26"><a class="header" href="#summary-26">Summary</a></h2>
+<h2 id="summary-23"><a class="header" href="#summary-23">Summary</a></h2>
 <ul>
 <li><code>Path</code> and <code>PathBuf</code> are the borrowed and owned forms of a path, and <code>join</code> is
 the non-mutating builder against <code>push</code>.</li>
@@ -6441,8 +6317,8 @@ limited by the stack.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="file-operations"><a class="header" href="#file-operations">28. File Operations and Errors</a></h1>
-<p><em>Source files: <a href="../rust-interview-lab/src/bin/copy_rename_delete_file.rs"><code>src/bin/copy_rename_delete_file.rs</code></a> and
-<a href="../rust-interview-lab/src/bin/file_error_handling.rs"><code>src/bin/file_error_handling.rs</code></a>. Run them with
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs"><code>src/bin/copy_rename_delete_file.rs</code></a> and
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_error_handling.rs"><code>src/bin/file_error_handling.rs</code></a>. Run them with
 <code>cargo run --bin copy_rename_delete_file</code> and
 <code>cargo run --bin file_error_handling</code>.</em></p>
 <h2 id="problem-statement-27"><a class="header" href="#problem-statement-27">Problem Statement</a></h2>
@@ -6548,7 +6424,7 @@ directory unchanged needs a temporary directory and a final rename.</p>
 prints <code>Display</code> for <code>io::Error</code>, which includes the operating system message but
 not the path. Adding the path is the caller’s job, because the error does not
 carry it.</p>
-<h2 id="summary-27"><a class="header" href="#summary-27">Summary</a></h2>
+<h2 id="summary-24"><a class="header" href="#summary-24">Summary</a></h2>
 <ul>
 <li><code>copy</code>, <code>rename</code> and <code>remove_file</code> are the mutating operations, and <code>rename</code> is
 the atomic replacement primitive within one filesystem.</li>
@@ -6567,7 +6443,7 @@ match is the right form when the program chooses the message.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="command-line-arguments"><a class="header" href="#command-line-arguments">29. Command-Line Arguments</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/command_line_args.rs"><code>src/bin/command_line_args.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs"><code>src/bin/command_line_args.rs</code></a>. Run it with
 <code>cargo run --bin command_line_args -- --name ada --count 3 --verbose</code>.</em></p>
 <h2 id="problem-statement-28"><a class="header" href="#problem-statement-28">Problem Statement</a></h2>
 <p>A command-line tool receives its input as a list of strings from the operating
@@ -6784,7 +6660,7 @@ program’s location.</p>
 <p><strong>Precedence between sources is not implemented.</strong> A flag over an environment
 variable over a file over a default is the usual order, and a tool that reads more
 than one source has to state that order somewhere. This parser has one source.</p>
-<h2 id="summary-28"><a class="header" href="#summary-28">Summary</a></h2>
+<h2 id="summary-25"><a class="header" href="#summary-25">Summary</a></h2>
 <ul>
 <li><code>env::args()</code> yields <code>String</code> values whose first item is the invocation name;
 <code>skip(1)</code> is the boundary between the program and its arguments.</li>
@@ -6803,7 +6679,7 @@ it into standard error plus <code>ExitCode::FAILURE</code>.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="bounded-buffer"><a class="header" href="#bounded-buffer">30. A Bounded Buffer</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/bounded_buffer.rs"><code>src/bin/bounded_buffer.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs"><code>src/bin/bounded_buffer.rs</code></a>. Run it with
 <code>cargo run --bin bounded_buffer</code>.</em></p>
 <h2 id="problem-statement-29"><a class="header" href="#problem-statement-29">Problem Statement</a></h2>
 <p>Build a queue with a fixed capacity that several threads share: producers must
@@ -7036,7 +6912,7 @@ threads can be adjacent. The set of lines is fixed; the order is not.</p>
 and the tests that would catch a missing <code>while</code> are the ones that run a producer
 and a consumer concurrently rather than the ones that assert on a single-threaded
 push and pop.</p>
-<h2 id="summary-29"><a class="header" href="#summary-29">Summary</a></h2>
+<h2 id="summary-26"><a class="header" href="#summary-26">Summary</a></h2>
 <ul>
 <li>A mutex makes the deque shared; condition variables make waiting possible.</li>
 <li>The condition is re-checked in a <code>while</code> loop, because a wake-up does not
@@ -7055,7 +6931,7 @@ waits indefinitely.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="parallel-sum"><a class="header" href="#parallel-sum">31. Parallel Sum</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/parallel_sum.rs"><code>src/bin/parallel_sum.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs"><code>src/bin/parallel_sum.rs</code></a>. Run it with
 <code>cargo run --release --bin parallel_sum</code>, optionally followed by the thread count
 and the element count.</em></p>
 <h2 id="problem-statement-30"><a class="header" href="#problem-statement-30">Problem Statement</a></h2>
@@ -7247,7 +7123,7 @@ remainder one element at a time.</p>
 reads a contiguous range, which is the friendly case. A false-sharing problem
 would appear if threads wrote partial sums into adjacent fields of one object,
 which this program avoids by returning each sum through <code>join</code>.</p>
-<h2 id="summary-30"><a class="header" href="#summary-30">Summary</a></h2>
+<h2 id="summary-27"><a class="header" href="#summary-27">Summary</a></h2>
 <ul>
 <li><code>thread::scope</code> allows the workers to borrow the input, which removes the
 <code>Arc&lt;Vec&lt;T&gt;&gt;</code> the naive version would need.</li>
@@ -7266,7 +7142,7 @@ type is part of the experiment.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="running-median"><a class="header" href="#running-median">32. Running Median</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/median_finder.rs"><code>src/bin/median_finder.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs"><code>src/bin/median_finder.rs</code></a>. Run it with
 <code>cargo run --bin median_finder</code>.</em></p>
 <h2 id="problem-statement-31"><a class="header" href="#problem-statement-31">Problem Statement</a></h2>
 <p>Accept a stream of numbers one at a time and report the median of everything seen
@@ -7502,7 +7378,7 @@ the two heaps cannot do without locating that value in one of them.</p>
 eleven values. The differential test compares against a sort, so it catches a
 rebalancing error on those eleven steps, but a random or exhaustive stream would
 cover more of the state space than a fixed array does.</p>
-<h2 id="summary-31"><a class="header" href="#summary-31">Summary</a></h2>
+<h2 id="summary-28"><a class="header" href="#summary-28">Summary</a></h2>
 <ul>
 <li>Two heaps hold the lower and upper halves, and <code>Reverse</code> turns the second into
 a min-heap.</li>
@@ -7521,7 +7397,7 @@ check the result against a sort of the values seen so far.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="reverse-string"><a class="header" href="#reverse-string">33. Reversing a String In Place</a></h1>
-<p><em>Source file: <a href="../rust-interview-lab/src/bin/reverse_string.rs"><code>src/bin/reverse_string.rs</code></a>. Run it with
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs"><code>src/bin/reverse_string.rs</code></a>. Run it with
 <code>cargo run --bin reverse_string</code>.</em></p>
 <h2 id="problem-statement-32"><a class="header" href="#problem-statement-32">Problem Statement</a></h2>
 <p>Reverse the characters of a <code>String</code> without allocating a second one. The
@@ -7694,7 +7570,7 @@ not carry the assumption to a general string.</p>
 <p><strong>The largest test input is nine bytes.</strong> The tests establish the two parities and
 the round trip. A larger input, or one built to exercise the exact midpoint of an
 even-length string, would test the loop bound more of the way.</p>
-<h2 id="summary-32"><a class="header" href="#summary-32">Summary</a></h2>
+<h2 id="summary-29"><a class="header" href="#summary-29">Summary</a></h2>
 <ul>
 <li>Byte reversal is <code>O(n)</code> time and <code>O(1)</code> space, and only the ASCII precondition
 makes it a valid <code>String</code> transformation.</li>
@@ -7717,8 +7593,8 @@ and the second is refused by the assertion.</li>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="idempotent-operations"><a class="header" href="#idempotent-operations">34. Idempotent Operations</a></h1>
 <p><em>Source files:
-<a href="../rust-interview-lab/src/bin/idempotent_operation.rs"><code>src/bin/idempotent_operation.rs</code></a> and
-<a href="../rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs"><code>src/bin/idempotent_operation_with_error_progagation.rs</code></a>.
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation.rs"><code>src/bin/idempotent_operation.rs</code></a> and
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs"><code>src/bin/idempotent_operation_with_error_progagation.rs</code></a>.
 Run them with <code>cargo run --bin idempotent_operation</code> and
 <code>cargo run --bin idempotent_operation_with_error_progagation</code>.</em></p>
 <h2 id="problem-statement-33"><a class="header" href="#problem-statement-33">Problem Statement</a></h2>
@@ -7939,7 +7815,7 @@ an endpoint, so that two callers cannot collide by choosing the same string. Thi
 store treats the key as global.</p>
 <p><strong><code>K: Clone</code> is an unused bound.</strong> It constrains callers without buying anything.
 The bound can be removed with no other change to the implementation.</p>
-<h2 id="summary-33"><a class="header" href="#summary-33">Summary</a></h2>
+<h2 id="summary-30"><a class="header" href="#summary-30">Summary</a></h2>
 <ul>
 <li>A <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> gives at-most-once execution per key and a cached
 result for every later call with that key.</li>
