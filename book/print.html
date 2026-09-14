@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-68eb73b1.js";
+            window.path_to_searchindex_js = "searchindex-5dd93e33.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-51322f12.js"></script>
@@ -18151,13 +18151,12 @@ this first value.</p>
 </span>//! Three Sum: every unique triplet of values that adds up to a target.
 //!
 //! Sort, fix the first value, then close in on the other two with two pointers.
-//! Takes the vector by value and sorts it in place: O(n^2) time, no extra space
-//! beyond the result.
+//! Sorts the caller's slice in place: O(n^2) time, no extra space beyond the result.
 
 // Import the variants directly into scope
 use std::cmp::Ordering::{Equal, Greater, Less};
 
-pub fn three_sum(mut numbers: Vec&lt;i32&gt;, target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
+pub fn three_sum(numbers: &amp;mut [i32], target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
     numbers.sort_unstable();
 
     let mut results = Vec::new();
@@ -18172,8 +18171,7 @@ pub fn three_sum(mut numbers: Vec&lt;i32&gt;, target: i32) -&gt; Vec&lt;(i32, i3
         let (mut left, mut right) = (i + 1, numbers.len().saturating_sub(1));
         while left &lt; right {
             // Widen to i64 so the sum of three i32 values cannot overflow.
-            let current_sum =
-                i64::from(numbers[i]) + i64::from(numbers[left]) + i64::from(numbers[right]);
+            let current_sum = numbers[i] as i64 + numbers[left] as i64 + numbers[right] as i64;
 
             match current_sum.cmp(&amp;target) {
                 Less =&gt; left += 1,
@@ -18204,46 +18202,48 @@ mod tests {
 
     #[test]
     fn finds_all_unique_triplets() {
-        let result = three_sum(vec![-1, 0, 1, 2, -1, -4], 0);
+        let result = three_sum(&amp;mut [-1, 0, 1, 2, -1, -4], 0);
         assert_eq!(result, vec![(-1, -1, 2), (-1, 0, 1)]);
     }
 
     #[test]
     fn skips_duplicates_on_every_position() {
-        assert_eq!(three_sum(vec![0, 0, 0, 0], 0), vec![(0, 0, 0)]);
-        assert_eq!(three_sum(vec![-2, 0, 0, 2, 2], 0), vec![(-2, 0, 2)]);
+        assert_eq!(three_sum(&amp;mut [0, 0, 0, 0], 0), vec![(0, 0, 0)]);
+        assert_eq!(three_sum(&amp;mut [-2, 0, 0, 2, 2], 0), vec![(-2, 0, 2)]);
     }
 
     #[test]
     fn supports_a_non_zero_target() {
         assert_eq!(
-            three_sum(vec![1, 2, 3, 4, 5], 9),
+            three_sum(&amp;mut [1, 2, 3, 4, 5], 9),
             vec![(1, 3, 5), (2, 3, 4)]
         );
     }
 
     #[test]
     fn returns_nothing_when_no_triplet_exists() {
-        assert!(three_sum(vec![1, 2, 3], 100).is_empty());
-        assert!(three_sum(vec![1, 2], 3).is_empty());
-        assert!(three_sum(vec![], 0).is_empty());
+        assert!(three_sum(&amp;mut [1, 2, 3], 100).is_empty());
+        assert!(three_sum(&amp;mut [1, 2], 3).is_empty());
+        assert!(three_sum(&amp;mut [], 0).is_empty());
     }
 
     #[test]
     fn does_not_overflow_on_extreme_values() {
         assert_eq!(
-            three_sum(vec![i32::MAX, i32::MAX, i32::MIN], i32::MAX - 1),
+            three_sum(&amp;mut [i32::MAX, i32::MAX, i32::MIN], i32::MAX - 1),
             vec![(i32::MIN, i32::MAX, i32::MAX)]
         );
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>three_sum</code> takes <code>numbers: Vec&lt;i32&gt;</code> by value and sorts it in place with
-<code>sort_unstable</code>. The caller hands over the vector, so the function needs no copy. A
-caller that wants to keep its data passes a clone explicitly. <code>sort_unstable</code> is faster
-than <code>sort</code> and allocates nothing; stability does not matter for integers.</p>
+<p><code>three_sum</code> takes <code>numbers: &amp;mut [i32]</code> and sorts it in place with <code>sort_unstable</code>. A
+mutable slice is enough: sorting only rearranges elements, so the function needs neither
+ownership nor a copy, and it accepts a <code>Vec</code>, an array, or part of either. The <code>&amp;mut</code> at
+the call site, <code>three_sum(&amp;mut values, 0)</code>, shows that the caller’s data comes back
+sorted. <code>sort_unstable</code> is faster than <code>sort</code> and allocates nothing; stability does not
+matter for integers.</p>
 <p><code>numbers.len().saturating_sub(1)</code> gives the last index without underflowing when the
-vector is empty. For every <code>i</code>, <code>left</code> starts at <code>i + 1</code>, so for the last two positions
+slice is empty. For every <code>i</code>, <code>left</code> starts at <code>i + 1</code>, so for the last two positions
 <code>left &gt;= right</code> and the inner loop does not run.</p>
 <p>The sum is computed in <code>i64</code>. Three <code>i32</code> values can add up to about three times
 <code>i32::MAX</code>, which overflows an <code>i32</code>: a debug build would panic and a release build would
@@ -18257,7 +18257,7 @@ range. The final <code>left += 1; right -= 1;</code> moves both pointers off the
 inputs with no answer or fewer than three values, and extreme values whose sum would
 overflow <code>i32</code>.</p>
 <h2 id="intuition-62"><a class="header" href="#intuition-62">Intuition</a></h2>
-<pre><code class="language-text">three_sum(vec![-1, 0, 1, 2, -1, -4], 0)
+<pre><code class="language-text">three_sum(&amp;mut [-1, 0, 1, 2, -1, -4], 0)
 
 sorted: [-4, -1, -1, 0, 1, 2]
 index:    0   1   2  3  4  5
@@ -18284,16 +18284,14 @@ result: [(-1, -1, 2), (-1, 0, 1)]
 </thead>
 <tbody>
 <tr><td>Time</td><td><code>O(n²)</code></td><td>the sort is <code>O(n log n)</code>; each of the <code>n</code> first values runs a linear two-pointer scan</td></tr>
-<tr><td>Space</td><td><code>O(1)</code> extra</td><td>the vector is sorted in place; the result holds one tuple per unique triplet</td></tr>
+<tr><td>Space</td><td><code>O(1)</code> extra</td><td>the slice is sorted in place; the result holds one tuple per unique triplet</td></tr>
 </tbody>
 </table>
 </div>
 <p><code>sort_unstable</code> sorts in place without allocating, so the only allocation is the result.</p>
 <h2 id="limitations-62"><a class="header" href="#limitations-62">Limitations</a></h2>
-<p><strong>The caller’s vector is consumed.</strong> Taking <code>Vec&lt;i32&gt;</code> by value avoids a copy, and the
-caller loses the original order. A version that borrows <code>&amp;mut [i32]</code> would also sort in
-place without a copy, and would make the reordering visible at the call site, since the
-caller’s slice comes back sorted.</p>
+<p><strong>The caller’s order is lost.</strong> The slice comes back sorted. A caller that needs the
+original order must clone the data before the call.</p>
 <p><strong>Values, not indices, are returned.</strong> After sorting, positions no longer refer to the
 caller’s data, so the function returns the values. A problem that asks for the original
 indices needs the positions carried through the sort, for example by sorting
@@ -18312,8 +18310,8 @@ left to right.</p>
 states the three moves directly, and the match is checked for exhaustiveness.</li>
 <li>Skipping an equal first value, and equal neighbors after a match, keeps each triplet
 unique without a set.</li>
-<li>Taking the vector by value and sorting it in place avoids a copy; widening to <code>i64</code>
-keeps the sum from overflowing.</li>
+<li>Taking <code>&amp;mut [i32]</code> and sorting it in place avoids a copy and ownership; widening to
+<code>i64</code> keeps the sum from overflowing.</li>
 </ul>
 <h2 id="references-62"><a class="header" href="#references-62">References</a></h2>
 <ul>
