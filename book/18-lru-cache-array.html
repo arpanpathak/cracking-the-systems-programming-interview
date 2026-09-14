@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e168a925.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
+            window.path_to_searchindex_js = "searchindex-3cece841.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -206,7 +206,9 @@ deallocated while the cache lives.</p>
 that is already linked is spliced out of its current position first; a brand new node has
 no neighbours and is spliced in directly. That is what <code>touch</code> does.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">//! A fixed-capacity LRU (Least Recently Used) cache.
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! A fixed-capacity LRU (Least Recently Used) cache.
 //!
 //! ## Design
 //!
@@ -357,25 +359,8 @@ where
     }
 }
 
-fn main() {
-    let mut cache = LruCache::new(2);
-
-    cache.put("A", 10);
-    cache.put("B", 20);
-    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
-
-    cache.put("C", 30); // evicts B (LRU)
-
-    println!("get B = {:?}", cache.get(&amp;"B")); // None
-    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
-    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
-
-    cache.put("A", 99);
-    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
-}
-
 #[cfg(test)]
-mod tests_for_lru {
+mod tests {
     use super::*;
 
     #[test]
@@ -440,7 +425,8 @@ mod tests_for_lru {
     fn zero_capacity_panics() {
         let _: LruCache&lt;&amp;str, i32&gt; = LruCache::new(0);
     }
-}</code></pre>
+}
+<span class="boring">}</span></code></pre>
 <p><code>touch</code> reads the node’s two links, decides whether the node is linked at all, and acts.
 The <code>linked</code> test is what lets one method serve both callers. Without it, a brand new
 node would be spliced out of a list it is not in, and <code>head</code> and <code>tail</code> would be
