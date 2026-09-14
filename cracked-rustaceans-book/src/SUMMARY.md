@@ -67,6 +67,52 @@
 
 - [34. Idempotent Operations](34-idempotent-operations.md)
 
+# Part XI: Types and Pointers
+
+- [35. Types That Reject Invalid Values](35-adt-idioms.md)
+- [36. Smart Pointers and Interior Mutability](36-smart-pointers.md)
+
+# Part XII: Recursion, Memory, and Caches
+
+- [37. Fibonacci Three Ways](37-fibonacci.md)
+- [38. Four List Layouts and the Recursive Drop](38-list-layouts.md)
+- [39. A Bump Allocator](39-bump-allocator.md)
+- [40. Measuring Two LRU Layouts](40-measuring-lru-layouts.md)
+- [41. A Sharded Concurrent Cache](41-sharded-cache.md)
+- [42. Consistent Hashing](42-consistent-hashing.md)
+
+# Part XIII: Threads and Synchronization
+
+- [43. Threads, Send, and Sync](43-threads.md)
+- [44. A Spin Lock](44-spin-lock.md)
+- [45. A Counting Semaphore](45-semaphore.md)
+- [46. A Closable Bounded Queue](46-bounded-queue.md)
+- [47. A Lock-Free Ring Buffer](47-ring-buffer.md)
+
+# Part XIV: Performance and the Operating System
+
+- [48. Cache Locality and False Sharing](48-cache-locality.md)
+- [49. Amdahl's Law and Deadlock Detection](49-amdahl-and-deadlock.md)
+- [50. Paging and Round-Robin Scheduling](50-paging-and-scheduling.md)
+
+# Part XV: Networking and HTTP
+
+- [51. IPv4 Addresses and TCP Windows](51-ipv4-and-tcp-windows.md)
+- [52. A Thread-per-Connection Echo Server](52-tcp-echo-server.md)
+- [53. An epoll Echo Server](53-epoll-echo-server.md)
+- [54. Parsing HTTP/1.1 Requests](54-http-request-parsing.md)
+- [55. A Small HTTP Server](55-http-server.md)
+
+# Part XVI: Async Rust and Cloud Clients
+
+- [56. A Minimal Async Runtime](56-async-runtime.md)
+- [57. Retry with Backoff and Jitter](57-retry.md)
+- [58. An HTTP Client with Retries and Caching](58-http-client.md)
+
+# Part XVII: Interview Drills
+
+- [59. Interview Drills](59-drills.md)
+
 # Closing
 
 - [References](references.md)
