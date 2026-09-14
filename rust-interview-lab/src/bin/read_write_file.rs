@@ -1,26 +1,23 @@
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf}; // Added Path here to change &PathBuf to &Path for idiomatic borrowing
+use std::path::{Path, PathBuf};
 
-// Fixed to be idiomatic by using &Path instead of &PathBuf, and returning the String
+// `&Path` accepts both a `&Path` and a `&PathBuf` argument; `&PathBuf` would not.
 fn read_content_of_file(path: &Path) -> io::Result<String> {
-    let content = fs::read_to_string(path)?;
-    Ok(content)
+    fs::read_to_string(path)
 }
 
 fn main() -> io::Result<()> {
-    // Write a file (creates or overwrites)
     fs::write("hello.txt", "Hello, NVIDIA!\n")?;
 
-    // --- Demo 1: Non-mutating .join() ---
+    // `join` builds a new PathBuf and leaves `base_dir` unchanged.
     let base_dir = PathBuf::from(".");
     let joined_path = base_dir.join("hello.txt");
 
-    // --- Demo 2: In-place .push() ---
+    // `push` mutates the PathBuf in place instead of returning a new one.
     let mut mut_base_dir = PathBuf::from(".");
     mut_base_dir.push("hello.txt");
 
-    // Read it back as a String using your function and a joined path
     let text = read_content_of_file(&joined_path)?;
     println!("File contents (via .join()):\n{}", text);
 

@@ -47,7 +47,6 @@ use std::collections::HashMap;
 pub fn length_of_longest_substring(s: &str) -> usize {
     let mut last_seen = HashMap::with_capacity(s.len());
 
-    // it's magic compiler is able to deduce the datatype as usize based on its first usage, which is kinda cool, isn't it ?
     let (mut start, mut longest) = (0, 0);
 
     for (end, ch) in s.chars().enumerate() {
@@ -82,6 +81,11 @@ outside ASCII.
 
 `if let Some(&previous) = last_seen.get(&ch)` copies the index out of the map, so
 the borrow ends at the end of the `if let` and the `insert` below is allowed.
+
+`start` and `longest` carry no type annotation. Both are inferred as `usize`, the
+type `s.chars().enumerate()` produces for `end` and the type `last_seen`'s capacity
+hint expects; the compiler resolves the binding from its first use rather than from
+the literal `0` alone.
 
 ## Intuition
 

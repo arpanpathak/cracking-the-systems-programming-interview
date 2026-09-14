@@ -7,7 +7,6 @@ use std::collections::HashMap;
 pub fn length_of_longest_substring(s: &str) -> usize {
     let mut last_seen = HashMap::with_capacity(s.len());
 
-    // it's magic compiler is able to deduce the datatype as usize based on its first usage, which is kinda cool, isn't it ?
     let (mut start, mut longest) = (0, 0);
 
     for (end, ch) in s.chars().enumerate() {
