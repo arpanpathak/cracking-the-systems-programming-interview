@@ -67,8 +67,7 @@
 
 - [34. Idempotent Operations](34-idempotent-operations.md)
 
-# Part XI: Closing
+# Closing
 
-- [35. Integration Tests](35-integration-tests.md)
 - [References](references.md)
 - [Index](index.md)

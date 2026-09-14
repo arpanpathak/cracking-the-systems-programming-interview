@@ -102,18 +102,64 @@ The `K: Clone` bound is present but unused: `get` borrows the key and `insert`
 moves it, and neither needs a copy. `V: Clone` is required, because both the hit
 path and the store path copy the value.
 
-The second file, `idempotent_operation_with_error_progagation.rs`, is the same
-implementation with the error type given a name. It declares
-`type RuntimeError = Box<dyn std::error::Error>;` and uses the alias in every
-signature, so the repeated spelling appears once:
+### The variant with a named error type
+
+The repository holds a second version of the same type,
+`idempotent_operation_with_error_progagation.rs`. It differs in one way: the error
+type is given a name, `RuntimeError`, and the alias is used in every signature.
 
 ```rust
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::Mutex;
+
 type RuntimeError = Box<dyn std::error::Error>;
+
+pub struct Idempotent<K, V> {
+    store: Mutex<HashMap<K, V>>,
+}
+
+impl<K, V> Idempotent<K, V>
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new() -> Self {
+        Self { store: Mutex::new(HashMap::new()) }
+    }
+
+    pub fn execute<F>(&self, key: K, f: F) -> Result<V, RuntimeError>
+    where
+        F: FnOnce() -> Result<V, RuntimeError>,
+    {
+        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(&key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key, v.clone());
+        Ok(v)
+    }
+}
+
+fn main() -> Result<(), RuntimeError> {
+    let idem = Idempotent::new();
+
+    let charge = || -> Result<String, RuntimeError> {
+        println!("charging card...");
+        Ok("txn_42".into())
+    };
+
+    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
+    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
+    Ok(())
+}
 ```
 
-That is a readability change only. The early return on an error, the lock held
-across the operation, and the rule that only successes are stored are identical in
-both files.
+The alias names the error in one place, so a change to the error type is a change
+to one line and the signatures stay short. The behaviour is the same in both
+files: the early return on an error, the lock held across the operation, and the
+rule that only successes are stored.
 
 ## Intuition
 

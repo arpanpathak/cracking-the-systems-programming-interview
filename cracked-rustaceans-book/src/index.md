@@ -2,7 +2,7 @@
 
 ## A
 
-- **`ApiError`**, error enumeration carrying data, [19](#state-machine), [35](#integration-tests)
+- **`ApiError`**, error enumeration carrying data, [19](#state-machine)
 - **`Arc`**, shared ownership across threads, [21](#worker-pool), [22](#mutex-poisoning), [30](#bounded-buffer)
 - **`args`**, the command-line boundary, [29](#command-line-arguments)
 - **`assert!`**, refusal of an empty input as a design decision, [21](#worker-pool)
@@ -16,7 +16,7 @@
 - **`BinaryHeap`**, a max-heap, so pairs sort by the first field, [6](#top-k-frequent), [32](#running-median)
 - **binary search**, half-open range and the sorted-half test, [9](#binary-search)
 - **binary search tree**, ordering invariant, three removal shapes, [8](#binary-search-tree)
-- **binary tree**, algebraic data type with boxed children, [7](#binary-tree), [35](#integration-tests)
+- **binary tree**, algebraic data type with boxed children, [7](#binary-tree)
 - **`black_box`**, keeping a measurement alive, [24](#syscall-overhead)
 - **bounded buffer**, one mutex and two condition variables, [30](#bounded-buffer)
 - **`Box`**, one ownership pointer, one allocation, [7](#binary-tree), [14](#reverse-linked-list), [15](#singly-linked-list)
@@ -80,7 +80,6 @@
 - **in-degree**, the counter Kahn's algorithm waits on, [11](#topological-sort)
 - **index-linked list**, nodes in a vector, links as integers, [18](#lru-cache-array)
 - **`Instant`**, the clock a limiter trusts, [20](#rate-limiter); the clock a measurement reads, [31](#parallel-sum)
-- **integration test**, what the crate boundary hides, [35](#integration-tests)
 - **interior mutability**, mutation behind a shared reference, [16](#doubly-linked-list)
 - **invariant**, a sentence true before and after every operation, [3](#min-stack), [9](#binary-search), [13](#subsets), [32](#running-median)
 
@@ -171,7 +170,6 @@
 ## U
 
 - **`unsafe`**, the obligation a `SAFETY` comment states, [24](#syscall-overhead), [33](#reverse-string)
-- **unit test**, access to private items, [35](#integration-tests)
 - **`upgrade`**, turning a weak pointer into a strong one, [16](#doubly-linked-list)
 
 ## V

@@ -15,17 +15,12 @@ list is in alphabetical order by surname.
 - **The Rust Book.** The Rust Project Developers. <https://doc.rust-lang.org/book/>.
   Cited for monomorphisation (Chapter 1), enumerations (Chapter 7), boxes
   (Chapters 7, 14), `Rc` and `RefCell` (Chapter 16), shadowing and mutability
-  (Chapter 25), command-line arguments (Chapter 29), and test organisation
-  (Chapter 35).
+  (Chapter 25), and command-line arguments (Chapter 29).
 - **The Rust Reference.** The Rust Project Developers.
-  <https://doc.rust-lang.org/reference/>. Cited for names and scopes (Chapter 25)
-  and conditional compilation (Chapter 35).
+  <https://doc.rust-lang.org/reference/>. Cited for names and scopes (Chapter 25).
 - **The Rustonomicon.** The Rust Project Developers.
   <https://doc.rust-lang.org/nomicon/>. Cited for the rules an `unsafe` block
   relies on (Chapters 24, 33).
-- **The Cargo Book.** The Rust Project Developers.
-  <https://doc.rust-lang.org/cargo/reference/cargo-targets.html>. Cited for package
-  and test targets (Chapter 35).
 - **Rust API Guidelines.** The Rust Project Developers.
   <https://rust-lang.github.io/api-guidelines/>. Cited for documentation requirements
   and for the naming of conversion methods.
@@ -50,11 +45,6 @@ list is in alphabetical order by surname.
   binary search trees (Chapter 8), dynamic programming (Chapters 12, 13), breadth-
   first search (Chapter 23), priority queues (Chapter 32), and topological sort
   (Chapter 11).
-- **Dijkstra, Edsger W.** "Notes on Structured Programming", EWD249, 1970.
-  Circulated as a report and reprinted in *Structured Programming* (Dahl, Dijkstra,
-  Hoare), Academic Press, 1972. The source of the sentence about testing quoted in
-  Chapter 35. The same argument appears in his Turing Award lecture, "The Humble
-  Programmer", *Communications of the ACM* 15(10), 1972, pages 859–866.
 - **Fredkin, Edward.** "Trie memory". *Communications of the ACM* 3(9), 1960,
   pages 490–499. The paper that introduced the structure in Chapter 10.
 - **Hoare, C. A. R.** "Null References: The Billion Dollar Mistake". Presentation
@@ -85,7 +75,7 @@ list is in alphabetical order by surname.
 
 ## Quotations in this book
 
-Five sentences are quoted from other people, each in a place where the quotation
+Four sentences are quoted from other people, each in a place where the quotation
 states something the surrounding chapter then uses.
 
 | Where | Quotation | Source |
@@ -94,7 +84,6 @@ states something the surrounding chapter then uses.
 | Chapter 12 | Null references as a mistake that has cost a great deal | Hoare, QCon London, 2009 |
 | Chapter 22 | A distributed system as one in which a machine you did not know about can stop yours | Lamport, "Distribution", 1987 |
 | Chapter 24 | "Latency lags bandwidth" | Patterson, *Communications of the ACM*, 2004 |
-| Chapter 35 | Testing as a way to show the presence of bugs and never their absence | Dijkstra, "Notes on Structured Programming", EWD249, 1970 |
 
 Each quotation is short, is attributed in the chapter where it appears, and is
 quoted from the work named here. Nothing attributed to anyone in this book is a

@@ -7,15 +7,15 @@
 
 ## Why this book
 
-An interview for a systems role rarely turns on whether a candidate can name the
-right data structure. It turns on the sentence that follows. Why is this
-representation cheaper than the other one? What does the abstraction hide, and
-what does it charge for hiding it? Which input does it not survive?
+A systems interview is less about whether a candidate can name the right data
+structure than about the sentence that follows the name. The interviewer asks why
+one representation is cheaper than another, what an abstraction hides, and which
+input breaks it.
 
-Those questions are hard to practise from a list of exercises, because a list
-gives the answer and leaves the reasoning out. This book works from the other
-direction. It takes one repository of running Rust — data structures, caches,
-concurrency primitives, and the file and network code a service needs — and reads
+A list of exercises does not practise that reasoning, because the list gives the
+answer and leaves the argument out. This book works in the other direction. It
+takes one repository of running Rust, covering data structures, caches,
+concurrency primitives, and the file and network code a service needs, and reads
 it the way an interviewer reads an answer: one file at a time, with the cost of
 every operation and the inputs that break it written down.
 
@@ -65,8 +65,7 @@ question is ownership. Chapters 19 to 25 cover concurrency and the operating
 system, including a program that measures the cost of a system call. Chapters 26
 to 29 cover files, directories and command-line arguments. Chapters 30 and 31 cover
 coordination and parallelism. Chapters 32 and 33 return to sequences with a running
-median and an in-place reversal. Chapter 34 covers idempotent operations, and
-Chapter 35 closes the book with the integration tests.
+median and an in-place reversal. Chapter 34 covers idempotent operations.
 
 Read straight through for the argument, or follow one part for a topic. The index
 and the cross-references in each chapter are enough to read out of order.
@@ -88,10 +87,8 @@ cargo run --bin bounded_buffer
 cargo run --release --bin parallel_sum
 ```
 
-The listings reproduce the files as the repository holds them. Two chapters depart
-from that. Chapter 18 prints a test with an assertion added, and Chapter 35 prints
-an integration test file that is no longer in the repository; both chapters say so
-where they appear.
+The listings reproduce the files as the repository holds them. Chapter 18 prints a
+test with an assertion added, and says so where it appears.
 
 ## Conventions
 

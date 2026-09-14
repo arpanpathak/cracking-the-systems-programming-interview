@@ -75,10 +75,6 @@ finished: `command_line_args`, `median_finder` and `reverse_string` stop at a
 placeholder entry point, so their chapters read the type or function the file
 defines and state the limitation in place of a run.
 
-Chapter 35 reads an integration test file that exercised the library through its
-exported names. That file is no longer part of the repository, and the checks it
-performed now live as unit tests beside the code they test.
-
 ## What the files have in common
 
 Four conventions run through the code. They are stated once here so that the
@@ -99,5 +95,5 @@ with `Weak`, and a vector of indices, and each answer is visible in the type rat
 than in a comment.
 
 **Tests beside the code.** A unit test that reaches a private item is a licence to
-change that item. The integration tests in Chapter 35 exercised the same behaviour
-through the public API, which is what checks the re-exports.
+change that item. Each module keeps its own tests in a `#[cfg(test)] mod tests`, so
+the list printed by `cargo test` reads as an index of the book.

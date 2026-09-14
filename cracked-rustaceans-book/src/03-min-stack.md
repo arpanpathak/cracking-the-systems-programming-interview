@@ -207,9 +207,9 @@ lose.
 
 The structure has no `len` and no `is_empty`. A caller cannot ask how many entries
 the stack holds, and the two fields are private, so the depth is not observable from
-outside the module. The integration tests in Chapter 26 build their own stacks for
-this reason, and an application that needs the depth has to track it alongside the
-structure or wait for the accessor to be added.
+outside the module. A caller can push, pop, read the top and read the minimum, and
+nothing else; an application that needs the depth has to track it alongside the
+structure, or wait for the accessor to be added.
 
 The value type is `i32`. Making the structure generic over a type `T` with the
 `Ord` bound requires a type parameter on the struct, the implementation, and the two
