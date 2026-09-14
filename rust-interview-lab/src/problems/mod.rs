@@ -24,6 +24,7 @@ pub mod ring_buffer;
 pub mod semaphore;
 pub mod sharded_cache;
 pub mod sliding_window;
+pub mod three_sum;
 pub mod smart_pointers;
 pub mod spin_lock;
 pub mod state_machine;
