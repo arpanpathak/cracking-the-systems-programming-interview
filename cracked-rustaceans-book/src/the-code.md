@@ -95,3 +95,34 @@ than in a comment.
 **Tests beside the code.** A unit test that reaches a private item is a licence to
 change that item. Each module keeps its own tests in a `#[cfg(test)] mod tests`, so
 the list printed by `cargo test` reads as an index of the book.
+
+## Files read by chapters 35 to 59
+
+| File | Chapter |
+|---|---|
+| `src/problems/adt_idioms.rs` | 35 |
+| `src/problems/smart_pointers.rs` | 36 |
+| `src/bin/cs_fib.rs` | 37 |
+| `benchmarking_examples/lists/`, `list_box.rs`, `list_enum.rs`, `list_drop.rs`, `benchmark.rs` | 38 |
+| `src/problems/bump_allocator.rs` | 39 |
+| `benchmarking_examples/cache/`, `benchmark.rs` | 40 |
+| `src/problems/sharded_cache.rs` | 41 |
+| `src/problems/consistent_hash.rs` | 42 |
+| `src/problems/threads.rs` | 43 |
+| `src/problems/spin_lock.rs` | 44 |
+| `src/problems/semaphore.rs` | 45 |
+| `src/problems/bounded_queue.rs` | 46 |
+| `src/problems/ring_buffer.rs` | 47 |
+| `src/bin/cs_locality.rs`, `src/bin/concurrency_false_sharing.rs` | 48 |
+| `src/bin/concurrency_amdahl.rs`, `src/bin/concurrency_deadlock.rs` | 49 |
+| `src/bin/os_paging.rs`, `src/bin/os_scheduler.rs` | 50 |
+| `src/bin/net_ipv4.rs`, `src/bin/net_window.rs` | 51 |
+| `src/bin/tcp_echo_server.rs` | 52 |
+| `src/bin/epoll_echo.rs` | 53 |
+| `src/problems/http_request.rs` | 54 |
+| `src/bin/http_server.rs` | 55 |
+| `src/problems/async_mini.rs`, `src/bin/async_demo.rs` | 56 |
+| `src/problems/retry.rs` | 57 |
+| `src/bin/fun_network_call.rs`, `src/bin/reqwest_and_tokio.rs` | 58 |
+| `src/problems/drills.rs` | 59 |
+

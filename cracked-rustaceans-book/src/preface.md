@@ -51,6 +51,12 @@ and command-line arguments. Chapters 30 and 31 cover coordination and parallelis
 Chapters 32 and 33 cover a running median and an in-place reversal. Chapter 34
 covers idempotent operations.
 
+Chapters 35 to 59 cover the rest of the repository: types and smart pointers (35 and
+36), recursion, memory layout, and caches (37 to 42), threads and synchronization
+primitives (43 to 47), performance and the operating system (48 to 50), networking and
+HTTP (51 to 55), an async runtime, retries, and an HTTP client (56 to 58), and the short
+interview drills (59).
+
 ## The repository
 
 The code is in `rust-interview-lab`:
