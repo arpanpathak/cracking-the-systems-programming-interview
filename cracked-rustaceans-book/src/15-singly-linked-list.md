@@ -5,8 +5,8 @@
 
 ## Problem Statement
 
-Build a list whose node set is described by an algebraic data type, with constant
-time insertion and removal at the front.
+Build a list whose node set is described by an algebraic data type, with constant time
+insertion and removal at the front.
 
 ## Designing a Solution
 
@@ -15,10 +15,10 @@ List<T> = Empty
         | Node { value: T, next: Box<List<T>> }
 ```
 
-This is the same machine layout as `Option<Box<ListNode>>` from Chapter 14, with
-the empty case named in the type rather than expressed by `None`. The end of the
-list is `List::Empty`, and an empty list is `List::Empty` as well, so there is no
-separate sentinel and no nullable field.
+The layout is the same as `Option<Box<ListNode>>` from Chapter 14, with the empty case
+named in the type rather than expressed by `None`. The end of the list is
+`List::Empty`, and an empty list is `List::Empty` as well, so there is no separate
+sentinel and no nullable field.
 
 ```text
 list = Node { value: 0, next: Box<Node { value: 1, next: Box<Empty> }> }
@@ -32,17 +32,10 @@ list = Node { value: 0, next: Box<Node { value: 1, next: Box<Empty> }> }
  +---------------+     +---------------+
 ```
 
-The difference from the previous chapter is one of emphasis. `Box<Option<...>>`
-would have been the type of the earlier link; here the `Option` is gone, and every
-link is a `Box` whose pointee is either a node or the empty list. Both designs
-compile to the same layout, and this one makes the "end of list" case part of the
-type instead of a field value.
-
-
-`push_front` and `pop_front` both work by taking the whole list out of `self` with
-`std::mem::replace`, deciding what to do with it, and writing the result back.
-That pattern is what lets the code move a list value without cloning it and
-without holding a borrow of `self` across the move.
+`push_front` and `pop_front` both take the whole list out of `self` with
+`std::mem::replace`, decide what to do with it, and write the result back. That is what
+lets the code move a list value without cloning it and without holding a borrow of
+`self` across the move.
 
 ```text
 push_front(0) on [1, 2]
@@ -153,15 +146,14 @@ mod tests {
 }
 ```
 
-`push_front` moves the old list into a new `Box`. The old value is obtained by
-`std::mem::replace(self, List::Empty)`, which leaves `self` in a valid state that
-the following assignment overwrites. There is no moment at which `self` is
-uninitialised, which is what makes the code safe without `unsafe` and without
-`Option`.
+`push_front` moves the old list into a new `Box`. The old value comes from
+`std::mem::replace(self, List::Empty)`, which leaves `self` in a valid state that the
+following assignment overwrites. There is no moment at which `self` is uninitialised,
+and the code needs neither `unsafe` nor `Option`.
 
-`pop_front` destructures the taken value. `*self = *next` moves the inner list out
-of its box and into `self`; the box itself is freed, so the popped node is
-released rather than remembered.
+`pop_front` destructures the taken value. `*self = *next` moves the inner list out of
+its box and into `self`; the box itself is freed, so the popped node is released rather
+than remembered.
 
 `Link::new(old)` is `Box::new(old)` written through the type alias, which reads as
 "a new link holding the old list".
@@ -199,42 +191,26 @@ pop_front()     replace returns Empty, so the match yields None
 
 ## Limitations
 
-**`List::new` has no `Default` implementation.** Clippy's `new_without_default`
-lint fires on this pattern, and the reason it exists is that a caller writing a
-generic function over many types expects `Default` to work. Adding `impl<T>
-Default for List<T>` with a two-line body fixes it.
+**`List::new` has no `Default` implementation.** Clippy's `new_without_default` lint
+fires on this pattern, and the reason it exists is that a caller writing a generic
+function over many types expects `Default` to work. An `impl<T> Default for List<T>`
+with a two-line body fixes it.
 
-**`len` is recursive.** It walks the list with one stack frame per node, so a list
-that is long enough to matter cannot be measured. An iterative version keeps a
-`&List<T>` cursor and counts in a loop, which is the same code with the recursion
-replaced by a `while let`.
+**`len` is recursive.** It walks the list with one stack frame per node, so a list long
+enough to matter cannot be measured. An iterative version keeps a `&List<T>` cursor and
+counts in a `while let` loop.
 
-**Dropping the list is recursive.** The derived destructor for `List<T>` follows
-the `next` links, one frame per node. A long list aborts the process when it goes
-out of scope. This is the same hazard as Chapter 14, and the same fix applies: a
-manual `Drop` implementation that unlinks nodes into a loop.
+**Dropping the list is recursive.** The derived destructor for `List<T>` follows the
+`next` links, one frame per node, and a long list aborts the process when it goes out of
+scope. This is the hazard described in Chapter 14, and the same fix applies: a manual
+`Drop` implementation that unlinks nodes into a loop.
 
-**`pop_front` on a list of a million nodes is constant time, and the drop that
-follows is not.** The two facts belong together: the operation the API advertises
-is cheap, and the work the program does when the list is released is not.
+**`pop_front` is `O(1)` at any length, but the drop that follows is not.** For a list of
+a million nodes, the operation the API advertises is cheap and the work the program does
+when the list is released is `O(n)`. The two have to be considered together.
 
-**There is no `Clone`, no `Debug`, and no iterator.** A caller cannot print the
-list, cannot copy it, and cannot write `for value in &list`.
-
-## Summary
-
-- `List::new` has no `Default` implementation, which is the pattern Clippy's
-  `new_without_default` lint reports. A caller writing a generic function over many
-  types expects `Default` to be available.
-- `len` recurses, one stack frame per node, so a list long enough to matter cannot
-  be measured. An iterative version keeps a `&List<T>` cursor and counts in a
-  `while let` loop.
-- Dropping the list recurses, one frame per node, so a long list aborts the process
-  when it goes out of scope. This is the hazard described in Chapter 14, and the
-  same manual `Drop` implementation removes it.
-- `pop_front` is `O(1)` on a list of any length, but the drop that follows is
-  `O(n)`, so the two operations have to be considered together.
-- The type implements neither `Clone` nor `Debug` and provides no iterator.
+**There is no `Clone`, no `Debug`, and no iterator.** A caller cannot print the list,
+cannot copy it, and cannot write `for value in &list`.
 
 ## References
 

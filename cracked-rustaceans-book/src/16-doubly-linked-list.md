@@ -4,10 +4,10 @@
 
 ## Problem Statement
 
-Build a list with constant time insertion and removal at both ends. A singly
-linked list cannot remove from the back in constant time, because reaching the
-penultimate node requires a walk. Something has to point backwards, and that
-something cannot own what it points at.
+Build a list with constant time insertion and removal at both ends. A singly linked list
+cannot remove from the back in constant time, because reaching the penultimate node
+requires a walk. Something has to point backwards, and that something cannot own what it
+points at.
 
 ## Designing a Solution
 
@@ -21,10 +21,9 @@ something cannot own what it points at.
  +------+   prev (Weak)         +------+   prev   +------+
 ```
 
-If both directions owned their target, the reference count of a two-node list
-would never reach zero and the nodes would leak: each node would be kept alive by
-the other. The resolution is to let the forward links own and the backward links
-observe:
+If both directions owned their target, the reference count of a two-node list would
+never reach zero and the nodes would leak: each node would be kept alive by the other.
+The resolution is to let the forward links own and the backward links observe:
 
 | Link | Type | Keeps the node alive | Fails how |
 |---|---|---|---|
@@ -32,13 +31,12 @@ observe:
 | `prev` | `Weak<RefCell<Node<T>>>` | no | `upgrade()` returns `None` |
 
 A `Weak` pointer observes a value without keeping it alive. When the last strong
-reference goes away, the node is freed and every weak pointer to it starts
-returning `None` from `upgrade`. That is the mechanism that makes the structure
-agree with the ownership rules instead of working around them.
+reference goes away, the node is freed and every weak pointer to it starts returning
+`None` from `upgrade`.
 
-The `RefCell` is the second half of the design. `Rc` alone gives shared ownership
-but not mutation; `RefCell` adds mutation with the borrow checked at run time
-rather than at compile time.
+The `RefCell` is the second half of the design. `Rc` alone gives shared ownership but no
+mutation; `RefCell` adds mutation with the borrow checked at run time rather than at
+compile time.
 
 ```text
 after pop_front on the list above
@@ -350,24 +348,23 @@ mod tests {
 
 Four details carry the implementation.
 
-`Rc::downgrade(&new_node)` is stored in the *old* head's `prev`, not the new
-node's. The new node already owns the old head through `next`, and a second strong
-reference would keep the old head alive after the list forgot it.
+`Rc::downgrade(&new_node)` is stored in the *old* head's `prev`, not the new node's. The
+new node already owns the old head through `next`, and a second strong reference would
+keep the old head alive after the list forgot it.
 
-`self.tail.as_ref().map(Rc::downgrade)` in `push_back` converts
-`Option<&NodeRef<T>>` into `Option<WeakNodeRef<T>>` without a `match`. When the
-list is empty the tail is `None` and the new node's `prev` is `None`.
+`self.tail.as_ref().map(Rc::downgrade)` in `push_back` converts `Option<&NodeRef<T>>`
+into `Option<WeakNodeRef<T>>` without a `match`. When the list is empty the tail is
+`None` and the new node's `prev` is `None`.
 
-`old_tail.borrow_mut().prev.take().and_then(|w| w.upgrade())` in `pop_back` does
-three things in one expression: takes the weak pointer out of the node (leaving
-`None` behind), attempts to upgrade it to a strong reference, and yields `None` if
-the node has been freed. The `take` is what allows the removed node to be freed
-afterwards.
+`old_tail.borrow_mut().prev.take().and_then(|w| w.upgrade())` in `pop_back` does three
+things in one expression: takes the weak pointer out of the node, leaving `None` behind;
+attempts to upgrade it to a strong reference; and yields `None` if the node has been
+freed. The `take` is what allows the removed node to be freed afterwards.
 
-`Rc::try_unwrap(old_head).ok().unwrap().into_inner()` moves the node out of the
-`Rc` and the data out of the `RefCell`. It succeeds because the node has been
-unlinked and no other strong reference exists. `into_inner` on a `RefCell`
-consumes the cell, so it cannot fail and needs no borrow check.
+`Rc::try_unwrap(old_head).ok().unwrap().into_inner()` moves the node out of the `Rc` and
+the data out of the `RefCell`. It succeeds because the node has been unlinked and no
+other strong reference exists. `into_inner` on a `RefCell` consumes the cell, so it
+cannot fail and needs no borrow check.
 
 ## Intuition
 
@@ -402,54 +399,32 @@ pop_back()            10     30     2     returns Some(40)
 ## Limitations
 
 **`Rc::try_unwrap(...).ok().unwrap()` is a panic path that the type system does not
-close.** It succeeds while the invariants hold: the removed node has been unlinked
-and the new end's link to it has been cleared, so the list holds the only strong
-reference. Nothing in the signature says so, and a future change to `push_back`
-that keeps an extra strong reference would turn the `unwrap` into a panic at run
-time rather than a compile error. `.expect("...")` with the reason would document
-the assumption; a `match` that recovers the node from the `Err` arm would make the
-code total.
+close.** It succeeds while the invariants hold: the removed node has been unlinked and
+the new end's link to it has been cleared, so the list holds the only strong reference.
+Nothing in the signature says so, and a future change to `push_back` that keeps an extra
+strong reference would turn the `unwrap` into a run-time panic rather than a compile
+error. An `.expect("...")` with the reason would document the assumption; a `match` that
+recovers the node from the `Err` arm would make the code total.
 
-**The list is neither `Send` nor `Sync`.** `Rc` and `RefCell` are both
-single-threaded, so a `LinkedList` cannot be moved to another thread or shared
-between threads. The compiler rejects both, which means the limitation appears at
-the call site. A concurrent list uses `Arc<Mutex<Node<T>>>` and pays for it with
-lock contention and the possibility of poison.
+**The list is neither `Send` nor `Sync`.** `Rc` and `RefCell` are both single-threaded,
+so a `LinkedList` cannot be moved to another thread or shared between threads. The
+compiler rejects both, which puts the limitation at the call site. A concurrent list
+uses `Arc<Mutex<Node<T>>>` and pays for it with lock contention and the possibility of
+poison.
 
 **`RefCell` borrows are checked at run time.** `borrow_mut()` panics if a borrow is
-already active. Holding the guard that `peek_front` returns while calling
-`pop_front` on the same list is a run-time panic, where the `Box`-based list of
-Chapter 14 would have made it a compile error.
+already active. Holding the guard that `peek_front` returns while calling `pop_front` on
+the same list is a run-time panic, where the `Box`-based list of Chapter 14 would have
+made it a compile error.
 
-**Dropping a long list is recursive.** Each node holds a strong reference to the
-next, so releasing the head releases the next node, which releases the next, one
-stack frame per node. The `RefCell` does not change that; it only adds a borrow
-flag to each node, which is two more machine words per element.
+**Dropping a long list is recursive.** Each node holds a strong reference to the next, so
+releasing the head releases the next node, which releases the next, one stack frame per
+node. The `RefCell` does not change that; it adds a borrow flag to each node, two more
+machine words per element.
 
 **The demonstration's comment about `pop_front` returning 20 is the only place the
-expected value is written.** `main` prints values and asserts nothing, and the
-tests cover the same behaviour. The two comments in `main` are documentation rather
-than checks.
-
-## Summary
-
-- One direction of the link has to be weak. Two strong links between a pair of
-  nodes would keep the pair alive after the list released it, so `prev` is a
-  `Weak`.
-- `RefCell` adds a borrow counter to each node, two machine words per element, and
-  turns a conflicting borrow into a run-time panic where the `Box`-based list of
-  Chapter 14 makes it a compile error. What it provides is mutation through shared
-  ownership, which is what `pop_back` requires.
-- `Rc::try_unwrap(...).ok().unwrap()` is a panic path that the type system does not
-  close. It succeeds while the invariants hold, because the removed node has been
-  unlinked and the list holds the only strong reference, and nothing in the
-  signature states that. An `.expect` with the reason would record the assumption,
-  and a `match` on the `Err` arm would make the function total.
-- The list is neither `Send` nor `Sync`, because `Rc` and `RefCell` are
-  single-threaded. A concurrent list would use `Arc<Mutex<Node<T>>>` and pay for it
-  with lock contention and the possibility of poison.
-- Dropping a long list recurses, one stack frame per node, since each node holds a
-  strong reference to the next.
+expected value is written.** `main` prints values and asserts nothing, and the tests
+cover the same behaviour.
 
 ## References
 
