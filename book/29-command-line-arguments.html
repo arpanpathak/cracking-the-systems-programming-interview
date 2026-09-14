@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-bfe0b982.css">
+        <link rel="stylesheet" href="theme/custom-e168a925.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
+            window.path_to_searchindex_js = "searchindex-2abfced0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -177,51 +177,183 @@
                     <main>
                         <h1 id="command-line-arguments"><a class="header" href="#command-line-arguments">29. Command-Line Arguments</a></h1>
 <p><em>Source file: <a href="../rust-interview-lab/src/bin/command_line_args.rs"><code>src/bin/command_line_args.rs</code></a>. Run it with
-<code>cargo run --bin command_line_args</code>.</em></p>
+<code>cargo run --bin command_line_args -- --name ada --count 3 --verbose</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
 <p>A command-line tool receives its input as a list of strings from the operating
-system. The program has to know where that list starts and ends, and which entry
-is the name of the program rather than an argument to it.</p>
+system. The program has to know where that list starts and ends, which entry is the
+name of the program rather than an argument to it, and how to turn the remaining
+entries into the options the tool accepts. It also has to report a bad command line
+in a way the shell can see, which means a non-zero exit status.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p><code>env::args()</code> returns an iterator over the arguments as <code>String</code>. The first item
-is the name the program was invoked with, so the arguments proper begin at index
-one. <code>env::args().skip(1)</code> is the shortest way to drop it, and <code>collect</code> turns
-the rest into a <code>Vec&lt;String&gt;</code> when a program needs random access or a length.</p>
-<p>The iterator has one failure mode worth knowing: <code>args()</code> panics when an argument
-is not valid UTF-8. <code>args_os</code> yields <code>OsString</code> instead and never panics, which is
-what a tool that forwards an arbitrary path should use.</p>
-<p>The file in this chapter stops after collecting the arguments. The binding is
-never read, so the compiler reports an unused variable. That warning is the
-subject of the Limits section: the file is the start of an argument parser rather
-than a finished one.</p>
+<p><code>env::args()</code> returns an iterator over the arguments as <code>String</code>. The first item is
+the name the program was invoked with, so the arguments proper begin at index one
+and <code>args().skip(1)</code> is the boundary between the two.</p>
+<p>The program parses three options. <code>--name</code> takes a value, <code>--count</code> takes a number,
+and <code>--verbose</code> is a flag. The parser walks the arguments once with an iterator, so
+a value option consumes the next item and a flag consumes only itself. It returns
+<code>Result&lt;Options, String&gt;</code>: every failure is a message that names the argument at
+fault, and <code>main</code> prints that message and a usage line to standard error before
+returning <code>ExitCode::FAILURE</code>. A successful run returns <code>ExitCode::SUCCESS</code>, so the
+exit status is a fact the shell can test.</p>
+<p><code>main</code> returns <code>ExitCode</code> rather than <code>()</code>. The return value is the program’s report
+to its caller, and the shell reads the status byte and branches on it. Returning
+<code>ExitCode</code> keeps that decision in <code>main</code> instead of in a call to
+<code>std::process::exit</code>, which would skip the destructors of everything still alive.</p>
+<p>The iterator has one failure mode worth knowing. <code>args()</code> panics when an argument is
+not valid UTF-8. <code>args_os</code> yields <code>OsString</code> instead and never panics, which is what
+a tool that forwards an arbitrary path should use.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust">use std::env::args;
+use std::process::ExitCode;
 
-fn main() {
-    let args: Vec&lt;String&gt; = args().collect();
+/// The options this program understands.
+#[derive(Debug, PartialEq)]
+struct Options {
+    name: String,
+    count: u32,
+    verbose: bool,
+}
 
-    
+impl Default for Options {
+    fn default() -&gt; Self {
+        Self { name: String::from("world"), count: 1, verbose: false }
+    }
+}
 
+/// Turn the arguments after the program name into `Options`.
+fn parse(arguments: impl IntoIterator&lt;Item = String&gt;) -&gt; Result&lt;Options, String&gt; {
+    let mut options = Options::default();
+    let mut arguments = arguments.into_iter();
+
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--name" =&gt; {
+                options.name = arguments.next().ok_or("--name needs a value")?;
+            }
+            "--count" =&gt; {
+                let value = arguments.next().ok_or("--count needs a value")?;
+                options.count = value
+                    .parse()
+                    .map_err(|_| format!("--count needs a number, got {value:?}"))?;
+            }
+            "--verbose" =&gt; options.verbose = true,
+            other =&gt; return Err(format!("unknown argument {other:?}")),
+        }
+    }
+
+    Ok(options)
+}
+
+fn main() -&gt; ExitCode {
+    let options = match parse(args().skip(1)) {
+        Ok(options) =&gt; options,
+        Err(message) =&gt; {
+            eprintln!("error: {message}");
+            eprintln!("usage: command_line_args [--name NAME] [--count N] [--verbose]");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    for index in 0..options.count {
+        if options.verbose {
+            println!("[{index}] hello, {}", options.name);
+        } else {
+            println!("hello, {}", options.name);
+        }
+    }
+
+    ExitCode::SUCCESS
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_args(arguments: &amp;[&amp;str]) -&gt; Result&lt;Options, String&gt; {
+        parse(arguments.iter().map(|value| value.to_string()))
+    }
+
+    #[test]
+    fn defaults_apply_when_there_are_no_arguments() {
+        assert_eq!(parse_args(&amp;[]).unwrap(), Options::default());
+    }
+
+    #[test]
+    fn a_value_option_consumes_the_next_argument() {
+        let options = parse_args(&amp;["--name", "ada", "--count", "3"]).unwrap();
+        assert_eq!(options.name, "ada");
+        assert_eq!(options.count, 3);
+    }
+
+    #[test]
+    fn verbose_is_a_flag() {
+        assert!(parse_args(&amp;["--verbose"]).unwrap().verbose);
+        assert!(!parse_args(&amp;[]).unwrap().verbose);
+    }
+
+    #[test]
+    fn a_value_option_without_a_value_is_an_error() {
+        assert!(parse_args(&amp;["--name"]).is_err());
+        assert!(parse_args(&amp;["--count"]).is_err());
+    }
+
+    #[test]
+    fn a_non_numeric_count_is_an_error() {
+        assert!(parse_args(&amp;["--count", "many"]).is_err());
+    }
+
+    #[test]
+    fn an_unknown_argument_is_an_error() {
+        assert!(parse_args(&amp;["--colour", "red"]).is_err());
+        assert!(parse_args(&amp;["extra"]).is_err());
+    }
 }</code></pre>
-<p><code>args()</code> is called rather than imported as a value, and the <code>Vec&lt;String&gt;</code>
-annotation is what fixes the type of the collection. The first element is the
-program name; every argument follows it. Because the binding is not read, the
-compiler emits <code>unused variable: 'args'</code>, which is reported at the binding rather
-than at run time.</p>
+<p>The listing is the whole file. Taken in order:</p>
+<ul>
+<li><code>parse</code> accepts any iterator of <code>String</code>, so the tests can pass a slice and <code>main</code>
+can pass <code>args().skip(1)</code>. The argument is not collected into a <code>Vec</code> first, so a
+value is consumed exactly when the parser reaches it.</li>
+<li><code>--name</code> and <code>--count</code> both call <code>arguments.next()</code>. When the iterator is
+exhausted they receive <code>None</code>, and <code>ok_or</code> turns that into the message
+<code>--name needs a value</code>. A flag that silently accepted a missing value would hide a
+typo.</li>
+<li><code>--count</code> parses with <code>value.parse()</code>. <code>map_err</code> replaces the parser’s error with
+one that quotes the offending text, because the caller needs to know which word
+was not a number.</li>
+<li>The final arm catches every other argument, including a stray positional one, and
+returns an error. An unknown option is a failure rather than something ignored, so
+a misspelled flag does not silently do nothing.</li>
+<li><code>main</code> returns <code>ExitCode</code>. On success the loop prints <code>count</code> greetings, and
+<code>--verbose</code> prefixes each line with its index.</li>
+</ul>
+<p>The <code>Default</code> implementation gives the program the values it uses when an option is
+absent. Defaults live in one place, so the parser only writes a field when the
+command line supplies one.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p>Invoked as <code>cargo run --bin command_line_args alpha beta</code>, the process receives:</p>
-<pre><code class="language-text">index   value
-0       "target/debug/command_line_args"
-1       "alpha"
-2       "beta"
-
-collect() builds ["target/debug/command_line_args", "alpha", "beta"]
-skip(1) would build ["alpha", "beta"]
+<p>With no arguments, the defaults apply:</p>
+<pre><code class="language-text">$ cargo run --bin command_line_args
+hello, world
 </code></pre>
-<p>The shell removes the quoting and performs its own expansion before the process
-starts, so the program never sees the command line as one string. An argument
-written as <code>"two words"</code> arrives as a single element, and <code>*</code> arrives already
-expanded by the shell.</p>
+<p>With the options:</p>
+<pre><code class="language-text">$ cargo run --bin command_line_args -- --name ada --count 3 --verbose
+[0] hello, ada
+[1] hello, ada
+[2] hello, ada
+</code></pre>
+<p>A bad command line goes to standard error and sets the exit status:</p>
+<pre><code class="language-text">$ cargo run --bin command_line_args -- --count many
+error: --count needs a number, got "many"
+usage: command_line_args [--name NAME] [--count N] [--verbose]
+$ echo $?
+1
+</code></pre>
+<p><code>cargo run</code> passes everything after a bare <code>--</code> to the program, which is why the
+examples use it. Without the separator, <code>cargo</code> would treat <code>--name</code> as one of its
+own flags.</p>
+<p>The process receives its arguments after the shell has removed quoting and
+performed expansion. <code>--name "two words"</code> arrives as one element, and <code>*</code> arrives
+already expanded by the shell, so the program never sees the command line as a
+single string.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
@@ -230,43 +362,52 @@ expanded by the shell.</p>
 </thead>
 <tbody>
 <tr><td><code>env::args()</code></td><td>no allocation until an item is taken</td><td>each item is a <code>String</code> when produced</td></tr>
-<tr><td><code>collect</code> into <code>Vec&lt;String&gt;</code></td><td>one allocation per argument plus the vector</td><td>the whole argument list is held at once</td></tr>
-<tr><td><code>skip(1)</code></td><td><code>O(1)</code> time</td><td>it drops the first item of the iterator</td></tr>
+<tr><td><code>parse</code></td><td><code>O(n)</code> time</td><td>one pass, one <code>next()</code> per option and value</td></tr>
+<tr><td><code>skip(1)</code></td><td><code>O(1)</code></td><td>it drops the first item of the iterator</td></tr>
+<tr><td>memory</td><td><code>O(1)</code> beyond the strings already produced</td><td>the parser keeps no list of its own</td></tr>
 </tbody>
 </table>
 </div>
+<p>Collecting into a <code>Vec&lt;String&gt;</code> would cost one allocation per argument plus the
+vector, and it would hold the whole command line at once. The parser avoids both,
+because it only ever needs the current argument and, for a value option, the one
+after it.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>The file collects the arguments and does not use them.</strong> The unused-variable
-warning is the compiler reporting that the program is incomplete. Nothing here
-validates the number of arguments, reads a flag, or chooses an exit status.</p>
-<p><strong>There is no exit status.</strong> <code>main</code> returns <code>()</code>, so the process always exits
-with the status for success. A tool that fails should return the failure, either
-by returning a <code>Result</code> from <code>main</code> or by calling <code>std::process::exit</code>.</p>
-<p><strong><code>args()</code> panics on a non-UTF-8 argument.</strong> On Unix an argument is a byte
-string, and a file name that is not valid UTF-8 reaches the program as bytes. A
-program that must accept such a name has to use <code>args_os</code> and handle <code>OsString</code>.</p>
+<p><strong>Only the separated form is accepted.</strong> <code>--name ada</code> is an option and its value;
+<code>--name=ada</code> is an unknown argument, because the match is on the whole word.
+Accepting the second form means splitting each argument at its first <code>=</code> before the
+match.</p>
+<p><strong>There is no <code>--</code> separator of its own.</strong> The program does not treat a bare <code>--</code> as
+the end of the options, so a value that begins with <code>--</code> cannot be passed as a name
+except by changing the parser.</p>
+<p><strong>There is no help flag.</strong> <code>--help</code> is reported as an unknown argument. A tool that
+ships to other people usually answers <code>--help</code> with the usage line and the exit
+status for success, rather than with the failure path.</p>
+<p><strong><code>args()</code> panics on a non-UTF-8 argument.</strong> On Unix an argument is a byte string,
+and a file name that is not valid UTF-8 reaches the program as bytes. A program
+that must accept such a name has to use <code>args_os</code> and handle <code>OsString</code>.</p>
 <p><strong>The program name is not the same as the executable.</strong> The first argument is
 whatever the caller passed as <code>argv[0]</code>, which is the path used to invoke the
 program and can be changed by the caller. It is not a reliable source of the
 program’s location.</p>
-<p><strong>There is no parsing of flags, values, or defaults.</strong> Splitting <code>--name value</code>
-into a key and a value, distinguishing <code>-o json</code>, and applying the precedence of
-a flag over an environment variable over a file over a default are all absent.</p>
+<p><strong>Precedence between sources is not implemented.</strong> A flag over an environment
+variable over a file over a default is the usual order, and a tool that reads more
+than one source has to state that order somewhere. This parser has one source.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li><code>env::args()</code> yields <code>String</code> values whose first item is the invocation name;
 <code>skip(1)</code> is the boundary between the program and its arguments.</li>
+<li>The parser walks the arguments once with an iterator, so a value option consumes
+the next item and a flag consumes only itself.</li>
+<li>Every failure returns a message that names the argument at fault, and <code>main</code> turns
+it into standard error plus <code>ExitCode::FAILURE</code>.</li>
 <li><code>args()</code> panics on non-UTF-8 input, and <code>args_os</code> is the version that does not.</li>
-<li>Collecting the arguments costs one allocation per argument, which is the point
-at which a program has to decide whether it needs them all at once.</li>
-<li>The file is a starting point, not a parser: it neither validates its input nor
-reports a status.</li>
 </ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/env/fn.args.html"><code>std::env::args</code></a>.</li>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/env/fn.args_os.html"><code>std::env::args_os</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/process/fn.exit.html"><code>std::process::exit</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/process/struct.ExitCode.html"><code>std::process::ExitCode</code></a>.</li>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch12-01-accepting-command-line-arguments.html">Accepting command line arguments</a>.</li>
 </ul>
 

@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-bfe0b982.css">
+        <link rel="stylesheet" href="theme/custom-e168a925.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
+            window.path_to_searchindex_js = "searchindex-2abfced0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -214,15 +214,79 @@ fn reverse_str(s: &amp;mut String) {
 }
 
 fn main() {
+    for value in ["abcd", "abc", "a", "rust"] {
+        let mut s = String::from(value);
+        reverse_str(&amp;mut s);
+        println!("{value:&gt;6} -&gt; {s}");
+    }
+}
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_even_length_string_is_reversed() {
+        let mut s = String::from("abcd");
+        reverse_str(&amp;mut s);
+        assert_eq!(s, "dcba");
+    }
+
+    #[test]
+    fn an_odd_length_string_keeps_its_middle_byte() {
+        let mut s = String::from("abc");
+        reverse_str(&amp;mut s);
+        assert_eq!(s, "cba");
+    }
+
+    #[test]
+    fn a_single_byte_is_unchanged() {
+        let mut s = String::from("a");
+        reverse_str(&amp;mut s);
+        assert_eq!(s, "a");
+    }
+
+    #[test]
+    fn the_buffer_is_reused() {
+        let mut s = String::from("abcd");
+        let capacity = s.capacity();
+        let address = s.as_ptr();
+        reverse_str(&amp;mut s);
+        assert_eq!(s.capacity(), capacity);
+        assert_eq!(s.as_ptr(), address);
+    }
+
+    #[test]
+    fn reversing_twice_restores_the_string() {
+        let mut s = String::from("interview");
+        reverse_str(&amp;mut s);
+        reverse_str(&amp;mut s);
+        assert_eq!(s, "interview");
+    }
+
+    #[test]
+    #[should_panic]
+    fn non_ascii_input_panics() {
+        let mut s = String::from("café");
+        reverse_str(&amp;mut s);
+    }
 }</code></pre>
-<p>The file’s <code>main</code> is empty, so the listing ends at the function.</p>
-<p><code>assert!(s.is_ascii())</code> walks the string before the reversal. It is <code>O(n)</code>, which
+<p>The listing is the whole file. Taken in order:</p>
+<ul>
+<li><code>assert!(s.is_ascii())</code> walks the string before the reversal. It is <code>O(n)</code>, which
 does not change the overall bound, and it runs before the unsafe block rather than
-inside it, so the panic leaves the string untouched.</p>
-<p><code>bytes.swap(start, end)</code> is <code>slice::swap</code>, which exchanges two elements without
+inside it, so the panic leaves the string untouched.</li>
+<li><code>bytes.swap(start, end)</code> is <code>slice::swap</code>, which exchanges two elements without
 moving either out. A manual exchange through a temporary would be three
-assignments on <code>u8</code>; <code>swap</code> states the intent and compiles to the same place.</p>
+assignments on <code>u8</code>; <code>swap</code> states the intent and compiles to the same place.</li>
+<li><code>main</code> reverses four strings and prints each result, so one run shows the even
+case, the odd case, the single byte, and a second four-letter word.</li>
+<li>The tests cover both parities, the single byte, the in-place property, and the
+round trip. <code>the_buffer_is_reused</code> reads the capacity and the address before and
+after and requires both to be unchanged, which is what separates this function
+from one that builds a new <code>String</code>. <code>non_ascii_input_panics</code> is marked
+<code>#[should_panic]</code>, so the assertion is checked rather than assumed.</li>
+</ul>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>Reverse <code>"abcd"</code>:</p>
 <pre><code class="language-text">before   a  b  c  d
@@ -242,6 +306,13 @@ after    c  b  a
 </code></pre>
 <p>The middle byte of an odd-length string is never moved, which is why the loop
 condition is <code>start &lt; end</code> rather than <code>start &lt;= end</code>.</p>
+<p>The program prints:</p>
+<pre><code class="language-text">  abcd -&gt; dcba
+   abc -&gt; cba
+     a -&gt; a
+  rust -&gt; tsur
+</code></pre>
+<p>The buffer is the same allocation in every line. Only the bytes inside it move.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
@@ -256,7 +327,8 @@ condition is <code>start &lt; end</code> rather than <code>start &lt;= end</code
 </table>
 </div>
 <p>The reversal itself is <code>n / 2</code> swaps, and it is performed in place, so the
-buffer’s address and capacity do not change.</p>
+buffer’s address and capacity do not change. The assertion adds a second pass over
+the bytes, which is the price of the safe wrapper around the unsafe block.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p><strong>Non-ASCII input panics.</strong> <code>assert!(s.is_ascii())</code> refuses any string containing
 a byte above <code>0x7F</code>, which includes every accented letter and every emoji. A
@@ -265,7 +337,8 @@ characters, and rebuild the <code>String</code>, which allocates.</p>
 <p><strong>Empty input panics.</strong> With <code>bytes.len() == 0</code>, the expression <code>bytes.len() - 1</code>
 underflows. In a debug build that panics with an arithmetic error; in a release
 build it wraps and the following <code>swap</code> is out of bounds. The function needs a
-check for an empty string, and it does not have one.</p>
+check for an empty string, and it does not have one, so the tests do not cover the
+empty case either.</p>
 <p><strong>The <code>unsafe</code> block is sound only because of the assertion above it.</strong> Removing
 the assertion makes the function undefined behaviour on any non-ASCII input. The
 <code>SAFETY</code> comment is the record of that dependency, and a future edit that drops
@@ -273,8 +346,9 @@ the check has to drop the unsafe approach as well.</p>
 <p><strong>The function reverses bytes, not grapheme clusters.</strong> For ASCII the two are the
 same. For text that passes the assertion they cannot differ, but a reader should
 not carry the assumption to a general string.</p>
-<p><strong>The file’s <code>main</code> is empty.</strong> Nothing runs when the program starts, so the
-function is only reachable from a test or another program.</p>
+<p><strong>The largest test input is nine bytes.</strong> The tests establish the two parities and
+the round trip. A larger input, or one built to exercise the exact midpoint of an
+even-length string, would test the loop bound more of the way.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li>Byte reversal is <code>O(n)</code> time and <code>O(1)</code> space, and only the ASCII precondition
@@ -283,6 +357,8 @@ makes it a valid <code>String</code> transformation.</li>
 ahead of it is what discharges the obligation recorded in the <code>SAFETY</code> comment.</li>
 <li>The loop runs <code>n / 2</code> times and leaves the middle byte of an odd-length string
 in place.</li>
+<li>The program reverses four strings and prints them, and the tests check both
+parities, the single byte, the unchanged allocation, and the round trip.</li>
 <li>Empty and non-ASCII inputs are not handled: the first panics on the subtraction,
 and the second is refused by the assertion.</li>
 </ul>

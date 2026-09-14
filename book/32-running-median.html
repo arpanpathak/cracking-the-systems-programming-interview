@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-bfe0b982.css">
+        <link rel="stylesheet" href="theme/custom-e168a925.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
+            window.path_to_searchindex_js = "searchindex-2abfced0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -241,24 +241,119 @@ impl MedianFinder {
     }
 }
 
+const SAMPLE: [i32; 11] = [6, 10, 2, 6, 5, 0, 6, 3, 1, 0, 0];
+
 fn main() {
-    todo!("TODO TODO")
+    let mut finder = MedianFinder::new();
+
+    for value in SAMPLE {
+        finder.add_num(value);
+        match finder.find_median() {
+            Some(median) =&gt; println!("after {value:&gt;2}: median {median}"),
+            None =&gt; println!("after {value:&gt;2}: no median"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The median of a sorted slice, computed directly.
+    fn median_of_sorted(values: &amp;[i32]) -&gt; f64 {
+        let middle = values.len() / 2;
+        if values.len() % 2 == 1 {
+            values[middle] as f64
+        } else {
+            (values[middle - 1] as f64 + values[middle] as f64) / 2.0
+        }
+    }
+
+    #[test]
+    fn an_empty_finder_has_no_median() {
+        assert_eq!(MedianFinder::new().find_median(), None);
+    }
+
+    #[test]
+    fn one_value_is_the_median() {
+        let mut finder = MedianFinder::new();
+        finder.add_num(7);
+        assert_eq!(finder.find_median(), Some(7.0));
+    }
+
+    #[test]
+    fn an_even_count_averages_the_middle_two() {
+        let mut finder = MedianFinder::new();
+        finder.add_num(1);
+        finder.add_num(2);
+        assert_eq!(finder.find_median(), Some(1.5));
+    }
+
+    #[test]
+    fn three_values_are_ordered() {
+        let mut finder = MedianFinder::new();
+        for (value, median) in [1, 2, 3].into_iter().zip([1.0, 1.5, 2.0]) {
+            finder.add_num(value);
+            assert_eq!(finder.find_median(), Some(median));
+        }
+    }
+
+    #[test]
+    fn duplicates_are_kept() {
+        let mut finder = MedianFinder::new();
+        for value in [4, 4, 4, 4] {
+            finder.add_num(value);
+        }
+        assert_eq!(finder.find_median(), Some(4.0));
+    }
+
+    #[test]
+    fn the_stream_matches_a_sort_on_every_step() {
+        let mut finder = MedianFinder::new();
+        let mut seen = Vec::new();
+
+        for value in SAMPLE {
+            finder.add_num(value);
+            seen.push(value);
+            seen.sort_unstable();
+
+            assert_eq!(finder.find_median(), Some(median_of_sorted(&amp;seen)));
+        }
+    }
+
+    #[test]
+    fn the_two_heaps_never_differ_by_more_than_one() {
+        let mut finder = MedianFinder::new();
+
+        for value in SAMPLE {
+            finder.add_num(value);
+            assert!(finder.low.len().abs_diff(finder.high.len()) &lt;= 1);
+        }
+    }
 }</code></pre>
-<p>The file’s <code>main</code> is a placeholder, so the listing ends at the implementation.
-The type is exercised through <code>add_num</code> and <code>find_median</code>.</p>
-<p><code>add_num</code> pushes onto <code>low</code> before rebalancing. That order means the new value is
+<p>The listing is the whole file. Taken in order:</p>
+<ul>
+<li><code>add_num</code> pushes onto <code>low</code> before rebalancing. That order means the new value is
 considered for the lower half first, and the move of <code>low</code>’s maximum to <code>high</code>
-then restores the ordering if the value belongs above the median. The second
-<code>if</code> runs only when <code>high</code> became longer, which moves one value back so <code>low</code> is
-never the shorter heap.</p>
-<p><code>find_median</code> returns <code>Option&lt;f64&gt;</code>. <code>self.low.peek()?</code> returns <code>None</code> for an
+then restores the ordering if the value belongs above the median. The second <code>if</code>
+runs only when <code>high</code> became longer, which moves one value back so <code>low</code> is never
+the shorter heap.</li>
+<li><code>find_median</code> returns <code>Option&lt;f64&gt;</code>. <code>self.low.peek()?</code> returns <code>None</code> for an
 empty finder, so <code>find_median</code> reports absence rather than dividing by zero. When
 <code>low</code> is longer, <code>low</code>’s maximum is the median; otherwise the two tops are
-averaged.</p>
-<p>The median is returned as <code>f64</code> even when it is a whole number, because the two
+averaged.</li>
+<li>The median is returned as <code>f64</code> even when it is a whole number, because the two
 middle values can be a half-integer. Casting <code>i32</code> to <code>f64</code> is exact for every
-<code>i32</code>, so no precision is lost on the way in; the average of two integers is the
-only value that can be fractional, and it is exact as well for <code>i32</code> inputs.</p>
+<code>i32</code>, so no precision is lost on the way in.</li>
+<li><code>main</code> drives the type with the <code>SAMPLE</code> stream and prints the median after each
+insertion, which is the behaviour the chapter claims in one run.</li>
+<li>The tests check the empty case, one value, an even count, the ordered sequence, a
+repeated value, and the whole <code>SAMPLE</code> stream against a sort of the values seen so
+far. That last test is a differential check: it computes the median a second,
+slower way and requires the heaps to agree with it on every step. A further test
+asserts the balancing invariant itself, that the two lengths never differ by more
+than one.</li>
+</ul>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>Insert the values <code>1</code>, then <code>2</code>, then <code>3</code>:</p>
 <pre><code class="language-text">step            low (max-heap)   high (min-heap)   median
@@ -266,20 +361,26 @@ start           []               []                None
 add_num(1)      [1]              []                1.0
 add_num(2)      [1]              [2]               1.5
 add_num(3)      [2, 1]           [3]               2.0
-
-add_num(1)      push 1 onto low        low = [1]
-                move the maximum       low = [], high = [1]
-                high not longer        low = [], high = [1]
-                low is empty, so find_median returns None
 </code></pre>
-<p>Insert <code>2</code> next from that state:</p>
-<pre><code class="language-text">add_num(2)      push 2 onto low        low = [2]
-                move the maximum       low = [], high = [1, 2]
-                high is longer         pop 1 back to low
-                                       low = [1], high = [2]   median = 1.5
+<p>The third step in detail. <code>3</code> goes onto <code>low</code>, so <code>low</code> is <code>[3, 1]</code>. Its maximum,
+<code>3</code>, moves to <code>high</code>, which becomes <code>[2, 3]</code> read as a min-heap: the top is <code>2</code>.
+<code>high</code> is now longer than <code>low</code>, so its minimum, <code>2</code>, moves back and <code>low</code> becomes
+<code>[2, 1]</code>. The median is <code>low</code>’s top, <code>2.0</code>.</p>
+<p>The <code>SAMPLE</code> stream in the program produces:</p>
+<pre><code class="language-text">after  6: median 6
+after 10: median 8
+after  2: median 6
+after  6: median 6
+after  5: median 6
+after  0: median 5.5
+after  6: median 6
+after  3: median 5.5
+after  1: median 5
+after  0: median 4
+after  0: median 3
 </code></pre>
-<p>Each insertion moves at most two values between the heaps, so the two lengths
-never differ by more than one.</p>
+<p>Each insertion moves at most two values between the heaps, so the two lengths never
+differ by more than one and the median is always one or two heap tops away.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
@@ -300,12 +401,6 @@ that for <code>O(1)</code> queries but still pays <code>O(n log n)</code> when t
 <p><strong>The type is fixed to <code>i32</code>.</strong> The heaps are <code>BinaryHeap&lt;i32&gt;</code>, so the caller
 cannot use <code>i64</code> or <code>f64</code>. Making the type generic needs an ordering bound plus a
 way to average two values, which is more than <code>Ord</code> provides.</p>
-<p><strong>The file’s <code>main</code> is a placeholder.</strong> Nothing runs when the program starts, so
-the type is only reachable from a test or from another program. <code>cargo run --bin median_finder</code> exits without output.</p>
-<p><strong>The file has no tests.</strong> The invariant that the two heaps stay balanced is the
-part worth testing, and it is not asserted anywhere in the file. A test that adds
-a sequence and checks the median after each step would catch a rebalancing error
-that a single query does not.</p>
 <p><strong>A median is returned as <code>f64</code>, which changes the type of the answer.</strong> For
 <code>i32</code> inputs the conversion and the average are exact, but a caller that needs an
 exact fraction of two integers has to compute it from the two tops rather than
@@ -313,6 +408,10 @@ from the returned value.</p>
 <p><strong>There is no removal.</strong> The structure answers the median of everything seen.
 A sliding-window median needs a structure that can remove the oldest value, which
 the two heaps cannot do without locating that value in one of them.</p>
+<p><strong>The tests cover one stream in depth and a few cases by hand.</strong> <code>SAMPLE</code> is
+eleven values. The differential test compares against a sort, so it catches a
+rebalancing error on those eleven steps, but a random or exhaustive stream would
+cover more of the state space than a fixed array does.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li>Two heaps hold the lower and upper halves, and <code>Reverse</code> turns the second into
@@ -321,7 +420,8 @@ a min-heap.</li>
 makes the median a constant-time query.</li>
 <li><code>Option&lt;f64&gt;</code> states that an empty finder has no median, instead of returning a
 sentinel.</li>
-<li>The type is concrete rather than generic, and its <code>main</code> and tests are absent.</li>
+<li>The program prints the median after every value of a sample stream, and the tests
+check the result against a sort of the values seen so far.</li>
 </ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>

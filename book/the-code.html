@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-bfe0b982.css">
+        <link rel="stylesheet" href="theme/custom-e168a925.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4d5e0829.js";
+            window.path_to_searchindex_js = "searchindex-2abfced0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -239,10 +239,9 @@ those two names were intended for; that implementation now lives in
 or one pair of a type and its policy, and each ends with a <code>#[cfg(test)] mod tests</code>,
 so the list printed by <code>cargo test</code> reads as an index of this book.</p>
 <p>Twenty-two are programs. Files under <code>src/bin/</code> are separate crates that link the
-library, and each has a <code>main</code> function. Several of the newest ones are not
-finished: <code>command_line_args</code>, <code>median_finder</code> and <code>reverse_string</code> stop at a
-placeholder entry point, so their chapters read the type or function the file
-defines and state the limitation in place of a run.</p>
+library, and each has a <code>main</code> function that runs without arguments. Most of them
+also carry the tests for the code they contain, so <code>cargo test</code> exercises the
+programs as well as the library.</p>
 <h2 id="what-the-files-have-in-common"><a class="header" href="#what-the-files-have-in-common">What the files have in common</a></h2>
 <p>Four conventions run through the code. They are stated once here so that the
 chapters need not repeat them.</p>
