@@ -7,17 +7,16 @@
 
 ## What this book is
 
-This book reads one repository of Rust, `rust-interview-lab`, one file at a time.
-Each chapter covers one file: the problem, the design, the code as the repository
-holds it, a trace of that code on a concrete input, the cost of each operation, and
-the inputs the code does not handle.
+The subject is one Rust repository, `rust-interview-lab`. Its files cover the working
+material of a systems interview: data structures, caches, concurrency primitives,
+file and directory handling, and the network code a service needs.
 
-The files are working programs and modules. Each is short enough to read in full,
-and each carries its own tests.
+Each chapter takes one file, prints it as the repository holds it, and works through
+the design, a trace on a concrete input, the cost of each operation, and the cases the
+code does not handle. The tests appear with the code.
 
 The repository is at
-<https://github.com/arpanpathak/cracking-the-systems-programming-interview>. Every
-chapter links the source file it reads.
+<https://github.com/arpanpathak/cracking-the-systems-programming-interview>.
 
 ## What you need to know
 

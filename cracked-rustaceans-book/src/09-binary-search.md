@@ -5,8 +5,8 @@
 
 ## Problem Statement
 
-A sorted slice of distinct values has been rotated by an unknown amount. Find the
-index of a target value in `O(log n)`, or report that it is absent.
+A sorted slice of distinct values has been rotated by an unknown amount. Find the index
+of a target value in `O(log n)`, or report that it is absent.
 
 ```text
 [4, 5, 6, 7, 0, 1, 2]        a rotation of [0, 1, 2, 4, 5, 6, 7]
@@ -20,10 +20,9 @@ The loop keeps a half-open range `[low, high)` and the invariant
 > the target, if it is present, lies in `nums[low..high]`.
 
 In a rotated array, at least one half of any range is sorted. Testing
-`nums[low] <= nums[mid]` says which half. If the left half is sorted, a range test
-decides whether the target can be in it; if it cannot, the target must be in the
-right half. The test costs one comparison, which is what keeps the loop
-logarithmic.
+`nums[low] <= nums[mid]` says which half. If the left half is sorted, one range test
+decides whether the target can be in it; if it cannot, the target is in the right half.
+That test is one comparison, which is what keeps the loop logarithmic.
 
 ```text
 nums = [4, 5, 6, 7, 0, 1, 2]        target = 0
@@ -94,19 +93,17 @@ mod tests {
 }
 ```
 
-`high` starts at `nums.len()`, not at `nums.len() - 1`, because the range is
-half-open. That choice removes the special case for an empty slice: `low == high
-== 0` and the loop does not run.
+`high` starts at `nums.len()`, not at `nums.len() - 1`, because the range is half-open.
+That choice removes the special case for an empty slice: `low == high == 0` and the
+loop does not run.
 
-`let mid = low + (high - low) / 2` avoids the overflow that `(low + high) / 2`
-would have in a debug build for a slice near the maximum length. The midpoint
-satisfies `low <= mid < high`, so `nums[mid]` and `nums[high - 1]` are both in
-bounds.
+`let mid = low + (high - low) / 2` avoids the overflow that `(low + high) / 2` would
+have in a debug build for a slice near the maximum length. The midpoint satisfies
+`low <= mid < high`, so `nums[mid]` and `nums[high - 1]` are both in bounds.
 
-The three tests of the left half are written as value comparisons, not as searches.
-`nums[low] <= target && target < nums[mid]` is a half-open interval test: the
-lower bound is inclusive and the upper bound is exclusive, matching the range
-convention used throughout.
+`nums[low] <= target && target < nums[mid]` is a half-open interval test: the lower
+bound is inclusive and the upper bound exclusive, matching the convention used by the
+loop range.
 
 ## Intuition
 
@@ -130,38 +127,22 @@ low  high  mid  nums[mid]  left sorted?  test                              next
 
 ## Limitations
 
-**Repeated values break the sorted-half test.** With duplicates, `nums[low] <=
-nums[mid]` can be true for both halves, so the code can discard the half holding
-the target. On `[1, 1, 1, 0, 1]` the search for `0` fails. The function is correct
-only for strictly increasing inputs, which the problem statement guarantees and
-the documentation does not mention.
+**Repeated values break the sorted-half test.** With duplicates, `nums[low] <= nums[mid]`
+can hold for both halves, so the code can discard the half holding the target. On
+`[1, 1, 1, 0, 1]` the search for `0` fails. The function is correct only for strictly
+increasing inputs, which the problem statement guarantees and the documentation does
+not mention.
 
-**The returned index is not the first or the last match.** With duplicates, any
-index holding the target is a valid answer for the problem as stated, and callers
-that want a boundary need a different function.
+**The returned index is not the first or the last match.** With duplicates, any index
+holding the target satisfies the problem as stated. A caller that needs a boundary
+needs a different function.
 
-**The slice must be sorted and then rotated, not merely rotated.** An arbitrary
-input that happens to be two ascending runs is not enough; the runs must be the
-tail and the head of one sorted sequence, which is what makes the value ranges
-meaningful.
+**The slice must be a rotation of one sorted array, not two ascending runs.** The runs
+have to be the tail and the head of a single sorted sequence, which is what makes the
+range tests meaningful.
 
-**There is no test for a two-element rotation.** `[2, 1]` is the smallest input
-where `nums[low] == nums[mid]` is false and the sorted-half test must choose
-correctly. That input is the one the `<` versus
-`<=` in `left_is_sorted` controls.
-
-## Summary
-
-- The loop invariant is that the target lies in `nums[low..high]` if it lies
-  anywhere.
-- At least one half is sorted. The rotation point lies in one half or the other,
-  and the half that does not contain it is a contiguous piece of the original
-  sorted array.
-- The half-open range convention is used consistently. Mixing `high = nums.len()`
-  with `nums[high]` is the usual source of an out-of-bounds index here.
-- Duplicates are not handled. On `[1, 1, 1, 0, 1]` the search for `0` fails,
-  because `nums[low] <= nums[mid]` can hold for both halves, so the function is
-  correct only for strictly increasing input.
+**There is no test for a two-element rotation.** `[2, 1]` is the smallest input where
+`nums[low] == nums[mid]` is false and the sorted-half test has to choose correctly.
 
 ## References
 
