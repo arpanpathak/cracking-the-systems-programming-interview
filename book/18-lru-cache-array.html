@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7018eb40.js";
+            window.path_to_searchindex_js = "searchindex-7ed6302b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,14 +179,13 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs"><code>src/problems/lru_cache_easy.rs</code></a>. Test it with
 <code>cargo test lru_cache_easy</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>The same problem as the previous chapter, solved a second way: a fixed-capacity
-cache that evicts the least recently used entry, with <code>get</code> and <code>put</code> in constant
-time.</p>
+<p>The same problem as the previous chapter, solved a second way: a fixed-capacity cache
+that evicts the least recently used entry, with <code>get</code> and <code>put</code> in constant time.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Store the nodes in a <code>Vec</code> and link them by index. The recency order is a doubly
-linked list of indices, with the most recently used node at one end. Because the
-links are integers rather than pointers, the list can be rearranged while the
-nodes stay where they are.</p>
+<p>Store the nodes in a <code>Vec</code> and link them by index. The recency order is a doubly linked
+list of indices, with the most recently used node at one end. Because the links are
+integers rather than pointers, the list can be rearranged while the nodes stay where they
+are.</p>
 <pre><code class="language-text">map: "a" -&gt; 2, "c" -&gt; 0
 
 nodes:  index 0              index 1              index 2
@@ -208,8 +207,8 @@ get("a") moves node 2 to the front:
              node 0's prev becomes Some(2)
              head becomes 2
 </code></pre>
-<p><code>detach</code> and <code>attach</code> are five assignments each and never touch the <code>nodes</code>
-vector’s layout, so <code>get</code> performs no allocation and no copying of values.</p>
+<p><code>detach</code> and <code>attach</code> are five assignments each and never touch the <code>nodes</code> vector’s
+layout, so <code>get</code> performs no allocation and no copying of values.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust">use std::collections::HashMap;
 use std::hash::Hash;
@@ -335,11 +334,11 @@ mod tests {
         assert_eq!(cache.map.len(), 2);
     }
 }</code></pre>
-<p>The test module in the repository stores one entry and asserts nothing, so
-<code>cargo test</code> reports a pass that checks no behaviour. This edition prints the two
-tests above in its place. They cover the two behaviours the demonstration in
-<code>main</code> relies on, and the second one reads the cache’s private map, which a test
-inside the module is allowed to do.</p>
+<p>The test module in the repository stores one entry and asserts nothing, so <code>cargo test</code>
+reports a pass that checks no behaviour. This edition prints the two tests above in its
+place. They cover the two behaviours the demonstration in <code>main</code> relies on, and the
+second one reads the cache’s private map, which a test inside the module is allowed to
+do.</p>
 <p><code>put</code> overwrites the slot of the evicted node rather than pushing a new one:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -355,13 +354,12 @@ inside the module is allowed to do.</p>
 };
 <span class="boring">}</span></code></pre>
 <p>When the cache is full, the tail index is reused: the node is unlinked, its key is
-removed from the map (read out of the vector before the overwrite), and the new
-node takes the slot. The vector never exceeds the capacity, so the cache’s storage
-is bounded by <code>capacity</code>, which is the property the previous chapter’s design does
-not have.</p>
+removed from the map (read out of the vector before the overwrite), and the new node
+takes the slot. The vector never exceeds the capacity, so the cache’s storage is bounded
+by <code>capacity</code>, which the previous chapter’s design does not have.</p>
 <p><code>get</code> returns <code>Option&lt;&amp;V&gt;</code>, a reference into the vector, when the value is present.</p>
-<p><code>attach</code> uses <code>self.tail.get_or_insert(i)</code> to set the tail only when the list is
-empty, which handles the first insertion without a separate branch.</p>
+<p><code>attach</code> uses <code>self.tail.get_or_insert(i)</code> to set the tail only when the list is empty,
+which handles the first insertion without a separate branch.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">capacity 2
 
@@ -395,52 +393,30 @@ get(&amp;3)           detach 1, attach 1
 </tbody>
 </table>
 </div>
-<p>The four <code>match</code> arms of <code>detach</code> and the four assignments of <code>attach</code> are the
-whole of the list maintenance. No allocation, no copying of values, and no
-recursion.</p>
+<p>The four <code>match</code> arms of <code>detach</code> and the four assignments of <code>attach</code> are the whole of
+the list maintenance. No allocation, no copying of values, and no recursion.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong><code>capacity == 0</code> panics on the first <code>put</code>.</strong> The full case tests <code>self.map.len() == self.cap</code>, which is true for an empty cache of capacity zero, and the next line
-is <code>self.tail.unwrap()</code> on a <code>None</code>. The panic message names an <code>Option</code> rather
-than the capacity. A guard in <code>new</code>, or a <code>Result</code>, would report what the caller
-passed.</p>
-<p><strong><code>prev</code> and <code>next</code> fields are left stale after <code>detach</code>.</strong> <code>detach</code> updates the
-neighbours but not the removed node’s own links. <code>attach</code> overwrites both, so the
-stale values are never read on the paths that exist today. A future method that
-detaches without re-attaching would read them.</p>
-<p><strong>The nodes are never freed as the cache is used.</strong> Reusing a slot is what bounds
-the memory, and it also means the cache holds one <code>K</code> and one <code>V</code> per slot for the
-lifetime of the cache, even when those values have been replaced. An evicted key
-is dropped when the slot is overwritten, which is correct, and the slot itself
-stays allocated.</p>
-<p><strong>There is no <code>len</code>, no <code>is_empty</code>, and no iteration.</strong> A caller that needs the
-entry count reads the private map, which the tests do and outside code cannot.</p>
-<p><strong>The indexes are not checked.</strong> Every method indexes <code>self.nodes[i]</code> directly.
-The indexes come from the map or from <code>head</code> and <code>tail</code>, which this module
-maintains, so they are valid while the invariants hold. A mistake in the list
-maintenance would be an index panic rather than a wrong answer, which is at least
-loud.</p>
-<p><strong>No test pins the recency order after a sequence of several operations.</strong> The two
-tests cover one eviction and one update. The invariant that the list is consistent
-with its ends is not checked anywhere.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The two cache designs differ in what bounds them. This one bounds storage by the
-capacity and returns references; the design in Chapter 17 bounds storage by the
-number of accesses and clones values on every read.</li>
-<li>The links are indices because the nodes never move, and an index requires no
-reference count. That costs two words per node and makes an index meaningless
-without the vector that owns it.</li>
-<li>A capacity of zero panics on the first <code>put</code>, where the full case tests
-<code>map.len() == cap</code> and then unwraps a <code>None</code> <code>tail</code>. The panic message names an
-<code>Option</code> rather than the capacity.</li>
-<li><code>detach</code> updates the neighbours but not the removed node’s own links. <code>attach</code>
-overwrites both, so the stale values are not read on the paths that exist today.</li>
-<li>The nodes are never freed while the cache is in use. Reusing a slot bounds the
-memory, and it also holds one <code>K</code> and one <code>V</code> per slot for the lifetime of the
-cache, including after those values have been replaced.</li>
-<li>No test pins the recency order after a sequence of several operations; the two
-tests cover one eviction and one update.</li>
-</ul>
+<p><strong><code>capacity == 0</code> panics on the first <code>put</code>.</strong> The full case tests
+<code>self.map.len() == self.cap</code>, which is true for an empty cache of capacity zero, and the
+next line is <code>self.tail.unwrap()</code> on a <code>None</code>. The panic message names an <code>Option</code> rather
+than the capacity. A guard in <code>new</code>, or a <code>Result</code>, would report what the caller passed.</p>
+<p><strong><code>prev</code> and <code>next</code> are left stale after <code>detach</code>.</strong> <code>detach</code> updates the neighbours but
+not the removed node’s own links. <code>attach</code> overwrites both, so the stale values are never
+read on the paths that exist today. A future method that detaches without re-attaching
+would read them.</p>
+<p><strong>The nodes are never freed as the cache is used.</strong> Reusing a slot is what bounds the
+memory, and it also means the cache holds one <code>K</code> and one <code>V</code> per slot for the lifetime
+of the cache, including after those values have been replaced. An evicted key is dropped
+when the slot is overwritten, which is correct, and the slot itself stays allocated.</p>
+<p><strong>There is no <code>len</code>, no <code>is_empty</code>, and no iteration.</strong> A caller that needs the entry
+count reads the private map, which the tests do and outside code cannot.</p>
+<p><strong>The indexes are not checked.</strong> Every method indexes <code>self.nodes[i]</code> directly. The
+indexes come from the map or from <code>head</code> and <code>tail</code>, which this module maintains, so they
+are valid while the invariants hold. A mistake in the list maintenance would be an index
+panic rather than a wrong answer.</p>
+<p><strong>No test pins the recency order after several operations.</strong> The two tests cover one
+eviction and one update. The invariant that the list is consistent with its ends is not
+checked anywhere.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html"><code>Vec</code></a>.</li>

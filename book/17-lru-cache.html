@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7018eb40.js";
+            window.path_to_searchindex_js = "searchindex-7ed6302b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -178,11 +178,12 @@
                         <h1 id="lru-cache"><a class="header" href="#lru-cache">17. LRU Cache</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs"><code>src/problems/lru_cache.rs</code></a>. Test it with <code>cargo test lru_cache::</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>A cache with a fixed capacity that evicts the least recently used entry. <code>get</code> and
-<code>put</code> must be in expected <code>O(1)</code>, and a <code>get</code> must count as a use.</p>
+<p>A cache with a fixed capacity that evicts the least recently used entry. <code>get</code> and <code>put</code>
+must be in expected <code>O(1)</code>, and a <code>get</code> must count as a use.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>The recency order is kept as a log of events. Every access appends <code>(key, generation)</code> to a queue, where the generation counter increases on every access. A
-second map holds the generation of each key’s <em>most recent</em> access.</p>
+<p>The recency order is kept as a log of events. Every access appends <code>(key, generation)</code> to
+a queue, where the generation counter increases on every access. A second map holds the
+generation of each key’s most recent access.</p>
 <pre><code class="language-text">access order: a, b, a, c          generation counter after each step: 1, 2, 3, 4
 
 event queue             generations map      values map
@@ -198,12 +199,12 @@ Which entry is least recently used? Scan the queue from the front:
   (a, 1)   stale: the map says a's generation is 3, not 1
   (b, 2)   current: the map says b's generation is 2, so b is the candidate
 </code></pre>
-<p>The first event whose generation matches its key’s entry belongs to the least
-recently used key. The queue is ordered by generation, and every live key’s most
-recent event appears exactly once, so the earliest match is the minimum.</p>
-<p>An event whose generation does not match is a record of an earlier access to a key
-that has been used since. It carries no information about the current recency order
-and is discarded.</p>
+<p>The first event whose generation matches its key’s entry belongs to the least recently
+used key. The queue is ordered by generation, and every live key’s most recent event
+appears exactly once, so the earliest match is the minimum.</p>
+<p>An event whose generation does not match records an earlier access to a key that has
+been used since. It carries no information about the current recency order and is
+discarded.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -352,16 +353,13 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>get</code> clones the value out of the map, increments the generation, appends an event,
-and writes the entry back with the new generation. The write-back is what makes
-the generation map agree with the log; without it, the event just appended would
-look stale.</p>
-<p><code>put</code> inserts first and then evicts only when the key was new. An update cannot
-take the cache over its capacity, so the eviction loop would be wasted work in that
-case.</p>
-<p><code>evict_if_needed</code> pops events until one matches. The <code>break</code> after a successful
-removal ends the loop. Since <code>put</code> adds at most one entry, the loop removes at most
-one, which is the reason the <code>break</code> is safe.</p>
+<p><code>get</code> clones the value out of the map, increments the generation, appends an event, and
+writes the entry back with the new generation. The write-back is what keeps the map in
+agreement with the log; without it, the event just appended would look stale.</p>
+<p><code>put</code> inserts first and evicts only when the key was new. An update cannot take the cache
+over its capacity, so the eviction loop would be wasted work in that case.</p>
+<p><code>evict_if_needed</code> pops events until one matches. The <code>break</code> after a successful removal
+ends the loop. <code>put</code> adds at most one entry, so the loop removes at most one.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">capacity 2
 
@@ -395,44 +393,26 @@ result: {a: (1,3), c: (3,4)}
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>The event queue is not bounded by the capacity.</strong> Every <code>get</code> and every <code>put</code>
-appends one entry to <code>recency</code>, and entries are only removed during eviction. A
-cache that is read far more often than it is written grows its queue without
-bound: with a capacity of two and a million reads of one key, the queue holds a
-million events, and nothing in the API releases them. The queue is therefore
-proportional to the number of operations rather than to the number of entries, and
-a long-lived read-heavy cache will exhaust memory. Chapter 18 shows a design whose
-storage is bounded by the capacity.</p>
-<p><strong><code>get</code> clones the value on every hit.</strong> The signature returns <code>Option&lt;V&gt;</code> rather
-than <code>Option&lt;&amp;V&gt;</code>, so a cached value is copied out on every access. For a small
-integer that is free; for a cached response body it is a memcpy per hit, and it
-also forces the <code>V: Clone</code> bound on the type.</p>
-<p><strong><code>capacity == 0</code> panics.</strong> <code>new</code> asserts <code>capacity &gt; 0</code>, so a cache cannot be
-disabled by configuration. A caller that receives a capacity from a file must
-either validate it or accept the panic.</p>
-<p><strong>The <code>break</code> in the eviction loop makes the function correct only because <code>put</code>
-adds at most one entry.</strong> If the function were reused in a context where several
-entries could be over capacity, it would leave some of them in place.</p>
-<p><strong>A generation counter of <code>u64</code> wraps after 2^64 accesses.</strong> The wrap is
-unreachable in practice, at a billion accesses per second it takes about 584 years
-, and the consequence of reaching it would be a misidentified stale event rather
-than memory unsafety.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Two structures hold the state. The map holds values and the current generation
-of each key; the queue holds access events.</li>
-<li>The generation check identifies stale events. An event whose generation does not
-match the key’s current entry records an access that a later operation has
-superseded.</li>
-<li>The queue is proportional to the number of operations rather than to the
-capacity. With a capacity of two and a million reads of one key, the queue holds
-a million events and nothing in the API releases them. Chapter 18 describes a
-design whose storage is bounded by the capacity.</li>
-<li><code>get</code> returns <code>Option&lt;V&gt;</code> and therefore clones on every hit, which copies a
-cached value out of the map and forces the <code>V: Clone</code> bound. A signature of
-<code>Option&lt;&amp;V&gt;</code> would avoid the copy and change what <code>get</code> can do with the map.</li>
-<li>A capacity of zero panics, because <code>new</code> asserts <code>capacity &gt; 0</code>.</li>
-</ul>
+<p><strong>The event queue is not bounded by the capacity.</strong> Every <code>get</code> and every <code>put</code> appends
+one entry to <code>recency</code>, and entries are removed only during eviction. A cache that is
+read far more often than it is written grows its queue without bound: with a capacity of
+two and a million reads of one key, the queue holds a million events, and nothing in the
+API releases them. The queue is proportional to the number of operations rather than to
+the number of entries, so a long-lived read-heavy cache will exhaust memory. Chapter 18
+shows a design whose storage is bounded by the capacity.</p>
+<p><strong><code>get</code> clones the value on every hit.</strong> The signature returns <code>Option&lt;V&gt;</code> rather than
+<code>Option&lt;&amp;V&gt;</code>, so a cached value is copied out on every access. For a small integer that
+is free; for a cached response body it is a memcpy per hit, and it also forces the
+<code>V: Clone</code> bound on the type.</p>
+<p><strong><code>capacity == 0</code> panics.</strong> <code>new</code> asserts <code>capacity &gt; 0</code>, so a cache cannot be disabled by
+configuration. A caller that receives a capacity from a file must validate it or accept
+the panic.</p>
+<p><strong>The <code>break</code> in the eviction loop is correct only because <code>put</code> adds at most one
+entry.</strong> If the function were reused where several entries could be over capacity, it
+would leave some of them in place.</p>
+<p><strong>A generation counter of <code>u64</code> wraps after 2^64 accesses.</strong> The wrap is unreachable in
+practice, about 584 years at a billion accesses per second, and its consequence would be
+a misidentified stale event rather than memory unsafety.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>

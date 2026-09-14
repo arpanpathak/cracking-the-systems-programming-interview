@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7018eb40.js";
+            window.path_to_searchindex_js = "searchindex-7ed6302b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -3380,11 +3380,12 @@ cover the same behaviour.</p>
 <h1 id="lru-cache"><a class="header" href="#lru-cache">17. LRU Cache</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs"><code>src/problems/lru_cache.rs</code></a>. Test it with <code>cargo test lru_cache::</code>.</em></p>
 <h2 id="problem-statement-16"><a class="header" href="#problem-statement-16">Problem Statement</a></h2>
-<p>A cache with a fixed capacity that evicts the least recently used entry. <code>get</code> and
-<code>put</code> must be in expected <code>O(1)</code>, and a <code>get</code> must count as a use.</p>
+<p>A cache with a fixed capacity that evicts the least recently used entry. <code>get</code> and <code>put</code>
+must be in expected <code>O(1)</code>, and a <code>get</code> must count as a use.</p>
 <h2 id="designing-a-solution-16"><a class="header" href="#designing-a-solution-16">Designing a Solution</a></h2>
-<p>The recency order is kept as a log of events. Every access appends <code>(key, generation)</code> to a queue, where the generation counter increases on every access. A
-second map holds the generation of each key’s <em>most recent</em> access.</p>
+<p>The recency order is kept as a log of events. Every access appends <code>(key, generation)</code> to
+a queue, where the generation counter increases on every access. A second map holds the
+generation of each key’s most recent access.</p>
 <pre><code class="language-text">access order: a, b, a, c          generation counter after each step: 1, 2, 3, 4
 
 event queue             generations map      values map
@@ -3400,12 +3401,12 @@ Which entry is least recently used? Scan the queue from the front:
   (a, 1)   stale: the map says a's generation is 3, not 1
   (b, 2)   current: the map says b's generation is 2, so b is the candidate
 </code></pre>
-<p>The first event whose generation matches its key’s entry belongs to the least
-recently used key. The queue is ordered by generation, and every live key’s most
-recent event appears exactly once, so the earliest match is the minimum.</p>
-<p>An event whose generation does not match is a record of an earlier access to a key
-that has been used since. It carries no information about the current recency order
-and is discarded.</p>
+<p>The first event whose generation matches its key’s entry belongs to the least recently
+used key. The queue is ordered by generation, and every live key’s most recent event
+appears exactly once, so the earliest match is the minimum.</p>
+<p>An event whose generation does not match records an earlier access to a key that has
+been used since. It carries no information about the current recency order and is
+discarded.</p>
 <h2 id="implementation-16"><a class="header" href="#implementation-16">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -3554,16 +3555,13 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>get</code> clones the value out of the map, increments the generation, appends an event,
-and writes the entry back with the new generation. The write-back is what makes
-the generation map agree with the log; without it, the event just appended would
-look stale.</p>
-<p><code>put</code> inserts first and then evicts only when the key was new. An update cannot
-take the cache over its capacity, so the eviction loop would be wasted work in that
-case.</p>
-<p><code>evict_if_needed</code> pops events until one matches. The <code>break</code> after a successful
-removal ends the loop. Since <code>put</code> adds at most one entry, the loop removes at most
-one, which is the reason the <code>break</code> is safe.</p>
+<p><code>get</code> clones the value out of the map, increments the generation, appends an event, and
+writes the entry back with the new generation. The write-back is what keeps the map in
+agreement with the log; without it, the event just appended would look stale.</p>
+<p><code>put</code> inserts first and evicts only when the key was new. An update cannot take the cache
+over its capacity, so the eviction loop would be wasted work in that case.</p>
+<p><code>evict_if_needed</code> pops events until one matches. The <code>break</code> after a successful removal
+ends the loop. <code>put</code> adds at most one entry, so the loop removes at most one.</p>
 <h2 id="intuition-16"><a class="header" href="#intuition-16">Intuition</a></h2>
 <pre><code class="language-text">capacity 2
 
@@ -3597,44 +3595,26 @@ result: {a: (1,3), c: (3,4)}
 </table>
 </div>
 <h2 id="limitations-16"><a class="header" href="#limitations-16">Limitations</a></h2>
-<p><strong>The event queue is not bounded by the capacity.</strong> Every <code>get</code> and every <code>put</code>
-appends one entry to <code>recency</code>, and entries are only removed during eviction. A
-cache that is read far more often than it is written grows its queue without
-bound: with a capacity of two and a million reads of one key, the queue holds a
-million events, and nothing in the API releases them. The queue is therefore
-proportional to the number of operations rather than to the number of entries, and
-a long-lived read-heavy cache will exhaust memory. Chapter 18 shows a design whose
-storage is bounded by the capacity.</p>
-<p><strong><code>get</code> clones the value on every hit.</strong> The signature returns <code>Option&lt;V&gt;</code> rather
-than <code>Option&lt;&amp;V&gt;</code>, so a cached value is copied out on every access. For a small
-integer that is free; for a cached response body it is a memcpy per hit, and it
-also forces the <code>V: Clone</code> bound on the type.</p>
-<p><strong><code>capacity == 0</code> panics.</strong> <code>new</code> asserts <code>capacity &gt; 0</code>, so a cache cannot be
-disabled by configuration. A caller that receives a capacity from a file must
-either validate it or accept the panic.</p>
-<p><strong>The <code>break</code> in the eviction loop makes the function correct only because <code>put</code>
-adds at most one entry.</strong> If the function were reused in a context where several
-entries could be over capacity, it would leave some of them in place.</p>
-<p><strong>A generation counter of <code>u64</code> wraps after 2^64 accesses.</strong> The wrap is
-unreachable in practice, at a billion accesses per second it takes about 584 years
-, and the consequence of reaching it would be a misidentified stale event rather
-than memory unsafety.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Two structures hold the state. The map holds values and the current generation
-of each key; the queue holds access events.</li>
-<li>The generation check identifies stale events. An event whose generation does not
-match the key’s current entry records an access that a later operation has
-superseded.</li>
-<li>The queue is proportional to the number of operations rather than to the
-capacity. With a capacity of two and a million reads of one key, the queue holds
-a million events and nothing in the API releases them. Chapter 18 describes a
-design whose storage is bounded by the capacity.</li>
-<li><code>get</code> returns <code>Option&lt;V&gt;</code> and therefore clones on every hit, which copies a
-cached value out of the map and forces the <code>V: Clone</code> bound. A signature of
-<code>Option&lt;&amp;V&gt;</code> would avoid the copy and change what <code>get</code> can do with the map.</li>
-<li>A capacity of zero panics, because <code>new</code> asserts <code>capacity &gt; 0</code>.</li>
-</ul>
+<p><strong>The event queue is not bounded by the capacity.</strong> Every <code>get</code> and every <code>put</code> appends
+one entry to <code>recency</code>, and entries are removed only during eviction. A cache that is
+read far more often than it is written grows its queue without bound: with a capacity of
+two and a million reads of one key, the queue holds a million events, and nothing in the
+API releases them. The queue is proportional to the number of operations rather than to
+the number of entries, so a long-lived read-heavy cache will exhaust memory. Chapter 18
+shows a design whose storage is bounded by the capacity.</p>
+<p><strong><code>get</code> clones the value on every hit.</strong> The signature returns <code>Option&lt;V&gt;</code> rather than
+<code>Option&lt;&amp;V&gt;</code>, so a cached value is copied out on every access. For a small integer that
+is free; for a cached response body it is a memcpy per hit, and it also forces the
+<code>V: Clone</code> bound on the type.</p>
+<p><strong><code>capacity == 0</code> panics.</strong> <code>new</code> asserts <code>capacity &gt; 0</code>, so a cache cannot be disabled by
+configuration. A caller that receives a capacity from a file must validate it or accept
+the panic.</p>
+<p><strong>The <code>break</code> in the eviction loop is correct only because <code>put</code> adds at most one
+entry.</strong> If the function were reused where several entries could be over capacity, it
+would leave some of them in place.</p>
+<p><strong>A generation counter of <code>u64</code> wraps after 2^64 accesses.</strong> The wrap is unreachable in
+practice, about 584 years at a billion accesses per second, and its consequence would be
+a misidentified stale event rather than memory unsafety.</p>
 <h2 id="references-16"><a class="header" href="#references-16">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>
@@ -3646,14 +3626,13 @@ cached value out of the map and forces the <code>V: Clone</code> bound. A signat
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs"><code>src/problems/lru_cache_easy.rs</code></a>. Test it with
 <code>cargo test lru_cache_easy</code>.</em></p>
 <h2 id="problem-statement-17"><a class="header" href="#problem-statement-17">Problem Statement</a></h2>
-<p>The same problem as the previous chapter, solved a second way: a fixed-capacity
-cache that evicts the least recently used entry, with <code>get</code> and <code>put</code> in constant
-time.</p>
+<p>The same problem as the previous chapter, solved a second way: a fixed-capacity cache
+that evicts the least recently used entry, with <code>get</code> and <code>put</code> in constant time.</p>
 <h2 id="designing-a-solution-17"><a class="header" href="#designing-a-solution-17">Designing a Solution</a></h2>
-<p>Store the nodes in a <code>Vec</code> and link them by index. The recency order is a doubly
-linked list of indices, with the most recently used node at one end. Because the
-links are integers rather than pointers, the list can be rearranged while the
-nodes stay where they are.</p>
+<p>Store the nodes in a <code>Vec</code> and link them by index. The recency order is a doubly linked
+list of indices, with the most recently used node at one end. Because the links are
+integers rather than pointers, the list can be rearranged while the nodes stay where they
+are.</p>
 <pre><code class="language-text">map: "a" -&gt; 2, "c" -&gt; 0
 
 nodes:  index 0              index 1              index 2
@@ -3675,8 +3654,8 @@ get("a") moves node 2 to the front:
              node 0's prev becomes Some(2)
              head becomes 2
 </code></pre>
-<p><code>detach</code> and <code>attach</code> are five assignments each and never touch the <code>nodes</code>
-vector’s layout, so <code>get</code> performs no allocation and no copying of values.</p>
+<p><code>detach</code> and <code>attach</code> are five assignments each and never touch the <code>nodes</code> vector’s
+layout, so <code>get</code> performs no allocation and no copying of values.</p>
 <h2 id="implementation-17"><a class="header" href="#implementation-17">Implementation</a></h2>
 <pre class="playground"><code class="language-rust">use std::collections::HashMap;
 use std::hash::Hash;
@@ -3802,11 +3781,11 @@ mod tests {
         assert_eq!(cache.map.len(), 2);
     }
 }</code></pre>
-<p>The test module in the repository stores one entry and asserts nothing, so
-<code>cargo test</code> reports a pass that checks no behaviour. This edition prints the two
-tests above in its place. They cover the two behaviours the demonstration in
-<code>main</code> relies on, and the second one reads the cache’s private map, which a test
-inside the module is allowed to do.</p>
+<p>The test module in the repository stores one entry and asserts nothing, so <code>cargo test</code>
+reports a pass that checks no behaviour. This edition prints the two tests above in its
+place. They cover the two behaviours the demonstration in <code>main</code> relies on, and the
+second one reads the cache’s private map, which a test inside the module is allowed to
+do.</p>
 <p><code>put</code> overwrites the slot of the evicted node rather than pushing a new one:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -3822,13 +3801,12 @@ inside the module is allowed to do.</p>
 };
 <span class="boring">}</span></code></pre>
 <p>When the cache is full, the tail index is reused: the node is unlinked, its key is
-removed from the map (read out of the vector before the overwrite), and the new
-node takes the slot. The vector never exceeds the capacity, so the cache’s storage
-is bounded by <code>capacity</code>, which is the property the previous chapter’s design does
-not have.</p>
+removed from the map (read out of the vector before the overwrite), and the new node
+takes the slot. The vector never exceeds the capacity, so the cache’s storage is bounded
+by <code>capacity</code>, which the previous chapter’s design does not have.</p>
 <p><code>get</code> returns <code>Option&lt;&amp;V&gt;</code>, a reference into the vector, when the value is present.</p>
-<p><code>attach</code> uses <code>self.tail.get_or_insert(i)</code> to set the tail only when the list is
-empty, which handles the first insertion without a separate branch.</p>
+<p><code>attach</code> uses <code>self.tail.get_or_insert(i)</code> to set the tail only when the list is empty,
+which handles the first insertion without a separate branch.</p>
 <h2 id="intuition-17"><a class="header" href="#intuition-17">Intuition</a></h2>
 <pre><code class="language-text">capacity 2
 
@@ -3862,52 +3840,30 @@ get(&amp;3)           detach 1, attach 1
 </tbody>
 </table>
 </div>
-<p>The four <code>match</code> arms of <code>detach</code> and the four assignments of <code>attach</code> are the
-whole of the list maintenance. No allocation, no copying of values, and no
-recursion.</p>
+<p>The four <code>match</code> arms of <code>detach</code> and the four assignments of <code>attach</code> are the whole of
+the list maintenance. No allocation, no copying of values, and no recursion.</p>
 <h2 id="limitations-17"><a class="header" href="#limitations-17">Limitations</a></h2>
-<p><strong><code>capacity == 0</code> panics on the first <code>put</code>.</strong> The full case tests <code>self.map.len() == self.cap</code>, which is true for an empty cache of capacity zero, and the next line
-is <code>self.tail.unwrap()</code> on a <code>None</code>. The panic message names an <code>Option</code> rather
-than the capacity. A guard in <code>new</code>, or a <code>Result</code>, would report what the caller
-passed.</p>
-<p><strong><code>prev</code> and <code>next</code> fields are left stale after <code>detach</code>.</strong> <code>detach</code> updates the
-neighbours but not the removed node’s own links. <code>attach</code> overwrites both, so the
-stale values are never read on the paths that exist today. A future method that
-detaches without re-attaching would read them.</p>
-<p><strong>The nodes are never freed as the cache is used.</strong> Reusing a slot is what bounds
-the memory, and it also means the cache holds one <code>K</code> and one <code>V</code> per slot for the
-lifetime of the cache, even when those values have been replaced. An evicted key
-is dropped when the slot is overwritten, which is correct, and the slot itself
-stays allocated.</p>
-<p><strong>There is no <code>len</code>, no <code>is_empty</code>, and no iteration.</strong> A caller that needs the
-entry count reads the private map, which the tests do and outside code cannot.</p>
-<p><strong>The indexes are not checked.</strong> Every method indexes <code>self.nodes[i]</code> directly.
-The indexes come from the map or from <code>head</code> and <code>tail</code>, which this module
-maintains, so they are valid while the invariants hold. A mistake in the list
-maintenance would be an index panic rather than a wrong answer, which is at least
-loud.</p>
-<p><strong>No test pins the recency order after a sequence of several operations.</strong> The two
-tests cover one eviction and one update. The invariant that the list is consistent
-with its ends is not checked anywhere.</p>
-<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
-<ul>
-<li>The two cache designs differ in what bounds them. This one bounds storage by the
-capacity and returns references; the design in Chapter 17 bounds storage by the
-number of accesses and clones values on every read.</li>
-<li>The links are indices because the nodes never move, and an index requires no
-reference count. That costs two words per node and makes an index meaningless
-without the vector that owns it.</li>
-<li>A capacity of zero panics on the first <code>put</code>, where the full case tests
-<code>map.len() == cap</code> and then unwraps a <code>None</code> <code>tail</code>. The panic message names an
-<code>Option</code> rather than the capacity.</li>
-<li><code>detach</code> updates the neighbours but not the removed node’s own links. <code>attach</code>
-overwrites both, so the stale values are not read on the paths that exist today.</li>
-<li>The nodes are never freed while the cache is in use. Reusing a slot bounds the
-memory, and it also holds one <code>K</code> and one <code>V</code> per slot for the lifetime of the
-cache, including after those values have been replaced.</li>
-<li>No test pins the recency order after a sequence of several operations; the two
-tests cover one eviction and one update.</li>
-</ul>
+<p><strong><code>capacity == 0</code> panics on the first <code>put</code>.</strong> The full case tests
+<code>self.map.len() == self.cap</code>, which is true for an empty cache of capacity zero, and the
+next line is <code>self.tail.unwrap()</code> on a <code>None</code>. The panic message names an <code>Option</code> rather
+than the capacity. A guard in <code>new</code>, or a <code>Result</code>, would report what the caller passed.</p>
+<p><strong><code>prev</code> and <code>next</code> are left stale after <code>detach</code>.</strong> <code>detach</code> updates the neighbours but
+not the removed node’s own links. <code>attach</code> overwrites both, so the stale values are never
+read on the paths that exist today. A future method that detaches without re-attaching
+would read them.</p>
+<p><strong>The nodes are never freed as the cache is used.</strong> Reusing a slot is what bounds the
+memory, and it also means the cache holds one <code>K</code> and one <code>V</code> per slot for the lifetime
+of the cache, including after those values have been replaced. An evicted key is dropped
+when the slot is overwritten, which is correct, and the slot itself stays allocated.</p>
+<p><strong>There is no <code>len</code>, no <code>is_empty</code>, and no iteration.</strong> A caller that needs the entry
+count reads the private map, which the tests do and outside code cannot.</p>
+<p><strong>The indexes are not checked.</strong> Every method indexes <code>self.nodes[i]</code> directly. The
+indexes come from the map or from <code>head</code> and <code>tail</code>, which this module maintains, so they
+are valid while the invariants hold. A mistake in the list maintenance would be an index
+panic rather than a wrong answer.</p>
+<p><strong>No test pins the recency order after several operations.</strong> The two tests cover one
+eviction and one update. The invariant that the list is consistent with its ends is not
+checked anywhere.</p>
 <h2 id="references-17"><a class="header" href="#references-17">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html"><code>Vec</code></a>.</li>
@@ -4181,7 +4137,7 @@ with a written list would catch a missing or an extra pattern.</p>
 <p><strong><code>parse_gpu_count</code> accepts a value that overflows <code>u32</code> as a parse failure
 rather than as a distinct error.</strong> <code>"4294967296"</code> and <code>"four"</code> produce the same
 variant, so a caller cannot tell a malformed field from an out-of-range one.</p>
-<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li>An enumeration makes the transition table exhaustive, because a <code>match</code> without
 a fall-through arm fails to build when a variant is added.</li>
@@ -4376,7 +4332,7 @@ and nothing in this design provides one.</p>
 result depend on how the operating system scheduled the test thread: on a loaded
 machine the sleep may return later than requested, which only makes the assertion
 more likely to pass, and a bucket whose rate were too high would not be caught.</p>
-<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
+<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <ul>
 <li>A token bucket allows a burst of the capacity and holds a smooth long-run rate.
 A fixed window allows twice the configured rate across a window boundary.</li>
@@ -4618,7 +4574,7 @@ order, cannot use this function.</p>
 <p><strong>The closure must be <code>'static</code>.</strong> <code>F: Fn(T) -&gt; R + Send + Sync + 'static</code> means the
 mapper cannot borrow anything from the caller’s stack. Scoped threads would lift
 that restriction, and they would also let <code>T</code> and <code>R</code> borrow.</p>
-<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
 <li>Two channels carry the work. The index recorded with each job and returned with
 each result is the mechanism that restores the input order.</li>
@@ -4938,7 +4894,7 @@ panics, which is the opposite of what poisoning is for.</p>
 the only failure that can occur is a panic, and a panic cannot be converted into
 <code>Box&lt;dyn Error&gt;</code> by <code>?</code>. <code>join()</code> returns <code>Result&lt;T, Box&lt;dyn Any + Send&gt;&gt;</code>, and
 <code>Box&lt;dyn Any + Send&gt;</code> does not implement <code>Error</code>.</p>
-<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
+<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <ul>
 <li>Poisoning records that a panic occurred while the guard was held. It repairs
 nothing and it does not deny access to the data.</li>
@@ -5224,7 +5180,7 @@ Moving it into <code>src/problems/</code> would export it with the rest of the p
 <code>count_islands</code> cannot accept a predicate, which would let a caller count something
 other than strict equality, for example, a region of cells above a threshold. The
 predicate version is the same code with <code>land</code> replaced by a closure.</p>
-<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
+<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <ul>
 <li>A flood fill visits exactly one connected component, so the number of fills is
 the number of components.</li>
@@ -5462,7 +5418,7 @@ warning.</strong> Running <code>cargo run --bin syscall_overhead</code> prints a
 for an unused function in the library. The warning comes from <code>merge_intervals2</code>,
 which Chapter 5 identifies, and it appears in this chapter’s output because Cargo
 compiles the whole crate.</p>
-<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
+<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
 <ul>
 <li><code>getpid</code> gives a floor for the cost of crossing the process boundary. It is not
 the cost a service would see per request.</li>
@@ -5684,7 +5640,7 @@ the end of the scope, not at the shadowing statement.</p>
 that took <code>&amp;mut String</code> and appended to the caller’s buffer would allocate less,
 and the tests would be the same. For a demonstration the difference is irrelevant;
 it is the kind of allocation that shows up in a profile.</p>
-<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
+<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
 <ul>
 <li><code>let</code> introduces a binding and <code>mut</code> allows a place to be written. The two are
 independent.</li>
@@ -5861,7 +5817,7 @@ line is yielded even when it has no terminator.</p>
 <p><strong>The two writers ignore the returned length.</strong> <code>writeln!</code> can write fewer bytes
 than requested; the callers rely on <code>io::Write</code> to report that as an error, and
 neither program checks how many bytes reached the file.</p>
-<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
+<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <ul>
 <li><code>fs::write</code> replaces contents, <code>OpenOptions</code> with <code>append(true)</code> adds to them,
 and the difference is the flag rather than a separate function.</li>
@@ -6035,7 +5991,7 @@ and sort them, which the programs do not do.</p>
 <p><strong>Relative names depend on the working directory.</strong> Both directory programs walk
 <code>"."</code>, so their output changes with the directory they are started in, and
 <code>list_directory</code> does not recurse.</p>
-<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
+<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <ul>
 <li><code>Path</code> and <code>PathBuf</code> are the borrowed and owned forms of a path, and <code>join</code> is
 the non-mutating builder against <code>push</code>.</li>
@@ -6162,7 +6118,7 @@ directory unchanged needs a temporary directory and a final rename.</p>
 prints <code>Display</code> for <code>io::Error</code>, which includes the operating system message but
 not the path. Adding the path is the caller’s job, because the error does not
 carry it.</p>
-<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
+<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
 <ul>
 <li><code>copy</code>, <code>rename</code> and <code>remove_file</code> are the mutating operations, and <code>rename</code> is
 the atomic replacement primitive within one filesystem.</li>
@@ -6398,7 +6354,7 @@ program’s location.</p>
 <p><strong>Precedence between sources is not implemented.</strong> A flag over an environment
 variable over a file over a default is the usual order, and a tool that reads more
 than one source has to state that order somewhere. This parser has one source.</p>
-<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
+<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
 <ul>
 <li><code>env::args()</code> yields <code>String</code> values whose first item is the invocation name;
 <code>skip(1)</code> is the boundary between the program and its arguments.</li>
@@ -6650,7 +6606,7 @@ threads can be adjacent. The set of lines is fixed; the order is not.</p>
 and the tests that would catch a missing <code>while</code> are the ones that run a producer
 and a consumer concurrently rather than the ones that assert on a single-threaded
 push and pop.</p>
-<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
+<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
 <ul>
 <li>A mutex makes the deque shared; condition variables make waiting possible.</li>
 <li>The condition is re-checked in a <code>while</code> loop, because a wake-up does not
@@ -6861,7 +6817,7 @@ remainder one element at a time.</p>
 reads a contiguous range, which is the friendly case. A false-sharing problem
 would appear if threads wrote partial sums into adjacent fields of one object,
 which this program avoids by returning each sum through <code>join</code>.</p>
-<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
+<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
 <ul>
 <li><code>thread::scope</code> allows the workers to borrow the input, which removes the
 <code>Arc&lt;Vec&lt;T&gt;&gt;</code> the naive version would need.</li>
@@ -7116,7 +7072,7 @@ the two heaps cannot do without locating that value in one of them.</p>
 eleven values. The differential test compares against a sort, so it catches a
 rebalancing error on those eleven steps, but a random or exhaustive stream would
 cover more of the state space than a fixed array does.</p>
-<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
+<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
 <ul>
 <li>Two heaps hold the lower and upper halves, and <code>Reverse</code> turns the second into
 a min-heap.</li>
@@ -7308,7 +7264,7 @@ not carry the assumption to a general string.</p>
 <p><strong>The largest test input is nine bytes.</strong> The tests establish the two parities and
 the round trip. A larger input, or one built to exercise the exact midpoint of an
 even-length string, would test the loop bound more of the way.</p>
-<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
+<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
 <ul>
 <li>Byte reversal is <code>O(n)</code> time and <code>O(1)</code> space, and only the ASCII precondition
 makes it a valid <code>String</code> transformation.</li>
@@ -7553,7 +7509,7 @@ an endpoint, so that two callers cannot collide by choosing the same string. Thi
 store treats the key as global.</p>
 <p><strong><code>K: Clone</code> is an unused bound.</strong> It constrains callers without buying anything.
 The bound can be removed with no other change to the implementation.</p>
-<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
+<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
 <ul>
 <li>A <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> gives at-most-once execution per key and a cached
 result for every later call with that key.</li>
