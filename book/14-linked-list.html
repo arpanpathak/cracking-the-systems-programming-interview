@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
+            window.path_to_searchindex_js = "searchindex-4a9b7dbe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,8 +179,8 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs"><code>src/problems/linked_list.rs</code></a>. Test it with
 <code>cargo test linked_list</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Reverse a singly linked list in place and return its new head. In place means no
-additional node allocations: the nodes are re-linked, not copied.</p>
+<p>Reverse a singly linked list in place and return its new head. In place means no extra
+node allocations: the nodes are re-linked, not copied.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <pre><code class="language-text">head: Option&lt;Box&lt;ListNode&gt;&gt;
 
@@ -193,16 +193,15 @@ additional node allocations: the nodes are re-linked, not copied.</p>
   heap           heap           heap
 </code></pre>
 <p>Three properties follow from <code>Option&lt;Box&lt;ListNode&gt;&gt;</code>.</p>
-<p><code>None</code> is the end of the list, so an empty list is the value <code>None</code> rather than a
-node with a flag, and there is no sentinel to keep consistent.</p>
-<p>The list owns its nodes. Handing over the head hands over the whole list, so there
-is no way to hold a list whose nodes have been freed and no separate deallocation
-call.</p>
-<p>A link is one pointer wide. The compiler stores <code>None</code> in the null pointer, which
-is never a valid address for a <code>Box</code>, so no discriminant byte is added.</p>
-<p>Reversal is one loop over three bindings. In a language with unrestricted
-pointers it is three assignments per node; in Rust, the same algorithm is written
-by taking ownership of one node at a time, which is what makes it checkable.</p>
+<p><code>None</code> is the end of the list, so an empty list is the value <code>None</code> rather than a node
+with a flag, and there is no sentinel to keep consistent.</p>
+<p>The list owns its nodes. Handing over the head hands over the whole list, so there is no
+way to hold a list whose nodes have been freed and no separate deallocation call.</p>
+<p>A link is one pointer wide. The compiler stores <code>None</code> in the null pointer, which is
+never a valid address for a <code>Box</code>, so no discriminant byte is added.</p>
+<p>Reversal is one loop over three bindings. In a language with unrestricted pointers it is
+three assignments per node; in Rust the same algorithm is written by taking ownership of
+one node at a time, which is what makes it checkable.</p>
 <pre><code class="language-text">initial   previous = None            current = Some(1 -&gt; 2 -&gt; 3 -&gt; None)
 
 step 1    current = node.next.take()   current  = Some(2 -&gt; 3 -&gt; None)
@@ -214,11 +213,11 @@ step 3    current = None               previous = Some(3 -&gt; 2 -&gt; 1 -&gt; N
 
 the loop ends because current is None, and the answer is previous
 </code></pre>
-<p><code>Option::take</code> is the operation that makes this work. It moves the successor out
-of <code>node.next</code> and leaves <code>None</code> behind, so the node under the loop’s cursor stands
-alone while the rest of the list is held in a separate binding. Without <code>take</code>, the
-assignment <code>node.next = previous</code> would have to write through a reference that
-<code>current</code> still holds, which the borrow checker rejects.</p>
+<p><code>Option::take</code> is the operation that makes this work. It moves the successor out of
+<code>node.next</code> and leaves <code>None</code> behind, so the node under the loop’s cursor stands alone
+while the rest of the list is held in a separate binding. Without <code>take</code>, the assignment
+<code>node.next = previous</code> would have to write through a reference that <code>current</code> still
+holds, which the borrow checker rejects.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -289,17 +288,17 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>from_slice</code> builds the list backwards, from the last value to the first, so each
-new node takes the list built so far as its successor. Building forwards would need
-a mutable reference to the tail, which is more code for the same result.</p>
-<p><code>to_vec</code> takes the list by value. That lets each node be dropped as the traversal
-proceeds: the value is copied out and the successor moves into <code>current</code>, so the
-node that was just read is freed at the end of the iteration. A version that took
-<code>&amp;Option&lt;Box&lt;ListNode&gt;&gt;</code> would leave the list alive and would need the caller to
-drop it afterwards.</p>
-<p><code>while let Some(mut node) = current</code> binds the node by value, and the <code>mut</code> is
-required because the body assigns to <code>node.next</code>. The loop’s three statements are
-the algorithm: detach the successor, point backwards, advance <code>previous</code>.</p>
+<p><code>from_slice</code> builds the list backwards, from the last value to the first, so each new
+node takes the list built so far as its successor. Building forwards would need a
+mutable reference to the tail.</p>
+<p><code>to_vec</code> takes the list by value, which lets each node be dropped as the traversal
+proceeds: the value is copied out and the successor moves into <code>current</code>, so the node
+that was just read is freed at the end of the iteration. A version that took
+<code>&amp;Option&lt;Box&lt;ListNode&gt;&gt;</code> would leave the list alive and would need the caller to drop it
+afterwards.</p>
+<p><code>while let Some(mut node) = current</code> binds the node by value, and the <code>mut</code> is required
+because the body assigns to <code>node.next</code>. The three statements in the body are the
+algorithm: detach the successor, point backwards, advance <code>previous</code>.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">input: 1 -&gt; 2 -&gt; 3 -&gt; None
 
@@ -326,31 +325,18 @@ current is None, so the loop ends and previous is returned.
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p><strong>A long list is dropped recursively.</strong> The compiler’s derived destructor for
-<code>Option&lt;Box&lt;ListNode&gt;&gt;</code> follows the <code>next</code> links, one stack frame per node. A list
-of a few hundred thousand nodes overflows the thread stack when it is dropped, and
-a stack overflow aborts the process rather than unwinding. This affects every
-caller, including one that only reverses a list that was built elsewhere: the
-destructor runs when the last owner goes out of scope.</p>
-<p><strong><code>to_vec</code> consumes the list.</strong> A caller that wants both the reversed list and its
-values has to clone one of them, and <code>ListNode</code> does not implement <code>Clone</code>.</p>
-<p><strong><code>from_slice</code> allocates one box per element.</strong> For a long slice that is a long
-chain of small allocations, each of which carries its own allocator overhead. An
-array-based representation holds the same data in one allocation, at the cost of
-not being a linked list.</p>
-<p><strong>The value type is fixed at <code>i32</code>.</strong> Nothing in the algorithm depends on the
-value type, and the declaration is not generic.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The loop body is three lines, and <code>take</code> is the part that requires explanation.
-The successor has to leave the node before the node can be re-pointed, which is
-why <code>node.next</code> cannot be assigned directly.</li>
-<li>Reversal is <code>O(n)</code> in time and <code>O(1)</code> in space. The nodes already exist, so the
-operation adds no allocation.</li>
-<li>The derived destructor for <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> follows the <code>next</code> links one
-stack frame per node, so dropping a list of a few hundred thousand nodes aborts
-the process. A manual <code>Drop</code> implementation that unlinks the chain in a loop
-removes that hazard.</li>
-</ul>
+<code>Option&lt;Box&lt;ListNode&gt;&gt;</code> follows the <code>next</code> links, one stack frame per node. A list of a
+few hundred thousand nodes overflows the thread stack when it is dropped, and a stack
+overflow aborts the process rather than unwinding. This affects every caller, including
+one that only reverses a list built elsewhere, because the destructor runs when the last
+owner goes out of scope.</p>
+<p><strong><code>to_vec</code> consumes the list.</strong> A caller that wants both the reversed list and its values
+has to clone one of them, and <code>ListNode</code> does not implement <code>Clone</code>.</p>
+<p><strong><code>from_slice</code> allocates one box per element.</strong> For a long slice that is a long chain of
+small allocations, each with its own allocator overhead. An array-based representation
+holds the same data in one allocation, at the cost of not being a linked list.</p>
+<p><strong>The value type is fixed at <code>i32</code>.</strong> Nothing in the algorithm depends on the value type,
+and the declaration is not generic.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch15-01-box.html">Enabling recursive types with boxes</a>.</li>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
+            window.path_to_searchindex_js = "searchindex-4a9b7dbe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -180,19 +180,19 @@
 <blockquote>
 <p>I call it my billion-dollar mistake. It was the invention of the null
 reference in 1965.</p>
-<p>, C. A. R. Hoare, QCon London, 2009</p>
+<p>C. A. R. Hoare, QCon London, 2009</p>
 </blockquote>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Given a list of coin denominations and a target amount, return the smallest number
-of coins whose values sum exactly to the amount, or report that no combination
-exists. Each denomination may be used any number of times.</p>
+<p>Given a list of coin denominations and a target amount, return the smallest number of
+coins whose values sum exactly to the amount, or report that no combination exists.
+Each denomination may be used any number of times.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <p>A greedy rule does not work. Taking the largest coin that fits fails for
-<code>coins = [1, 3, 4]</code> and <code>amount = 6</code>: the greedy choice of <code>4</code> leaves <code>2</code>, which
-needs two more coins, for a total of three, while <code>3 + 3</code> needs two.</p>
-<p>The recurrence is over amounts. Let <code>dp[t]</code> be the smallest number of coins that
-sums to <code>t</code>. The last coin used is some denomination <code>c</code>, and everything before it
-must sum to <code>t - c</code> in the smallest possible number of coins:</p>
+<code>coins = [1, 3, 4]</code> and <code>amount = 6</code>: the greedy choice of <code>4</code> leaves <code>2</code>, which needs
+two more coins, for a total of three, while <code>3 + 3</code> needs two.</p>
+<p>The recurrence is over amounts. Let <code>dp[t]</code> be the smallest number of coins that sums
+to <code>t</code>. The last coin used is some denomination <code>c</code>, and everything before it must sum
+to <code>t - c</code> in the smallest possible number of coins:</p>
 <pre><code class="language-text">dp[0] = 0
 dp[t] = min over c of ( dp[t - c] + 1 )     for each c &lt;= t
 </code></pre>
@@ -251,20 +251,19 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>usize::MAX</code> is the sentinel for “no combination reaches this amount yet”. It is
-safe as a marker because a real answer can never be that large: any combination
-uses at most <code>amount</code> coins, because every coin is worth at least one.</p>
-<p>The guard <code>if coin &gt; total || dp[total - coin] == usize::MAX</code> does two things at
-once. It skips a coin that is too large to be the last coin, and it skips a coin
-whose remainder is itself unreachable. Without the second test the addition below
-would add one to the sentinel and produce a wrong answer that looks reachable.</p>
-<p><code>dp[total] = dp[total].min(dp[total - coin] + 1)</code> keeps the best count found so
-far for this amount. Because <code>dp[total]</code> is read and written in the same
-statement, the loop order over coins does not matter.</p>
-<p>The boundary conversion is where the sentinel stops. <code>match dp[amount]</code> translates
-<code>usize::MAX</code> into <code>None</code> and everything else into <code>Some(count as i32)</code>, so no
-caller ever sees the marker. The type of the answer is <code>Option&lt;i32&gt;</code>, which is the
-part of the design that matters: “impossible” is not a number.</p>
+<p><code>usize::MAX</code> is the sentinel for an amount no combination has reached. It is safe as a
+marker because a real answer can never be that large: any combination uses at most
+<code>amount</code> coins, because every coin is worth at least one.</p>
+<p>The guard <code>if coin &gt; total || dp[total - coin] == usize::MAX</code> does two things. It skips
+a coin too large to be the last coin, and it skips a coin whose remainder is itself
+unreachable. Without the second test the addition below would add one to the sentinel
+and produce a wrong answer that looks reachable.</p>
+<p><code>dp[total] = dp[total].min(dp[total - coin] + 1)</code> keeps the best count found so far for
+this amount. Because <code>dp[total]</code> is read and written in the same statement, the loop
+order over coins does not matter.</p>
+<p><code>match dp[amount]</code> translates <code>usize::MAX</code> into <code>None</code> and everything else into
+<code>Some(count as i32)</code>, so no caller sees the marker. The answer type is <code>Option&lt;i32&gt;</code>,
+which is the part of the design that matters: “impossible” is not a number.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">coins = [1, 2, 5], amount = 11
 
@@ -304,44 +303,27 @@ dp[3] is the sentinel, so the result is None.
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>The table is allocated from the amount alone.</strong> <code>coin_change(&amp;[1], i32::MAX)</code>
-asks for a vector of <code>i32::MAX + 1</code> machine words, which is sixteen gigabytes on a
-64-bit target. The allocation failure aborts the process, because the standard
-library’s allocation error handling calls <code>handle_alloc_error</code>, which aborts. A
-version that accepts an amount from the network would validate it against a limit
-first, or use <code>Vec::try_reserve</code> to turn the failure into a <code>Result</code>.</p>
-<p><strong>A negative coin is treated as a very large positive one.</strong> <code>coin as usize</code>
-converts <code>-1</code> to <code>usize::MAX</code>, and the guard <code>coin &gt; total</code> then skips it on every
-iteration. The function returns an answer that ignores the negative coin, which is
-the wrong answer if the caller meant the coin to be usable. Nothing reports the
-conversion.</p>
-<p><strong>A zero coin is skipped by the same guard, correctly.</strong> <code>coin = 0</code> passes the
-first test only when <code>total</code> is zero, and the loop starts at one, so a zero
-denomination contributes nothing. That is the right behaviour and it is a
-consequence of the guard rather than a stated rule.</p>
-<p><strong>The function returns the count, not the coins.</strong> A caller that wants to know
-which coins to use needs the predecessor that produced each entry, which means a
-second table recording decisions. The current one-minimum-per-entry design cannot
-reconstruct the combination.</p>
-<p><strong><code>i32</code> bounds both the amount and the answer.</strong> An amount above <code>i32::MAX</code> cannot
-be passed, and the conversion <code>count as i32</code> is safe only because the answer is at
-most the amount.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The recurrence decides on the last coin: <code>dp[total]</code> is one more than the best
-<code>dp[total - coin]</code>, which is what makes the table a dynamic program rather than a
-sequence of locally optimal choices.</li>
-<li>A greedy choice is not correct here. For <code>[1, 3, 4]</code> and the amount <code>6</code>, greedy
-produces <code>4 + 1 + 1</code> and the optimum is <code>3 + 3</code>.</li>
-<li>The table holds <code>usize::MAX</code> as a sentinel for an unreachable amount, and the
-boundary converts it to <code>None</code>, so a caller never sees the sentinel. The
-conversion <code>count as i32</code> is safe because the answer is at most the amount.</li>
-<li>The allocation is controlled by the input. <code>coin_change(&amp;[1], i32::MAX)</code> requests
-a vector of <code>i32::MAX + 1</code> machine words, and a failed allocation aborts the
-process.</li>
-<li>The function returns the count and not the coins. Reconstructing the combination
-needs the predecessor that produced each entry, which is a second table.</li>
-</ul>
+<p><strong>The table is allocated from the amount alone.</strong> <code>coin_change(&amp;[1], i32::MAX)</code> asks for
+a vector of <code>i32::MAX + 1</code> machine words, which is sixteen gigabytes on a 64-bit target.
+The allocation failure aborts the process, because the standard library’s allocation
+error handling calls <code>handle_alloc_error</code>, which aborts. A version that accepts an
+amount from a network input would validate it against a limit first, or use
+<code>Vec::try_reserve</code> to turn the failure into a <code>Result</code>.</p>
+<p><strong>A negative coin is treated as a very large positive one.</strong> <code>coin as usize</code> converts
+<code>-1</code> to <code>usize::MAX</code>, and the guard <code>coin &gt; total</code> then skips it on every iteration. The
+function returns an answer that ignores the negative coin, which is the wrong answer if
+the caller meant the coin to be usable. Nothing reports the conversion.</p>
+<p><strong>A zero coin is skipped by the same guard, correctly.</strong> <code>coin = 0</code> passes the first
+test only when <code>total</code> is zero, and the loop starts at one, so a zero denomination
+contributes nothing. That is the right behaviour, and it is a consequence of the guard
+rather than a stated rule.</p>
+<p><strong>The function returns the count, not the coins.</strong> A caller that wants to know which
+coins to use needs the predecessor that produced each entry, which means a second table
+recording decisions. The one-minimum-per-entry design cannot reconstruct the
+combination.</p>
+<p><strong><code>i32</code> bounds both the amount and the answer.</strong> An amount above <code>i32::MAX</code> cannot be
+passed, and the conversion <code>count as i32</code> is safe only because the answer is at most the
+amount.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,

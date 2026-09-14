@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
+            window.path_to_searchindex_js = "searchindex-4a9b7dbe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,9 +179,9 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs"><code>src/problems/graph_topology.rs</code></a>. Test it with
 <code>cargo test graph_topology</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Given a directed graph, produce an ordering of its vertices in which every edge
-points forward. If the graph contains a cycle, no such ordering exists and the
-function reports that instead.</p>
+<p>Given a directed graph, produce an ordering of its vertices in which every edge points
+forward. If the graph contains a cycle, no such ordering exists and the function
+reports that instead.</p>
 <pre><code class="language-text">edges:  0 -&gt; 1, 0 -&gt; 2, 1 -&gt; 3, 2 -&gt; 3
 
   0 -----&gt; 1
@@ -192,9 +192,9 @@ function reports that instead.</p>
 valid orders: [0, 1, 2, 3], [0, 2, 1, 3]
 </code></pre>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Kahn’s algorithm. A vertex can be placed as soon as every vertex that must precede
-it has been placed, so counting the number of unplaced predecessors, the
-in-degree, is enough to decide when a vertex becomes available.</p>
+<p>Kahn’s algorithm. A vertex can be placed as soon as every vertex that must precede it
+has been placed, so counting the number of unplaced predecessors, the in-degree, is
+enough to decide when a vertex becomes available.</p>
 <pre><code class="language-text">in-degree of each vertex: 0:0   1:1   2:1   3:2
 ready queue: [0]
 
@@ -203,13 +203,11 @@ take 1  -&gt;  order [0, 1]     in-degree 3:1            queue [2]
 take 2  -&gt;  order [0, 1, 2]  in-degree 3:0            queue [3]
 take 3  -&gt;  order [0, 1, 2, 3]                        queue []
 </code></pre>
-<p>Four vertices were placed out of four, so the graph is acyclic. If the loop ends
-with fewer vertices placed than the graph holds, the vertices left in the queue
-are empty and the unplaced vertices are exactly those that lie on or after a
-cycle: each vertex of a cycle waits for another vertex of the same cycle, so none
-of them ever reaches in-degree zero.</p>
-<p>The check is therefore one comparison at the end, and the algorithm detects cycles
-without a separate traversal.</p>
+<p>Four vertices were placed out of four, so the graph is acyclic. If the loop ends with
+fewer vertices placed than the graph holds, the unplaced vertices are exactly those on
+or after a cycle: each vertex of a cycle waits for another vertex of the same cycle, so
+none of them reaches in-degree zero. The cycle test is therefore one comparison at the
+end, with no separate traversal.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -281,20 +279,18 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>vec![Vec::new(); num_nodes]</code> builds the adjacency list with one vector per
-vertex. The inner vectors grow as edges are added, so the total allocation is
-proportional to the edge count.</p>
-<p><code>queue</code> is seeded with every vertex whose in-degree is already zero. A
-<code>VecDeque</code> is used because vertices arrive at the back and leave from the front:
-<code>pop_front</code> and <code>push_back</code> are both constant time, and a <code>Vec</code> removing from the
-front would be linear.</p>
-<p><code>indegree[next] -= 1</code> runs once per edge leaving <code>node</code>, so the total work of the
-inner loop across the whole algorithm is the edge count. That is what makes the
-cost <code>O(V + E)</code> rather than something quadratic.</p>
-<p><code>(order.len() == num_nodes).then_some(order)</code> consumes <code>order</code> only when the
-comparison is true. If the graph has a cycle, the partially built order is dropped
-and the caller receives <code>None</code>, so no caller can accidentally schedule a partial
-order.</p>
+<p><code>vec![Vec::new(); num_nodes]</code> builds the adjacency list with one vector per vertex. The
+inner vectors grow as edges are added, so the total allocation is proportional to the
+edge count.</p>
+<p><code>queue</code> is seeded with every vertex whose in-degree is already zero. A <code>VecDeque</code> is
+used because vertices arrive at the back and leave from the front: <code>pop_front</code> and
+<code>push_back</code> are both constant time, and removing from the front of a <code>Vec</code> is linear.</p>
+<p><code>indegree[next] -= 1</code> runs once per edge leaving <code>node</code>, so the total work of the inner
+loop across the whole algorithm is the edge count. That is what makes the cost
+<code>O(V + E)</code>.</p>
+<p><code>(order.len() == num_nodes).then_some(order)</code> consumes <code>order</code> only when the comparison
+is true. If the graph has a cycle, the partial order is dropped and the caller receives
+<code>None</code>, so no caller can schedule a partial order by accident.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">num_nodes = 4, edges = [(0, 1), (0, 2), (1, 3), (2, 3)]
 
@@ -328,38 +324,21 @@ and 0 != 2, so the result is None.
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>An edge naming a vertex outside <code>0..num_nodes</code> panics.</strong> <code>graph[from].push(to)</code>
-and <code>indegree[to] += 1</code> index directly, so <code>topological_sort(2, &amp;[(5, 0)])</code> panics
-with an index-out-of-bounds, and the panic message names a vector index rather
-than the offending edge. A caller that reads a graph from a file must validate the
-vertex numbers first; the function gives it no help.</p>
-<p><strong><code>None</code> does not say which cycle was found.</strong> A caller that wants to report the
-cycle must run a depth-first search over the unplaced vertices to find one. The
-information is available inside the algorithm, the unplaced vertices are exactly
-the ones the loop never reached, but the return type discards it.</p>
+<p><strong>An edge naming a vertex outside <code>0..num_nodes</code> panics.</strong> <code>graph[from].push(to)</code> and
+<code>indegree[to] += 1</code> index directly, so <code>topological_sort(2, &amp;[(5, 0)])</code> panics with an
+index-out-of-bounds whose message names a vector index rather than the offending edge.
+A caller that reads a graph from a file must validate the vertex numbers first.</p>
+<p><strong><code>None</code> does not say which cycle was found.</strong> A caller that wants to report the cycle
+must run a depth-first search over the unplaced vertices. The information is available
+inside the algorithm, since the unplaced vertices are exactly the ones the loop never
+reached, but the return type discards it.</p>
 <p><strong>The choice among valid orders is unspecified.</strong> For the diamond graph both
-<code>[0, 1, 2, 3]</code> and <code>[0, 2, 1, 3]</code> are correct, and which one comes out depends on
-the order of the edges in the input and on the vertex numbering. The tests assert
-only the properties that must hold, which is the correct way to test this
-function, and a caller must not depend on a particular order.</p>
-<p><strong>Duplicate edges are tolerated but not detected.</strong> Two copies of <code>(0, 1)</code> add two
-to the in-degree of vertex 1 and the same edge is relaxed twice, so the counts
-stay consistent and the result is unaffected. Nothing reports the duplication,
-which a caller might want to know about.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The invariant is that the in-degree array counts the unplaced predecessors of
-each vertex. The remainder of the algorithm follows from it.</li>
-<li>A short result is the cycle test. The unplaced vertices are exactly those the
-main loop never reached, so a count below <code>num_nodes</code> means those vertices
-carry a cycle.</li>
-<li>The cost is <code>O(V + E)</code>. The <code>E</code> term comes from the relaxation loop, which
-examines each edge once, rather than from a repeated scan of the edge list.</li>
-<li>An edge whose endpoints fall outside <code>0..num_nodes</code> panics with an
-index-out-of-bounds whose message names the vector index rather than the edge. A
-caller reading a graph from a file must validate the vertex numbers before
-calling the function.</li>
-</ul>
+<code>[0, 1, 2, 3]</code> and <code>[0, 2, 1, 3]</code> are correct, and which one is produced depends on the
+order of the edges in the input and on the vertex numbering. The tests assert only the
+properties that must hold, and a caller must not depend on a particular order.</p>
+<p><strong>Duplicate edges are tolerated but not detected.</strong> Two copies of <code>(0, 1)</code> add two to
+the in-degree of vertex 1, and the same edge is relaxed twice, so the counts stay
+consistent and the result is unaffected. Nothing reports the duplication.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Arthur B. Kahn, “Topological sorting of large networks”, <em>Communications of the

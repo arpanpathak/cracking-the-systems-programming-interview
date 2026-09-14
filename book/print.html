@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8b44d3ef.js";
+            window.path_to_searchindex_js = "searchindex-4a9b7dbe.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -182,14 +182,12 @@
 any better.</p>
 <p>Bjarne Stroustrup, <em>Foundations of C++</em>, ECOOP 2012</p>
 </blockquote>
-<h2 id="what-this-book-is"><a class="header" href="#what-this-book-is">What this book is</a></h2>
-<p>The subject is one Rust repository, <code>rust-interview-lab</code>. Its files cover the working
-material of a systems interview: data structures, caches, concurrency primitives,
-file and directory handling, and the network code a service needs.</p>
-<p>Each chapter takes one file, prints it as the repository holds it, and works through
-the design, a trace on a concrete input, the cost of each operation, and the cases the
-code does not handle. The tests appear with the code.</p>
-<p>The repository is at
+<h2 id="about-the-book"><a class="header" href="#about-the-book">About the book</a></h2>
+<p>It can be very hard to use Rust for coding interviews if you don’t have guidance. I felt
+the need of having a book, being a senior engineer, who can teach the language and its
+idiomatic patterns effortlessly with code that you can reproduce under pressure.</p>
+<p>This book prepares you for those interviews and solidifies your intuition.</p>
+<p>The code is in <code>rust-interview-lab</code>, at
 <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a>.</p>
 <h2 id="what-you-need-to-know"><a class="header" href="#what-you-need-to-know">What you need to know</a></h2>
 <p>The book assumes that you can read Rust and that you know what <code>Vec</code>, <code>HashMap</code>,
@@ -2107,9 +2105,9 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs"><code>src/problems/graph_topology.rs</code></a>. Test it with
 <code>cargo test graph_topology</code>.</em></p>
 <h2 id="problem-statement-10"><a class="header" href="#problem-statement-10">Problem Statement</a></h2>
-<p>Given a directed graph, produce an ordering of its vertices in which every edge
-points forward. If the graph contains a cycle, no such ordering exists and the
-function reports that instead.</p>
+<p>Given a directed graph, produce an ordering of its vertices in which every edge points
+forward. If the graph contains a cycle, no such ordering exists and the function
+reports that instead.</p>
 <pre><code class="language-text">edges:  0 -&gt; 1, 0 -&gt; 2, 1 -&gt; 3, 2 -&gt; 3
 
   0 -----&gt; 1
@@ -2120,9 +2118,9 @@ function reports that instead.</p>
 valid orders: [0, 1, 2, 3], [0, 2, 1, 3]
 </code></pre>
 <h2 id="designing-a-solution-10"><a class="header" href="#designing-a-solution-10">Designing a Solution</a></h2>
-<p>Kahn’s algorithm. A vertex can be placed as soon as every vertex that must precede
-it has been placed, so counting the number of unplaced predecessors, the
-in-degree, is enough to decide when a vertex becomes available.</p>
+<p>Kahn’s algorithm. A vertex can be placed as soon as every vertex that must precede it
+has been placed, so counting the number of unplaced predecessors, the in-degree, is
+enough to decide when a vertex becomes available.</p>
 <pre><code class="language-text">in-degree of each vertex: 0:0   1:1   2:1   3:2
 ready queue: [0]
 
@@ -2131,13 +2129,11 @@ take 1  -&gt;  order [0, 1]     in-degree 3:1            queue [2]
 take 2  -&gt;  order [0, 1, 2]  in-degree 3:0            queue [3]
 take 3  -&gt;  order [0, 1, 2, 3]                        queue []
 </code></pre>
-<p>Four vertices were placed out of four, so the graph is acyclic. If the loop ends
-with fewer vertices placed than the graph holds, the vertices left in the queue
-are empty and the unplaced vertices are exactly those that lie on or after a
-cycle: each vertex of a cycle waits for another vertex of the same cycle, so none
-of them ever reaches in-degree zero.</p>
-<p>The check is therefore one comparison at the end, and the algorithm detects cycles
-without a separate traversal.</p>
+<p>Four vertices were placed out of four, so the graph is acyclic. If the loop ends with
+fewer vertices placed than the graph holds, the unplaced vertices are exactly those on
+or after a cycle: each vertex of a cycle waits for another vertex of the same cycle, so
+none of them reaches in-degree zero. The cycle test is therefore one comparison at the
+end, with no separate traversal.</p>
 <h2 id="implementation-10"><a class="header" href="#implementation-10">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2209,20 +2205,18 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>vec![Vec::new(); num_nodes]</code> builds the adjacency list with one vector per
-vertex. The inner vectors grow as edges are added, so the total allocation is
-proportional to the edge count.</p>
-<p><code>queue</code> is seeded with every vertex whose in-degree is already zero. A
-<code>VecDeque</code> is used because vertices arrive at the back and leave from the front:
-<code>pop_front</code> and <code>push_back</code> are both constant time, and a <code>Vec</code> removing from the
-front would be linear.</p>
-<p><code>indegree[next] -= 1</code> runs once per edge leaving <code>node</code>, so the total work of the
-inner loop across the whole algorithm is the edge count. That is what makes the
-cost <code>O(V + E)</code> rather than something quadratic.</p>
-<p><code>(order.len() == num_nodes).then_some(order)</code> consumes <code>order</code> only when the
-comparison is true. If the graph has a cycle, the partially built order is dropped
-and the caller receives <code>None</code>, so no caller can accidentally schedule a partial
-order.</p>
+<p><code>vec![Vec::new(); num_nodes]</code> builds the adjacency list with one vector per vertex. The
+inner vectors grow as edges are added, so the total allocation is proportional to the
+edge count.</p>
+<p><code>queue</code> is seeded with every vertex whose in-degree is already zero. A <code>VecDeque</code> is
+used because vertices arrive at the back and leave from the front: <code>pop_front</code> and
+<code>push_back</code> are both constant time, and removing from the front of a <code>Vec</code> is linear.</p>
+<p><code>indegree[next] -= 1</code> runs once per edge leaving <code>node</code>, so the total work of the inner
+loop across the whole algorithm is the edge count. That is what makes the cost
+<code>O(V + E)</code>.</p>
+<p><code>(order.len() == num_nodes).then_some(order)</code> consumes <code>order</code> only when the comparison
+is true. If the graph has a cycle, the partial order is dropped and the caller receives
+<code>None</code>, so no caller can schedule a partial order by accident.</p>
 <h2 id="intuition-10"><a class="header" href="#intuition-10">Intuition</a></h2>
 <pre><code class="language-text">num_nodes = 4, edges = [(0, 1), (0, 2), (1, 3), (2, 3)]
 
@@ -2256,38 +2250,21 @@ and 0 != 2, so the result is None.
 </table>
 </div>
 <h2 id="limitations-10"><a class="header" href="#limitations-10">Limitations</a></h2>
-<p><strong>An edge naming a vertex outside <code>0..num_nodes</code> panics.</strong> <code>graph[from].push(to)</code>
-and <code>indegree[to] += 1</code> index directly, so <code>topological_sort(2, &amp;[(5, 0)])</code> panics
-with an index-out-of-bounds, and the panic message names a vector index rather
-than the offending edge. A caller that reads a graph from a file must validate the
-vertex numbers first; the function gives it no help.</p>
-<p><strong><code>None</code> does not say which cycle was found.</strong> A caller that wants to report the
-cycle must run a depth-first search over the unplaced vertices to find one. The
-information is available inside the algorithm, the unplaced vertices are exactly
-the ones the loop never reached, but the return type discards it.</p>
+<p><strong>An edge naming a vertex outside <code>0..num_nodes</code> panics.</strong> <code>graph[from].push(to)</code> and
+<code>indegree[to] += 1</code> index directly, so <code>topological_sort(2, &amp;[(5, 0)])</code> panics with an
+index-out-of-bounds whose message names a vector index rather than the offending edge.
+A caller that reads a graph from a file must validate the vertex numbers first.</p>
+<p><strong><code>None</code> does not say which cycle was found.</strong> A caller that wants to report the cycle
+must run a depth-first search over the unplaced vertices. The information is available
+inside the algorithm, since the unplaced vertices are exactly the ones the loop never
+reached, but the return type discards it.</p>
 <p><strong>The choice among valid orders is unspecified.</strong> For the diamond graph both
-<code>[0, 1, 2, 3]</code> and <code>[0, 2, 1, 3]</code> are correct, and which one comes out depends on
-the order of the edges in the input and on the vertex numbering. The tests assert
-only the properties that must hold, which is the correct way to test this
-function, and a caller must not depend on a particular order.</p>
-<p><strong>Duplicate edges are tolerated but not detected.</strong> Two copies of <code>(0, 1)</code> add two
-to the in-degree of vertex 1 and the same edge is relaxed twice, so the counts
-stay consistent and the result is unaffected. Nothing reports the duplication,
-which a caller might want to know about.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The invariant is that the in-degree array counts the unplaced predecessors of
-each vertex. The remainder of the algorithm follows from it.</li>
-<li>A short result is the cycle test. The unplaced vertices are exactly those the
-main loop never reached, so a count below <code>num_nodes</code> means those vertices
-carry a cycle.</li>
-<li>The cost is <code>O(V + E)</code>. The <code>E</code> term comes from the relaxation loop, which
-examines each edge once, rather than from a repeated scan of the edge list.</li>
-<li>An edge whose endpoints fall outside <code>0..num_nodes</code> panics with an
-index-out-of-bounds whose message names the vector index rather than the edge. A
-caller reading a graph from a file must validate the vertex numbers before
-calling the function.</li>
-</ul>
+<code>[0, 1, 2, 3]</code> and <code>[0, 2, 1, 3]</code> are correct, and which one is produced depends on the
+order of the edges in the input and on the vertex numbering. The tests assert only the
+properties that must hold, and a caller must not depend on a particular order.</p>
+<p><strong>Duplicate edges are tolerated but not detected.</strong> Two copies of <code>(0, 1)</code> add two to
+the in-degree of vertex 1, and the same edge is relaxed twice, so the counts stay
+consistent and the result is unaffected. Nothing reports the duplication.</p>
 <h2 id="references-10"><a class="header" href="#references-10">References</a></h2>
 <ul>
 <li>Arthur B. Kahn, “Topological sorting of large networks”, <em>Communications of the
@@ -2304,19 +2281,19 @@ ACM</em> 5(11), 1962, pages 558–562.</li>
 <blockquote>
 <p>I call it my billion-dollar mistake. It was the invention of the null
 reference in 1965.</p>
-<p>, C. A. R. Hoare, QCon London, 2009</p>
+<p>C. A. R. Hoare, QCon London, 2009</p>
 </blockquote>
 <h2 id="problem-statement-11"><a class="header" href="#problem-statement-11">Problem Statement</a></h2>
-<p>Given a list of coin denominations and a target amount, return the smallest number
-of coins whose values sum exactly to the amount, or report that no combination
-exists. Each denomination may be used any number of times.</p>
+<p>Given a list of coin denominations and a target amount, return the smallest number of
+coins whose values sum exactly to the amount, or report that no combination exists.
+Each denomination may be used any number of times.</p>
 <h2 id="designing-a-solution-11"><a class="header" href="#designing-a-solution-11">Designing a Solution</a></h2>
 <p>A greedy rule does not work. Taking the largest coin that fits fails for
-<code>coins = [1, 3, 4]</code> and <code>amount = 6</code>: the greedy choice of <code>4</code> leaves <code>2</code>, which
-needs two more coins, for a total of three, while <code>3 + 3</code> needs two.</p>
-<p>The recurrence is over amounts. Let <code>dp[t]</code> be the smallest number of coins that
-sums to <code>t</code>. The last coin used is some denomination <code>c</code>, and everything before it
-must sum to <code>t - c</code> in the smallest possible number of coins:</p>
+<code>coins = [1, 3, 4]</code> and <code>amount = 6</code>: the greedy choice of <code>4</code> leaves <code>2</code>, which needs
+two more coins, for a total of three, while <code>3 + 3</code> needs two.</p>
+<p>The recurrence is over amounts. Let <code>dp[t]</code> be the smallest number of coins that sums
+to <code>t</code>. The last coin used is some denomination <code>c</code>, and everything before it must sum
+to <code>t - c</code> in the smallest possible number of coins:</p>
 <pre><code class="language-text">dp[0] = 0
 dp[t] = min over c of ( dp[t - c] + 1 )     for each c &lt;= t
 </code></pre>
@@ -2375,20 +2352,19 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>usize::MAX</code> is the sentinel for “no combination reaches this amount yet”. It is
-safe as a marker because a real answer can never be that large: any combination
-uses at most <code>amount</code> coins, because every coin is worth at least one.</p>
-<p>The guard <code>if coin &gt; total || dp[total - coin] == usize::MAX</code> does two things at
-once. It skips a coin that is too large to be the last coin, and it skips a coin
-whose remainder is itself unreachable. Without the second test the addition below
-would add one to the sentinel and produce a wrong answer that looks reachable.</p>
-<p><code>dp[total] = dp[total].min(dp[total - coin] + 1)</code> keeps the best count found so
-far for this amount. Because <code>dp[total]</code> is read and written in the same
-statement, the loop order over coins does not matter.</p>
-<p>The boundary conversion is where the sentinel stops. <code>match dp[amount]</code> translates
-<code>usize::MAX</code> into <code>None</code> and everything else into <code>Some(count as i32)</code>, so no
-caller ever sees the marker. The type of the answer is <code>Option&lt;i32&gt;</code>, which is the
-part of the design that matters: “impossible” is not a number.</p>
+<p><code>usize::MAX</code> is the sentinel for an amount no combination has reached. It is safe as a
+marker because a real answer can never be that large: any combination uses at most
+<code>amount</code> coins, because every coin is worth at least one.</p>
+<p>The guard <code>if coin &gt; total || dp[total - coin] == usize::MAX</code> does two things. It skips
+a coin too large to be the last coin, and it skips a coin whose remainder is itself
+unreachable. Without the second test the addition below would add one to the sentinel
+and produce a wrong answer that looks reachable.</p>
+<p><code>dp[total] = dp[total].min(dp[total - coin] + 1)</code> keeps the best count found so far for
+this amount. Because <code>dp[total]</code> is read and written in the same statement, the loop
+order over coins does not matter.</p>
+<p><code>match dp[amount]</code> translates <code>usize::MAX</code> into <code>None</code> and everything else into
+<code>Some(count as i32)</code>, so no caller sees the marker. The answer type is <code>Option&lt;i32&gt;</code>,
+which is the part of the design that matters: “impossible” is not a number.</p>
 <h2 id="intuition-11"><a class="header" href="#intuition-11">Intuition</a></h2>
 <pre><code class="language-text">coins = [1, 2, 5], amount = 11
 
@@ -2428,44 +2404,27 @@ dp[3] is the sentinel, so the result is None.
 </table>
 </div>
 <h2 id="limitations-11"><a class="header" href="#limitations-11">Limitations</a></h2>
-<p><strong>The table is allocated from the amount alone.</strong> <code>coin_change(&amp;[1], i32::MAX)</code>
-asks for a vector of <code>i32::MAX + 1</code> machine words, which is sixteen gigabytes on a
-64-bit target. The allocation failure aborts the process, because the standard
-library’s allocation error handling calls <code>handle_alloc_error</code>, which aborts. A
-version that accepts an amount from the network would validate it against a limit
-first, or use <code>Vec::try_reserve</code> to turn the failure into a <code>Result</code>.</p>
-<p><strong>A negative coin is treated as a very large positive one.</strong> <code>coin as usize</code>
-converts <code>-1</code> to <code>usize::MAX</code>, and the guard <code>coin &gt; total</code> then skips it on every
-iteration. The function returns an answer that ignores the negative coin, which is
-the wrong answer if the caller meant the coin to be usable. Nothing reports the
-conversion.</p>
-<p><strong>A zero coin is skipped by the same guard, correctly.</strong> <code>coin = 0</code> passes the
-first test only when <code>total</code> is zero, and the loop starts at one, so a zero
-denomination contributes nothing. That is the right behaviour and it is a
-consequence of the guard rather than a stated rule.</p>
-<p><strong>The function returns the count, not the coins.</strong> A caller that wants to know
-which coins to use needs the predecessor that produced each entry, which means a
-second table recording decisions. The current one-minimum-per-entry design cannot
-reconstruct the combination.</p>
-<p><strong><code>i32</code> bounds both the amount and the answer.</strong> An amount above <code>i32::MAX</code> cannot
-be passed, and the conversion <code>count as i32</code> is safe only because the answer is at
-most the amount.</p>
-<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
-<ul>
-<li>The recurrence decides on the last coin: <code>dp[total]</code> is one more than the best
-<code>dp[total - coin]</code>, which is what makes the table a dynamic program rather than a
-sequence of locally optimal choices.</li>
-<li>A greedy choice is not correct here. For <code>[1, 3, 4]</code> and the amount <code>6</code>, greedy
-produces <code>4 + 1 + 1</code> and the optimum is <code>3 + 3</code>.</li>
-<li>The table holds <code>usize::MAX</code> as a sentinel for an unreachable amount, and the
-boundary converts it to <code>None</code>, so a caller never sees the sentinel. The
-conversion <code>count as i32</code> is safe because the answer is at most the amount.</li>
-<li>The allocation is controlled by the input. <code>coin_change(&amp;[1], i32::MAX)</code> requests
-a vector of <code>i32::MAX + 1</code> machine words, and a failed allocation aborts the
-process.</li>
-<li>The function returns the count and not the coins. Reconstructing the combination
-needs the predecessor that produced each entry, which is a second table.</li>
-</ul>
+<p><strong>The table is allocated from the amount alone.</strong> <code>coin_change(&amp;[1], i32::MAX)</code> asks for
+a vector of <code>i32::MAX + 1</code> machine words, which is sixteen gigabytes on a 64-bit target.
+The allocation failure aborts the process, because the standard library’s allocation
+error handling calls <code>handle_alloc_error</code>, which aborts. A version that accepts an
+amount from a network input would validate it against a limit first, or use
+<code>Vec::try_reserve</code> to turn the failure into a <code>Result</code>.</p>
+<p><strong>A negative coin is treated as a very large positive one.</strong> <code>coin as usize</code> converts
+<code>-1</code> to <code>usize::MAX</code>, and the guard <code>coin &gt; total</code> then skips it on every iteration. The
+function returns an answer that ignores the negative coin, which is the wrong answer if
+the caller meant the coin to be usable. Nothing reports the conversion.</p>
+<p><strong>A zero coin is skipped by the same guard, correctly.</strong> <code>coin = 0</code> passes the first
+test only when <code>total</code> is zero, and the loop starts at one, so a zero denomination
+contributes nothing. That is the right behaviour, and it is a consequence of the guard
+rather than a stated rule.</p>
+<p><strong>The function returns the count, not the coins.</strong> A caller that wants to know which
+coins to use needs the predecessor that produced each entry, which means a second table
+recording decisions. The one-minimum-per-entry design cannot reconstruct the
+combination.</p>
+<p><strong><code>i32</code> bounds both the amount and the answer.</strong> An amount above <code>i32::MAX</code> cannot be
+passed, and the conversion <code>count as i32</code> is safe only because the answer is at most the
+amount.</p>
 <h2 id="references-11"><a class="header" href="#references-11">References</a></h2>
 <ul>
 <li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
@@ -2480,14 +2439,14 @@ Programming”.</li>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/backtracking.rs"><code>src/problems/backtracking.rs</code></a>. Test it with
 <code>cargo test backtracking</code>.</em></p>
 <h2 id="problem-statement-12"><a class="header" href="#problem-statement-12">Problem Statement</a></h2>
-<p>Given a list of distinct values, return every subset. A list of <code>n</code> values has
-<code>2^n</code> subsets, because each value is independently either present or absent, and
-the empty subset and the whole list are both included.</p>
+<p>Given a list of distinct values, return every subset. A list of <code>n</code> values has <code>2^n</code>
+subsets, because each value is independently either present or absent, and both the
+empty subset and the whole list are included.</p>
 <h2 id="designing-a-solution-12"><a class="header" href="#designing-a-solution-12">Designing a Solution</a></h2>
-<p>Backtracking walks a sequence of decisions. At each step the algorithm holds a
-partial selection and a position, records the selection, and then tries every
-value from that position onward as the next member. After each trial it undoes the
-choice, which is what allows the next trial to start from the same state.</p>
+<p>Backtracking walks a sequence of decisions. At each step the algorithm holds a partial
+selection and a position, records the selection, and then tries every value from that
+position onward as the next member. After each trial it undoes the choice, which is
+what allows the next trial to start from the same state.</p>
 <pre><code class="language-text">values = [1, 2, 3]
 
                        []                       record []
@@ -2502,13 +2461,12 @@ choice, which is what allows the next trial to start from the same state.</p>
 
 8 records: [], [1], [2], [3], [1,2], [1,3], [2,3], [1,2,3]
 </code></pre>
-<p>The invariant that makes the undo step correct is: on entry to the recursive call,
+<p>The invariant that makes the undo step correct: on entry to the recursive call,
 <code>selection</code> holds a prefix of a decision sequence; on exit it holds exactly what it
-held on entry. Every branch therefore starts from a state that the branches before
-it did not disturb.</p>
-<p>The restriction that each recursive call may only choose a value at or after
-<code>start</code> is what prevents <code>[1, 2]</code> and <code>[2, 1]</code> from both appearing. The output is
-ordered by index, not by value.</p>
+held on entry. Every branch therefore starts from a state that the branches before it
+did not disturb.</p>
+<p>Restricting each recursive call to values at or after <code>start</code> is what prevents <code>[1, 2]</code>
+and <code>[2, 1]</code> from both appearing. The output is ordered by index, not by value.</p>
 <h2 id="implementation-12"><a class="header" href="#implementation-12">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2554,18 +2512,17 @@ mod tests {
 }
 <span class="boring">}</span></code></pre>
 <p><code>fn backtrack(...)</code> is a nested function inside <code>subsets</code>. A nested <code>fn</code> does not
-capture its environment, so the values it needs are passed as parameters:
-<code>nums</code>, <code>start</code>, <code>path</code>, and <code>result</code>. That is why the signature is longer than the
-body: the parameters replace the closure capture that a nested <code>fn</code> cannot have.</p>
+capture its environment, so the values it needs are passed as parameters: <code>nums</code>,
+<code>start</code>, <code>path</code>, and <code>result</code>. That is why the signature is longer than the body.</p>
 <p><code>result.push(path.clone())</code> records the current selection. The clone is required
-because <code>path</code> is reused for the rest of the search; all <code>2^n</code> recorded subsets are
+because <code>path</code> is reused for the rest of the search, and all <code>2^n</code> recorded subsets are
 independent vectors.</p>
-<p><code>backtrack(&amp;nums, idx + 1, path, result)</code> passes <code>idx + 1</code>, not <code>start + 1</code>. Each
-chosen value advances the lower bound past itself, so a value cannot be chosen
-twice and the indices in a subset always increase.</p>
-<p><code>path.pop()</code> after the recursive call restores the invariant. Removing that line
-makes the selection grow for the remainder of the search, and the output would
-contain subsets that were never selected.</p>
+<p><code>backtrack(&amp;nums, idx + 1, path, result)</code> passes <code>idx + 1</code>, not <code>start + 1</code>. Each chosen
+value advances the lower bound past itself, so a value cannot be chosen twice and the
+indices in a subset always increase.</p>
+<p><code>path.pop()</code> after the recursive call restores the invariant. Removing that line makes
+the selection grow for the remainder of the search, and the output would contain
+subsets that were never selected.</p>
 <h2 id="intuition-12"><a class="header" href="#intuition-12">Intuition</a></h2>
 <pre><code class="language-text">subsets(vec![1, 2, 3])
 
@@ -2607,46 +2564,27 @@ recorded, in order: [], [1], [1,2], [1,2,3], [1,3], [2], [2,3], [3]
 </tbody>
 </table>
 </div>
-<p>The clone is the reason for the extra factor of <code>n</code>. A caller that only needs to
-visit each subset can pass a closure instead of collecting them, which removes the
-factor.</p>
+<p>The clone is the reason for the factor of <code>n</code>. A caller that only needs to visit each
+subset can pass a closure instead of collecting them, which removes the factor.</p>
 <h2 id="limitations-12"><a class="header" href="#limitations-12">Limitations</a></h2>
-<p><strong>The capacity hint overflows for large inputs.</strong> <code>Vec::with_capacity(1 &lt;&lt; nums.len())</code> evaluates <code>1 &lt;&lt; nums.len()</code> as a <code>usize</code>. For a list of 64 or more
-values on a 64-bit target, the shift is not representable and panics in a debug
-build. The panic happens on an input the function is otherwise able to accept: the
-recursion itself has no such limit, and the allocation would fail long before the
-work finished. The hint is a promise the code cannot keep.</p>
-<p><strong>A list of 40 values cannot be enumerated at all.</strong> <code>2^40</code> subsets is about a
-trillion vectors, and the output alone would exceed any machine’s memory. The
-function has no bound on the input size and no way to report that the work is
-impossible, so the caller has to know.</p>
-<p><strong>Duplicate values produce duplicate-looking subsets.</strong> The function takes a list
-and treats every position as distinct, so <code>subsets(vec![1, 1, 1])</code> returns eight
-subsets (five of them empty-looking). The documentation says “distinct integers”,
-which is a precondition the type does not enforce.</p>
+<p><strong>The capacity hint overflows for large inputs.</strong> <code>Vec::with_capacity(1 &lt;&lt; nums.len())</code>
+evaluates <code>1 &lt;&lt; nums.len()</code> as a <code>usize</code>. For a list of 64 or more values on a 64-bit
+target the shift is not representable and panics in a debug build. The panic happens on
+an input the function is otherwise able to accept: the recursion itself has no such
+limit, and the allocation would fail long before the work finished.</p>
+<p><strong>A list of 40 values cannot be enumerated at all.</strong> <code>2^40</code> subsets is about a trillion
+vectors, and the output alone would exceed any machine’s memory. The function has no
+bound on the input size and no way to report that the work is impossible.</p>
+<p><strong>Duplicate values produce duplicate-looking subsets.</strong> The function takes a list and
+treats every position as distinct, so <code>subsets(vec![1, 1, 1])</code> returns eight subsets.
+The documentation says “distinct integers”, which is a precondition the type does not
+enforce.</p>
 <p><strong>The output order is an implementation detail, and one test depends on it.</strong>
-<code>empty_input_has_one_subset</code> compares the whole output, which is safe for one
-element. The other test sorts before comparing, which is the right pattern;
-<code>generates_all_subsets</code> follows it.</p>
-<p><strong>There is no way to stop the search early or to stream the results.</strong> A caller
-that wants the first <code>k</code> subsets, or wants to search for a subset with a property,
-must collect all of them first.</p>
-<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
-<ul>
-<li>The recording happens at the start of each call, before the loop. That is what
-produces the empty subset and what makes every node of the recursion tree
-correspond to one output.</li>
-<li>The output is <code>2^n</code> subsets, and cloning the working path into each one adds a
-factor of <code>n</code>. Replacing the collected vectors with a visitor closure removes the
-factor, which is a change of interface rather than a micro-optimisation.</li>
-<li>The <code>push</code> and <code>pop</code> pair is a single operation. The <code>pop</code> is what makes the next
-branch independent, not cleanup after the current one.</li>
-<li>The input size is unbounded. A list of 40 values produces about a trillion
-subsets, and the capacity hint <code>1 &lt;&lt; nums.len()</code> overflows for 64 values on a
-64-bit target.</li>
-<li>The documentation states “distinct integers” as a precondition the type does not
-enforce, so repeated values produce repeated-looking subsets.</li>
-</ul>
+<code>empty_input_has_one_subset</code> compares the whole output, which is safe for one element.
+The other test sorts before comparing.</p>
+<p><strong>There is no way to stop the search early or to stream the results.</strong> A caller that
+wants the first <code>k</code> subsets, or that is searching for a subset with a property, must
+collect all of them first.</p>
 <h2 id="references-12"><a class="header" href="#references-12">References</a></h2>
 <ul>
 <li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
@@ -2660,8 +2598,8 @@ recurrences, and Chapter 14 on the same recursive-search structure.</li>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs"><code>src/problems/linked_list.rs</code></a>. Test it with
 <code>cargo test linked_list</code>.</em></p>
 <h2 id="problem-statement-13"><a class="header" href="#problem-statement-13">Problem Statement</a></h2>
-<p>Reverse a singly linked list in place and return its new head. In place means no
-additional node allocations: the nodes are re-linked, not copied.</p>
+<p>Reverse a singly linked list in place and return its new head. In place means no extra
+node allocations: the nodes are re-linked, not copied.</p>
 <h2 id="designing-a-solution-13"><a class="header" href="#designing-a-solution-13">Designing a Solution</a></h2>
 <pre><code class="language-text">head: Option&lt;Box&lt;ListNode&gt;&gt;
 
@@ -2674,16 +2612,15 @@ additional node allocations: the nodes are re-linked, not copied.</p>
   heap           heap           heap
 </code></pre>
 <p>Three properties follow from <code>Option&lt;Box&lt;ListNode&gt;&gt;</code>.</p>
-<p><code>None</code> is the end of the list, so an empty list is the value <code>None</code> rather than a
-node with a flag, and there is no sentinel to keep consistent.</p>
-<p>The list owns its nodes. Handing over the head hands over the whole list, so there
-is no way to hold a list whose nodes have been freed and no separate deallocation
-call.</p>
-<p>A link is one pointer wide. The compiler stores <code>None</code> in the null pointer, which
-is never a valid address for a <code>Box</code>, so no discriminant byte is added.</p>
-<p>Reversal is one loop over three bindings. In a language with unrestricted
-pointers it is three assignments per node; in Rust, the same algorithm is written
-by taking ownership of one node at a time, which is what makes it checkable.</p>
+<p><code>None</code> is the end of the list, so an empty list is the value <code>None</code> rather than a node
+with a flag, and there is no sentinel to keep consistent.</p>
+<p>The list owns its nodes. Handing over the head hands over the whole list, so there is no
+way to hold a list whose nodes have been freed and no separate deallocation call.</p>
+<p>A link is one pointer wide. The compiler stores <code>None</code> in the null pointer, which is
+never a valid address for a <code>Box</code>, so no discriminant byte is added.</p>
+<p>Reversal is one loop over three bindings. In a language with unrestricted pointers it is
+three assignments per node; in Rust the same algorithm is written by taking ownership of
+one node at a time, which is what makes it checkable.</p>
 <pre><code class="language-text">initial   previous = None            current = Some(1 -&gt; 2 -&gt; 3 -&gt; None)
 
 step 1    current = node.next.take()   current  = Some(2 -&gt; 3 -&gt; None)
@@ -2695,11 +2632,11 @@ step 3    current = None               previous = Some(3 -&gt; 2 -&gt; 1 -&gt; N
 
 the loop ends because current is None, and the answer is previous
 </code></pre>
-<p><code>Option::take</code> is the operation that makes this work. It moves the successor out
-of <code>node.next</code> and leaves <code>None</code> behind, so the node under the loop’s cursor stands
-alone while the rest of the list is held in a separate binding. Without <code>take</code>, the
-assignment <code>node.next = previous</code> would have to write through a reference that
-<code>current</code> still holds, which the borrow checker rejects.</p>
+<p><code>Option::take</code> is the operation that makes this work. It moves the successor out of
+<code>node.next</code> and leaves <code>None</code> behind, so the node under the loop’s cursor stands alone
+while the rest of the list is held in a separate binding. Without <code>take</code>, the assignment
+<code>node.next = previous</code> would have to write through a reference that <code>current</code> still
+holds, which the borrow checker rejects.</p>
 <h2 id="implementation-13"><a class="header" href="#implementation-13">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2770,17 +2707,17 @@ mod tests {
     }
 }
 <span class="boring">}</span></code></pre>
-<p><code>from_slice</code> builds the list backwards, from the last value to the first, so each
-new node takes the list built so far as its successor. Building forwards would need
-a mutable reference to the tail, which is more code for the same result.</p>
-<p><code>to_vec</code> takes the list by value. That lets each node be dropped as the traversal
-proceeds: the value is copied out and the successor moves into <code>current</code>, so the
-node that was just read is freed at the end of the iteration. A version that took
-<code>&amp;Option&lt;Box&lt;ListNode&gt;&gt;</code> would leave the list alive and would need the caller to
-drop it afterwards.</p>
-<p><code>while let Some(mut node) = current</code> binds the node by value, and the <code>mut</code> is
-required because the body assigns to <code>node.next</code>. The loop’s three statements are
-the algorithm: detach the successor, point backwards, advance <code>previous</code>.</p>
+<p><code>from_slice</code> builds the list backwards, from the last value to the first, so each new
+node takes the list built so far as its successor. Building forwards would need a
+mutable reference to the tail.</p>
+<p><code>to_vec</code> takes the list by value, which lets each node be dropped as the traversal
+proceeds: the value is copied out and the successor moves into <code>current</code>, so the node
+that was just read is freed at the end of the iteration. A version that took
+<code>&amp;Option&lt;Box&lt;ListNode&gt;&gt;</code> would leave the list alive and would need the caller to drop it
+afterwards.</p>
+<p><code>while let Some(mut node) = current</code> binds the node by value, and the <code>mut</code> is required
+because the body assigns to <code>node.next</code>. The three statements in the body are the
+algorithm: detach the successor, point backwards, advance <code>previous</code>.</p>
 <h2 id="intuition-13"><a class="header" href="#intuition-13">Intuition</a></h2>
 <pre><code class="language-text">input: 1 -&gt; 2 -&gt; 3 -&gt; None
 
@@ -2807,31 +2744,18 @@ current is None, so the loop ends and previous is returned.
 </div>
 <h2 id="limitations-13"><a class="header" href="#limitations-13">Limitations</a></h2>
 <p><strong>A long list is dropped recursively.</strong> The compiler’s derived destructor for
-<code>Option&lt;Box&lt;ListNode&gt;&gt;</code> follows the <code>next</code> links, one stack frame per node. A list
-of a few hundred thousand nodes overflows the thread stack when it is dropped, and
-a stack overflow aborts the process rather than unwinding. This affects every
-caller, including one that only reverses a list that was built elsewhere: the
-destructor runs when the last owner goes out of scope.</p>
-<p><strong><code>to_vec</code> consumes the list.</strong> A caller that wants both the reversed list and its
-values has to clone one of them, and <code>ListNode</code> does not implement <code>Clone</code>.</p>
-<p><strong><code>from_slice</code> allocates one box per element.</strong> For a long slice that is a long
-chain of small allocations, each of which carries its own allocator overhead. An
-array-based representation holds the same data in one allocation, at the cost of
-not being a linked list.</p>
-<p><strong>The value type is fixed at <code>i32</code>.</strong> Nothing in the algorithm depends on the
-value type, and the declaration is not generic.</p>
-<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
-<ul>
-<li>The loop body is three lines, and <code>take</code> is the part that requires explanation.
-The successor has to leave the node before the node can be re-pointed, which is
-why <code>node.next</code> cannot be assigned directly.</li>
-<li>Reversal is <code>O(n)</code> in time and <code>O(1)</code> in space. The nodes already exist, so the
-operation adds no allocation.</li>
-<li>The derived destructor for <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> follows the <code>next</code> links one
-stack frame per node, so dropping a list of a few hundred thousand nodes aborts
-the process. A manual <code>Drop</code> implementation that unlinks the chain in a loop
-removes that hazard.</li>
-</ul>
+<code>Option&lt;Box&lt;ListNode&gt;&gt;</code> follows the <code>next</code> links, one stack frame per node. A list of a
+few hundred thousand nodes overflows the thread stack when it is dropped, and a stack
+overflow aborts the process rather than unwinding. This affects every caller, including
+one that only reverses a list built elsewhere, because the destructor runs when the last
+owner goes out of scope.</p>
+<p><strong><code>to_vec</code> consumes the list.</strong> A caller that wants both the reversed list and its values
+has to clone one of them, and <code>ListNode</code> does not implement <code>Clone</code>.</p>
+<p><strong><code>from_slice</code> allocates one box per element.</strong> For a long slice that is a long chain of
+small allocations, each with its own allocator overhead. An array-based representation
+holds the same data in one allocation, at the cost of not being a linked list.</p>
+<p><strong>The value type is fixed at <code>i32</code>.</strong> Nothing in the algorithm depends on the value type,
+and the declaration is not generic.</p>
 <h2 id="references-13"><a class="header" href="#references-13">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch15-01-box.html">Enabling recursive types with boxes</a>.</li>
@@ -3034,7 +2958,7 @@ follows is not.</strong> The two facts belong together: the operation the API ad
 is cheap, and the work the program does when the list is released is not.</p>
 <p><strong>There is no <code>Clone</code>, no <code>Debug</code>, and no iterator.</strong> A caller cannot print the
 list, cannot copy it, and cannot write <code>for value in &amp;list</code>.</p>
-<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li><code>List::new</code> has no <code>Default</code> implementation, which is the pattern Clippy’s
 <code>new_without_default</code> lint reports. A caller writing a generic function over many
@@ -3470,7 +3394,7 @@ flag to each node, which is two more machine words per element.</p>
 expected value is written.</strong> <code>main</code> prints values and asserts nothing, and the
 tests cover the same behaviour. The two comments in <code>main</code> are documentation rather
 than checks.</p>
-<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
+<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <ul>
 <li>One direction of the link has to be weak. Two strong links between a pair of
 nodes would keep the pair alive after the list released it, so <code>prev</code> is a
@@ -3741,7 +3665,7 @@ entries could be over capacity, it would leave some of them in place.</p>
 unreachable in practice, at a billion accesses per second it takes about 584 years
 , and the consequence of reaching it would be a misidentified stale event rather
 than memory unsafety.</p>
-<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
 <li>Two structures hold the state. The map holds values and the current generation
 of each key; the queue holds access events.</li>
@@ -4011,7 +3935,7 @@ loud.</p>
 <p><strong>No test pins the recency order after a sequence of several operations.</strong> The two
 tests cover one eviction and one update. The invariant that the list is consistent
 with its ends is not checked anywhere.</p>
-<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
+<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <ul>
 <li>The two cache designs differ in what bounds them. This one bounds storage by the
 capacity and returns references; the design in Chapter 17 bounds storage by the
@@ -4303,7 +4227,7 @@ with a written list would catch a missing or an extra pattern.</p>
 <p><strong><code>parse_gpu_count</code> accepts a value that overflows <code>u32</code> as a parse failure
 rather than as a distinct error.</strong> <code>"4294967296"</code> and <code>"four"</code> produce the same
 variant, so a caller cannot tell a malformed field from an out-of-range one.</p>
-<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
+<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <ul>
 <li>An enumeration makes the transition table exhaustive, because a <code>match</code> without
 a fall-through arm fails to build when a variant is added.</li>
@@ -4498,7 +4422,7 @@ and nothing in this design provides one.</p>
 result depend on how the operating system scheduled the test thread: on a loaded
 machine the sleep may return later than requested, which only makes the assertion
 more likely to pass, and a bucket whose rate were too high would not be caught.</p>
-<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
+<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
 <ul>
 <li>A token bucket allows a burst of the capacity and holds a smooth long-run rate.
 A fixed window allows twice the configured rate across a window boundary.</li>
@@ -4740,7 +4664,7 @@ order, cannot use this function.</p>
 <p><strong>The closure must be <code>'static</code>.</strong> <code>F: Fn(T) -&gt; R + Send + Sync + 'static</code> means the
 mapper cannot borrow anything from the caller’s stack. Scoped threads would lift
 that restriction, and they would also let <code>T</code> and <code>R</code> borrow.</p>
-<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
+<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
 <ul>
 <li>Two channels carry the work. The index recorded with each job and returned with
 each result is the mechanism that restores the input order.</li>
@@ -5060,7 +4984,7 @@ panics, which is the opposite of what poisoning is for.</p>
 the only failure that can occur is a panic, and a panic cannot be converted into
 <code>Box&lt;dyn Error&gt;</code> by <code>?</code>. <code>join()</code> returns <code>Result&lt;T, Box&lt;dyn Any + Send&gt;&gt;</code>, and
 <code>Box&lt;dyn Any + Send&gt;</code> does not implement <code>Error</code>.</p>
-<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
+<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <ul>
 <li>Poisoning records that a panic occurred while the guard was held. It repairs
 nothing and it does not deny access to the data.</li>
@@ -5346,7 +5270,7 @@ Moving it into <code>src/problems/</code> would export it with the rest of the p
 <code>count_islands</code> cannot accept a predicate, which would let a caller count something
 other than strict equality, for example, a region of cells above a threshold. The
 predicate version is the same code with <code>land</code> replaced by a closure.</p>
-<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
+<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <ul>
 <li>A flood fill visits exactly one connected component, so the number of fills is
 the number of components.</li>
@@ -5584,7 +5508,7 @@ warning.</strong> Running <code>cargo run --bin syscall_overhead</code> prints a
 for an unused function in the library. The warning comes from <code>merge_intervals2</code>,
 which Chapter 5 identifies, and it appears in this chapter’s output because Cargo
 compiles the whole crate.</p>
-<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
+<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
 <ul>
 <li><code>getpid</code> gives a floor for the cost of crossing the process boundary. It is not
 the cost a service would see per request.</li>
@@ -5806,7 +5730,7 @@ the end of the scope, not at the shadowing statement.</p>
 that took <code>&amp;mut String</code> and appended to the caller’s buffer would allocate less,
 and the tests would be the same. For a demonstration the difference is irrelevant;
 it is the kind of allocation that shows up in a profile.</p>
-<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
+<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
 <ul>
 <li><code>let</code> introduces a binding and <code>mut</code> allows a place to be written. The two are
 independent.</li>
@@ -5983,7 +5907,7 @@ line is yielded even when it has no terminator.</p>
 <p><strong>The two writers ignore the returned length.</strong> <code>writeln!</code> can write fewer bytes
 than requested; the callers rely on <code>io::Write</code> to report that as an error, and
 neither program checks how many bytes reached the file.</p>
-<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
+<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
 <ul>
 <li><code>fs::write</code> replaces contents, <code>OpenOptions</code> with <code>append(true)</code> adds to them,
 and the difference is the flag rather than a separate function.</li>
@@ -6157,7 +6081,7 @@ and sort them, which the programs do not do.</p>
 <p><strong>Relative names depend on the working directory.</strong> Both directory programs walk
 <code>"."</code>, so their output changes with the directory they are started in, and
 <code>list_directory</code> does not recurse.</p>
-<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
+<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
 <ul>
 <li><code>Path</code> and <code>PathBuf</code> are the borrowed and owned forms of a path, and <code>join</code> is
 the non-mutating builder against <code>push</code>.</li>
@@ -6284,7 +6208,7 @@ directory unchanged needs a temporary directory and a final rename.</p>
 prints <code>Display</code> for <code>io::Error</code>, which includes the operating system message but
 not the path. Adding the path is the caller’s job, because the error does not
 carry it.</p>
-<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
+<h2 id="summary-13"><a class="header" href="#summary-13">Summary</a></h2>
 <ul>
 <li><code>copy</code>, <code>rename</code> and <code>remove_file</code> are the mutating operations, and <code>rename</code> is
 the atomic replacement primitive within one filesystem.</li>
@@ -6520,7 +6444,7 @@ program’s location.</p>
 <p><strong>Precedence between sources is not implemented.</strong> A flag over an environment
 variable over a file over a default is the usual order, and a tool that reads more
 than one source has to state that order somewhere. This parser has one source.</p>
-<h2 id="summary-18"><a class="header" href="#summary-18">Summary</a></h2>
+<h2 id="summary-14"><a class="header" href="#summary-14">Summary</a></h2>
 <ul>
 <li><code>env::args()</code> yields <code>String</code> values whose first item is the invocation name;
 <code>skip(1)</code> is the boundary between the program and its arguments.</li>
@@ -6772,7 +6696,7 @@ threads can be adjacent. The set of lines is fixed; the order is not.</p>
 and the tests that would catch a missing <code>while</code> are the ones that run a producer
 and a consumer concurrently rather than the ones that assert on a single-threaded
 push and pop.</p>
-<h2 id="summary-19"><a class="header" href="#summary-19">Summary</a></h2>
+<h2 id="summary-15"><a class="header" href="#summary-15">Summary</a></h2>
 <ul>
 <li>A mutex makes the deque shared; condition variables make waiting possible.</li>
 <li>The condition is re-checked in a <code>while</code> loop, because a wake-up does not
@@ -6983,7 +6907,7 @@ remainder one element at a time.</p>
 reads a contiguous range, which is the friendly case. A false-sharing problem
 would appear if threads wrote partial sums into adjacent fields of one object,
 which this program avoids by returning each sum through <code>join</code>.</p>
-<h2 id="summary-20"><a class="header" href="#summary-20">Summary</a></h2>
+<h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
 <ul>
 <li><code>thread::scope</code> allows the workers to borrow the input, which removes the
 <code>Arc&lt;Vec&lt;T&gt;&gt;</code> the naive version would need.</li>
@@ -7238,7 +7162,7 @@ the two heaps cannot do without locating that value in one of them.</p>
 eleven values. The differential test compares against a sort, so it catches a
 rebalancing error on those eleven steps, but a random or exhaustive stream would
 cover more of the state space than a fixed array does.</p>
-<h2 id="summary-21"><a class="header" href="#summary-21">Summary</a></h2>
+<h2 id="summary-17"><a class="header" href="#summary-17">Summary</a></h2>
 <ul>
 <li>Two heaps hold the lower and upper halves, and <code>Reverse</code> turns the second into
 a min-heap.</li>
@@ -7430,7 +7354,7 @@ not carry the assumption to a general string.</p>
 <p><strong>The largest test input is nine bytes.</strong> The tests establish the two parities and
 the round trip. A larger input, or one built to exercise the exact midpoint of an
 even-length string, would test the loop bound more of the way.</p>
-<h2 id="summary-22"><a class="header" href="#summary-22">Summary</a></h2>
+<h2 id="summary-18"><a class="header" href="#summary-18">Summary</a></h2>
 <ul>
 <li>Byte reversal is <code>O(n)</code> time and <code>O(1)</code> space, and only the ASCII precondition
 makes it a valid <code>String</code> transformation.</li>
@@ -7675,7 +7599,7 @@ an endpoint, so that two callers cannot collide by choosing the same string. Thi
 store treats the key as global.</p>
 <p><strong><code>K: Clone</code> is an unused bound.</strong> It constrains callers without buying anything.
 The bound can be removed with no other change to the implementation.</p>
-<h2 id="summary-23"><a class="header" href="#summary-23">Summary</a></h2>
+<h2 id="summary-19"><a class="header" href="#summary-19">Summary</a></h2>
 <ul>
 <li>A <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> gives at-most-once execution per key and a cached
 result for every later call with that key.</li>
