@@ -4,14 +4,14 @@
 
 ## Problem Statement
 
-A cache with a fixed capacity that evicts the least recently used entry. `get` and
-`put` must be in expected `O(1)`, and a `get` must count as a use.
+A cache with a fixed capacity that evicts the least recently used entry. `get` and `put`
+must be in expected `O(1)`, and a `get` must count as a use.
 
 ## Designing a Solution
 
-The recency order is kept as a log of events. Every access appends `(key,
-generation)` to a queue, where the generation counter increases on every access. A
-second map holds the generation of each key's *most recent* access.
+The recency order is kept as a log of events. Every access appends `(key, generation)` to
+a queue, where the generation counter increases on every access. A second map holds the
+generation of each key's most recent access.
 
 ```text
 access order: a, b, a, c          generation counter after each step: 1, 2, 3, 4
@@ -30,13 +30,13 @@ Which entry is least recently used? Scan the queue from the front:
   (b, 2)   current: the map says b's generation is 2, so b is the candidate
 ```
 
-The first event whose generation matches its key's entry belongs to the least
-recently used key. The queue is ordered by generation, and every live key's most
-recent event appears exactly once, so the earliest match is the minimum.
+The first event whose generation matches its key's entry belongs to the least recently
+used key. The queue is ordered by generation, and every live key's most recent event
+appears exactly once, so the earliest match is the minimum.
 
-An event whose generation does not match is a record of an earlier access to a key
-that has been used since. It carries no information about the current recency order
-and is discarded.
+An event whose generation does not match records an earlier access to a key that has
+been used since. It carries no information about the current recency order and is
+discarded.
 
 ## Implementation
 
@@ -187,18 +187,15 @@ mod tests {
 }
 ```
 
-`get` clones the value out of the map, increments the generation, appends an event,
-and writes the entry back with the new generation. The write-back is what makes
-the generation map agree with the log; without it, the event just appended would
-look stale.
+`get` clones the value out of the map, increments the generation, appends an event, and
+writes the entry back with the new generation. The write-back is what keeps the map in
+agreement with the log; without it, the event just appended would look stale.
 
-`put` inserts first and then evicts only when the key was new. An update cannot
-take the cache over its capacity, so the eviction loop would be wasted work in that
-case.
+`put` inserts first and evicts only when the key was new. An update cannot take the cache
+over its capacity, so the eviction loop would be wasted work in that case.
 
-`evict_if_needed` pops events until one matches. The `break` after a successful
-removal ends the loop. Since `put` adds at most one entry, the loop removes at most
-one, which is the reason the `break` is safe.
+`evict_if_needed` pops events until one matches. The `break` after a successful removal
+ends the loop. `put` adds at most one entry, so the loop removes at most one.
 
 ## Intuition
 
@@ -232,48 +229,30 @@ result: {a: (1,3), c: (3,4)}
 
 ## Limitations
 
-**The event queue is not bounded by the capacity.** Every `get` and every `put`
-appends one entry to `recency`, and entries are only removed during eviction. A
-cache that is read far more often than it is written grows its queue without
-bound: with a capacity of two and a million reads of one key, the queue holds a
-million events, and nothing in the API releases them. The queue is therefore
-proportional to the number of operations rather than to the number of entries, and
-a long-lived read-heavy cache will exhaust memory. Chapter 18 shows a design whose
-storage is bounded by the capacity.
+**The event queue is not bounded by the capacity.** Every `get` and every `put` appends
+one entry to `recency`, and entries are removed only during eviction. A cache that is
+read far more often than it is written grows its queue without bound: with a capacity of
+two and a million reads of one key, the queue holds a million events, and nothing in the
+API releases them. The queue is proportional to the number of operations rather than to
+the number of entries, so a long-lived read-heavy cache will exhaust memory. Chapter 18
+shows a design whose storage is bounded by the capacity.
 
-**`get` clones the value on every hit.** The signature returns `Option<V>` rather
-than `Option<&V>`, so a cached value is copied out on every access. For a small
-integer that is free; for a cached response body it is a memcpy per hit, and it
-also forces the `V: Clone` bound on the type.
+**`get` clones the value on every hit.** The signature returns `Option<V>` rather than
+`Option<&V>`, so a cached value is copied out on every access. For a small integer that
+is free; for a cached response body it is a memcpy per hit, and it also forces the
+`V: Clone` bound on the type.
 
-**`capacity == 0` panics.** `new` asserts `capacity > 0`, so a cache cannot be
-disabled by configuration. A caller that receives a capacity from a file must
-either validate it or accept the panic.
+**`capacity == 0` panics.** `new` asserts `capacity > 0`, so a cache cannot be disabled by
+configuration. A caller that receives a capacity from a file must validate it or accept
+the panic.
 
-**The `break` in the eviction loop makes the function correct only because `put`
-adds at most one entry.** If the function were reused in a context where several
-entries could be over capacity, it would leave some of them in place.
+**The `break` in the eviction loop is correct only because `put` adds at most one
+entry.** If the function were reused where several entries could be over capacity, it
+would leave some of them in place.
 
-**A generation counter of `u64` wraps after 2^64 accesses.** The wrap is
-unreachable in practice, at a billion accesses per second it takes about 584 years
-, and the consequence of reaching it would be a misidentified stale event rather
-than memory unsafety.
-
-## Summary
-
-- Two structures hold the state. The map holds values and the current generation
-  of each key; the queue holds access events.
-- The generation check identifies stale events. An event whose generation does not
-  match the key's current entry records an access that a later operation has
-  superseded.
-- The queue is proportional to the number of operations rather than to the
-  capacity. With a capacity of two and a million reads of one key, the queue holds
-  a million events and nothing in the API releases them. Chapter 18 describes a
-  design whose storage is bounded by the capacity.
-- `get` returns `Option<V>` and therefore clones on every hit, which copies a
-  cached value out of the map and forces the `V: Clone` bound. A signature of
-  `Option<&V>` would avoid the copy and change what `get` can do with the map.
-- A capacity of zero panics, because `new` asserts `capacity > 0`.
+**A generation counter of `u64` wraps after 2^64 accesses.** The wrap is unreachable in
+practice, about 584 years at a billion accesses per second, and its consequence would be
+a misidentified stale event rather than memory unsafety.
 
 ## References
 
