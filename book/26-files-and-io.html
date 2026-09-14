@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e168a925.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
+            window.path_to_searchindex_js = "searchindex-3cece841.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -207,27 +207,24 @@ without its terminator, so an unreadable line is reported rather than skipped.</
 different ways:</p>
 <pre class="playground"><code class="language-rust">use std::fs;
 use std::io;
-use std::path::{Path, PathBuf}; // Added Path here to change &amp;PathBuf to &amp;Path for idiomatic borrowing
+use std::path::{Path, PathBuf};
 
-// Fixed to be idiomatic by using &amp;Path instead of &amp;PathBuf, and returning the String
+// `&amp;Path` accepts both a `&amp;Path` and a `&amp;PathBuf` argument; `&amp;PathBuf` would not.
 fn read_content_of_file(path: &amp;Path) -&gt; io::Result&lt;String&gt; {
-    let content = fs::read_to_string(path)?;
-    Ok(content)
+    fs::read_to_string(path)
 }
 
 fn main() -&gt; io::Result&lt;()&gt; {
-    // Write a file (creates or overwrites)
     fs::write("hello.txt", "Hello, NVIDIA!\n")?;
 
-    // --- Demo 1: Non-mutating .join() ---
+    // `join` builds a new PathBuf and leaves `base_dir` unchanged.
     let base_dir = PathBuf::from(".");
     let joined_path = base_dir.join("hello.txt");
 
-    // --- Demo 2: In-place .push() ---
+    // `push` mutates the PathBuf in place instead of returning a new one.
     let mut mut_base_dir = PathBuf::from(".");
     mut_base_dir.push("hello.txt");
 
-    // Read it back as a String using your function and a joined path
     let text = read_content_of_file(&amp;joined_path)?;
     println!("File contents (via .join()):\n{}", text);
 
@@ -253,7 +250,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 }</code></pre>
 <p><code>readfile_line_by_line.rs</code> numbers the lines as it prints them:</p>
 <pre class="playground"><code class="language-rust">use std::fs::File;
-use std::io::{BufRead, BufReader}; // Huh1 You beed to import this explicitely, interesting!
+use std::io::{BufRead, BufReader}; // BufRead brings `lines()` into scope.
 
 fn main() -&gt; std::io::Result&lt;()&gt; {
     let file = File::open("log.txt")?;
@@ -268,9 +265,11 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 }</code></pre>
 <p><code>read_content_of_file</code> takes <code>&amp;Path</code> rather than <code>&amp;PathBuf</code>. A <code>&amp;PathBuf</code>
 coerces to <code>&amp;Path</code> at the call site, but a <code>&amp;Path</code> does not coerce to <code>&amp;PathBuf</code>,
-so the <code>&amp;Path</code> signature accepts strictly more callers. The body binds the result
-of <code>fs::read_to_string</code> and returns it, which is the same value with one extra
-binding; the <code>?</code> inside the call already converts the error type to <code>io::Error</code>.</p>
+so the <code>&amp;Path</code> signature accepts strictly more callers: both <code>&amp;joined_path</code> and
+<code>&amp;mut_base_dir</code> below borrow as <code>&amp;PathBuf</code>, and the coercion is what lets a
+<code>&amp;Path</code>-typed parameter accept both. <code>fs::read_to_string</code> already returns
+<code>io::Result&lt;String&gt;</code>, the function’s own return type, so the body returns that
+value directly rather than unwrapping it with <code>?</code> and rewrapping it in <code>Ok</code>.</p>
 <p><code>OpenOptions</code> is consumed by <code>open</code>, which is why the builder chain ends in a
 single statement. The two flags are independent: <code>create</code> decides what happens
 when the file is absent, and <code>append</code> decides where each write lands. Without

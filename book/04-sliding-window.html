@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e168a925.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
+            window.path_to_searchindex_js = "searchindex-3cece841.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -215,7 +215,6 @@ use std::collections::HashMap;
 pub fn length_of_longest_substring(s: &amp;str) -&gt; usize {
     let mut last_seen = HashMap::with_capacity(s.len());
 
-    // it's magic compiler is able to deduce the datatype as usize based on its first usage, which is kinda cool, isn't it ?
     let (mut start, mut longest) = (0, 0);
 
     for (end, ch) in s.chars().enumerate() {
@@ -248,6 +247,10 @@ characters. A byte-oriented version would report a different number for any text
 outside ASCII.</p>
 <p><code>if let Some(&amp;previous) = last_seen.get(&amp;ch)</code> copies the index out of the map, so
 the borrow ends at the end of the <code>if let</code> and the <code>insert</code> below is allowed.</p>
+<p><code>start</code> and <code>longest</code> carry no type annotation. Both are inferred as <code>usize</code>, the
+type <code>s.chars().enumerate()</code> produces for <code>end</code> and the type <code>last_seen</code>’s capacity
+hint expects; the compiler resolves the binding from its first use rather than from
+the literal <code>0</code> alone.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>A case where the repeat has left the window, which is the case the <code>max</code> exists for:</p>
 <pre><code class="language-text">"abba"

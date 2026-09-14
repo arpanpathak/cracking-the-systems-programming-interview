@@ -29,7 +29,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e168a925.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
+            window.path_to_searchindex_js = "searchindex-3cece841.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -546,21 +546,19 @@ pub fn is_valid(s: &amp;str) -&gt; bool {
 
     let mut stack = Vec::with_capacity(s.len());
 
-    // Because manually adding if else is not an extensible solution.
-    let expected = HashMap::from([
-        (')', '('), 
-        ('}', '{'), 
-        (']', '['),
-        // You can write whatever grammar you'd like, such as '&lt;', '|', '$'....
-    ]);
+    // Maps each closing delimiter to the opening delimiter it must match.
+    let expected = HashMap::from([(')', '('), ('}', '{'), (']', '[')]);
 
     for ch in s.chars() {
-        // Look at the tasteful thickness of "পূর্ণাঙ্গ বিন্যাস মিলকরণ", We love Unicode!
         match ch {
             '(' | '[' | '{' =&gt; stack.push(ch),
-            // Rust compiler will throw error for not handling all the possible character ranges.
-            // So ask it to chill with an if guard.....I've got you Sir!! Thank 
-            _ =&gt; { if stack.pop().as_ref() != expected.get(&amp;ch) { return false; } }
+            // Every other character, including one outside the six delimiters,
+            // must close the top of the stack.
+            _ =&gt; {
+                if stack.pop().as_ref() != expected.get(&amp;ch) {
+                    return false;
+                }
+            }
         }
     }
 
@@ -586,8 +584,6 @@ mod tests {
         assert!(!is_valid(")"));
         assert!(!is_valid("(("));
     }
-
-    
 }
 <span class="boring">}</span></code></pre>
 <p>The capacity hint is <code>s.len()</code>, the byte length of the string. A character count never
@@ -907,7 +903,6 @@ use std::collections::HashMap;
 pub fn length_of_longest_substring(s: &amp;str) -&gt; usize {
     let mut last_seen = HashMap::with_capacity(s.len());
 
-    // it's magic compiler is able to deduce the datatype as usize based on its first usage, which is kinda cool, isn't it ?
     let (mut start, mut longest) = (0, 0);
 
     for (end, ch) in s.chars().enumerate() {
@@ -940,6 +935,10 @@ characters. A byte-oriented version would report a different number for any text
 outside ASCII.</p>
 <p><code>if let Some(&amp;previous) = last_seen.get(&amp;ch)</code> copies the index out of the map, so
 the borrow ends at the end of the <code>if let</code> and the <code>insert</code> below is allowed.</p>
+<p><code>start</code> and <code>longest</code> carry no type annotation. Both are inferred as <code>usize</code>, the
+type <code>s.chars().enumerate()</code> produces for <code>end</code> and the type <code>last_seen</code>’s capacity
+hint expects; the compiler resolves the binding from its first use rather than from
+the literal <code>0</code> alone.</p>
 <h2 id="intuition-3"><a class="header" href="#intuition-3">Intuition</a></h2>
 <p>A case where the repeat has left the window, which is the case the <code>max</code> exists for:</p>
 <pre><code class="language-text">"abba"
@@ -3652,7 +3651,9 @@ deallocated while the cache lives.</p>
 that is already linked is spliced out of its current position first; a brand new node has
 no neighbours and is spliced in directly. That is what <code>touch</code> does.</p>
 <h2 id="implementation-17"><a class="header" href="#implementation-17">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">//! A fixed-capacity LRU (Least Recently Used) cache.
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! A fixed-capacity LRU (Least Recently Used) cache.
 //!
 //! ## Design
 //!
@@ -3803,25 +3804,8 @@ where
     }
 }
 
-fn main() {
-    let mut cache = LruCache::new(2);
-
-    cache.put("A", 10);
-    cache.put("B", 20);
-    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
-
-    cache.put("C", 30); // evicts B (LRU)
-
-    println!("get B = {:?}", cache.get(&amp;"B")); // None
-    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
-    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
-
-    cache.put("A", 99);
-    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
-}
-
 #[cfg(test)]
-mod tests_for_lru {
+mod tests {
     use super::*;
 
     #[test]
@@ -3886,7 +3870,8 @@ mod tests_for_lru {
     fn zero_capacity_panics() {
         let _: LruCache&lt;&amp;str, i32&gt; = LruCache::new(0);
     }
-}</code></pre>
+}
+<span class="boring">}</span></code></pre>
 <p><code>touch</code> reads the node’s two links, decides whether the node is linked at all, and acts.
 The <code>linked</code> test is what lets one method serve both callers. Without it, a brand new
 node would be spliced out of a list it is not in, and <code>head</code> and <code>tail</code> would be
@@ -4661,7 +4646,7 @@ stack. Scoped threads would lift that restriction.</li>
 <blockquote>
 <p>A distributed system is one in which the failure of a computer you didn’t
 even know existed can render your own computer unusable.</p>
-<p>, Leslie Lamport, <em>Distribution</em>, 1987</p>
+<p>Leslie Lamport, <em>Distribution</em>, 1987</p>
 </blockquote>
 <h2 id="problem-statement-21"><a class="header" href="#problem-statement-21">Problem Statement</a></h2>
 <p>Handle the case where a thread panics while holding a lock. The data behind the
@@ -5273,7 +5258,7 @@ because the land value is taken by value and no predicate is accepted.</li>
 <code>cargo run --release --bin syscall_overhead</code>.</em></p>
 <blockquote>
 <p>Latency lags bandwidth.</p>
-<p>, David A. Patterson, <em>Latency lags bandwidth</em>, Communications of the ACM
+<p>David A. Patterson, <em>Latency lags bandwidth</em>, Communications of the ACM
 47(10), 2004</p>
 </blockquote>
 <h2 id="problem-statement-23"><a class="header" href="#problem-statement-23">Problem Statement</a></h2>
@@ -5750,27 +5735,24 @@ without its terminator, so an unreadable line is reported rather than skipped.</
 different ways:</p>
 <pre class="playground"><code class="language-rust">use std::fs;
 use std::io;
-use std::path::{Path, PathBuf}; // Added Path here to change &amp;PathBuf to &amp;Path for idiomatic borrowing
+use std::path::{Path, PathBuf};
 
-// Fixed to be idiomatic by using &amp;Path instead of &amp;PathBuf, and returning the String
+// `&amp;Path` accepts both a `&amp;Path` and a `&amp;PathBuf` argument; `&amp;PathBuf` would not.
 fn read_content_of_file(path: &amp;Path) -&gt; io::Result&lt;String&gt; {
-    let content = fs::read_to_string(path)?;
-    Ok(content)
+    fs::read_to_string(path)
 }
 
 fn main() -&gt; io::Result&lt;()&gt; {
-    // Write a file (creates or overwrites)
     fs::write("hello.txt", "Hello, NVIDIA!\n")?;
 
-    // --- Demo 1: Non-mutating .join() ---
+    // `join` builds a new PathBuf and leaves `base_dir` unchanged.
     let base_dir = PathBuf::from(".");
     let joined_path = base_dir.join("hello.txt");
 
-    // --- Demo 2: In-place .push() ---
+    // `push` mutates the PathBuf in place instead of returning a new one.
     let mut mut_base_dir = PathBuf::from(".");
     mut_base_dir.push("hello.txt");
 
-    // Read it back as a String using your function and a joined path
     let text = read_content_of_file(&amp;joined_path)?;
     println!("File contents (via .join()):\n{}", text);
 
@@ -5796,7 +5778,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 }</code></pre>
 <p><code>readfile_line_by_line.rs</code> numbers the lines as it prints them:</p>
 <pre class="playground"><code class="language-rust">use std::fs::File;
-use std::io::{BufRead, BufReader}; // Huh1 You beed to import this explicitely, interesting!
+use std::io::{BufRead, BufReader}; // BufRead brings `lines()` into scope.
 
 fn main() -&gt; std::io::Result&lt;()&gt; {
     let file = File::open("log.txt")?;
@@ -5811,9 +5793,11 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 }</code></pre>
 <p><code>read_content_of_file</code> takes <code>&amp;Path</code> rather than <code>&amp;PathBuf</code>. A <code>&amp;PathBuf</code>
 coerces to <code>&amp;Path</code> at the call site, but a <code>&amp;Path</code> does not coerce to <code>&amp;PathBuf</code>,
-so the <code>&amp;Path</code> signature accepts strictly more callers. The body binds the result
-of <code>fs::read_to_string</code> and returns it, which is the same value with one extra
-binding; the <code>?</code> inside the call already converts the error type to <code>io::Error</code>.</p>
+so the <code>&amp;Path</code> signature accepts strictly more callers: both <code>&amp;joined_path</code> and
+<code>&amp;mut_base_dir</code> below borrow as <code>&amp;PathBuf</code>, and the coercion is what lets a
+<code>&amp;Path</code>-typed parameter accept both. <code>fs::read_to_string</code> already returns
+<code>io::Result&lt;String&gt;</code>, the function’s own return type, so the body returns that
+value directly rather than unwrapping it with <code>?</code> and rewrapping it in <code>Ok</code>.</p>
 <p><code>OpenOptions</code> is consumed by <code>open</code>, which is why the builder chain ends in a
 single statement. The two flags are independent: <code>create</code> decides what happens
 when the file is absent, and <code>append</code> decides where each write lands. Without

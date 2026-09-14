@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e168a925.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
+            window.path_to_searchindex_js = "searchindex-3cece841.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -210,21 +210,19 @@ pub fn is_valid(s: &amp;str) -&gt; bool {
 
     let mut stack = Vec::with_capacity(s.len());
 
-    // Because manually adding if else is not an extensible solution.
-    let expected = HashMap::from([
-        (')', '('), 
-        ('}', '{'), 
-        (']', '['),
-        // You can write whatever grammar you'd like, such as '&lt;', '|', '$'....
-    ]);
+    // Maps each closing delimiter to the opening delimiter it must match.
+    let expected = HashMap::from([(')', '('), ('}', '{'), (']', '[')]);
 
     for ch in s.chars() {
-        // Look at the tasteful thickness of "পূর্ণাঙ্গ বিন্যাস মিলকরণ", We love Unicode!
         match ch {
             '(' | '[' | '{' =&gt; stack.push(ch),
-            // Rust compiler will throw error for not handling all the possible character ranges.
-            // So ask it to chill with an if guard.....I've got you Sir!! Thank 
-            _ =&gt; { if stack.pop().as_ref() != expected.get(&amp;ch) { return false; } }
+            // Every other character, including one outside the six delimiters,
+            // must close the top of the stack.
+            _ =&gt; {
+                if stack.pop().as_ref() != expected.get(&amp;ch) {
+                    return false;
+                }
+            }
         }
     }
 
@@ -250,8 +248,6 @@ mod tests {
         assert!(!is_valid(")"));
         assert!(!is_valid("(("));
     }
-
-    
 }
 <span class="boring">}</span></code></pre>
 <p>The capacity hint is <code>s.len()</code>, the byte length of the string. A character count never
