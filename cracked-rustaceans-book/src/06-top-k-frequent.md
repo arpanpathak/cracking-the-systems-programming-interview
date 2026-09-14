@@ -6,20 +6,19 @@
 ## Problem Statement
 
 Given a slice of integers and a number `k`, return the `k` values that occur most
-often. The result order is only defined if the function states how ties are
-broken, and the file's ordering answers that question by construction: the heap
-key is the pair `(count, value)`, compared lexicographically, so a larger value
-wins a tie.
+often. The result order is defined only if the function states how ties are broken.
+This implementation keys the heap on `(count, value)`, compared lexicographically, so
+a larger value wins a tie.
 
 ## Designing a Solution
 
 Two passes. The first counts occurrences in a hash map. The second moves every
 `(count, value)` pair into a `BinaryHeap` and pops the largest keys.
 
-`BinaryHeap` in Rust is a max-heap, so pushing `(count, num)` and popping puts the
-highest count first. That is the opposite of the min-heap-with-size-`k` design
-that keeps `O(m log k)` time, and the file chooses the simpler of the two. The
-cost table below states what that choice costs.
+`BinaryHeap` in Rust is a max-heap, so the pairs come out in descending count and, for
+equal counts, in descending value. The alternative, a min-heap holding at most `k`
+entries, costs `O(m log k)` time and `O(k)` space and is not implemented here. The
+cost table states what the simpler choice costs.
 
 ## Implementation
 
@@ -73,19 +72,16 @@ mod tests {
 }
 ```
 
-`*counts.entry(num).or_insert(0) += 1` is the counting idiom. `entry` looks up or
-inserts, `or_insert(0)` supplies the initial count, and the dereference lets the
-increment write through the returned `&mut usize`. The map is searched once per
-element.
+`*counts.entry(num).or_insert(0) += 1` looks up the count or inserts zero, then
+increments through the returned `&mut usize`. The map is searched once per element
+rather than twice.
 
-`counts.into_iter()` consumes the map and yields owned pairs, which avoids
-borrowing it while the heap is built. `map(|(num, count)| (count, num))` reverses
-each pair so that the heap's ordering applies to the count first; this is the
-whole tie-break rule.
+`counts.into_iter()` consumes the map and yields owned pairs, so the heap is built
+without borrowing the map. `map(|(num, count)| (count, num))` reverses each pair so
+that the count is the first component of the key, which is the tie-break rule.
 
-`while result.len() < k` with `None => break` handles `k` larger than the number
-of distinct values. The heap empties and the loop stops, leaving a result shorter
-than `k`.
+`while result.len() < k` with `None => break` handles a `k` larger than the number of
+distinct values: the heap empties, the loop stops, and the result is shorter than `k`.
 
 ## Intuition
 
@@ -110,46 +106,31 @@ The heap still holds (1, 3), which is not popped.
 | Time | `O(n + m log m)` expected | `m` distinct values; the first pass is `O(n)`, the heap operations are `O(m log m)` |
 | Space | `O(m)` | the map and the heap each hold one entry per distinct value |
 
-The heap holds every distinct value, not `k` of them. For a slice of a million
-elements with half a million distinct values and `k = 10`, the program builds a
-heap of half a million entries to return ten. The bounded variant keeps a
-min-heap of size `k` and discards each element smaller than the current root,
-which is `O(m log k)` and needs `O(k)` space. The file does not implement it, and
-the comment in the file states the trade in one line: `O(n log n) worst case;
-acceptable and readable`.
+The heap holds one entry per distinct value rather than `k` entries. For a slice of a
+million elements with half a million distinct values and `k = 10`, the program builds a
+heap of half a million entries to return ten. A min-heap bounded at `k` entries, which
+discards each element smaller than its root, costs `O(m log k)` time and `O(k)` space.
+The file does not implement it.
 
 ## Limitations
 
 **The heap is unbounded in the number of distinct values.** Every distinct value
-counted becomes an entry in the heap, so the structure holds `m` entries at its
-largest, where `m` is the number of distinct values in the input.
+counted becomes an entry, so the structure holds `m` entries at its largest, where `m`
+is the number of distinct values in the input.
 
-**The result order depends on the heap's internal comparison and nothing else.**
-The pair ordering makes the order deterministic, and the first test sorts the
-result before asserting, so the file never pins the order. A caller that prints
-the result directly sees the order the heap produced, which is by descending count
-and then by descending value.
+**The result order is fixed by the heap comparison and nothing else.** The pair
+ordering makes it deterministic, and the first test sorts the result before asserting,
+so the file never pins the order. A caller that prints the result directly sees
+descending count and then descending value.
 
-**A `k` of zero returns an empty vector.** `Vec::with_capacity(0)` allocates
-nothing and the loop does not run, so the answer is empty rather than a panic. The
-file has no test for it.
+**A `k` of zero returns an empty vector.** `Vec::with_capacity(0)` allocates nothing
+and the loop does not run, so the answer is empty rather than a panic. The file has no
+test for it.
 
-**The tie-break rule is not documented.** A reader has to derive it from
-`(count, num)` and from the fact that `BinaryHeap` is a max-heap. Two sentences in
-the module documentation would make it part of the contract rather than a
-consequence of the implementation.
-
-## Summary
-
-- The tie-break rule is part of the specification. "The `k` most frequent" is
-  incomplete where counts are equal, and this implementation resolves a tie in
-  favour of the larger value, because the heap orders `(count, value)` pairs and
-  is a max-heap.
-- Two heap designs are available. A heap holding every distinct value costs
-  `O(m log m)`; a heap bounded at `k` entries costs `O(m log k)`. This file uses
-  the bounded heap, and the result is therefore in heap order rather than sorted.
-- `counts.entry(num).or_insert(0) += 1` performs one map lookup rather than a
-  lookup followed by an insertion.
+**The tie-break rule is not documented.** A reader has to derive it from `(count, num)`
+and from the fact that `BinaryHeap` is a max-heap. Two sentences in the module
+documentation would make it part of the contract rather than a consequence of the
+implementation.
 
 ## References
 

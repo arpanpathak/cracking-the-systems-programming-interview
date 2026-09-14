@@ -5,9 +5,8 @@
 
 ## Problem Statement
 
-Represent a binary tree of integers, then compute its depth, mirror it in place,
-and produce its three depth-first traversals. No allocation during the traversals,
-and no recursion beyond what the shape of the type requires.
+Represent a binary tree of integers, compute its depth, mirror it in place, and
+produce its three depth-first traversals.
 
 ## Designing a Solution
 
@@ -18,16 +17,15 @@ Tree = Empty
      | Node { value: i32, left: Box<Tree>, right: Box<Tree> }
 ```
 
-Two consequences follow from writing it this way rather than with nullable
-pointers.
+Two properties follow from this representation rather than from nullable pointers.
 
 **A node always has both children.** There is no state in which the left child is
 absent and the right one is present, because the `Node` variant has no optional
-fields. Every function that matches on `Tree::Node` can bind `left` and `right`
-without testing them.
+fields. Every function that matches on `Tree::Node` binds `left` and `right` without
+testing them.
 
-**The recursion is in the type.** A `Node` owns its children, and each child is
-boxed, so the size of a `Tree` value does not depend on how many nodes exist:
+**The recursion is in the type.** A `Node` owns its children, and each child is boxed,
+so the size of a `Tree` value does not depend on how many nodes exist:
 
 ```text
 stack                              heap
@@ -46,8 +44,8 @@ stack                              heap
                                    +---------------------------+
 ```
 
-Each arrow is one eight-byte ownership pointer. The `Empty` variant is a
-discriminant with no payload, so it occupies no heap space.
+Each arrow is one eight-byte ownership pointer. The `Empty` variant is a discriminant
+with no payload, so it occupies no heap space.
 
 ## Implementation
 
@@ -201,23 +199,21 @@ mod tests {
 }
 ```
 
-`invert` swaps the two children after recursing into both. `std::mem::swap(left,
-right)` exchanges the two `Box` values, which swaps two pointers per node and
-moves no subtree. Swapping before recursing would also be correct; the two
-subtrees are independent, so the order is a matter of taste.
-
 `max_depth` uses `..` in the pattern to ignore `value`, and computes
-`1 + left.max_depth().max(right.max_depth())` without a binding for the child
-depths. `Ord::max` on two `usize` values is a single instruction.
+`1 + left.max_depth().max(right.max_depth())` without a binding for the child depths.
+`Ord::max` on two `usize` values is a single instruction.
 
-The three collection helpers take `&mut Vec<i32>`. Returning a new vector from
-each recursive call would copy the whole output at every level of the tree, which
-turns a linear traversal into a quadratic one.
+`invert` swaps the two children after recursing into both. `std::mem::swap(left, right)`
+exchanges the two `Box` values, which swaps two pointers per node and moves no subtree.
+Swapping before recursing would also be correct; the two subtrees are independent.
+
+The three collection helpers take `&mut Vec<i32>`. Returning a new vector from each
+recursive call would copy the whole output at every level of the tree, which turns a
+linear traversal into a quadratic one.
 
 The test helpers `leaf` and `node` exist because building a tree means writing
 `Box::new` at every level, and the constructors keep the shape of the sample tree
-readable. The constructors are in the test module, so they are not part of the
-library's API.
+readable. They are in the test module, so they are not part of the library's API.
 
 ## Intuition
 
@@ -254,45 +250,33 @@ invert     left and right exchanged at every node
 | `invert` | `O(n)` | `O(h)` stack frames, no allocation |
 | each traversal | `O(n)` | `O(n)` for the output, `O(h)` stack frames |
 
-`h` is the height of the tree: `O(log n)` when the tree is balanced and `O(n)`
-when it is a chain.
+`h` is the height of the tree: `O(log n)` when the tree is balanced and `O(n)` when it
+is a chain.
 
 ## Limitations
 
-**A deep tree exhausts the stack.** All five methods recurse, so each uses one
-stack frame per level. A left-leaning tree of a few hundred thousand nodes
-overflowing the default thread stack aborts the process, because a stack overflow
-is not a panic that unwinds. The traversals cannot be reformulated iteratively
-without an explicit work list, and `#[derive(Clone)]` has the same problem: the
-derived `clone` recurses as well.
+**A deep tree exhausts the stack.** All five methods recurse, so each uses one stack
+frame per level. A left-leaning tree of a few hundred thousand nodes overflowing the
+default thread stack aborts the process, because a stack overflow is not a panic that
+unwinds. The traversals cannot be reformulated iteratively without an explicit work
+list, and `#[derive(Clone)]` has the same problem: the derived `clone` recurses as
+well.
 
-**The derived destructor recurses too.** Dropping a deep tree follows the boxes,
-one frame per level, for the same reason. Freeing the memory is therefore as
-unsafe for a deep tree as cloning it.
+**The derived destructor recurses too.** Dropping a deep tree follows the boxes, one
+frame per level, for the same reason. Freeing the memory is therefore as unsafe for a
+deep tree as cloning it.
 
-**The value type is fixed at `i32`.** Every method works for any type, and making
-the declaration generic is one change to the `enum` and one to each signature,
-but the file as written is not generic.
+**The value type is fixed at `i32`.** Every method works for any type, and making the
+declaration generic is one change to the `enum` and one to each signature, but the file
+as written is not generic.
 
-**`Tree` has no `PartialOrd`, no iteration, and no `len`.** A caller that needs
-the node count writes a recursive helper or a loop with a work list.
+**`Tree` has no `PartialOrd`, no iteration, and no `len`.** A caller that needs the node
+count writes a recursive helper or a loop with a work list.
 
-**The test for `invert` inspects two values and not the shape.** It checks that
-the roots of the two subtrees were exchanged, which is enough to catch an `invert`
-that does nothing, and not enough to catch one that swaps the children of the root
-only. Asserting `tree.preorder()` against the mirrored sequence would test the
-whole tree in one line.
-
-## Summary
-
-- The type itself removes the empty case: both children of a `Node` are present,
-  so no function tests for a missing one.
-- A traversal order is named by where the value is visited. Pre-order visits it
-  before the children, in-order between them, and post-order after them.
-- The stack cost is `O(h)`, and `h` takes two values. A balanced tree gives
-  `O(log n)` and a chain gives `O(n)`.
-- The `Box` is what makes the type finite. A `Node` holding another `Node`
-  directly would have infinite size, and the compiler rejects the declaration.
+**The test for `invert` inspects two values and not the shape.** It checks that the
+roots of the two subtrees were exchanged, which catches an `invert` that does nothing
+and not one that swaps the children of the root only. Asserting `tree.preorder()`
+against the mirrored sequence would test the whole tree in one line.
 
 ## References
 

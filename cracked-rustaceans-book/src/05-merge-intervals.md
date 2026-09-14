@@ -5,17 +5,16 @@
 
 ## Problem Statement
 
-Given a list of closed intervals `[start, end]`, return the list of maximal
-intervals covering exactly the same points. Overlapping intervals are merged, and
-so are intervals that only touch: `(1, 4)` and `(4, 5)` become `(1, 5)`, because
-`4` belongs to both. Whether touching intervals merge is the first property to
-fix, since half-open intervals would not merge.
+Given a list of closed intervals `[start, end]`, return the list of maximal intervals
+covering exactly the same points. Overlapping intervals are merged, and so are
+intervals that only touch: `(1, 4)` and `(4, 5)` become `(1, 5)`, because `4` belongs
+to both. Half-open intervals would not merge.
 
 ## Designing a Solution
 
 Sorting by start removes the need to compare intervals with each other. After the
-sort, an interval can only overlap the most recent one in the output, so each
-interval costs one comparison.
+sort, an interval can only overlap the most recent one in the output, so each interval
+costs one comparison.
 
 ```text
 input   (1, 3) (2, 6) (8, 10) (15, 18)     already sorted here
@@ -27,14 +26,13 @@ interval   merged so far         decision
 (15, 18)   [..., (15, 18)]       15 > 10, a gap, so push
 ```
 
-The comparison uses `max` for the end. With `(1, 10)` followed by `(2, 3)`, the
-incoming end is smaller than the end already recorded, and assigning it would
-shrink the interval.
+The end of the merged interval is the `max` of the two ends. With `(1, 10)` followed by
+`(2, 3)`, assigning the incoming end would shrink the interval.
 
 ## Implementation
 
-The file contains two functions. The first consumes the vector it is given; the
-second borrows it.
+The file contains two functions. The first consumes the vector it is given; the second
+borrows it.
 
 ```rust
 //! Merge Intervals: sort by start, then merge overlapping intervals in one pass.
@@ -99,17 +97,17 @@ mod tests {
 }
 ```
 
-`sort_unstable_by_key` sorts by the start value and does not preserve the relative
-order of intervals with equal starts. That is correct here: intervals with equal
-starts are merged into one, so their order cannot matter.
+`sort_unstable_by_key` sorts by the start value and does not preserve the relative order
+of intervals with equal starts. Intervals with equal starts are merged into one, so
+their order cannot matter.
 
-`for (start, end) in intervals` consumes the vector, which moves each pair out
-rather than borrowing it. `for &(start, end) in &intervals` in the second function
-copies each pair out of the borrowed vector. Since `(i32, i32)` is `Copy`, both
-loops work, and the difference is only whether the caller keeps the vector.
+`for (start, end) in intervals` consumes the vector, which moves each pair out rather
+than borrowing it. `for &(start, end) in &intervals` copies each pair out of the
+borrowed vector. Since `(i32, i32)` is `Copy`, both loops work, and the difference is
+only whether the caller keeps the vector.
 
-`match merged.last_mut()` with a guard keeps the three cases flat: an overlap, an
-empty output, and a gap. The last two share an arm because they share an action.
+`match merged.last_mut()` with a guard keeps the three cases flat: an overlap, an empty
+output, and a gap. The last two share an arm because they share an action.
 
 ## Intuition
 
@@ -132,37 +130,25 @@ interval   merged before   overlap?          merged after
 | Time | `O(n log n)` | the sort dominates; the sweep is `O(n)` |
 | Space | `O(n)` | the output holds at most one interval per input |
 
-The input vector is taken by value, so its allocation is available to the
-function; the code still allocates a second vector for the output rather than
-sorting and merging in place.
+The input vector is taken by value, so its allocation is available to the function; the
+code still allocates a second vector for the output rather than sorting and merging in
+place.
 
 ## Limitations
 
 **The second function is unreferenced.** `merge_intervals2` is not exported from
-`lib.rs`, no test in the file calls it, and no integration test calls it. Its only
-difference from `merge_intervals` is the loop, which borrows the vector instead of
-consuming it. An unused `pub fn` in a library is not a compiler warning, so the two
-functions coexist without a signal that one of them is unused.
+`lib.rs`, and no test in the file calls it. Its only difference from
+`merge_intervals` is the loop, which borrows the vector instead of consuming it. An
+unused `pub fn` in a library is not a compiler warning, so the two functions coexist
+without a signal that one of them is unused.
 
 **There is no test for the borrow-based variant.** Even if the function is kept,
-nothing checks that it agrees with the other one. A one-line assertion,
-`assert_eq!(merge_intervals2(v.clone()), merge_intervals(v))`, would cover it.
+nothing checks that it agrees with the other one. The assertion
+`assert_eq!(merge_intervals2(v.clone()), merge_intervals(v))` would cover it.
 
-**`i32` bounds silently overflow in the merged output.** The end of a merged
-interval is `previous.1.max(end)`, so no arithmetic is performed and no overflow
-is possible. The bound of `i32` matters only in the sense that a caller with
-larger times cannot use the function.
-
-## Summary
-
-- Whether intervals that touch are merged is a specification decision rather than
-  a detail of the implementation. It changes one comparison from `<` to `<=`, and
-  the two choices give different answers for `[1, 2]` followed by `[2, 3]`.
-- The `O(n log n)` bound comes from the sort. The sweep that follows is linear, so
-  the sort determines the cost of the function.
-- After sorting by start, one comparison per interval is sufficient. Merging
-  extends the last interval to the largest end seen, so that interval is the only
-  one a new interval can overlap.
+**The element type is `i32`.** The end of a merged interval is
+`previous.1.max(end)`, so the function performs no arithmetic and cannot overflow. The
+bound matters only in that a caller with larger times cannot use the function.
 
 ## References
 
