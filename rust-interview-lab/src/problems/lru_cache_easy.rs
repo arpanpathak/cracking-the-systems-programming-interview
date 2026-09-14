@@ -149,25 +149,8 @@ where
     }
 }
 
-fn main() {
-    let mut cache = LruCache::new(2);
-
-    cache.put("A", 10);
-    cache.put("B", 20);
-    println!("get A = {:?}", cache.get(&"A")); // Some(10), A now MRU
-
-    cache.put("C", 30); // evicts B (LRU)
-
-    println!("get B = {:?}", cache.get(&"B")); // None
-    println!("get A = {:?}", cache.get(&"A")); // Some(10)
-    println!("get C = {:?}", cache.get(&"C")); // Some(30)
-
-    cache.put("A", 99);
-    println!("get A = {:?}", cache.get(&"A")); // Some(99)
-}
-
 #[cfg(test)]
-mod tests_for_lru {
+mod tests {
     use super::*;
 
     #[test]

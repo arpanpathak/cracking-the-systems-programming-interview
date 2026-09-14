@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader}; // Huh1 You beed to import this explicitely, interesting!
+use std::io::{BufRead, BufReader}; // BufRead brings `lines()` into scope.
 
 fn main() -> std::io::Result<()> {
     let file = File::open("log.txt")?;

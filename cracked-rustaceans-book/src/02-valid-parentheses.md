@@ -42,21 +42,19 @@ pub fn is_valid(s: &str) -> bool {
 
     let mut stack = Vec::with_capacity(s.len());
 
-    // Because manually adding if else is not an extensible solution.
-    let expected = HashMap::from([
-        (')', '('), 
-        ('}', '{'), 
-        (']', '['),
-        // You can write whatever grammar you'd like, such as '<', '|', '$'....
-    ]);
+    // Maps each closing delimiter to the opening delimiter it must match.
+    let expected = HashMap::from([(')', '('), ('}', '{'), (']', '[')]);
 
     for ch in s.chars() {
-        // Look at the tasteful thickness of "পূর্ণাঙ্গ বিন্যাস মিলকরণ", We love Unicode!
         match ch {
             '(' | '[' | '{' => stack.push(ch),
-            // Rust compiler will throw error for not handling all the possible character ranges.
-            // So ask it to chill with an if guard.....I've got you Sir!! Thank 
-            _ => { if stack.pop().as_ref() != expected.get(&ch) { return false; } }
+            // Every other character, including one outside the six delimiters,
+            // must close the top of the stack.
+            _ => {
+                if stack.pop().as_ref() != expected.get(&ch) {
+                    return false;
+                }
+            }
         }
     }
 
@@ -82,8 +80,6 @@ mod tests {
         assert!(!is_valid(")"));
         assert!(!is_valid("(("));
     }
-
-    
 }
 ```
 

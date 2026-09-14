@@ -5,7 +5,7 @@
 
 > Latency lags bandwidth.
 >
->, David A. Patterson, *Latency lags bandwidth*, Communications of the ACM
+> David A. Patterson, *Latency lags bandwidth*, Communications of the ACM
 > 47(10), 2004
 
 ## Problem Statement

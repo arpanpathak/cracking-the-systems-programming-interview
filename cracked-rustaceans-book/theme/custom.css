@@ -13,6 +13,8 @@
     --accent-line: #b9cbe0;
     --ink: #12161c;
     --code-ink: #0f1a24;
+    --pre-bg: #f6f8fa;
+    --blockquote-ink: #1c2530;
 
     /* Sidebar and link colours, so the browser edition matches the print one. */
     --links: #14508c;
@@ -21,6 +23,23 @@
     --sidebar-non-existant: #9db6cf;
     --sidebar-active: #ffffff;
     --sidebar-spacer: #2f5a86;
+}
+
+/* The light-on-dark themes (Navy, Coal, Ayu) reuse mdBook's own per-theme
+   variables for the prose colours instead of the light edition's fixed navy
+   and off-white values, which is what previously left dark text sitting on a
+   dark page background whenever a reader switched away from Light or Rust. */
+:root.navy,
+:root.coal,
+:root.ayu {
+    --accent: var(--links);
+    --accent-deep: var(--links);
+    --accent-soft: var(--quote-bg);
+    --accent-line: var(--table-border-color);
+    --ink: var(--fg);
+    --code-ink: var(--fg);
+    --pre-bg: var(--quote-bg);
+    --blockquote-ink: var(--fg);
 }
 
 /* mdBook sets the root at 62.5%; 75% raises the base to 12px, so body text is
@@ -94,7 +113,7 @@ pre {
     font-size: 0.88em;
     line-height: 1.52;
     color: var(--code-ink);
-    background: #f6f8fa;
+    background: var(--pre-bg);
     border-left: 4px solid var(--accent);
     padding: 0.9em 1.1em;
     border-radius: 4px;
@@ -138,5 +157,5 @@ blockquote {
     font-style: normal;
     border-left: 4px solid var(--accent);
     padding-left: 1em;
-    color: #1c2530;
+    color: var(--blockquote-ink);
 }

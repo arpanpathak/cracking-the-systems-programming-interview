@@ -41,27 +41,24 @@ different ways:
 ```rust
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf}; // Added Path here to change &PathBuf to &Path for idiomatic borrowing
+use std::path::{Path, PathBuf};
 
-// Fixed to be idiomatic by using &Path instead of &PathBuf, and returning the String
+// `&Path` accepts both a `&Path` and a `&PathBuf` argument; `&PathBuf` would not.
 fn read_content_of_file(path: &Path) -> io::Result<String> {
-    let content = fs::read_to_string(path)?;
-    Ok(content)
+    fs::read_to_string(path)
 }
 
 fn main() -> io::Result<()> {
-    // Write a file (creates or overwrites)
     fs::write("hello.txt", "Hello, NVIDIA!\n")?;
 
-    // --- Demo 1: Non-mutating .join() ---
+    // `join` builds a new PathBuf and leaves `base_dir` unchanged.
     let base_dir = PathBuf::from(".");
     let joined_path = base_dir.join("hello.txt");
 
-    // --- Demo 2: In-place .push() ---
+    // `push` mutates the PathBuf in place instead of returning a new one.
     let mut mut_base_dir = PathBuf::from(".");
     mut_base_dir.push("hello.txt");
 
-    // Read it back as a String using your function and a joined path
     let text = read_content_of_file(&joined_path)?;
     println!("File contents (via .join()):\n{}", text);
 
@@ -95,7 +92,7 @@ fn main() -> std::io::Result<()> {
 
 ```rust
 use std::fs::File;
-use std::io::{BufRead, BufReader}; // Huh1 You beed to import this explicitely, interesting!
+use std::io::{BufRead, BufReader}; // BufRead brings `lines()` into scope.
 
 fn main() -> std::io::Result<()> {
     let file = File::open("log.txt")?;
@@ -112,9 +109,11 @@ fn main() -> std::io::Result<()> {
 
 `read_content_of_file` takes `&Path` rather than `&PathBuf`. A `&PathBuf`
 coerces to `&Path` at the call site, but a `&Path` does not coerce to `&PathBuf`,
-so the `&Path` signature accepts strictly more callers. The body binds the result
-of `fs::read_to_string` and returns it, which is the same value with one extra
-binding; the `?` inside the call already converts the error type to `io::Error`.
+so the `&Path` signature accepts strictly more callers: both `&joined_path` and
+`&mut_base_dir` below borrow as `&PathBuf`, and the coercion is what lets a
+`&Path`-typed parameter accept both. `fs::read_to_string` already returns
+`io::Result<String>`, the function's own return type, so the body returns that
+value directly rather than unwrapping it with `?` and rewrapping it in `Ok`.
 
 `OpenOptions` is consumed by `open`, which is why the builder chain ends in a
 single statement. The two flags are independent: `create` decides what happens
