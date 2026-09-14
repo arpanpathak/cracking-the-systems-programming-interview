@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7ed6302b.js";
+            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -230,10 +230,9 @@ benchmarking code that lies outside the scope of these chapters.</p>
 │       └── syscall_overhead.rs              Chapter 24
 └── benchmarking_examples/           the measured structures and the benchmark
 </code></pre>
-<p>Two files in <code>src/problems/</code> are empty, <code>hash_map.rs</code> and <code>lru_cache_easy.rs</code>, and
-nothing in the crate refers to either. Chapter 18 describes the array-backed cache
-those two names were intended for; that implementation now lives in
-<code>benchmarking_examples/cache/arena.rs</code>.</p>
+<p>One file in <code>src/problems/</code> is empty, <code>hash_map.rs</code>, and nothing in the crate refers to
+it. Chapter 18 reads <code>lru_cache_easy.rs</code>, the array-backed cache that keeps its entries
+in a <code>Vec</code> and links them by index.</p>
 <h2 id="modules-and-programs"><a class="header" href="#modules-and-programs">Modules and programs</a></h2>
 <p>Seventeen of the files above are library modules. Each holds one problem, one type,
 or one pair of a type and its policy, and each ends with a <code>#[cfg(test)] mod tests</code>,

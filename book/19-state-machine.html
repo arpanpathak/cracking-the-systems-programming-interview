@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7ed6302b.js";
+            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,14 +179,13 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs"><code>src/problems/state_machine.rs</code></a>. Test it with
 <code>cargo test state_machine</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Model the lifecycle of a workload that an SDK exposes, so that the legal
-transitions are stated once and an illegal transition is refused with a reason.
-Then model the errors the same API returns, so that a caller can decide whether to
-retry without parsing a message.</p>
+<p>Model the lifecycle of a workload that an SDK exposes, so that the legal transitions are
+stated once and an illegal transition is refused with a reason. Then model the errors the
+same API returns, so that a caller can decide whether to retry without parsing a message.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>An enumeration rather than a status code. A status code makes the set of legal
-values a convention that lives in a document; an enumeration makes it a type, and a
-<code>match</code> that omits a case does not compile.</p>
+<p>An enumeration rather than a status code. A status code makes the set of legal values a
+convention that lives in a document; an enumeration makes it a type, and a <code>match</code> that
+omits a case does not compile.</p>
 <pre><code class="language-text">              +--------------------------------------+
               |                                      |
               v                                      |
@@ -196,10 +195,10 @@ Pending ---&gt; Provisioning ---&gt; Running ---&gt; Terminating ---&gt; Termina
    |             |
    +&lt;------------+        a failed workload may be retried
 </code></pre>
-<p>The same argument applies to the error type. A retry decision depends on facts,
-the delay a server asked for, the status code it returned, so those facts are
-attached to the variants that need them. A caller that matches on <code>RateLimited</code>
-has the delay in hand.</p>
+<p>The same argument applies to the error type. A retry decision depends on facts, such as
+the delay a server asked for and the status code it returned, so those facts are attached
+to the variants that need them. A caller that matches on <code>RateLimited</code> has the delay in
+hand.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -358,22 +357,22 @@ mod tests {
 <span class="boring">}</span></code></pre>
 <p><code>can_transition_to</code> matches on the pair <code>(self, next)</code>, listing every permitted
 transition as an alternative pattern. The whole rule set is one expression, and the
-fall-through arm catches everything else, including a self-transition such as
-<code>Running</code> to <code>Running</code>.</p>
-<p>A self-transition is refused rather than treated as a no-op. A controller that
-reports a transition it did not perform writes an audit log that cannot be trusted,
-and refusing the case costs one line.</p>
-<p><code>is_retryable</code> uses <code>matches!</code> with a range pattern: <code>status: 500..=599</code> is
+fall-through arm catches everything else, including a self-transition such as <code>Running</code>
+to <code>Running</code>.</p>
+<p>A self-transition is refused rather than treated as a no-op. A controller that reports a
+transition it did not perform writes an audit log that cannot be trusted, and refusing
+the case costs one line.</p>
+<p><code>is_retryable</code> uses <code>matches!</code> with a range pattern: a status in <code>500..=599</code> is
 retryable, everything else is not. <code>NotFound</code> and <code>Unauthorized</code> are not retryable
 because waiting does not change them: the resource still does not exist and the
 credential is still expired.</p>
-<p><code>parse_gpu_count</code> trims the field, distinguishes an empty field from an
-unparseable one in the message, and quotes the received text with <code>{raw:?}</code> so that
-trailing whitespace is visible. The error variant carries a message; the variant
-itself is what a caller matches on.</p>
-<p>The repository’s version of this function is named for the employer’s product line,
-and its error messages name the field after that product. This edition names the
-field <code>gpuCount</code> and leaves the logic unchanged.</p>
+<p><code>parse_gpu_count</code> trims the field, distinguishes an empty field from an unparseable one
+in the message, and quotes the received text with <code>{raw:?}</code> so that trailing whitespace
+is visible. The error variant carries a message; the variant itself is what a caller
+matches on.</p>
+<p>The repository’s version of this function is named for the employer’s product line, and
+its error messages name the field after that product. This edition names the field
+<code>gpuCount</code> and leaves the logic unchanged.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">state machine, over the whole table
 
@@ -419,46 +418,25 @@ parse_gpu_count("-1")    parse::&lt;u32&gt; fails on the sign        -&gt; Err(I
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong><code>can_transition_to</code> returns <code>Result&lt;(), String&gt;</code>.</strong> A refused transition is a
-value a caller may want to match on, to log it, to count it, or to distinguish
-“illegal transition” from “the workload no longer exists”, and a <code>String</code> cannot
-be matched. It also allocates on every refusal. The fix is a small error type with
-two fields, <code>from</code> and <code>next</code>, which is what the state machine already has in the
-form of <code>WorkloadState</code>.</p>
+<p><strong><code>can_transition_to</code> returns <code>Result&lt;(), String&gt;</code>.</strong> A refused transition is a value a
+caller may want to match on, to log it, to count it, or to distinguish “illegal
+transition” from “the workload no longer exists”, and a <code>String</code> cannot be matched. It
+also allocates on every refusal. The fix is a small error type with two fields, <code>from</code>
+and <code>next</code>, both of which the state machine already has.</p>
 <p><strong><code>user_message</code> allocates for every call, including the two variants that need no
-formatting.</strong> <code>Unauthorized</code> returns <code>to_string()</code> of a constant. A <code>Display</code>
-implementation writes into the caller’s buffer and allocates nothing, which is the
-idiomatic way to expose a message.</p>
-<p><strong><code>is_retryable</code> treats any status in <code>500..=599</code> as retryable, and a <code>Server</code>
-variant carrying a <code>4xx</code> status as not retryable.</strong> That is defensible for this
-error type, and the range test is doing double duty: it is also asserting that the
-<code>Server</code> variant holds a server-side status. Nothing enforces that at construction
-time.</p>
-<p><strong>The transition table is tested by example, not exhaustively.</strong> The test checks
-four transitions. There are thirty-six ordered pairs of six states, and the table
-permits twelve of them. A test that loops over all pairs and compares each answer
-with a written list would catch a missing or an extra pattern.</p>
-<p><strong><code>parse_gpu_count</code> accepts a value that overflows <code>u32</code> as a parse failure
-rather than as a distinct error.</strong> <code>"4294967296"</code> and <code>"four"</code> produce the same
-variant, so a caller cannot tell a malformed field from an out-of-range one.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>An enumeration makes the transition table exhaustive, because a <code>match</code> without
-a fall-through arm fails to build when a variant is added.</li>
-<li>A self-transition is refused rather than treated as a no-op, and the table states
-that explicitly.</li>
-<li>The error variants carry data because the retry delay and the status code are
-inputs to a decision.</li>
-<li><code>can_transition_to</code> returns <code>Result&lt;(), String&gt;</code>. A <code>String</code> cannot be matched,
-so a caller cannot distinguish an illegal transition from a workload that no
-longer exists, and the refusal allocates. An error type carrying <code>from</code> and
-<code>next</code> would remove both problems.</li>
-<li><code>user_message</code> allocates on every call, including the variants that need no
-formatting, where a <code>Display</code> implementation would write into the caller’s
-buffer.</li>
-<li><code>parse_gpu_count</code> reports an out-of-range value and a malformed one as the
-same variant.</li>
-</ul>
+formatting.</strong> <code>Unauthorized</code> returns a <code>to_string()</code> of a constant. A <code>Display</code>
+implementation writes into the caller’s buffer and allocates nothing.</p>
+<p><strong><code>is_retryable</code> treats any status in <code>500..=599</code> as retryable, and a <code>Server</code> variant
+carrying a <code>4xx</code> status as not retryable.</strong> The range test is doing double duty: it also
+asserts that the <code>Server</code> variant holds a server-side status, and nothing enforces that at
+construction time.</p>
+<p><strong>The transition table is tested by example, not exhaustively.</strong> The test checks four
+transitions. There are thirty-six ordered pairs of six states, and the table permits
+twelve of them. A test that loops over all pairs and compares each answer with a written
+list would catch a missing or an extra pattern.</p>
+<p><strong><code>parse_gpu_count</code> reports a value that overflows <code>u32</code> as a parse failure.</strong> <code>"4294967296"</code>
+and <code>"four"</code> produce the same variant, so a caller cannot tell a malformed field from an
+out-of-range one.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">Defining an enum</a>.</li>

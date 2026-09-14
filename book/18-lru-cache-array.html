@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7ed6302b.js";
+            window.path_to_searchindex_js = "searchindex-c7f8a6d7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -182,202 +182,298 @@
 <p>The same problem as the previous chapter, solved a second way: a fixed-capacity cache
 that evicts the least recently used entry, with <code>get</code> and <code>put</code> in constant time.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p>Store the nodes in a <code>Vec</code> and link them by index. The recency order is a doubly linked
-list of indices, with the most recently used node at one end. Because the links are
-integers rather than pointers, the list can be rearranged while the nodes stay where they
-are.</p>
-<pre><code class="language-text">map: "a" -&gt; 2, "c" -&gt; 0
-
-nodes:  index 0              index 1              index 2
-        +--------------+     +--------------+     +--------------+
-        | key "c"      |     | key ""       |     | key "a"      |
-        | val ...      |     | val ...      |     | val ...      |
-        | prev: None   |     |              |     | prev: Some(0)|
-        | next: Some(2)|     |              |     | next: None   |
-        +--------------+     +--------------+     +--------------+
-           ^                                          ^
-         tail                                       head
-         least recently used                        most recently used
-
-get("a") moves node 2 to the front:
-
-  detach 2   tail 0's next becomes None            the list is just node 0
-  attach 2   node 2's prev becomes None
-             node 2's next becomes the old head, 0
-             node 0's prev becomes Some(2)
-             head becomes 2
+<p>Keep the entries in a <code>Vec</code> and use the index as the pointer. The map goes from key to
+index, and the arena is stitched into a doubly linked list by two fields on each node,
+<code>prev</code> and <code>next</code>, with <code>head</code> at the most recently used end and <code>tail</code> at the least
+recently used one.</p>
+<pre><code class="language-text">lookup_table: "A" -&gt; 1, "C" -&gt; 0
+nodes:  index 0              index 1
+        +--------------+     +--------------+
+        | key "C"      |     | key "A"      |
+        | value  30    |     | value  10    |
+        | prev: None   |     | prev: Some(0)|
+        | next: Some(1)|     | next: None   |
+        +--------------+     +--------------+
+           ^                     ^
+         head                  tail
+         most recently used    least recently used
 </code></pre>
-<p><code>detach</code> and <code>attach</code> are five assignments each and never touch the <code>nodes</code> vector’s
-layout, so <code>get</code> performs no allocation and no copying of values.</p>
+<p>An index needs no reference count and no borrow flag, so a node costs two integers more
+than the entry itself and nothing else. The arena is dense and index-stable: when the
+cache is full, the slot at the tail is overwritten rather than freed, so no node is
+deallocated while the cache lives.</p>
+<p>One method moves a node to the front, and it handles both cases in a single pass. A node
+that is already linked is spliced out of its current position first; a brand new node has
+no neighbours and is spliced in directly. That is what <code>touch</code> does.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">use std::collections::HashMap;
+<pre class="playground"><code class="language-rust">//! A fixed-capacity LRU (Least Recently Used) cache.
+//!
+//! ## Design
+//!
+//! Two structures cooperate to give O(1) `get` and `put`:
+//!
+//! * `map: HashMap&lt;K, usize&gt;` — key → index into the arena.
+//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role
+//!   of pointers, sidestepping `Rc&lt;RefCell&lt;…&gt;&gt;` and its borrow-checker pain.
+//!
+//! The arena is stitched into a doubly linked list through `head`/`tail`:
+//!
+//! ```text
+//!   MRU  →  head → … → tail  →  LRU
+//! ```
+//!
+//! On eviction we **reuse the tail slot** instead of removing it, so no node
+//! is ever deallocated mid-life. That keeps the arena dense and index-stable.
+
+use std::collections::HashMap;
 use std::hash::Hash;
 
+/// A single cache entry, linked into the recency list by index.
 struct Node&lt;K, V&gt; {
+    /// Retained so we can delete the corresponding map entry when evicting.
     key: K,
-    val: V,
+    value: V,
+    /// Neighbour closer to the MRU end (or `None` if this is `head`).
     prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (or `None` if this is `tail`).
     next: Option&lt;usize&gt;,
 }
 
+/// Fixed-capacity LRU cache.
 pub struct LruCache&lt;K, V&gt; {
-    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
-    map: HashMap&lt;K, usize&gt;,
-    head: Option&lt;usize&gt;, // MRU
-    tail: Option&lt;usize&gt;, // LRU
+    /// Maximum number of entries; `&gt;= 1` (enforced by `new`).
     cap: usize,
+    /// Key → arena index. The single source of truth for "is this key cached?".
+    lookup_table: HashMap&lt;K, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to be evicted).
+    tail: Option&lt;usize&gt;,
 }
 
-impl&lt;K: Hash + Eq + Clone, V&gt; LruCache&lt;K, V&gt; {
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+{
+    /// Create a cache holding at most `cap` entries.
+    ///
+    /// # Panics
+    /// Panics if `cap == 0`, since a zero-capacity cache cannot store anything.
     pub fn new(cap: usize) -&gt; Self {
-        Self { nodes: Vec::new(), map: HashMap::new(), head: None, tail: None, cap }
-    }
-
-    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
-        let &amp;i = self.map.get(key)?;
-        self.bump(i);
-        Some(&amp;self.nodes[i].val)
-    }
-
-    pub fn put(&amp;mut self, key: K, val: V) {
-        if let Some(&amp;i) = self.map.get(&amp;key) {
-            self.nodes[i].val = val;
-            self.bump(i);
-            return;
-        }
-        let node = Node { key: key.clone(), val, prev: None, next: None };
-        let i = if self.map.len() == self.cap {
-            let i = self.tail.unwrap();
-            self.detach(i);
-            self.map.remove(&amp;self.nodes[i].key);
-            self.nodes[i] = node;
-            i
-        } else {
-            self.nodes.push(node);
-            self.nodes.len() - 1
-        };
-        self.map.insert(key, i);
-        self.attach(i);
-    }
-
-    fn bump(&amp;mut self, i: usize) {
-        self.detach(i);
-        self.attach(i);
-    }
-
-    fn detach(&amp;mut self, i: usize) {
-        let (p, n) = (self.nodes[i].prev, self.nodes[i].next);
-        match p {
-            Some(p) =&gt; self.nodes[p].next = n,
-            None =&gt; self.head = n,
-        }
-        match n {
-            Some(n) =&gt; self.nodes[n].prev = p,
-            None =&gt; self.tail = p,
+        assert!(cap &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap,
+            lookup_table: HashMap::new(),
+            nodes: Vec::new(),
+            head: None,
+            tail: None,
         }
     }
 
-    fn attach(&amp;mut self, i: usize) {
+    /// Promote node `i` to `head` (MRU).
+    ///
+    /// Handles both cases in one pass:
+    /// * **Already linked** — detach from its current neighbours first.
+    /// * **Brand new** — the node has `prev = next = None` and is not yet
+    ///   referenced by `head`/`tail`, so the detach step is skipped.
+    fn touch(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+
+        // A node is "linked" if any of its four references exist.
+        let linked = prev.is_some()
+            || next.is_some()
+            || self.head == Some(i)
+            || self.tail == Some(i);
+
+        if linked {
+            // Splice `i` out of the list.
+            match prev {
+                Some(p) =&gt; self.nodes[p].next = next,
+                None =&gt; self.head = next,
+            }
+            match next {
+                Some(n) =&gt; self.nodes[n].prev = prev,
+                None =&gt; self.tail = prev,
+            }
+        }
+
+        // Splice `i` in at the front.
         self.nodes[i].prev = None;
         self.nodes[i].next = self.head;
         if let Some(h) = self.head {
             self.nodes[h].prev = Some(i);
         }
         self.head = Some(i);
-        self.tail.get_or_insert(i);
+        if self.tail.is_none() {
+            self.tail = Some(i);
+        }
+    }
+
+    /// Look up `key`, promoting it to MRU on a hit.
+    ///
+    /// Returns `None` if the key is not cached.
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        let i = *self.lookup_table.get(key)?;
+        self.touch(i);
+        Some(&amp;self.nodes[i].value)
+    }
+
+    /// Insert or update `key`. Promotes it to MRU. Evicts the LRU entry if
+    /// the cache is full.
+    pub fn put(&amp;mut self, key: K, value: V) {
+        // Case 1: key already present → update value, promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.touch(i);
+            return;
+        }
+
+        // Case 2: room to grow → append a fresh node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.nodes.push(Node {
+                key: key.clone(),
+                value,
+                prev: None,
+                next: None,
+            });
+            self.lookup_table.insert(key, i);
+            self.touch(i);
+            return;
+        }
+
+        // Case 3: at capacity → reuse the LRU slot.
+        // `tail` is guaranteed to be `Some` here because `cap &gt;= 1` and the
+        // arena is full, but we still handle `None` gracefully.
+        if let Some(i) = self.tail {
+            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
+            self.nodes[i].value = value;
+            self.lookup_table.remove(&amp;old_key);
+            self.lookup_table.insert(self.nodes[i].key.clone(), i);
+            self.touch(i);
+        }
     }
 }
 
 fn main() {
-    let mut c = LruCache::new(2);
-    c.put(1, "a");
-    c.put(2, "b");
-    assert_eq!(c.get(&amp;1), Some(&amp;"a"));
-    c.put(3, "c"); // evicts 2
-    assert_eq!(c.get(&amp;2), None);
-    assert_eq!(c.get(&amp;1), Some(&amp;"a"));
-    assert_eq!(c.get(&amp;3), Some(&amp;"c"));
-    c.put(3, "cc"); // update existing key
-    assert_eq!(c.get(&amp;3), Some(&amp;"cc"));
-    println!("ok");
+    let mut cache = LruCache::new(2);
+
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&amp;"B")); // None
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_for_lru {
     use super::*;
 
     #[test]
-    fn lru_cache_evicts_the_least_recently_used_key() {
-        let mut cache = LruCache::new(2);
+    fn basic_eviction() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
 
-        cache.put("a", 1);
-        cache.put("b", 2);
-        assert_eq!(cache.get(&amp;"a"), Some(&amp;1));
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1)); // A is now MRU
+        c.put("C", 3); // evicts B
 
-        cache.put("c", 3);
-
-        assert_eq!(cache.get(&amp;"b"), None, "b was the least recently used entry");
-        assert_eq!(cache.get(&amp;"a"), Some(&amp;1));
-        assert_eq!(cache.get(&amp;"c"), Some(&amp;3));
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1));
+        assert_eq!(c.get(&amp;"C"), Some(&amp;3));
     }
 
     #[test]
-    fn updating_a_key_does_not_evict_anything() {
-        let mut cache = LruCache::new(2);
+    fn updating_existing_key_keeps_it() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
 
-        cache.put("a", 1);
-        cache.put("b", 2);
-        cache.put("a", 10);
+        c.put("A", 100); // update A, A becomes MRU
+        c.put("C", 3);   // evicts B
 
-        assert_eq!(cache.get(&amp;"a"), Some(&amp;10));
-        assert_eq!(cache.get(&amp;"b"), Some(&amp;2));
-        assert_eq!(cache.map.len(), 2);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;100));
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"C"), Some(&amp;3));
+    }
+
+    #[test]
+    fn get_refreshes_recency() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1)); // A refreshed
+        c.put("C", 3);                     // evicts B
+
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut c = LruCache::new(1);
+        c.put("A", 1);
+        c.put("B", 2); // evicts A
+
+        assert_eq!(c.get(&amp;"A"), None);
+        assert_eq!(c.get(&amp;"B"), Some(&amp;2));
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let mut c: LruCache&lt;&amp;str, i32&gt; = LruCache::new(2);
+        assert_eq!(c.get(&amp;"nope"), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be &gt; 0")]
+    fn zero_capacity_panics() {
+        let _: LruCache&lt;&amp;str, i32&gt; = LruCache::new(0);
     }
 }</code></pre>
-<p>The test module in the repository stores one entry and asserts nothing, so <code>cargo test</code>
-reports a pass that checks no behaviour. This edition prints the two tests above in its
-place. They cover the two behaviours the demonstration in <code>main</code> relies on, and the
-second one reads the cache’s private map, which a test inside the module is allowed to
-do.</p>
-<p><code>put</code> overwrites the slot of the evicted node rather than pushing a new one:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let i = if self.map.len() == self.cap {
-    let i = self.tail.unwrap();
-    self.detach(i);
-    self.map.remove(&amp;self.nodes[i].key);
-    self.nodes[i] = node;
-    i
-} else {
-    self.nodes.push(node);
-    self.nodes.len() - 1
-};
-<span class="boring">}</span></code></pre>
-<p>When the cache is full, the tail index is reused: the node is unlinked, its key is
-removed from the map (read out of the vector before the overwrite), and the new node
-takes the slot. The vector never exceeds the capacity, so the cache’s storage is bounded
-by <code>capacity</code>, which the previous chapter’s design does not have.</p>
-<p><code>get</code> returns <code>Option&lt;&amp;V&gt;</code>, a reference into the vector, when the value is present.</p>
-<p><code>attach</code> uses <code>self.tail.get_or_insert(i)</code> to set the tail only when the list is empty,
-which handles the first insertion without a separate branch.</p>
+<p><code>touch</code> reads the node’s two links, decides whether the node is linked at all, and acts.
+The <code>linked</code> test is what lets one method serve both callers. Without it, a brand new
+node would be spliced out of a list it is not in, and <code>head</code> and <code>tail</code> would be
+overwritten with <code>None</code>.</p>
+<p><code>get</code> takes <code>&amp;mut self</code> because a hit reorders the list. The index comes from the lookup
+table, <code>touch</code> promotes it, and the reference returned is into the arena.</p>
+<p><code>put</code> has three cases in order. An existing key takes the update path, which writes the
+new value and promotes the slot. A key that is not present and a cache below capacity
+appends a node. A full cache overwrites the tail slot, which removes the old key from the
+lookup table in the same step. The <code>assert!</code> in <code>new</code> is what makes the third case safe
+to write with <code>tail</code> assumed to be present.</p>
+<p>The key is cloned once per insertion because it lives in two places: the node keeps it for
+eviction, and the lookup table keeps it for search. The map cannot be keyed on a reference
+into the arena, so one of the two copies has to be made.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<pre><code class="language-text">capacity 2
+<pre><code class="language-text">capacity 2, keys A B C
 
-call              nodes                       map            head   tail
-new               []                          {}             None   None
-put(1, "a")       [(1,"a",-, -)]              {1:0}          Some(0) Some(0)
-put(2, "b")       [(1,"a",-,1), (2,"b",0,-)]  {1:0,2:1}      Some(1) Some(0)
-get(&amp;1)           detach 0, attach 0
-                  [(1,"a",-,1), (2,"b",0,-)]  {1:0,2:1}      Some(0) Some(1)
-put(3, "c")       the map holds 2 entries and cap is 2, so the tail (1) is reused
-                  detach 1
-                  map.remove(&amp;nodes[1].key) -&gt; removes 2
-                  nodes[1] = (3,"c",-, -)
-                  attach 1: nodes[1].next = head = 0, nodes[0].prev = Some(1)
-                  [(1,"a",1,-), (3,"c",-,0)]  {1:0,3:1}      Some(1) Some(0)
-get(&amp;2)           the map has no entry for 2            None
-get(&amp;1)           detach 0, attach 0
-get(&amp;3)           detach 1, attach 1
+call              nodes                       lookup_table   head   tail
+new(2)            []                          {}             None   None
+put("A", 10)      [(A,10,-,-)]                {A:0}          0      0
+put("B", 20)      [(A,10,-,1), (B,20,0,-)]    {A:0,B:1}      1      0
+get(&amp;"A")         touch 0: detach 0, attach 0
+                  [(A,10,-,1), (B,20,0,-)]    {A:0,B:1}      0      1
+put("C", 30)      at capacity, so the tail slot 1 is reused
+                  detach 1, remove B from the table
+                  nodes[1] = (C,30,-,-)
+                  attach 1: nodes[1].next = 0, nodes[0].prev = Some(1)
+                  [(A,10,1,-), (C,30,-,0)]    {A:0,C:1}      1      0
+get(&amp;"B")         the table has no entry for B             None
+get(&amp;"A")         touch 0                                   Some(10)
+get(&amp;"C")         touch 1                                   Some(30)
+put("A", 99)      case 1: nodes[0].value = 99, touch 0
+get(&amp;"A")                                                  Some(99)
 </code></pre>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
@@ -393,35 +489,38 @@ get(&amp;3)           detach 1, attach 1
 </tbody>
 </table>
 </div>
-<p>The four <code>match</code> arms of <code>detach</code> and the four assignments of <code>attach</code> are the whole of
-the list maintenance. No allocation, no copying of values, and no recursion.</p>
+<p><code>touch</code> performs a constant number of assignments in every case. There is no allocation,
+no copying of values, and no recursion.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong><code>capacity == 0</code> panics on the first <code>put</code>.</strong> The full case tests
-<code>self.map.len() == self.cap</code>, which is true for an empty cache of capacity zero, and the
-next line is <code>self.tail.unwrap()</code> on a <code>None</code>. The panic message names an <code>Option</code> rather
-than the capacity. A guard in <code>new</code>, or a <code>Result</code>, would report what the caller passed.</p>
-<p><strong><code>prev</code> and <code>next</code> are left stale after <code>detach</code>.</strong> <code>detach</code> updates the neighbours but
-not the removed node’s own links. <code>attach</code> overwrites both, so the stale values are never
-read on the paths that exist today. A future method that detaches without re-attaching
-would read them.</p>
-<p><strong>The nodes are never freed as the cache is used.</strong> Reusing a slot is what bounds the
-memory, and it also means the cache holds one <code>K</code> and one <code>V</code> per slot for the lifetime
-of the cache, including after those values have been replaced. An evicted key is dropped
-when the slot is overwritten, which is correct, and the slot itself stays allocated.</p>
-<p><strong>There is no <code>len</code>, no <code>is_empty</code>, and no iteration.</strong> A caller that needs the entry
-count reads the private map, which the tests do and outside code cannot.</p>
+<p><strong>The arena never shrinks.</strong> Slots are reused, so the cache holds one <code>K</code> and one <code>V</code> per
+slot for its whole life, including after those values have been replaced. That is what
+bounds the memory, and it also means a cache created with a large capacity keeps that
+memory after it becomes empty.</p>
+<p><strong>A capacity of zero panics at construction.</strong> <code>new</code> asserts <code>cap &gt; 0</code>, so the panic
+happens before any use and names the capacity, which is better than failing on the first
+<code>put</code>. A caller that receives a capacity from a file still has to validate it or accept
+the panic; a <code>Result</code> would report it as a value.</p>
+<p><strong><code>get</code> borrows the cache mutably, so the returned reference cannot be held across another
+call.</strong> <code>let v = cache.get(&amp;k)</code> keeps <code>cache</code> borrowed while <code>v</code> is live, and <code>put</code> cannot
+be called until <code>v</code> goes out of scope. A caller that needs to read a value and then store
+something has to copy the value out first.</p>
+<p><strong>There is no <code>len</code>, no <code>is_empty</code>, and no iteration.</strong> The lookup table’s length is the
+entry count, and a caller outside the module cannot read it. A two-line accessor would
+close the gap.</p>
 <p><strong>The indexes are not checked.</strong> Every method indexes <code>self.nodes[i]</code> directly. The
-indexes come from the map or from <code>head</code> and <code>tail</code>, which this module maintains, so they
-are valid while the invariants hold. A mistake in the list maintenance would be an index
-panic rather than a wrong answer.</p>
-<p><strong>No test pins the recency order after several operations.</strong> The two tests cover one
-eviction and one update. The invariant that the list is consistent with its ends is not
-checked anywhere.</p>
+indexes come from the lookup table or from <code>head</code> and <code>tail</code>, which this module maintains,
+so they are valid while the invariants hold. A mistake in <code>touch</code> would be an index panic
+rather than a wrong answer.</p>
+<p><strong>The tests do not exercise growth past the capacity with distinct keys.</strong> They cover
+eviction, update, refresh, capacity one, a missing key and a zero capacity. A test that
+fills a cache of capacity three, evicts one entry, and then reads the other two would
+check that the reused slot and the surviving links agree.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html"><code>Vec</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html"><code>HashMap</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/mem/fn.replace.html"><code>std::mem::replace</code></a>.</li>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/option/enum.Option.html#method.get_or_insert"><code>Option::get_or_insert</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.remove"><code>HashMap::remove</code></a>.</li>
 </ul>
 
                     </main>
