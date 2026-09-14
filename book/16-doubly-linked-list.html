@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4a9b7dbe.js";
+            window.path_to_searchindex_js = "searchindex-7018eb40.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -178,10 +178,10 @@
                         <h1 id="doubly-linked-list"><a class="header" href="#doubly-linked-list">16. Doubly Linked List</a></h1>
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs"><code>src/bin/ll.rs</code></a>. Run it with <code>cargo run --bin ll</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Build a list with constant time insertion and removal at both ends. A singly
-linked list cannot remove from the back in constant time, because reaching the
-penultimate node requires a walk. Something has to point backwards, and that
-something cannot own what it points at.</p>
+<p>Build a list with constant time insertion and removal at both ends. A singly linked list
+cannot remove from the back in constant time, because reaching the penultimate node
+requires a walk. Something has to point backwards, and that something cannot own what it
+points at.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <pre><code class="language-text">  head                                    tail
    |                                        |
@@ -191,10 +191,9 @@ something cannot own what it points at.</p>
  |      | &lt;-------------------- |      | &lt;------- |      |
  +------+   prev (Weak)         +------+   prev   +------+
 </code></pre>
-<p>If both directions owned their target, the reference count of a two-node list
-would never reach zero and the nodes would leak: each node would be kept alive by
-the other. The resolution is to let the forward links own and the backward links
-observe:</p>
+<p>If both directions owned their target, the reference count of a two-node list would
+never reach zero and the nodes would leak: each node would be kept alive by the other.
+The resolution is to let the forward links own and the backward links observe:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -207,12 +206,11 @@ observe:</p>
 </table>
 </div>
 <p>A <code>Weak</code> pointer observes a value without keeping it alive. When the last strong
-reference goes away, the node is freed and every weak pointer to it starts
-returning <code>None</code> from <code>upgrade</code>. That is the mechanism that makes the structure
-agree with the ownership rules instead of working around them.</p>
-<p>The <code>RefCell</code> is the second half of the design. <code>Rc</code> alone gives shared ownership
-but not mutation; <code>RefCell</code> adds mutation with the borrow checked at run time
-rather than at compile time.</p>
+reference goes away, the node is freed and every weak pointer to it starts returning
+<code>None</code> from <code>upgrade</code>.</p>
+<p>The <code>RefCell</code> is the second half of the design. <code>Rc</code> alone gives shared ownership but no
+mutation; <code>RefCell</code> adds mutation with the borrow checked at run time rather than at
+compile time.</p>
 <pre><code class="language-text">after pop_front on the list above
 
 (node 10 is freed: nothing strong refers to it)
@@ -516,21 +514,20 @@ mod tests {
 // - Ref::map()                    : project a Ref to a subfield, keeping the borrow alive.
 // ============================================================================</code></pre>
 <p>Four details carry the implementation.</p>
-<p><code>Rc::downgrade(&amp;new_node)</code> is stored in the <em>old</em> head’s <code>prev</code>, not the new
-node’s. The new node already owns the old head through <code>next</code>, and a second strong
-reference would keep the old head alive after the list forgot it.</p>
-<p><code>self.tail.as_ref().map(Rc::downgrade)</code> in <code>push_back</code> converts
-<code>Option&lt;&amp;NodeRef&lt;T&gt;&gt;</code> into <code>Option&lt;WeakNodeRef&lt;T&gt;&gt;</code> without a <code>match</code>. When the
-list is empty the tail is <code>None</code> and the new node’s <code>prev</code> is <code>None</code>.</p>
-<p><code>old_tail.borrow_mut().prev.take().and_then(|w| w.upgrade())</code> in <code>pop_back</code> does
-three things in one expression: takes the weak pointer out of the node (leaving
-<code>None</code> behind), attempts to upgrade it to a strong reference, and yields <code>None</code> if
-the node has been freed. The <code>take</code> is what allows the removed node to be freed
-afterwards.</p>
-<p><code>Rc::try_unwrap(old_head).ok().unwrap().into_inner()</code> moves the node out of the
-<code>Rc</code> and the data out of the <code>RefCell</code>. It succeeds because the node has been
-unlinked and no other strong reference exists. <code>into_inner</code> on a <code>RefCell</code>
-consumes the cell, so it cannot fail and needs no borrow check.</p>
+<p><code>Rc::downgrade(&amp;new_node)</code> is stored in the <em>old</em> head’s <code>prev</code>, not the new node’s. The
+new node already owns the old head through <code>next</code>, and a second strong reference would
+keep the old head alive after the list forgot it.</p>
+<p><code>self.tail.as_ref().map(Rc::downgrade)</code> in <code>push_back</code> converts <code>Option&lt;&amp;NodeRef&lt;T&gt;&gt;</code>
+into <code>Option&lt;WeakNodeRef&lt;T&gt;&gt;</code> without a <code>match</code>. When the list is empty the tail is
+<code>None</code> and the new node’s <code>prev</code> is <code>None</code>.</p>
+<p><code>old_tail.borrow_mut().prev.take().and_then(|w| w.upgrade())</code> in <code>pop_back</code> does three
+things in one expression: takes the weak pointer out of the node, leaving <code>None</code> behind;
+attempts to upgrade it to a strong reference; and yields <code>None</code> if the node has been
+freed. The <code>take</code> is what allows the removed node to be freed afterwards.</p>
+<p><code>Rc::try_unwrap(old_head).ok().unwrap().into_inner()</code> moves the node out of the <code>Rc</code> and
+the data out of the <code>RefCell</code>. It succeeds because the node has been unlinked and no
+other strong reference exists. <code>into_inner</code> on a <code>RefCell</code> consumes the cell, so it
+cannot fail and needs no borrow check.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">call                  head   tail   len   effect
 new()                 -      -      0
@@ -565,50 +562,28 @@ pop_back()            10     30     2     returns Some(40)
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
 <p><strong><code>Rc::try_unwrap(...).ok().unwrap()</code> is a panic path that the type system does not
-close.</strong> It succeeds while the invariants hold: the removed node has been unlinked
-and the new end’s link to it has been cleared, so the list holds the only strong
-reference. Nothing in the signature says so, and a future change to <code>push_back</code>
-that keeps an extra strong reference would turn the <code>unwrap</code> into a panic at run
-time rather than a compile error. <code>.expect("...")</code> with the reason would document
-the assumption; a <code>match</code> that recovers the node from the <code>Err</code> arm would make the
-code total.</p>
-<p><strong>The list is neither <code>Send</code> nor <code>Sync</code>.</strong> <code>Rc</code> and <code>RefCell</code> are both
-single-threaded, so a <code>LinkedList</code> cannot be moved to another thread or shared
-between threads. The compiler rejects both, which means the limitation appears at
-the call site. A concurrent list uses <code>Arc&lt;Mutex&lt;Node&lt;T&gt;&gt;&gt;</code> and pays for it with
-lock contention and the possibility of poison.</p>
+close.</strong> It succeeds while the invariants hold: the removed node has been unlinked and
+the new end’s link to it has been cleared, so the list holds the only strong reference.
+Nothing in the signature says so, and a future change to <code>push_back</code> that keeps an extra
+strong reference would turn the <code>unwrap</code> into a run-time panic rather than a compile
+error. An <code>.expect("...")</code> with the reason would document the assumption; a <code>match</code> that
+recovers the node from the <code>Err</code> arm would make the code total.</p>
+<p><strong>The list is neither <code>Send</code> nor <code>Sync</code>.</strong> <code>Rc</code> and <code>RefCell</code> are both single-threaded,
+so a <code>LinkedList</code> cannot be moved to another thread or shared between threads. The
+compiler rejects both, which puts the limitation at the call site. A concurrent list
+uses <code>Arc&lt;Mutex&lt;Node&lt;T&gt;&gt;&gt;</code> and pays for it with lock contention and the possibility of
+poison.</p>
 <p><strong><code>RefCell</code> borrows are checked at run time.</strong> <code>borrow_mut()</code> panics if a borrow is
-already active. Holding the guard that <code>peek_front</code> returns while calling
-<code>pop_front</code> on the same list is a run-time panic, where the <code>Box</code>-based list of
-Chapter 14 would have made it a compile error.</p>
-<p><strong>Dropping a long list is recursive.</strong> Each node holds a strong reference to the
-next, so releasing the head releases the next node, which releases the next, one
-stack frame per node. The <code>RefCell</code> does not change that; it only adds a borrow
-flag to each node, which is two more machine words per element.</p>
+already active. Holding the guard that <code>peek_front</code> returns while calling <code>pop_front</code> on
+the same list is a run-time panic, where the <code>Box</code>-based list of Chapter 14 would have
+made it a compile error.</p>
+<p><strong>Dropping a long list is recursive.</strong> Each node holds a strong reference to the next, so
+releasing the head releases the next node, which releases the next, one stack frame per
+node. The <code>RefCell</code> does not change that; it adds a borrow flag to each node, two more
+machine words per element.</p>
 <p><strong>The demonstration’s comment about <code>pop_front</code> returning 20 is the only place the
-expected value is written.</strong> <code>main</code> prints values and asserts nothing, and the
-tests cover the same behaviour. The two comments in <code>main</code> are documentation rather
-than checks.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>One direction of the link has to be weak. Two strong links between a pair of
-nodes would keep the pair alive after the list released it, so <code>prev</code> is a
-<code>Weak</code>.</li>
-<li><code>RefCell</code> adds a borrow counter to each node, two machine words per element, and
-turns a conflicting borrow into a run-time panic where the <code>Box</code>-based list of
-Chapter 14 makes it a compile error. What it provides is mutation through shared
-ownership, which is what <code>pop_back</code> requires.</li>
-<li><code>Rc::try_unwrap(...).ok().unwrap()</code> is a panic path that the type system does not
-close. It succeeds while the invariants hold, because the removed node has been
-unlinked and the list holds the only strong reference, and nothing in the
-signature states that. An <code>.expect</code> with the reason would record the assumption,
-and a <code>match</code> on the <code>Err</code> arm would make the function total.</li>
-<li>The list is neither <code>Send</code> nor <code>Sync</code>, because <code>Rc</code> and <code>RefCell</code> are
-single-threaded. A concurrent list would use <code>Arc&lt;Mutex&lt;Node&lt;T&gt;&gt;&gt;</code> and pay for it
-with lock contention and the possibility of poison.</li>
-<li>Dropping a long list recurses, one stack frame per node, since each node holds a
-strong reference to the next.</li>
-</ul>
+expected value is written.</strong> <code>main</code> prints values and asserts nothing, and the tests
+cover the same behaviour.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch15-04-rc.html"><code>Rc&lt;T&gt;</code>, the reference-counted smart pointer</a>.</li>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4a9b7dbe.js";
+            window.path_to_searchindex_js = "searchindex-7018eb40.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-250744b1.js"></script>
@@ -179,16 +179,16 @@
 <p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs"><code>src/bin/singly_linked_list.rs</code></a>. Run it with
 <code>cargo run --bin singly_linked_list</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Build a list whose node set is described by an algebraic data type, with constant
-time insertion and removal at the front.</p>
+<p>Build a list whose node set is described by an algebraic data type, with constant time
+insertion and removal at the front.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <pre><code class="language-text">List&lt;T&gt; = Empty
         | Node { value: T, next: Box&lt;List&lt;T&gt;&gt; }
 </code></pre>
-<p>This is the same machine layout as <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> from Chapter 14, with
-the empty case named in the type rather than expressed by <code>None</code>. The end of the
-list is <code>List::Empty</code>, and an empty list is <code>List::Empty</code> as well, so there is no
-separate sentinel and no nullable field.</p>
+<p>The layout is the same as <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> from Chapter 14, with the empty case
+named in the type rather than expressed by <code>None</code>. The end of the list is
+<code>List::Empty</code>, and an empty list is <code>List::Empty</code> as well, so there is no separate
+sentinel and no nullable field.</p>
 <pre><code class="language-text">list = Node { value: 0, next: Box&lt;Node { value: 1, next: Box&lt;Empty&gt; }&gt; }
 
   list
@@ -199,15 +199,10 @@ separate sentinel and no nullable field.</p>
  | next: Box --- |     | next: Box --- |     +--------+
  +---------------+     +---------------+
 </code></pre>
-<p>The difference from the previous chapter is one of emphasis. <code>Box&lt;Option&lt;...&gt;&gt;</code>
-would have been the type of the earlier link; here the <code>Option</code> is gone, and every
-link is a <code>Box</code> whose pointee is either a node or the empty list. Both designs
-compile to the same layout, and this one makes the “end of list” case part of the
-type instead of a field value.</p>
-<p><code>push_front</code> and <code>pop_front</code> both work by taking the whole list out of <code>self</code> with
-<code>std::mem::replace</code>, deciding what to do with it, and writing the result back.
-That pattern is what lets the code move a list value without cloning it and
-without holding a borrow of <code>self</code> across the move.</p>
+<p><code>push_front</code> and <code>pop_front</code> both take the whole list out of <code>self</code> with
+<code>std::mem::replace</code>, decide what to do with it, and write the result back. That is what
+lets the code move a list value without cloning it and without holding a borrow of
+<code>self</code> across the move.</p>
 <pre><code class="language-text">push_front(0) on [1, 2]
 
 before:  self = Node { 1, next: [2] }
@@ -311,14 +306,13 @@ mod tests {
         assert_eq!(list.len(), 2);
     }
 }</code></pre>
-<p><code>push_front</code> moves the old list into a new <code>Box</code>. The old value is obtained by
-<code>std::mem::replace(self, List::Empty)</code>, which leaves <code>self</code> in a valid state that
-the following assignment overwrites. There is no moment at which <code>self</code> is
-uninitialised, which is what makes the code safe without <code>unsafe</code> and without
-<code>Option</code>.</p>
-<p><code>pop_front</code> destructures the taken value. <code>*self = *next</code> moves the inner list out
-of its box and into <code>self</code>; the box itself is freed, so the popped node is
-released rather than remembered.</p>
+<p><code>push_front</code> moves the old list into a new <code>Box</code>. The old value comes from
+<code>std::mem::replace(self, List::Empty)</code>, which leaves <code>self</code> in a valid state that the
+following assignment overwrites. There is no moment at which <code>self</code> is uninitialised,
+and the code needs neither <code>unsafe</code> nor <code>Option</code>.</p>
+<p><code>pop_front</code> destructures the taken value. <code>*self = *next</code> moves the inner list out of
+its box and into <code>self</code>; the box itself is freed, so the popped node is released rather
+than remembered.</p>
 <p><code>Link::new(old)</code> is <code>Box::new(old)</code> written through the type alias, which reads as
 “a new link holding the old list”.</p>
 <p>The two functions carry <code>/// O(1)</code> doc comments and nothing else. They are the only
@@ -354,37 +348,22 @@ pop_front()     replace returns Empty, so the match yields None
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong><code>List::new</code> has no <code>Default</code> implementation.</strong> Clippy’s <code>new_without_default</code>
-lint fires on this pattern, and the reason it exists is that a caller writing a
-generic function over many types expects <code>Default</code> to work. Adding <code>impl&lt;T&gt; Default for List&lt;T&gt;</code> with a two-line body fixes it.</p>
-<p><strong><code>len</code> is recursive.</strong> It walks the list with one stack frame per node, so a list
-that is long enough to matter cannot be measured. An iterative version keeps a
-<code>&amp;List&lt;T&gt;</code> cursor and counts in a loop, which is the same code with the recursion
-replaced by a <code>while let</code>.</p>
-<p><strong>Dropping the list is recursive.</strong> The derived destructor for <code>List&lt;T&gt;</code> follows
-the <code>next</code> links, one frame per node. A long list aborts the process when it goes
-out of scope. This is the same hazard as Chapter 14, and the same fix applies: a
-manual <code>Drop</code> implementation that unlinks nodes into a loop.</p>
-<p><strong><code>pop_front</code> on a list of a million nodes is constant time, and the drop that
-follows is not.</strong> The two facts belong together: the operation the API advertises
-is cheap, and the work the program does when the list is released is not.</p>
-<p><strong>There is no <code>Clone</code>, no <code>Debug</code>, and no iterator.</strong> A caller cannot print the
-list, cannot copy it, and cannot write <code>for value in &amp;list</code>.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li><code>List::new</code> has no <code>Default</code> implementation, which is the pattern Clippy’s
-<code>new_without_default</code> lint reports. A caller writing a generic function over many
-types expects <code>Default</code> to be available.</li>
-<li><code>len</code> recurses, one stack frame per node, so a list long enough to matter cannot
-be measured. An iterative version keeps a <code>&amp;List&lt;T&gt;</code> cursor and counts in a
-<code>while let</code> loop.</li>
-<li>Dropping the list recurses, one frame per node, so a long list aborts the process
-when it goes out of scope. This is the hazard described in Chapter 14, and the
-same manual <code>Drop</code> implementation removes it.</li>
-<li><code>pop_front</code> is <code>O(1)</code> on a list of any length, but the drop that follows is
-<code>O(n)</code>, so the two operations have to be considered together.</li>
-<li>The type implements neither <code>Clone</code> nor <code>Debug</code> and provides no iterator.</li>
-</ul>
+<p><strong><code>List::new</code> has no <code>Default</code> implementation.</strong> Clippy’s <code>new_without_default</code> lint
+fires on this pattern, and the reason it exists is that a caller writing a generic
+function over many types expects <code>Default</code> to work. An <code>impl&lt;T&gt; Default for List&lt;T&gt;</code>
+with a two-line body fixes it.</p>
+<p><strong><code>len</code> is recursive.</strong> It walks the list with one stack frame per node, so a list long
+enough to matter cannot be measured. An iterative version keeps a <code>&amp;List&lt;T&gt;</code> cursor and
+counts in a <code>while let</code> loop.</p>
+<p><strong>Dropping the list is recursive.</strong> The derived destructor for <code>List&lt;T&gt;</code> follows the
+<code>next</code> links, one frame per node, and a long list aborts the process when it goes out of
+scope. This is the hazard described in Chapter 14, and the same fix applies: a manual
+<code>Drop</code> implementation that unlinks nodes into a loop.</p>
+<p><strong><code>pop_front</code> is <code>O(1)</code> at any length, but the drop that follows is not.</strong> For a list of
+a million nodes, the operation the API advertises is cheap and the work the program does
+when the list is released is <code>O(n)</code>. The two have to be considered together.</p>
+<p><strong>There is no <code>Clone</code>, no <code>Debug</code>, and no iterator.</strong> A caller cannot print the list,
+cannot copy it, and cannot write <code>for value in &amp;list</code>.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">Defining an enum</a>.</li>
