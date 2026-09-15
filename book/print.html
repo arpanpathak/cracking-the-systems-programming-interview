@@ -37,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-22ab09d0.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-51322f12.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -217,7 +217,7 @@ covers idempotent operations.</p>
 primitives (43 to 47), performance and the operating system (48 to 50), networking and
 HTTP (51 to 55), an async runtime, retries, and an HTTP client (56 to 58), and the short
 interview drills (59). Chapters 60 to 62 add breadth-first and depth-first search,
-Dijkstra’s shortest paths, and merging k sorted lists, and chapter 63 adds Three Sum.</p>
+Dijkstra’s shortest paths, and merging k sorted lists, and chapter 63 adds Three Sum. Chapter 64 builds a thread pool in four versions.</p>
 <h2 id="the-repository"><a class="header" href="#the-repository">The repository</a></h2>
 <p>The code is in <code>rust-interview-lab</code>:</p>
 <p><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a></p>
@@ -391,6 +391,7 @@ the list printed by <code>cargo test</code> reads as an index of the book.</p>
 <tr><td><code>src/bin/merge_k_sorted_lists_divide.rs</code></td><td>62</td></tr>
 <tr><td><code>src/problems/three_sum.rs</code></td><td>63</td></tr>
 <tr><td><code>src/bin/false_sharing.rs</code></td><td>48</td></tr>
+<tr><td><code>src/bin/thread_pool.rs</code>, <code>src/problems/thread_pool_v2.rs</code>, <code>thread_pool_v3.rs</code>, <code>thread_pool_v4.rs</code></td><td>64</td></tr>
 </tbody>
 </table>
 </div>
@@ -18401,7 +18402,760 @@ unique without a set.</li>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.usize.html#method.saturating_sub"><code>usize::saturating_sub</code></a>.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="references-63"><a class="header" href="#references-63">References</a></h1>
+<h1 id="thread-pool"><a class="header" href="#thread-pool">64. Thread Pool - Workers of the Pool Assemble</a></h1>
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs"><code>src/bin/thread_pool.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs"><code>src/problems/thread_pool_v2.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs"><code>src/problems/thread_pool_v3.rs</code></a>, and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs"><code>src/problems/thread_pool_v4.rs</code></a>. Run the first with <code>cargo run --bin thread_pool</code>, and test the others with <code>cargo test thread_pool</code>.</em></p>
+<h2 id="problem-statement-63"><a class="header" href="#problem-statement-63">Problem Statement</a></h2>
+<p>Build a pool of worker threads that runs submitted closures. A caller creates the pool
+with a fixed number of workers, submits jobs with <code>execute</code>, and eventually shuts the pool
+down, at which point every job already submitted must still run.</p>
+<p>This chapter builds the pool four times. The first version is short enough to write in
+a few minutes. Each later version fixes one problem with the one before it, and adds the
+tests that prove the fix:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Version</th><th>What it adds</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>a working pool in under fifty lines</td></tr>
+<tr><td>2</td><td>jobs that really run in parallel, and closures without <code>Box::new</code></td></tr>
+<tr><td>3</td><td>errors instead of panics, and shutdown when the pool is dropped</td></tr>
+<tr><td>4</td><td>workers that survive panicking jobs, named threads, spawn errors, and a report</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="designing-a-solution-63"><a class="header" href="#designing-a-solution-63">Designing a Solution</a></h2>
+<p>All four versions share one design. A channel carries jobs from the pool to the workers,
+and each job is a boxed closure:</p>
+<pre><code class="language-text">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+caller --execute--&gt; Sender&lt;Job&gt; ===channel===&gt; Receiver&lt;Job&gt;
+                                                   |
+                                        Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;
+                                     /        |          |        \
+                               worker 0   worker 1   worker 2   worker 3
+                               loop: take a job, run it
+</code></pre>
+<p><code>FnOnce</code> lets a job consume what it captures. <code>Send</code> lets it move to a worker thread.
+<code>'static</code> means it borrows nothing from the caller’s stack, because the worker may run it
+after the caller’s function has returned.</p>
+<p>An <code>mpsc::Receiver</code> has a single owner, so the workers share it through
+<code>Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;</code>: <code>Arc</code> gives each worker a handle, and the <code>Mutex</code> lets one
+worker at a time wait in <code>recv</code>.</p>
+<p>Shutdown uses the channel itself. When the last <code>Sender</code> is dropped, <code>recv</code> returns
+<code>Err</code> once the queue is empty, and each worker’s loop ends. Joining the workers then waits
+until every queued job has run.</p>
+<h2 id="implementation-63"><a class="header" href="#implementation-63">Implementation</a></h2>
+<h3 id="version-1-the-pool-in-a-few-lines"><a class="header" href="#version-1-the-pool-in-a-few-lines">Version 1: the pool in a few lines</a></h3>
+<pre class="playground"><code class="language-rust">use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    sender: mpsc::Sender&lt;Job&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    pub fn new(size: usize) -&gt; Self {
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let rx = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    while let Ok(job) = rx.lock().unwrap().recv() {
+                        job();
+                    }
+                })
+            })
+            .collect();
+
+        Self { sender, workers }
+    }
+
+    pub fn execute(&amp;self, job: Job) {
+        self.sender.send(job).unwrap();
+    }
+
+    pub fn join(self) {
+        drop(self.sender);
+        for w in self.workers {
+            let _ = w.join();
+        }
+    }
+}
+
+fn main() {
+    let pool = ThreadPool::new(4);
+    for i in 0..100 {
+        pool.execute(Box::new(move || println!("task {i}")));
+    }
+
+    pool.join();
+}</code></pre>
+<p><code>new</code> creates the channel, wraps the receiver, and spawns <code>size</code> workers with an iterator
+that collects their <code>JoinHandle</code>s. Each worker loops with <code>while let Ok(job) = rx.lock().unwrap().recv()</code> and runs the job. <code>execute</code> sends a boxed job. <code>join</code> takes
+<code>self</code> by value, drops the sender to close the channel, and joins every worker.</p>
+<p>The program queues 100 jobs that print their number, and prints all 100 lines before it
+exits.</p>
+<p>The version works, and it has one surprising property: <strong>the jobs run one at a time.</strong>
+The condition of a <code>while let</code> is a single expression, and temporaries created in it live
+until the end of the loop body. The <code>MutexGuard</code> returned by <code>rx.lock().unwrap()</code> is such
+a temporary, so the worker keeps the receiver locked while <code>job()</code> runs. Every other
+worker waits for that lock, and four workers behave like one.</p>
+<p>A measurement makes it visible. Submitting eight jobs that each sleep for 100 ms to a pool
+of four workers should take about 200 ms. With version 1 it took <strong>801 ms</strong> on the NVIDIA
+Jetson board used for this book, which is eight jobs in sequence.</p>
+<p>The other issues are smaller:</p>
+<ul>
+<li><code>ThreadPool::new(0)</code> creates a pool that accepts jobs and never runs them.</li>
+<li>Callers must write <code>Box::new</code> around every closure.</li>
+<li><code>execute</code> and every worker call <code>unwrap</code>, so a failure becomes a panic.</li>
+<li>A panicking job kills its worker, and the pool silently shrinks.</li>
+<li>If the caller forgets <code>join</code>, the program can exit before queued jobs run.</li>
+</ul>
+<h3 id="version-2-parallel-workers"><a class="header" href="#version-2-parallel-workers">Version 2: parallel workers</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Thread pool, version 2: workers really run in parallel.
+//!
+//! Version 1 (`src/bin/thread_pool.rs`) holds the receiver's lock while a job runs,
+//! because the `MutexGuard` in `while let Ok(job) = rx.lock().unwrap().recv()` lives
+//! until the end of the loop body. This version takes the job in its own `let`
+//! statement, so the guard is dropped before the job starts.
+//!
+//! It also accepts any closure in `execute`, so callers no longer write `Box::new`.
+
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    sender: mpsc::Sender&lt;Job&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    /// Start `size` workers. Panics if `size` is zero.
+    pub fn new(size: usize) -&gt; Self {
+        assert!(size &gt; 0, "a thread pool needs at least one worker");
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    loop {
+                        // The guard is a temporary of this `let` statement, so the
+                        // lock is released here, before the job runs.
+                        let job = receiver.lock().unwrap().recv();
+                        match job {
+                            Ok(job) =&gt; job(),
+                            Err(_) =&gt; break, // every sender is gone: shut down
+                        }
+                    }
+                })
+            })
+            .collect();
+
+        Self { sender, workers }
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender.send(Box::new(job)).unwrap();
+    }
+
+    /// Stop accepting jobs, let the workers drain the queue, and wait for them.
+    pub fn join(self) {
+        drop(self.sender);
+        for worker in self.workers {
+            let _ = worker.join();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Barrier;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    #[test]
+    fn runs_every_job() {
+        let pool = ThreadPool::new(4);
+        let counter = Arc::new(AtomicUsize::new(0));
+        for _ in 0..100 {
+            let counter = Arc::clone(&amp;counter);
+            pool.execute(move || {
+                counter.fetch_add(1, Ordering::Relaxed);
+            });
+        }
+        pool.join();
+        assert_eq!(counter.load(Ordering::Relaxed), 100);
+    }
+
+    #[test]
+    fn jobs_run_at_the_same_time() {
+        // Four jobs wait on a barrier for four parties. They can only all get
+        // through if four workers run them at once; version 1 would never finish.
+        let pool = ThreadPool::new(4);
+        let barrier = Arc::new(Barrier::new(4));
+        let (done_tx, done_rx) = mpsc::channel();
+
+        for _ in 0..4 {
+            let barrier = Arc::clone(&amp;barrier);
+            let done_tx = done_tx.clone();
+            pool.execute(move || {
+                barrier.wait();
+                done_tx.send(()).unwrap();
+            });
+        }
+
+        for _ in 0..4 {
+            done_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("jobs did not run in parallel");
+        }
+        pool.join();
+    }
+
+    #[test]
+    #[should_panic(expected = "at least one worker")]
+    fn zero_workers_is_rejected() {
+        let _ = ThreadPool::new(0);
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>The fix for the lock is one line moved into its own statement:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let job = receiver.lock().unwrap().recv();
+match job {
+    Ok(job) =&gt; job(),
+    Err(_) =&gt; break,
+}
+<span class="boring">}</span></code></pre>
+<p>Temporaries in a <code>let</code> statement are dropped at the end of that statement, so the guard is
+released as soon as <code>recv</code> returns, before <code>job()</code> runs. The same eight 100 ms jobs now take
+<strong>201 ms</strong>, four times faster, with no other change to the design.</p>
+<p><code>execute</code> is now generic over <code>F: FnOnce() + Send + 'static</code> and boxes the closure itself,
+so callers write <code>pool.execute(move || ...)</code>. <code>new</code> asserts that <code>size</code> is positive.</p>
+<p>The test <code>jobs_run_at_the_same_time</code> proves parallelism without timing. Four jobs wait on a
+<code>Barrier</code> for four parties, which only opens when all four are waiting at once. With version
+2 they pass the barrier and report back; with version 1 the first job would wait forever,
+so the test uses <code>recv_timeout</code> to fail instead of hanging.</p>
+<h3 id="version-3-errors-and-shutdown-on-drop"><a class="header" href="#version-3-errors-and-shutdown-on-drop">Version 3: errors and shutdown on drop</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Thread pool, version 3: errors instead of panics, and shutdown on drop.
+//!
+//! - `new` returns `Err(PoolError::NoWorkers)` for a size of zero.
+//! - `execute` returns `Err(PoolError::ShutDown)` once the pool no longer accepts work.
+//! - Dropping the pool closes the queue and joins every worker, so a pool that goes
+//!   out of scope still finishes the jobs it was given.
+
+use std::fmt;
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+/// Why the pool refused a request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PoolError {
+    NoWorkers,
+    ShutDown,
+}
+
+impl fmt::Display for PoolError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::NoWorkers =&gt; write!(f, "a thread pool needs at least one worker"),
+            Self::ShutDown =&gt; write!(f, "the thread pool has shut down"),
+        }
+    }
+}
+
+impl std::error::Error for PoolError {}
+
+pub struct ThreadPool {
+    // `None` after shutdown: dropping the sender is what tells workers to stop.
+    sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    /// Start `size` workers.
+    pub fn new(size: usize) -&gt; Result&lt;Self, PoolError&gt; {
+        if size == 0 {
+            return Err(PoolError::NoWorkers);
+        }
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || worker_loop(&amp;receiver))
+            })
+            .collect();
+
+        Ok(Self {
+            sender: Some(sender),
+            workers,
+        })
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F) -&gt; Result&lt;(), PoolError&gt;
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender
+            .as_ref()
+            .ok_or(PoolError::ShutDown)?
+            .send(Box::new(job))
+            .map_err(|_| PoolError::ShutDown)
+    }
+
+    /// Stop accepting jobs, drain the queue, and wait for every worker.
+    /// Calling it again does nothing.
+    pub fn shutdown(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.shutdown();
+    }
+}
+
+fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;) {
+    loop {
+        // A poisoned lock means another worker panicked while holding it;
+        // stop this worker instead of panicking a second time.
+        let Ok(guard) = receiver.lock() else { return };
+        let job = guard.recv();
+        drop(guard);
+
+        match job {
+            Ok(job) =&gt; job(),
+            Err(_) =&gt; return,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn zero_workers_is_an_error() {
+        assert_eq!(ThreadPool::new(0).err(), Some(PoolError::NoWorkers));
+    }
+
+    #[test]
+    fn dropping_the_pool_finishes_queued_jobs() {
+        let counter = Arc::new(AtomicUsize::new(0));
+        {
+            let pool = ThreadPool::new(2).unwrap();
+            for _ in 0..50 {
+                let counter = Arc::clone(&amp;counter);
+                pool.execute(move || {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                })
+                .unwrap();
+            }
+        } // drop: close the queue and join
+        assert_eq!(counter.load(Ordering::Relaxed), 50);
+    }
+
+    #[test]
+    fn execute_after_shutdown_is_an_error() {
+        let mut pool = ThreadPool::new(1).unwrap();
+        pool.shutdown();
+        assert_eq!(pool.execute(|| {}), Err(PoolError::ShutDown));
+        pool.shutdown(); // idempotent
+    }
+
+    #[test]
+    fn errors_render_a_message() {
+        assert_eq!(
+            PoolError::NoWorkers.to_string(),
+            "a thread pool needs at least one worker"
+        );
+        assert_eq!(
+            PoolError::ShutDown.to_string(),
+            "the thread pool has shut down"
+        );
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Errors are values.</strong> <code>PoolError</code> has two variants. <code>new</code> returns <code>Err(NoWorkers)</code> for a
+size of zero, and <code>execute</code> returns <code>Err(ShutDown)</code> when the pool no longer accepts work. The
+type implements <code>Display</code> and <code>std::error::Error</code>, so a caller can use <code>?</code> and print a
+readable message.</p>
+<p><strong>The sender is an <code>Option</code>.</strong> <code>shutdown</code> takes the sender out with <code>self.sender.take()</code> and
+drops it, then drains and joins the workers. Because the field is <code>None</code> afterwards,
+calling <code>shutdown</code> again does nothing, and <code>execute</code> reports <code>ShutDown</code> through
+<code>self.sender.as_ref().ok_or(PoolError::ShutDown)?</code>.</p>
+<p><strong>Dropping the pool shuts it down.</strong> <code>impl Drop for ThreadPool</code> calls <code>shutdown</code>. A pool that
+goes out of scope, including during an early return or a panic in the caller, still closes
+its queue and waits for the jobs it was given. The test
+<code>dropping_the_pool_finishes_queued_jobs</code> submits fifty jobs inside a block and checks the
+counter after the block ends.</p>
+<p><strong>The worker loop has no <code>unwrap</code>.</strong> <code>let Ok(guard) = receiver.lock() else { return };</code> ends the
+worker if the lock is poisoned instead of panicking again, and <code>drop(guard)</code> releases the
+lock explicitly before the job runs, which states the fix from version 2 in code rather than
+relying on the temporary rule.</p>
+<h3 id="version-4-survive-panics-and-report-the-outcome"><a class="header" href="#version-4-survive-panics-and-report-the-outcome">Version 4: survive panics and report the outcome</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Thread pool, version 4: survives panicking jobs and reports what happened.
+//!
+//! - Workers are named threads created with `thread::Builder`, and a failure to
+//!   spawn one is returned as `PoolError::Spawn` after the already started workers
+//!   are shut down.
+//! - Each job runs inside `catch_unwind`, so a panicking job no longer kills its
+//!   worker and silently shrinks the pool.
+//! - `shutdown` consumes the pool and returns a `Report` with the number of jobs
+//!   that completed and the number that panicked.
+
+use std::fmt;
+use std::io;
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+/// Why the pool could not be created or refused a job.
+#[derive(Debug)]
+pub enum PoolError {
+    NoWorkers,
+    Spawn(io::Error),
+    ShutDown,
+}
+
+impl fmt::Display for PoolError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::NoWorkers =&gt; write!(f, "a thread pool needs at least one worker"),
+            Self::Spawn(error) =&gt; write!(f, "failed to spawn a worker thread: {error}"),
+            Self::ShutDown =&gt; write!(f, "the thread pool has shut down"),
+        }
+    }
+}
+
+impl std::error::Error for PoolError {
+    fn source(&amp;self) -&gt; Option&lt;&amp;(dyn std::error::Error + 'static)&gt; {
+        match self {
+            Self::Spawn(error) =&gt; Some(error),
+            _ =&gt; None,
+        }
+    }
+}
+
+/// What the pool did over its lifetime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Report {
+    pub completed: usize,
+    pub panicked: usize,
+}
+
+#[derive(Default)]
+struct Counters {
+    completed: AtomicUsize,
+    panicked: AtomicUsize,
+}
+
+pub struct ThreadPool {
+    sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+    counters: Arc&lt;Counters&gt;,
+}
+
+impl ThreadPool {
+    /// Start `size` named workers.
+    pub fn new(size: usize) -&gt; Result&lt;Self, PoolError&gt; {
+        if size == 0 {
+            return Err(PoolError::NoWorkers);
+        }
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let counters = Arc::new(Counters::default());
+
+        let mut pool = Self {
+            sender: Some(sender),
+            workers: Vec::with_capacity(size),
+            counters,
+        };
+
+        for id in 0..size {
+            let receiver = Arc::clone(&amp;receiver);
+            let counters = Arc::clone(&amp;pool.counters);
+            let spawned = thread::Builder::new()
+                .name(format!("pool-worker-{id}"))
+                .spawn(move || worker_loop(&amp;receiver, &amp;counters));
+
+            match spawned {
+                Ok(handle) =&gt; pool.workers.push(handle),
+                // Dropping `pool` here closes the queue and joins the workers
+                // that did start, so none of them is leaked.
+                Err(error) =&gt; return Err(PoolError::Spawn(error)),
+            }
+        }
+
+        Ok(pool)
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F) -&gt; Result&lt;(), PoolError&gt;
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender
+            .as_ref()
+            .ok_or(PoolError::ShutDown)?
+            .send(Box::new(job))
+            .map_err(|_| PoolError::ShutDown)
+    }
+
+    /// Close the queue, wait for every queued job, and report the outcome.
+    pub fn shutdown(mut self) -&gt; Report {
+        self.close_and_join();
+        Report {
+            completed: self.counters.completed.load(Ordering::Relaxed),
+            panicked: self.counters.panicked.load(Ordering::Relaxed),
+        }
+    }
+
+    fn close_and_join(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            // Jobs cannot unwind out of `worker_loop`, so a join error would mean
+            // a bug in the loop itself; there is nothing further to clean up.
+            let _ = worker.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.close_and_join();
+    }
+}
+
+fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;, counters: &amp;Counters) {
+    loop {
+        let Ok(guard) = receiver.lock() else { return };
+        let job = guard.recv();
+        drop(guard);
+
+        let Ok(job) = job else { return };
+
+        // `AssertUnwindSafe` is sound here: the job owns everything it touches,
+        // and a panicking job's partial state is never observed by this loop.
+        match panic::catch_unwind(AssertUnwindSafe(job)) {
+            Ok(()) =&gt; counters.completed.fetch_add(1, Ordering::Relaxed),
+            Err(_) =&gt; counters.panicked.fetch_add(1, Ordering::Relaxed),
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+    use std::sync::mpsc::channel;
+    use std::time::Duration;
+
+    #[test]
+    fn reports_completed_jobs() {
+        let pool = ThreadPool::new(4).unwrap();
+        for _ in 0..20 {
+            pool.execute(|| {}).unwrap();
+        }
+        assert_eq!(
+            pool.shutdown(),
+            Report {
+                completed: 20,
+                panicked: 0
+            }
+        );
+    }
+
+    #[test]
+    fn a_panicking_job_does_not_kill_its_worker() {
+        // One worker: if the panic killed it, the second job would never run.
+        let pool = ThreadPool::new(1).unwrap();
+        let (done_tx, done_rx) = channel();
+
+        pool.execute(|| panic!("job failed on purpose")).unwrap();
+        pool.execute(move || done_tx.send(()).unwrap()).unwrap();
+
+        done_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the worker died with the panicking job");
+        assert_eq!(
+            pool.shutdown(),
+            Report {
+                completed: 1,
+                panicked: 1
+            }
+        );
+    }
+
+    #[test]
+    fn workers_are_named() {
+        let pool = ThreadPool::new(1).unwrap();
+        let (name_tx, name_rx) = channel();
+        pool.execute(move || {
+            let name = thread::current().name().map(str::to_string);
+            name_tx.send(name).unwrap();
+        })
+        .unwrap();
+        assert_eq!(name_rx.recv().unwrap().as_deref(), Some("pool-worker-0"));
+    }
+
+    #[test]
+    fn zero_workers_is_an_error() {
+        assert!(matches!(ThreadPool::new(0), Err(PoolError::NoWorkers)));
+    }
+
+    #[test]
+    fn spawn_errors_expose_their_source() {
+        let error = PoolError::Spawn(io::Error::other("no threads left"));
+        assert!(error.to_string().contains("no threads left"));
+        assert!(error.source().is_some());
+        assert!(PoolError::ShutDown.source().is_none());
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>A panicking job no longer kills its worker.</strong> The worker runs each job inside
+<code>panic::catch_unwind(AssertUnwindSafe(job))</code>. A panic unwinds only to that call, which returns
+<code>Err</code>, and the worker continues with the next job. <code>AssertUnwindSafe</code> tells the compiler that
+observing state after a panic is acceptable; here the job owns what it captured and the loop
+never looks at it. The test <code>a_panicking_job_does_not_kill_its_worker</code> uses a single worker, so
+the job after the panic can only run if that worker survived.</p>
+<p><strong>Outcomes are counted.</strong> A shared <code>Counters</code> struct holds two <code>AtomicUsize</code> values that the
+workers increment after each job. <code>shutdown(self)</code> consumes the pool, joins every worker, and
+returns a <code>Report { completed, panicked }</code>. Because <code>shutdown</code> takes the pool by value,
+calling <code>execute</code> after it is a compile error rather than a run-time <code>ShutDown</code>.</p>
+<p><strong>Workers are named, and spawn failures are errors.</strong> <code>thread::Builder::new().name(...)</code>
+names each worker <code>pool-worker-N</code>, which appears in panic messages and debuggers.
+<code>Builder::spawn</code> returns <code>io::Result</code>, unlike <code>thread::spawn</code>, which panics. When a spawn
+fails, <code>new</code> returns <code>Err(PoolError::Spawn(error))</code>. The partially built <code>pool</code> is dropped on
+that <code>return</code>, and its <code>Drop</code> implementation closes the queue and joins the workers that did
+start, so none of them leaks. <code>Error::source</code> exposes the underlying <code>io::Error</code>.</p>
+<h2 id="intuition-63"><a class="header" href="#intuition-63">Intuition</a></h2>
+<p><strong>Version 1 against version 2: eight jobs of 100 ms on four workers</strong></p>
+<pre><code class="language-text">version 1, lock held while the job runs
+
+time (ms)   0    100   200   300   400   500   600   700   800
+worker 0    [job][job]
+worker 1              [job][job]
+worker 2                          [job][job]
+worker 3                                      [job][job]
+            each worker waits for the lock the previous one holds    total 801 ms
+
+version 2, lock released before the job runs
+
+time (ms)   0    100   200
+worker 0    [job][job]
+worker 1    [job][job]
+worker 2    [job][job]
+worker 3    [job][job]
+                                                                     total 201 ms
+</code></pre>
+<p>The exact assignment of jobs to workers varies between runs; the totals do not.</p>
+<p><strong>Version 4: one worker, a panicking job followed by a normal one</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>step</th><th>worker</th><th>counters</th></tr>
+</thead>
+<tbody>
+<tr><td><code>execute(panicking job)</code></td><td>receives it, <code>catch_unwind</code> returns <code>Err</code></td><td>panicked = 1</td></tr>
+<tr><td><code>execute(send on channel)</code></td><td>receives it, runs it, returns <code>Ok</code></td><td>completed = 1</td></tr>
+<tr><td><code>shutdown()</code></td><td><code>recv</code> returns <code>Err</code>, loop ends, thread joined</td><td><code>Report { completed: 1, panicked: 1 }</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="time-and-space-complexity-63"><a class="header" href="#time-and-space-complexity-63">Time and Space Complexity</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Cost</th><th>Condition</th></tr>
+</thead>
+<tbody>
+<tr><td><code>new</code></td><td><code>O(n)</code> thread creations</td><td><code>n</code> workers</td></tr>
+<tr><td><code>execute</code></td><td><code>O(1)</code>: one allocation for the box and one channel send</td><td></td></tr>
+<tr><td>per job</td><td>one lock acquisition and one <code>recv</code> on the worker side</td><td>version 2 onwards: the lock is not held while the job runs</td></tr>
+<tr><td>shutdown</td><td>waits for every queued job, then <code>O(n)</code> joins</td><td></td></tr>
+<tr><td>memory</td><td>one stack per worker, one box per queued job</td><td>the queue is unbounded</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="limitations-63"><a class="header" href="#limitations-63">Limitations</a></h2>
+<p><strong>The queue is unbounded.</strong> <code>mpsc::channel</code> never blocks the sender, so a producer faster than
+the workers grows the queue without limit. <code>mpsc::sync_channel(bound)</code>, or the bounded queue of
+chapter 46, makes <code>execute</code> wait instead.</p>
+<p><strong>Workers contend on one lock.</strong> Every worker takes the same <code>Mutex</code> to receive. For short jobs
+at high rates this lock becomes the bottleneck. A multi-consumer channel such as
+<code>crossbeam-channel</code>, or a work-stealing pool such as <code>rayon</code>, avoids it.</p>
+<p><strong>Jobs return nothing.</strong> A caller that needs a result must send it back itself, as the tests
+do with channels. A pool that returns a handle per job, similar to <code>JoinHandle&lt;T&gt;</code>, would
+carry the result and the panic.</p>
+<p><strong><code>catch_unwind</code> does not catch everything.</strong> A job that aborts the process, overflows its
+stack, or panics while <code>panic = "abort"</code> is configured still ends the program. Version 4
+protects the pool from ordinary panics only.</p>
+<p><strong>Shutdown waits for every job.</strong> None of the versions can cancel queued jobs or interrupt a
+running one. A pool that must stop quickly needs a separate stop flag that jobs check.</p>
+<p><strong>Version 1 is kept as written.</strong> Its serial behaviour is the most useful thing to learn from
+it, and the later versions exist to explain it.</p>
+<h2 id="summary-43"><a class="header" href="#summary-43">Summary</a></h2>
+<ul>
+<li>A thread pool is a channel of boxed <code>FnOnce() + Send + 'static</code> jobs and workers that share
+the receiver through <code>Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;</code>.</li>
+<li>Temporaries in a <code>while let</code> condition live for the whole loop body. Holding the
+<code>MutexGuard</code> there made version 1 run jobs one at a time; taking the job in a separate <code>let</code>
+statement made the same work four times faster.</li>
+<li>Returning <code>Result</code> from <code>new</code> and <code>execute</code>, and shutting down in <code>Drop</code>, turns panics into
+values and makes a dropped pool finish its work.</li>
+<li><code>catch_unwind</code> keeps a panicking job from killing its worker, <code>thread::Builder</code> names workers
+and reports spawn failures, and a consuming <code>shutdown</code> can return what happened.</li>
+<li>A <code>Barrier</code> tests parallelism without timing, and a single-worker pool tests survival after
+a panic.</li>
+</ul>
+<h2 id="references-63"><a class="header" href="#references-63">References</a></h2>
+<ul>
+<li>The Rust Programming Language, <a href="https://doc.rust-lang.org/book/ch21-00-final-project-a-web-server.html">Final Project: Building a Multithreaded Web Server</a>, which builds a similar pool and discusses the <code>while let</code> lock issue.</li>
+<li>The Rust Reference, <a href="https://doc.rust-lang.org/reference/destructors.html#temporary-scopes">Temporary scopes</a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/sync/mpsc/index.html"><code>std::sync::mpsc</code></a>, <a href="https://doc.rust-lang.org/std/sync/struct.Barrier.html"><code>std::sync::Barrier</code></a>, and <a href="https://doc.rust-lang.org/std/thread/struct.Builder.html"><code>std::thread::Builder</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/panic/fn.catch_unwind.html"><code>std::panic::catch_unwind</code></a>.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="references-64"><a class="header" href="#references-64">References</a></h1>
 <h2 id="how-to-read-this-list"><a class="header" href="#how-to-read-this-list">How to read this list</a></h2>
 <p>Sources are grouped by kind, and each entry says where the claim it supports
 appears. Language and library claims cite the document that specifies the
