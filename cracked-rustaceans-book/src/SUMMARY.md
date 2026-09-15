@@ -123,6 +123,10 @@
 
 - [63. Three Sum](63-three-sum.md)
 
+# Part XX: Thread Pools
+
+- [64. Thread Pool - Workers of the Pool Assemble](64-thread-pool.md)
+
 # Closing
 
 - [References](references.md)

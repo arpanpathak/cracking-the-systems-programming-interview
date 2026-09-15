@@ -131,3 +131,4 @@ the list printed by `cargo test` reads as an index of the book.
 | `src/bin/merge_k_sorted_lists_divide.rs` | 62 |
 | `src/problems/three_sum.rs` | 63 |
 | `src/bin/false_sharing.rs` | 48 |
+| `src/bin/thread_pool.rs`, `src/problems/thread_pool_v2.rs`, `thread_pool_v3.rs`, `thread_pool_v4.rs` | 64 |
