@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e6f2ad7b.js";
+            window.path_to_searchindex_js = "searchindex-de7e9414.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0a8b4ba0.js"></script>
@@ -2245,8 +2245,10 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="topological-sort"><a class="header" href="#topological-sort">11. Topological Sort</a></h1>
-<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs"><code>src/problems/graph_topology.rs</code></a>. Test it with
-<code>cargo test graph_topology</code>.</em></p>
+<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs"><code>src/problems/graph_topology.rs</code></a>,
+tested with <code>cargo test graph_topology</code>, and
+<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs"><code>src/bin/dependency_resolutiom.rs</code></a>, run with
+<code>cargo run --bin dependency_resolutiom</code>.</em></p>
 <h2 id="problem-statement-10"><a class="header" href="#problem-statement-10">Problem Statement</a></h2>
 <p>Given a directed graph, produce an ordering of its vertices in which every edge points
 forward. If the graph contains a cycle, no such ordering exists and the function
@@ -2360,6 +2362,89 @@ loop across the whole algorithm is the edge count. That is what makes the cost
 <p><code>(order.len() == num_nodes).then_some(order)</code> consumes <code>order</code> only when the comparison
 is true. If the graph has a cycle, the partial order is dropped and the caller receives
 <code>None</code>, so no caller can schedule a partial order by accident.</p>
+<h3 id="the-variant-that-names-vertices-with-strings"><a class="header" href="#the-variant-that-names-vertices-with-strings">The variant that names vertices with strings</a></h3>
+<p>Dependency graphs rarely arrive as integers. A build system is handed package names, a
+course catalogue is handed course codes, and a scheduler is handed job identifiers. Kahn’s
+algorithm does not change, but every vector indexed by a vertex becomes a hash map keyed by
+a name, and that substitution has a price worth seeing in full.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs"><code>src/bin/dependency_resolutiom.rs</code></a>. Run it with
+<code>cargo run --bin dependency_resolutiom</code>.</em></p>
+<pre class="playground"><code class="language-rust">use std::collections::{HashMap, VecDeque};
+
+#[derive(Clone)]
+struct Course {
+    name: String,
+    depends_on: Vec&lt;String&gt;,
+}
+
+fn topo_sort(courses: &amp;[Course]) -&gt; Vec&lt;String&gt; {
+    let mut adj: HashMap&lt;String, Vec&lt;String&gt;&gt; = HashMap::new();
+    let mut indegree: HashMap&lt;String, usize&gt; = HashMap::new();
+
+    for Course { name, depends_on } in courses {
+        indegree.insert(name.clone(), depends_on.len());
+        adj.entry(name.clone()).or_default();
+        for dep in depends_on {
+            adj.entry(dep.clone()).or_default().push(name.clone());
+            indegree.entry(dep.clone()).or_insert(0);
+        }
+    }
+
+    let mut queue: VecDeque&lt;_&gt; = indegree
+        .iter()
+        .filter(|&amp;(_, deg)| *deg == 0)
+        .map(|(name, _)| name.clone())
+        .collect();
+
+    let mut order = Vec::new();
+    while let Some(node) = queue.pop_front() {
+        for next in &amp;adj[&amp;node] {
+            let d = indegree.get_mut(next).unwrap();
+            *d -= 1;
+            if *d == 0 {
+                queue.push_back(next.clone());
+            }
+        }
+        order.push(node);
+    }
+    
+    if order.len() == indegree.len() { order } else { Vec::new() }
+}
+
+fn main() {
+    let courses = vec![
+        Course { name: "algos".into(), depends_on: vec!["datastructs".into()] },
+        Course { name: "compilers".into(), depends_on: vec!["algos".into(), "os".into()] },
+        Course { name: "os".into(), depends_on: vec!["datastructs".into()] },
+    ];
+
+
+    let coned2 = courses.clone();
+
+    println!("{:?}", topo_sort(&amp;courses));
+}</code></pre>
+<p>The input is declared in the direction a person would write it. A <code>Course</code> names what it
+depends on, so <code>depends_on.len()</code> is already the in-degree of that course and can be
+inserted directly, where the index version increments a counter once per edge. The edges
+themselves point the other way: <code>adj.entry(dep).or_default().push(name)</code> records that
+finishing <code>dep</code> unblocks <code>name</code>, which is the direction the traversal needs.</p>
+<p>Three calls in the build loop exist only to make sure no vertex is missing.
+<code>adj.entry(name).or_default()</code> gives every course an adjacency entry, so the later
+<code>&amp;adj[&amp;node]</code> cannot panic on a course with no dependents.
+<code>indegree.entry(dep).or_insert(0)</code> registers a name that appears only as a dependency and
+never as a <code>Course</code> of its own. In the example that name is <code>datastructs</code>, and without the
+<code>or_insert</code> it would never appear in the in-degree map, never enter the queue, and nothing
+would start. <code>or_insert</code> rather than <code>insert</code> is what keeps it from overwriting a count
+already computed for a course that happens to be listed later.</p>
+<p>The completeness test at the end compares against <code>indegree.len()</code> rather than
+<code>courses.len()</code>, and the difference is exactly those dependency-only names. The map holds
+every vertex the graph mentions; the slice holds only the ones somebody declared.</p>
+<p>What the rewrite costs is visible in the number of <code>clone</code> calls. Every name is cloned into
+the adjacency map, again into the in-degree map, again into the queue, and a <code>String</code> clone
+is a heap allocation and a copy. A resolver that runs on a large graph interns the names
+once, into a <code>HashMap&lt;String, usize&gt;</code> built at the edge of the system, and then runs the
+index-based version printed above, where a vertex is a <code>usize</code> and a lookup is a bounds
+check.</p>
 <h2 id="intuition-10"><a class="header" href="#intuition-10">Intuition</a></h2>
 <pre><code class="language-text">num_nodes = 4, edges = [(0, 1), (0, 2), (1, 3), (2, 3)]
 
@@ -2392,7 +2477,33 @@ and 0 != 2, so the result is None.
 </tbody>
 </table>
 </div>
+<p>The string-keyed variant has the same asymptotic cost and a much larger constant. Each of
+the <code>O(V + E)</code> steps hashes a <code>String</code> rather than indexing a vector, and the names are
+cloned into the maps and the queue, so the allocation count grows with the graph instead of
+staying at two vectors.</p>
 <h2 id="limitations-10"><a class="header" href="#limitations-10">Limitations</a></h2>
+<p><strong>The order changes between runs.</strong> The initial queue is built by iterating <code>indegree</code>,
+and a <code>HashMap</code> iterates in an order that depends on a seed randomised for each process. A
+graph with a single root, like the one in <code>main</code>, hides this, because there is only one
+vertex to start from. Adding a second independent course makes it visible:</p>
+<pre><code class="language-text">["datastructs", "ethics", "algos", "os", "compilers"]
+["datastructs", "ethics", "algos", "os", "compilers"]
+["ethics", "datastructs", "algos", "os", "compilers"]
+["datastructs", "ethics", "algos", "os", "compilers"]
+["ethics", "datastructs", "algos", "os", "compilers"]
+</code></pre>
+<p>Every one of those is a correct topological order, and a build system that printed a
+different plan on each invocation would still be trusted less for it. Collecting the roots
+into a vector and sorting them before the traversal makes the output reproducible, at a
+cost of <code>O(V log V)</code>.</p>
+<p><strong>A cycle and an empty graph give the same answer.</strong> <code>topo_sort</code> returns <code>Vec::new()</code> when
+the order is short, and an input with no courses also returns an empty vector, so the
+caller cannot tell a refused graph from an empty one. The index-based version says it
+properly with <code>Option</code>, and <code>(order.len() == indegree.len()).then_some(order)</code> is the same
+change here.</p>
+<p><strong>The unused clone in <code>main</code>.</strong> <code>let coned2 = courses.clone();</code> duplicates the whole course
+list and is never read, which the compiler reports as an unused variable. Removing it
+removes an allocation per course.</p>
 <p><strong>An edge naming a vertex outside <code>0..num_nodes</code> panics.</strong> <code>graph[from].push(to)</code> and
 <code>indegree[to] += 1</code> index directly, so <code>topological_sort(2, &amp;[(5, 0)])</code> panics with an
 index-out-of-bounds whose message names a vector index rather than the offending edge.
