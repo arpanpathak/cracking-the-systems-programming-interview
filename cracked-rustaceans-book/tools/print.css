@@ -377,33 +377,6 @@ pre {
     border-radius: 0.6mm;
 }
 
-/* A listing reference: the file a chapter reads, and a link to it. The code itself
-   lives in the repository, so that what the reader compiles and what the chapter
-   describes cannot drift apart. A reference is never split across a page. */
-.listing {
-    background: var(--accent-soft);
-    border-left: 3.2pt solid var(--accent);
-    border-radius: 1.6mm;
-    padding: 2.4mm 3.4mm 2.4mm 4.4mm;
-    margin: 3.5mm 0 4.5mm 0;
-    font-size: 9.4pt;
-    text-align: left;
-    break-inside: avoid;
-}
-
-.listing-label {
-    font-family: "DejaVu Sans", sans-serif;
-    font-weight: 700;
-    color: var(--accent-deep);
-    margin-right: 1.2mm;
-}
-
-/* The reference names the path in full, so a reader with the repository open can
-   find the file whether or not the link in the PDF is followed. */
-.listing a {
-    color: var(--accent-deep);
-}
-
 /* Pygments token classes, in a palette that stays distinguishable in grayscale. */
 .highlight .c,
 .highlight .c1,

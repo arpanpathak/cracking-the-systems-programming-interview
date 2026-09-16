@@ -35,7 +35,63 @@ low  high  mid  nums[mid]  left sorted?  decision
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 9.1</span> The complete module, with its tests. <code>src/problems/binary_search.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs">read the file on GitHub</a></p>
+```rust
+//! Binary search on a rotated sorted array.
+//!
+//! Classic O(log n) interview problem. The code uses explicit range bounds and
+//! sorted-half checks; no recursion or nested `if` chains are required.
+
+pub fn search_rotated(nums: &[i32], target: i32) -> Option<usize> {
+    let mut low = 0usize;
+    let mut high = nums.len();
+
+    while low < high {
+        let mid = low + (high - low) / 2;
+        if nums[mid] == target {
+            return Some(mid);
+        }
+
+        // 6,7, 1,2,3,4,5
+        // start = 0 , end = 6, 0 + (6-0)/2 = 3
+        
+        // 4,5,6,1,2,3
+        let left_is_sorted = nums[low] <= nums[mid];
+        if left_is_sorted {
+            if nums[low] <= target && target < nums[mid] {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        } else if nums[mid] < target && target <= nums[high - 1] {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finds_target_in_rotated_array() {
+        let nums = [4, 5, 6, 7, 0, 1, 2];
+        assert_eq!(search_rotated(&nums, 0), Some(4));
+        assert_eq!(search_rotated(&nums, 3), None);
+        assert_eq!(search_rotated(&nums, 5), Some(1));
+    }
+
+    #[test]
+    fn handles_unrotated_and_single() {
+        assert_eq!(search_rotated(&[1, 2, 3, 4], 3), Some(2));
+        assert_eq!(search_rotated(&[1], 1), Some(0));
+        assert_eq!(search_rotated(&[1], 2), None);
+    }
+}
+```
 
 `high` starts at `nums.len()`, not at `nums.len() - 1`, because the range is half-open.
 That choice removes the special case for an empty slice: `low == high == 0` and the
@@ -87,18 +143,6 @@ range tests meaningful.
 
 **There is no test for a two-element rotation.** `[2, 1]` is the smallest input where
 `nums[low] == nums[mid]` is false and the sorted-half test has to choose correctly.
-
-## Summary
-
-- The loop keeps the half-open range `[low, high)` and the invariant that the target,
-  if present, lies inside it.
-- In a rotated array at least one half of any range is sorted, and `nums[low] <=
-  nums[mid]` says which. One range test then decides whether the target can lie in the
-  sorted half, and the range halves either way.
-- That single comparison is what keeps the search logarithmic in an array that is not
-  sorted as a whole.
-- The sorted-half test rests on distinct values. With repeats, `nums[low] ==
-  nums[mid]` no longer identifies the sorted half, and the worst case becomes linear.
 
 ## References
 

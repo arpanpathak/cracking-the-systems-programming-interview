@@ -33,7 +33,85 @@ the scheduler ran that thread.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 20.1</span> The complete module, with its tests. <code>src/problems/rate_limiter.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs">read the file on GitHub</a></p>
+```rust
+//! Thread-safe token bucket rate limiter.
+
+use std::sync::Mutex;
+use std::time::Instant;
+
+pub struct TokenBucket {
+    /// Max tokens.
+    capacity: f64,
+    /// Tokens per second.
+    rate: f64,
+    state: Mutex<BucketState>,
+}
+
+struct BucketState {
+    tokens: f64,
+    last_refill: Instant,
+}
+
+impl TokenBucket {
+    pub fn new(capacity: usize, rate_per_sec: f64) -> Self {
+        assert!(capacity > 0);
+        assert!(rate_per_sec > 0.0);
+        Self {
+            capacity: capacity as f64,
+            rate: rate_per_sec,
+            state: Mutex::new(BucketState {
+                tokens: capacity as f64, // Start full
+                last_refill: Instant::now(),
+            }),
+        }
+    }
+
+    pub fn try_acquire(&self) -> bool {
+        let mut s = self.state.lock().unwrap();
+        let now = Instant::now();
+
+        // Refill tokens based on elapsed time
+        let elapsed = now - s.last_refill;
+        let new_tokens = elapsed.as_secs_f64() * self.rate;
+        s.tokens = (s.tokens + new_tokens).min(self.capacity);
+        s.last_refill = now;
+
+        // Try to take one
+        if s.tokens >= 1.0 {
+            s.tokens -= 1.0;
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+    use std::time::Duration;
+
+    #[test]
+    fn it_works() {
+        let bucket = TokenBucket::new(5, 1.0); // 5 tokens, refill 1 per sec
+
+        // Use all 5
+        for _ in 0..5 {
+            assert!(bucket.try_acquire());
+        }
+        // 6th fails
+        assert!(!bucket.try_acquire());
+
+        // Wait 1 second
+        thread::sleep(Duration::from_secs(1));
+        // Should have 1 token back
+        assert!(bucket.try_acquire());
+        // And none left
+        assert!(!bucket.try_acquire());
+    }
+}
+```
 
 `try_acquire` takes `&self` rather than `&mut self`. That is what allows one bucket to be
 shared by reference across threads; the mutation happens behind the `Mutex`.
@@ -105,19 +183,6 @@ nothing in this design provides one.
 depend on how the operating system scheduled the test thread. On a loaded machine the
 sleep may return later than requested, which only makes the assertion more likely to pass,
 so a bucket whose rate were too high would not be caught.
-
-## Summary
-
-- A bucket of at most `capacity` tokens refilled at `rate` per second admits a burst of
-  `capacity` and then holds the sustained rate, which is the behaviour a fixed window
-  cannot express.
-- The refill is computed from the elapsed time on each call rather than by a timer
-  thread, so the bucket costs no thread and its state does not depend on how the
-  scheduler ran one.
-- The refill is capped at the capacity, which is what keeps an idle bucket from
-  accumulating an unbounded burst.
-- Each call is constant time behind one uncontended mutex acquisition, and the state is
-  three machine words.
 
 ## References
 

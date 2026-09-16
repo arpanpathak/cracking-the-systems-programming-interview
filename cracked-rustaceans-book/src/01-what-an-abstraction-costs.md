@@ -1,4 +1,4 @@
-# What an Abstraction Costs {#what-an-abstraction-costs}
+# 1. What an Abstraction Costs {#what-an-abstraction-costs}
 
 ## A field that costs nothing
 

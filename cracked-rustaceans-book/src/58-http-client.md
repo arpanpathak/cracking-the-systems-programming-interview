@@ -45,7 +45,146 @@ standard-library version does not.
 
 ### The standard-library client
 
-<p class="listing"><span class="listing-label">Listing 58.1</span> The standard-library client. <code>src/bin/fun_network_call.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">read the file on GitHub</a></p>
+```rust
+use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::sync::Mutex;
+use std::time::Duration;
+
+type RuntimeError = Box<dyn std::error::Error>;
+
+enum RequestType {
+    GET    { path: String, headers: Vec<(String, String)> },
+    OPTION { path: String, headers: Vec<(String, String)> },
+    POST   { path: String, headers: Vec<(String, String)>, body: String },
+    PUT    { path: String, headers: Vec<(String, String)>, body: String },
+}
+
+struct IdemCache {
+    store: Mutex<HashMap<String, String>>,
+}
+
+impl IdemCache {
+    fn new() -> Self {
+        Self { store: Mutex::new(HashMap::new()) }
+    }
+
+    fn get_or_insert<F>(&self, key: &str, f: F) -> Result<String, RuntimeError>
+    where
+        F: FnOnce() -> Result<String, RuntimeError>,
+    {
+        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key.to_string(), v.clone());
+        Ok(v)
+    }
+}
+
+struct RetryPolicy {
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+}
+
+impl RetryPolicy {
+    fn new() -> Self {
+        Self {
+            max_attempts: 3,
+            base_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(5),
+        }
+    }
+
+    fn execute<F, T>(&self, mut f: F) -> Result<T, RuntimeError>
+    where
+        F: FnMut() -> Result<T, RuntimeError>,
+    {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            match f() {
+                Ok(v) => return Ok(v),
+                Err(e) if attempt >= self.max_attempts => return Err(e),
+                Err(_) => {
+                    let delay = (self.base_delay * 2u32.pow(attempt - 1)).min(self.max_delay);
+                    std::thread::sleep(delay);
+                }
+            }
+        }
+    }
+}
+
+/// -- Build a HTTP client with those strategies
+
+struct HttpClient {
+    host: String,
+    port: u16,
+    cache: IdemCache,
+    retry: RetryPolicy,
+}
+
+impl HttpClient {
+    fn new(host: &str, port: u16) -> Self {
+        Self {
+            host: host.to_string(),
+            port,
+            cache: IdemCache::new(),
+            retry: RetryPolicy::new(),
+        }
+    }
+
+    fn execute(&self, key: &str, req: &RequestType) -> Result<String, RuntimeError> {
+        self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))
+    }
+
+    fn send(&self, req: &RequestType) -> Result<String, RuntimeError> {
+        let (method, path, headers, body) = match req {
+            RequestType::GET    { path, headers }       => ("GET",     path, headers, None),
+            RequestType::OPTION { path, headers }       => ("OPTIONS", path, headers, None),
+            RequestType::POST   { path, headers, body } => ("POST",    path, headers, Some(body)),
+            RequestType::PUT    { path, headers, body } => ("PUT",     path, headers, Some(body)),
+        };
+
+        let mut raw = format!(
+            "{method} {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
+            self.host
+        );
+        for (k, v) in headers { raw += &format!("{k}: {v}\r\n"); }
+        if let Some(b) = body { raw += &format!("Content-Length: {}\r\n", b.len()); }
+        raw += "\r\n";
+        if let Some(b) = body { raw += b; }
+
+        let mut stream = TcpStream::connect((self.host.as_str(), self.port))?;
+        stream.write_all(raw.as_bytes())?;
+        let mut resp = String::new();
+        stream.read_to_string(&mut resp)?;
+        Ok(resp.split_once("\r\n\r\n").map(|(_, b)| b).unwrap_or("").to_string())
+    }
+}
+
+// --- The actual REST call ---
+
+fn create_item(client: &HttpClient, item_name: &str) -> Result<String, RuntimeError> {
+    client.execute("create-demo-001", &RequestType::POST {
+        path: "/post".into(),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+        body: format!(r#"{{"name":"{item_name}"}}"#),
+    })
+}
+
+fn main() -> Result<(), RuntimeError> {
+    let client = HttpClient::new("httpbin.org", 80);
+    println!("created:\n{}", create_item(&client, "demo")?);
+    Ok(())
+}
+```
 
 `RuntimeError` is `Box<dyn std::error::Error>`, the conventional error type for a
 program's top level. Any error type, and any `&str` or `String`, converts into it with
@@ -75,7 +214,125 @@ returns the body.
 
 ### The `reqwest` and `tokio` client
 
-<p class="listing"><span class="listing-label">Listing 58.2</span> The <code>reqwest</code> and <code>tokio</code> client. <code>src/bin/reqwest_and_tokio.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">read the file on GitHub</a></p>
+```rust
+use std::{collections::HashMap, sync::Mutex, time::Duration};
+use reqwest::{Client, Method, StatusCode};
+use serde_json::Value;
+
+type Error = Box<dyn std::error::Error + Send + Sync>;
+
+const RETRY: [StatusCode; 5] = [
+    StatusCode::TOO_MANY_REQUESTS,
+    StatusCode::INTERNAL_SERVER_ERROR,
+    StatusCode::BAD_GATEWAY,
+    StatusCode::SERVICE_UNAVAILABLE,
+    StatusCode::GATEWAY_TIMEOUT,
+];
+
+struct Config {
+    base: String,
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+    timeout: Duration,
+}
+
+struct Api {
+    http: Client,
+    cache: Mutex<HashMap<String, String>>,
+    cfg: Config,
+}
+
+impl Api {
+    fn new(cfg: Config) -> Result<Self, Error> {
+        Ok(Self {
+            http: Client::builder().timeout(cfg.timeout).build()?,
+            cache: Mutex::new(HashMap::new()),
+            cfg,
+        })
+    }
+
+    fn cached(&self, key: &str) -> Option<String> {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(key)
+            .cloned()
+    }
+
+    fn store(&self, key: &str, text: &str) {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key.into(), text.into());
+    }
+
+    async fn call(
+        &self,
+        key: &str,
+        method: Method,
+        path: &str,
+        body: Option<&Value>,
+    ) -> Result<String, Error> {
+        match self.cached(key) {
+            Some(hit) => return Ok(hit),
+            None => {}
+        }
+
+        let url = format!("{}{}", self.cfg.base, path);
+        let mut delay = self.cfg.base_delay;
+        let mut attempt = 0;
+
+        loop {
+            attempt += 1;
+
+            let req = self
+                .http
+                .request(method.clone(), &url)
+                .header("Idempotency-Key", key)
+                .header("Accept", "application/json");
+            let req = match body {
+                Some(b) => req.json(b),
+                None => req,
+            };
+
+            let resp = req.send().await?;
+            let status = resp.status();
+            let text = resp.text().await?;
+
+            match status {
+                s if s.is_success() => {
+                    self.store(key, &text);
+                    return Ok(text);
+                }
+                s if RETRY.contains(&s) && attempt < self.cfg.max_attempts => {
+                    tokio::time::sleep(delay).await;
+                    delay = (delay * 2).min(self.cfg.max_delay);
+                }
+                s => return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+            }
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let api = Api::new(Config {
+        base: "https://httpbin.org".into(),
+        max_attempts: 3,
+        base_delay: Duration::from_millis(100),
+        max_delay: Duration::from_secs(5),
+        timeout: Duration::from_secs(15),
+    })?;
+
+    let body = serde_json::json!({ "name": "demo" });
+    let out = api
+        .call("create-demo-001", Method::POST, "/post", Some(&body))
+        .await?;
+    println!("created:\n{out}");
+    Ok(())
+}
+```
 
 `Error` is `Box<dyn std::error::Error + Send + Sync>`. The additional bounds let the error
 cross threads, which `tokio`'s multi-threaded runtime can require of values held across

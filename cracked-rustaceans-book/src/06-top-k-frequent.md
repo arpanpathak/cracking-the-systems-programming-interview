@@ -22,7 +22,55 @@ cost table states what the simpler choice costs.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 6.1</span> The complete module, with its tests. <code>src/problems/top_k_frequent.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/top_k_frequent.rs">read the file on GitHub</a></p>
+```rust
+//! Top K Frequent Elements.
+//!
+//! Count occurrences with a HashMap, then use a max-heap (`BinaryHeap`) to pull
+//! out the top k elements. O(n log n) worst case; acceptable and readable.
+
+use std::collections::{BinaryHeap, HashMap};
+
+pub fn top_k_frequent(nums: &[i32], k: usize) -> Vec<i32> {
+    let mut counts: HashMap<i32, usize> = HashMap::with_capacity(nums.len());
+    for &num in nums.iter() {
+        *counts.entry(num).or_insert(0) += 1;
+    }
+
+    // BinaryHeap is a max-heap in Rust, so (count, num) keeps highest counts first.
+    let mut heap: BinaryHeap<(usize, i32)> = counts
+        .into_iter()
+        .map(|(num, count)| (count, num))
+        .collect();
+
+    let mut result = Vec::with_capacity(k);
+    while result.len() < k {
+        match heap.pop() {
+            Some((_, num)) => result.push(num),
+            None => break,
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_top_two() {
+        let nums = [1, 1, 1, 2, 2, 3];
+        let mut result = top_k_frequent(&nums, 2);
+        result.sort_unstable();
+        assert_eq!(result, vec![1, 2]);
+    }
+
+    #[test]
+    fn k_larger_than_unique_values_returns_all() {
+        let result = top_k_frequent(&[1, 2, 3], 10);
+        assert_eq!(result.len(), 3);
+    }
+}
+```
 
 `*counts.entry(num).or_insert(0) += 1` looks up the count or inserts zero, then
 increments through the returned `&mut usize`. The map is searched once per element
@@ -83,17 +131,6 @@ test for it.
 and from the fact that `BinaryHeap` is a max-heap. Two sentences in the module
 documentation would make it part of the contract rather than a consequence of the
 implementation.
-
-## Summary
-
-- Two passes: a hash map counts occurrences, and a `BinaryHeap` of `(count, value)`
-  pairs yields the `k` largest counts.
-- `BinaryHeap` is a max-heap and orders pairs by the first field, so putting the count
-  first is what makes the heap answer the question asked.
-- The heap holds one entry per distinct value, which is `O(m log m)` time and `O(m)`
-  space. A min-heap of at most `k` entries would cost `O(m log k)` and `O(k)`.
-- Ties are broken by the value, because that is how a pair compares, rather than by a
-  documented rule. A caller that needs a stated order must impose it.
 
 ## References
 

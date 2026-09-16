@@ -34,7 +34,54 @@ regular expression can match arbitrarily deep nesting.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 2.1</span> The complete module, with its tests. <code>src/problems/valid_parentheses.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs">read the file on GitHub</a></p>
+```rust
+//! Valid Parentheses: classic stack problem with idiomatic pattern matching.
+//!
+pub fn is_valid(s: &str) -> bool {
+    use std::collections::HashMap;
+
+    let mut stack = Vec::with_capacity(s.len());
+
+    // Maps each closing delimiter to the opening delimiter it must match.
+    let expected = HashMap::from([(')', '('), ('}', '{'), (']', '[')]);
+
+    for ch in s.chars() {
+        match ch {
+            '(' | '[' | '{' => stack.push(ch),
+            // Every other character, including one outside the six delimiters,
+            // must close the top of the stack.
+            _ => {
+                if stack.pop().as_ref() != expected.get(&ch) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    stack.is_empty()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn valid_cases() {
+        assert!(is_valid("()"));
+        assert!(is_valid("()[]{}"));
+        assert!(is_valid("{[()]}"));
+    }
+
+    #[test]
+    fn invalid_cases() {
+        assert!(!is_valid("(]"));
+        assert!(!is_valid("([)]"));
+        assert!(!is_valid("("));
+        assert!(!is_valid(")"));
+        assert!(!is_valid("(("));
+    }
+}
+```
 
 The capacity hint is `s.len()`, the byte length of the string. A character count never
 exceeds a byte count, so the hint bounds the number of pushes and the vector does not
@@ -139,19 +186,6 @@ justify, and the vector's length still never exceeds the character count.
 The stack element type is `char`, one Unicode scalar value per entry. The algorithm does
 not require that. A version that reports positions would push the index of the opening
 character, and the comparisons would be between indices.
-
-## Summary
-
-- Two conditions decide the answer: a closing delimiter must match the most recent
-  unmatched opening, and nothing may remain unmatched at the end. A counter satisfies
-  the second only, which is why `([)]` is rejected by a stack and accepted by a count.
-- The stack holds the openings whose counterpart has not been seen. A closing
-  delimiter pops and compares kinds, and one that arrives at an empty stack ends the
-  scan.
-- The scan is a pushdown automaton, the weakest machine that recognises matched
-  nesting, so no regular expression decides the question.
-- Time is `O(n)`. Space is the greatest nesting depth reached, which is `O(n)` for a
-  string of openings only.
 
 ## References
 

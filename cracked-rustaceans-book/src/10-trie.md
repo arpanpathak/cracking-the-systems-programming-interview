@@ -43,7 +43,76 @@ it, `"gp"` and `"gpu"` would be indistinguishable, and `search("gp")` would repo
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 10.1</span> The complete module, with its tests. <code>src/problems/trie.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs">read the file on GitHub</a></p>
+```rust
+//! Trie / prefix tree.
+//!
+//! Relevant to NVIDIA-style SDK/CLI/codegen work: autocomplete, filtering GPU
+//! SKUs, command completion, and prefix matching.
+
+use std::collections::HashMap;
+
+#[derive(Default)]
+pub struct Trie {
+    root: Node,
+}
+
+#[derive(Default)]
+struct Node {
+    children: HashMap<char, Node>,
+    terminal: bool,
+}
+
+impl Trie {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert(&mut self, word: &str) {
+        let mut node = &mut self.root;
+        for ch in word.chars() {
+            node = node.children.entry(ch).or_default();
+        }
+        node.terminal = true;
+    }
+
+    pub fn search(&self, word: &str) -> bool {
+        self.find_node(word).is_some_and(|node| node.terminal)
+    }
+
+    pub fn starts_with(&self, prefix: &str) -> bool {
+        self.find_node(prefix).is_some()
+    }
+
+    fn find_node(&self, word: &str) -> Option<&Node> {
+        let mut node = &self.root;
+        for ch in word.chars() {
+            node = node.children.get(&ch)?;
+        }
+        Some(node)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trie_insert_search_and_prefix() {
+        let mut trie = Trie::new();
+        trie.insert("gpu");
+        trie.insert("gpucloud");
+
+        assert!(trie.search("gpu"));
+        assert!(trie.search("gpucloud"));
+        assert!(!trie.search("gp"));
+        assert!(!trie.search("gpucloudapi"));
+
+        assert!(trie.starts_with("gp"));
+        assert!(trie.starts_with("gpucloud"));
+        assert!(!trie.starts_with("h100"));
+    }
+}
+```
 
 `insert` walks with `&mut` and creates children on demand:
 `node.children.entry(ch).or_default()` inserts an empty node the first time the
@@ -111,18 +180,6 @@ structure supports the query; the API does not expose it.
 tree's shape, count its nodes, or measure its memory from outside the module. For a
 teaching structure that is a defensible choice, and it means a memory question can only
 be answered by reading the source.
-
-## Summary
-
-- Each node holds a map from character to child and a flag saying whether the path
-  ending there spells a stored string. The flag is what separates a stored word from a
-  prefix of one.
-- Every operation is a walk of the query string, so the cost is the length of that
-  string and not the number of words stored.
-- `search` and `starts_with` differ in one line: both walk the same path, and only
-  `search` consults the terminal flag.
-- The structure pays for the prefix query in memory, one node per distinct character
-  position, which is the trade against storing the words in a hash set.
 
 ## References
 
