@@ -3,7 +3,7 @@
 //! Common in NVIDIA-style scheduling questions: prerequisite graphs, pipeline
 //! stages, dependency ordering of GPU jobs.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Vec<usize>> {
     let mut graph = vec![Vec::new(); num_nodes];

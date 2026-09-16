@@ -34,19 +34,19 @@ impl MergeKSorted {
         lists[0].take()
     }
 
-    fn merge_two(a: &mut OptionalLink<ListNode>, b: &mut OptionalLink<ListNode>) -> OptionalLink<ListNode> {
+    fn merge_two(left: &mut OptionalLink<ListNode>, right: &mut OptionalLink<ListNode>) -> OptionalLink<ListNode> {
         let mut dummy = Box::new(ListNode::new(0));
         let mut tail = &mut dummy;
 
-        while let (Some(na), Some(nb)) = (a.as_ref(), b.as_ref()) {
-            let pick = if na.data < nb.data { &mut *a } else { &mut *b };
-            let mut node = pick.take().unwrap();
-            *pick = node.next.take();
-            tail.next = Some(node);
+        while let (Some(l), Some(r)) = (left.as_ref(), right.as_ref()) {
+            let smaller = if l.data < r.data { &mut *left } else { &mut *right };
+            let mut head = smaller.take().unwrap();
+            *smaller = head.next.take();
+            tail.next = Some(head);
             tail = tail.next.as_mut().unwrap();
         }
 
-        tail.next = a.take().or(b.take());
+        tail.next = left.take().or(right.take());
         dummy.next
     }
 }

@@ -6,6 +6,8 @@ use std::time::Duration;
 
 type RuntimeError = Box<dyn std::error::Error>;
 
+/// header repsesents vec![(key, value)];
+type RequestHeader = Vec<(String, String)>;
 enum RequestType {
     GET    { path: String, headers: Vec<(String, String)> },
     OPTION { path: String, headers: Vec<(String, String)> },
@@ -13,6 +15,7 @@ enum RequestType {
     PUT    { path: String, headers: Vec<(String, String)>, body: String },
 }
 
+/// An idempotency cache store to store requests if it's succeeded!
 struct IdemCache {
     store: Mutex<HashMap<String, String>>,
 }
