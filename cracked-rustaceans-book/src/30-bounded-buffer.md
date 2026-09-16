@@ -196,6 +196,230 @@ costs a context switch that accomplishes nothing.
 thread and the original stays in `main`; the queue is freed when the last handle
 is dropped.
 
+### The variant that returns an error instead of panicking
+
+Two of the limitations above are the same limitation seen from different sides. A thread
+that panics while holding the lock poisons the mutex, every later `lock()` returns `Err`,
+and the `unwrap` turns that into a second panic that takes down a thread which did nothing
+wrong. A queue meant to be used by other people has to hand the failure back to its caller
+instead. The version below does that, and it carries the tests that prove it.
+
+*Source file: [`src/bin/bounded_buffer_with_error_handling.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs). Run it with
+`cargo run --bin bounded_buffer_with_error_handling`, and test it with
+`cargo test --bin bounded_buffer_with_error_handling`.*
+
+```rust
+use std::collections::VecDeque;
+use std::fmt;
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
+use std::thread;
+use std::time::Duration;
+
+#[derive(Debug)]
+pub struct QueuePoisonedError;
+
+impl fmt::Display for QueuePoisonedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "The queue's internal mutex was poisoned by a panicking thread")
+    }
+}
+
+impl std::error::Error for QueuePoisonedError {}
+
+trait PoisonMap<T> {
+    fn map_poison(self) -> Result<T, QueuePoisonedError>;
+}
+
+impl<T> PoisonMap<T> for Result<T, PoisonError<T>> {
+    fn map_poison(self) -> Result<T, QueuePoisonedError> {
+        self.map_err(|_| QueuePoisonedError)
+    }
+}
+
+struct BoundedQueue<T> {
+    inner: Mutex<VecDeque<T>>,
+    capacity: usize,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl<T> BoundedQueue<T> {
+    fn new(capacity: usize) -> Self {
+        assert!(capacity > 0, "capacity must be > 0");
+        Self {
+            inner: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+
+    fn push(&self, item: T) -> Result<(), QueuePoisonedError> {
+        let mut guard = self.inner.lock().map_poison()?;
+        while guard.len() == self.capacity {
+            guard = self.not_full.wait(guard).map_poison()?;
+        }
+        guard.push_back(item);
+        drop(guard);
+        self.not_empty.notify_one();
+        Ok(())
+    }
+
+    fn pop(&self) -> Result<T, QueuePoisonedError> {
+        let mut guard = self.inner.lock().map_poison()?;
+        while guard.is_empty() {
+            guard = self.not_empty.wait(guard).map_poison()?;
+        }
+        let item = guard.pop_front().unwrap();
+        drop(guard);
+        self.not_full.notify_one();
+        Ok(item)
+    }
+}
+
+fn main() {
+    let queue = Arc::new(BoundedQueue::new(3));
+    let mut handles = vec![];
+
+    // ---- Producers ----
+    for p in 0..2 {
+        let q = Arc::clone(&queue);
+        handles.push(thread::spawn(move || {
+            for i in 0..5 {
+                let item = format!("p{}:item{}", p, i);
+                println!("  [producer {}] pushing {}", p, item);
+                
+                // Uses match, avoids naming an error variable, uses dbg!
+                match q.push(item) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        dbg!(err);
+                        break;
+                    }
+                }
+                thread::sleep(Duration::from_millis(30));
+            }
+        }));
+    }
+
+    // ---- Consumers ----
+    for c in 0..2 {
+        let q = Arc::clone(&queue);
+        handles.push(thread::spawn(move || {
+            for _ in 0..5 {
+                // Uses match, avoids naming an error variable, uses dbg!
+                match q.pop() {
+                    Ok(item) => {
+                        println!("[consumer {}] got {}", c, item);
+                    }
+                    Err(err) => {
+                        dbg!(err);
+                        break;
+                    }
+                }
+                thread::sleep(Duration::from_millis(60));
+            }
+        }));
+    }
+
+    // Join everything.
+    for h in handles {
+        match h.join() {
+            Ok(_) => {}
+            Err(err) => {
+                dbg!(err);
+            }
+        }
+    }
+    println!("done");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 1. Mark the test as one that MUST panic to pass
+    // 2. Optional: use 'expected' to verify it panics with the correct error message
+    #[test]
+    #[should_panic(expected = "capacity must be > 0")]
+    fn test_zero_capacity_panics() {
+        // This line invokes the assert!(capacity > 0) inside new()
+        let _queue: BoundedQueue<i32> = BoundedQueue::new(0);
+    }
+
+    #[test]
+    fn test_queue_poisoning_on_thread_panic() {
+        // 1. Create a queue shared via Arc so multiple threads can touch it
+        let queue = Arc::new(BoundedQueue::new(5));
+        let queue_clone = Arc::clone(&queue);
+
+        // 2. Spawn a thread designed to crash while holding the internal lock
+        let handle = thread::spawn(move || {
+            // Manually lock the inner mutex so this thread owns the lock guard
+            let _guard = queue_clone.inner.lock().unwrap();
+            
+            // Trigger a serious runtime panic while holding the lock guard!
+            panic!("Intentional worker thread crash!");
+        });
+
+        // 3. Wait for the thread to die. It will return an Err because it panicked.
+        let join_result = handle.join();
+        assert!(join_result.is_err(), "The thread was supposed to panic");
+
+        // 4. Now try to interact with the queue. 
+        // Because the thread panicked while holding the guard, the Mutex is poisoned.
+        // Our push and pop methods should cleanly catch this and return our custom error.
+        match queue.push("test_item") {
+            Err(QueuePoisonedError) => {
+                // Success! The queue correctly caught the poisoned state 
+                // instead of panicking the main thread.
+            }
+            Ok(_) => {
+                panic!("Expected QueuePoisonedError, but push succeeded!");
+            }
+        }
+
+        // Verify pop behaves the same way
+        match queue.pop() {
+            Err(QueuePoisonedError) => {}
+            Ok(_) => panic!("Expected QueuePoisonedError, but pop succeeded!"),
+        }
+    }
+}
+```
+
+`QueuePoisonedError` is a unit struct with a `Display` implementation and an empty
+`std::error::Error` implementation, which is the minimum a type needs to travel inside a
+`Box<dyn Error>` or to be printed by a caller that knows nothing about the queue. It
+carries no data, because there is nothing useful to say beyond the fact that the queue can
+no longer be trusted.
+
+The conversion from the standard library's error is done by an extension trait rather than
+by a free function. Both `Mutex::lock` and `Condvar::wait` fail with a
+`PoisonError<T>`, but `T` differs between them: `lock` gives back a `MutexGuard`, and
+`wait` gives back the guard it was handed. Writing `map_poison` as a method on
+`Result<T, PoisonError<T>>` covers both call sites with one implementation, and leaves
+`?` usable at the end of each line.
+
+Discarding the `PoisonError` is a decision worth naming. It holds the guard, so a caller
+that wanted to could reach through it with `into_inner` and use the data the panicking
+thread left behind. Dropping it says that this queue treats poisoning as permanent: the
+contents may be half-updated, and no caller should act on them.
+
+The panicking thread no longer costs the whole program. `push` and `pop` return
+`Result`, the producers and consumers match on it, and a poisoned queue ends each of
+their loops with a `break` rather than an abort. What the variant does not fix is the
+third limitation: there is still no way to close the queue, so a consumer that outlives
+the producers still waits forever. Chapter 46 adds that.
+
+The tests cover the two failures the original had no way to express.
+`#[should_panic(expected = "capacity must be > 0")]` pins the assertion in `new`, and the
+expected string means the test fails if the code panics for some other reason. The second
+test poisons the queue on purpose: a thread locks the inner mutex, panics while holding
+the guard, and after `join` reports the panic, both `push` and `pop` are checked for the
+error. Matching `Err(QueuePoisonedError)` as a pattern works because the error is a unit
+struct, so its name is both the type and its only value.
+
 ## Intuition
 
 With `BoundedQueue::new(1)` and one producer and one consumer, the state after
@@ -263,6 +487,10 @@ push and pop.
   it; `notify_one` follows each single state change.
 - The queue has no shutdown path, and a consumer that outlives the producers
   waits indefinitely.
+- Returning a `Result` from `push` and `pop` keeps a panicking producer from taking
+  down the threads that were using the queue correctly.
+- An extension trait on `Result<T, PoisonError<T>>` converts both the `lock` and the
+  `wait` failure with one implementation.
 
 ## References
 
