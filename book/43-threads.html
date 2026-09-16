@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,69 +209,8 @@ chapter 21 builds.</li>
 an exclusive-load and exclusive-store pair on ARM. No thread blocks, and no guard
 exists that could be held across a panic.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Threads and fearless concurrency.
-//!
-//! Rust's claim about concurrency is narrow and checkable: safe code cannot
-//! produce a data race, because `Send` and `Sync` describe what may cross a
-//! thread boundary and the compiler refuses programs that violate the rules.
-//!
-//! - `Send` means a value may be moved to another thread.
-//! - `Sync` means `&amp;T` may be shared across threads.
-//!
-//! Both are auto traits: a type is `Send`/`Sync` when its fields are. `Rc` and
-//! `RefCell` are the standard counter-examples, which is precisely why sharing
-//! them across threads does not compile. The compile error is the feature, not an
-//! obstacle.
-//!
-//! Three ways to get work onto other threads, in increasing order of ceremony:
-//!
-//! 1. `thread::scope` for work that borrows local data and finishes with the
-//!    scope. No `'static`, no `Arc`.
-//! 2. `thread::spawn` for work that must own its data and outlive the caller.
-//! 3. A thread pool when the number of units of work is large and threads should
-//!    be reused.
+<p class="listing"><span class="listing-label">Listing 43.1</span> <code>available_workers</code> and <code>parallel_sum</code>. <code>src/problems/threads.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">read the file on GitHub</a></p>
 
-use std::sync::OnceLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
-
-/// Number of hardware threads the runtime can use, defaulting to 1.
-pub fn available_workers() -&gt; usize {
-    thread::available_parallelism()
-        .map(|count| count.get())
-        .unwrap_or(1)
-}
-
-/// Sum a slice by splitting it into chunks that run on scoped threads.
-///
-/// `thread::scope` is what makes this ergonomic: the workers borrow `values`
-/// directly, so there is no `Arc` and no `'static` bound. The scope waits for
-/// every thread, which removes the forgotten-join bug.
-pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
-    if values.is_empty() {
-        return 0;
-    }
-
-    let workers = available_workers().min(values.len());
-    let chunk_size = values.len().div_ceil(workers);
-
-    thread::scope(|scope| {
-        let handles: Vec&lt;_&gt; = values
-            .chunks(chunk_size)
-            .map(|chunk| {
-                scope.spawn(move || chunk.iter().map(|value| i64::from(*value)).sum::&lt;i64&gt;())
-            })
-            .collect();
-
-        handles
-            .into_iter()
-            .map(|handle| handle.join().expect("worker panicked"))
-            .sum()
-    })
-}
-<span class="boring">}</span></code></pre>
 <p><code>thread::available_parallelism</code> returns <code>io::Result&lt;NonZeroUsize&gt;</code>. It can fail, for
 example inside a restricted container, and the function falls back to 1 rather than
 propagating the error, which is a reasonable default for sizing a pool.</p>
@@ -284,47 +223,8 @@ does not return until every spawned thread has finished.</p>
 <p>The handles are collected into a <code>Vec</code> before any is joined. Joining inside the same
 iterator chain that spawns would make the chain lazy and sequential: each thread would
 be spawned and joined before the next was spawned.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A counter that several threads may increment without a lock.
-///
-/// `Relaxed` is correct here because the counter is the only value being
-/// communicated; there is no other data whose visibility depends on it.
-#[derive(Default)]
-pub struct AtomicCounter {
-    value: AtomicUsize,
-}
+<p class="listing"><span class="listing-label">Listing 43.2</span> <code>AtomicCounter</code>, <code>increment</code>, and <code>get</code>. <code>src/problems/threads.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">read the file on GitHub</a></p>
 
-impl AtomicCounter {
-    pub const fn new() -&gt; Self {
-        Self {
-            value: AtomicUsize::new(0),
-        }
-    }
-
-    /// Increment and return the new value.
-    pub fn increment(&amp;self) -&gt; usize {
-        self.value.fetch_add(1, Ordering::Relaxed) + 1
-    }
-
-    pub fn get(&amp;self) -&gt; usize {
-        self.value.load(Ordering::Relaxed)
-    }
-}
-
-/// Increment a counter from several scoped threads that share it by reference.
-pub fn scoped_increment(counter: &amp;AtomicCounter, threads: usize, per_thread: usize) {
-    thread::scope(|scope| {
-        for _ in 0..threads {
-            scope.spawn(|| {
-                for _ in 0..per_thread {
-                    counter.increment();
-                }
-            });
-        }
-    });
-}
-<span class="boring">}</span></code></pre>
 <p><code>increment</code> takes <code>&amp;self</code>, not <code>&amp;mut self</code>. The atomic provides interior mutability
 that is safe across threads, so <code>AtomicCounter</code> is <code>Sync</code> and can be shared by
 reference.</p>
@@ -339,23 +239,8 @@ depended on a particular interleaving of this counter with other atomic variable
 legal because <code>AtomicCounter: Sync</code>.</p>
 <p><code>AtomicCounter::new</code> is a <code>const fn</code>, so a counter can be a <code>static</code> initialized at
 compile time: <code>static REQUESTS: AtomicCounter = AtomicCounter::new();</code>.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A value initialized once and shared by every caller.
-///
-/// `OnceLock` is the primitive behind lazy process-wide configuration, and it is
-/// safe because initialization happens at most once even under concurrent calls.
-pub fn build_channel() -&gt; &amp;'static str {
-    static CHANNEL: OnceLock&lt;&amp;'static str&gt; = OnceLock::new();
-    CHANNEL.get_or_init(|| "stable")
-}
+<p class="listing"><span class="listing-label">Listing 43.3</span> <code>build_channel</code> and <code>assert_send_sync</code>. <code>src/problems/threads.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">read the file on GitHub</a></p>
 
-/// A compile-time assertion that `T` may cross thread boundaries.
-///
-/// Calling `assert_send_sync::&lt;Client&gt;()` fails to compile if `Client` is not
-/// thread-safe, which turns a concurrency assumption into a build error.
-pub fn assert_send_sync&lt;T: Send + Sync&gt;() {}
-<span class="boring">}</span></code></pre>
 <p><code>OnceLock::get_or_init</code> runs the closure at most once, even when several threads call
 it concurrently. The other callers block until the first finishes and then receive a
 reference to the same value. The <code>static</code> is local to the function, so the value is
@@ -363,53 +248,8 @@ private to it and still lives for the whole process.</p>
 <p><code>assert_send_sync::&lt;T&gt;()</code> has an empty body and a bound. Calling it with a type that is
 not <code>Send + Sync</code> is a compile error, which turns an assumption such as “our client can
 be shared between threads” into a check that runs on every build.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::thread;
+<p class="listing"><span class="listing-label">Listing 43.4</span> The tests for the module. <code>src/problems/threads.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">read the file on GitHub</a></p>
 
-    #[test]
-    fn parallel_sum_matches_the_sequential_sum() {
-        let values: Vec&lt;i32&gt; = (1..=10_000).collect();
-        let expected: i64 = values.iter().map(|value| i64::from(*value)).sum();
-        assert_eq!(parallel_sum(&amp;values), expected);
-    }
-
-    #[test]
-    fn parallel_sum_handles_small_and_empty_inputs() {
-        assert_eq!(parallel_sum(&amp;[]), 0);
-        assert_eq!(parallel_sum(&amp;[7]), 7);
-        assert_eq!(parallel_sum(&amp;[-1, 1, -2, 2]), 0);
-    }
-
-    #[test]
-    fn scoped_threads_share_a_counter_without_arc() {
-        let counter = AtomicCounter::new();
-        scoped_increment(&amp;counter, 8, 500);
-        assert_eq!(counter.get(), 4_000);
-    }
-
-    #[test]
-    fn spawn_returns_a_join_handle_that_carries_the_result() {
-        let handle = thread::spawn(|| 6 * 7);
-        assert_eq!(handle.join().expect("worker panicked"), 42);
-    }
-
-    #[test]
-    fn once_lock_initializes_a_single_value() {
-        assert_eq!(build_channel(), "stable");
-        assert_eq!(build_channel(), build_channel());
-    }
-
-    #[test]
-    fn counter_is_thread_safe_by_construction() {
-        assert_send_sync::&lt;AtomicCounter&gt;();
-        assert!(available_workers() &gt;= 1);
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>spawn_returns_a_join_handle_that_carries_the_result</code> shows the owned alternative to
 scoped threads: <code>thread::spawn(|| 6 * 7)</code> returns a <code>JoinHandle&lt;i32&gt;</code>, and <code>join</code>
 returns <code>Result&lt;i32, Box&lt;dyn Any + Send&gt;&gt;</code>, whose error case carries the panic payload
@@ -490,7 +330,7 @@ for a value with no relationship to other atomics.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="42-consistent-hashing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="31-parallel-sum.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -504,7 +344,7 @@ for a value with no relationship to other atomics.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="42-consistent-hashing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="31-parallel-sum.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -521,22 +361,6 @@ for a value with no relationship to other atomics.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

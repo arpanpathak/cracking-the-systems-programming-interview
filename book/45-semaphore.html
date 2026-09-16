@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -206,177 +206,8 @@ the moment the woken thread reacquires the lock.</p>
 release” leaks a permit whenever the work returns early or panics. With a guard, the
 release runs in <code>Drop</code> on every path.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Counting semaphore built from `Mutex` + `Condvar`.
-//!
-//! A semaphore bounds how many callers may proceed at once without protecting any
-//! data. It is the primitive behind connection pools, per-account GPU slot limits,
-//! and bounded fan-out in an SDK or CLI.
-//!
-//! The RAII guard returns the permit on drop, so a panicking worker cannot leak a
-//! permit and slowly deadlock the pool.
+<p class="listing"><span class="listing-label">Listing 45.1</span> The complete module, with its tests. <code>src/problems/semaphore.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">read the file on GitHub</a></p>
 
-use std::sync::{Condvar, Mutex};
-use std::time::Duration;
-
-struct State {
-    available: usize,
-}
-
-/// A counting semaphore. Cloning is not provided; share one behind `Arc`.
-pub struct Semaphore {
-    state: Mutex&lt;State&gt;,
-    released: Condvar,
-}
-
-impl Semaphore {
-    /// Create a semaphore with `permits` permits available.
-    pub fn new(permits: usize) -&gt; Self {
-        Self {
-            state: Mutex::new(State { available: permits }),
-            released: Condvar::new(),
-        }
-    }
-
-    /// Block until a permit is available.
-    pub fn acquire(&amp;self) {
-        let _guard = self.acquire_guard();
-    }
-
-    /// Block until a permit is available, returning a guard that releases it.
-    pub fn acquire_guard(&amp;self) -&gt; SemaphoreGuard&lt;'_&gt; {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
-        while state.available == 0 {
-            state = self.released.wait(state).expect("semaphore mutex poisoned");
-        }
-        state.available -= 1;
-        SemaphoreGuard { semaphore: self }
-    }
-
-    /// Take a permit only if one is free right now.
-    pub fn try_acquire(&amp;self) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
-        if state.available == 0 {
-            None
-        } else {
-            state.available -= 1;
-            Some(SemaphoreGuard { semaphore: self })
-        }
-    }
-
-    /// Take a permit, waiting at most `timeout`.
-    pub fn try_acquire_timeout(&amp;self, timeout: Duration) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
-        if state.available &gt; 0 {
-            state.available -= 1;
-            return Some(SemaphoreGuard { semaphore: self });
-        }
-
-        let (mut state, _timed_out) = self
-            .released
-            .wait_timeout(state, timeout)
-            .expect("semaphore mutex poisoned");
-
-        if state.available == 0 {
-            None
-        } else {
-            state.available -= 1;
-            Some(SemaphoreGuard { semaphore: self })
-        }
-    }
-
-    /// Permits currently free. Useful for metrics, not for control flow.
-    pub fn available_permits(&amp;self) -&gt; usize {
-        self.state
-            .lock()
-            .expect("semaphore mutex poisoned")
-            .available
-    }
-
-    fn release(&amp;self) {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
-        state.available += 1;
-        self.released.notify_one();
-    }
-}
-
-/// Releases one permit when dropped.
-pub struct SemaphoreGuard&lt;'a&gt; {
-    semaphore: &amp;'a Semaphore,
-}
-
-impl Drop for SemaphoreGuard&lt;'_&gt; {
-    fn drop(&amp;mut self) {
-        self.semaphore.release();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::thread;
-
-    #[test]
-    fn never_exceeds_the_permit_count() {
-        let permits = 4;
-        let semaphore = Arc::new(Semaphore::new(permits));
-        let active = Arc::new(AtomicUsize::new(0));
-        let peak = Arc::new(AtomicUsize::new(0));
-
-        let mut handles = Vec::new();
-        for _ in 0..32 {
-            let semaphore = Arc::clone(&amp;semaphore);
-            let active = Arc::clone(&amp;active);
-            let peak = Arc::clone(&amp;peak);
-            handles.push(thread::spawn(move || {
-                let _guard = semaphore.acquire_guard();
-                let now = active.fetch_add(1, Ordering::SeqCst) + 1;
-                peak.fetch_max(now, Ordering::SeqCst);
-                thread::sleep(Duration::from_millis(1));
-                active.fetch_sub(1, Ordering::SeqCst);
-            }));
-        }
-        for handle in handles {
-            handle.join().expect("worker panicked");
-        }
-
-        assert!(peak.load(Ordering::SeqCst) &lt;= permits);
-        assert_eq!(semaphore.available_permits(), permits);
-    }
-
-    #[test]
-    fn guard_returns_the_permit_on_drop() {
-        let semaphore = Semaphore::new(1);
-        {
-            let _guard = semaphore.acquire_guard();
-            assert_eq!(semaphore.available_permits(), 0);
-        }
-        assert_eq!(semaphore.available_permits(), 1);
-    }
-
-    #[test]
-    fn try_acquire_reports_contention() {
-        let semaphore = Semaphore::new(1);
-        let first = semaphore.try_acquire().expect("first permit is free");
-        assert!(semaphore.try_acquire().is_none());
-        drop(first);
-        assert!(semaphore.try_acquire().is_some());
-    }
-
-    #[test]
-    fn timeout_gives_up_when_no_permit_arrives() {
-        let semaphore = Semaphore::new(0);
-        assert!(
-            semaphore
-                .try_acquire_timeout(Duration::from_millis(5))
-                .is_none()
-        );
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>State</code> is a struct with a single field rather than a bare <code>usize</code>. The indirection
 costs nothing and leaves room for more state, such as a closed flag, without changing
 every lock site.</p>
@@ -517,22 +348,6 @@ return or a panic, and a private <code>release</code> makes it impossible to rel
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

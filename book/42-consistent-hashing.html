@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -210,109 +210,8 @@ a key after b#0 wraps around to the start and belongs to b#1, node b
 binary search for the first point greater than the key’s hash, wrapping to index 0
 when the key’s hash is beyond the last point.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Consistent hashing ring.
-//!
-//! When a distributed gateway shards work across N backends, a plain
-//! `hash(key) % N` remaps nearly every key the moment N changes. Consistent
-//! hashing places each node at several points on a hash ring, so adding or
-//! removing one node only moves the keys that node owns. That property is the
-//! reason it shows up in caches, sharded queues, and load balancers.
-//!
-//! Each physical node is placed at `replicas` points (virtual nodes) to smooth the
-//! key distribution; more replicas means a less lumpy ring.
+<p class="listing"><span class="listing-label">Listing 42.1</span> <code>ConsistentHash</code>, <code>new</code>, and <code>add_node</code>. <code>src/problems/consistent_hash.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/consistent_hash.rs">read the file on GitHub</a></p>
 
-use std::collections::HashSet;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::sync::Arc;
-
-/// A hash ring mapping keys to node names.
-pub struct ConsistentHash {
-    replicas: usize,
-    /// Sorted `(hash, node)` pairs. The node name is an `Arc&lt;str&gt;` so that the
-    /// many virtual nodes for one physical node share a single allocation.
-    ring: Vec&lt;(u64, Arc&lt;str&gt;)&gt;,
-}
-
-impl ConsistentHash {
-    /// Create an empty ring with `replicas` virtual nodes per physical node.
-    /// Panics if `replicas` is zero.
-    pub fn new(replicas: usize) -&gt; Self {
-        assert!(replicas &gt; 0, "replicas must be &gt; 0");
-        Self {
-            replicas,
-            ring: Vec::new(),
-        }
-    }
-
-    /// Add a node and its virtual nodes. Adding a node that already exists is a
-    /// no-op.
-    pub fn add_node(&amp;mut self, node: &amp;str) {
-        if self.ring.iter().any(|(_, name)| name.as_ref() == node) {
-            return;
-        }
-
-        // One allocation for the name, then a refcount bump per virtual node.
-        let name: Arc&lt;str&gt; = Arc::from(node);
-        for replica in 0..self.replicas {
-            let hash = virtual_node_hash(node, replica);
-            self.ring.push((hash, Arc::clone(&amp;name)));
-        }
-        self.ring.sort_by_key(|(hash, _)| *hash);
-    }
-
-    /// Remove a node and all of its virtual nodes.
-    pub fn remove_node(&amp;mut self, node: &amp;str) {
-        self.ring.retain(|(_, name)| name.as_ref() != node);
-    }
-
-    /// Return the node responsible for `key`, or `None` when the ring is empty.
-    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;str&gt; {
-        if self.ring.is_empty() {
-            return None;
-        }
-
-        let hash = hash_of(key);
-        // First virtual node strictly clockwise from the key.
-        let index = self.ring.partition_point(|(point, _)| *point &lt;= hash);
-        let index = if index == self.ring.len() { 0 } else { index };
-        Some(self.ring[index].1.as_ref())
-    }
-
-    /// Number of distinct physical nodes.
-    pub fn node_count(&amp;self) -&gt; usize {
-        self.ring
-            .iter()
-            .map(|(_, name)| name.as_ref())
-            .collect::&lt;HashSet&lt;_&gt;&gt;()
-            .len()
-    }
-
-    /// Number of virtual nodes on the ring.
-    pub fn ring_len(&amp;self) -&gt; usize {
-        self.ring.len()
-    }
-}
-
-fn hash_of(input: &amp;str) -&gt; u64 {
-    let mut hasher = DefaultHasher::new();
-    input.hash(&amp;mut hasher);
-    hasher.finish()
-}
-
-/// Hash of the `replica`-th virtual node for `node`.
-///
-/// Hashing the two fields separately avoids allocating a `"{node}#{replica}"`
-/// string for every virtual node on the ring.
-fn virtual_node_hash(node: &amp;str, replica: usize) -&gt; u64 {
-    let mut hasher = DefaultHasher::new();
-    node.hash(&amp;mut hasher);
-    replica.hash(&amp;mut hasher);
-    hasher.finish()
-}
-<span class="boring">}</span></code></pre>
 <p>The node name is stored as <code>Arc&lt;str&gt;</code>. With 128 replicas, a <code>String</code> per virtual node
 would allocate 128 copies of the name. <code>Arc::from(node)</code> allocates once, and each
 <code>Arc::clone</code> increments a count. <code>Arc&lt;str&gt;</code> is two words wide, a pointer and a length,
@@ -333,92 +232,8 @@ therefore places nodes at the same points in every process, which is required wh
 several clients must agree on placement. The standard library does not promise that
 <code>DefaultHasher</code> produces the same values across Rust releases, so clients built with
 different compiler versions could disagree.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
-mod tests {
-    use super::*;
+<p class="listing"><span class="listing-label">Listing 42.2</span> The tests for the module. <code>src/problems/consistent_hash.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/consistent_hash.rs">read the file on GitHub</a></p>
 
-    #[test]
-    fn empty_ring_has_no_owner() {
-        let ring = ConsistentHash::new(64);
-        assert_eq!(ring.get("workload-1"), None);
-        assert_eq!(ring.node_count(), 0);
-    }
-
-    #[test]
-    fn lookup_is_stable_for_a_fixed_ring() {
-        let mut ring = ConsistentHash::new(64);
-        ring.add_node("node-a");
-        ring.add_node("node-b");
-
-        let first = ring.get("gpu-job-42").map(str::to_string);
-        for _ in 0..100 {
-            assert_eq!(ring.get("gpu-job-42").map(str::to_string), first);
-        }
-        assert!(first.is_some());
-    }
-
-    #[test]
-    fn keys_spread_across_nodes() {
-        let mut ring = ConsistentHash::new(128);
-        for node in ["node-a", "node-b", "node-c"] {
-            ring.add_node(node);
-        }
-
-        let mut counts = std::collections::HashMap::new();
-        for key in 0..3_000 {
-            let owner = ring.get(&amp;format!("key-{key}")).expect("ring is populated");
-            *counts.entry(owner.to_string()).or_insert(0) += 1;
-        }
-
-        assert_eq!(counts.len(), 3, "every node should own some keys");
-        let smallest = *counts.values().min().expect("non-empty");
-        assert!(smallest &gt; 300, "distribution is too lumpy: {counts:?}");
-    }
-
-    #[test]
-    fn adding_a_node_only_moves_keys_to_the_new_node() {
-        let keys: Vec&lt;String&gt; = (0..2_000).map(|i| format!("workload-{i}")).collect();
-
-        let mut ring = ConsistentHash::new(128);
-        ring.add_node("node-a");
-        ring.add_node("node-b");
-        let before: Vec&lt;String&gt; = keys
-            .iter()
-            .map(|key| ring.get(key).expect("ring is populated").to_string())
-            .collect();
-
-        ring.add_node("node-c");
-        let after: Vec&lt;String&gt; = keys
-            .iter()
-            .map(|key| ring.get(key).expect("ring is populated").to_string())
-            .collect();
-
-        for (old, new) in before.iter().zip(after.iter()) {
-            assert!(
-                old == new || new == "node-c",
-                "adding a node moved a key from {old} to {new}"
-            );
-        }
-    }
-
-    #[test]
-    fn removing_a_node_drops_it_from_the_ring() {
-        let mut ring = ConsistentHash::new(32);
-        ring.add_node("node-a");
-        ring.add_node("node-b");
-        assert_eq!(ring.node_count(), 2);
-        assert_eq!(ring.ring_len(), 64);
-
-        ring.remove_node("node-a");
-        assert_eq!(ring.node_count(), 1);
-        for _ in 0..500 {
-            assert!(matches!(ring.get("any-key"), Some("node-b")));
-        }
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>adding_a_node_only_moves_keys_to_the_new_node</code> records the owner of 2,000 keys on a
 two-node ring, adds a third node, and checks every key: either its owner is unchanged
 or its new owner is <code>node-c</code>. That is the defining property of consistent hashing,
@@ -507,7 +322,7 @@ Symposium on Theory of Computing</em>, 1997.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="43-threads.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="21-worker-pool.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -521,7 +336,7 @@ Symposium on Theory of Computing</em>, 1997.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="43-threads.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="21-worker-pool.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -534,22 +349,6 @@ Symposium on Theory of Computing</em>, 1997.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

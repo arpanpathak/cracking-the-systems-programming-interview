@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -228,291 +228,8 @@ compile time.</p>
             reaches the new last node in constant time
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">// ============================================================================
-// Type aliases for clarity.
-// ============================================================================
-use std::cell::{Ref, RefCell}; // Ref is needed for peek return types
-use std::rc::{Rc, Weak};
+<p class="listing"><span class="listing-label">Listing 16.1</span> The complete program, with its tests. <code>src/bin/ll.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs">read the file on GitHub</a></p>
 
-type NodeRef&lt;T&gt; = Rc&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;;
-type WeakNodeRef&lt;T&gt; = Weak&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;;
-type OptNodeRef&lt;T&gt; = Option&lt;NodeRef&lt;T&gt;&gt;;
-type OptWeakNodeRef&lt;T&gt; = Option&lt;WeakNodeRef&lt;T&gt;&gt;;
-
-// ============================================================================
-// Node and LinkedList definitions.
-// ============================================================================
-struct Node&lt;T&gt; {
-    data: T,
-    next: OptNodeRef&lt;T&gt;,
-    prev: OptWeakNodeRef&lt;T&gt;,
-}
-
-pub struct LinkedList&lt;T&gt; {
-    head: OptNodeRef&lt;T&gt;,
-    tail: OptNodeRef&lt;T&gt;,
-    len: usize,
-}
-
-impl&lt;T&gt; LinkedList&lt;T&gt; {
-    /// Creates an empty list.
-    pub fn new() -&gt; Self {
-        LinkedList {
-            head: None,
-            tail: None,
-            len: 0,
-        }
-    }
-
-    pub fn len(&amp;self) -&gt; usize {
-        self.len
-    }
-    pub fn is_empty(&amp;self) -&gt; bool {
-        self.len == 0
-    }
-
-    // --------------------------------------------------------------------
-    // push_front
-    // --------------------------------------------------------------------
-    pub fn push_front(&amp;mut self, data: T) {
-        let new_node = Rc::new(RefCell::new(Node {
-            data,
-            next: None,
-            prev: None,
-        }));
-
-        // take() moves the old head out of the Option, leaving None.
-        match self.head.take() {
-            Some(old_head) =&gt; {
-                // Link old head back to new node (weakly).
-                old_head.borrow_mut().prev = Some(Rc::downgrade(&amp;new_node));
-                // Link new node forward to old head.
-                new_node.borrow_mut().next = Some(old_head);
-            }
-            None =&gt; {
-                // List was empty: new node is also the tail.
-                self.tail = Some(new_node.clone());
-            }
-        }
-        self.head = Some(new_node);
-        self.len += 1;
-    }
-
-    // --------------------------------------------------------------------
-    // push_back
-    // --------------------------------------------------------------------
-    pub fn push_back(&amp;mut self, data: T) {
-        let new_node = Rc::new(RefCell::new(Node {
-            data,
-            next: None,
-            // self.tail.as_ref() gives Option&lt;&amp;NodeRef&lt;T&gt;&gt;,
-            // map(Rc::downgrade) turns it into Option&lt;WeakNodeRef&lt;T&gt;&gt;.
-            prev: self.tail.as_ref().map(Rc::downgrade),
-        }));
-
-        match self.tail.take() {
-            Some(old_tail) =&gt; {
-                old_tail.borrow_mut().next = Some(new_node.clone());
-            }
-            None =&gt; {
-                self.head = Some(new_node.clone());
-            }
-        }
-        self.tail = Some(new_node);
-        self.len += 1;
-    }
-
-    // --------------------------------------------------------------------
-    // pop_front
-    // --------------------------------------------------------------------
-    pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.head.take().and_then(|old_head| {
-            // Take ownership of the next node (if any).
-            let next = old_head.borrow_mut().next.take();
-
-            match next {
-                Some(next_node) =&gt; {
-                    // Disconnect the new head's prev pointer.
-                    next_node.borrow_mut().prev = None;
-                    self.head = Some(next_node);
-                }
-                None =&gt; {
-                    self.tail = None; // list becomes empty
-                }
-            }
-
-            self.len -= 1;
-
-            // Safely extract the data. At this point, old_head is the only
-            // strong reference (because we removed it from the list and the
-            // new head's prev doesn't point to it).
-            let node = Rc::try_unwrap(old_head).ok().unwrap().into_inner();
-            Some(node.data)
-        })
-    }
-
-    // --------------------------------------------------------------------
-    // pop_back
-    // --------------------------------------------------------------------
-    pub fn pop_back(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.tail.take().and_then(|old_tail| {
-            // Get the previous node (upgrade the weak reference).
-            let prev = old_tail.borrow_mut().prev.take().and_then(|w| w.upgrade());
-
-            match prev {
-                Some(prev_node) =&gt; {
-                    prev_node.borrow_mut().next = None;
-                    self.tail = Some(prev_node);
-                }
-                None =&gt; {
-                    self.head = None; // list becomes empty
-                }
-            }
-
-            self.len -= 1;
-
-            let node = Rc::try_unwrap(old_tail).ok().unwrap().into_inner();
-            Some(node.data)
-        })
-    }
-
-    // --------------------------------------------------------------------
-    // peek_front: returns a guarded reference to the front data.
-    // The returned Ref&lt;'_, T&gt; holds the borrow of the RefCell until it goes
-    // out of scope, ensuring the reference stays valid.
-    // --------------------------------------------------------------------
-    pub fn peek_front(&amp;self) -&gt; Option&lt;Ref&lt;'_, T&gt;&gt; {
-        // self.head.as_ref() -&gt; Option&lt;&amp;NodeRef&lt;T&gt;&gt;
-        self.head.as_ref().map(|node| {
-            // node.borrow() returns Ref&lt;'_, Node&lt;T&gt;&gt;.
-            // Ref::map projects that to a Ref&lt;'_, T&gt; pointing to the data field.
-            Ref::map(node.borrow(), |n| &amp;n.data)
-        })
-    }
-
-    // --------------------------------------------------------------------
-    // peek_back: similar to peek_front.
-    // --------------------------------------------------------------------
-    pub fn peek_back(&amp;self) -&gt; Option&lt;Ref&lt;'_, T&gt;&gt; {
-        self.tail
-            .as_ref()
-            .map(|node| Ref::map(node.borrow(), |n| &amp;n.data))
-    }
-}
-
-// ============================================================================
-// Demonstration with main().
-// ============================================================================
-fn main() {
-    let mut list = LinkedList::new();
-
-    list.push_front(10);
-    list.push_front(20);
-    list.push_back(30);
-    list.push_back(40);
-
-    println!("Length: {}", list.len());
-
-    // Peek returns a Ref; we can dereference it with *.
-    if let Some(front) = list.peek_front() {
-        println!("Front: {}", *front);
-    }
-    if let Some(back) = list.peek_back() {
-        println!("Back: {}", *back);
-    }
-
-    println!("Pop front: {:?}", list.pop_front()); // 20
-    println!("Pop back:  {:?}", list.pop_back()); // 40
-
-    // Drain the list.
-    while let Some(val) = list.pop_front() {
-        println!("Popped: {}", val);
-    }
-    println!("Empty? {}", list.is_empty());
-}
-
-// ============================================================================
-// Tests (cargo test --bin ll)
-// ============================================================================
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn new_list_is_empty() {
-        let list: LinkedList&lt;i32&gt; = LinkedList::new();
-        assert!(list.is_empty());
-        assert_eq!(list.len(), 0);
-        assert!(list.peek_front().is_none());
-        assert!(list.peek_back().is_none());
-    }
-
-    #[test]
-    fn push_front_back_and_len() {
-        let mut list = LinkedList::new();
-        list.push_back(1);
-        list.push_back(2);
-        list.push_front(0);
-
-        assert_eq!(list.len(), 3);
-        assert_eq!(*list.peek_front().unwrap(), 0);
-        assert_eq!(*list.peek_back().unwrap(), 2);
-    }
-
-    #[test]
-    fn pop_front_and_back_work_in_order() {
-        let mut list = LinkedList::new();
-        list.push_back(10);
-        list.push_back(20);
-        list.push_back(30);
-
-        assert_eq!(list.pop_front(), Some(10));
-        assert_eq!(list.pop_back(), Some(30));
-        assert_eq!(list.pop_front(), Some(20));
-        assert_eq!(list.pop_front(), None);
-        assert_eq!(list.pop_back(), None);
-        assert!(list.is_empty());
-    }
-
-    #[test]
-    fn popping_last_item_empties_the_list() {
-        let mut list = LinkedList::new();
-        list.push_back(42);
-        assert_eq!(list.peek_front().map(|x| *x), Some(42));
-        assert_eq!(list.pop_back(), Some(42));
-        assert!(list.is_empty());
-    }
-
-    #[test]
-    fn alternating_push_pop_keeps_invariants() {
-        let mut list = LinkedList::new();
-        for i in 0..100 {
-            list.push_back(i);
-            list.push_front(-i);
-        }
-        assert_eq!(list.len(), 200);
-        for i in (0..100).rev() {
-            assert_eq!(list.pop_front(), Some(-i));
-            assert_eq!(list.pop_back(), Some(i));
-        }
-        assert!(list.is_empty());
-    }
-}
-
-// ============================================================================
-// Explanation of key methods used:
-//
-// - Rc::new / RefCell::new        : create a reference-counted, mutable cell.
-// - borrow() / borrow_mut()       : borrow the RefCell's contents (immutably/mutably).
-// - Rc::downgrade()               : turn an Rc into a Weak (no ownership).
-// - Weak::upgrade()               : attempt to get an Rc from a Weak (returns Option).
-// - Option::take()                : take the value out of an Option, leaving None.
-// - Option::as_ref()              : convert Option&lt;T&gt; to Option&lt;&amp;T&gt; without moving.
-// - Option::map()                 : apply a function to the inner value if Some.
-// - Option::and_then()            : like map but returns an Option (for chaining).
-// - Rc::try_unwrap()              : move the value out of the Rc if it's the only strong ref.
-// - Ref::map()                    : project a Ref to a subfield, keeping the borrow alive.
-// ============================================================================</code></pre>
 <p>Four details carry the implementation.</p>
 <p><code>Rc::downgrade(&amp;new_node)</code> is stored in the <em>old</em> head’s <code>prev</code>, not the new node’s. The
 new node already owns the old head through <code>next</code>, and a second strong reference would
@@ -584,6 +301,19 @@ machine words per element.</p>
 <p><strong>The demonstration’s comment about <code>pop_front</code> returning 20 is the only place the
 expected value is written.</strong> <code>main</code> prints values and asserts nothing, and the tests
 cover the same behaviour.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Forward links own and backward links observe: <code>next</code> is an <code>Rc</code> and <code>prev</code> a <code>Weak</code>,
+so a two-node list is not kept alive by itself.</li>
+<li><code>RefCell</code> moves the borrow check to run time, which is what allows two links to point
+at a node that is being modified. The price is a panic rather than a compile error
+when two borrows overlap.</li>
+<li>Every operation at either end is constant time, and the length is stored rather than
+counted.</li>
+<li><code>Rc</code> and <code>RefCell</code> are single-threaded types, so the list is neither <code>Send</code> nor
+<code>Sync</code>. Chapter 18 answers the same problem with indices into a vector, which is
+cheaper and carries no reference counts at all.</li>
+</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch15-04-rc.html"><code>Rc&lt;T&gt;</code>, the reference-counted smart pointer</a>.</li>
@@ -601,7 +331,7 @@ cover the same behaviour.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="17-lru-cache.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="07-binary-tree.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -615,7 +345,7 @@ cover the same behaviour.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="17-lru-cache.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="07-binary-tree.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -628,22 +358,6 @@ cover the same behaviour.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

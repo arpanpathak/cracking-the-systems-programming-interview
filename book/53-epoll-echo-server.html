@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -212,96 +212,8 @@ the socket becomes writable, the loop writes the remainder and removes the inter
 <p>The file keeps its Linux code in a module compiled only on Linux, with a fallback <code>main</code>
 for other platforms. The listings follow the file from top to bottom.</p>
 <h3 id="connection-state-and-the-listening-socket"><a class="header" href="#connection-state-and-the-listening-socket">Connection state and the listening socket</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! epoll echo server: one thread, many non-blocking sockets.
-//!
-//! Reads run until `EAGAIN`, and a reply that does not fit the socket buffer is
-//! queued and finished under `EPOLLOUT`, so one slow client cannot stall the loop.
-//! Linux only; kqueue and IOCP are the portable equivalents.
+<p class="listing"><span class="listing-label">Listing 53.1</span> Connection state and the listening socket. <code>src/bin/epoll_echo.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">read the file on GitHub</a></p>
 
-#[cfg(target_os = "linux")]
-mod linux {
-    use std::collections::HashMap;
-    use std::io;
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    const MAX_EVENTS: usize = 64;
-    const EPOLL_TIMEOUT_MS: i32 = 100;
-
-    /// Per-connection state. `out`/`out_pos` form a write buffer that survives a
-    /// partial write.
-    #[derive(Default)]
-    struct Connection {
-        out: Vec&lt;u8&gt;,
-        out_pos: usize,
-    }
-
-    impl Connection {
-        fn has_pending_output(&amp;self) -&gt; bool {
-            self.out_pos &lt; self.out.len()
-        }
-    }
-
-    /// Bind a non-blocking listener on `127.0.0.1:port`; port 0 asks the kernel for
-    /// a free port, which is returned alongside the fd.
-    pub fn bind_listener(port: u16) -&gt; io::Result&lt;(i32, u16)&gt; {
-        // SAFETY: all pointers are to stack values that outlive the call.
-        unsafe {
-            let fd = libc::socket(libc::AF_INET, libc::SOCK_STREAM | libc::SOCK_NONBLOCK, 0);
-            if fd &lt; 0 {
-                return Err(io::Error::last_os_error());
-            }
-
-            let enable: libc::c_int = 1;
-            if libc::setsockopt(
-                fd,
-                libc::SOL_SOCKET,
-                libc::SO_REUSEADDR,
-                &amp;enable as *const _ as *const libc::c_void,
-                std::mem::size_of::&lt;libc::c_int&gt;() as libc::socklen_t,
-            ) &lt; 0
-            {
-                let error = io::Error::last_os_error();
-                libc::close(fd);
-                return Err(error);
-            }
-
-            let mut address: libc::sockaddr_in = std::mem::zeroed();
-            address.sin_family = libc::AF_INET as libc::sa_family_t;
-            address.sin_port = port.to_be();
-            address.sin_addr.s_addr = libc::INADDR_LOOPBACK.to_be();
-
-            if libc::bind(
-                fd,
-                &amp;address as *const _ as *const libc::sockaddr,
-                std::mem::size_of::&lt;libc::sockaddr_in&gt;() as libc::socklen_t,
-            ) &lt; 0
-            {
-                let error = io::Error::last_os_error();
-                libc::close(fd);
-                return Err(error);
-            }
-
-            if libc::listen(fd, 128) &lt; 0 {
-                let error = io::Error::last_os_error();
-                libc::close(fd);
-                return Err(error);
-            }
-
-            let mut bound: libc::sockaddr_in = std::mem::zeroed();
-            let mut length = std::mem::size_of::&lt;libc::sockaddr_in&gt;() as libc::socklen_t;
-            if libc::getsockname(fd, &amp;mut bound as *mut _ as *mut libc::sockaddr, &amp;mut length) &lt; 0 {
-                let error = io::Error::last_os_error();
-                libc::close(fd);
-                return Err(error);
-            }
-
-            Ok((fd, u16::from_be(bound.sin_port)))
-        }
-    }
-
-<span class="boring">}</span></code></pre>
 <p><code>Connection</code> holds <code>out</code>, the bytes waiting to be written, and <code>out_pos</code>, how many of
 them have already been written. Advancing <code>out_pos</code> instead of removing written bytes
 from the front of the vector avoids moving the remaining bytes after every partial
@@ -314,59 +226,8 @@ converts the port to network byte order, as chapter 51 described.</p>
 <p>Binding to port 0 and reading the result back with <code>getsockname</code> gives the test a free
 port without guessing.</p>
 <h3 id="the-event-loop"><a class="header" href="#the-event-loop">The event loop</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>    pub fn event_loop(epfd: i32, listen_fd: i32, shutdown: &amp;AtomicBool) -&gt; io::Result&lt;()&gt; {
-        epoll_add(epfd, listen_fd, libc::EPOLLIN as u32)?;
+<p class="listing"><span class="listing-label">Listing 53.2</span> The event loop. <code>src/bin/epoll_echo.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">read the file on GitHub</a></p>
 
-        let mut connections: HashMap&lt;i32, Connection&gt; = HashMap::new();
-        let mut events = vec![libc::epoll_event { events: 0, u64: 0 }; MAX_EVENTS];
-
-        while !shutdown.load(Ordering::Relaxed) {
-            // SAFETY: `events` is a valid, writable buffer of MAX_EVENTS entries.
-            let ready = unsafe {
-                libc::epoll_wait(
-                    epfd,
-                    events.as_mut_ptr(),
-                    events.len() as i32,
-                    EPOLL_TIMEOUT_MS,
-                )
-            };
-
-            if ready &lt; 0 {
-                let error = io::Error::last_os_error();
-                if error.raw_os_error() == Some(libc::EINTR) {
-                    continue;
-                }
-                return Err(error);
-            }
-
-            for event in &amp;events[..ready as usize] {
-                let fd = event.u64 as i32;
-                if fd == listen_fd {
-                    accept_ready(epfd, listen_fd, &amp;mut connections)?;
-                    continue;
-                }
-
-                let readable = event.events &amp; (libc::EPOLLIN as u32) != 0;
-                let writable = event.events &amp; (libc::EPOLLOUT as u32) != 0;
-
-                if readable &amp;&amp; !read_into(fd, &amp;mut connections)? {
-                    continue; // connection closed
-                }
-                if writable &amp;&amp; connections.contains_key(&amp;fd) {
-                    flush(fd, &amp;mut connections)?;
-                }
-                if connections.contains_key(&amp;fd) {
-                    update_interest(epfd, fd, &amp;mut connections)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-<span class="boring">}</span></code></pre>
 <p>The loop registers the listener for <code>EPOLLIN</code>, allocates an event array of 64 entries
 once, and waits with a timeout of 100 ms so that it can check the shutdown flag
 regularly. <code>EINTR</code>, a wait interrupted by a signal, is not an error, so the loop retries.</p>
@@ -376,69 +237,8 @@ handles readability and writability for client sockets. <code>read_into</code> r
 when it has closed the connection, and the <code>continue</code> skips the remaining steps for a
 descriptor that no longer exists.</p>
 <h3 id="accepting-and-reading"><a class="header" href="#accepting-and-reading">Accepting and reading</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>    /// `SOCK_NONBLOCK` means a client socket can never block the loop.
-    fn accept_ready(
-        epfd: i32,
-        listen_fd: i32,
-        connections: &amp;mut HashMap&lt;i32, Connection&gt;,
-    ) -&gt; io::Result&lt;()&gt; {
-        loop {
-            // SAFETY: a null sockaddr is explicitly allowed for accept.
-            let client = unsafe {
-                libc::accept4(
-                    listen_fd,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    libc::SOCK_NONBLOCK,
-                )
-            };
+<p class="listing"><span class="listing-label">Listing 53.3</span> Accepting and reading. <code>src/bin/epoll_echo.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">read the file on GitHub</a></p>
 
-            if client &lt; 0 {
-                if would_block() {
-                    return Ok(());
-                }
-                return Err(io::Error::last_os_error());
-            }
-
-            epoll_add(epfd, client, libc::EPOLLIN as u32)?;
-            connections.insert(client, Connection::default());
-        }
-    }
-
-    /// Drain readable bytes into the connection's output buffer.
-    ///
-    /// Returns `false` when the peer closed the connection.
-    fn read_into(fd: i32, connections: &amp;mut HashMap&lt;i32, Connection&gt;) -&gt; io::Result&lt;bool&gt; {
-        let mut buffer = [0u8; 4096];
-        loop {
-            // SAFETY: `buffer` is a valid writable region of `buffer.len()` bytes.
-            let read =
-                unsafe { libc::read(fd, buffer.as_mut_ptr() as *mut libc::c_void, buffer.len()) };
-
-            if read == 0 {
-                close_connection(fd, connections);
-                return Ok(false);
-            }
-            if read &lt; 0 {
-                if would_block() {
-                    break;
-                }
-                close_connection(fd, connections);
-                return Err(io::Error::last_os_error());
-            }
-
-            if let Some(connection) = connections.get_mut(&amp;fd) {
-                connection.out.extend_from_slice(&amp;buffer[..read as usize]);
-            }
-        }
-
-        flush(fd, connections)?;
-        Ok(true)
-    }
-
-<span class="boring">}</span></code></pre>
 <p><code>accept_ready</code> accepts in a loop until <code>EAGAIN</code>, because one readiness notification can
 stand for several queued connections. <code>accept4</code> with <code>SOCK_NONBLOCK</code> creates each client
 socket already non-blocking, which avoids a separate <code>fcntl</code> call and the window in
@@ -446,99 +246,8 @@ which the socket would still be blocking.</p>
 <p><code>read_into</code> also loops until <code>EAGAIN</code>, appending each chunk to the connection’s output
 buffer, and then calls <code>flush</code> to echo as much as the socket will accept immediately.</p>
 <h3 id="writing-and-updating-interest"><a class="header" href="#writing-and-updating-interest">Writing and updating interest</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>    /// Write as much of the buffered reply as the socket accepts.
-    fn flush(fd: i32, connections: &amp;mut HashMap&lt;i32, Connection&gt;) -&gt; io::Result&lt;()&gt; {
-        let Some(connection) = connections.get_mut(&amp;fd) else {
-            return Ok(());
-        };
+<p class="listing"><span class="listing-label">Listing 53.4</span> Writing and updating interest. <code>src/bin/epoll_echo.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">read the file on GitHub</a></p>
 
-        while connection.has_pending_output() {
-            let remaining = connection.out.len() - connection.out_pos;
-            // SAFETY: the slice is valid for `remaining` bytes.
-            let written = unsafe {
-                libc::write(
-                    fd,
-                    connection.out[connection.out_pos..].as_ptr() as *const libc::c_void,
-                    remaining,
-                )
-            };
-
-            if written &lt; 0 {
-                if would_block() {
-                    // Keep the rest buffered; EPOLLOUT will drive the next attempt.
-                    return Ok(());
-                }
-                return Err(io::Error::last_os_error());
-            }
-            connection.out_pos += written as usize;
-        }
-
-        connection.out.clear();
-        connection.out_pos = 0;
-        Ok(())
-    }
-
-    /// Ask for `EPOLLOUT` only while a reply is still buffered.
-    fn update_interest(
-        epfd: i32,
-        fd: i32,
-        connections: &amp;mut HashMap&lt;i32, Connection&gt;,
-    ) -&gt; io::Result&lt;()&gt; {
-        let pending = connections
-            .get(&amp;fd)
-            .is_some_and(Connection::has_pending_output);
-        let events = if pending {
-            (libc::EPOLLIN | libc::EPOLLOUT) as u32
-        } else {
-            libc::EPOLLIN as u32
-        };
-        epoll_modify(epfd, fd, events)
-    }
-
-    fn close_connection(fd: i32, connections: &amp;mut HashMap&lt;i32, Connection&gt;) {
-        connections.remove(&amp;fd);
-        // SAFETY: `fd` is owned by us and open at this point.
-        unsafe {
-            libc::close(fd);
-        }
-    }
-
-    fn epoll_add(epfd: i32, fd: i32, events: u32) -&gt; io::Result&lt;()&gt; {
-        let mut event = libc::epoll_event {
-            events,
-            u64: fd as u64,
-        };
-        // SAFETY: `event` outlives the call.
-        if unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &amp;mut event) } &lt; 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(())
-        }
-    }
-
-    fn epoll_modify(epfd: i32, fd: i32, events: u32) -&gt; io::Result&lt;()&gt; {
-        let mut event = libc::epoll_event {
-            events,
-            u64: fd as u64,
-        };
-        // SAFETY: `event` outlives the call.
-        if unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fd, &amp;mut event) } &lt; 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(())
-        }
-    }
-
-    fn would_block() -&gt; bool {
-        matches!(
-            io::Error::last_os_error().raw_os_error(),
-            Some(libc::EAGAIN)
-        )
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>flush</code> writes from <code>out_pos</code> until the buffer is empty or the socket returns <code>EAGAIN</code>.
 On <code>EAGAIN</code> it returns <code>Ok(())</code> with the remainder still buffered. When everything has
 been written it clears the vector, which keeps its capacity for the next reply.</p>
@@ -549,88 +258,8 @@ writable, and a level-triggered <code>EPOLLOUT</code> on it would wake <code>epo
 forever.</p>
 <p><code>would_block</code> compares <code>errno</code> with <code>EAGAIN</code>. On Linux, <code>EWOULDBLOCK</code> has the same value.</p>
 <h3 id="startup-and-the-test"><a class="header" href="#startup-and-the-test">Startup and the test</a></h3>
-<pre class="playground"><code class="language-rust">#[cfg(target_os = "linux")]
-fn main() {
-    use std::sync::atomic::AtomicBool;
+<p class="listing"><span class="listing-label">Listing 53.5</span> Startup and the test. <code>src/bin/epoll_echo.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">read the file on GitHub</a></p>
 
-    let port: u16 = std::env::args()
-        .nth(1)
-        .and_then(|argument| argument.parse().ok())
-        .unwrap_or(9000);
-
-    let (listen_fd, bound_port) = linux::bind_listener(port).expect("failed to bind");
-    // SAFETY: epoll_create1 takes flags and returns an fd or -1.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert!(epfd &gt;= 0, "epoll_create1 failed");
-
-    // A write to a peer that vanished raises SIGPIPE, which by default kills the
-    // process. Servers ignore it and handle EPIPE from write instead.
-    // SAFETY: installing SIG_IGN is a single-threaded startup action.
-    unsafe {
-        libc::signal(libc::SIGPIPE, libc::SIG_IGN);
-    }
-
-    println!("epoll echo server listening on 127.0.0.1:{bound_port} (Ctrl-C to stop)");
-
-    let shutdown = AtomicBool::new(false);
-    let result = linux::event_loop(epfd, listen_fd, &amp;shutdown);
-    // SAFETY: both fds are owned by this process.
-    unsafe {
-        libc::close(epfd);
-        libc::close(listen_fd);
-    }
-
-    if let Err(error) = result {
-        eprintln!("event loop error: {error}");
-        std::process::exit(1);
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn main() {
-    eprintln!("epoll_echo requires Linux; use kqueue or IOCP on this platform.");
-}
-
-#[cfg(all(test, target_os = "linux"))]
-mod tests {
-    use super::linux;
-    use std::io::{Read, Write};
-    use std::net::TcpStream;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::thread;
-
-    #[test]
-    fn echoes_a_message_through_the_event_loop() {
-        let (listen_fd, port) = linux::bind_listener(0).expect("bind");
-        // SAFETY: epoll_create1 takes flags and returns an fd or -1.
-        let epfd = unsafe { libc::epoll_create1(0) };
-        assert!(epfd &gt;= 0, "epoll_create1 failed");
-
-        let shutdown = Arc::new(AtomicBool::new(false));
-        let server_shutdown = Arc::clone(&amp;shutdown);
-        let server = thread::spawn(move || {
-            let result = linux::event_loop(epfd, listen_fd, &amp;server_shutdown);
-            // SAFETY: the test owns both fds.
-            unsafe {
-                libc::close(epfd);
-                libc::close(listen_fd);
-            }
-            result
-        });
-
-        let mut client = TcpStream::connect(("127.0.0.1", port)).expect("connect");
-        client.write_all(b"epoll echo").expect("write");
-        let mut echoed = [0u8; 10];
-        client.read_exact(&amp;mut echoed).expect("read echo");
-        assert_eq!(&amp;echoed, b"epoll echo");
-
-        shutdown.store(true, Ordering::Relaxed);
-        drop(client);
-        let result = server.join().expect("server thread panicked");
-        assert!(result.is_ok(), "event loop returned {result:?}");
-    }
-}</code></pre>
 <p><code>main</code> ignores <code>SIGPIPE</code>. By default, writing to a socket whose peer has closed delivers
 <code>SIGPIPE</code>, which terminates the process. With the signal ignored, the write fails with
 <code>EPIPE</code> instead, which the program can handle.</p>
@@ -754,22 +383,6 @@ their descriptors with <code>OwnedFd</code>, and are usually built on <code>mio<
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

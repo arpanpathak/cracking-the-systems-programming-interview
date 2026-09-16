@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,129 +209,8 @@ C ------------1---+
 shortest distances from A: A 0, B 1, C 3 (via B), D 4 (via B and C)
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Dijkstra's shortest paths with a binary min-heap.
-//!
-//! Two variants of the same algorithm:
-//!
-//! - `dijkstra_vec`: nodes are `usize` indices and distances are a
-//!   `Vec&lt;Option&lt;u32&gt;&gt;`, where `None` means unreachable.
-//! - `dijkstra`: nodes are any `Copy + Eq + Hash + Ord` type and distances are a
-//!   `HashMap` containing only the reachable nodes.
-//!
-//! Edge weights must be non-negative, which `u32` guarantees. `BinaryHeap` is a
-//! max-heap, so entries are wrapped in `Reverse` to pop the smallest cost first.
-//! A node can be in the heap several times; an entry whose cost is larger than the
-//! recorded distance is stale and skipped.
+<p class="listing"><span class="listing-label">Listing 61.1</span> The complete module, with its tests. <code>src/problems/graph_dijkstra.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">read the file on GitHub</a></p>
 
-use crate::problems::graph_bfs::GraphAdjList;
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
-use std::hash::Hash;
-
-/// Shortest distances from `start_node` over an index-based adjacency list.
-pub fn dijkstra_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;Option&lt;u32&gt;&gt; {
-    let mut distances = vec![None; graph.len()];
-    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
-
-    distances[start_node] = Some(0);
-
-    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
-        // stale heap entry, a shorter path was already recorded
-        if distances[current_node].is_some_and(|best| current_cost &gt; best) {
-            continue;
-        }
-        for &amp;(neighbor, weight) in &amp;graph[current_node] {
-            let new_distance = current_cost + weight;
-            if distances[neighbor].is_none_or(|best| new_distance &lt; best) {
-                distances[neighbor] = Some(new_distance);
-                min_heap.push(Reverse((new_distance, neighbor)));
-            }
-        }
-    }
-    distances
-}
-
-/// Shortest distances from `start_node` over a `HashMap` adjacency list.
-pub fn dijkstra&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; HashMap&lt;Node, u32&gt;
-where
-    Node: Copy + Eq + Hash + Ord,
-{
-    let mut distances = HashMap::from([(start_node, 0)]);
-    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
-
-    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
-        // stale heap entry, a shorter path was already recorded
-        if current_cost &gt; distances[&amp;current_node] {
-            continue;
-        }
-        for &amp;(neighbor, weight) in graph[&amp;current_node] {
-            let new_distance = current_cost + weight;
-            if new_distance &lt; *distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX) {
-                distances.insert(neighbor, new_distance);
-                min_heap.push(Reverse((new_distance, neighbor)));
-            }
-        }
-    }
-    distances
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
-    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
-        vec![
-            vec![(1, 1), (2, 4)],
-            vec![(2, 2), (3, 5)],
-            vec![(3, 1)],
-            vec![],
-        ]
-    }
-
-    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
-        HashMap::from([
-            ("A", &amp;[("B", 1), ("C", 4)][..]),
-            ("B", &amp;[("C", 2), ("D", 5)][..]),
-            ("C", &amp;[("D", 1)][..]),
-            ("D", &amp;[][..]),
-        ])
-    }
-
-    #[test]
-    fn vec_variant_finds_shorter_multi_hop_paths() {
-        // A -&gt; C directly costs 4, A -&gt; B -&gt; C costs 3; D is reached via C for 4.
-        assert_eq!(
-            dijkstra_vec(&amp;sample_vec(), 0),
-            vec![Some(0), Some(1), Some(3), Some(4)]
-        );
-    }
-
-    #[test]
-    fn vec_variant_marks_unreachable_nodes() {
-        let graph = vec![vec![(1, 7)], vec![], vec![(0, 1)]];
-        assert_eq!(dijkstra_vec(&amp;graph, 0), vec![Some(0), Some(7), None]);
-    }
-
-    #[test]
-    fn map_variant_finds_shorter_multi_hop_paths() {
-        let distances = dijkstra(&amp;sample_map(), "A");
-        assert_eq!(
-            distances,
-            HashMap::from([("A", 0), ("B", 1), ("C", 3), ("D", 4)])
-        );
-    }
-
-    #[test]
-    fn map_variant_omits_unreachable_nodes() {
-        let graph: HashMap&lt;u8, &amp;[(u8, u32)]&gt; =
-            HashMap::from([(0, &amp;[(1, 2)][..]), (1, &amp;[][..]), (2, &amp;[(0, 1)][..])]);
-        assert_eq!(dijkstra(&amp;graph, 0), HashMap::from([(0, 0), (1, 2)]));
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>dijkstra_vec</code> stores distances as <code>Vec&lt;Option&lt;u32&gt;&gt;</code>, so “not reached yet” is <code>None</code>
 rather than a sentinel. The relaxation test
 <code>distances[neighbor].is_none_or(|best| new_distance &lt; best)</code> accepts an edge when the
@@ -423,7 +302,7 @@ Mathematik</em> 1, 1959, pages 269–271.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="62-merge-k-sorted-lists.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="65-course-schedule.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -437,7 +316,7 @@ Mathematik</em> 1, 1959, pages 269–271.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="62-merge-k-sorted-lists.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="65-course-schedule.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -450,22 +329,6 @@ Mathematik</em> 1, 1959, pages 269–271.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

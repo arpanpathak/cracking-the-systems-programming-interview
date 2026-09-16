@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -222,66 +222,8 @@ run: pop task ---&gt; poll(future, Context with waker = task)
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <h3 id="block_on"><a class="header" href="#block_on"><code>block_on</code></a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! A minimal async runtime, built from `Future`, `Waker`, and `Pin`.
-//!
-//! `.await` is not magic. A `Future` is a state machine with one method, `poll`,
-//! that returns `Ready(value)` or `Pending`; when it returns `Pending` it must
-//! arrange for the `Waker` in its `Context` to be called later. An executor is a
-//! loop that polls tasks and parks until a waker fires.
-//!
-//! This module implements that loop twice, from scratch and without a runtime
-//! dependency:
-//!
-//! - [`block_on`] drives one future on the current thread, parking on `Pending`;
-//! - [`MiniExecutor`] queues independent tasks and re-enqueues them when woken.
-//!
-//! It is deliberately small. What it makes concrete is the part interviewers ask
-//! about: why `poll` takes `Pin&lt;&amp;mut Self&gt;`, what `Pending` promises, and where
-//! `Send` matters for a multi-threaded runtime.
+<p class="listing"><span class="listing-label">Listing 56.1</span> <code>block_on</code>. <code>src/problems/async_mini.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">read the file on GitHub</a></p>
 
-use std::collections::VecDeque;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll, Wake, Waker};
-use std::thread;
-use std::time::Duration;
-
-/// Block the current thread until `future` completes.
-///
-/// The future is pinned on the heap so its address is stable across `await`
-/// points, and the thread parks whenever the future reports `Pending`. The waker
-/// unparks it, so the loop polls again only when there is a reason to.
-pub fn block_on&lt;F: Future&gt;(future: F) -&gt; F::Output {
-    let mut future = Box::pin(future);
-    let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
-    let mut context = Context::from_waker(&amp;waker);
-
-    loop {
-        match future.as_mut().poll(&amp;mut context) {
-            Poll::Ready(value) =&gt; return value,
-            // `park` may return spuriously, so the loop re-polls either way.
-            Poll::Pending =&gt; thread::park(),
-        }
-    }
-}
-
-/// Waker that unparks the thread which is driving the future.
-struct ThreadWaker(thread::Thread);
-
-impl Wake for ThreadWaker {
-    fn wake(self: Arc&lt;Self&gt;) {
-        self.0.unpark();
-    }
-
-    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
-        self.0.unpark();
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>Box::pin(future)</code> moves the future to the heap and returns <code>Pin&lt;Box&lt;F&gt;&gt;</code>. After that
 the future’s address does not change, so <code>poll</code> may be called on it repeatedly.
 <code>future.as_mut()</code> produces the <code>Pin&lt;&amp;mut F&gt;</code> that <code>poll</code> requires, without moving the box.</p>
@@ -292,104 +234,16 @@ required a hand-written virtual function table and <code>unsafe</code> code.</p>
 thread parks, the thread receives a token, and the next <code>park</code> returns immediately.
 <code>park</code> may also return spuriously, which the loop tolerates because it simply polls again.</p>
 <h3 id="a-future-that-yields"><a class="header" href="#a-future-that-yields">A future that yields</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A future that yields to the executor `times` times before completing.
-///
-/// Completes with the number of times it yielded, which makes it easy to assert
-/// that a runtime actually suspended and resumed a task.
-pub struct YieldTimes {
-    remaining: usize,
-    yielded: usize,
-}
+<p class="listing"><span class="listing-label">Listing 56.2</span> A future that yields. <code>src/problems/async_mini.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">read the file on GitHub</a></p>
 
-impl YieldTimes {
-    pub fn new(times: usize) -&gt; Self {
-        Self {
-            remaining: times,
-            yielded: 0,
-        }
-    }
-}
-
-impl Future for YieldTimes {
-    type Output = usize;
-
-    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;usize&gt; {
-        // `YieldTimes` is `Unpin`, so a mutable reference is safe to take.
-        let this = self.get_mut();
-        if this.remaining == 0 {
-            return Poll::Ready(this.yielded);
-        }
-
-        this.remaining -= 1;
-        this.yielded += 1;
-        // Ask to be polled again; an executor that ignores this hangs.
-        context.waker().wake_by_ref();
-        Poll::Pending
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>YieldTimes</code> contains only two <code>usize</code> fields, so it implements <code>Unpin</code>, and
 <code>self.get_mut()</code> can turn <code>Pin&lt;&amp;mut Self&gt;</code> back into <code>&amp;mut Self</code> without <code>unsafe</code> code.</p>
 <p>Each <code>Pending</code> result is preceded by <code>context.waker().wake_by_ref()</code>. The future asks to be
 polled again immediately. Returning <code>Pending</code> without arranging a wake-up would leave the
 future suspended forever, which is the most common bug in hand-written futures.</p>
 <h3 id="a-future-that-waits-for-time"><a class="header" href="#a-future-that-waits-for-time">A future that waits for time</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>struct DelayState {
-    ready: bool,
-    waker: Option&lt;Waker&gt;,
-}
+<p class="listing"><span class="listing-label">Listing 56.3</span> A future that waits for time. <code>src/problems/async_mini.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">read the file on GitHub</a></p>
 
-/// A future that completes after a wall-clock duration.
-///
-/// A background thread sleeps and then wakes the task. Storing and waking the
-/// [`Waker`] — rather than spinning in `poll` — is the whole point: `poll` never
-/// blocks the executor thread.
-pub struct Delay {
-    state: Arc&lt;Mutex&lt;DelayState&gt;&gt;,
-}
-
-impl Delay {
-    pub fn new(duration: Duration) -&gt; Self {
-        let state = Arc::new(Mutex::new(DelayState {
-            ready: false,
-            waker: None,
-        }));
-
-        let thread_state = Arc::clone(&amp;state);
-        thread::spawn(move || {
-            thread::sleep(duration);
-            let waker = {
-                let mut guard = thread_state.lock().expect("delay mutex poisoned");
-                guard.ready = true;
-                guard.waker.take()
-            };
-            if let Some(waker) = waker {
-                waker.wake();
-            }
-        });
-
-        Self { state }
-    }
-}
-
-impl Future for Delay {
-    type Output = ();
-
-    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
-        let mut guard = self.state.lock().expect("delay mutex poisoned");
-        if guard.ready {
-            Poll::Ready(())
-        } else {
-            guard.waker = Some(context.waker().clone());
-            Poll::Pending
-        }
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>Delay::new</code> starts a thread that sleeps and then sets <code>ready</code> and takes the stored waker,
 both under the mutex. <code>poll</code> checks <code>ready</code> and stores a clone of the current waker, also
 under the mutex. Because both sides hold the lock while they read or write the shared
@@ -401,92 +255,8 @@ recent one.</p>
 <p>The timer thread calls <code>waker.wake()</code> after releasing the lock. Calling a waker while
 holding a lock the woken task might also need is a common source of deadlock.</p>
 <h3 id="the-executor"><a class="header" href="#the-executor">The executor</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>struct Task {
-    future: Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;,
-    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
-    completed: AtomicBool,
-}
+<p class="listing"><span class="listing-label">Listing 56.4</span> The executor. <code>src/problems/async_mini.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">read the file on GitHub</a></p>
 
-impl Wake for Task {
-    fn wake(self: Arc&lt;Self&gt;) {
-        // Re-enqueue the task. Cloning the `Arc` is a refcount bump, not a deep copy.
-        self.queue
-            .lock()
-            .expect("executor queue poisoned")
-            .push_back(Arc::clone(&amp;self));
-    }
-
-    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
-        self.queue
-            .lock()
-            .expect("executor queue poisoned")
-            .push_back(Arc::clone(self));
-    }
-}
-
-/// A single-threaded, `Send`-only executor.
-///
-/// Real runtimes add work stealing, timers, and I/O readiness. This keeps only the
-/// part that matters for explaining how `.await` makes progress: a queue of tasks
-/// where waking a task puts it back on the queue.
-#[derive(Default)]
-pub struct MiniExecutor {
-    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
-}
-
-impl MiniExecutor {
-    pub fn new() -&gt; Self {
-        Self::default()
-    }
-
-    /// Add a task to the executor.
-    pub fn spawn&lt;F&gt;(&amp;self, future: F)
-    where
-        F: Future&lt;Output = ()&gt; + Send + 'static,
-    {
-        let task = Arc::new(Task {
-            future: Mutex::new(Box::pin(future)),
-            queue: Arc::clone(&amp;self.queue),
-            completed: AtomicBool::new(false),
-        });
-        self.queue
-            .lock()
-            .expect("executor queue poisoned")
-            .push_back(task);
-    }
-
-    /// Run until the queue is empty.
-    ///
-    /// A task that returns `Pending` without waking stays suspended, which is why
-    /// this returns rather than blocks: a runtime with timers or I/O would also
-    /// park on an event source.
-    pub fn run(&amp;self) {
-        loop {
-            let Some(task) = self
-                .queue
-                .lock()
-                .expect("executor queue poisoned")
-                .pop_front()
-            else {
-                return;
-            };
-
-            if task.completed.load(Ordering::Acquire) {
-                continue;
-            }
-
-            let waker = Waker::from(Arc::clone(&amp;task));
-            let mut context = Context::from_waker(&amp;waker);
-            let mut future = task.future.lock().expect("task mutex poisoned");
-            if future.as_mut().poll(&amp;mut context).is_ready() {
-                task.completed.store(true, Ordering::Release);
-            }
-        }
-    }
-}
-<span class="boring">}</span></code></pre>
 <p>A <code>Task</code> holds its future as <code>Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;</code>. The
 <code>Wake</code> trait requires <code>Arc&lt;Task&gt;</code> to be <code>Send</code> and <code>Sync</code>, because a waker may be called
 from any thread. The <code>Mutex</code> makes the task <code>Sync</code>; the <code>Send</code> bound on the future makes it
@@ -502,68 +272,8 @@ wakes itself during <code>poll</code>, as <code>YieldTimes</code> does, pushes o
 <p>The <code>completed</code> flag handles a task that is woken after it has finished. Its waker may
 still exist, held by a timer or a clone, and pushing it onto the queue must not poll a
 completed future again.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::atomic::AtomicUsize;
-    use std::time::Instant;
+<p class="listing"><span class="listing-label">Listing 56.5</span> The executor, continued. <code>src/problems/async_mini.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">read the file on GitHub</a></p>
 
-    #[test]
-    fn block_on_drives_a_hand_written_future() {
-        assert_eq!(block_on(YieldTimes::new(3)), 3);
-    }
-
-    #[test]
-    fn block_on_polls_an_async_block() {
-        let total = block_on(async {
-            let a = YieldTimes::new(1).await;
-            let b = YieldTimes::new(2).await;
-            a + b
-        });
-        assert_eq!(total, 3);
-    }
-
-    #[test]
-    fn block_on_waits_for_a_delay() {
-        let start = Instant::now();
-        block_on(Delay::new(Duration::from_millis(30)));
-        assert!(start.elapsed() &gt;= Duration::from_millis(20));
-    }
-
-    #[test]
-    fn executor_runs_spawned_tasks_to_completion() {
-        let executor = MiniExecutor::new();
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        for _ in 0..4 {
-            let counter = Arc::clone(&amp;counter);
-            executor.spawn(async move {
-                YieldTimes::new(2).await;
-                counter.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-
-        executor.run();
-        assert_eq!(counter.load(Ordering::SeqCst), 4);
-    }
-
-    #[test]
-    fn executor_polls_an_immediately_ready_task() {
-        let executor = MiniExecutor::new();
-        let flag = Arc::new(AtomicBool::new(false));
-
-        let task_flag = Arc::clone(&amp;flag);
-        executor.spawn(async move {
-            task_flag.store(true, Ordering::SeqCst);
-        });
-
-        executor.run();
-        assert!(flag.load(Ordering::SeqCst));
-    }
-}
-<span class="boring">}</span></code></pre>
 <pre class="playground"><code class="language-rust">//! Runs the hand-written async runtime in [`nvidia_rust_interview_lab::problems::async_mini`].
 //!
 //! There is no Tokio here on purpose: the point is to show that `Future`, `Waker`,
@@ -741,22 +451,6 @@ same lock that the waking side uses.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

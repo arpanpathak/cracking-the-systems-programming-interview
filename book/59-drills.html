@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -207,493 +207,8 @@ The short versions keep the core mechanism of each design and drop everything a 
 could live without in an interview: accessors, timeouts, typed errors, and most
 documentation.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Short answers to the common prompts, sized for a live round.
-//!
-//! Each item is a standalone implementation of roughly the length you would write
-//! in an interview. The modules next to this one are reference versions with the
-//! long explanations and full test suites; this file is what you type.
+<p class="listing"><span class="listing-label">Listing 59.1</span> The complete module, with its tests. <code>src/problems/drills.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">read the file on GitHub</a></p>
 
-use std::cell::UnsafeCell;
-use std::collections::VecDeque;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex, mpsc};
-use std::thread::{self, JoinHandle};
-use std::time::Duration;
-
-// --- Thread-safe counter (Arc + Mutex) ---
-
-pub fn count_parallel(threads: usize, per_thread: usize) -&gt; usize {
-    let counter = Arc::new(Mutex::new(0usize));
-    let handles: Vec&lt;_&gt; = (0..threads)
-        .map(|_| {
-            let counter = Arc::clone(&amp;counter);
-            thread::spawn(move || {
-                for _ in 0..per_thread {
-                    *counter.lock().expect("poisoned") += 1;
-                }
-            })
-        })
-        .collect();
-
-    for handle in handles {
-        handle.join().expect("worker panicked");
-    }
-    *counter.lock().expect("poisoned")
-}
-
-// --- Scoped threads (borrow instead of Arc) ---
-
-pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
-    let chunk_size = values.len().div_ceil(4).max(1);
-    thread::scope(|scope| {
-        values
-            .chunks(chunk_size)
-            .map(|chunk| {
-                scope.spawn(move || chunk.iter().map(|value| i64::from(*value)).sum::&lt;i64&gt;())
-            })
-            .map(|handle| handle.join().expect("worker panicked"))
-            .sum()
-    })
-}
-
-// --- Spin lock from an atomic ---
-
-pub struct SpinLock&lt;T&gt; {
-    locked: AtomicBool,
-    value: UnsafeCell&lt;T&gt;,
-}
-
-unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}
-
-impl&lt;T&gt; SpinLock&lt;T&gt; {
-    pub const fn new(value: T) -&gt; Self {
-        Self {
-            locked: AtomicBool::new(false),
-            value: UnsafeCell::new(value),
-        }
-    }
-
-    pub fn lock(&amp;self) -&gt; SpinGuard&lt;'_, T&gt; {
-        while self.locked.swap(true, Ordering::Acquire) {
-            std::hint::spin_loop();
-        }
-        SpinGuard { lock: self }
-    }
-}
-
-pub struct SpinGuard&lt;'a, T&gt; {
-    lock: &amp;'a SpinLock&lt;T&gt;,
-}
-
-impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
-    fn drop(&amp;mut self) {
-        self.lock.locked.store(false, Ordering::Release);
-    }
-}
-
-impl&lt;T&gt; Deref for SpinGuard&lt;'_, T&gt; {
-    type Target = T;
-    fn deref(&amp;self) -&gt; &amp;T {
-        unsafe { &amp;*self.lock.value.get() }
-    }
-}
-
-impl&lt;T&gt; DerefMut for SpinGuard&lt;'_, T&gt; {
-    fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
-        unsafe { &amp;mut *self.lock.value.get() }
-    }
-}
-
-// --- Semaphore (acquire blocks) ---
-
-pub struct Semaphore {
-    permits: Mutex&lt;usize&gt;,
-    released: Condvar,
-}
-
-impl Semaphore {
-    pub fn new(permits: usize) -&gt; Self {
-        Self {
-            permits: Mutex::new(permits),
-            released: Condvar::new(),
-        }
-    }
-
-    pub fn acquire(&amp;self) {
-        let mut permits = self.permits.lock().expect("poisoned");
-        while *permits == 0 {
-            permits = self.released.wait(permits).expect("poisoned");
-        }
-        *permits -= 1;
-    }
-
-    pub fn try_acquire(&amp;self) -&gt; bool {
-        let mut permits = self.permits.lock().expect("poisoned");
-        if *permits == 0 {
-            false
-        } else {
-            *permits -= 1;
-            true
-        }
-    }
-
-    pub fn release(&amp;self) {
-        *self.permits.lock().expect("poisoned") += 1;
-        self.released.notify_one();
-    }
-}
-
-// --- Bounded blocking queue (backpressure + close) ---
-
-pub struct BlockingQueue&lt;T&gt; {
-    inner: Mutex&lt;Inner&lt;T&gt;&gt;,
-    not_empty: Condvar,
-    not_full: Condvar,
-}
-
-struct Inner&lt;T&gt; {
-    items: VecDeque&lt;T&gt;,
-    capacity: usize,
-    closed: bool,
-}
-
-impl&lt;T&gt; BlockingQueue&lt;T&gt; {
-    pub fn new(capacity: usize) -&gt; Self {
-        Self {
-            inner: Mutex::new(Inner {
-                items: VecDeque::new(),
-                capacity,
-                closed: false,
-            }),
-            not_empty: Condvar::new(),
-            not_full: Condvar::new(),
-        }
-    }
-
-    pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
-        let mut inner = self.inner.lock().expect("poisoned");
-        loop {
-            if inner.closed {
-                return Err(item);
-            }
-            if inner.items.len() &lt; inner.capacity {
-                inner.items.push_back(item);
-                self.not_empty.notify_one();
-                return Ok(());
-            }
-            inner = self.not_full.wait(inner).expect("poisoned");
-        }
-    }
-
-    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
-        let mut inner = self.inner.lock().expect("poisoned");
-        loop {
-            if let Some(item) = inner.items.pop_front() {
-                self.not_full.notify_one();
-                return Some(item);
-            }
-            if inner.closed {
-                return None;
-            }
-            inner = self.not_empty.wait(inner).expect("poisoned");
-        }
-    }
-
-    pub fn close(&amp;self) {
-        let mut inner = self.inner.lock().expect("poisoned");
-        inner.closed = true;
-        drop(inner);
-        self.not_empty.notify_all();
-        self.not_full.notify_all();
-    }
-}
-
-// --- Thread pool (fixed workers + channel) ---
-
-pub struct ThreadPool {
-    sender: Option&lt;mpsc::Sender&lt;Box&lt;dyn FnOnce() + Send + 'static&gt;&gt;&gt;,
-    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
-}
-
-impl ThreadPool {
-    pub fn new(size: usize) -&gt; Self {
-        let (sender, receiver) = mpsc::channel::&lt;Box&lt;dyn FnOnce() + Send + 'static&gt;&gt;();
-        let receiver = Arc::new(Mutex::new(receiver));
-        let workers = (0..size)
-            .map(|_| {
-                let receiver = Arc::clone(&amp;receiver);
-                thread::spawn(move || {
-                    loop {
-                        let Ok(job) = receiver.lock().expect("poisoned").recv() else {
-                            return;
-                        };
-                        job();
-                    }
-                })
-            })
-            .collect();
-        Self {
-            sender: Some(sender),
-            workers,
-        }
-    }
-
-    pub fn execute(&amp;self, job: impl FnOnce() + Send + 'static) {
-        self.sender
-            .as_ref()
-            .expect("pool dropped")
-            .send(Box::new(job))
-            .expect("worker gone");
-    }
-}
-
-impl Drop for ThreadPool {
-    fn drop(&amp;mut self) {
-        drop(self.sender.take());
-        for worker in self.workers.drain(..) {
-            let _ = worker.join();
-        }
-    }
-}
-
-// --- Retry with exponential backoff ---
-
-pub fn retry&lt;T, E&gt;(
-    max_attempts: u32,
-    mut operation: impl FnMut() -&gt; Result&lt;T, E&gt;,
-    retryable: impl Fn(&amp;E) -&gt; bool,
-) -&gt; Result&lt;T, E&gt; {
-    let mut delay = Duration::from_millis(25);
-    let mut attempt = 0;
-    loop {
-        match operation() {
-            Ok(value) =&gt; return Ok(value),
-            Err(error) =&gt; {
-                attempt += 1;
-                if attempt &gt;= max_attempts || !retryable(&amp;error) {
-                    return Err(error);
-                }
-                thread::sleep(delay);
-                delay = (delay * 2).min(Duration::from_secs(1));
-            }
-        }
-    }
-}
-
-// --- Consistent hashing ring ---
-
-#[derive(Default)]
-pub struct HashRing {
-    points: Vec&lt;(u64, String)&gt;,
-}
-
-impl HashRing {
-    pub fn new() -&gt; Self {
-        Self::default()
-    }
-
-    pub fn add(&amp;mut self, node: &amp;str, replicas: usize) {
-        for replica in 0..replicas {
-            self.points.push((hash(node, replica), node.to_string()));
-        }
-        self.points.sort_unstable_by_key(|(point, _)| *point);
-    }
-
-    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;str&gt; {
-        if self.points.is_empty() {
-            return None;
-        }
-        let hash = hash(key, 0);
-        let index = self.points.partition_point(|(point, _)| *point &lt;= hash) % self.points.len();
-        Some(self.points[index].1.as_str())
-    }
-}
-
-fn hash(input: &amp;str, replica: usize) -&gt; u64 {
-    let mut hasher = DefaultHasher::new();
-    hasher.write(input.as_bytes());
-    hasher.write_usize(replica);
-    hasher.finish()
-}
-
-// --- HTTP request head ---
-
-pub struct RequestHead {
-    pub method: String,
-    pub target: String,
-    pub headers: Vec&lt;(String, String)&gt;,
-}
-
-pub fn parse_request_head(input: &amp;str) -&gt; Option&lt;RequestHead&gt; {
-    let mut lines = input.split("\r\n");
-    let mut request_line = lines.next()?.split(' ');
-    let method = request_line.next()?.to_string();
-    let target = request_line.next()?.to_string();
-    if request_line.next()? != "HTTP/1.1" {
-        return None;
-    }
-
-    let mut headers = Vec::new();
-    for line in lines {
-        if line.is_empty() {
-            break;
-        }
-        let (name, value) = line.split_once(':')?;
-        headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
-    }
-    Some(RequestHead {
-        method,
-        target,
-        headers,
-    })
-}
-
-// --- Newtype and enum ADT ---
-
-pub struct Port(u16);
-
-impl Port {
-    pub fn new(value: u16) -&gt; Result&lt;Self, &amp;'static str&gt; {
-        (1..=u16::MAX)
-            .contains(&amp;value)
-            .then_some(Self(value))
-            .ok_or("port must be non-zero")
-    }
-
-    pub fn get(self) -&gt; u16 {
-        self.0
-    }
-}
-
-pub enum Route {
-    Health,
-    List,
-    ById(String),
-}
-
-impl Route {
-    pub fn parse(path: &amp;str) -&gt; Option&lt;Self&gt; {
-        match path {
-            "/healthz" =&gt; Some(Self::Health),
-            "/v1/gpu-workloads" =&gt; Some(Self::List),
-            _ =&gt; path
-                .strip_prefix("/v1/gpu-workloads/")
-                .map(|id| Self::ById(id.to_string())),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::atomic::AtomicUsize;
-
-    #[test]
-    fn counter_scoped_sum_and_spin_lock() {
-        assert_eq!(count_parallel(4, 100), 400);
-        assert_eq!(parallel_sum(&amp;[1, 2, 3, 4]), 10);
-
-        let lock = Arc::new(SpinLock::new(0usize));
-        let handles: Vec&lt;_&gt; = (0..4)
-            .map(|_| {
-                let lock = Arc::clone(&amp;lock);
-                thread::spawn(move || {
-                    for _ in 0..100 {
-                        *lock.lock() += 1;
-                    }
-                })
-            })
-            .collect();
-        for handle in handles {
-            handle.join().expect("worker panicked");
-        }
-        assert_eq!(*lock.lock(), 400);
-    }
-
-    #[test]
-    fn semaphore_queue_and_pool() {
-        let semaphore = Semaphore::new(1);
-        assert!(semaphore.try_acquire());
-        assert!(!semaphore.try_acquire());
-        semaphore.release();
-        assert!(semaphore.try_acquire());
-
-        let queue = BlockingQueue::new(1);
-        assert_eq!(queue.push(1), Ok(()));
-        queue.close();
-        assert_eq!(queue.pop(), Some(1));
-        assert_eq!(queue.pop(), None);
-        assert_eq!(queue.push(2), Err(2));
-
-        let pool = ThreadPool::new(3);
-        let counter = Arc::new(AtomicUsize::new(0));
-        for _ in 0..100 {
-            let counter = Arc::clone(&amp;counter);
-            pool.execute(move || {
-                counter.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-        drop(pool);
-        assert_eq!(counter.load(Ordering::SeqCst), 100);
-    }
-
-    #[test]
-    fn retry_ring_http_and_adt() {
-        let mut attempts = 0;
-        let ok = retry(
-            3,
-            || {
-                attempts += 1;
-                if attempts &lt; 3 { Err("transient") } else { Ok(7) }
-            },
-            |_| true,
-        );
-        assert_eq!(ok, Ok(7));
-
-        let mut attempts = 0;
-        let bad: Result&lt;(), &amp;str&gt; = retry(
-            3,
-            || {
-                attempts += 1;
-                Err("permanent")
-            },
-            |_| false,
-        );
-        assert!(bad.is_err());
-        assert_eq!(attempts, 1);
-
-        let mut ring = HashRing::new();
-        ring.add("a", 64);
-        ring.add("b", 64);
-        let before = ring.get("job-1").map(str::to_string);
-        ring.add("c", 64);
-        let after = ring.get("job-1").map(str::to_string);
-        assert!(after == before || after.as_deref() == Some("c"));
-
-        let head =
-            parse_request_head("GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\n\r\n").expect("valid");
-        assert_eq!(
-            (head.method.as_str(), head.target.as_str()),
-            ("GET", "/v1/gpu-workloads")
-        );
-        assert_eq!(head.headers[0], ("host".to_string(), "api".to_string()));
-        assert!(parse_request_head("GET / HTTP/2\r\n\r\n").is_none());
-
-        assert!(Port::new(8080).is_ok());
-        assert!(Port::new(0).is_err());
-        assert!(matches!(Route::parse("/healthz"), Some(Route::Health)));
-        assert!(matches!(
-            Route::parse("/v1/gpu-workloads/wl-1"),
-            Some(Route::ById(id)) if id == "wl-1"
-        ));
-    }
-}
-<span class="boring">}</span></code></pre>
 <h3 id="counter-and-parallel-sum"><a class="header" href="#counter-and-parallel-sum">Counter and parallel sum</a></h3>
 <p><code>count_parallel</code> is the <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code> counter from chapter 36, with the lock taken
 once per increment. The final <code>*counter.lock().expect("poisoned")</code> reads the total after
@@ -803,11 +318,11 @@ the <code>Send</code> and <code>Sync</code> implementations of guard types.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="58-http-client.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="34-idempotent-operations.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="60-graph-traversal.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="references.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -817,11 +332,11 @@ the <code>Send</code> and <code>Sync</code> implementations of guard types.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="58-http-client.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="34-idempotent-operations.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="60-graph-traversal.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="references.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -834,22 +349,6 @@ the <code>Send</code> and <code>Sync</code> implementations of guard types.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
