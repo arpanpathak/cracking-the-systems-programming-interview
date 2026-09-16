@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-e6f2ad7b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-0a8b4ba0.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -176,11 +176,31 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="merge-k-sorted-lists"><a class="header" href="#merge-k-sorted-lists">62. Merge K Sorted Lists</a></h1>
-<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs"><code>src/bin/merge_k_sorted_lists_divide.rs</code></a>. Run it with <code>cargo run --bin merge_k_sorted_lists_divide</code>, and test it with <code>cargo test --bin merge_k_sorted_lists_divide</code>.</em></p>
+<p><em>Source files, all under <code>src/bin/</code>: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs"><code>merge_k_sorted_lists_divide.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs"><code>merge_k_sorted_lists_swap.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs"><code>merge_k_sorted_lists_simple.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs"><code>merge_k_sorted_lists_pairs.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs"><code>merge_k_sorted_lists_heap.rs</code></a>, <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs"><code>merge_k_sorted_lists_enum.rs</code></a>, and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs"><code>merge_k_sorted_list_easy.rs</code></a>. Run any of them with
+<code>cargo run --bin &lt;name&gt;</code>, and test the two that carry tests with
+<code>cargo test --bin merge_k_sorted_lists_divide</code> and <code>cargo test --bin merge_k_sorted_lists_simple</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
 <p>Given <code>k</code> singly linked lists, each sorted in ascending order, merge them into one sorted
 list. The nodes must be relinked rather than copied, and the result must contain every
 node of every input list.</p>
+<p>The chapter solves the problem seven times. The divide-and-conquer version comes first and
+is read in full; the six that follow change one decision each and are read against it:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Version</th><th>What it changes</th></tr>
+</thead>
+<tbody>
+<tr><td>divide</td><td>merges in place inside the input vector, using <code>split_at_mut</code> for two borrows</td></tr>
+<tr><td>swap</td><td>takes one list out of the vector first, so only one borrow is needed</td></tr>
+<tr><td>simple</td><td>passes lists by value and appends through a <code>&amp;mut Link</code>, with no dummy node</td></tr>
+<tr><td>pairs</td><td>merges the front two lists of a <code>VecDeque</code> and pushes the result on the back</td></tr>
+<tr><td>heap</td><td>keeps the head of every list in a <code>BinaryHeap</code> and pops the smallest</td></tr>
+<tr><td>enum</td><td>replaces <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> with an enum carrying an <code>Empty</code> variant</td></tr>
+<tr><td>easy</td><td>merges two lists recursively, and builds lists through <code>From&lt;Vec&lt;i32&gt;&gt;</code></td></tr>
+</tbody>
+</table>
+</div>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
 <p>Merging two sorted lists is the building block: compare the heads, move the smaller node
 to the output, and repeat. Merging <code>k</code> lists one after another into a growing result is
@@ -238,19 +258,19 @@ impl MergeKSorted {
         lists[0].take()
     }
 
-    fn merge_two(a: &amp;mut OptionalLink&lt;ListNode&gt;, b: &amp;mut OptionalLink&lt;ListNode&gt;) -&gt; OptionalLink&lt;ListNode&gt; {
+    fn merge_two(left: &amp;mut OptionalLink&lt;ListNode&gt;, right: &amp;mut OptionalLink&lt;ListNode&gt;) -&gt; OptionalLink&lt;ListNode&gt; {
         let mut dummy = Box::new(ListNode::new(0));
         let mut tail = &amp;mut dummy;
 
-        while let (Some(na), Some(nb)) = (a.as_ref(), b.as_ref()) {
-            let pick = if na.data &lt; nb.data { &amp;mut *a } else { &amp;mut *b };
-            let mut node = pick.take().unwrap();
-            *pick = node.next.take();
-            tail.next = Some(node);
+        while let (Some(l), Some(r)) = (left.as_ref(), right.as_ref()) {
+            let smaller = if l.data &lt; r.data { &amp;mut *left } else { &amp;mut *right };
+            let mut head = smaller.take().unwrap();
+            *smaller = head.next.take();
+            tail.next = Some(head);
             tail = tail.next.as_mut().unwrap();
         }
 
-        tail.next = a.take().or(b.take());
+        tail.next = left.take().or(right.take());
         dummy.next
     }
 }
@@ -313,29 +333,568 @@ merge needs mutable access to two different elements of the same vector, <code>l
 vector at the same time. <code>split_at_mut</code> divides the vector into two non-overlapping
 mutable slices, so <code>left[i]</code> and <code>right[0]</code> are two separate borrows.</p>
 <p><code>merge_two</code> takes both lists as <code>&amp;mut OptionalLink&lt;ListNode&gt;</code> and consumes them with
-<code>take</code>. The loop condition <code>while let (Some(na), Some(nb)) = (a.as_ref(), b.as_ref())</code>
-peeks at both heads without moving them. Inside the loop, <code>pick</code> is a mutable reference to
-whichever list has the smaller head, <code>pick.take().unwrap()</code> detaches that node, and
-<code>*pick = node.next.take()</code> advances the list past it.</p>
-<p><code>tail</code> is <code>&amp;mut Box&lt;ListNode&gt;</code>. After <code>tail.next = Some(node)</code>, the statement
+<code>take</code>. The loop condition <code>while let (Some(l), Some(r)) = (left.as_ref(), right.as_ref())</code>
+peeks at both heads without moving them. Inside the loop, <code>smaller</code> is a mutable reference
+to whichever list has the smaller head, <code>smaller.take().unwrap()</code> detaches that node, and
+<code>*smaller = head.next.take()</code> advances the list past it.</p>
+<p><code>tail</code> is <code>&amp;mut Box&lt;ListNode&gt;</code>. After <code>tail.next = Some(head)</code>, the statement
 <code>tail = tail.next.as_mut().unwrap()</code> moves the reference to the node just appended. When
-either input runs out, <code>tail.next = a.take().or(b.take())</code> attaches the rest of the other
+either input runs out, <code>tail.next = left.take().or(right.take())</code> attaches the rest of the other
 list in one step, with no further comparisons.</p>
 <p><code>dummy.next</code> is the merged list. The dummy node itself is freed when the function returns.</p>
 <p>The helpers <code>from_slice</code> and <code>to_vec</code> build lists from slices and read them back, so
 <code>main</code> and the tests can express lists as arrays. The tests cover three lists, an empty
 input and empty lists mixed with non-empty ones, and an odd number of lists, where the
 last list waits until the final round.</p>
+<h3 id="the-variant-that-swaps-instead-of-splitting"><a class="header" href="#the-variant-that-swaps-instead-of-splitting">The variant that swaps instead of splitting</a></h3>
+<p>The two mutable borrows can be avoided rather than legalised. Taking
+<code>lists[i + interval]</code> out of the vector with <code>take</code> leaves <code>None</code> behind at that index
+and hands the caller an owned list, so the merge that follows borrows only <code>lists[i]</code>,
+and a single borrow needs no help from <code>split_at_mut</code>.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs"><code>src/bin/merge_k_sorted_lists_swap.rs</code></a>. Run it with
+<code>cargo run --bin merge_k_sorted_lists_swap</code>.</em></p>
+<pre class="playground"><code class="language-rust">struct MergeKSorted { }
+
+#[derive(Default)]
+struct ListNode {
+    data: u32,
+    next: Option&lt;Box&lt;ListNode&gt;&gt;
+}
+impl ListNode {
+    fn new(data: u32) -&gt; Self { 
+        Self {
+            data,
+            next: None
+        }
+    }
+}
+
+type OptionalLink&lt;T&gt; = Option&lt;Box&lt;T&gt;&gt;;
+
+impl MergeKSorted {
+    pub fn merge_k_lists(mut lists: Vec&lt;OptionalLink&lt;ListNode&gt;&gt;) -&gt; OptionalLink&lt;ListNode&gt; {
+        if lists.is_empty() { return None; }
+
+        let (n, mut interval) = (lists.len(), 1);
+        while interval &lt; n {
+            let mut i = 0;
+            while i + interval &lt; n {
+                let mut right = lists[i + interval].take();
+                lists[i] = Self::merge_two(&amp;mut lists[i], &amp;mut right);
+                i += interval * 2;
+            }
+            interval *= 2;
+        }
+
+        lists[0].take()
+    }
+
+    fn merge_two(left: &amp;mut OptionalLink&lt;ListNode&gt;, right: &amp;mut OptionalLink&lt;ListNode&gt;) -&gt; OptionalLink&lt;ListNode&gt; {
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut tail = &amp;mut dummy;
+
+        while let (Some(l), Some(r)) = (&amp;left, &amp;right) {
+            if r.data &lt; l.data {
+                std::mem::swap(left, right);
+            }
+            let mut smallest = left.take().unwrap();
+            *left = smallest.next.take();
+            tail.next = Some(smallest);
+            tail = tail.next.as_mut().unwrap();
+        }
+
+        tail.next = left.take().or(right.take());
+        dummy.next
+    }
+}
+
+/// Build a list from a slice, front to back.
+fn from_slice(values: &amp;[u32]) -&gt; OptionalLink&lt;ListNode&gt; {
+    let mut head = None;
+    for &amp;value in values.iter().rev() {
+        let mut node = Box::new(ListNode::new(value));
+        node.next = head;
+        head = Some(node);
+    }
+    head
+}
+
+/// Collect a list's values into a vector.
+fn to_vec(mut list: &amp;OptionalLink&lt;ListNode&gt;) -&gt; Vec&lt;u32&gt; {
+    let mut values = Vec::new();
+    while let Some(node) = list {
+        values.push(node.data);
+        list = &amp;node.next;
+    }
+    values
+}
+
+fn main() {
+    let lists = vec![from_slice(&amp;[1, 4, 5]), from_slice(&amp;[1, 3, 4]), from_slice(&amp;[2, 6])];
+    let merged = MergeKSorted::merge_k_lists(lists);
+    println!("{:?}", to_vec(&amp;merged));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merges_three_lists() {
+        let lists = vec![from_slice(&amp;[1, 4, 5]), from_slice(&amp;[1, 3, 4]), from_slice(&amp;[2, 6])];
+        let merged = MergeKSorted::merge_k_lists(lists);
+        assert_eq!(to_vec(&amp;merged), vec![1, 1, 2, 3, 4, 4, 5, 6]);
+    }
+
+    #[test]
+    fn handles_empty_input_and_empty_lists() {
+        assert!(MergeKSorted::merge_k_lists(vec![]).is_none());
+        let merged = MergeKSorted::merge_k_lists(vec![None, from_slice(&amp;[2]), None]);
+        assert_eq!(to_vec(&amp;merged), vec![2]);
+    }
+
+    #[test]
+    fn handles_an_odd_number_of_lists() {
+        let lists: Vec&lt;_&gt; = (0..5).map(|i| from_slice(&amp;[i, i + 10])).collect();
+        let merged = MergeKSorted::merge_k_lists(lists);
+        assert_eq!(to_vec(&amp;merged), vec![0, 1, 2, 3, 4, 10, 11, 12, 13, 14]);
+    }
+}</code></pre>
+<p>The merge changes shape as well. Instead of choosing a reference to whichever list has
+the smaller head, it swaps the two lists whenever the right head is the smaller one, so
+after the swap <code>left</code> always names the list the next node comes from. Everything below
+the swap then has one path through it: detach the head of <code>left</code>, advance <code>left</code> past it,
+append the node to the tail.</p>
+<p>The comparison is <code>r.data &lt; l.data</code>, and a tie leaves the two lists as they are, so the
+node comes from <code>left</code>. This version is therefore stable where the divide-and-conquer
+version above is not.</p>
+<h3 id="the-variant-that-moves-the-lists-by-value"><a class="header" href="#the-variant-that-moves-the-lists-by-value">The variant that moves the lists by value</a></h3>
+<p>References are not needed at all if the merge owns what it merges. Taking both lists by
+value and returning the merged list makes the ownership of every node explicit in the
+signature, and the caller puts the result back into the vector itself.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs"><code>src/bin/merge_k_sorted_lists_simple.rs</code></a>. Run it with
+<code>cargo run --bin merge_k_sorted_lists_simple</code>.</em></p>
+<pre class="playground"><code class="language-rust">struct ListNode {
+    data: u32,
+    next: Link,
+}
+
+type Link = Option&lt;Box&lt;ListNode&gt;&gt;;
+
+fn merge_k_lists(mut lists: Vec&lt;Link&gt;) -&gt; Link {
+    if lists.is_empty() { return None; }
+
+    let (n, mut interval) = (lists.len(), 1);
+    while interval &lt; n {
+        let mut i = 0;
+        while i + interval &lt; n {
+            let left = lists[i].take();
+            let right = lists[i + interval].take();
+            lists[i] = merge_two(left, right);
+            i += interval * 2;
+        }
+        interval *= 2;
+    }
+
+    lists[0].take()
+}
+
+fn merge_two(mut left: Link, mut right: Link) -&gt; Link {
+    let mut merged = None;
+    let mut tail = &amp;mut merged;
+
+    while let (Some(l), Some(r)) = (&amp;left, &amp;right) {
+        if r.data &lt; l.data {
+            std::mem::swap(&amp;mut left, &amp;mut right);
+        }
+        *tail = left;                              // hang left list on the tail
+        tail = &amp;mut tail.as_mut().unwrap().next;   // step past its first node
+        left = tail.take();                        // cut the rest off again
+    }
+
+    *tail = left.or(right);
+    merged
+}
+
+fn from_slice(values: &amp;[u32]) -&gt; Link {
+    let mut head = None;
+    for &amp;data in values.iter().rev() {
+        head = Some(Box::new(ListNode { data, next: head }));
+    }
+    head
+}
+
+fn to_vec(mut list: &amp;Link) -&gt; Vec&lt;u32&gt; {
+    let mut values = Vec::new();
+    while let Some(node) = list {
+        values.push(node.data);
+        list = &amp;node.next;
+    }
+    values
+}
+
+fn main() {
+    let lists = vec![from_slice(&amp;[1, 4, 5]), from_slice(&amp;[1, 3, 4]), from_slice(&amp;[2, 6])];
+    println!("{:?}", to_vec(&amp;merge_k_lists(lists)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merges_three_lists() {
+        let lists = vec![from_slice(&amp;[1, 4, 5]), from_slice(&amp;[1, 3, 4]), from_slice(&amp;[2, 6])];
+        assert_eq!(to_vec(&amp;merge_k_lists(lists)), vec![1, 1, 2, 3, 4, 4, 5, 6]);
+    }
+
+    #[test]
+    fn handles_empty_input_and_empty_lists() {
+        assert!(merge_k_lists(vec![]).is_none());
+        let merged = merge_k_lists(vec![None, from_slice(&amp;[2]), None]);
+        assert_eq!(to_vec(&amp;merged), vec![2]);
+    }
+
+    #[test]
+    fn handles_an_odd_number_of_lists() {
+        let lists: Vec&lt;_&gt; = (0..5).map(|i| from_slice(&amp;[i, i + 10])).collect();
+        assert_eq!(to_vec(&amp;merge_k_lists(lists)), vec![0, 1, 2, 3, 4, 10, 11, 12, 13, 14]);
+    }
+}</code></pre>
+<p>The output is built without a dummy node. <code>tail</code> is a <code>&amp;mut Link</code>, a mutable reference to
+the empty <code>Option</code> that sits at the end of the merged list, and writing through it appends.
+At the start it points at <code>merged</code> itself, which is why the first node needs no special
+case.</p>
+<p>Three statements do the appending, and they are worth reading slowly. <code>*tail = left</code>
+hangs the whole of the left list on the tail rather than one node.
+<code>tail = &amp;mut tail.as_mut().unwrap().next</code> steps the tail reference past the node that has
+just been attached. <code>left = tail.take()</code> then cuts everything after that node off again
+and gives it back to <code>left</code>. The net effect is the same as moving one node, and no <code>Box</code>
+is allocated to hold a dummy.</p>
+<h3 id="the-variant-that-pairs-the-lists-in-a-queue"><a class="header" href="#the-variant-that-pairs-the-lists-in-a-queue">The variant that pairs the lists in a queue</a></h3>
+<p>Doubling an <code>interval</code> is bookkeeping in service of a simple idea: merge the lists two at
+a time until one is left. A queue expresses the idea directly. Two lists come off the
+front, their merge goes on the back, and the rounds appear on their own without being
+counted.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs"><code>src/bin/merge_k_sorted_lists_pairs.rs</code></a>. Run it with
+<code>cargo run --bin merge_k_sorted_lists_pairs</code>.</em></p>
+<pre class="playground"><code class="language-rust">use std::collections::VecDeque;
+
+struct ListNode {
+    data: u32,
+    next: Option&lt;Box&lt;ListNode&gt;&gt;,
+}
+
+type Link = Option&lt;Box&lt;ListNode&gt;&gt;;
+
+fn merge_k_lists(lists: Vec&lt;Link&gt;) -&gt; Link {
+    let mut queue: VecDeque&lt;Link&gt; = lists.into();
+    while queue.len() &gt; 1 {
+        let a = queue.pop_front().unwrap();
+        let b = queue.pop_front().unwrap();
+        queue.push_back(merge_two(a, b));
+    }
+    queue.pop_front().flatten()
+}
+
+fn merge_two(mut a: Link, mut b: Link) -&gt; Link {
+    let mut dummy = Box::new(ListNode { data: 0, next: None });
+    let mut tail = &amp;mut dummy;
+
+    while let (Some(x), Some(y)) = (&amp;a, &amp;b) {
+        let pick = if x.data &lt;= y.data { &amp;mut a } else { &amp;mut b };
+        let mut node = pick.take().unwrap();
+        *pick = node.next.take();
+        tail = tail.next.insert(node);
+    }
+    tail.next = a.or(b);
+    dummy.next
+}
+
+fn main() {
+    let mut lists = Vec::new();
+    for values in [vec![1, 4, 5], vec![1, 3, 4], vec![2, 6]] {
+        let mut head = None;
+        for data in values.into_iter().rev() {
+            head = Some(Box::new(ListNode { data, next: head }));
+        }
+        lists.push(head);
+    }
+
+    let mut cur = merge_k_lists(lists);
+    while let Some(node) = cur {
+        print!("{} ", node.data);
+        cur = node.next;
+    }
+    println!();
+}</code></pre>
+<p>Each pass over the queue halves the number of lists it holds, so a list takes part in
+<code>log k</code> merges and the total is <code>O(N log k)</code>, the same as the interval version. The cost
+is one <code>VecDeque</code> of <code>k</code> links, against the <code>O(1)</code> extra space of merging inside the input
+vector.</p>
+<p><code>tail.next.insert(node)</code> replaces the <code>tail.next = Some(node)</code> and
+<code>tail = tail.next.as_mut().unwrap()</code> pair used earlier. <code>Option::insert</code> stores the value
+and returns a mutable reference to it, which is exactly the two steps in one.
+<code>queue.pop_front().flatten()</code> turns the <code>Option&lt;Link&gt;</code> returned by the last pop into a
+<code>Link</code>, since a queue of one list and an empty queue must both answer <code>None</code>.</p>
+<h3 id="the-variant-that-keeps-the-heads-in-a-heap"><a class="header" href="#the-variant-that-keeps-the-heads-in-a-heap">The variant that keeps the heads in a heap</a></h3>
+<p>The complexity table above names a min-heap as the other standard solution, and it is
+worth writing out. Rather than merging lists against each other, keep the current head of
+every list in a heap and repeatedly move the smallest one to the output.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs"><code>src/bin/merge_k_sorted_lists_heap.rs</code></a>. Run it with
+<code>cargo run --bin merge_k_sorted_lists_heap</code>.</em></p>
+<pre class="playground"><code class="language-rust">use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+
+struct ListNode {
+    data: u32,
+    next: Option&lt;Box&lt;ListNode&gt;&gt;,
+}
+
+type Link = Option&lt;Box&lt;ListNode&gt;&gt;;
+
+fn merge_k_lists(mut lists: Vec&lt;Link&gt;) -&gt; Link {
+    let mut heap = BinaryHeap::new();
+    for (i, list) in lists.iter().enumerate() {
+        if let Some(node) = list {
+            heap.push(Reverse((node.data, i)));
+        }
+    }
+
+    let mut dummy = Box::new(ListNode { data: 0, next: None });
+    let mut tail = &amp;mut dummy;
+
+    while let Some(Reverse((_, i))) = heap.pop() {
+        let mut node = lists[i].take().unwrap();
+        lists[i] = node.next.take();
+        if let Some(next) = &amp;lists[i] {
+            heap.push(Reverse((next.data, i)));
+        }
+        tail = tail.next.insert(node);
+    }
+    dummy.next
+}
+
+fn main() {
+    let mut lists = Vec::new();
+    for values in [vec![1, 4, 5], vec![1, 3, 4], vec![2, 6]] {
+        let mut head = None;
+        for data in values.into_iter().rev() {
+            head = Some(Box::new(ListNode { data, next: head }));
+        }
+        lists.push(head);
+    }
+
+    let mut cur = merge_k_lists(lists);
+    while let Some(node) = cur {
+        print!("{} ", node.data);
+        cur = node.next;
+    }
+    println!();
+}</code></pre>
+<p><code>BinaryHeap</code> is a max-heap, so <code>Reverse</code> inverts every comparison and turns it into a
+min-heap. What the heap stores is a <code>(data, index)</code> pair rather than a node: the node
+itself stays in <code>lists[i]</code>, and only its value and the list it came from are needed to
+decide what to pop next. Storing nodes in the heap would mean moving them out of the
+lists and back, which is the fight with ownership this arrangement avoids entirely.</p>
+<p>Each pop names the list holding the smallest head. That node is taken out of <code>lists[i]</code>,
+the list is advanced past it, and the list’s new head, if there is one, goes back into the
+heap. The heap therefore holds at most <code>k</code> entries at any moment, one per non-empty list,
+and each of the <code>N</code> nodes is pushed and popped once, for <code>O(N log k)</code> time and <code>O(k)</code>
+space.</p>
+<p>Ties are broken by the second field of the pair, the list index, so equal values leave the
+lists in index order. The merge is stable.</p>
+<h3 id="the-variant-that-carries-emptiness-in-the-node"><a class="header" href="#the-variant-that-carries-emptiness-in-the-node">The variant that carries emptiness in the node</a></h3>
+<p><code>Option&lt;Box&lt;ListNode&gt;&gt;</code> makes emptiness a property of the link. An enum with an <code>Empty</code>
+variant makes it a property of the node, which is the shape a reader coming from a
+functional language expects, and the shape an interviewer sometimes asks for by name.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs"><code>src/bin/merge_k_sorted_lists_enum.rs</code></a>. Run it with
+<code>cargo run --bin merge_k_sorted_lists_enum</code>.</em></p>
+<pre class="playground"><code class="language-rust">use ListNode::{Empty, Node};
+
+type LinkTo&lt;T&gt; = Box&lt;T&gt;;
+
+enum ListNode {
+    Node { data: u32, next: LinkTo&lt;ListNode&gt; },
+    Empty,
+}
+
+impl ListNode {
+    fn take(&amp;mut self) -&gt; ListNode {
+        std::mem::replace(self, Empty)
+    }
+}
+
+struct MergeKSorted {}
+
+impl MergeKSorted {
+    pub fn merge_k_lists(mut lists: Vec&lt;ListNode&gt;) -&gt; ListNode {
+        if lists.is_empty() { return Empty; }
+
+        let (n, mut interval) = (lists.len(), 1);
+        while interval &lt; n {
+            let mut i = 0;
+            while i + interval &lt; n {
+                let (left, right) = lists.split_at_mut(i + interval);
+                left[i] = Self::merge_two(&amp;mut left[i], &amp;mut right[0]);
+                i += interval * 2;
+            }
+            interval *= 2;
+        }
+
+        lists[0].take()
+    }
+
+    fn merge_two(left: &amp;mut ListNode, right: &amp;mut ListNode) -&gt; ListNode {
+        let mut left = left.take();
+        let mut right = right.take();
+        let mut merged = Empty;
+        let mut tail = &amp;mut merged;
+
+        loop {
+            let smaller = match (&amp;left, &amp;right) {
+                (Empty, _) =&gt; { *tail = right; break; }
+                (_, Empty) =&gt; { *tail = left; break; }
+                (Node { data: l, .. }, Node { data: r, .. }) =&gt; {
+                    if l &lt;= r { &amp;mut left } else { &amp;mut right }
+                }
+            };
+
+            if let Node { data, next } = smaller.take() {
+                *smaller = *next;
+                *tail = Node { data, next: LinkTo::new(Empty) };
+                if let Node { next, .. } = tail {
+                    tail = next;
+                }
+            }
+        }
+
+        merged
+    }
+}
+
+fn main() {
+    let mut lists = Vec::new();
+    for values in [vec![1, 4, 5], vec![1, 3, 4], vec![2, 6]] {
+        let mut head = Empty;
+        for data in values.into_iter().rev() {
+            head = Node { data, next: LinkTo::new(head) };
+        }
+        lists.push(head);
+    }
+
+    let merged = MergeKSorted::merge_k_lists(lists);
+
+    let mut current = &amp;merged;
+    while let Node { data, next } = current {
+        print!("{data} ");
+        current = next;
+    }
+    println!();
+}</code></pre>
+<p><code>ListNode::take</code> is the enum’s own version of <code>Option::take</code>. <code>mem::replace(self, Empty)</code>
+moves the node out and leaves an empty one in its place, which is what makes it legal to
+take a node out of a list that is still borrowed.</p>
+<p>There is a cost to the change, and it is visible in <code>*tail = Node { data, next: LinkTo::new(Empty) }</code>. Every appended node allocates a box to hold the <code>Empty</code> that
+terminates the list, where <code>Option&lt;Box&lt;ListNode&gt;&gt;</code> stores the same information as a null
+pointer inside the box’s niche and allocates nothing. The enum form is one allocation per
+node more expensive than the form printed at the head of this chapter.</p>
+<p>The loop is a <code>loop</code> rather than a <code>while let</code>, because the two exhausted cases now have
+to be matched explicitly. <code>(Empty, _)</code> and <code>(_, Empty)</code> attach the remaining list to the
+tail and break; the third arm takes a mutable reference to whichever list has the smaller
+head and falls through to the move below it.</p>
+<h3 id="the-variant-that-merges-recursively"><a class="header" href="#the-variant-that-merges-recursively">The variant that merges recursively</a></h3>
+<p>The merge of two sorted lists has a two-line recursive definition: the smaller head,
+followed by the merge of what remains. Writing it that way removes the tail pointer and
+the dummy node together.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs"><code>src/bin/merge_k_sorted_list_easy.rs</code></a>. Run it with
+<code>cargo run --bin merge_k_sorted_list_easy</code>.</em></p>
+<pre class="playground"><code class="language-rust">pub type NodeLink = Box&lt;ListNode&gt;;
+
+#[derive(Debug, PartialEq, Eq, Default)]
+pub enum ListNode {
+    #[default]
+    Empty,
+    Node(i32, NodeLink),
+}
+
+impl From&lt;Vec&lt;i32&gt;&gt; for NodeLink {
+    fn from(vec: Vec&lt;i32&gt;) -&gt; Self {
+        vec.into_iter().rev().fold(NodeLink::default(), |acc, v| NodeLink::new(ListNode::Node(v, acc)))
+    }
+}
+
+impl From&lt;Vec&lt;i32&gt;&gt; for ListNode {
+    fn from(vec: Vec&lt;i32&gt;) -&gt; Self {
+        *NodeLink::from(vec)
+    }
+}
+
+impl ListNode {
+    pub fn merge_k_lists(mut lists: Vec&lt;NodeLink&gt;) -&gt; NodeLink {
+        if lists.is_empty() {
+            return NodeLink::default();
+        }
+        let mut interval = 1;
+        while interval &lt; lists.len() {
+            for i in (0..lists.len()).step_by(interval * 2) {
+                if i + interval &lt; lists.len() {
+                    let right = std::mem::take(&amp;mut lists[i + interval]);
+                    let left = std::mem::take(&amp;mut lists[i]);
+                    lists[i] = Self::merge(left, right);
+                }
+            }
+            interval *= 2;
+        }
+        lists.swap_remove(0)
+    }
+
+    fn merge(l1: NodeLink, l2: NodeLink) -&gt; NodeLink {
+        match (*l1, *l2) {
+            (ListNode::Empty, l) | (l, ListNode::Empty) =&gt; NodeLink::new(l),
+            (ListNode::Node(v1, n1), ListNode::Node(v2, n2)) =&gt; {
+                if v1 &lt;= v2 {
+                    NodeLink::new(ListNode::Node(v1, Self::merge(n1, NodeLink::new(ListNode::Node(v2, n2)))))
+                } else {
+                    NodeLink::new(ListNode::Node(v2, Self::merge(NodeLink::new(ListNode::Node(v1, n1)), n2)))
+                }
+            }
+        }
+    }
+}
+
+fn main() {
+    let lists: Vec&lt;NodeLink&gt; = vec![
+        vec![1, 4, 5].into(),
+        vec![1, 3, 4].into(),
+        vec![2, 6].into(),
+    ];
+
+    let merged = ListNode::merge_k_lists(lists);
+
+    println!("{:#?}", merged);
+}</code></pre>
+<p><code>From&lt;Vec&lt;i32&gt;&gt;</code> is what lets <code>main</code> write <code>vec![1, 4, 5].into()</code>. The fold walks the
+values backwards and hangs each one in front of the list built so far, starting from
+<code>NodeLink::default()</code>, which the <code>#[default]</code> attribute on <code>Empty</code> defines as the empty
+list.</p>
+<p><code>match (*l1, *l2)</code> dereferences both boxes, which moves the nodes out of them, so each arm
+owns the data it matched and can rebuild a list from it without cloning. The first arm
+uses an or-pattern: whichever side is empty, the other is the answer.</p>
+<p>The recursion costs a stack frame per node of the merged list, which is the limitation
+this version trades for its brevity. A merge of a few hundred thousand nodes overflows the
+stack, as chapters 14 and 38 describe for the recursive destructor. <code>v1 &lt;= v2</code> keeps the
+node from the first list ahead on ties, so this merge is stable.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <pre><code class="language-text">merge_two([1, 4, 5], [1, 3, 4])
 
-a head   b head   pick   output so far
-  1        1       b     [1]              1 &lt; 1 is false, so b is picked on ties
-  1        3       a     [1, 1]
-  4        3       b     [1, 1, 3]
-  4        4       b     [1, 1, 3, 4]
-  4        -             loop ends: b is empty
-                         tail.next = rest of a = [4, 5]
+left    right    taken   output so far
+  1        1      right   [1]              1 &lt; 1 is false, so right is taken on ties
+  1        3      left    [1, 1]
+  4        3      right   [1, 1, 3]
+  4        4      right   [1, 1, 3, 4]
+  4        -              loop ends: right is empty
+                          tail.next = rest of left = [4, 5]
 result: [1, 1, 3, 4, 4, 5]
 </code></pre>
 <p>For the three lists in <code>main</code>, the first round merges <code>[1, 4, 5]</code> with <code>[1, 3, 4]</code>, and the
@@ -358,8 +917,8 @@ second round merges the result with <code>[2, 6]</code>. The program prints:</p>
 <p>A min-heap of the <code>k</code> current heads is the other common solution. It also costs
 <code>O(N log k)</code>, and it needs <code>O(k)</code> extra space for the heap.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>Ties take the node from the second list.</strong> The comparison is <code>na.data &lt; nb.data</code>, so
-equal values come from <code>b</code> first. The merge is correct, but it is not stable: equal
+<p><strong>Ties take the node from the second list.</strong> The comparison is <code>l.data &lt; r.data</code>, so
+equal values come from <code>right</code> first. The merge is correct, but it is not stable: equal
 elements do not keep the order of their input lists. Using <code>&lt;=</code> would keep elements from
 the first list ahead on ties.</p>
 <p><strong>The dummy node allocates.</strong> <code>Box::new(ListNode::new(0))</code> allocates for every merge,
@@ -380,8 +939,15 @@ would merge any ordered type.</p>
 <code>O(N log k)</code> and relinks nodes without copying.</li>
 <li><code>split_at_mut</code> provides two mutable borrows of different vector elements at once.</li>
 <li>A dummy head and a <code>tail</code> reference remove the special case for the first node, and
-<code>a.take().or(b.take())</code> attaches the remainder in one step.</li>
-<li>The merge is not stable on ties, and each merge allocates one dummy node.</li>
+<code>left.take().or(right.take())</code> attaches the remainder in one step.</li>
+<li>The merge is not stable on ties, and each merge allocates one dummy node. The swap,
+by-value, queue, heap and recursive versions are all stable, because each of them
+takes the node from the earlier list when two values are equal.</li>
+<li>The queue and the heap reach the same <code>O(N log k)</code> by different routes: the queue
+halves the number of lists on every pass, and the heap holds one entry per list and
+pops <code>N</code> times.</li>
+<li>An enum with an <code>Empty</code> variant reads well and allocates one box per node more than
+<code>Option&lt;Box&lt;ListNode&gt;&gt;</code>, which keeps its terminator in the pointer’s niche.</li>
 </ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
@@ -399,7 +965,7 @@ would merge any ordered type.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="63-three-sum.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="65-kruskal.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -413,7 +979,7 @@ would merge any ordered type.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="63-three-sum.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="65-kruskal.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -426,22 +992,6 @@ would merge any ordered type.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

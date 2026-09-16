@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-e6f2ad7b.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-0a8b4ba0.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -358,6 +358,219 @@ costs a context switch that accomplishes nothing.</p>
 <p><code>Arc</code> is what lets two threads own the same queue. The clone is passed to the
 thread and the original stays in <code>main</code>; the queue is freed when the last handle
 is dropped.</p>
+<h3 id="the-variant-that-returns-an-error-instead-of-panicking"><a class="header" href="#the-variant-that-returns-an-error-instead-of-panicking">The variant that returns an error instead of panicking</a></h3>
+<p>Two of the limitations above are the same limitation seen from different sides. A thread
+that panics while holding the lock poisons the mutex, every later <code>lock()</code> returns <code>Err</code>,
+and the <code>unwrap</code> turns that into a second panic that takes down a thread which did nothing
+wrong. A queue meant to be used by other people has to hand the failure back to its caller
+instead. The version below does that, and it carries the tests that prove it.</p>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs"><code>src/bin/bounded_buffer_with_error_handling.rs</code></a>. Run it with
+<code>cargo run --bin bounded_buffer_with_error_handling</code>, and test it with
+<code>cargo test --bin bounded_buffer_with_error_handling</code>.</em></p>
+<pre class="playground"><code class="language-rust">use std::collections::VecDeque;
+use std::fmt;
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
+use std::thread;
+use std::time::Duration;
+
+#[derive(Debug)]
+pub struct QueuePoisonedError;
+
+impl fmt::Display for QueuePoisonedError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(f, "The queue's internal mutex was poisoned by a panicking thread")
+    }
+}
+
+impl std::error::Error for QueuePoisonedError {}
+
+trait PoisonMap&lt;T&gt; {
+    fn map_poison(self) -&gt; Result&lt;T, QueuePoisonedError&gt;;
+}
+
+impl&lt;T&gt; PoisonMap&lt;T&gt; for Result&lt;T, PoisonError&lt;T&gt;&gt; {
+    fn map_poison(self) -&gt; Result&lt;T, QueuePoisonedError&gt; {
+        self.map_err(|_| QueuePoisonedError)
+    }
+}
+
+struct BoundedQueue&lt;T&gt; {
+    inner: Mutex&lt;VecDeque&lt;T&gt;&gt;,
+    capacity: usize,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+        Self {
+            inner: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+
+    fn push(&amp;self, item: T) -&gt; Result&lt;(), QueuePoisonedError&gt; {
+        let mut guard = self.inner.lock().map_poison()?;
+        while guard.len() == self.capacity {
+            guard = self.not_full.wait(guard).map_poison()?;
+        }
+        guard.push_back(item);
+        drop(guard);
+        self.not_empty.notify_one();
+        Ok(())
+    }
+
+    fn pop(&amp;self) -&gt; Result&lt;T, QueuePoisonedError&gt; {
+        let mut guard = self.inner.lock().map_poison()?;
+        while guard.is_empty() {
+            guard = self.not_empty.wait(guard).map_poison()?;
+        }
+        let item = guard.pop_front().unwrap();
+        drop(guard);
+        self.not_full.notify_one();
+        Ok(item)
+    }
+}
+
+fn main() {
+    let queue = Arc::new(BoundedQueue::new(3));
+    let mut handles = vec![];
+
+    // ---- Producers ----
+    for p in 0..2 {
+        let q = Arc::clone(&amp;queue);
+        handles.push(thread::spawn(move || {
+            for i in 0..5 {
+                let item = format!("p{}:item{}", p, i);
+                println!("  [producer {}] pushing {}", p, item);
+                
+                // Uses match, avoids naming an error variable, uses dbg!
+                match q.push(item) {
+                    Ok(_) =&gt; {}
+                    Err(err) =&gt; {
+                        dbg!(err);
+                        break;
+                    }
+                }
+                thread::sleep(Duration::from_millis(30));
+            }
+        }));
+    }
+
+    // ---- Consumers ----
+    for c in 0..2 {
+        let q = Arc::clone(&amp;queue);
+        handles.push(thread::spawn(move || {
+            for _ in 0..5 {
+                // Uses match, avoids naming an error variable, uses dbg!
+                match q.pop() {
+                    Ok(item) =&gt; {
+                        println!("[consumer {}] got {}", c, item);
+                    }
+                    Err(err) =&gt; {
+                        dbg!(err);
+                        break;
+                    }
+                }
+                thread::sleep(Duration::from_millis(60));
+            }
+        }));
+    }
+
+    // Join everything.
+    for h in handles {
+        match h.join() {
+            Ok(_) =&gt; {}
+            Err(err) =&gt; {
+                dbg!(err);
+            }
+        }
+    }
+    println!("done");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 1. Mark the test as one that MUST panic to pass
+    // 2. Optional: use 'expected' to verify it panics with the correct error message
+    #[test]
+    #[should_panic(expected = "capacity must be &gt; 0")]
+    fn test_zero_capacity_panics() {
+        // This line invokes the assert!(capacity &gt; 0) inside new()
+        let _queue: BoundedQueue&lt;i32&gt; = BoundedQueue::new(0);
+    }
+
+    #[test]
+    fn test_queue_poisoning_on_thread_panic() {
+        // 1. Create a queue shared via Arc so multiple threads can touch it
+        let queue = Arc::new(BoundedQueue::new(5));
+        let queue_clone = Arc::clone(&amp;queue);
+
+        // 2. Spawn a thread designed to crash while holding the internal lock
+        let handle = thread::spawn(move || {
+            // Manually lock the inner mutex so this thread owns the lock guard
+            let _guard = queue_clone.inner.lock().unwrap();
+            
+            // Trigger a serious runtime panic while holding the lock guard!
+            panic!("Intentional worker thread crash!");
+        });
+
+        // 3. Wait for the thread to die. It will return an Err because it panicked.
+        let join_result = handle.join();
+        assert!(join_result.is_err(), "The thread was supposed to panic");
+
+        // 4. Now try to interact with the queue. 
+        // Because the thread panicked while holding the guard, the Mutex is poisoned.
+        // Our push and pop methods should cleanly catch this and return our custom error.
+        match queue.push("test_item") {
+            Err(QueuePoisonedError) =&gt; {
+                // Success! The queue correctly caught the poisoned state 
+                // instead of panicking the main thread.
+            }
+            Ok(_) =&gt; {
+                panic!("Expected QueuePoisonedError, but push succeeded!");
+            }
+        }
+
+        // Verify pop behaves the same way
+        match queue.pop() {
+            Err(QueuePoisonedError) =&gt; {}
+            Ok(_) =&gt; panic!("Expected QueuePoisonedError, but pop succeeded!"),
+        }
+    }
+}</code></pre>
+<p><code>QueuePoisonedError</code> is a unit struct with a <code>Display</code> implementation and an empty
+<code>std::error::Error</code> implementation, which is the minimum a type needs to travel inside a
+<code>Box&lt;dyn Error&gt;</code> or to be printed by a caller that knows nothing about the queue. It
+carries no data, because there is nothing useful to say beyond the fact that the queue can
+no longer be trusted.</p>
+<p>The conversion from the standard library’s error is done by an extension trait rather than
+by a free function. Both <code>Mutex::lock</code> and <code>Condvar::wait</code> fail with a
+<code>PoisonError&lt;T&gt;</code>, but <code>T</code> differs between them: <code>lock</code> gives back a <code>MutexGuard</code>, and
+<code>wait</code> gives back the guard it was handed. Writing <code>map_poison</code> as a method on
+<code>Result&lt;T, PoisonError&lt;T&gt;&gt;</code> covers both call sites with one implementation, and leaves
+<code>?</code> usable at the end of each line.</p>
+<p>Discarding the <code>PoisonError</code> is a decision worth naming. It holds the guard, so a caller
+that wanted to could reach through it with <code>into_inner</code> and use the data the panicking
+thread left behind. Dropping it says that this queue treats poisoning as permanent: the
+contents may be half-updated, and no caller should act on them.</p>
+<p>The panicking thread no longer costs the whole program. <code>push</code> and <code>pop</code> return
+<code>Result</code>, the producers and consumers match on it, and a poisoned queue ends each of
+their loops with a <code>break</code> rather than an abort. What the variant does not fix is the
+third limitation: there is still no way to close the queue, so a consumer that outlives
+the producers still waits forever. Chapter 46 adds that.</p>
+<p>The tests cover the two failures the original had no way to express.
+<code>#[should_panic(expected = "capacity must be &gt; 0")]</code> pins the assertion in <code>new</code>, and the
+expected string means the test fails if the code panics for some other reason. The second
+test poisons the queue on purpose: a thread locks the inner mutex, panics while holding
+the guard, and after <code>join</code> reports the panic, both <code>push</code> and <code>pop</code> are checked for the
+error. Matching <code>Err(QueuePoisonedError)</code> as a pattern works because the error is a unit
+struct, so its name is both the type and its only value.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>With <code>BoundedQueue::new(1)</code> and one producer and one consumer, the state after
 each operation is:</p>
@@ -418,6 +631,10 @@ prove the condition is true.</li>
 it; <code>notify_one</code> follows each single state change.</li>
 <li>The queue has no shutdown path, and a consumer that outlives the producers
 waits indefinitely.</li>
+<li>Returning a <code>Result</code> from <code>push</code> and <code>pop</code> keeps a panicking producer from taking
+down the threads that were using the queue correctly.</li>
+<li>An extension trait on <code>Result&lt;T, PoisonError&lt;T&gt;&gt;</code> converts both the <code>lock</code> and the
+<code>wait</code> failure with one implementation.</li>
 </ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
@@ -431,7 +648,7 @@ waits indefinitely.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="29-command-line-arguments.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="66-file-pagination.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -445,7 +662,7 @@ waits indefinitely.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="29-command-line-arguments.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="66-file-pagination.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -462,22 +679,6 @@ waits indefinitely.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

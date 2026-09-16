@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>28. File Operations and Errors - Coding Interviews for Cracked Rustaceans</title>
+        <title>66. Paginating a File with a Byte Cursor - Coding Interviews for Cracked Rustaceans</title>
 
 
         <!-- Custom HTML head -->
@@ -175,141 +175,212 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="file-operations"><a class="header" href="#file-operations">28. File Operations and Errors</a></h1>
-<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs"><code>src/bin/copy_rename_delete_file.rs</code></a> and
-<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_error_handling.rs"><code>src/bin/file_error_handling.rs</code></a>. Run them with
-<code>cargo run --bin copy_rename_delete_file</code> and
-<code>cargo run --bin file_error_handling</code>.</em></p>
+                        <h1 id="file-pagination"><a class="header" href="#file-pagination">66. Paginating a File with a Byte Cursor</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs"><code>src/bin/file_pagination.rs</code></a>. Run it from the
+<code>rust-interview-lab</code> directory with <code>cargo run --bin file_pagination</code>, so that the relative
+path in <code>main</code> resolves.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Two programs cover the mutating file operations and the other half of the
-interface: copy, rename and delete a file, and decide what to report when a read
-fails.</p>
+<p>A file holds more records, one per line, than a caller can receive at once. Serve it a page
+at a time: each request asks for at most <code>page_size</code> lines and gets back those lines
+together with a cursor, and passing that cursor to the next request resumes exactly where
+the previous page stopped. The last page must say that it is the last, and no request may
+read the whole file.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p><code>fs::copy</code> reads one file and writes another, returning the number of bytes
-copied. <code>fs::rename</code> changes a name, and on one filesystem it is an atomic
-replacement: the target either has the old contents or the new ones, never a
-mixture. <code>fs::remove_file</code> removes a name for a file, not a directory.</p>
-<p>Errors are values. <code>io::Error</code> carries an <code>ErrorKind</code>, which is the part a caller
-can branch on without examining the message text. <code>ErrorKind::NotFound</code> is the
-common case for a path that does not exist, and <code>Err(e) if e.kind() == io::ErrorKind::NotFound</code> matches it before the general error arm. The guard is
-the mechanism: the arm is only selected when its condition holds, so the ordering
-of the arms is explicit rather than incidental.</p>
+<p>The obvious cursor is a line number, and it is the wrong one. Resuming at line <code>N</code> means
+reading and discarding <code>N</code> lines, so serving the last page of a million-line file costs a
+million lines of work, and serving the whole file page by page costs <code>O(n²)</code>. A byte offset
+costs one <code>lseek</code> regardless of how far into the file it points, which makes every page
+cost the same.</p>
+<p>That choice is what keeps the reader stateless. Nothing is remembered between calls: the
+file is opened, the offset is seeked to, the page is read, and the handle is dropped. The
+cursor is the entire session, which is what an HTTP API needs when consecutive requests may
+land on different processes.</p>
+<p>Two details decide whether the cursor is correct. <code>BufRead::read_line</code> returns the number
+of bytes it consumed, and that count includes the line terminator, so adding it to the
+offset gives the position of the next line rather than the position of its newline.
+<code>trim_end</code> then removes the terminator from the string that is handed back, and does not
+touch the count. Conflating the two, by advancing the offset with the trimmed length, moves
+the cursor one byte short of each line and repeats a newline on every page boundary.</p>
+<p>Reporting the last page needs a look at what comes next without consuming it.
+<code>BufRead::fill_buf</code> returns the reader’s buffer, filling it from the file if it is empty,
+and an empty slice means the file is exhausted. Checking it after the loop distinguishes a
+final page from a page that merely happens to be full, so the caller stops at the right
+moment instead of making one more request that returns nothing.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p><code>copy_rename_delete_file.rs</code> performs the three operations in sequence:</p>
-<pre class="playground"><code class="language-rust">use std::fs;
-use std::io;
+<pre class="playground"><code class="language-rust">use std::fs::File;
+use std::io::{self, BufRead, BufReader, Seek, SeekFrom};
 
-fn main() -&gt; io::Result&lt;()&gt; {
-    fs::write("a.txt", "hello")?;
-
-    fs::copy("a.txt", "b.txt")?;
-    fs::rename("b.txt", "c.txt")?;
-    fs::remove_file("a.txt")?;
-
-    println!("Done");
-    Ok(())
-}</code></pre>
-<p><code>file_error_handling.rs</code> turns a failed read into a message that depends on the
-kind of failure:</p>
-<pre class="playground"><code class="language-rust">use std::fs;
-use std::io;
-
-fn read_file(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
-    fs::read_to_string(path)
+struct Page {
+    jobs: Vec&lt;String&gt;,
+    next_cursor: Option&lt;u64&gt; // Byte offset where the next page starts
 }
 
-fn main() {
-    match read_file("missing.txt") {
-        Ok(text) =&gt; println!("{}", text),
-        Err(e) if e.kind() == io::ErrorKind::NotFound =&gt; {
-            eprintln!("File not found");
+fn read_page(path: &amp;str, cursor: u64, page_size: usize) -&gt; io::Result&lt;Page&gt; {
+    let mut file = File::open(path)?;
+    file.seek(SeekFrom::Start(cursor))?;
+    let mut reader = BufReader::new(file);
+
+    // Optimization which preserves as large as the max mage size
+    let mut jobs: Vec&lt;String&gt; = Vec::with_capacity(page_size);
+    let mut offset = cursor;
+    let mut line = String::new();
+    
+    while jobs.len() &lt; page_size {
+        // Clear the previously read line
+        line.clear();
+
+        match reader.read_line(&amp;mut line)? {
+            0 =&gt; break, 
+            bytes_read =&gt; { 
+                offset += bytes_read as u64; 
+                jobs.push(line.trim_end().to_string()); 
+            }, 
         }
-        Err(e) =&gt; eprintln!("Error: {}", e),
     }
+
+    let at_end  = reader.fill_buf()?.is_empty();
+    let next_cursor = if at_end  { None } else {Some(offset)};
+
+    Ok(Page { jobs, next_cursor})
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let mut cursor = 0;
+
+    loop {
+        let page = read_page("src/bin/large_file.txt", cursor, 3)?;
+
+        println!("--- page ---");
+        for job in &amp;page.jobs {
+            println!("{job}");
+        }
+
+        match page.next_cursor {
+            Some(next) =&gt; cursor = next,
+            None =&gt; break,
+        }
+    }
+
+    Ok(())
 }</code></pre>
-<p>Each call in the first program is a fallible operation, and <code>?</code> returns early on
-the first failure. That is the correct default for a sequence in which each step
-depends on the previous one: copying before the file exists has no meaning.</p>
-<p>In the second program the error is matched rather than propagated, because <code>main</code>
-returns <code>()</code>. A <code>main</code> that returns <code>Result</code> instead would let <code>?</code> do the work,
-at the cost of printing the error through the runtime’s <code>Debug</code> implementation
-rather than the message chosen here. The <code>eprintln!</code> writes to standard error,
-which keeps diagnostics out of a pipeline that reads standard output.</p>
+<p><code>Page</code> is the return type rather than a tuple, so neither field can be read as the other.
+<code>next_cursor</code> is an <code>Option&lt;u64&gt;</code>, and <code>None</code> is the end of the file. An <code>Option</code> rather
+than a sentinel offset means the caller cannot accidentally continue past the end, because
+there is no value to pass.</p>
+<p><code>read_page</code> seeks before it wraps the file. The order matters: <code>File</code> implements <code>Seek</code>,
+and <code>BufReader</code> starts with an empty buffer, so seeking first and buffering second means
+the reader’s first fill begins at the cursor. Seeking through the <code>BufReader</code> afterwards
+would also work, and it discards the buffer to do so.</p>
+<p><code>Vec::with_capacity(page_size)</code> sizes the page once, since the exact upper bound is known
+before the loop starts. <code>line.clear()</code> at the top of each iteration is required rather than
+tidy: <code>read_line</code> appends to the string it is given, so a string reused without clearing
+accumulates the whole page into its first entry.</p>
+<p>The <code>match</code> on the byte count separates the two outcomes. Zero means end of file, which
+ends the loop early and leaves the page short. Any other count is both the evidence that a
+line arrived and the amount by which the offset moves, so the same value does both jobs.</p>
+<p><code>reader.fill_buf()?.is_empty()</code> is the end-of-file test, and it is a peek rather than a
+read: the bytes stay in the reader’s buffer, which is then dropped along with the reader.
+The cost is at most one extra read of the underlying file per page.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p><code>copy_rename_delete_file.rs</code> from an empty directory:</p>
-<pre><code class="language-text">statement                   files afterwards
-fs::write("a.txt", ...)     a.txt
-fs::copy("a.txt","b.txt")   a.txt  b.txt
-fs::rename("b.txt","c.txt") a.txt  c.txt
-fs::remove_file("a.txt")    c.txt
-println!("Done")            prints Done
+<p>The sample file holds thirteen lines in fifty-eight bytes, and <code>main</code> asks for three lines
+at a time. The cursor after each page is the offset of the line that has not been read yet:</p>
+<pre><code class="language-text">page   lines                                    bytes consumed   next_cursor
+1      "First Line", "Second Line", "Thrid Line"   12 + 12 + 11        35
+2      "4", "5", "6"                                2 + 2 + 2          41
+3      "7", "8", "9"                                2 + 2 + 2          47
+4      "10", "11", "12"                             3 + 3 + 3          56
+5      "13"                                             2             None
 </code></pre>
-<p><code>file_error_handling.rs</code> with no <code>missing.txt</code>:</p>
-<pre><code class="language-text">read_file("missing.txt")    Err(kind = NotFound)
-first arm                   does not match Ok
-guarded arm                 matches, prints "File not found" to stderr
-main                        returns ()
+<p>The first line is eleven characters and twelve bytes, because the trailing newline is
+counted in the offset and trimmed from the string. The fifth page stops after one line:
+<code>read_line</code> returns zero, the loop breaks early, and <code>fill_buf</code> then confirms the file is
+exhausted, so the cursor is <code>None</code> and the caller’s loop ends. Running the program prints
+the five pages:</p>
+<pre><code class="language-text">--- page ---
+First Line
+Second Line
+Thrid Line
+--- page ---
+4
+5
+6
+--- page ---
+7
+8
+9
+--- page ---
+10
+11
+12
+--- page ---
+13
 </code></pre>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Operation</th><th>Cost</th><th>Condition</th></tr>
+<tr><th>Resource</th><th>Cost</th><th>Condition</th></tr>
 </thead>
 <tbody>
-<tr><td><code>fs::copy</code></td><td><code>O(n)</code> time and one extra file’s worth of writes</td><td><code>n</code> bytes copied; the kernel may choose the buffer size</td></tr>
-<tr><td><code>fs::rename</code></td><td><code>O(1)</code> time</td><td>source and target are on one filesystem</td></tr>
-<tr><td><code>fs::remove_file</code></td><td><code>O(1)</code> time</td><td>the name is unlinked; the data is freed when the last handle closes</td></tr>
-<tr><td><code>ErrorKind</code> match</td><td><code>O(1)</code> time</td><td>the kind is a field of the error</td></tr>
+<tr><td>One page</td><td><code>O(b)</code></td><td><code>b</code> bytes in the page; the seek is <code>O(1)</code> regardless of the offset</td></tr>
+<tr><td>The whole file, page by page</td><td><code>O(n)</code></td><td>each byte is read once, which a line-number cursor would not achieve</td></tr>
+<tr><td>Space per call</td><td>8 KiB buffer, plus the page</td><td><code>BufReader</code>’s default capacity, allocated and dropped per call</td></tr>
+<tr><td>Syscalls per page</td><td>one <code>open</code>, one <code>lseek</code>, and <code>ceil(b / 8192) + 1</code> reads</td><td>the final read is the <code>fill_buf</code> peek</td></tr>
 </tbody>
 </table>
 </div>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong><code>rename</code> is not portable across filesystems.</strong> When the source and target are
-on different mounts, the operation fails rather than copying, and the error kind
-is platform specific. Moving between filesystems needs a copy followed by a
-remove, which is not atomic.</p>
-<p><strong><code>copy</code> does not preserve everything.</strong> It writes the file contents and copies
-the permission bits, but it does not preserve ownership, timestamps, or extended
-attributes. A tool that needs those has to set them explicitly.</p>
-<p><strong><code>remove_file</code> refuses a directory.</strong> A directory needs <code>remove_dir</code>, which
-itself requires the directory to be empty. A recursive delete has to walk the
-tree and remove children before parents.</p>
-<p><strong>A failure in the middle leaves the earlier steps applied.</strong> The first program
-returns as soon as a call fails, so a failure at <code>rename</code> leaves <code>a.txt</code> and
-<code>b.txt</code> in place. Nothing here rolls back, and a tool that must leave the
-directory unchanged needs a temporary directory and a final rename.</p>
-<p><strong>The error message in the last arm is the library’s.</strong> <code>eprintln!("Error: {}", e)</code>
-prints <code>Display</code> for <code>io::Error</code>, which includes the operating system message but
-not the path. Adding the path is the caller’s job, because the error does not
-carry it.</p>
+<p><strong>Every page opens the file and allocates a new buffer.</strong> <code>File::open</code> and an 8 KiB
+<code>BufReader</code> are paid on each call, and the buffer is discarded after serving a few hundred
+bytes. A server handling many small pages would keep a pool of open handles, or accept a
+<code>&amp;mut BufReader</code> from its caller.</p>
+<p><strong>The file may change between pages.</strong> Nothing pins the file’s contents, so an offset
+recorded for one version of the file can land in the middle of a line of another, and the
+first record of the following page is then a fragment. Cursors in a real API carry
+something that detects this, such as a generation number or the file’s modification time,
+and reject a cursor that no longer applies.</p>
+<p><strong>A line has no length limit.</strong> <code>read_line</code> grows the string until it meets a newline, so a
+file with no newlines allocates its whole length into one <code>String</code>, whatever <code>page_size</code>
+says. <code>BufRead::take</code> with a cap, or <code>read_until</code> on a bounded buffer, puts a ceiling on it.</p>
+<p><strong><code>trim_end</code> removes more than the terminator.</strong> It strips every trailing whitespace
+character, so records ending in a space or a tab come back altered. <code>trim_end_matches('\n')</code>
+followed by the same for <code>'\r'</code> trims exactly the terminator and nothing else.</p>
+<p><strong>Invalid UTF-8 ends the page with an error.</strong> <code>read_line</code> requires valid UTF-8 and returns
+<code>InvalidData</code> otherwise, which <code>?</code> propagates, discarding the lines already collected. A
+reader over arbitrary bytes uses <code>read_until(b'\n', &amp;mut Vec&lt;u8&gt;)</code> and leaves the decoding
+to the caller.</p>
+<p><strong>The path is hard-coded and relative.</strong> <code>main</code> names <code>src/bin/large_file.txt</code>, so the
+program only works when run from the <code>rust-interview-lab</code> directory. Chapter 29 shows the
+argument handling that would replace it.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li><code>copy</code>, <code>rename</code> and <code>remove_file</code> are the mutating operations, and <code>rename</code> is
-the atomic replacement primitive within one filesystem.</li>
-<li>Errors are values; <code>ErrorKind</code> is the part a program can branch on, and a
-match guard is how the branch is written.</li>
-<li><code>?</code> is the right default for a sequence of dependent steps, and an explicit
-match is the right form when the program chooses the message.</li>
-<li>Diagnostics go to standard error, which keeps standard output usable as data.</li>
+<li>A byte offset is the right cursor for a file, because seeking to it costs the same
+wherever it points, while a line number makes the last page the most expensive one.</li>
+<li>The offset advances by the count <code>read_line</code> returns, which includes the terminator that
+<code>trim_end</code> removes from the string.</li>
+<li><code>fill_buf</code> peeks at what follows the page, which is what lets the last page be reported
+as the last one instead of being discovered by an empty request.</li>
+<li>The reader keeps no state between calls, so the cursor alone is enough to resume, and
+nothing prevents the file from changing underneath it.</li>
 </ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/fs/fn.copy.html"><code>fs::copy</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/fs/fn.rename.html"><code>fs::rename</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/fs/fn.remove_file.html"><code>fs::remove_file</code></a>.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/io/enum.ErrorKind.html"><code>io::ErrorKind</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/io/trait.BufRead.html#method.read_line"><code>BufRead::read_line</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/io/trait.BufRead.html#tymethod.fill_buf"><code>BufRead::fill_buf</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/io/trait.Seek.html#tymethod.seek"><code>Seek::seek</code></a>
+and <a href="https://doc.rust-lang.org/std/io/enum.SeekFrom.html"><code>SeekFrom</code></a>.</li>
+<li>Chapter 26, on reading and writing files, and chapter 24, on what a system call costs.</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="27-paths-and-directories.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="29-command-line-arguments.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="29-command-line-arguments.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="30-bounded-buffer.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -319,11 +390,11 @@ match is the right form when the program chooses the message.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="27-paths-and-directories.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="29-command-line-arguments.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="29-command-line-arguments.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="30-bounded-buffer.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
