@@ -52,6 +52,7 @@
 - [27. Paths and Directory Traversal](27-paths-and-directories.md)
 - [28. File Operations and Errors](28-file-operations.md)
 - [29. Command-Line Arguments](29-command-line-arguments.md)
+- [66. Paginating a File with a Byte Cursor](66-file-pagination.md)
 
 # Part VIII: Coordination and Parallelism
 
@@ -118,6 +119,7 @@
 - [60. Graph Traversal: BFS and DFS](60-graph-traversal.md)
 - [61. Dijkstra's Shortest Paths](61-dijkstra.md)
 - [62. Merge K Sorted Lists](62-merge-k-sorted-lists.md)
+- [65. Kruskal's Minimum Spanning Tree](65-kruskal.md)
 
 # Part XIX: Two Pointers, Revisited
 
