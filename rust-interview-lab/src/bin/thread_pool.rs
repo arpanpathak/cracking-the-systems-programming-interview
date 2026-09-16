@@ -41,7 +41,7 @@ impl ThreadPool {
 
 fn main() {
     let pool = ThreadPool::new(4);
-    for i in 0..100 {
+    for i in 0..10_000 {
         pool.execute(Box::new(move || println!("task {i}")));
     }
 
