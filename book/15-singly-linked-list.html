@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -218,8 +218,94 @@ then:    self = *next = [1, 2]
 returns: Some(0)
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 15.1</span> The complete program, with its tests. <code>src/bin/singly_linked_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust">// Singly linked list using an algebraic data type.
+//
+//    List&lt;T&gt; = Empty
+//            | Node { value: T, next: Link&lt;T&gt; }
+//
+// `Empty` is the end of the list.
 
+type Link&lt;T&gt; = Box&lt;List&lt;T&gt;&gt;;
+
+pub enum List&lt;T&gt; {
+    Empty,
+    Node { value: T, next: Link&lt;T&gt; },
+}
+
+impl&lt;T&gt; List&lt;T&gt; {
+    pub fn new() -&gt; Self {
+        List::Empty
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        matches!(self, List::Empty)
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        match self {
+            List::Empty =&gt; 0,
+            List::Node { next, .. } =&gt; 1 + next.len(),
+        }
+    }
+
+    /// O(1)
+    pub fn push_front(&amp;mut self, value: T) {
+        let old = std::mem::replace(self, List::Empty);
+        *self = List::Node {
+            value,
+            next: Link::new(old),
+        };
+    }
+
+    /// O(1)
+    pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        match std::mem::replace(self, List::Empty) {
+            List::Empty =&gt; None,
+            List::Node { value, next } =&gt; {
+                *self = *next;
+                Some(value)
+            }
+        }
+    }
+
+}
+
+fn main() {
+    let mut list = List::new();
+    list.push_front(2);
+    list.push_front(1);
+    list.push_front(0);
+
+    assert_eq!(list.len(), 3);
+    assert_eq!(list.pop_front(), Some(0));
+    assert_eq!(list.pop_front(), Some(1));
+    assert_eq!(list.pop_front(), Some(2));
+    println!("ok");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_pop_works() {
+        let mut list = List::new();
+        list.push_front(1);
+        list.push_front(2);
+        assert_eq!(list.pop_front(), Some(2));
+        assert_eq!(list.pop_front(), Some(1));
+        assert_eq!(list.pop_front(), None);
+    }
+
+    #[test]
+    fn len_works() {
+        let mut list = List::new();
+        assert_eq!(list.len(), 0);
+        list.push_front(1);
+        list.push_front(2);
+        assert_eq!(list.len(), 2);
+    }
+}</code></pre>
 <p><code>push_front</code> moves the old list into a new <code>Box</code>. The old value comes from
 <code>std::mem::replace(self, List::Empty)</code>, which leaves <code>self</code> in a valid state that the
 following assignment overwrites. There is no moment at which <code>self</code> is uninitialised,
@@ -278,18 +364,6 @@ a million nodes, the operation the API advertises is cheap and the work the prog
 when the list is released is <code>O(n)</code>. The two have to be considered together.</p>
 <p><strong>There is no <code>Clone</code>, no <code>Debug</code>, and no iterator.</strong> A caller cannot print the list,
 cannot copy it, and cannot write <code>for value in &amp;list</code>.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>The layout is the one of Chapter 14 with the empty case named in the type: <code>Empty</code>
-ends the list and is also the empty list, so there is no sentinel and no nullable
-field.</li>
-<li><code>push_front</code> and <code>pop_front</code> are constant time because both work at the head, where
-ownership of the rest of the list can be moved in one step.</li>
-<li><code>len</code> and the derived destructor are recursive, so the length of the list is bounded
-by the stack rather than by the heap.</li>
-<li>Naming the empty case costs nothing at run time here, and it buys a <code>match</code> that the
-compiler checks for exhaustiveness at every use.</li>
-</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">Defining an enum</a>.</li>
@@ -332,6 +406,22 @@ compiler checks for exhaustiveness at every use.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

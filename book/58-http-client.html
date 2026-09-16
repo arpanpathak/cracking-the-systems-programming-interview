@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -210,8 +210,144 @@ server stores the result under that key. The <code>reqwest</code> version sends 
 standard-library version does not.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <h3 id="the-standard-library-client"><a class="header" href="#the-standard-library-client">The standard-library client</a></h3>
-<p class="listing"><span class="listing-label">Listing 58.1</span> The standard-library client. <code>src/bin/fun_network_call.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust">use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::sync::Mutex;
+use std::time::Duration;
 
+type RuntimeError = Box&lt;dyn std::error::Error&gt;;
+
+enum RequestType {
+    GET    { path: String, headers: Vec&lt;(String, String)&gt; },
+    OPTION { path: String, headers: Vec&lt;(String, String)&gt; },
+    POST   { path: String, headers: Vec&lt;(String, String)&gt;, body: String },
+    PUT    { path: String, headers: Vec&lt;(String, String)&gt;, body: String },
+}
+
+struct IdemCache {
+    store: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
+}
+
+impl IdemCache {
+    fn new() -&gt; Self {
+        Self { store: Mutex::new(HashMap::new()) }
+    }
+
+    fn get_or_insert&lt;F&gt;(&amp;self, key: &amp;str, f: F) -&gt; Result&lt;String, RuntimeError&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;String, RuntimeError&gt;,
+    {
+        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key.to_string(), v.clone());
+        Ok(v)
+    }
+}
+
+struct RetryPolicy {
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+}
+
+impl RetryPolicy {
+    fn new() -&gt; Self {
+        Self {
+            max_attempts: 3,
+            base_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(5),
+        }
+    }
+
+    fn execute&lt;F, T&gt;(&amp;self, mut f: F) -&gt; Result&lt;T, RuntimeError&gt;
+    where
+        F: FnMut() -&gt; Result&lt;T, RuntimeError&gt;,
+    {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            match f() {
+                Ok(v) =&gt; return Ok(v),
+                Err(e) if attempt &gt;= self.max_attempts =&gt; return Err(e),
+                Err(_) =&gt; {
+                    let delay = (self.base_delay * 2u32.pow(attempt - 1)).min(self.max_delay);
+                    std::thread::sleep(delay);
+                }
+            }
+        }
+    }
+}
+
+/// -- Build a HTTP client with those strategies
+
+struct HttpClient {
+    host: String,
+    port: u16,
+    cache: IdemCache,
+    retry: RetryPolicy,
+}
+
+impl HttpClient {
+    fn new(host: &amp;str, port: u16) -&gt; Self {
+        Self {
+            host: host.to_string(),
+            port,
+            cache: IdemCache::new(),
+            retry: RetryPolicy::new(),
+        }
+    }
+
+    fn execute(&amp;self, key: &amp;str, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
+        self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))
+    }
+
+    fn send(&amp;self, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
+        let (method, path, headers, body) = match req {
+            RequestType::GET    { path, headers }       =&gt; ("GET",     path, headers, None),
+            RequestType::OPTION { path, headers }       =&gt; ("OPTIONS", path, headers, None),
+            RequestType::POST   { path, headers, body } =&gt; ("POST",    path, headers, Some(body)),
+            RequestType::PUT    { path, headers, body } =&gt; ("PUT",     path, headers, Some(body)),
+        };
+
+        let mut raw = format!(
+            "{method} {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
+            self.host
+        );
+        for (k, v) in headers { raw += &amp;format!("{k}: {v}\r\n"); }
+        if let Some(b) = body { raw += &amp;format!("Content-Length: {}\r\n", b.len()); }
+        raw += "\r\n";
+        if let Some(b) = body { raw += b; }
+
+        let mut stream = TcpStream::connect((self.host.as_str(), self.port))?;
+        stream.write_all(raw.as_bytes())?;
+        let mut resp = String::new();
+        stream.read_to_string(&amp;mut resp)?;
+        Ok(resp.split_once("\r\n\r\n").map(|(_, b)| b).unwrap_or("").to_string())
+    }
+}
+
+// --- The actual REST call ---
+
+fn create_item(client: &amp;HttpClient, item_name: &amp;str) -&gt; Result&lt;String, RuntimeError&gt; {
+    client.execute("create-demo-001", &amp;RequestType::POST {
+        path: "/post".into(),
+        headers: vec![
+            ("Content-Type".into(), "application/json".into()),
+            ("Accept".into(), "application/json".into()),
+        ],
+        body: format!(r#"{{"name":"{item_name}"}}"#),
+    })
+}
+
+fn main() -&gt; Result&lt;(), RuntimeError&gt; {
+    let client = HttpClient::new("httpbin.org", 80);
+    println!("created:\n{}", create_item(&amp;client, "demo")?);
+    Ok(())
+}</code></pre>
 <p><code>RuntimeError</code> is <code>Box&lt;dyn std::error::Error&gt;</code>, the conventional error type for a
 program’s top level. Any error type, and any <code>&amp;str</code> or <code>String</code>, converts into it with
 <code>?</code>, which is how <code>map_err(|_| "lock poisoned")?</code> turns a poisoned lock into an error.</p>
@@ -232,8 +368,123 @@ follows the empty line, with a <code>Content-Length</code> header computed from 
 <p><code>resp.split_once("\r\n\r\n")</code> separates the response head from the body, and the client
 returns the body.</p>
 <h3 id="the-reqwest-and-tokio-client"><a class="header" href="#the-reqwest-and-tokio-client">The <code>reqwest</code> and <code>tokio</code> client</a></h3>
-<p class="listing"><span class="listing-label">Listing 58.2</span> The <code>reqwest</code> and <code>tokio</code> client. <code>src/bin/reqwest_and_tokio.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust">use std::{collections::HashMap, sync::Mutex, time::Duration};
+use reqwest::{Client, Method, StatusCode};
+use serde_json::Value;
 
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+const RETRY: [StatusCode; 5] = [
+    StatusCode::TOO_MANY_REQUESTS,
+    StatusCode::INTERNAL_SERVER_ERROR,
+    StatusCode::BAD_GATEWAY,
+    StatusCode::SERVICE_UNAVAILABLE,
+    StatusCode::GATEWAY_TIMEOUT,
+];
+
+struct Config {
+    base: String,
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+    timeout: Duration,
+}
+
+struct Api {
+    http: Client,
+    cache: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
+    cfg: Config,
+}
+
+impl Api {
+    fn new(cfg: Config) -&gt; Result&lt;Self, Error&gt; {
+        Ok(Self {
+            http: Client::builder().timeout(cfg.timeout).build()?,
+            cache: Mutex::new(HashMap::new()),
+            cfg,
+        })
+    }
+
+    fn cached(&amp;self, key: &amp;str) -&gt; Option&lt;String&gt; {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(key)
+            .cloned()
+    }
+
+    fn store(&amp;self, key: &amp;str, text: &amp;str) {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key.into(), text.into());
+    }
+
+    async fn call(
+        &amp;self,
+        key: &amp;str,
+        method: Method,
+        path: &amp;str,
+        body: Option&lt;&amp;Value&gt;,
+    ) -&gt; Result&lt;String, Error&gt; {
+        match self.cached(key) {
+            Some(hit) =&gt; return Ok(hit),
+            None =&gt; {}
+        }
+
+        let url = format!("{}{}", self.cfg.base, path);
+        let mut delay = self.cfg.base_delay;
+        let mut attempt = 0;
+
+        loop {
+            attempt += 1;
+
+            let req = self
+                .http
+                .request(method.clone(), &amp;url)
+                .header("Idempotency-Key", key)
+                .header("Accept", "application/json");
+            let req = match body {
+                Some(b) =&gt; req.json(b),
+                None =&gt; req,
+            };
+
+            let resp = req.send().await?;
+            let status = resp.status();
+            let text = resp.text().await?;
+
+            match status {
+                s if s.is_success() =&gt; {
+                    self.store(key, &amp;text);
+                    return Ok(text);
+                }
+                s if RETRY.contains(&amp;s) &amp;&amp; attempt &lt; self.cfg.max_attempts =&gt; {
+                    tokio::time::sleep(delay).await;
+                    delay = (delay * 2).min(self.cfg.max_delay);
+                }
+                s =&gt; return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+            }
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Error&gt; {
+    let api = Api::new(Config {
+        base: "https://httpbin.org".into(),
+        max_attempts: 3,
+        base_delay: Duration::from_millis(100),
+        max_delay: Duration::from_secs(5),
+        timeout: Duration::from_secs(15),
+    })?;
+
+    let body = serde_json::json!({ "name": "demo" });
+    let out = api
+        .call("create-demo-001", Method::POST, "/post", Some(&amp;body))
+        .await?;
+    println!("created:\n{out}");
+    Ok(())
+}</code></pre>
 <p><code>Error</code> is <code>Box&lt;dyn std::error::Error + Send + Sync&gt;</code>. The additional bounds let the error
 cross threads, which <code>tokio</code>’s multi-threaded runtime can require of values held across
 an <code>.await</code>.</p>
@@ -385,7 +636,7 @@ transport failures that retries exist for.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="19-state-machine.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="59-drills.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -399,7 +650,7 @@ transport failures that retries exist for.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="19-state-machine.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="59-drills.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -412,6 +663,22 @@ transport failures that retries exist for.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -212,8 +212,212 @@ loop:                                   loop:
 close: lock, closed = true, unlock, notify_all on both condition variables
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 46.1</span> The complete module, with its tests. <code>src/problems/bounded_queue.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Bounded blocking queue with backpressure.
+//!
+//! Unbounded queues are a classic production failure: a fast producer and a slow
+//! consumer turn into an OOM kill instead of a slow response. A bounded queue makes
+//! the producer wait, which is backpressure, and it is the first thing a senior
+//! systems interviewer looks for.
+//!
+//! This is an MPMC queue (many producers, many consumers) built from one `Mutex`
+//! and two condition variables: `not_empty` for waiting consumers and `not_full`
+//! for waiting producers. `close` unblocks everyone so shutdown cannot hang.
 
+use std::collections::VecDeque;
+use std::sync::{Condvar, Mutex};
+
+struct State&lt;T&gt; {
+    items: VecDeque&lt;T&gt;,
+    capacity: usize,
+    closed: bool,
+}
+
+/// A bounded MPMC queue. Share it behind `Arc`; all methods take `&amp;self`.
+pub struct BoundedQueue&lt;T&gt; {
+    state: Mutex&lt;State&lt;T&gt;&gt;,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    /// Create a queue that holds at most `capacity` items.
+    ///
+    /// Panics if `capacity` is zero, because a zero-capacity queue can never make
+    /// progress.
+    pub fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+        Self {
+            state: Mutex::new(State {
+                items: VecDeque::with_capacity(capacity),
+                capacity,
+                closed: false,
+            }),
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+
+    /// Push an item, blocking while the queue is full.
+    ///
+    /// Returns `Err(item)` if the queue is closed, so the caller keeps ownership
+    /// instead of losing the value.
+    pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
+        let mut state = self.state.lock().expect("queue mutex poisoned");
+        loop {
+            if state.closed {
+                return Err(item);
+            }
+            if state.items.len() &lt; state.capacity {
+                state.items.push_back(item);
+                self.not_empty.notify_one();
+                return Ok(());
+            }
+            state = self.not_full.wait(state).expect("queue mutex poisoned");
+        }
+    }
+
+    /// Pop an item, blocking while the queue is empty.
+    ///
+    /// Returns `None` once the queue is closed and drained, which is how a
+    /// consumer loop terminates cleanly.
+    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut state = self.state.lock().expect("queue mutex poisoned");
+        loop {
+            if let Some(item) = state.items.pop_front() {
+                self.not_full.notify_one();
+                return Some(item);
+            }
+            if state.closed {
+                return None;
+            }
+            state = self.not_empty.wait(state).expect("queue mutex poisoned");
+        }
+    }
+
+    /// Pop without blocking.
+    pub fn try_pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let item = state.items.pop_front();
+        if item.is_some() {
+            self.not_full.notify_one();
+        }
+        item
+    }
+
+    /// Close the queue.
+    ///
+    /// Pending and future `pop` calls return `None` after the queue drains, and
+    /// future `push` calls fail. Idempotent.
+    pub fn close(&amp;self) {
+        let mut state = self.state.lock().expect("queue mutex poisoned");
+        state.closed = true;
+        drop(state);
+        self.not_empty.notify_all();
+        self.not_full.notify_all();
+    }
+
+    pub fn is_closed(&amp;self) -&gt; bool {
+        self.state.lock().expect("queue mutex poisoned").closed
+    }
+
+    pub fn capacity(&amp;self) -&gt; usize {
+        self.state.lock().expect("queue mutex poisoned").capacity
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.state.lock().expect("queue mutex poisoned").items.len()
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.state
+            .lock()
+            .expect("queue mutex poisoned")
+            .items
+            .is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::thread;
+    use std::time::Duration;
+
+    #[test]
+    fn preserves_order_across_threads() {
+        let queue = Arc::new(BoundedQueue::new(8));
+        let producer = {
+            let queue = Arc::clone(&amp;queue);
+            thread::spawn(move || {
+                for value in 0..1_000 {
+                    queue.push(value).expect("queue stays open");
+                }
+                queue.close();
+            })
+        };
+
+        let mut received = Vec::new();
+        while let Some(value) = queue.pop() {
+            received.push(value);
+        }
+        producer.join().expect("producer panicked");
+
+        assert_eq!(received, (0..1_000).collect::&lt;Vec&lt;_&gt;&gt;());
+    }
+
+    #[test]
+    fn never_exceeds_capacity() {
+        let queue = Arc::new(BoundedQueue::new(4));
+        let observed_peak = Arc::new(AtomicUsize::new(0));
+        let producer = {
+            let queue = Arc::clone(&amp;queue);
+            let observed_peak = Arc::clone(&amp;observed_peak);
+            thread::spawn(move || {
+                for value in 0..200u32 {
+                    queue.push(value).expect("queue stays open");
+                    observed_peak.fetch_max(queue.len(), Ordering::SeqCst);
+                }
+                queue.close();
+            })
+        };
+
+        while queue.pop().is_some() {
+            thread::sleep(Duration::from_micros(50));
+        }
+        producer.join().expect("producer panicked");
+
+        assert!(observed_peak.load(Ordering::SeqCst) &lt;= 4);
+    }
+
+    #[test]
+    fn close_wakes_a_blocked_consumer() {
+        let queue = Arc::new(BoundedQueue::&lt;u32&gt;::new(1));
+        let consumer = {
+            let queue = Arc::clone(&amp;queue);
+            thread::spawn(move || queue.pop())
+        };
+
+        thread::sleep(Duration::from_millis(20));
+        queue.close();
+
+        assert_eq!(consumer.join().expect("consumer panicked"), None);
+    }
+
+    #[test]
+    fn push_after_close_returns_the_item() {
+        let queue = BoundedQueue::new(1);
+        queue.close();
+        assert_eq!(
+            queue.push("workload".to_string()),
+            Err("workload".to_string())
+        );
+    }
+}
+<span class="boring">}</span></code></pre>
 <p>The loops in <code>push</code> and <code>pop</code> test the closed flag on every iteration, not only before
 the first wait. A thread parked on a condition variable may be woken by <code>close</code> rather
 than by a state change it was waiting for, and the re-check is what turns that wake-up
@@ -333,6 +537,22 @@ because every waiter must observe shutdown.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

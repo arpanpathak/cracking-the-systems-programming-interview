@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -200,8 +200,161 @@ the delay a server asked for and the status code it returned, so those facts are
 to the variants that need them. A caller that matches on <code>RateLimited</code> has the delay in
 hand.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 19.1</span> The complete module, with its tests. <code>src/problems/state_machine.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Algebraic data types / enum state machines.
+//!
+//! NVIDIA cloud SDKs model workloads as finite state machines. Rust `enum` is
+//! perfect for this: invalid states are unrepresentable and transitions are
+//! explicit `match` arms, not nested `if` chains.
 
+use std::time::Duration;
+
+/// Lifecycle of a GPU cloud workload exposed through an SDK/API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkloadState {
+    Pending,
+    Provisioning,
+    Running,
+    Terminating,
+    Terminated,
+    Failed,
+}
+
+impl WorkloadState {
+    /// Returns an error string for impossible transitions, or `Ok(())`.
+    pub fn can_transition_to(self, next: Self) -&gt; Result&lt;(), String&gt; {
+        match (self, next) {
+            // Forward lifecycle.
+            (Self::Pending, Self::Provisioning)
+            | (Self::Pending, Self::Failed)
+            | (Self::Provisioning, Self::Running)
+            | (Self::Provisioning, Self::Failed)
+            | (Self::Running, Self::Terminating)
+            | (Self::Running, Self::Failed)
+            | (Self::Terminating, Self::Terminated)
+            | (Self::Terminating, Self::Failed) =&gt; Ok(()),
+
+            // Retry loops allowed from failed states.
+            (Self::Failed, Self::Pending) | (Self::Failed, Self::Provisioning) =&gt; Ok(()),
+
+            // Everything else is invalid.
+            _ =&gt; Err(format!("cannot transition from {self:?} to {next:?}")),
+        }
+    }
+
+    pub fn is_terminal(self) -&gt; bool {
+        matches!(self, Self::Terminated | Self::Failed)
+    }
+
+    pub fn summary(self) -&gt; &amp;'static str {
+        match self {
+            Self::Pending =&gt; "workload accepted, waiting for scheduler",
+            Self::Provisioning =&gt; "GPU resources being allocated",
+            Self::Running =&gt; "workload is running",
+            Self::Terminating =&gt; "cleanup in progress",
+            Self::Terminated =&gt; "workload stopped and billing ended",
+            Self::Failed =&gt; "workload failed; inspect logs",
+        }
+    }
+}
+
+/// API error modeled as an enum with associated data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApiError {
+    InvalidRequest(String),
+    Unauthorized,
+    RateLimited { retry_after: Duration },
+    NotFound { resource_id: String },
+    Server { status: u16, message: String },
+}
+
+impl ApiError {
+    pub fn is_retryable(&amp;self) -&gt; bool {
+        matches!(
+            self,
+            Self::RateLimited { .. }
+                | Self::Server {
+                    status: 500..=599,
+                    ..
+                }
+        )
+    }
+
+    pub fn user_message(&amp;self) -&gt; String {
+        match self {
+            Self::InvalidRequest(msg) =&gt; format!("invalid request: {msg}"),
+            Self::Unauthorized =&gt; "authentication required or token expired".to_string(),
+            Self::RateLimited { retry_after } =&gt; {
+                format!("rate limited, retry in {}ms", retry_after.as_millis())
+            }
+            Self::NotFound { resource_id } =&gt; format!("resource not found: {resource_id}"),
+            Self::Server { status, message } =&gt; format!("server error {status}: {message}"),
+        }
+    }
+}
+
+/// Typical NVIDIA SDK helper: never expose nested `if let` soup to callers.
+pub fn parse_gpu_count(raw: &amp;str) -&gt; Result&lt;u32, ApiError&gt; {
+    match raw.trim() {
+        "" =&gt; Err(ApiError::InvalidRequest("gpuCount is empty".into())),
+        parsed =&gt; parsed.parse::&lt;u32&gt;().map_err(|_| {
+            ApiError::InvalidRequest(format!("gpuCount must be a number, got {raw:?}"))
+        }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_machine_rejects_invalid_transitions() {
+        assert!(
+            WorkloadState::Pending
+                .can_transition_to(WorkloadState::Provisioning)
+                .is_ok()
+        );
+        assert!(
+            WorkloadState::Running
+                .can_transition_to(WorkloadState::Running)
+                .is_err()
+        );
+        assert!(
+            WorkloadState::Terminated
+                .can_transition_to(WorkloadState::Running)
+                .is_err()
+        );
+        assert!(WorkloadState::Terminating.is_terminal() == false);
+        assert!(WorkloadState::Terminated.is_terminal());
+    }
+
+    #[test]
+    fn api_error_retry_policy() {
+        let rate_limited = ApiError::RateLimited {
+            retry_after: Duration::from_millis(100),
+        };
+        let not_found = ApiError::NotFound {
+            resource_id: "gpu-123".into(),
+        };
+        let server = ApiError::Server {
+            status: 503,
+            message: "maintenance".into(),
+        };
+
+        assert!(rate_limited.is_retryable());
+        assert!(!not_found.is_retryable());
+        assert!(server.is_retryable());
+    }
+
+    #[test]
+    fn parsing_returns_typed_errors() {
+        assert_eq!(parse_gpu_count("4"), Ok(4));
+        assert!(parse_gpu_count("").is_err());
+        assert!(parse_gpu_count("abc").is_err());
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>can_transition_to</code> matches on the pair <code>(self, next)</code>, listing every permitted
 transition as an alternative pattern. The whole rule set is one expression, and the
 fall-through arm catches everything else, including a self-transition such as <code>Running</code>
@@ -284,19 +437,6 @@ list would catch a missing or an extra pattern.</p>
 <p><strong><code>parse_gpu_count</code> reports a value that overflows <code>u32</code> as a parse failure.</strong> <code>"4294967296"</code>
 and <code>"four"</code> produce the same variant, so a caller cannot tell a malformed field from an
 out-of-range one.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>An enumeration makes the set of legal states a type rather than a convention: a
-<code>match</code> that omits a case does not compile, so adding a state is a compile error at
-every place that must handle it.</li>
-<li>The same argument governs the error type. A retry decision depends on facts such as a
-requested delay and a status code, so those facts are attached to the variants that
-carry them, and a caller that matches on the variant has them in hand.</li>
-<li>Every operation is constant time; the allocations are on the error and message paths
-only.</li>
-<li>The transition table is checked by example rather than exhaustively, so a new state
-compiles but is not necessarily tested.</li>
-</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">Defining an enum</a>.</li>
@@ -308,7 +448,7 @@ compiles but is not necessarily tested.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="58-http-client.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="18-lru-cache-array.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -322,7 +462,7 @@ compiles but is not necessarily tested.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="58-http-client.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="18-lru-cache-array.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -339,6 +479,22 @@ compiles but is not necessarily tested.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

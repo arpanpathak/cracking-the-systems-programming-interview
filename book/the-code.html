@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,28 +177,70 @@
                     <main>
                         <h1 id="the-code"><a class="header" href="#the-code">The Code</a></h1>
 <h2 id="layout"><a class="header" href="#layout">Layout</a></h2>
-<p>The repository holds one Cargo package, <code>rust-interview-lab</code>. Three directories in it
-hold everything the chapters read.</p>
+<p>The repository holds one Cargo package. The tree below lists the files this book
+reads; the package also contains concurrency, asynchronous, networking and
+benchmarking code that lies outside the scope of these chapters.</p>
 <pre><code class="language-text">rust-interview-lab/
 ├── Cargo.toml
 ├── README.md
 ├── BENCHMARKS.md
 ├── src
-│   ├── lib.rs                the crate root and its re-exports
-│   ├── problems/             the library modules, one problem to a file
-│   └── bin/                  the programs, each its own crate with a `main`
-└── benchmarking_examples/    the measured structures and the benchmark
+│   ├── lib.rs                       the crate root and its re-exports
+│   ├── problems
+│   │   ├── mod.rs                   the module list
+│   │   ├── backtracking.rs          Chapter 13
+│   │   ├── binary_search.rs         Chapter 9
+│   │   ├── binary_tree.rs           Chapter 7
+│   │   ├── dp.rs                    Chapter 12
+│   │   ├── graph_topology.rs        Chapter 11
+│   │   ├── linked_list.rs           Chapter 14
+│   │   ├── lru_cache.rs             Chapter 17
+│   │   ├── merge_intervals.rs       Chapter 5
+│   │   ├── min_stack.rs             Chapter 3
+│   │   ├── rate_limiter.rs          Chapter 20
+│   │   ├── sliding_window.rs        Chapter 4
+│   │   ├── state_machine.rs         Chapter 19
+│   │   ├── top_k_frequent.rs        Chapter 6
+│   │   ├── trie.rs                  Chapter 10
+│   │   ├── two_sum.rs               Chapter 1
+│   │   ├── valid_parentheses.rs     Chapter 2
+│   │   └── worker_pool.rs           Chapter 21
+│   └── bin
+│       ├── append_to_file_open_options.rs   Chapter 26
+│       ├── bounded_buffer.rs                Chapter 30
+│       ├── bst_clean.rs                     Chapter 8
+│       ├── command_line_args.rs             Chapter 29
+│       ├── copy_rename_delete_file.rs       Chapter 28
+│       ├── count_islands.rs                 Chapter 23
+│       ├── file_error_handling.rs           Chapter 28
+│       ├── idempotent_operation.rs          Chapter 34
+│       ├── idempotent_operation_with_error_progagation.rs   Chapter 34
+│       ├── list_directory.rs                Chapter 27
+│       ├── ll.rs                            Chapter 16
+│       ├── median_finder.rs                 Chapter 32
+│       ├── mutex_poisoning.rs               Chapter 22
+│       ├── parallel_sum.rs                  Chapter 31
+│       ├── path_buff.rs                     Chapter 27
+│       ├── read_write_file.rs               Chapter 26
+│       ├── readfile_line_by_line.rs         Chapter 26
+│       ├── recusrive_directory_walk.rs      Chapter 27
+│       ├── reverse_string.rs                Chapter 33
+│       ├── shadowing.rs                     Chapter 25
+│       ├── singly_linked_list.rs            Chapter 15
+│       └── syscall_overhead.rs              Chapter 24
+└── benchmarking_examples/           the measured structures and the benchmark
 </code></pre>
-<p>A module under <code>src/problems/</code> holds one problem, one type, or one pair of a type and
-its policy, and ends with a <code>#[cfg(test)] mod tests</code>, so the list printed by
-<code>cargo test</code> reads as an index of this book. A file under <code>src/bin/</code> is a separate
-crate that links the library and has a <code>main</code> that runs without arguments; most of
-them carry their own tests as well, so <code>cargo test</code> exercises the programs too.</p>
-<p>The files under <code>benchmarking_examples/</code> are declared as library modules by <code>src/lib.rs</code>
-rather than included by each program, so the shared code is compiled once and an unused
-variant is not reported as dead code in the programs that do not measure it.</p>
-<p>The package also contains files that no chapter reads. They are working notes rather
-than finished material, and they are left out of the table below.</p>
+<p>One file in <code>src/problems/</code> is empty, <code>hash_map.rs</code>, and nothing in the crate refers to
+it. Chapter 18 reads <code>lru_cache_easy.rs</code>, the array-backed cache that keeps its entries
+in a <code>Vec</code> and links them by index.</p>
+<h2 id="modules-and-programs"><a class="header" href="#modules-and-programs">Modules and programs</a></h2>
+<p>Seventeen of the files above are library modules. Each holds one problem, one type,
+or one pair of a type and its policy, and each ends with a <code>#[cfg(test)] mod tests</code>,
+so the list printed by <code>cargo test</code> reads as an index of this book.</p>
+<p>Twenty-two are programs. Files under <code>src/bin/</code> are separate crates that link the
+library, and each has a <code>main</code> function that runs without arguments. Most of them
+also carry the tests for the code they contain, so <code>cargo test</code> exercises the
+programs as well as the library.</p>
 <h2 id="what-the-files-have-in-common"><a class="header" href="#what-the-files-have-in-common">What the files have in common</a></h2>
 <p>Four conventions run through the code. They are stated once here so that the
 chapters need not repeat them.</p>
@@ -216,109 +258,45 @@ than in a comment.</p>
 <p><strong>Tests beside the code.</strong> A unit test that reaches a private item is a licence to
 change that item. Each module keeps its own tests in a <code>#[cfg(test)] mod tests</code>, so
 the list printed by <code>cargo test</code> reads as an index of the book.</p>
-<h2 id="every-file-and-the-chapter-that-reads-it"><a class="header" href="#every-file-and-the-chapter-that-reads-it">Every file and the chapter that reads it</a></h2>
-<p>The table is the whole of the correspondence between the repository and the book. A
-chapter cites its files again at the head of the chapter and in its listing
-references, and a file read by more than one chapter is listed once with each
-chapter that reads it.</p>
+<h2 id="files-read-by-chapters-35-to-59"><a class="header" href="#files-read-by-chapters-35-to-59">Files read by chapters 35 to 59</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>File</th><th>Chapter</th></tr>
 </thead>
 <tbody>
-<tr><td><code>src/bin/append_to_file_open_options.rs</code></td><td>26</td></tr>
-<tr><td><code>src/bin/async_demo.rs</code></td><td>56</td></tr>
-<tr><td><code>src/bin/bounded_buffer.rs</code></td><td>30</td></tr>
-<tr><td><code>src/bin/bst_clean.rs</code></td><td>8</td></tr>
-<tr><td><code>src/bin/command_line_args.rs</code></td><td>29</td></tr>
-<tr><td><code>src/bin/concurrency_amdahl.rs</code></td><td>49</td></tr>
-<tr><td><code>src/bin/concurrency_deadlock.rs</code></td><td>49</td></tr>
-<tr><td><code>src/bin/concurrency_false_sharing.rs</code></td><td>48</td></tr>
-<tr><td><code>src/bin/copy_rename_delete_file.rs</code></td><td>28</td></tr>
-<tr><td><code>src/bin/count_islands.rs</code></td><td>23</td></tr>
-<tr><td><code>src/bin/cs_fib.rs</code></td><td>37</td></tr>
-<tr><td><code>src/bin/cs_locality.rs</code></td><td>48</td></tr>
-<tr><td><code>src/bin/dependency_resolutiom.rs</code></td><td>65</td></tr>
-<tr><td><code>src/bin/epoll_echo.rs</code></td><td>53</td></tr>
-<tr><td><code>src/bin/false_sharing.rs</code></td><td>48</td></tr>
-<tr><td><code>src/bin/file_error_handling.rs</code></td><td>28</td></tr>
-<tr><td><code>src/bin/fun_network_call.rs</code></td><td>58</td></tr>
-<tr><td><code>src/bin/http_server.rs</code></td><td>55</td></tr>
-<tr><td><code>src/bin/idempotent_operation.rs</code></td><td>34</td></tr>
-<tr><td><code>src/bin/idempotent_operation_with_error_progagation.rs</code></td><td>34</td></tr>
-<tr><td><code>src/bin/list_directory.rs</code></td><td>27</td></tr>
-<tr><td><code>src/bin/ll.rs</code></td><td>16</td></tr>
-<tr><td><code>src/bin/lru_cache_arena.rs</code></td><td>40</td></tr>
-<tr><td><code>src/bin/median_finder.rs</code></td><td>32</td></tr>
-<tr><td><code>src/bin/merge_k_sorted_lists_divide.rs</code></td><td>62</td></tr>
-<tr><td><code>src/bin/mutex_poisoning.rs</code></td><td>22</td></tr>
-<tr><td><code>src/bin/net_ipv4.rs</code></td><td>51</td></tr>
-<tr><td><code>src/bin/net_window.rs</code></td><td>51</td></tr>
-<tr><td><code>src/bin/os_paging.rs</code></td><td>50</td></tr>
-<tr><td><code>src/bin/os_scheduler.rs</code></td><td>50</td></tr>
-<tr><td><code>src/bin/parallel_sum.rs</code></td><td>31</td></tr>
-<tr><td><code>src/bin/path_buff.rs</code></td><td>27</td></tr>
-<tr><td><code>src/bin/read_write_file.rs</code></td><td>26</td></tr>
-<tr><td><code>src/bin/readfile_line_by_line.rs</code></td><td>26</td></tr>
-<tr><td><code>src/bin/recusrive_directory_walk.rs</code></td><td>27</td></tr>
-<tr><td><code>src/bin/reqwest_and_tokio.rs</code></td><td>58</td></tr>
-<tr><td><code>src/bin/reverse_string.rs</code></td><td>33</td></tr>
-<tr><td><code>src/bin/shadowing.rs</code></td><td>25</td></tr>
-<tr><td><code>src/bin/singly_linked_list.rs</code></td><td>15</td></tr>
-<tr><td><code>src/bin/syscall_overhead.rs</code></td><td>24</td></tr>
-<tr><td><code>src/bin/tcp_echo_server.rs</code></td><td>52</td></tr>
-<tr><td><code>src/bin/thread_pool.rs</code></td><td>64</td></tr>
 <tr><td><code>src/problems/adt_idioms.rs</code></td><td>35</td></tr>
-<tr><td><code>src/problems/async_mini.rs</code></td><td>56</td></tr>
-<tr><td><code>src/problems/backtracking.rs</code></td><td>13</td></tr>
-<tr><td><code>src/problems/binary_search.rs</code></td><td>9</td></tr>
-<tr><td><code>src/problems/binary_tree.rs</code></td><td>7</td></tr>
-<tr><td><code>src/problems/bounded_queue.rs</code></td><td>46</td></tr>
-<tr><td><code>src/problems/bump_allocator.rs</code></td><td>39</td></tr>
-<tr><td><code>src/problems/consistent_hash.rs</code></td><td>42</td></tr>
-<tr><td><code>src/problems/dp.rs</code></td><td>12</td></tr>
-<tr><td><code>src/problems/drills.rs</code></td><td>59</td></tr>
-<tr><td><code>src/problems/graph_bfs.rs</code></td><td>60</td></tr>
-<tr><td><code>src/problems/graph_dfs.rs</code></td><td>60</td></tr>
-<tr><td><code>src/problems/graph_dijkstra.rs</code></td><td>61</td></tr>
-<tr><td><code>src/problems/graph_topology.rs</code></td><td>11</td></tr>
-<tr><td><code>src/problems/http_request.rs</code></td><td>54</td></tr>
-<tr><td><code>src/problems/linked_list.rs</code></td><td>14</td></tr>
-<tr><td><code>src/problems/lru_cache.rs</code></td><td>17</td></tr>
-<tr><td><code>src/problems/lru_cache_easy.rs</code></td><td>18</td></tr>
-<tr><td><code>src/problems/merge_intervals.rs</code></td><td>5</td></tr>
-<tr><td><code>src/problems/min_stack.rs</code></td><td>3</td></tr>
-<tr><td><code>src/problems/rate_limiter.rs</code></td><td>20</td></tr>
-<tr><td><code>src/problems/retry.rs</code></td><td>57</td></tr>
-<tr><td><code>src/problems/ring_buffer.rs</code></td><td>47</td></tr>
-<tr><td><code>src/problems/semaphore.rs</code></td><td>45</td></tr>
-<tr><td><code>src/problems/sharded_cache.rs</code></td><td>41</td></tr>
-<tr><td><code>src/problems/sliding_window.rs</code></td><td>4</td></tr>
 <tr><td><code>src/problems/smart_pointers.rs</code></td><td>36</td></tr>
-<tr><td><code>src/problems/spin_lock.rs</code></td><td>44</td></tr>
-<tr><td><code>src/problems/state_machine.rs</code></td><td>19</td></tr>
-<tr><td><code>src/problems/thread_pool_v2.rs</code></td><td>64</td></tr>
-<tr><td><code>src/problems/thread_pool_v3.rs</code></td><td>64</td></tr>
-<tr><td><code>src/problems/thread_pool_v4.rs</code></td><td>64</td></tr>
+<tr><td><code>src/bin/cs_fib.rs</code></td><td>37</td></tr>
+<tr><td><code>benchmarking_examples/lists/</code>, <code>list_box.rs</code>, <code>list_enum.rs</code>, <code>list_drop.rs</code>, <code>benchmark.rs</code></td><td>38</td></tr>
+<tr><td><code>src/problems/bump_allocator.rs</code></td><td>39</td></tr>
+<tr><td><code>benchmarking_examples/cache/</code>, <code>benchmark.rs</code></td><td>40</td></tr>
+<tr><td><code>src/problems/sharded_cache.rs</code></td><td>41</td></tr>
+<tr><td><code>src/problems/consistent_hash.rs</code></td><td>42</td></tr>
 <tr><td><code>src/problems/threads.rs</code></td><td>43</td></tr>
+<tr><td><code>src/problems/spin_lock.rs</code></td><td>44</td></tr>
+<tr><td><code>src/problems/semaphore.rs</code></td><td>45</td></tr>
+<tr><td><code>src/problems/bounded_queue.rs</code></td><td>46</td></tr>
+<tr><td><code>src/problems/ring_buffer.rs</code></td><td>47</td></tr>
+<tr><td><code>src/bin/cs_locality.rs</code>, <code>src/bin/concurrency_false_sharing.rs</code></td><td>48</td></tr>
+<tr><td><code>src/bin/concurrency_amdahl.rs</code>, <code>src/bin/concurrency_deadlock.rs</code></td><td>49</td></tr>
+<tr><td><code>src/bin/os_paging.rs</code>, <code>src/bin/os_scheduler.rs</code></td><td>50</td></tr>
+<tr><td><code>src/bin/net_ipv4.rs</code>, <code>src/bin/net_window.rs</code></td><td>51</td></tr>
+<tr><td><code>src/bin/tcp_echo_server.rs</code></td><td>52</td></tr>
+<tr><td><code>src/bin/epoll_echo.rs</code></td><td>53</td></tr>
+<tr><td><code>src/problems/http_request.rs</code></td><td>54</td></tr>
+<tr><td><code>src/bin/http_server.rs</code></td><td>55</td></tr>
+<tr><td><code>src/problems/async_mini.rs</code>, <code>src/bin/async_demo.rs</code></td><td>56</td></tr>
+<tr><td><code>src/problems/retry.rs</code></td><td>57</td></tr>
+<tr><td><code>src/bin/fun_network_call.rs</code>, <code>src/bin/reqwest_and_tokio.rs</code></td><td>58</td></tr>
+<tr><td><code>src/problems/drills.rs</code></td><td>59</td></tr>
+<tr><td><code>src/bin/lru_cache_arena.rs</code></td><td>40</td></tr>
+<tr><td><code>src/problems/graph_bfs.rs</code>, <code>src/problems/graph_dfs.rs</code></td><td>60</td></tr>
+<tr><td><code>src/problems/graph_dijkstra.rs</code></td><td>61</td></tr>
+<tr><td><code>src/bin/merge_k_sorted_lists_divide.rs</code></td><td>62</td></tr>
 <tr><td><code>src/problems/three_sum.rs</code></td><td>63</td></tr>
-<tr><td><code>src/problems/top_k_frequent.rs</code></td><td>6</td></tr>
-<tr><td><code>src/problems/trie.rs</code></td><td>10</td></tr>
-<tr><td><code>src/problems/two_sum.rs</code></td><td>1</td></tr>
-<tr><td><code>src/problems/valid_parentheses.rs</code></td><td>2</td></tr>
-<tr><td><code>src/problems/worker_pool.rs</code></td><td>21</td></tr>
-<tr><td><code>benchmarking_examples/benchmark.rs</code></td><td>38, 40</td></tr>
-<tr><td><code>benchmarking_examples/cache/mod.rs</code></td><td>40</td></tr>
-<tr><td><code>benchmarking_examples/cache/rc_list.rs</code></td><td>40</td></tr>
-<tr><td><code>benchmarking_examples/list_box.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/list_drop.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/list_enum.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/lists/boxed.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/lists/boxed_drop.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/lists/enum_drop.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/lists/enum_node.rs</code></td><td>38</td></tr>
-<tr><td><code>benchmarking_examples/lists/mod.rs</code></td><td>38</td></tr>
+<tr><td><code>src/bin/false_sharing.rs</code></td><td>48</td></tr>
+<tr><td><code>src/bin/thread_pool.rs</code>, <code>src/problems/thread_pool_v2.rs</code>, <code>thread_pool_v3.rs</code>, <code>thread_pool_v4.rs</code></td><td>64</td></tr>
 </tbody>
 </table>
 </div>
@@ -331,7 +309,7 @@ chapter that reads it.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="01-what-an-abstraction-costs.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="01-two-sum.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -345,7 +323,7 @@ chapter that reads it.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="01-what-an-abstraction-costs.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="01-two-sum.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -358,6 +336,22 @@ chapter that reads it.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -210,8 +210,77 @@ its characters from the root succeeds and the final node has the flag set.</p>
 it, <code>"gp"</code> and <code>"gpu"</code> would be indistinguishable, and <code>search("gp")</code> would report
 <code>true</code>.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 10.1</span> The complete module, with its tests. <code>src/problems/trie.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Trie / prefix tree.
+//!
+//! Relevant to NVIDIA-style SDK/CLI/codegen work: autocomplete, filtering GPU
+//! SKUs, command completion, and prefix matching.
 
+use std::collections::HashMap;
+
+#[derive(Default)]
+pub struct Trie {
+    root: Node,
+}
+
+#[derive(Default)]
+struct Node {
+    children: HashMap&lt;char, Node&gt;,
+    terminal: bool,
+}
+
+impl Trie {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    pub fn insert(&amp;mut self, word: &amp;str) {
+        let mut node = &amp;mut self.root;
+        for ch in word.chars() {
+            node = node.children.entry(ch).or_default();
+        }
+        node.terminal = true;
+    }
+
+    pub fn search(&amp;self, word: &amp;str) -&gt; bool {
+        self.find_node(word).is_some_and(|node| node.terminal)
+    }
+
+    pub fn starts_with(&amp;self, prefix: &amp;str) -&gt; bool {
+        self.find_node(prefix).is_some()
+    }
+
+    fn find_node(&amp;self, word: &amp;str) -&gt; Option&lt;&amp;Node&gt; {
+        let mut node = &amp;self.root;
+        for ch in word.chars() {
+            node = node.children.get(&amp;ch)?;
+        }
+        Some(node)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trie_insert_search_and_prefix() {
+        let mut trie = Trie::new();
+        trie.insert("gpu");
+        trie.insert("gpucloud");
+
+        assert!(trie.search("gpu"));
+        assert!(trie.search("gpucloud"));
+        assert!(!trie.search("gp"));
+        assert!(!trie.search("gpucloudapi"));
+
+        assert!(trie.starts_with("gp"));
+        assert!(trie.starts_with("gpucloud"));
+        assert!(!trie.starts_with("h100"));
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>insert</code> walks with <code>&amp;mut</code> and creates children on demand:
 <code>node.children.entry(ch).or_default()</code> inserts an empty node the first time the
 character is seen and returns a mutable reference to the existing one otherwise. The
@@ -272,18 +341,6 @@ structure supports the query; the API does not expose it.</p>
 tree’s shape, count its nodes, or measure its memory from outside the module. For a
 teaching structure that is a defensible choice, and it means a memory question can only
 be answered by reading the source.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Each node holds a map from character to child and a flag saying whether the path
-ending there spells a stored string. The flag is what separates a stored word from a
-prefix of one.</li>
-<li>Every operation is a walk of the query string, so the cost is the length of that
-string and not the number of words stored.</li>
-<li><code>search</code> and <code>starts_with</code> differ in one line: both walk the same path, and only
-<code>search</code> consults the terminal flag.</li>
-<li>The structure pays for the prefix query in memory, one node per distinct character
-position, which is the trade against storing the words in a hash set.</li>
-</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Edward Fredkin, “Trie memory”, <em>Communications of the ACM</em> 3(9), 1960, pages
@@ -298,7 +355,7 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="08-binary-search-tree.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="09-binary-search.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -312,7 +369,7 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="08-binary-search-tree.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="09-binary-search.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -329,6 +386,22 @@ Addison-Wesley, 1998, Section 6.3, “Digital Searching”.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

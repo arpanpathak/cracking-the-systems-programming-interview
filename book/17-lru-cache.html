@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -206,8 +206,153 @@ appears exactly once, so the earliest match is the minimum.</p>
 been used since. It carries no information about the current recency order and is
 discarded.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 17.1</span> The complete module, with its tests. <code>src/problems/lru_cache.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! LRU cache that is actually writable in an interview.
+//!
+//! Design: `HashMap&lt;K, (V, generation)&gt;` + `VecDeque&lt;(K, generation)&gt;`.
+//!
+//! Each access pushes a new `(key, generation)` event to the back. On eviction
+//! we pop old events until we find the newest generation for a key, then remove
+//! it. Stale events are skipped. This keeps amortized O(1) operations while
+//! preserving true LRU semantics.
 
+use std::collections::{HashMap, VecDeque};
+use std::hash::Hash;
+
+pub struct LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    capacity: usize,
+    map: HashMap&lt;K, (V, u64)&gt;,
+    recency: VecDeque&lt;(K, u64)&gt;,
+    generation: u64,
+}
+
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "LRU cache capacity must be &gt; 0");
+        Self {
+            capacity,
+            map: HashMap::new(),
+            recency: VecDeque::new(),
+            generation: 0,
+        }
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.map.len()
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.map.is_empty()
+    }
+
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let (value, _) = self.map.get(key)?.clone();
+        self.generation += 1;
+        self.recency.push_back((key.clone(), self.generation));
+        self.map
+            .insert(key.clone(), (value.clone(), self.generation));
+        Some(value)
+    }
+
+    pub fn put(&amp;mut self, key: K, value: V) {
+        self.generation += 1;
+        let is_new = self
+            .map
+            .insert(key.clone(), (value, self.generation))
+            .is_none();
+        self.recency.push_back((key, self.generation));
+
+        if is_new {
+            self.evict_if_needed();
+        }
+    }
+
+    fn evict_if_needed(&amp;mut self) {
+        while self.map.len() &gt; self.capacity {
+            let Some((key, generation)) = self.recency.pop_front() else {
+                break;
+            };
+
+            match self.map.get(&amp;key) {
+                Some((_, current)) if *current == generation =&gt; {
+                    self.map.remove(&amp;key);
+                    break;
+                }
+                _ =&gt; {}
+            }
+        }
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn put_get_and_len() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(1));
+        assert_eq!(cache.get(&amp;"missing".to_string()), None);
+    }
+
+    #[test]
+    fn evicts_least_recently_used() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+        cache.put("c".to_string(), 3);
+
+        assert_eq!(cache.get(&amp;"a".to_string()), None);
+        assert_eq!(cache.get(&amp;"b".to_string()), Some(2));
+        assert_eq!(cache.get(&amp;"c".to_string()), Some(3));
+    }
+
+    #[test]
+    fn get_updates_recency() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+
+        // Access "a" so it becomes most recently used.
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(1));
+
+        cache.put("c".to_string(), 3); // evicts "b"
+        assert_eq!(cache.get(&amp;"b".to_string()), None);
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(1));
+        assert_eq!(cache.get(&amp;"c".to_string()), Some(3));
+    }
+
+    #[test]
+    fn updating_existing_key_moves_it_to_mru() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+
+        // Update "a"; it becomes MRU, so "b" should be evicted next.
+        cache.put("a".to_string(), 10);
+        cache.put("c".to_string(), 3);
+
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(10));
+        assert_eq!(cache.get(&amp;"b".to_string()), None);
+        assert_eq!(cache.get(&amp;"c".to_string()), Some(3));
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>get</code> clones the value out of the map, increments the generation, appends an event, and
 writes the entry back with the new generation. The write-back is what keeps the map in
 agreement with the log; without it, the event just appended would look stale.</p>
@@ -268,18 +413,6 @@ would leave some of them in place.</p>
 <p><strong>A generation counter of <code>u64</code> wraps after 2^64 accesses.</strong> The wrap is unreachable in
 practice, about 584 years at a billion accesses per second, and its consequence would be
 a misidentified stale event rather than memory unsafety.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Recency is kept as a log of <code>(key, generation)</code> events rather than as a list that is
-spliced on every access, and a map holds the current generation of each key.</li>
-<li>An event is stale when the map disagrees with it, so eviction pops events from the
-front until it finds one that is current. Each event is created once and removed
-once, which is what makes the amortised cost constant.</li>
-<li>The design trades memory for simplicity: the queue grows with the number of accesses
-since the last eviction, not with the number of entries.</li>
-<li>Chapters 18 and 40 answer the same problem with bounded memory, one by indices into a
-vector and the other by measurement of the two layouts.</li>
-</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>
@@ -291,7 +424,7 @@ vector and the other by measurement of the two layouts.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="36-smart-pointers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="16-doubly-linked-list.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -305,7 +438,7 @@ vector and the other by measurement of the two layouts.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="36-smart-pointers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="16-doubly-linked-list.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -322,6 +455,22 @@ vector and the other by measurement of the two layouts.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

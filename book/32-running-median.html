@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -201,8 +201,136 @@ the two tops otherwise. The insertion maintains them in three steps: push onto
 <code>low</code>, move <code>low</code>’s maximum to <code>high</code> so the halves stay ordered, and move <code>high</code>’s
 minimum back if <code>high</code> has grown too large.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 32.1</span> The complete program, with its tests. <code>src/bin/median_finder.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust">use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
+#[derive(Default)]
+pub struct MedianFinder {
+    low: BinaryHeap&lt;i32&gt;,
+    high: BinaryHeap&lt;Reverse&lt;i32&gt;&gt;,
+}
+
+impl MedianFinder {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    pub fn add_num(&amp;mut self, num: i32) {
+        self.low.push(num);
+
+        if let Some(val) = self.low.pop() {
+            self.high.push(Reverse(val));
+        }
+
+        if self.high.len() &gt; self.low.len() {
+            if let Some(Reverse(val)) = self.high.pop() {
+                self.low.push(val);
+            }
+        }
+    }
+
+    pub fn find_median(&amp;self) -&gt; Option&lt;f64&gt; {
+        let max_low = *self.low.peek()?;
+
+        if self.low.len() &gt; self.high.len() {
+            Some(max_low as f64)
+        } else {
+            let Reverse(min_high) = *self.high.peek()?;
+            Some((max_low as f64 + min_high as f64) / 2.0)
+        }
+    }
+}
+
+const SAMPLE: [i32; 11] = [6, 10, 2, 6, 5, 0, 6, 3, 1, 0, 0];
+
+fn main() {
+    let mut finder = MedianFinder::new();
+
+    for value in SAMPLE {
+        finder.add_num(value);
+        match finder.find_median() {
+            Some(median) =&gt; println!("after {value:&gt;2}: median {median}"),
+            None =&gt; println!("after {value:&gt;2}: no median"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The median of a sorted slice, computed directly.
+    fn median_of_sorted(values: &amp;[i32]) -&gt; f64 {
+        let middle = values.len() / 2;
+        if values.len() % 2 == 1 {
+            values[middle] as f64
+        } else {
+            (values[middle - 1] as f64 + values[middle] as f64) / 2.0
+        }
+    }
+
+    #[test]
+    fn an_empty_finder_has_no_median() {
+        assert_eq!(MedianFinder::new().find_median(), None);
+    }
+
+    #[test]
+    fn one_value_is_the_median() {
+        let mut finder = MedianFinder::new();
+        finder.add_num(7);
+        assert_eq!(finder.find_median(), Some(7.0));
+    }
+
+    #[test]
+    fn an_even_count_averages_the_middle_two() {
+        let mut finder = MedianFinder::new();
+        finder.add_num(1);
+        finder.add_num(2);
+        assert_eq!(finder.find_median(), Some(1.5));
+    }
+
+    #[test]
+    fn three_values_are_ordered() {
+        let mut finder = MedianFinder::new();
+        for (value, median) in [1, 2, 3].into_iter().zip([1.0, 1.5, 2.0]) {
+            finder.add_num(value);
+            assert_eq!(finder.find_median(), Some(median));
+        }
+    }
+
+    #[test]
+    fn duplicates_are_kept() {
+        let mut finder = MedianFinder::new();
+        for value in [4, 4, 4, 4] {
+            finder.add_num(value);
+        }
+        assert_eq!(finder.find_median(), Some(4.0));
+    }
+
+    #[test]
+    fn the_stream_matches_a_sort_on_every_step() {
+        let mut finder = MedianFinder::new();
+        let mut seen = Vec::new();
+
+        for value in SAMPLE {
+            finder.add_num(value);
+            seen.push(value);
+            seen.sort_unstable();
+
+            assert_eq!(finder.find_median(), Some(median_of_sorted(&amp;seen)));
+        }
+    }
+
+    #[test]
+    fn the_two_heaps_never_differ_by_more_than_one() {
+        let mut finder = MedianFinder::new();
+
+        for value in SAMPLE {
+            finder.add_num(value);
+            assert!(finder.low.len().abs_diff(finder.high.len()) &lt;= 1);
+        }
+    }
+}</code></pre>
 <p>The listing is the whole file. Taken in order:</p>
 <ul>
 <li><code>add_num</code> pushes onto <code>low</code> before rebalancing. That order means the new value is
@@ -306,7 +434,7 @@ check the result against a sort of the values seen so far.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="09-binary-search.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="31-parallel-sum.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -320,7 +448,7 @@ check the result against a sort of the values seen so far.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="09-binary-search.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="31-parallel-sum.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -337,6 +465,22 @@ check the result against a sort of the values seen so far.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
