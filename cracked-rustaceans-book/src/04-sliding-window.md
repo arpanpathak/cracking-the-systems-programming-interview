@@ -37,42 +37,7 @@ the scan linear.
 
 ## Implementation
 
-```rust
-//! Longest substring without repeating characters.
-//!
-//! Sliding window with `HashMap<char, usize>`; the window start is monotonic.
-
-use std::collections::HashMap;
-
-pub fn length_of_longest_substring(s: &str) -> usize {
-    let mut last_seen = HashMap::with_capacity(s.len());
-
-    let (mut start, mut longest) = (0, 0);
-
-    for (end, ch) in s.chars().enumerate() {
-        if let Some(&previous) = last_seen.get(&ch) {
-            start = start.max(previous + 1);
-        }
-        longest = longest.max(end - start + 1);
-        last_seen.insert(ch, end);
-    }
-
-    longest
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn examples() {
-        assert_eq!(length_of_longest_substring("abcabcbb"), 3);
-        assert_eq!(length_of_longest_substring("bbbbb"), 1);
-        assert_eq!(length_of_longest_substring("pwwkew"), 3);
-        assert_eq!(length_of_longest_substring(""), 0);
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 4.1</span> The complete module, with its tests. <code>src/problems/sliding_window.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs">read the file on GitHub</a></p>
 
 `for (end, ch) in s.chars().enumerate()` iterates over Unicode scalar values, not
 bytes. `end` is therefore a character index, and `end - start + 1` is a length in
@@ -132,6 +97,18 @@ that have left the window are not removed, so the space bound is over the whole 
 rather than over the current window. An implementation that removes entries on
 eviction would bound memory by the window instead. For `char` keys the map cannot
 hold more than 1,112,064 entries, the number of Unicode scalar values.
+
+## Summary
+
+- The window `[start, end)` is extended one character at a time, and a map from
+  character to its last index decides where the window must begin.
+- `start = start.max(previous + 1)` is required rather than defensive: a character last
+  seen before the window began would otherwise move `start` backwards and recount
+  characters.
+- Because `start` never decreases, each character is entered once and left once, which
+  is what makes the scan linear.
+- The space is bounded by the number of distinct characters, and the answer is a
+  length: the substring itself is not retained.
 
 ## References
 

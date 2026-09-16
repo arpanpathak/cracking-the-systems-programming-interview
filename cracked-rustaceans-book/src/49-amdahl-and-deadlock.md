@@ -52,54 +52,7 @@ time the second path arrives, and it is not a cycle.
 
 ## Implementation
 
-```rust
-//! Amdahl's law: the serial fraction of the work caps the speedup from adding
-//! processors. A program that is 50 percent serial cannot go faster than 2x, no
-//! matter how many cores it gets.
-//!
-//! Run with: cargo run --bin concurrency_amdahl
-
-/// Speedup with `processors` when `serial` is the non-parallel fraction.
-fn speedup(serial: f64, processors: f64) -> f64 {
-    1.0 / (serial + (1.0 - serial) / processors)
-}
-
-fn main() {
-    let processor_counts = [1.0, 2.0, 4.0, 8.0, 16.0];
-    let serial_fractions = [0.0, 0.05, 0.10, 0.25, 0.50];
-
-    print!("{:>8} |", "serial");
-    for processors in processor_counts {
-        print!(" {processors:>6.0}");
-    }
-    println!("   <- processors");
-    println!("{:->9}+{}", "", "-".repeat(7 * processor_counts.len()));
-
-    for serial in serial_fractions {
-        print!("{serial:>8.2} |");
-        for processors in processor_counts {
-            print!(" {:>6.2}", speedup(serial, processors));
-        }
-        println!();
-    }
-
-    println!("\nlimit as processors grow: 1 / serial");
-    for serial in serial_fractions {
-        let limit = if serial == 0.0 {
-            f64::INFINITY
-        } else {
-            1.0 / serial
-        };
-        println!("  {serial:>4.2} -> {limit:>6.1}");
-    }
-
-    assert!((speedup(0.0, 4.0) - 4.0).abs() < 1e-9);
-    assert!((speedup(0.5, 4.0) - 1.6).abs() < 1e-9);
-    assert!(speedup(0.5, 16.0) < 1.9, "2x is the ceiling for 50% serial");
-
-    println!("\nall checks passed");
-}
-```
+<p class="listing"><span class="listing-label">Listing 49.1</span> The complete program. <code>src/bin/concurrency_amdahl.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_amdahl.rs">read the file on GitHub</a></p>
 
 The table uses format specifiers throughout. `{:>8}` right-aligns in eight columns,
 `{processors:>6.0}` prints a floating-point value with no decimals in six columns, and
@@ -112,77 +65,7 @@ documents the case rather than preventing an error.
 The assertions compare floating-point results with a tolerance, `(a - b).abs() < 1e-9`,
 rather than with `==`.
 
-```rust
-//! Deadlock detection: a deadlock exists exactly when the wait-for graph has a
-//! cycle. Each edge `(waiter, holder)` means the first task is blocked on the
-//! second.
-//!
-//! Run with: cargo run --bin concurrency_deadlock
-
-/// Iterative-friendly depth-first search over a small adjacency list.
-fn has_deadlock(waits_for: &[(usize, usize)]) -> bool {
-    let Some(highest) = waits_for.iter().flat_map(|(a, b)| [*a, *b]).max() else {
-        return false;
-    };
-
-    let mut edges = vec![Vec::new(); highest + 1];
-    for (waiter, holder) in waits_for {
-        edges[*waiter].push(*holder);
-    }
-
-    // 1 = on the current path, 2 = fully explored.
-    fn visit(node: usize, edges: &[Vec<usize>], state: &mut [u8]) -> bool {
-        match state[node] {
-            1 => return true,
-            2 => return false,
-            _ => state[node] = 1,
-        }
-        for &next in &edges[node] {
-            if visit(next, edges, state) {
-                return true;
-            }
-        }
-        state[node] = 2;
-        false
-    }
-
-    let mut state = vec![0u8; edges.len()];
-    (0..edges.len()).any(|node| visit(node, &edges, &mut state))
-}
-
-fn main() {
-    let acyclic = [(0, 1), (1, 2), (0, 2)];
-    let cycle = [(0, 1), (1, 2), (2, 0)];
-    let self_wait = [(0, 0)];
-
-    for (label, graph) in [
-        ("0->1, 1->2, 0->2", &acyclic[..]),
-        ("0->1, 1->2, 2->0", &cycle[..]),
-        ("0->0", &self_wait[..]),
-    ] {
-        println!("{label:<20} deadlock: {}", has_deadlock(graph));
-    }
-
-    // The four Coffman conditions must all hold for a deadlock; removing any one
-    // of them prevents it.
-    println!("\nCoffman conditions:");
-    for condition in [
-        "mutual exclusion",
-        "hold and wait",
-        "no preemption",
-        "circular wait",
-    ] {
-        println!("  - {condition}");
-    }
-
-    assert!(!has_deadlock(&acyclic));
-    assert!(has_deadlock(&cycle));
-    assert!(has_deadlock(&self_wait));
-    assert!(!has_deadlock(&[]));
-
-    println!("\nall checks passed");
-}
-```
+<p class="listing"><span class="listing-label">Listing 49.2</span> The complete program. <code>src/bin/concurrency_deadlock.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_deadlock.rs">read the file on GitHub</a></p>
 
 `has_deadlock` finds the largest task number with `flat_map` and `max`. The `let ...
 else` returns `false` for an empty edge list, where `max` yields `None`.

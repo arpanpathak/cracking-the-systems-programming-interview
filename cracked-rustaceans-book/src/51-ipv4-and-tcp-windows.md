@@ -44,80 +44,7 @@ idle regardless of its bandwidth.
 
 ## Implementation
 
-```rust
-//! IPv4 addresses: parse a dotted quad, check the private ranges, and show the
-//! network byte order used on the wire.
-//!
-//! Run with: cargo run --bin net_ipv4
-
-/// Parse `a.b.c.d`, rejecting anything that is not exactly four octets.
-fn parse(input: &str) -> Option<[u8; 4]> {
-    let mut parts = input.split('.').map(|part| part.parse::<u8>().ok());
-    let address = [
-        parts.next()??,
-        parts.next()??,
-        parts.next()??,
-        parts.next()??,
-    ];
-    parts.next().is_none().then_some(address)
-}
-
-/// `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16` are not routable on the
-/// public internet.
-fn is_private(address: [u8; 4]) -> bool {
-    matches!(address, [10, ..] | [172, 16..=31, ..] | [192, 168, ..])
-}
-
-/// Addresses travel big-endian, so the first octet is the most significant byte.
-fn to_network_order(address: [u8; 4]) -> u32 {
-    u32::from_be_bytes(address)
-}
-
-fn from_network_order(value: u32) -> [u8; 4] {
-    value.to_be_bytes()
-}
-
-fn main() {
-    println!(
-        "{:<16} {:<18} {:>8} {:>12}",
-        "input", "parsed", "private", "as u32"
-    );
-
-    for text in [
-        "10.0.0.1",
-        "172.16.5.4",
-        "192.168.1.10",
-        "8.8.8.8",
-        "256.1.1.1",
-        "1.2.3",
-    ] {
-        match parse(text) {
-            Some(address) => println!(
-                "{text:<16} {:<18} {:>8} {:>12}",
-                format!("{address:?}"),
-                is_private(address),
-                to_network_order(address)
-            ),
-            None => println!("{text:<16} invalid"),
-        }
-    }
-
-    assert_eq!(parse("10.0.0.1"), Some([10, 0, 0, 1]));
-    assert_eq!(parse("1.2.3"), None);
-    assert_eq!(parse("1.2.3.4.5"), None);
-    assert_eq!(parse("256.0.0.1"), None);
-
-    assert!(is_private([10, 1, 2, 3]));
-    assert!(is_private([172, 31, 0, 1]));
-    assert!(!is_private([172, 32, 0, 1]));
-    assert!(!is_private([8, 8, 8, 8]));
-
-    assert_eq!(to_network_order([127, 0, 0, 1]), 0x7f00_0001);
-    assert_eq!(from_network_order(0x7f00_0001), [127, 0, 0, 1]);
-
-    println!("\nall checks passed");
-}
-```
+<p class="listing"><span class="listing-label">Listing 51.1</span> The complete program. <code>src/bin/net_ipv4.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_ipv4.rs">read the file on GitHub</a></p>
 
 `parse` maps each part to `part.parse::<u8>().ok()`, so the iterator yields
 `Option<Option<u8>>`: the outer `Option` says whether a part exists, and the inner one
@@ -134,62 +61,7 @@ in one `matches!`.
 `value.to_be_bytes()` performs the inverse. Both are `const fn` and compile to a byte
 swap on little-endian processors and to nothing on big-endian ones.
 
-```rust
-//! TCP window math: the effective window is the smaller of the receiver and
-//! congestion windows, and the bandwidth-delay product is how many bytes must be
-//! in flight to fill a link.
-//!
-//! Run with: cargo run --bin net_window
-
-/// The sender may have this much unacknowledged data in flight.
-fn effective_window(receive: u32, congestion: u32) -> u32 {
-    receive.min(congestion)
-}
-
-/// Bytes in flight needed to keep a link busy: bandwidth times round-trip time.
-fn bandwidth_delay_product(bytes_per_second: u64, rtt_millis: u64) -> u64 {
-    bytes_per_second * rtt_millis / 1_000
-}
-
-fn main() {
-    println!("effective window = min(receiver window, congestion window)");
-    for (receive, congestion) in [(64_000, 16_000), (16_000, 64_000), (32_000, 32_000)] {
-        println!(
-            "  receiver {receive:>7} B, congestion {congestion:>7} B -> {:>7} B",
-            effective_window(receive, congestion)
-        );
-    }
-
-    println!("\nbandwidth-delay product (bytes needed in flight)");
-    for (rate, rtt) in [(1_000_000, 1), (10_000_000, 50), (1_000_000_000, 100)] {
-        println!(
-            "  {:>12} B/s x {rtt:>3} ms -> {:>12} B",
-            rate,
-            bandwidth_delay_product(rate, rtt)
-        );
-    }
-
-    // A window smaller than the product leaves the link idle, no matter how much
-    // bandwidth is available. This is why latency, not only bandwidth, matters.
-    let product = bandwidth_delay_product(1_000_000_000, 100);
-    let window = u64::from(effective_window(64_000, 1_000_000));
-    println!(
-        "\nwindow {window} B vs product {product} B: link is {} the window too small",
-        if window < product {
-            "starved,"
-        } else {
-            "usable,"
-        }
-    );
-
-    assert_eq!(effective_window(64_000, 16_000), 16_000);
-    assert_eq!(effective_window(16_000, 64_000), 16_000);
-    assert_eq!(bandwidth_delay_product(10_000_000, 50), 500_000);
-    assert!(window < product);
-
-    println!("\nall checks passed");
-}
-```
+<p class="listing"><span class="listing-label">Listing 51.2</span> The complete program. <code>src/bin/net_window.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_window.rs">read the file on GitHub</a></p>
 
 `effective_window` is `receive.min(congestion)`. `bandwidth_delay_product` multiplies
 before dividing, `bytes_per_second * rtt_millis / 1_000`, so that integer division does

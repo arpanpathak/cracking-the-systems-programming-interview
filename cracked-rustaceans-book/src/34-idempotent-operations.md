@@ -38,51 +38,7 @@ store naming it.
 
 ## Implementation
 
-```rust
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::sync::Mutex;
-
-pub struct Idempotent<K, V> {
-    store: Mutex<HashMap<K, V>>,
-}
-
-impl<K, V> Idempotent<K, V>
-where
-    K: Eq + Hash + Clone,
-    V: Clone,
-{
-    pub fn new() -> Self {
-        Self { store: Mutex::new(HashMap::new()) }
-    }
-
-    pub fn execute<F>(&self, key: K, f: F) -> Result<V, Box<dyn std::error::Error>>
-    where
-        F: FnOnce() -> Result<V, Box<dyn std::error::Error>>,
-    {
-        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
-        if let Some(v) = store.get(&key) {
-            return Ok(v.clone());
-        }
-        let v = f()?;
-        store.insert(key, v.clone());
-        Ok(v)
-    }
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let idem = Idempotent::new();
-
-    let charge = || -> Result<String, Box<dyn std::error::Error>> {
-        println!("charging card...");
-        Ok("txn_42".into())
-    };
-
-    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
-    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 34.1</span> The complete program. <code>src/bin/idempotent_operation.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation.rs">read the file on GitHub</a></p>
 
 The lock is taken first and held until `execute` returns. `store.get(&key)`
 borrows the key, so the borrowed value is cloned out with `v.clone()` and the
@@ -108,53 +64,7 @@ The repository holds a second version of the same type,
 `idempotent_operation_with_error_progagation.rs`. It differs in one way: the error
 type is given a name, `RuntimeError`, and the alias is used in every signature.
 
-```rust
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::sync::Mutex;
-
-type RuntimeError = Box<dyn std::error::Error>;
-
-pub struct Idempotent<K, V> {
-    store: Mutex<HashMap<K, V>>,
-}
-
-impl<K, V> Idempotent<K, V>
-where
-    K: Eq + Hash + Clone,
-    V: Clone,
-{
-    pub fn new() -> Self {
-        Self { store: Mutex::new(HashMap::new()) }
-    }
-
-    pub fn execute<F>(&self, key: K, f: F) -> Result<V, RuntimeError>
-    where
-        F: FnOnce() -> Result<V, RuntimeError>,
-    {
-        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
-        if let Some(v) = store.get(&key) {
-            return Ok(v.clone());
-        }
-        let v = f()?;
-        store.insert(key, v.clone());
-        Ok(v)
-    }
-}
-
-fn main() -> Result<(), RuntimeError> {
-    let idem = Idempotent::new();
-
-    let charge = || -> Result<String, RuntimeError> {
-        println!("charging card...");
-        Ok("txn_42".into())
-    };
-
-    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
-    assert_eq!(idem.execute("order-1", charge)?, "txn_42");
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 34.2</span> The variant with a named error type. <code>src/bin/idempotent_operation_with_error_progagation.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs">read the file on GitHub</a></p>
 
 The alias names the error in one place, so a change to the error type is a change
 to one line and the signatures stay short. The behaviour is the same in both

@@ -51,7 +51,7 @@ list is in alphabetical order by surname.
   at QCon London, 2009. The source of the phrasing used in Chapter 12 for the
   choice between a sentinel and `Option`.
 - **Kahn, Arthur B.** "Topological sorting of large networks". *Communications of
-  the ACM* 5(11), 1962, pages 558–562. The algorithm in Chapter 11.
+  the ACM* 5(11), 1962, pages 558–562. The algorithm in Chapters 11 and 65.
 - **Knuth, Donald E.** "Structured Programming with go to Statements". *ACM
   Computing Surveys* 6(4), 1974, pages 261–301. The source of the observation about
   premature optimisation, including the qualification that summaries of it usually

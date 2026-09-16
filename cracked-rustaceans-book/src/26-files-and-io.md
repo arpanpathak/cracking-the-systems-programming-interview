@@ -38,74 +38,15 @@ without its terminator, so an unreadable line is reported rather than skipped.
 `read_write_file.rs` writes a string and reads it back through two paths built in
 different ways:
 
-```rust
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
-
-// `&Path` accepts both a `&Path` and a `&PathBuf` argument; `&PathBuf` would not.
-fn read_content_of_file(path: &Path) -> io::Result<String> {
-    fs::read_to_string(path)
-}
-
-fn main() -> io::Result<()> {
-    fs::write("hello.txt", "Hello, NVIDIA!\n")?;
-
-    // `join` builds a new PathBuf and leaves `base_dir` unchanged.
-    let base_dir = PathBuf::from(".");
-    let joined_path = base_dir.join("hello.txt");
-
-    // `push` mutates the PathBuf in place instead of returning a new one.
-    let mut mut_base_dir = PathBuf::from(".");
-    mut_base_dir.push("hello.txt");
-
-    let text = read_content_of_file(&joined_path)?;
-    println!("File contents (via .join()):\n{}", text);
-
-    let text_inplace = read_content_of_file(&mut_base_dir)?;
-    println!("File contents (via .push()):\n{}", text_inplace);
-
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 26.1</span> The complete program. <code>src/bin/read_write_file.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_write_file.rs">read the file on GitHub</a></p>
 
 `append_to_file_open_options.rs` adds two lines to a file that survives the run:
 
-```rust
-use std::fs::OpenOptions;
-use std::io::Write;
-
-fn main() -> std::io::Result<()> {
-    let mut file = OpenOptions::new()
-        .create(true)   // create if missing
-        .append(true)   // always write at the end
-        .open("log.txt")?;
-
-    writeln!(file, "New log line")?;
-    writeln!(file, "Another line")?;
-
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 26.2</span> The complete program. <code>src/bin/append_to_file_open_options.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/append_to_file_open_options.rs">read the file on GitHub</a></p>
 
 `readfile_line_by_line.rs` numbers the lines as it prints them:
 
-```rust
-use std::fs::File;
-use std::io::{BufRead, BufReader}; // BufRead brings `lines()` into scope.
-
-fn main() -> std::io::Result<()> {
-    let file = File::open("log.txt")?;
-    let reader = BufReader::new(file);
-
-    for (i, line) in reader.lines().enumerate() {
-        let line = line?;
-        println!("{}: {}", i + 1, line);
-    }
-
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 26.3</span> The complete program. <code>src/bin/readfile_line_by_line.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/readfile_line_by_line.rs">read the file on GitHub</a></p>
 
 `read_content_of_file` takes `&Path` rather than `&PathBuf`. A `&PathBuf`
 coerces to `&Path` at the call site, but a `&Path` does not coerce to `&PathBuf`,

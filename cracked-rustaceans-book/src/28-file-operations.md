@@ -29,43 +29,12 @@ of the arms is explicit rather than incidental.
 
 `copy_rename_delete_file.rs` performs the three operations in sequence:
 
-```rust
-use std::fs;
-use std::io;
-
-fn main() -> io::Result<()> {
-    fs::write("a.txt", "hello")?;
-
-    fs::copy("a.txt", "b.txt")?;
-    fs::rename("b.txt", "c.txt")?;
-    fs::remove_file("a.txt")?;
-
-    println!("Done");
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 28.1</span> The complete program. <code>src/bin/copy_rename_delete_file.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs">read the file on GitHub</a></p>
 
 `file_error_handling.rs` turns a failed read into a message that depends on the
 kind of failure:
 
-```rust
-use std::fs;
-use std::io;
-
-fn read_file(path: &str) -> Result<String, io::Error> {
-    fs::read_to_string(path)
-}
-
-fn main() {
-    match read_file("missing.txt") {
-        Ok(text) => println!("{}", text),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            eprintln!("File not found");
-        }
-        Err(e) => eprintln!("Error: {}", e),
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 28.2</span> The complete program. <code>src/bin/file_error_handling.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_error_handling.rs">read the file on GitHub</a></p>
 
 Each call in the first program is a fallible operation, and `?` returns early on
 the first failure. That is the correct default for a sequence in which each step

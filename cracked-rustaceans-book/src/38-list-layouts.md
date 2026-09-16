@@ -49,38 +49,7 @@ constant.
 
 ### The trait
 
-```rust
-//! Singly linked lists in four variants, so one benchmark loop can cover all of
-//! them.
-//!
-//! The variants differ only in how a node is stored and in how the list frees
-//! itself. `boxed` and `enum_node` free a chain of boxes recursively, which
-//! overflows the stack past roughly 265,000 nodes. `boxed_drop` and `enum_drop`
-//! unlink iteratively and scale.
-
-pub mod boxed;
-pub mod boxed_drop;
-pub mod enum_drop;
-pub mod enum_node;
-
-/// The operations every variant supports, so the benchmark can be written once.
-pub trait SinglyList<T>: Sized {
-    /// A new, empty list.
-    fn new() -> Self;
-
-    /// Adds `value` to the front of the list.
-    fn push_front(&mut self, value: T);
-
-    /// Removes and returns the front value, if there is one.
-    fn pop_front(&mut self) -> Option<T>;
-
-    /// Whether the list holds nothing.
-    fn is_empty(&self) -> bool;
-
-    /// The variant's name, for benchmark output and error messages.
-    fn variant() -> &'static str;
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.1</span> The trait. <code>benchmarking_examples/lists/mod.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/mod.rs">read the file on GitHub</a></p>
 
 `fn new() -> Self` in a trait requires `Self: Sized`, which the bound `SinglyList<T>:
 Sized` states for every method at once. `variant` is an associated function rather
@@ -88,55 +57,7 @@ than a method, so the benchmark can print a name without constructing a list.
 
 ### The boxed layout
 
-```rust
-//! `Option<Box<Node<T>>>`: one heap allocation per node.
-//!
-//! Pushing takes the old head and boxes it inside the new node. Freeing the head
-//! frees its `next`, which frees its `next`, so the drop recurses once per
-//! element and overflows the stack on a long list.
-
-use super::SinglyList;
-
-struct Node<T> {
-    value: T,
-    next: Option<Box<Node<T>>>,
-}
-
-pub struct LinkedList<T> {
-    head: Option<Box<Node<T>>>,
-}
-
-impl<T> SinglyList<T> for LinkedList<T> {
-    fn new() -> Self {
-        Self { head: None }
-    }
-
-    fn push_front(&mut self, value: T) {
-        self.head = Some(Box::new(Node {
-            value,
-            // .take() leaves None in its place and extracts the old head
-            next: self.head.take(),
-        }));
-    }
-
-    fn pop_front(&mut self) -> Option<T> {
-        self.head.take().map(|node| {
-            // Point the list head to the next node in line
-            self.head = node.next;
-            // Return the unboxed value
-            node.value
-        })
-    }
-
-    fn is_empty(&self) -> bool {
-        self.head.is_none()
-    }
-
-    fn variant() -> &'static str {
-        "box"
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.2</span> The boxed layout. <code>benchmarking_examples/lists/boxed.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/boxed.rs">read the file on GitHub</a></p>
 
 `self.head.take()` moves the old head out and leaves `None` in the field, so the new
 node can own it without an intermediate state in which the list has two owners.
@@ -146,61 +67,7 @@ returns.
 
 ### The enumeration layout
 
-```rust
-//! `enum ListNode<T> { Empty, Next(T, Box<ListNode<T>>) }`.
-//!
-//! Same shape as the boxed variant, written with an enum instead of an
-//! `Option`. The enum cannot contain itself by value, so the recursive arm holds
-//! a `Box`. The drop is recursive for the same reason.
-
-use super::SinglyList;
-
-enum ListNode<T> {
-    Empty,
-    Next(T, Box<ListNode<T>>),
-}
-
-pub struct LinkedList<T> {
-    head: ListNode<T>,
-}
-
-impl<T> SinglyList<T> for LinkedList<T> {
-    fn new() -> Self {
-        Self {
-            head: ListNode::Empty,
-        }
-    }
-
-    fn push_front(&mut self, value: T) {
-        // Extract the old head and leave Empty in its place
-        let old_head = std::mem::replace(&mut self.head, ListNode::Empty);
-
-        // Wrap the old head inside a Box behind the new value
-        self.head = ListNode::Next(value, Box::new(old_head));
-    }
-
-    fn pop_front(&mut self) -> Option<T> {
-        let old_head = std::mem::replace(&mut self.head, ListNode::Empty);
-
-        match old_head {
-            ListNode::Empty => None,
-            ListNode::Next(value, next_node) => {
-                // Point the list head to the next node in the sequence
-                self.head = *next_node;
-                Some(value)
-            }
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        matches!(self.head, ListNode::Empty)
-    }
-
-    fn variant() -> &'static str {
-        "enum"
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.3</span> The enumeration layout. <code>benchmarking_examples/lists/enum_node.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/enum_node.rs">read the file on GitHub</a></p>
 
 The enumeration cannot use `take`, which exists only on `Option`, so it uses
 `std::mem::replace(&mut self.head, ListNode::Empty)` to the same effect. `self.head =
@@ -219,133 +86,14 @@ an 8-byte pointer out of the head, while the enumeration variant's push moves a
 The two `+drop` variants repeat the push and pop code of their counterparts
 unchanged and add a `Drop` implementation.
 
-```rust
-//! `Option<Box<Node<T>>>` with an iterative `Drop`.
-//!
-//! Push and pop are identical to [`boxed`](super::boxed); only freeing changes.
-//! Dropping a node would otherwise drop its `next` and recurse once per element,
-//! so the list is unlinked in a loop before any node is freed.
-
-use super::SinglyList;
-
-struct Node<T> {
-    value: T,
-    next: Option<Box<Node<T>>>,
-}
-
-pub struct LinkedList<T> {
-    head: Option<Box<Node<T>>>,
-}
-
-impl<T> SinglyList<T> for LinkedList<T> {
-    fn new() -> Self {
-        Self { head: None }
-    }
-
-    fn push_front(&mut self, value: T) {
-        self.head = Some(Box::new(Node {
-            value,
-            next: self.head.take(),
-        }));
-    }
-
-    fn pop_front(&mut self) -> Option<T> {
-        self.head.take().map(|node| {
-            self.head = node.next;
-            node.value
-        })
-    }
-
-    fn is_empty(&self) -> bool {
-        self.head.is_none()
-    }
-
-    fn variant() -> &'static str {
-        "box+drop"
-    }
-}
-
-impl<T> Drop for LinkedList<T> {
-    fn drop(&mut self) {
-        // Walk the chain and unlink each node before it is freed, so no node's
-        // drop has to carry the rest of the list on the stack.
-        let mut current = self.head.take();
-        while let Some(mut node) = current {
-            current = node.next.take();
-        }
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.4</span> The iterative destructors. <code>benchmarking_examples/lists/boxed_drop.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/boxed_drop.rs">read the file on GitHub</a></p>
 
 `while let Some(mut node) = current` takes ownership of one node per iteration.
 `current = node.next.take()` detaches the rest of the list before `node` goes out of
 scope at the end of the loop body. The node is then freed with `next == None`, so its
 destructor has nothing to recurse into.
 
-```rust
-//! `enum ListNode<T>` with an iterative `Drop`.
-//!
-//! Push and pop are identical to [`enum_node`](super::enum_node); only freeing
-//! changes. The recursive arm holds a `Box`, so the default drop walks the chain
-//! on the stack. This one replaces the head with `Empty`, then takes the box out
-//! of each node in turn.
-
-use super::SinglyList;
-
-enum ListNode<T> {
-    Empty,
-    Next(T, Box<ListNode<T>>),
-}
-
-pub struct LinkedList<T> {
-    head: ListNode<T>,
-}
-
-impl<T> SinglyList<T> for LinkedList<T> {
-    fn new() -> Self {
-        Self {
-            head: ListNode::Empty,
-        }
-    }
-
-    fn push_front(&mut self, value: T) {
-        let old_head = std::mem::replace(&mut self.head, ListNode::Empty);
-        self.head = ListNode::Next(value, Box::new(old_head));
-    }
-
-    fn pop_front(&mut self) -> Option<T> {
-        let old_head = std::mem::replace(&mut self.head, ListNode::Empty);
-
-        match old_head {
-            ListNode::Empty => None,
-            ListNode::Next(value, next_node) => {
-                self.head = *next_node;
-                Some(value)
-            }
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        matches!(self.head, ListNode::Empty)
-    }
-
-    fn variant() -> &'static str {
-        "enum+drop"
-    }
-}
-
-impl<T> Drop for LinkedList<T> {
-    fn drop(&mut self) {
-        // Take the chain out of the list first, then step it forward one node at
-        // a time. Each node has already lost its `next` by the time it is freed,
-        // so the drop stays on the heap.
-        let mut current = std::mem::replace(&mut self.head, ListNode::Empty);
-        while let ListNode::Next(_, next) = current {
-            current = *next;
-        }
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.5</span> The iterative destructors. <code>benchmarking_examples/lists/enum_drop.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/enum_drop.rs">read the file on GitHub</a></p>
 
 `while let ListNode::Next(_, next) = current` destructures the current node, binding
 the boxed tail and dropping the value. `current = *next` moves the tail out of its box.
@@ -354,78 +102,11 @@ been moved out of by the pattern, so nothing recursive happens.
 
 ### The demonstration programs
 
-```rust
-//! Demo of the `Option<Box<Node<T>>>` list in `lists::boxed`.
-//!
-//! Run with: cargo run --bin list_box
+<p class="listing"><span class="listing-label">Listing 38.6</span> The demonstration programs. <code>benchmarking_examples/list_box.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/list_box.rs">read the file on GitHub</a></p>
 
-use nvidia_rust_interview_lab::lists::SinglyList;
-use nvidia_rust_interview_lab::lists::boxed::LinkedList;
+<p class="listing"><span class="listing-label">Listing 38.7</span> The demonstration programs. <code>benchmarking_examples/list_enum.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/list_enum.rs">read the file on GitHub</a></p>
 
-fn main() {
-    let mut list = LinkedList::new();
-
-    list.push_front(10);
-    list.push_front(20);
-    list.push_front(30);
-
-    assert_eq!(list.pop_front(), Some(30));
-    assert_eq!(list.pop_front(), Some(20));
-    assert_eq!(list.pop_front(), Some(10));
-    assert_eq!(list.pop_front(), None);
-    assert!(list.is_empty());
-
-    println!("All tests passed successfully!");
-}
-```
-
-```rust
-//! Demo of the `enum ListNode<T>` list in `lists::enum_node`.
-//!
-//! Run with: cargo run --bin list_enum
-
-use nvidia_rust_interview_lab::lists::SinglyList;
-use nvidia_rust_interview_lab::lists::enum_node::LinkedList;
-
-fn main() {
-    let mut list = LinkedList::new();
-    list.push_front(42);
-    list.push_front(100);
-
-    assert_eq!(list.pop_front(), Some(100));
-    assert_eq!(list.pop_front(), Some(42));
-    assert_eq!(list.pop_front(), None);
-    assert!(list.is_empty());
-}
-```
-
-```rust
-//! Demo of the iterative `Drop` in `lists::boxed_drop`.
-//!
-//! The same program against `lists::boxed` aborts with a stack overflow at this
-//! size, because that variant frees its chain recursively.
-//!
-//! Run with: cargo run --release --bin list_drop
-
-use nvidia_rust_interview_lab::lists::SinglyList;
-use nvidia_rust_interview_lab::lists::boxed_drop::LinkedList;
-
-fn main() {
-    const N: u64 = 5_000_000;
-
-    let mut list = LinkedList::new();
-    for value in 0..N {
-        list.push_front(value);
-    }
-    println!("built a list of {N} nodes");
-
-    list.pop_front();
-    println!("dropping the remaining {} nodes", N - 1);
-
-    drop(list);
-    println!("dropped without recursing");
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.8</span> The demonstration programs. <code>benchmarking_examples/list_drop.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/list_drop.rs">read the file on GitHub</a></p>
 
 The programs import both the trait and the concrete type. Without `use
 nvidia_rust_interview_lab::lists::SinglyList`, the calls to `LinkedList::new` and
@@ -434,152 +115,12 @@ is.
 
 ### The benchmark loop
 
-The first listing below shows `main`, which dispatches between the cache benchmark of
-chapter 40 and the list benchmark, and the second shows the list benchmark itself.
+Listing 38.9 is `main`, which dispatches between the cache benchmark of chapter 40 and
+the list benchmark, and Listing 38.10 is the list benchmark itself.
 
-```rust
-//! One main for every benchmark in the lab.
-//!
-//! Usage:
-//!   cargo run --release --bin benchmark                    # cache, then lists
-//!   cargo run --release --bin benchmark cache              # cache only
-//!   cargo run --release --bin benchmark list               # all four variants
-//!   cargo run --release --bin benchmark list enum 500000   # one variant, one size
-//!
-//! The recursive list variants abort with a stack overflow past roughly 265,000
-//! nodes, so run them below that size or on their own.
+<p class="listing"><span class="listing-label">Listing 38.9</span> The dispatcher, <code>main</code>. <code>benchmarking_examples/benchmark.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">read the file on GitHub</a></p>
 
-use std::hint::black_box;
-use std::time::{Duration, Instant};
-
-use nvidia_rust_interview_lab::cache::Cache;
-use nvidia_rust_interview_lab::cache::arena::LruCache as ArenaCache;
-use nvidia_rust_interview_lab::cache::rc_list::LruCache as RcCache;
-use nvidia_rust_interview_lab::lists::SinglyList;
-use nvidia_rust_interview_lab::lists::{boxed, boxed_drop, enum_drop, enum_node};
-
-const CACHE_CAPACITY: usize = 65_536;
-const KEY_SPACE: u64 = 131_072;
-const OPERATIONS: u64 = 10_000_000;
-const DEFAULT_LIST_ELEMENTS: usize = 200_000;
-/// Timed passes per cache; the fastest is reported, since a slow pass is noise.
-const CACHE_RUNS: usize = 3;
-/// Timed passes per list variant.
-const LIST_RUNS: usize = 3;
-
-fn main() {
-    let arguments: Vec<String> = std::env::args().skip(1).collect();
-
-    match arguments.first().map(String::as_str) {
-        Some("cache") => cache_benchmark(),
-        Some("list") => {
-            let variant = arguments.get(1).map(String::as_str);
-            let elements = arguments
-                .get(2)
-                .and_then(|value| value.parse().ok())
-                .unwrap_or(DEFAULT_LIST_ELEMENTS);
-            list_benchmark(variant, elements);
-        }
-        _ => {
-            cache_benchmark();
-            println!();
-            list_benchmark(None, DEFAULT_LIST_ELEMENTS);
-        }
-    }
-}
-```
-
-```rust
-// ---------------------------------------------------------------------------
-// Lists: four variants, one loop
-// ---------------------------------------------------------------------------
-
-fn list_benchmark(variant: Option<&str>, elements: usize) {
-    println!(
-        "Singly linked list: push {} values, pop them back in order, then drop a full list",
-        with_thousands(elements as u64)
-    );
-    println!("Best of {LIST_RUNS} runs per variant, allocator warmed up.\n");
-    println!(
-        "  {:<10} {:>12} {:>13} {:>13}",
-        "variant", "elements", "push", "drop"
-    );
-    println!("  {}", "-".repeat(52));
-
-    match variant {
-        Some("box") => run_list::<boxed::LinkedList<u64>>(elements),
-        Some("enum") => run_list::<enum_node::LinkedList<u64>>(elements),
-        Some("box+drop") => run_list::<boxed_drop::LinkedList<u64>>(elements),
-        Some("enum+drop") => run_list::<enum_drop::LinkedList<u64>>(elements),
-        _ => {
-            run_list::<boxed::LinkedList<u64>>(elements);
-            run_list::<enum_node::LinkedList<u64>>(elements);
-            run_list::<boxed_drop::LinkedList<u64>>(elements);
-            run_list::<enum_drop::LinkedList<u64>>(elements);
-        }
-    }
-}
-
-fn run_list<L: SinglyList<u64>>(elements: usize) {
-    // Warm the allocator first: without this the first variant in a process pays
-    // for fresh heap pages and looks several times slower than an identical one.
-    let mut warm_up = L::new();
-    for value in 0..elements as u64 {
-        warm_up.push_front(value);
-    }
-    drop(warm_up);
-
-    let mut best_push = Duration::MAX;
-    let mut best_drop = Duration::MAX;
-
-    for _ in 0..LIST_RUNS {
-        let mut list = L::new();
-
-        let start = Instant::now();
-        for value in 0..elements as u64 {
-            list.push_front(value);
-        }
-        best_push = best_push.min(start.elapsed());
-
-        // Pop every value back and check the order, so a broken list cannot post
-        // a fast time.
-        let mut expected = elements as u64;
-        while let Some(value) = list.pop_front() {
-            expected -= 1;
-            assert_eq!(value, expected, "{} lost LIFO order", L::variant());
-        }
-        assert_eq!(expected, 0);
-        black_box(expected);
-
-        // Rebuild, then time the drop of a full list. This is where the
-        // recursive variants overflow the stack.
-        for value in 0..elements as u64 {
-            list.push_front(value);
-        }
-        let start = Instant::now();
-        drop(list);
-        best_drop = best_drop.min(start.elapsed());
-    }
-
-    println!(
-        "  {:<10} {:>12} {best_push:>13.2?} {best_drop:>13.2?}",
-        L::variant(),
-        with_thousands(elements as u64)
-    );
-}
-
-fn with_thousands(value: u64) -> String {
-    let digits = value.to_string();
-    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
-    for (index, digit) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 {
-            out.push(',');
-        }
-        out.push(digit);
-    }
-    out
-}
-```
+<p class="listing"><span class="listing-label">Listing 38.10</span> The list benchmark itself. <code>benchmarking_examples/benchmark.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">read the file on GitHub</a></p>
 
 `run_list::<boxed::LinkedList<u64>>(elements)` names the variant with a turbofish. The
 generic function calls `L::new()`, `push_front`, and `pop_front` through the trait,
