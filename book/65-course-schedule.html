@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>40. Measuring Two LRU Layouts - Coding Interviews for Cracked Rustaceans</title>
+        <title>65. Course Schedule and Dependency Resolution - Coding Interviews for Cracked Rustaceans</title>
 
 
         <!-- Custom HTML head -->
@@ -175,342 +175,162 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="measuring-lru-layouts"><a class="header" href="#measuring-lru-layouts">40. Measuring Two LRU Layouts</a></h1>
-<p><em>Source files: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/"><code>benchmarking_examples/cache/</code></a> and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs"><code>benchmarking_examples/benchmark.rs</code></a>. Run it with <code>cargo run --release --bin benchmark cache</code>.</em></p>
+                        <h1 id="course-schedule"><a class="header" href="#course-schedule">65. Course Schedule and Dependency Resolution</a></h1>
+<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs"><code>src/bin/dependency_resolutiom.rs</code></a>. Run it with
+<code>cargo run --bin dependency_resolutiom</code>.</em></p>
 <h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Implement a fixed-capacity LRU cache twice with identical behaviour:</p>
-<ul>
-<li><strong>arena</strong>: nodes in a <code>Vec</code>, linked by <code>Option&lt;usize&gt;</code>;</li>
-<li><strong>rc_list</strong>: one <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code> per entry, linked forward by <code>Rc</code> and backward
-by <code>Weak</code>.</li>
-</ul>
-<p>Drive both with the same request stream, check that they produce the same hits, and
-report the time per request.</p>
+<p>Given a set of courses, each with the names of the courses it depends on, produce an
+order in which every course is taken after the courses it depends on. If the
+dependencies contain a cycle, no such order exists.</p>
+<p>The input differs from the one in Chapter 11 in two ways. A course is named by a
+string rather than by an index, and the edges are given as the dependencies of each
+course rather than as a list of pairs. A course may be named only as a dependency and
+never declared on its own.</p>
+<pre><code class="language-text">courses:
+  algos      depends on  datastructs
+  compilers  depends on  algos, os
+  os         depends on  datastructs
+
+  datastructs ---&gt; algos ------&gt; compilers
+        |                          ^
+        +--------&gt; os -------------+
+
+a valid order: [datastructs, algos, os, compilers]
+</code></pre>
+<p><code>datastructs</code> is declared nowhere in the list. It appears only on the right-hand side
+of the other three, and the order still has to contain it.</p>
 <h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p><strong>A shared trait.</strong> Both caches implement <code>Cache&lt;K, V&gt;</code>, with <code>new</code>, <code>get</code>, <code>put</code>,
-<code>len</code>, and <code>variant</code>. The benchmark is a generic function over <code>C: Cache&lt;u64, u64&gt;</code>,
-so the only difference between the two measured loops is the cache type.</p>
-<p><strong>Values that are <code>Copy</code>.</strong> The trait requires <code>V: Copy</code>, and <code>get</code> returns <code>Option&lt;V&gt;</code>
-rather than a reference. This lets the <code>Rc&lt;RefCell&gt;</code> version return a value without
-holding a <code>Ref</code> guard past the end of the method, and keeps the two signatures
-identical.</p>
-<p><strong>A realistic request stream.</strong> A uniform stream over the key space would make every
-cache miss most of the time. The benchmark instead draws four requests in five from a
-hot set of 1 percent of the keys and the rest from the whole space. The stream comes
-from a linear congruential generator seeded with a constant, so both caches see the
-same sequence and the hit counts can be compared.</p>
-<p><strong>Where the two designs differ.</strong> On a hit, both look up the key in a <code>HashMap</code> and
-move the entry to the front. The arena writes a few integers in one vector. The list
-clones an <code>Rc</code>, upgrades a <code>Weak</code>, takes <code>RefCell</code> borrows on up to three nodes, and
-follows pointers to separate heap blocks. On a miss at capacity, the arena overwrites
-the evicted slot, while the list frees the evicted node and allocates a new one.</p>
+<p>The algorithm is Kahn’s, as in Chapter 11, and the difference is the keying. Instead of
+two vectors indexed by vertex number, the program keeps two maps: <code>adj</code>, from a course
+to the courses that depend on it, and <code>indegree</code>, from a course to the number of its
+dependencies still unplaced.</p>
+<p>Two entries are written for every declaration. A course that declares dependencies
+receives <code>indegree</code> equal to the number of them. Each dependency receives an <code>adj</code>
+entry naming the declaring course, and an <code>indegree</code> of zero if it has not been seen
+before. The zero is written with <code>or_insert</code>, so a course that is later declared with
+dependencies of its own overwrites it, and the result does not depend on the order in
+which the declarations arrive.</p>
+<p>The map keyed by name also decides what the program can return. A vertex number has a
+natural range to compare against, while a name does not, so the count of placed
+courses is compared with the number of distinct names the maps have seen, which is
+<code>indegree.len()</code> rather than the length of the input.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<h3 id="the-contract"><a class="header" href="#the-contract">The contract</a></h3>
-<p class="listing"><span class="listing-label">Listing 40.1</span> The contract. <code>benchmarking_examples/cache/mod.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">read the file on GitHub</a></p>
+<p class="listing"><span class="listing-label">Listing 65.1</span> The complete program. <code>src/bin/dependency_resolutiom.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs">read the file on GitHub</a></p>
 
-<h3 id="the-arena"><a class="header" href="#the-arena">The arena</a></h3>
-<p>The arena version is the cache from chapter 18 with its public methods moved into the
-trait implementation. The first listing shows the types and <code>touch</code>, and the second the
-trait implementation.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Fixed-capacity LRU cache backed by an arena.
-//!
-//! ## Design
-//!
-//! Two structures cooperate to give O(1) `get` and `put`:
-//!
-//! * `lookup_table: HashMap&lt;K, usize&gt;` — key to index into the arena.
-//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role of
-//!   pointers, sidestepping `Rc&lt;RefCell&lt;...&gt;&gt;` and its borrow-checker pain.
-//!
-//! The arena is stitched into a doubly linked list through `head`/`tail`:
-//!
-//! ```text
-//!   MRU  -&gt;  head -&gt; ... -&gt; tail  -&gt;  LRU
-//! ```
-//!
-//! On eviction the tail slot is **reused** instead of removed, so no node is
-//! deallocated mid-life and the arena stays dense and index-stable.
-
-use std::collections::HashMap;
-use std::hash::Hash;
-
-use super::Cache;
-
-/// A single cache entry, linked into the recency list by index.
-struct Node&lt;K, V&gt; {
-    /// Retained so the corresponding map entry can be removed when evicting.
-    key: K,
-    value: V,
-    /// Neighbour closer to the MRU end (`None` if this is `head`).
-    prev: Option&lt;usize&gt;,
-    /// Neighbour closer to the LRU end (`None` if this is `tail`).
-    next: Option&lt;usize&gt;,
-}
-
-pub struct LruCache&lt;K, V&gt; {
-    /// Maximum number of entries; `&gt;= 1`.
-    cap: usize,
-    /// Key to arena index. The single source of truth for "is this cached?".
-    lookup_table: HashMap&lt;K, usize&gt;,
-    /// Arena of nodes; indices are the "pointers" of the linked list.
-    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
-    /// Arena index of the most recently used entry.
-    head: Option&lt;usize&gt;,
-    /// Arena index of the least recently used entry (next to evict).
-    tail: Option&lt;usize&gt;,
-}
-
-impl&lt;K, V&gt; LruCache&lt;K, V&gt;
-where
-    K: Hash + Eq + Clone,
-    V: Copy,
-{
-    /// Promotes node `i` to `head` (MRU).
-    ///
-    /// Handles both cases in one pass:
-    /// * **Already linked** — detach from its current neighbours first.
-    /// * **Brand new** — the node has `prev = next = None` and is not yet
-    ///   referenced by `head`/`tail`, so the detach step is skipped.
-    fn touch(&amp;mut self, i: usize) {
-        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
-
-        // A node is "linked" if any of its four references exist.
-        let linked =
-            prev.is_some() || next.is_some() || self.head == Some(i) || self.tail == Some(i);
-
-        if linked {
-            // Splice `i` out of the list.
-            match prev {
-                Some(p) =&gt; self.nodes[p].next = next,
-                None =&gt; self.head = next,
-            }
-            match next {
-                Some(n) =&gt; self.nodes[n].prev = prev,
-                None =&gt; self.tail = prev,
-            }
-        }
-
-        // Splice `i` in at the front.
-        self.nodes[i].prev = None;
-        self.nodes[i].next = self.head;
-        if let Some(h) = self.head {
-            self.nodes[h].prev = Some(i);
-        }
-        self.head = Some(i);
-        if self.tail.is_none() {
-            self.tail = Some(i);
-        }
-    }
-}
-<span class="boring">}</span></code></pre>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>impl&lt;K, V&gt; Cache&lt;K, V&gt; for LruCache&lt;K, V&gt;
-where
-    K: Hash + Eq + Clone,
-    V: Copy,
-{
-    fn new(capacity: usize) -&gt; Self {
-        assert!(capacity &gt; 0, "capacity must be &gt; 0");
-        Self {
-            cap: capacity,
-            lookup_table: HashMap::new(),
-            nodes: Vec::new(),
-            head: None,
-            tail: None,
-        }
-    }
-
-    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
-        let i = *self.lookup_table.get(key)?;
-        self.touch(i);
-        Some(self.nodes[i].value)
-    }
-
-    fn put(&amp;mut self, key: K, value: V) {
-        // Case 1: key already present, update the value and promote.
-        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
-            self.nodes[i].value = value;
-            self.touch(i);
-            return;
-        }
-
-        // Case 2: room to grow, append a fresh node.
-        if self.nodes.len() &lt; self.cap {
-            let i = self.nodes.len();
-            self.nodes.push(Node {
-                key: key.clone(),
-                value,
-                prev: None,
-                next: None,
-            });
-            self.lookup_table.insert(key, i);
-            self.touch(i);
-            return;
-        }
-
-        // Case 3: at capacity, reuse the LRU slot. `tail` is `Some` here because
-        // `cap &gt;= 1` and the arena is full, but handle `None` anyway.
-        if let Some(i) = self.tail {
-            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
-            self.nodes[i].value = value;
-            self.lookup_table.remove(&amp;old_key);
-            self.lookup_table.insert(self.nodes[i].key.clone(), i);
-            self.touch(i);
-        }
-    }
-
-    fn len(&amp;self) -&gt; usize {
-        self.lookup_table.len()
-    }
-
-    fn variant() -&gt; &amp;'static str {
-        "arena (Vec + indices)"
-    }
-}
-<span class="boring">}</span></code></pre>
-<p><code>get</code> returns <code>Some(self.nodes[i].value)</code>, a copy, because the trait bound is
-<code>V: Copy</code>. Chapter 18’s version returned <code>Option&lt;&amp;V&gt;</code>.</p>
-<h3 id="the-reference-counted-list"><a class="header" href="#the-reference-counted-list">The reference-counted list</a></h3>
-<p class="listing"><span class="listing-label">Listing 40.2</span> The reference-counted list. <code>benchmarking_examples/cache/rc_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
-
-<p><code>Link&lt;K, V&gt;</code> is the type alias for an owning, optional forward link. The backward link
-<code>prev</code> is a <code>Weak</code>, so two neighbours do not keep each other alive. The cache holds
-three kinds of strong reference to a node: the map entry, the previous node’s <code>next</code>
-(or <code>head</code>), and, for the last node, <code>tail</code>.</p>
-<p class="listing"><span class="listing-label">Listing 40.3</span> The reference-counted list, continued. <code>benchmarking_examples/cache/rc_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
-
-<p><code>detach</code> first clones both links out of the node inside a block, so the <code>Ref</code> guard
-from <code>node.borrow()</code> ends before any <code>borrow_mut</code> runs. <code>RefCell</code> checks borrows at
-run time, and a guard that lives longer than it needs to is the usual cause of an
-<code>already borrowed</code> panic. The block rules that out by construction, at the cost of one
-<code>Weak</code> clone and one <code>Rc</code> clone.</p>
-<p><code>prev.upgrade()</code> turns the weak back-link into a strong one for the duration of the
-statement. When it returns <code>None</code>, the node was the head, and <code>head</code> is moved to the
-successor. When <code>next</code> is <code>None</code>, the node was the tail, and <code>tail</code> becomes the
-upgraded predecessor.</p>
-<p><code>push_front</code> clears the node’s <code>prev</code>, points its <code>next</code> at the old head, and makes
-the old head’s <code>prev</code> a <code>Weak</code> to the node. If the list was empty, the node becomes
-the tail as well.</p>
-<p class="listing"><span class="listing-label">Listing 40.4</span> The reference-counted list, continued. <code>benchmarking_examples/cache/rc_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
-
-<p><code>get</code> clones the <code>Rc</code> out of the map before calling <code>detach</code>, because <code>detach</code> takes
-<code>&amp;mut self</code> and the map entry borrows <code>self</code>. The clone is a reference-count
-increment. Each hit therefore performs several count updates, a <code>Weak</code> upgrade, and
-four or more <code>RefCell</code> borrow checks, none of which the arena needs.</p>
-<p>The <code>Drop</code> implementation unlinks the chain iteratively for the reason chapter 38
-measured: the default destructor would free a 65,536-node chain recursively.</p>
-<h3 id="the-benchmark"><a class="header" href="#the-benchmark">The benchmark</a></h3>
-<p class="listing"><span class="listing-label">Listing 40.5</span> The benchmark. <code>benchmarking_examples/benchmark.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">read the file on GitHub</a></p>
-
-<p><code>key_at</code> uses two different ranges of bits from the generator state: bits above 33
-choose between the hot set and the whole space, and bits above 17 choose the key. The
-low bits of a linear congruential generator have short periods, so both shifts
-discard them.</p>
-<p>The two assertions after the runs are the benchmark’s correctness check. If the two
-caches had different eviction behaviour, the same stream would produce different hit
-counts and the program would stop before printing a time.</p>
-<p><code>&lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant()</code> is fully qualified syntax. It is
-needed because <code>variant</code> is an associated function with no <code>self</code>, and the type has
-no inherent function of that name to fall back on.</p>
-<h3 id="the-arena-cache-as-a-standalone-program"><a class="header" href="#the-arena-cache-as-a-standalone-program">The arena cache as a standalone program</a></h3>
-<p>The repository also holds the arena cache as a runnable program,
-<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs"><code>src/bin/lru_cache_arena.rs</code></a>. Its <code>Node</code>, <code>LruCache</code>,
-<code>touch</code>, <code>get</code>, <code>put</code>, and tests are the same as <code>src/problems/lru_cache_easy.rs</code>, which
-chapter 18 prints in full; its test module is named <code>tests_for_lru</code>. It adds a <code>main</code>
-that runs the eviction sequence traced in chapter 18. Run it with
-<code>cargo run --bin lru_cache_arena</code>.</p>
-<p class="listing"><span class="listing-label">Listing 40.6</span> The arena cache as a standalone program. <code>src/bin/lru_cache_arena.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">read the file on GitHub</a></p>
-
-<p>The program prints:</p>
-<pre><code class="language-text">get A = Some(10)
-get B = None
-get A = Some(10)
-get C = Some(30)
-get A = Some(99)
-</code></pre>
+<p><code>for Course { name, depends_on } in courses</code> destructures in the pattern position, so
+the body works with the two fields directly and never mentions the binding for the
+whole structure. The fields are borrowed, which is why each use of a name that has to
+outlive the loop is written <code>name.clone()</code>.</p>
+<p><code>adj.entry(dep.clone()).or_default().push(name.clone())</code> is the line that inverts the
+input. The declaration says that <code>name</code> depends on <code>dep</code>; the map records that <code>dep</code>
+has <code>name</code> among its dependents, which is the direction the traversal needs.
+<code>or_default</code> creates the empty vector on first use, so a dependency that has not been
+seen becomes a key of <code>adj</code> at the moment it is first named.</p>
+<p><code>adj.entry(name.clone()).or_default()</code> is the line that keeps the traversal total. A
+course with no dependents would otherwise never become a key of <code>adj</code>, and <code>&amp;adj[&amp;node]</code>
+in the loop would panic on it. With the entry created at declaration time, every name
+that can reach the queue is a key of both maps.</p>
+<p><code>indegree.entry(dep.clone()).or_insert(0)</code> records a dependency that is never declared,
+which is how <code>datastructs</code> enters the maps at all. It is <code>or_insert</code> and not <code>insert</code>
+so that a course already declared with its own dependencies keeps the count it was
+given.</p>
+<p>The queue is seeded by iterating <code>indegree</code> and collecting the names whose count is
+zero. <code>indegree.get_mut(next).unwrap()</code> then decrements the count of each dependent as
+its dependency is placed, and a count that reaches zero pushes the name onto the queue.
+The <code>unwrap</code> is sound for the reason given above: a name in <code>adj[&amp;node]</code> was written
+into <code>indegree</code> by the same pass that wrote the edge.</p>
+<p><code>if order.len() == indegree.len() { order } else { Vec::new() }</code> is the cycle test. The
+comparison is against the number of distinct names rather than the number of
+declarations, because the maps hold the courses that were declared and the courses
+that were only depended on.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p>The recorded result from <code>BENCHMARKS.md</code>, release build, on an NVIDIA Jetson board
-with an 8-core Cortex-A78AE:</p>
-<pre><code class="language-text">LRU cache: 65,536 entries, 10,000,000 requests over 131,072 keys
-A miss inserts and evicts the least recently used entry.
-Best of 3 runs per cache.
+<pre><code class="language-text">courses: algos &lt;- datastructs
+         compilers &lt;- algos, os
+         os &lt;- datastructs
 
-  hit rate: 89.8%  (8,979,314 hits, 1,020,686 inserts)
+after the first pass:
 
-  storage                       total   per request
-  ------------------------------------------------
-  arena (Vec + indices)         1.03s      103 ns
-  Rc&lt;RefCell&gt; list              1.86s      186 ns
+  adj        datastructs -&gt; [algos, os]   algos -&gt; [compilers]
+             os -&gt; [compilers]            compilers -&gt; []
+  indegree   algos 1   compilers 2   os 1   datastructs 0
 
-  the arena is 1.81x faster on the same requests: 1.03s against 1.86s
-  the arena reuses the evicted slot; the list frees a node and allocates another
+step  pop          order                                  indegree after
+ 1    datastructs  [datastructs]                          algos 0, os 0
+ 2    algos        [datastructs, algos]                   compilers 1
+ 3    os           [datastructs, algos, os]               compilers 0
+ 4    compilers    [datastructs, algos, os, compilers]    -
+
+order.len() == 4 == indegree.len(), so the order is returned.
+
+A cycle: a depends on b, b depends on a
+
+  indegree   a 1   b 1
+
+no name has a count of zero, the queue is seeded empty, the loop body never
+runs, and order.len() == 0 != 2, so the result is the empty vector.
 </code></pre>
-<p>Both caches pay for the same <code>HashMap</code> lookup on every request, and that lookup is a
-large part of the 103 ns the arena spends. The ratio between the two designs is
-therefore bounded by the share of each request spent on list maintenance. The
-repository’s report measured the ratio across several access patterns: it ranged from
-1.1 to 1.9, reaching 1.83 for a stream of hits only and falling to 1.30 for a stream
-that never repeats a key.</p>
 <h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Operation</th><th>arena</th><th>rc_list</th></tr>
+<tr><th>Resource</th><th>Cost</th></tr>
 </thead>
 <tbody>
-<tr><td><code>get</code> hit</td><td><code>O(1)</code> expected; integer writes in one <code>Vec</code></td><td><code>O(1)</code> expected; count updates, a <code>Weak</code> upgrade, several borrow checks</td></tr>
-<tr><td><code>put</code> miss at capacity</td><td><code>O(1)</code> expected; no allocation</td><td><code>O(1)</code> expected; one deallocation and one allocation</td></tr>
-<tr><td>memory per entry</td><td>key, value, two <code>Option&lt;usize&gt;</code>, map entry</td><td>key, value, <code>Rc</code> counts, <code>RefCell</code> flag, <code>Weak</code>, <code>Option&lt;Rc&gt;</code>, map entry, allocator header</td></tr>
-<tr><td>drop</td><td>one <code>Vec</code> deallocation</td><td>one deallocation per entry</td></tr>
+<tr><td>Time</td><td><code>O((V + E) · L)</code>, where <code>L</code> bounds the length of a name: each vertex and each edge is handled once, and each handling hashes or clones a name</td></tr>
+<tr><td>Space</td><td><code>O((V + E) · L)</code>, the two maps, the queue, and the order, each holding owned names</td></tr>
 </tbody>
 </table>
 </div>
+<p>The bound of Chapter 11 is <code>O(V + E)</code> with no factor for the key, because an index is
+compared in one instruction and copied in one word. Naming the vertices is what adds
+the factor, and it buys an input that needs no numbering pass before it can be used.</p>
 <h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong>One workload, one machine.</strong> The 1.81 ratio holds for this stream, this capacity,
-and this processor. The report’s range of 1.1 to 1.9 shows how much the answer depends
-on the access pattern.</p>
-<p><strong>Single-threaded only.</strong> Neither cache is shared between threads. A concurrent
-version would add a lock or sharding, as in chapter 41, and the lock would likely
-dominate both figures.</p>
-<p><strong><code>V: Copy</code> narrows the contract.</strong> A cache of <code>String</code> values cannot use this trait.
-The restriction keeps the two implementations comparable and hides the cost that a
-<code>Clone</code> on every hit would add.</p>
-<p><strong>Clippy findings.</strong> The trait has <code>len</code> without <code>is_empty</code> (<code>len_without_is_empty</code>),
-and the eviction block in <code>rc_list::put</code> nests an <code>if let</code> inside an <code>if</code> that can be
-collapsed into one condition (<code>collapsible_if</code>). Neither affects the measurement.</p>
+<p><strong>The empty vector is overloaded.</strong> It is returned for a cycle and it is also the
+correct answer for an empty input, so a caller cannot distinguish “no order exists”
+from “nothing to order” without checking the input as well. Chapter 11 returns
+<code>Option&lt;Vec&lt;usize&gt;&gt;</code> and does not have this ambiguity. <code>Option</code> or a dedicated error
+would separate the two cases here at no cost to the algorithm.</p>
+<p><strong>The order among ready courses is not reproducible.</strong> The queue is seeded by iterating
+a <code>HashMap</code>, whose iteration order depends on the hash seed chosen for the process, so
+two runs on the same input can produce different valid orders. Chapter 11 seeds from a
+range and is deterministic. A caller that needs a stable order must sort the ready set,
+for example by collecting the zero-count names and sorting them before the loop.</p>
+<p><strong>Every name is cloned several times.</strong> A name is cloned once as a key of <code>indegree</code>,
+once as a key of <code>adj</code>, once for each edge that mentions it, and once more when it is
+pushed onto the queue. For short course names this is not measurable. For a build
+graph with thousands of long target names, the same algorithm over a vector of indices
+with one table from name to index avoids the copies, and the index-based form is
+Chapter 11.</p>
+<p><strong>A duplicate declaration silently replaces the first.</strong> <code>indegree.insert</code> overwrites,
+so a course declared twice keeps the count from the later declaration while the edges
+from the earlier one remain in <code>adj</code>. The counts and the edges then disagree, and the
+course may be left out of the order. Nothing reports the duplication.</p>
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>A shared trait and generic benchmark functions make two implementations comparable
-with identical measurement code.</li>
-<li>The <code>Rc&lt;RefCell&gt;</code> list pays for reference-count updates, <code>Weak</code> upgrades, run-time
-borrow checks, and an allocation per eviction; the arena pays for integer writes in
-one vector.</li>
-<li>A deterministic generator with locality gives both caches the same request stream,
-and comparing hit counts verifies that they behave identically.</li>
-<li>On ten million requests the arena was 1.81 times faster. The shared hash-map lookup
-bounds the ratio, which ranged from 1.1 to 1.9 across access patterns.</li>
-</ul>
+<p>The algorithm of Chapter 11 does not change when the vertices are named: the in-degree
+count, the ready queue and the comparison at the end are the same. What changes is the
+cost of a vertex, which is a hash and a clone rather than an index, and what a caller
+can be told when the graph does not admit an order. The index form is the one to reach
+for when the vertices are already numbered, and this form is the one to reach for when
+the input arrives as names, which is how dependency and prerequisite problems are
+usually posed in an interview.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
-<li>The repository’s <code>BENCHMARKS.md</code> and <code>benchmarking_examples/benchmarking-report.pdf</code>,
-for the full procedure and the threats to validity.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/rc/struct.Weak.html"><code>std::rc::Weak</code></a> and <a href="https://doc.rust-lang.org/std/cell/struct.RefCell.html"><code>std::cell::RefCell</code></a>.</li>
-<li>Donald E. Knuth, <em>The Art of Computer Programming</em>, Volume 2, 3rd edition,
-Addison-Wesley, 1997, Section 3.2.1, on linear congruential generators.</li>
+<li>Arthur B. Kahn, “Topological sorting of large networks”, <em>Communications of the
+ACM</em> 5(11), 1962, pages 558–562.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.entry"><code>HashMap::entry</code></a>
+and <a href="https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html#method.or_insert"><code>Entry::or_insert</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.VecDeque.html"><code>VecDeque</code></a>.</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="39-bump-allocator.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="61-dijkstra.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="41-sharded-cache.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="12-coin-change.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -520,11 +340,11 @@ Addison-Wesley, 1997, Section 3.2.1, on linear congruential generators.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="39-bump-allocator.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="61-dijkstra.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="41-sharded-cache.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="12-coin-change.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

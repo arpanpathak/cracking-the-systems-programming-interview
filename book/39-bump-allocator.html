@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,77 +209,8 @@ align_up(17, 16) = (17 + 15) &amp; !15 = 32 &amp; ...11110000 = 32
 <code>checked_add</code>, and an overflow is reported as <code>None</code> like any other request that does
 not fit.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! A bump (arena) allocator over a fixed byte buffer.
-//!
-//! Bump allocation is the simplest allocator: hand out bytes from a cursor and
-//! never free an individual block. It is O(1) per allocation, has no fragmentation
-//! bookkeeping, and is freed all at once with [`BumpArena::reset`]. Parsers,
-//! request handlers, and per-frame GPU upload buffers use exactly this shape.
-//!
-//! The point of the exercise is not to beat the system allocator; it is to show
-//! that you understand alignment, the memory layout you hand to hardware, and why
-//! "free everything at once" is both the strength and the limitation.
+<p class="listing"><span class="listing-label">Listing 39.1</span> <code>BumpArena</code>, <code>with_capacity</code>, and <code>alloc</code>. <code>src/problems/bump_allocator.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bump_allocator.rs">read the file on GitHub</a></p>
 
-/// A fixed-capacity bump allocator.
-pub struct BumpArena {
-    buffer: Vec&lt;u8&gt;,
-    offset: usize,
-}
-
-impl BumpArena {
-    /// Create an arena backed by `capacity` zeroed bytes.
-    pub fn with_capacity(capacity: usize) -&gt; Self {
-        Self {
-            buffer: vec![0; capacity],
-            offset: 0,
-        }
-    }
-
-    /// Allocate `size` bytes aligned to `align`.
-    ///
-    /// Returns `None` when the request does not fit. `align` must be a power of
-    /// two.
-    pub fn alloc(&amp;mut self, size: usize, align: usize) -&gt; Option&lt;&amp;mut [u8]&gt; {
-        assert!(align.is_power_of_two(), "align must be a power of two");
-
-        let start = align_up(self.offset, align)?;
-        let end = start.checked_add(size)?;
-        if end &gt; self.buffer.len() {
-            return None;
-        }
-
-        self.offset = end;
-        Some(&amp;mut self.buffer[start..end])
-    }
-
-    /// Bytes handed out so far, including alignment padding.
-    pub fn used(&amp;self) -&gt; usize {
-        self.offset
-    }
-
-    /// Bytes still available before the next allocation.
-    pub fn remaining(&amp;self) -&gt; usize {
-        self.buffer.len() - self.offset
-    }
-
-    /// Total capacity.
-    pub fn capacity(&amp;self) -&gt; usize {
-        self.buffer.len()
-    }
-
-    /// Free everything at once, as an arena does.
-    pub fn reset(&amp;mut self) {
-        self.offset = 0;
-    }
-}
-
-fn align_up(offset: usize, align: usize) -&gt; Option&lt;usize&gt; {
-    let mask = align - 1;
-    offset.checked_add(mask).map(|value| value &amp; !mask)
-}
-<span class="boring">}</span></code></pre>
 <p><code>alloc</code> returns <code>Option&lt;&amp;mut [u8]&gt;</code>. The slice borrows the arena mutably, so the caller
 must finish using one allocation before requesting another. That restriction is what
 makes the function safe without <code>unsafe</code>: two live allocations would be two mutable
@@ -297,76 +228,8 @@ after a reset can see data written before it. Only a fresh arena is guaranteed t
 zeroed, by <code>vec![0; capacity]</code>, and the test <code>writes_are_isolated_between_allocations</code>
 depends on that.</p>
 <p>The next listing shows the tests.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
-mod tests {
-    use super::*;
+<p class="listing"><span class="listing-label">Listing 39.2</span> The tests for the module. <code>src/problems/bump_allocator.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bump_allocator.rs">read the file on GitHub</a></p>
 
-    #[test]
-    fn allocations_are_aligned() {
-        let mut arena = BumpArena::with_capacity(64);
-
-        let first = arena.alloc(1, 8).expect("fits");
-        assert_eq!(first.as_ptr() as usize % 8, 0);
-        assert_eq!(first.len(), 1);
-
-        let second = arena.alloc(4, 16).expect("fits");
-        assert_eq!(second.as_ptr() as usize % 16, 0);
-
-        // The first block occupies 1 byte. Aligning the next block to 16 adds 15
-        // bytes of padding, so the arena has consumed 16 + 4 = 20 bytes.
-        assert_eq!(arena.used(), 20);
-        assert_eq!(arena.remaining(), 44);
-    }
-
-    #[test]
-    fn exhaustion_returns_none_and_keeps_state() {
-        let mut arena = BumpArena::with_capacity(16);
-        assert!(arena.alloc(16, 1).is_some());
-
-        let used_before = arena.used();
-        assert!(arena.alloc(1, 1).is_none());
-        assert_eq!(arena.used(), used_before, "a failed alloc must not advance");
-    }
-
-    #[test]
-    fn reset_reclaims_everything() {
-        let mut arena = BumpArena::with_capacity(32);
-        assert!(arena.alloc(20, 4).is_some());
-        assert_eq!(arena.remaining(), 12);
-
-        arena.reset();
-        assert_eq!(arena.used(), 0);
-        assert_eq!(arena.remaining(), arena.capacity());
-        assert!(arena.alloc(32, 1).is_some());
-    }
-
-    #[test]
-    fn zero_sized_allocation_is_allowed() {
-        let mut arena = BumpArena::with_capacity(8);
-        let empty = arena.alloc(0, 8).expect("fits");
-        assert!(empty.is_empty());
-        assert_eq!(arena.used(), 0);
-    }
-
-    #[test]
-    fn writes_are_isolated_between_allocations() {
-        let mut arena = BumpArena::with_capacity(16);
-        arena
-            .alloc(4, 4)
-            .expect("fits")
-            .copy_from_slice(&amp;[1, 2, 3, 4]);
-        let second = arena.alloc(4, 4).expect("fits");
-        assert!(second.iter().all(|&amp;byte| byte == 0));
-        second.copy_from_slice(&amp;[9, 9, 9, 9]);
-
-        let view = arena.buffer.as_slice();
-        assert_eq!(&amp;view[0..4], &amp;[1, 2, 3, 4]);
-        assert_eq!(&amp;view[4..8], &amp;[9, 9, 9, 9]);
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>writes_are_isolated_between_allocations</code> reads <code>arena.buffer</code> directly. The test module
 is a child of the module that defines <code>BumpArena</code>, so it can see the private field. The
 test ends the borrow of <code>second</code> before it borrows <code>arena.buffer</code>, which is why
@@ -494,22 +357,6 @@ allocates its buffer with the alignment it intends to serve.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

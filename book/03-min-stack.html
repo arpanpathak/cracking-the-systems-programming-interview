@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -202,72 +202,8 @@ invariant still holds for every remaining index, so nothing is recomputed.</p>
 current minimum, or the current minimum otherwise. Both are available in constant
 time, which is where the bound comes from.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Min Stack: O(1) push, pop, top, and get_min.
-//!
-//! We keep a parallel `mins` stack. Each push stores the current minimum at that
-//! point in history, so pop is symmetric.
+<p class="listing"><span class="listing-label">Listing 3.1</span> The complete module, with its tests. <code>src/problems/min_stack.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs">read the file on GitHub</a></p>
 
-#[derive(Debug, Default)]
-pub struct MinStack {
-    values: Vec&lt;i32&gt;,
-    mins: Vec&lt;i32&gt;,
-}
-
-impl MinStack {
-    pub fn new() -&gt; Self {
-        Self::default()
-    }
-
-    pub fn push(&amp;mut self, val: i32) {
-        match self.mins.last() {
-            Some(&amp;min) if min &lt;= val =&gt; self.mins.push(min),
-            _ =&gt; self.mins.push(val),
-        }
-        self.values.push(val);
-    }
-
-    pub fn pop(&amp;mut self) -&gt; Option&lt;i32&gt; {
-        self.mins.pop();
-        self.values.pop()
-    }
-
-    pub fn top(&amp;self) -&gt; Option&lt;i32&gt; {
-        self.values.last().copied()
-    }
-
-    pub fn get_min(&amp;self) -&gt; Option&lt;i32&gt; {
-        self.mins.last().copied()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn stack_tracks_minimum() {
-        let mut stack = MinStack::new();
-        stack.push(-2);
-        stack.push(0);
-        stack.push(-3);
-        assert_eq!(stack.get_min(), Some(-3));
-        assert_eq!(stack.pop(), Some(-3));
-        assert_eq!(stack.top(), Some(0));
-        assert_eq!(stack.get_min(), Some(-2));
-    }
-
-    #[test]
-    fn handles_duplicates() {
-        let mut stack = MinStack::new();
-        stack.push(1);
-        stack.push(1);
-        stack.pop();
-        assert_eq!(stack.get_min(), Some(1));
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>MinStack::new</code> returns <code>Self::default()</code>, so the constructor and the <code>Default</code>
 implementation cannot disagree.</p>
 <p><code>push</code> matches on the last entry of <code>mins</code> with a guard. <code>Some(&amp;min) if min &lt;= val</code>
@@ -348,6 +284,17 @@ vectors would differ in length and the invariant would break. Rust aborts the pr
 on allocation failure, so the case is unreachable through this function. The
 invariant holds because of the order of two adjacent statements, which the compiler
 does not check.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>The minimum is stored at every depth rather than searched for: a second vector holds
+at index <code>i</code> the smallest value among <code>values[0..=i]</code>.</li>
+<li>The invariant survives a <code>pop</code> untouched, because removing the last entry of both
+vectors leaves every remaining index correct, so nothing is recomputed.</li>
+<li><code>push</code> appends either the incoming value or the current minimum, and <code>get_min</code> reads
+the last entry, so all four operations are constant time.</li>
+<li>The price is one extra <code>i32</code> per element. It is the memory paid for a minimum that
+never costs a scan.</li>
+</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html#method.last"><code>Vec::last</code></a>.</li>
@@ -363,7 +310,7 @@ does not check.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="04-sliding-window.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="14-linked-list.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -377,7 +324,7 @@ does not check.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="04-sliding-window.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="14-linked-list.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -390,22 +337,6 @@ does not check.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

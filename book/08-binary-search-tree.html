@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -216,148 +216,8 @@ remove 5  -&gt; its only child 7 moves up
 remove 10 -&gt; 12, the successor, moves up
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">use std::cmp::Ordering;
+<p class="listing"><span class="listing-label">Listing 8.1</span> The complete program. <code>src/bin/bst_clean.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs">read the file on GitHub</a></p>
 
-type TreeLink&lt;T&gt; = Box&lt;BST&lt;T&gt;&gt;;
-
-#[derive(Debug, Clone, Default)]
-pub enum BST&lt;T&gt; {
-    #[default]
-    Empty,
-    Node {
-        value: T,
-        left: TreeLink&lt;T&gt;,
-        right: TreeLink&lt;T&gt;,
-    },
-}
-
-impl&lt;T: Ord&gt; BST&lt;T&gt; {
-    pub fn new() -&gt; Self {
-        Self::Empty
-    }
-
-    pub fn insert(&amp;mut self, val: T) {
-        match self {
-            Self::Empty =&gt; {
-                *self = Self::Node {
-                    value: val,
-                    left: Box::new(Self::Empty),
-                    right: Box::new(Self::Empty),
-                };
-            }
-            Self::Node { value, left, right } =&gt; match val.cmp(value) {
-                Ordering::Less =&gt; left.insert(val),
-                Ordering::Greater =&gt; right.insert(val),
-                Ordering::Equal =&gt; {}
-            },
-        }
-    }
-
-    pub fn contains(&amp;self, val: &amp;T) -&gt; bool {
-        match self {
-            Self::Empty =&gt; false,
-            Self::Node { value, left, right } =&gt; match val.cmp(value) {
-                Ordering::Less =&gt; left.contains(val),
-                Ordering::Greater =&gt; right.contains(val),
-                Ordering::Equal =&gt; true,
-            },
-        }
-    }
-
-    pub fn remove(&amp;mut self, val: &amp;T) -&gt; bool {
-        match self {
-            Self::Empty =&gt; false,
-            Self::Node { value, left, right } =&gt; match val.cmp(value) {
-                Ordering::Less =&gt; left.remove(val),
-                Ordering::Greater =&gt; right.remove(val),
-                Ordering::Equal =&gt; {
-                    if left.is_empty() &amp;&amp; right.is_empty() {
-                        *self = Self::Empty;
-                        return true;
-                    }
-                    if left.is_empty() {
-                        *self = *std::mem::take(right);
-                        return true;
-                    }
-                    if right.is_empty() {
-                        *self = *std::mem::take(left);
-                        return true;
-                    }
-                    let min_val = right.remove_min().unwrap();
-                    *value = min_val;
-                    true
-                }
-            },
-        }
-    }
-
-    fn remove_min(&amp;mut self) -&gt; Option&lt;T&gt; {
-        match self {
-            Self::Empty =&gt; None,
-            Self::Node { left, .. } if left.is_empty() =&gt; {
-                let node = std::mem::take(self);
-                if let Self::Node { value, right, .. } = node {
-                    *self = *right;
-                    Some(value)
-                } else {
-                    unreachable!()
-                }
-            }
-            Self::Node { left, .. } =&gt; left.remove_min(),
-        }
-    }
-
-    pub fn range(&amp;self, low: &amp;T, high: &amp;T) -&gt; Vec&lt;&amp;T&gt; {
-        let mut result = Vec::new();
-        self.range_helper(low, high, &amp;mut result);
-        result
-    }
-
-    // Explicit lifetime 'a ties the references in the vector to the lifetime of &amp;self.
-    fn range_helper&lt;'a&gt;(&amp;'a self, low: &amp;T, high: &amp;T, acc: &amp;mut Vec&lt;&amp;'a T&gt;) {
-        match self {
-            Self::Empty =&gt; {}
-            Self::Node { value, left, right } =&gt; {
-                if value &lt; low {
-                    right.range_helper(low, high, acc);
-                } else if value &gt; high {
-                    left.range_helper(low, high, acc);
-                } else {
-                    left.range_helper(low, high, acc);
-                    acc.push(value);
-                    right.range_helper(low, high, acc);
-                }
-            }
-        }
-    }
-
-    fn is_empty(&amp;self) -&gt; bool {
-        matches!(self, Self::Empty)
-    }
-}
-
-fn main() {
-    let mut bst = BST::new();
-    bst.insert(10);
-    bst.insert(5);
-    bst.insert(15);
-    bst.insert(3);
-    bst.insert(7);
-    bst.insert(12);
-    bst.insert(18);
-
-    println!("Contains 7: {}", bst.contains(&amp;7));
-    println!("Contains 12: {}", bst.contains(&amp;12));
-
-    let range = bst.range(&amp;4, &amp;16);
-    println!("Values in [4, 16]: {:?}", range);
-
-    println!("Remove 5: {}", bst.remove(&amp;5));
-    println!("Remove 10: {}", bst.remove(&amp;10));
-    println!("Remove 99: {}", bst.remove(&amp;99));
-
-    println!("After removals: {:#?}", bst);
-}</code></pre>
 <p>The type is its own node. <code>BST&lt;T&gt;</code> is either <code>Empty</code> or a node with two boxed
 subtrees, so <code>Box&lt;BST&lt;T&gt;&gt;</code> is the link type and there is no separate wrapper struct.
 The <code>Default</code> derive with <code>#[default]</code> on <code>Empty</code> gives <code>BST::default()</code> as an empty
@@ -434,6 +294,18 @@ subtree. The <code>unwrap</code> cannot fail while the tree is ordered; it is a 
 <p><strong>The value type needs <code>Ord</code>.</strong> A caller with a type that is only <code>PartialOrd</code>, such as
 a floating-point number, cannot use the tree at all, because <code>insert</code> matches on
 <code>Ordering</code> and <code>f64</code> does not implement <code>Ord</code>.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>The ordering invariant is the whole structure: every value left of a node is smaller
+and every value right of it is larger, so one comparison discards a subtree.</li>
+<li>Removal has three shapes, and only the two-child case needs a second descent: the
+smallest value of the right subtree is the next value in order, so putting it in
+place keeps the invariant on both sides.</li>
+<li>Every bound is stated in the height rather than the count, because nothing here
+balances. Sorted input produces a chain, and the height becomes the count.</li>
+<li>An in-order traversal reads the values in ascending order, which is the test that the
+invariant still holds after a sequence of removals.</li>
+</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford Stein,
@@ -452,7 +324,7 @@ Search Trees”.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="09-binary-search.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="10-trie.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -466,7 +338,7 @@ Search Trees”.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="09-binary-search.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="10-trie.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -479,22 +351,6 @@ Search Trees”.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

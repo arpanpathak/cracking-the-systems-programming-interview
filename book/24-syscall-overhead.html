@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -208,110 +208,8 @@ division       elapsed nanoseconds / iterations
                the result is an average, and the spread is not reported
 </code></pre>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">// ============================================================================
-// Syscall overhead measurement
-//
-// Ported from the Rust playground repo (`mkdir_syscall.rs`).
-//
-// What this measures:
-//   - Every syscall crosses the user/kernel boundary: argument validation,
-//     kernel work, scheduling checks, and return to user space.
-//   - This program calls `getpid()` in a tight loop and estimates the average
-//     per-call cost. `getpid()` is a tiny syscall, so the measured cost is
-//     close to the irreducible syscall overhead on this kernel/hardware.
-//
-// Why this appears in cloud interviews:
-//   - High-performance data planes care about per-packet or per-I/O syscall
-//     cost. The difference between one syscall per event and batching via
-//     io_uring/recvmmsg can be enormous.
-//   - It also demonstrates unsafe FFI, safety comments, warm-up loops, and
-//     benchmark methodology: warm the code path, run enough iterations, and
-//     report average cost rather than one lucky sample.
-//
-// Run:
-//   cargo run --bin syscall_overhead
-// ============================================================================
+<p class="listing"><span class="listing-label">Listing 24.1</span> The complete program, with its tests. <code>src/bin/syscall_overhead.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/syscall_overhead.rs">read the file on GitHub</a></p>
 
-use std::time::Instant;
-
-/// Calls `getpid()` `iterations` times and returns the average cost in
-/// nanoseconds per call.
-fn measure_getpid_ns_per_call(iterations: u64) -&gt; f64 {
-    let start = Instant::now();
-
-    for _ in 0..iterations {
-        // SAFETY: `libc::getpid` is a pure read-only system call with no
-        // pointer arguments and no memory side effects. The FFI declaration in
-        // the `libc` crate matches the Linux kernel ABI.
-        //
-        // `black_box` prevents the optimizer from assuming the loop has no
-        // observable effect, which matters because the syscall result is
-        // otherwise unused.
-        unsafe {
-            libc::getpid();
-        }
-    }
-
-    let elapsed = start.elapsed();
-    elapsed.as_nanos() as f64 / iterations as f64
-}
-
-fn main() {
-    const ITERATIONS: u64 = 10_000_000;
-
-    // Warm up the code path before timing. The first calls may fault in the
-    // libc/PLT, cache lines, or CPU frequency may still be ramping.
-    for _ in 0..100_000 {
-        // SAFETY: same reasoning as above; read-only syscall.
-        unsafe { libc::getpid() };
-    }
-
-    let ns_per_call = measure_getpid_ns_per_call(ITERATIONS);
-
-    println!("Iterations:      {}", ITERATIONS);
-    println!(
-        "Total time:      {:.3}s",
-        ns_per_call * ITERATIONS as f64 / 1e9
-    );
-    println!("Per syscall:     {:.1} ns", ns_per_call);
-
-    // Example framing: if a service processed 10M packets/s and used one
-    // getpid-style syscall per packet, this fraction of each second would be
-    // spent crossing into the kernel just for the syscall overhead.
-    let cpu_seconds_per_second = ns_per_call * 10_000_000.0 / 1_000_000_000.0;
-    println!(
-        "At 10M calls/s, syscall overhead would consume: {:.2} CPU-seconds per second",
-        cpu_seconds_per_second
-    );
-}
-
-// ============================================================================
-// Tests (cargo test --bin syscall_overhead)
-// ============================================================================
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn measurement_returns_a_positive_finite_number() {
-        let ns = measure_getpid_ns_per_call(10_000);
-        assert!(ns.is_finite(), "nanoseconds per call must be finite");
-        assert!(ns &gt; 0.0, "a syscall cannot cost zero time");
-        // On any real kernel this is microseconds or tens/hundreds of ns, not
-        // seconds per call.
-        assert!(
-            ns &lt; 1_000_000.0,
-            "suspiciously slow syscall measurement: {ns} ns"
-        );
-    }
-
-    #[test]
-    fn getpid_returns_nonzero_pid() {
-        // SAFETY: read-only syscall, no pointers, no side effects.
-        let pid = unsafe { libc::getpid() };
-        assert!(pid &gt; 0);
-    }
-}</code></pre>
 <p>Three parts of this file need comment.</p>
 <p><strong>The <code>SAFETY</code> comments</strong> state the obligation: no pointer arguments, no memory
 side effects, and an FFI declaration that matches the kernel ABI. That is what an
@@ -325,9 +223,9 @@ opaque to the optimiser, an external function call is a side effect it cannot
 delete, so the loop survives, and the comment describes an intention rather than
 the code. <code>std::hint::black_box(libc::getpid())</code> would make the code match its
 comment.</p>
-<p><strong>The trailing space after the <code>unsafe</code> block in the warm-up loop</strong> is invisible in
-a rendered page and present in the source. It is noted here because the listing is
-otherwise a faithful copy of the file.</p>
+<p><strong>The trailing space after the <code>unsafe</code> block in the warm-up loop</strong> is present in the
+source and invisible on a rendered page. It is noted here because it is the kind of
+difference a reader comparing the chapter with the file would otherwise stop at.</p>
 <p><strong>The final projection</strong> multiplies the measured cost by ten million calls per
 second and divides by a billion, which yields a figure in CPU-seconds per second.
 A result above 1.0 means that one core cannot sustain that rate: the arithmetic is
@@ -407,11 +305,11 @@ loop, and the minimum over several batches. Neither is present.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="23-count-islands.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="64-thread-pool.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="25-shadowing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="48-cache-locality.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -421,11 +319,11 @@ loop, and the minimum over several batches. Neither is present.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="23-count-islands.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="64-thread-pool.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="25-shadowing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="48-cache-locality.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -438,22 +336,6 @@ loop, and the minimum over several batches. Neither is present.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

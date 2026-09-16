@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,76 +209,8 @@ or after a cycle: each vertex of a cycle waits for another vertex of the same cy
 none of them reaches in-degree zero. The cycle test is therefore one comparison at the
 end, with no separate traversal.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Topological sort (Kahn's algorithm).
-//!
-//! Common in NVIDIA-style scheduling questions: prerequisite graphs, pipeline
-//! stages, dependency ordering of GPU jobs.
+<p class="listing"><span class="listing-label">Listing 11.1</span> The complete module, with its tests. <code>src/problems/graph_topology.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">read the file on GitHub</a></p>
 
-use std::collections::VecDeque;
-
-pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
-    let mut graph = vec![Vec::new(); num_nodes];
-    let mut indegree = vec![0usize; num_nodes];
-
-    for &amp;(from, to) in edges {
-        graph[from].push(to);
-        indegree[to] += 1;
-    }
-
-    let mut queue: VecDeque&lt;usize&gt; = (0..num_nodes).filter(|&amp;n| indegree[n] == 0).collect();
-    let mut order = Vec::with_capacity(num_nodes);
-
-    while let Some(node) = queue.pop_front() {
-        order.push(node);
-
-        for &amp;next in &amp;graph[node] {
-            indegree[next] -= 1;
-            if indegree[next] == 0 {
-                queue.push_back(next);
-            }
-        }
-    }
-
-    (order.len() == num_nodes).then_some(order)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn returns_order_for_dag() {
-        // 0 -&gt; 1, 0 -&gt; 2, 1 -&gt; 3, 2 -&gt; 3
-        let edges = [(0, 1), (0, 2), (1, 3), (2, 3)];
-        let order = topological_sort(4, &amp;edges).expect("DAG has an order");
-        assert_eq!(order.len(), 4);
-        assert!(
-            order.iter().position(|&amp;n| n == 0).unwrap()
-                &lt; order.iter().position(|&amp;n| n == 1).unwrap()
-        );
-        assert!(
-            order.iter().position(|&amp;n| n == 1).unwrap()
-                &lt; order.iter().position(|&amp;n| n == 3).unwrap()
-        );
-    }
-
-    #[test]
-    fn detects_cycle() {
-        // 0 -&gt; 1 -&gt; 0 is a cycle.
-        let edges = [(0, 1), (1, 0)];
-        assert_eq!(topological_sort(2, &amp;edges), None);
-    }
-
-    #[test]
-    fn disconnected_nodes_are_included() {
-        let edges = [(0, 1)];
-        let order = topological_sort(3, &amp;edges).expect("DAG has an order");
-        assert_eq!(order.len(), 3);
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>vec![Vec::new(); num_nodes]</code> builds the adjacency list with one vector per vertex. The
 inner vectors grow as edges are added, so the total allocation is proportional to the
 edge count.</p>
@@ -339,6 +271,19 @@ properties that must hold, and a caller must not depend on a particular order.</
 <p><strong>Duplicate edges are tolerated but not detected.</strong> Two copies of <code>(0, 1)</code> add two to
 the in-degree of vertex 1, and the same edge is relaxed twice, so the counts stay
 consistent and the result is unaffected. Nothing reports the duplication.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A vertex can be placed as soon as every vertex that must precede it has been placed,
+so counting unplaced predecessors, the in-degree, is enough to decide when a vertex
+becomes available.</li>
+<li>The queue is a <code>VecDeque</code> because vertices arrive at the back and leave from the
+front, and each edge is relaxed exactly once, which is what gives <code>O(V + E)</code>.</li>
+<li>The cycle test is one comparison at the end. A vertex on or after a cycle never
+reaches in-degree zero, so a short order is proof that no order exists.</li>
+<li><code>then_some</code> consumes the partial order when the graph has a cycle, so a caller
+cannot schedule a prefix by accident. Chapter 65 keeps the same algorithm with
+vertices named by string, and returns an empty vector instead.</li>
+</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Arthur B. Kahn, “Topological sorting of large networks”, <em>Communications of the
@@ -358,7 +303,7 @@ ACM</em> 5(11), 1962, pages 558–562.</li>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="12-coin-change.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="23-count-islands.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -372,7 +317,7 @@ ACM</em> 5(11), 1962, pages 558–562.</li>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="12-coin-change.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="23-count-islands.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -385,22 +330,6 @@ ACM</em> 5(11), 1962, pages 558–562.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

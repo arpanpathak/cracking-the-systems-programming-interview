@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -211,156 +211,8 @@ so the size of a <code>Tree</code> value does not depend on how many nodes exist
 <p>Each arrow is one eight-byte ownership pointer. The <code>Empty</code> variant is a discriminant
 with no payload, so it occupies no heap space.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Binary tree as an algebraic data type.
-//!
-//! ```text
-//! Tree = Empty
-//!      | Node { value, left: Box&lt;Tree&gt;, right: Box&lt;Tree&gt; }
-//! ```
+<p class="listing"><span class="listing-label">Listing 7.1</span> The complete module, with its tests. <code>src/problems/binary_tree.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs">read the file on GitHub</a></p>
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Tree {
-    Empty,
-    Node {
-        value: i32,
-        left: Box&lt;Tree&gt;,
-        right: Box&lt;Tree&gt;,
-    },
-}
-
-impl Tree {
-    pub fn max_depth(&amp;self) -&gt; usize {
-        match self {
-            Tree::Empty =&gt; 0,
-            Tree::Node { left, right, .. } =&gt; 1 + left.max_depth().max(right.max_depth()),
-        }
-    }
-
-    pub fn invert(&amp;mut self) {
-        match self {
-            Tree::Empty =&gt; {}
-            Tree::Node { left, right, .. } =&gt; {
-                left.invert();
-                right.invert();
-                std::mem::swap(left, right);
-            }
-        }
-    }
-
-    pub fn preorder(&amp;self) -&gt; Vec&lt;i32&gt; {
-        let mut out = Vec::new();
-        self.collect_preorder(&amp;mut out);
-        out
-    }
-
-    pub fn inorder(&amp;self) -&gt; Vec&lt;i32&gt; {
-        let mut out = Vec::new();
-        self.collect_inorder(&amp;mut out);
-        out
-    }
-
-    pub fn postorder(&amp;self) -&gt; Vec&lt;i32&gt; {
-        let mut out = Vec::new();
-        self.collect_postorder(&amp;mut out);
-        out
-    }
-
-    fn collect_preorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
-        match self {
-            Tree::Empty =&gt; {}
-            Tree::Node { value, left, right } =&gt; {
-                out.push(*value);
-                left.collect_preorder(out);
-                right.collect_preorder(out);
-            }
-        }
-    }
-
-    fn collect_inorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
-        match self {
-            Tree::Empty =&gt; {}
-            Tree::Node { value, left, right } =&gt; {
-                left.collect_inorder(out);
-                out.push(*value);
-                right.collect_inorder(out);
-            }
-        }
-    }
-
-    fn collect_postorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
-        match self {
-            Tree::Empty =&gt; {}
-            Tree::Node { value, left, right } =&gt; {
-                left.collect_postorder(out);
-                right.collect_postorder(out);
-                out.push(*value);
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn leaf(value: i32) -&gt; Tree {
-        Tree::Node {
-            value,
-            left: Box::new(Tree::Empty),
-            right: Box::new(Tree::Empty),
-        }
-    }
-
-    fn node(value: i32, left: Tree, right: Tree) -&gt; Tree {
-        Tree::Node {
-            value,
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    fn sample() -&gt; Tree {
-        node(3, leaf(9), node(20, leaf(15), leaf(7)))
-    }
-
-    #[test]
-    fn max_depth_works() {
-        assert_eq!(Tree::Empty.max_depth(), 0);
-        assert_eq!(leaf(1).max_depth(), 1);
-        assert_eq!(sample().max_depth(), 3);
-    }
-
-    #[test]
-    fn invert_swaps_subtrees() {
-        let mut tree = sample();
-        tree.invert();
-
-        match &amp;tree {
-            Tree::Node { left, right, .. } =&gt; {
-                match left.as_ref() {
-                    Tree::Node { value, .. } =&gt; assert_eq!(*value, 20),
-                    _ =&gt; panic!("expected left node"),
-                }
-                match right.as_ref() {
-                    Tree::Node { value, .. } =&gt; assert_eq!(*value, 9),
-                    _ =&gt; panic!("expected right node"),
-                }
-            }
-            _ =&gt; panic!("expected node"),
-        }
-    }
-
-    #[test]
-    fn traversals_work() {
-        let tree = sample();
-        assert_eq!(tree.preorder(), vec![3, 9, 20, 15, 7]);
-        assert_eq!(tree.inorder(), vec![9, 3, 15, 20, 7]);
-        assert_eq!(tree.postorder(), vec![9, 15, 7, 20, 3]);
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>max_depth</code> uses <code>..</code> in the pattern to ignore <code>value</code>, and computes
 <code>1 + left.max_depth().max(right.max_depth())</code> without a binding for the child depths.
 <code>Ord::max</code> on two <code>usize</code> values is a single instruction.</p>
@@ -431,6 +283,19 @@ count writes a recursive helper or a loop with a work list.</p>
 roots of the two subtrees were exchanged, which catches an <code>invert</code> that does nothing
 and not one that swaps the children of the root only. Asserting <code>tree.preorder()</code>
 against the mirrored sequence would test the whole tree in one line.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>The tree is an algebraic data type with an <code>Empty</code> variant and a <code>Node</code> variant that
+owns both children, so a half-present node is not representable and no function tests
+for one.</li>
+<li>Boxing the children puts the recursion in the type: a <code>Tree</code> value has a fixed size
+however many nodes exist.</li>
+<li>Every operation visits each node once, <code>O(n)</code>, and the stack cost is the height, so
+the shape of the tree, not its size, decides how much stack is needed.</li>
+<li>The derived destructor recurses as well, which is why a degenerate tree can exhaust
+the stack while being dropped rather than while being read. Chapter 38 measures that
+case and replaces the destructor.</li>
+</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">Defining an enum</a>.</li>
@@ -442,7 +307,7 @@ against the mirrored sequence would test the whole tree in one line.</p>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="06-top-k-frequent.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="16-doubly-linked-list.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -456,7 +321,7 @@ against the mirrored sequence would test the whole tree in one line.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="06-top-k-frequent.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="16-doubly-linked-list.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -473,22 +338,6 @@ against the mirrored sequence would test the whole tree in one line.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

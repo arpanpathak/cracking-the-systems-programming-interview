@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -227,72 +227,18 @@ decision to allocate until it knows whether an allocation is needed.</p>
 <p>The module contains five short examples and a test for each. The file begins with the
 table from the Problem Statement in its documentation comment and the imports, shown
 below.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! Smart pointers and interior mutability.
-//!
-//! Each pointer type answers a different ownership question, and picking the
-//! wrong one shows up as either a compile error or a runtime bug.
-//!
-//! | Type | Ownership | Mutation | Across threads |
-//! |---|---|---|---|
-//! | `Box&lt;T&gt;` | single | through `&amp;mut` | if `T: Send` |
-//! | `Rc&lt;T&gt;` | shared, non-atomic count | no | no |
-//! | `Arc&lt;T&gt;` | shared, atomic count | no | if `T: Send + Sync` |
-//! | `RefCell&lt;T&gt;` | single | runtime checked | no |
-//! | `Mutex&lt;T&gt;` | single | blocking lock | yes |
-//! | `Weak&lt;T&gt;` | non-owning | no | as `Arc` |
-//! | `Cow&lt;'a, T&gt;` | borrow or own | no | as the borrow |
-//!
-//! Two rules cover most decisions. `Rc`/`RefCell` is for graphs and caches inside
-//! one thread; `Arc`/`Mutex` is for state shared between threads. `Weak` exists to
-//! break reference cycles, because two strong references in a cycle never reach a
-//! count of zero and the memory is never freed.
+<p class="listing"><span class="listing-label">Listing 36.1</span> An excerpt of the module. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
 
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
-use std::sync::{Arc, Mutex};
-use std::thread;
-<span class="boring">}</span></code></pre>
 <h3 id="box-for-a-recursive-type"><a class="header" href="#box-for-a-recursive-type"><code>Box</code> for a recursive type</a></h3>
 <p>A type that contains itself by value would have infinite size. <code>Box&lt;Expr&gt;</code> is one
 pointer wide whatever the expression contains, so <code>Expr</code> has a finite size.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A recursive type needs indirection, because `Expr` cannot contain itself by
-/// value. `Box` provides the fixed-size indirection.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Expr {
-    Lit(i64),
-    Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;),
-}
+<p class="listing"><span class="listing-label">Listing 36.2</span> <code>Box</code> for a recursive type. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
 
-/// Evaluate an expression tree.
-pub fn eval(expr: &amp;Expr) -&gt; i64 {
-    match expr {
-        Expr::Lit(value) =&gt; *value,
-        Expr::Add(left, right) =&gt; eval(left) + eval(right),
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>eval(left)</code> receives a <code>&amp;Box&lt;Expr&gt;</code>, and deref coercion turns it into the <code>&amp;Expr</code> the
 function expects, so the recursive calls need no explicit dereference.</p>
 <h3 id="rcrefcellt-inside-one-thread"><a class="header" href="#rcrefcellt-inside-one-thread"><code>Rc&lt;RefCell&lt;T&gt;&gt;</code> inside one thread</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Shared mutation inside one thread, with `Rc` for aliasing and `RefCell` for
-/// the runtime borrow check.
-pub fn shared_counter_with_rc_refcell() -&gt; i32 {
-    let counter = Rc::new(RefCell::new(0));
-    let alias = Rc::clone(&amp;counter);
+<p class="listing"><span class="listing-label">Listing 36.3</span> <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> inside one thread. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
 
-    *alias.borrow_mut() += 1;
-    *counter.borrow_mut() += 10;
-
-    *counter.borrow()
-}
-<span class="boring">}</span></code></pre>
 <p><code>Rc::clone(&amp;counter)</code> increments a reference count and returns a second handle to the
 same allocation; it does not copy the integer. <code>borrow_mut</code> returns a <code>RefMut</code> guard
 that dereferences to <code>&amp;mut i32</code>. Each guard is a temporary that ends with its
@@ -303,37 +249,8 @@ returns 11.</p>
 panic with <code>already borrowed</code>. The compiler cannot see the conflict because both
 handles are shared references; <code>RefCell</code> checks it at run time instead.</p>
 <h3 id="weak-for-a-back-reference"><a class="header" href="#weak-for-a-back-reference"><code>Weak</code> for a back-reference</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A node whose parent link is weak, so a child does not keep its parent alive.
-pub struct TreeNode {
-    pub value: i32,
-    parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;,
-}
+<p class="listing"><span class="listing-label">Listing 36.4</span> <code>Weak</code> for a back-reference. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
 
-impl TreeNode {
-    /// A node with no parent.
-    pub fn root(value: i32) -&gt; Rc&lt;Self&gt; {
-        Rc::new(Self {
-            value,
-            parent: RefCell::new(Weak::new()),
-        })
-    }
-
-    /// A node that points back weakly at `parent`.
-    pub fn child_of(parent: &amp;Rc&lt;Self&gt;, value: i32) -&gt; Rc&lt;Self&gt; {
-        Rc::new(Self {
-            value,
-            parent: RefCell::new(Rc::downgrade(parent)),
-        })
-    }
-
-    /// The parent's value, or `None` once the parent has been dropped.
-    pub fn parent_value(&amp;self) -&gt; Option&lt;i32&gt; {
-        self.parent.borrow().upgrade().map(|parent| parent.value)
-    }
-}
-<span class="boring">}</span></code></pre>
 <p><code>Rc::downgrade(parent)</code> creates a <code>Weak</code> that does not contribute to the strong count.
 When the last <code>Rc</code> to the parent is dropped, the parent is freed even though the child
 still holds the <code>Weak</code>. <code>upgrade</code> then returns <code>None</code>, and <code>parent_value</code> reports
@@ -342,31 +259,8 @@ absence rather than reading freed memory.</p>
 but the cell is what would let a parent be attached or replaced after the child is
 created, through a shared <code>Rc&lt;TreeNode&gt;</code>.</p>
 <h3 id="arcmutext-across-threads"><a class="header" href="#arcmutext-across-threads"><code>Arc&lt;Mutex&lt;T&gt;&gt;</code> across threads</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Shared mutation across threads, with `Arc` for ownership and `Mutex` for
-/// exclusive access.
-pub fn total_with_arc_mutex(threads: usize, per_thread: usize) -&gt; usize {
-    let total = Arc::new(Mutex::new(0usize));
-    let mut handles = Vec::with_capacity(threads);
+<p class="listing"><span class="listing-label">Listing 36.5</span> <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> across threads. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
 
-    for _ in 0..threads {
-        let total = Arc::clone(&amp;total);
-        handles.push(thread::spawn(move || {
-            for _ in 0..per_thread {
-                let mut guard = total.lock().expect("mutex poisoned");
-                *guard += 1;
-            }
-        }));
-    }
-
-    for handle in handles {
-        handle.join().expect("worker panicked");
-    }
-
-    *total.lock().expect("mutex poisoned")
-}
-<span class="boring">}</span></code></pre>
 <p><code>Arc</code> is the thread-safe version of <code>Rc</code>: its reference count is updated with atomic
 operations, so handles can be cloned and dropped on different threads. <code>Mutex</code>
 provides the exclusive access that <code>RefCell</code> provides on one thread, and it blocks
@@ -375,20 +269,8 @@ rather than panics when the value is already borrowed.</p>
 for a lock acquisition. Chapter 43 replaces the mutex with an <code>AtomicUsize</code> for this
 exact workload.</p>
 <h3 id="cow-to-allocate-only-when-necessary"><a class="header" href="#cow-to-allocate-only-when-necessary"><code>Cow</code> to allocate only when necessary</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Borrow when no change is needed, allocate only when there is one.
-///
-/// `Cow` is the idiomatic return type for a function that usually passes its
-/// input through unchanged.
-pub fn normalize(input: &amp;str, uppercase: bool) -&gt; Cow&lt;'_, str&gt; {
-    if uppercase &amp;&amp; input.bytes().any(|byte| byte.is_ascii_lowercase()) {
-        Cow::Owned(input.to_uppercase())
-    } else {
-        Cow::Borrowed(input)
-    }
-}
-<span class="boring">}</span></code></pre>
+<p class="listing"><span class="listing-label">Listing 36.6</span> <code>Cow</code> to allocate only when necessary. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
+
 <p>The function scans the bytes once. If uppercasing is not requested, or the input has
 no lowercase ASCII letter, it returns <code>Cow::Borrowed(input)</code> and allocates nothing.
 Otherwise it allocates the uppercased <code>String</code>. A caller treats both cases the same way,
@@ -397,47 +279,8 @@ because <code>Cow&lt;str&gt;</code> dereferences to <code>&amp;str</code>, and a
 <p>The lifetime in <code>Cow&lt;'_, str&gt;</code> is elided to the lifetime of <code>input</code>, which is what ties
 a borrowed result to the argument it came from.</p>
 <p>The last listing shows the tests, one per example.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(test)]
-mod tests {
-    use super::*;
+<p class="listing"><span class="listing-label">Listing 36.7</span> <code>Cow</code> to allocate only when necessary, continued. <code>src/problems/smart_pointers.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">read the file on GitHub</a></p>
 
-    #[test]
-    fn boxed_expression_evaluates() {
-        let expr = Expr::Add(Box::new(Expr::Lit(1)), Box::new(Expr::Lit(2)));
-        assert_eq!(eval(&amp;expr), 3);
-    }
-
-    #[test]
-    fn rc_refcell_shares_mutation_within_a_thread() {
-        assert_eq!(shared_counter_with_rc_refcell(), 11);
-    }
-
-    #[test]
-    fn weak_parent_link_does_not_keep_the_parent_alive() {
-        let root = TreeNode::root(1);
-        let child = TreeNode::child_of(&amp;root, 2);
-
-        assert_eq!(child.parent_value(), Some(1));
-        drop(root);
-        assert_eq!(child.parent_value(), None);
-    }
-
-    #[test]
-    fn arc_mutex_sums_concurrent_updates() {
-        assert_eq!(total_with_arc_mutex(8, 250), 2_000);
-    }
-
-    #[test]
-    fn cow_borrows_and_owns_as_needed() {
-        assert!(matches!(normalize("A100", true), Cow::Borrowed(_)));
-        assert!(matches!(normalize("a100", true), Cow::Owned(_)));
-        assert_eq!(normalize("a100", true), "A100");
-        assert_eq!(normalize("a100", false), "a100");
-    }
-}
-<span class="boring">}</span></code></pre>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p>The weak-parent test is the one that shows a pointer type changing state over time.
 The table below records the reference counts at each step.</p>
@@ -522,7 +365,7 @@ counting; <code>upgrade</code> returns <code>None</code> after the target is dro
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="37-fibonacci.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="17-lru-cache.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -536,7 +379,7 @@ counting; <code>upgrade</code> returns <code>None</code> after the target is dro
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="37-fibonacci.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="17-lru-cache.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -549,22 +392,6 @@ counting; <code>upgrade</code> returns <code>None</code> after the target is dro
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

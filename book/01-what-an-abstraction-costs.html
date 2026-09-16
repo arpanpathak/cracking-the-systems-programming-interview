@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>57. Retry with Backoff and Jitter - Coding Interviews for Cracked Rustaceans</title>
+        <title>What an Abstraction Costs - Coding Interviews for Cracked Rustaceans</title>
 
 
         <!-- Custom HTML head -->
@@ -175,169 +175,118 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="retry"><a class="header" href="#retry">57. Retry with Backoff and Jitter</a></h1>
-<p><em>Source file: <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs"><code>src/problems/retry.rs</code></a>. Test it with <code>cargo test retry</code>.</em></p>
-<h2 id="problem-statement"><a class="header" href="#problem-statement">Problem Statement</a></h2>
-<p>Write <code>retry(policy, operation, unit_random)</code> that calls <code>operation</code> until one of the
-following happens:</p>
-<ul>
-<li>it succeeds, and the value is returned;</li>
-<li>it fails with an error that retrying cannot fix, and the error is returned at once;</li>
-<li>the policy’s maximum number of attempts is reached, and the last error is returned.</li>
-</ul>
-<p>Between attempts, wait for a delay that grows exponentially up to a cap, is randomised
-according to the policy, and is never shorter than a delay the server requested.</p>
-<h2 id="designing-a-solution"><a class="header" href="#designing-a-solution">Designing a Solution</a></h2>
-<p><strong>Classify errors by type.</strong> A <code>Retryable</code> trait with <code>is_retryable</code> and an optional
-<code>retry_after</code> lets the loop ask each error what to do. <code>ApiError</code> implements it: rate
-limiting and 5xx server errors are retryable, while <code>NotFound</code>, <code>Unauthorized</code>, and
-<code>InvalidRequest</code> are not, because waiting does not change the outcome.</p>
-<p><strong>Exponential backoff with a cap.</strong> The delay before retry <code>k</code>, counting from zero, is
-<code>base × 2^k</code>, limited to <code>max_delay</code>:</p>
-<pre><code class="language-text">base = 100 ms, max = 1 s
-
-retry k    base × 2^k    capped
-0          100 ms        100 ms
-1          200 ms        200 ms
-2          400 ms        400 ms
-3          800 ms        800 ms
-4          1600 ms       1000 ms
+                        <h1 id="what-an-abstraction-costs"><a class="header" href="#what-an-abstraction-costs">What an Abstraction Costs</a></h1>
+<h2 id="a-field-that-costs-nothing"><a class="header" href="#a-field-that-costs-nothing">A field that costs nothing</a></h2>
+<p>The repository’s singly linked list stores its successor as
+<code>Option&lt;Box&lt;ListNode&gt;&gt;</code>. On a target with 64-bit addresses that field is eight
+bytes wide, which is the width of a bare <code>Box&lt;ListNode&gt;</code> in the same position. The
+<code>Option</code> wrapper adds no tag byte, no padding and no second word: a boxed value is
+never null, so the all-zero address is available to encode the empty case.</p>
+<p>Change one word of that type and the result changes. <code>Option&lt;u32&gt;</code> occupies eight
+bytes, against four for a <code>u32</code> on its own. Every <code>u32</code> bit pattern is a legal
+<code>u32</code>, so no encoding is free for the empty case, and the compiler adds a four-byte
+tag which alignment then rounds up to eight.</p>
+<pre><code class="language-text">type                 size    alignment   why
+Box&lt;ListNode&gt;          8         8       one pointer
+Option&lt;Box&lt;ListNode&gt;&gt;  8         8       the null pointer is the empty case
+u32                    4         4       one word
+Option&lt;u32&gt;            8         4       no spare encoding, so a tag is added
+&amp;[i32]                16         8       a pointer and a length
+Vec&lt;u32&gt;              24         8       a pointer, a length, and a capacity
 </code></pre>
-<p><strong>Full jitter.</strong> With no randomness, clients that failed at the same moment retry at the
-same moments. Full jitter chooses the delay uniformly between zero and the capped
-backoff, which spreads retries across the whole interval. Analysis published by AWS
-found that full jitter completed the same work with fewer calls than equal jitter or no
-jitter.</p>
-<p><strong>Inject the random source.</strong> The loop takes <code>unit_random: impl FnMut() -&gt; f64</code>. Tests
-pass <code>|| 0.0</code> and get deterministic delays; production code passes a real generator.
-The crate has no dependency on a random-number library.</p>
-<p><strong><code>Retry-After</code> is a floor.</strong> When a server sends <code>429 Too Many Requests</code> with a
-<code>Retry-After</code> value, retrying sooner only earns another 429. The loop waits for the larger
-of the server’s value and its own backoff.</p>
-<h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 57.1</span> <code>Retryable</code>, <code>is_retryable</code>, and <code>retry_after</code>. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
-
-<p><code>retry_after</code> has a default body returning <code>None</code>, so an error type that has no
-server-provided delay implements only <code>is_retryable</code>.</p>
-<p><code>impl Retryable for ApiError</code> calls <code>ApiError::is_retryable(self)</code>, the inherent method
-from chapter 19, which has the same name as the trait method being defined. Method-call
-syntax would reach the same function, because inherent methods take priority over trait
-methods, but a reader would have to know that rule to see that <code>self.is_retryable()</code>
-does not recurse. The path form states the target directly.</p>
-<p class="listing"><span class="listing-label">Listing 57.2</span> <code>Jitter</code>, <code>RetryPolicy</code>, and <code>new</code>. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
-
-<p><code>exponential_delay</code> computes <code>2^attempt</code> as <code>1u32 &lt;&lt; attempt.min(31)</code>. The <code>min</code> keeps
-the shift below 32, where shifting a <code>u32</code> would overflow. <code>Duration::saturating_mul</code>
-returns <code>Duration::MAX</code> instead of panicking when the product is too large, and <code>.min</code>
-then applies the cap. Attempt 50 therefore produces <code>max_delay</code>, as the test checks.</p>
-<p><code>delay_for</code> clamps <code>unit_random</code> to <code>[0.0, 1.0]</code> before <code>Duration::mul_f64</code>, which
-panics on a negative or non-finite factor. A faulty random source cannot crash the retry
-loop.</p>
-<p><code>RetryPolicy::new</code> asserts <code>max_attempts &gt; 0</code>. The fields are also <code>pub</code>, so a caller can
-build a policy with a struct literal and bypass the assertion.</p>
-<p class="listing"><span class="listing-label">Listing 57.3</span> <code>retry</code>. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
-
-<p>The operation is <code>FnMut(u32) -&gt; Result&lt;T, E&gt;</code>. <code>FnMut</code> allows it to update state between
-calls, such as a counter in a test, and the <code>u32</code> argument tells it which attempt it is
-running, which is useful for logging.</p>
-<p><code>attempt + 1 &gt;= policy.max_attempts</code> checks whether the attempt that just failed was the
-last one. With <code>max_attempts = 3</code>, attempts 0, 1, and 2 run, and the error from attempt 2
-is returned without a final sleep.</p>
-<p><code>error.retry_after().map_or(backoff, |hint| hint.max(backoff))</code> returns the backoff when
-there is no hint and the larger of the two when there is.</p>
-<p class="listing"><span class="listing-label">Listing 57.4</span> The tests for the module. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
-
-<p>The loop tests use a policy with zero delays, so they run without sleeping.</p>
-<h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
-<p><strong><code>retries_then_succeeds</code> with <code>max_attempts = 5</code> and zero delays</strong></p>
+<p>These figures are for a 64-bit target and were produced by a program run on the
+machine that built this book. They are not properties of the language. On a 32-bit
+target each pointer is four bytes and every number above changes. What survives
+the change of target is the reason in the last column: the layout follows from
+whether the type has an unused bit pattern, and that is a property of the type.</p>
+<p>A design question as ordinary as whether a field should be <code>Option&lt;u32&gt;</code> or
+<code>Option&lt;NonZeroU32&gt;</code> therefore has a measurable answer, and the answer is four
+bytes per value. The linked list receives the free version because it stores a
+pointer. The <code>MinStack</code> pays the tagged version twice, in two <code>Vec&lt;i32&gt;</code> fields,
+and pays nothing for the option, because <code>Vec</code> expresses emptiness through its
+length.</p>
+<h2 id="four-budgets"><a class="header" href="#four-budgets">Four budgets</a></h2>
+<p>An abstraction spends from one of four budgets, and a claim about overhead is
+meaningless until it names which one.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>attempt</th><th>operation result</th><th>exhausted?</th><th>retryable?</th><th>action</th></tr>
+<tr><th>Budget</th><th>Measured in</th><th>Typical mechanism that spends it</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td><code>Err(Server { status: 503, .. })</code></td><td><code>1 &gt;= 5</code> is false</td><td>yes</td><td>sleep 0, attempt = 1</td></tr>
-<tr><td>1</td><td><code>Err(Server { status: 503, .. })</code></td><td><code>2 &gt;= 5</code> is false</td><td>yes</td><td>sleep 0, attempt = 2</td></tr>
-<tr><td>2</td><td><code>Ok(42)</code></td><td></td><td></td><td>return <code>Ok(42)</code></td></tr>
+<tr><td>Instructions</td><td>cycles per operation</td><td>one indirect call per element through a trait object</td></tr>
+<tr><td>Memory</td><td>bytes per value, bytes per live object</td><td>a tag byte added to an enumeration, an entry per access in a log</td></tr>
+<tr><td>Stack</td><td>bytes per frame, frames per call</td><td>recursion whose depth follows the input</td></tr>
+<tr><td>Compilation</td><td>seconds per build, bytes per artefact</td><td>one copy of a generic function per set of type arguments</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Delays for a policy of base 100 ms and cap 1 s with full jitter</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>attempt</th><th>capped backoff</th><th><code>unit_random</code></th><th>delay</th><th>server <code>Retry-After</code></th><th>chosen</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td>100 ms</td><td>0.37</td><td>37 ms</td><td>none</td><td>37 ms</td></tr>
-<tr><td>1</td><td>200 ms</td><td>0.90</td><td>180 ms</td><td>none</td><td>180 ms</td></tr>
-<tr><td>2</td><td>400 ms</td><td>0.10</td><td>40 ms</td><td>5 s</td><td>5 s</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="time-and-space-complexity"><a class="header" href="#time-and-space-complexity">Time and Space Complexity</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Operation</th><th>Cost</th></tr>
-</thead>
-<tbody>
-<tr><td><code>exponential_delay</code>, <code>delay_for</code></td><td><code>O(1)</code></td></tr>
-<tr><td><code>retry</code></td><td>at most <code>max_attempts</code> calls to <code>operation</code>, and the sum of the chosen delays in wall-clock time</td></tr>
-<tr><td>memory</td><td>none beyond what <code>operation</code> uses</td></tr>
-</tbody>
-</table>
-</div>
-<p>With full jitter the expected total delay is half the sum of the capped backoffs.</p>
-<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<p><strong><code>retry</code> blocks the thread.</strong> The loop calls <code>std::thread::sleep</code>. In an async program
-that would stall an executor thread; an async version awaits a timer such as
-<code>tokio::time::sleep</code> instead, as chapter 58 does.</p>
-<p><strong>The <code>Retry-After</code> test does not call <code>retry</code>.</strong> <code>retry_after_is_honored_as_a_floor</code>
-repeats the expression from the loop and checks its value, because calling <code>retry</code> with
-a five-second hint would make the test sleep for five seconds. The loop’s use of the hint
-is therefore untested. Injecting the sleep function, as the random source already is,
-would let a test record the requested delays without waiting.</p>
-<p><strong><code>Retry-After</code> is not capped.</strong> A server that answers <code>Retry-After: 3600</code> makes the loop
-sleep for an hour. A client usually caps the hint, or gives up and reports it to the
-caller, rather than blocking that long.</p>
-<p><strong>Retryability ignores the request.</strong> A 503 is retryable for a <code>GET</code> and dangerous for a
-<code>POST</code> that may already have created a resource on the server. The policy knows only
-the error. Chapter 54’s <code>Method::is_idempotent</code>, or an idempotency key as in chapter 34,
-supplies the missing information.</p>
-<p><strong>No overall deadline.</strong> A caller that needs an answer within two seconds cannot say so;
-the policy bounds the number of attempts, not the elapsed time.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>A <code>Retryable</code> trait lets the loop ask each error whether waiting can help and whether
-the server requested a delay.</li>
-<li>Capped exponential backoff is <code>min(base × 2^attempt, max)</code>; <code>saturating_mul</code> and a
-bounded shift keep the arithmetic from overflowing.</li>
-<li>Full jitter chooses a delay uniformly in <code>[0, capped]</code>, which spreads retries from
-many clients across time.</li>
-<li>Injecting the random source makes the delay arithmetic deterministic under test; the
-sleep function deserves the same treatment.</li>
-<li>A server’s <code>Retry-After</code> is a lower bound, and retries of non-idempotent requests need
-information the error type does not carry.</li>
-</ul>
+<p>The four budgets are not interchangeable. An abstraction can be free in
+instructions and expensive in memory, which is what the linked list is, and it can
+be free in memory and expensive in instructions, which is what a boxed iterator
+is.</p>
+<h2 id="what-the-compiler-removes"><a class="header" href="#what-the-compiler-removes">What the compiler removes</a></h2>
+<p>The mechanism behind most zero-cost claims is monomorphisation. The <em>Rust Book</em>
+defines it as “the process of turning generic code into specific code by filling
+in the concrete types that are used when compiled”, and the consequence is
+mechanical: a generic function with one call site compiles to one function, which
+the optimiser can then inline into its caller.</p>
+<p>The repository relies on this throughout. <code>map_order&lt;T, R, F&gt;</code> in Chapter 21 takes
+a closure as a type parameter, so the pool’s worker loop contains a direct call to
+the caller’s closure rather than an indirect call through a function pointer, and
+the body of the closure can be optimised in place. The iterator chains in the
+search chapter compile to loops because <code>Map</code>, <code>Copied</code> and <code>Filter</code> are types,
+each named at its call site.</p>
+<p>The same mechanism accounts for the fourth budget. Monomorphisation is paid for
+with code: a generic function with forty call sites containing forty different
+types produces forty copies of the compiled function. In a large program that
+appears as build time and binary size, and the trade is real enough that the
+standard library itself avoids generic instantiation in a few places for this
+reason.</p>
+<h2 id="what-it-cannot-remove"><a class="header" href="#what-it-cannot-remove">What it cannot remove</a></h2>
+<p>Four things survive every optimisation level.</p>
+<p>A bounds check on an index that the optimiser cannot prove is in range remains in
+the generated code. So does a <code>match</code> on a discriminant, a pointer chase through a
+box, and the unwinding tables that a reachable <code>panic!</code> requires.</p>
+<p>Type erasure removes the ability to inline. Replacing a concrete type with <code>dyn</code>
+turns each call into a load of an address from a vtable followed by an indirect
+call, and the optimiser loses the body it would have inlined. The cost is per call
+rather than per program, so it depends on how often the call occurs.</p>
+<p>Work that leaves the process cannot be optimised at all. The system call
+measurement in Chapter 24 is the clearest example in the book: ten million calls
+to <code>getpid</code> take 2.076 seconds on the machine that ran them, or 207.6 nanoseconds
+per call, and no amount of inlining affects that figure, because the time is spent
+in the kernel.</p>
+<h2 id="conditional-bounds"><a class="header" href="#conditional-bounds">Conditional bounds</a></h2>
+<p>Where a bound holds only under an assumption, the assumption is stated beside it.
+The expected constant-time lookup of a hash map is the standard case: it holds
+while the hash function distributes keys evenly, and the standard library’s
+default hasher is randomly seeded so that an attacker cannot choose the keys that
+break the assumption. A program that installs its own hasher gives that up, and the
+bound becomes a hope.</p>
+<p>Two kinds of number appear in the chapters that follow. Facts about the language or
+the standard library are stated as facts and cited, with the release attached where
+a function was stabilised in a particular version. Measurements state the machine
+that produced them, because a measurement without its environment cannot be
+checked. The two kinds are not interchangeable.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
-<li>Marc Brooker, “Exponential Backoff And Jitter”, AWS Architecture Blog, 2015.</li>
-<li>RFC 9110, <em>HTTP Semantics</em>, 2022, Section 10.2.3, <code>Retry-After</code>.</li>
-<li>Google Cloud, “Retry strategy”, Cloud Storage documentation, on truncated exponential
-backoff.</li>
-<li>Standard library, <a href="https://doc.rust-lang.org/std/time/struct.Duration.html#method.saturating_mul"><code>Duration::saturating_mul</code></a> and <a href="https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f64"><code>Duration::mul_f64</code></a>.</li>
+<li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch10-01-syntax.html#performance-of-code-using-generics">Performance of code using generics</a>, on monomorphisation.</li>
+<li>The Rust Book, <a href="https://doc.rust-lang.org/book/ch17-02-trait-objects.html">Using trait objects that allow for values of different types</a>, on dynamic dispatch.</li>
+<li>The Rust Reference, <a href="https://doc.rust-lang.org/reference/type-layout.html">Type layout</a>, on size, alignment, and the niche optimisation.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/mem/fn.size_of.html"><code>std::mem::size_of</code></a> and <a href="https://doc.rust-lang.org/std/mem/fn.align_of.html"><code>std::mem::align_of</code></a>.</li>
+<li>Standard library, <a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html"><code>HashMap</code></a>, on the randomly seeded default hasher.</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="56-async-runtime.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="the-code.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="58-http-client.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="01-two-sum.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -347,11 +296,11 @@ backoff.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="56-async-runtime.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="the-code.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="58-http-client.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="01-two-sum.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

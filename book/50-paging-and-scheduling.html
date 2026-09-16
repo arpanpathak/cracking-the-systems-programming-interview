@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-26d58639.css">
+        <link rel="stylesheet" href="theme/custom-e7769809.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f56fc872.js";
+            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-068722af.js"></script>
+        <script src="toc-cc555f88.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -215,83 +215,8 @@ update the page tables.</li>
 moves to the back. With <code>n</code> tasks and quantum <code>q</code>, a task that has just run waits at
 most <code>(n - 1) × q</code> before it runs again, and slice <code>t</code> belongs to task <code>t mod n</code>.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<pre class="playground"><code class="language-rust">//! Virtual memory arithmetic: address to page and offset, page counts, and how a
-//! page fault is classified.
-//!
-//! Run with: cargo run --bin os_paging
+<p class="listing"><span class="listing-label">Listing 50.1</span> The complete program. <code>src/bin/os_paging.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/os_paging.rs">read the file on GitHub</a></p>
 
-const PAGE_SIZE: u64 = 4096;
-
-fn split_page(address: u64) -&gt; (u64, u64) {
-    (address / PAGE_SIZE, address % PAGE_SIZE)
-}
-
-fn pages_needed(bytes: u64) -&gt; u64 {
-    bytes.div_ceil(PAGE_SIZE)
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum Fault {
-    /// The page is resident; a copy-on-write write or permission upgrade.
-    Minor,
-    /// The mapping is valid but the page must be read from backing store.
-    Major,
-    /// The mapping is valid and resident, but the access permission is wrong.
-    Protection,
-    /// No valid mapping at this address.
-    Invalid,
-}
-
-fn classify_fault(mapped: bool, present: bool, writable: bool) -&gt; Fault {
-    match (mapped, present, writable) {
-        (false, _, _) =&gt; Fault::Invalid,
-        (true, false, _) =&gt; Fault::Major,
-        (true, true, false) =&gt; Fault::Protection,
-        (true, true, true) =&gt; Fault::Minor,
-    }
-}
-
-fn main() {
-    println!("page size: {PAGE_SIZE} bytes");
-
-    println!("\naddress -&gt; page, offset");
-    for address in [0u64, 0x1234, 0x1fff, 0x2000] {
-        let (page, offset) = split_page(address);
-        println!("  0x{address:04x} -&gt; page {page:&gt;2}, offset 0x{offset:03x}");
-    }
-
-    println!("\npages needed");
-    for bytes in [0u64, 1, PAGE_SIZE, PAGE_SIZE + 1] {
-        println!("  {bytes:&gt;5} bytes -&gt; {}", pages_needed(bytes));
-    }
-
-    println!("\nfault classification");
-    println!(
-        "  unmapped           -&gt; {:?}",
-        classify_fault(false, false, false)
-    );
-    println!(
-        "  mapped, not in ram -&gt; {:?}",
-        classify_fault(true, false, true)
-    );
-    println!(
-        "  resident, read-only-&gt; {:?}",
-        classify_fault(true, true, false)
-    );
-    println!(
-        "  resident, writable -&gt; {:?}",
-        classify_fault(true, true, true)
-    );
-
-    assert_eq!(split_page(0x1234), (1, 0x234));
-    assert_eq!(pages_needed(0), 0);
-    assert_eq!(pages_needed(PAGE_SIZE + 1), 2);
-    assert_eq!(classify_fault(true, false, true), Fault::Major);
-    assert_eq!(classify_fault(true, true, false), Fault::Protection);
-    assert_eq!(classify_fault(false, true, true), Fault::Invalid);
-
-    println!("\nall checks passed");
-}</code></pre>
 <p><code>classify_fault</code> matches on a tuple <code>(mapped, present, writable)</code>. The patterns are
 ordered from the most general failure to the most specific: <code>(false, _, _)</code> covers every
 unmapped access in one arm, and <code>(true, false, _)</code> every non-resident page. The four arms
@@ -299,50 +224,8 @@ are exhaustive over the eight combinations of three booleans, and the compiler v
 that no combination is missing.</p>
 <p><code>Fault</code> derives <code>PartialEq</code> and <code>Eq</code> so that <code>assert_eq!</code> can compare variants, and
 <code>Debug</code> so that <code>{:?}</code> can print them.</p>
-<pre class="playground"><code class="language-rust">//! Round-robin scheduling: each runnable task gets one fixed time slice in turn,
-//! so no task starves. This is the simplest fair policy a scheduler can use.
-//!
-//! Run with: cargo run --bin os_scheduler
+<p class="listing"><span class="listing-label">Listing 50.2</span> The complete program. <code>src/bin/os_scheduler.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/os_scheduler.rs">read the file on GitHub</a></p>
 
-const QUANTUM_MS: u64 = 5;
-
-/// The task chosen on each of `ticks` time slices.
-fn schedule&lt;'a&gt;(tasks: &amp;[&amp;'a str], ticks: usize) -&gt; Vec&lt;&amp;'a str&gt; {
-    if tasks.is_empty() {
-        return Vec::new();
-    }
-    (0..ticks).map(|tick| tasks[tick % tasks.len()]).collect()
-}
-
-fn main() {
-    let tasks = ["encoder", "decoder", "gc"];
-
-    println!("{} runnable tasks, {QUANTUM_MS} ms quantum", tasks.len());
-    for (tick, task) in schedule(&amp;tasks, 7).iter().enumerate() {
-        let start = tick as u64 * QUANTUM_MS;
-        println!(
-            "  slice {tick}: {start:&gt;2}-{:&gt;2} ms  {task}",
-            start + QUANTUM_MS
-        );
-    }
-
-    let order = schedule(&amp;tasks, 7);
-    assert_eq!(
-        order,
-        [
-            "encoder", "decoder", "gc", "encoder", "decoder", "gc", "encoder"
-        ]
-    );
-    assert!(schedule(&amp;[], 3).is_empty());
-
-    // A long task is preempted, not run to completion, which is what bounds its
-    // worst-case latency to one quantum times the number of tasks.
-    println!(
-        "\nworst-case wait for one slice: {} ms",
-        QUANTUM_MS * tasks.len() as u64
-    );
-    println!("all checks passed");
-}</code></pre>
 <p><code>schedule</code> maps each tick to <code>tasks[tick % tasks.len()]</code> and collects the results. The
 early return for an empty task list prevents a division by zero in <code>%</code>.</p>
 <p>The signature <code>fn schedule&lt;'a&gt;(tasks: &amp;[&amp;'a str], ticks: usize) -&gt; Vec&lt;&amp;'a str&gt;</code> ties the
@@ -453,7 +336,7 @@ Pieces</em>, Arpaci-Dusseau Books, 2018, chapters 2 (“Scheduling: Introduction
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="51-ipv4-and-tcp-windows.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="26-files-and-io.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -467,7 +350,7 @@ Pieces</em>, Arpaci-Dusseau Books, 2018, chapters 2 (“Scheduling: Introduction
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="51-ipv4-and-tcp-windows.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="26-files-and-io.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -480,22 +363,6 @@ Pieces</em>, Arpaci-Dusseau Books, 2018, chapters 2 (“Scheduling: Introduction
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
