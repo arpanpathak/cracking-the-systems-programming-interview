@@ -55,9 +55,230 @@ membership and `HashMap` lookup, which is what a problem with named nodes needs.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 60.1</span> The complete module, with its tests. <code>src/problems/graph_bfs.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">read the file on GitHub</a></p>
+```rust
+//! Breadth-first search.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `bfs_vec`: nodes are `usize` indices and the graph is `Vec<Vec<(usize, u32)>>`,
+//!   so `visited` is a plain `Vec<bool>`. This is the version to write first.
+//! - `bfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`
+//!   from a node to a slice of `(neighbor, weight)` edges.
 
-<p class="listing"><span class="listing-label">Listing 60.2</span> The complete module, with its tests. <code>src/problems/graph_dfs.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">read the file on GitHub</a></p>
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::hash::Hash;
+
+/// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
+pub type GraphAdjList<'a, Node> = HashMap<Node, &'a [(Node, u32)]>;
+
+/// BFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn bfs_vec(graph: &[Vec<(usize, u32)>], start_node: usize) -> Vec<usize> {
+    let mut visited = vec![false; graph.len()];
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited[start_node] = true;
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        for &(neighbor, _) in &graph[current_node] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+/// BFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn bfs<Node>(graph: &GraphAdjList<Node>, start_node: Node) -> Vec<Node>
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited.insert(start_node);
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        // slice iter yields &(Node, u32); `&` destructures it
+        for &(neighbor, _) in graph[&current_node] {
+            if visited.insert(neighbor) {
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -> B (1), A -> C (4), B -> C (2), B -> D (5), C -> D (1)
+    fn sample_vec() -> Vec<Vec<(usize, u32)>> {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -> HashMap<&'static str, &'static [(&'static str, u32)]> {
+        HashMap::from([
+            ("A", &[("B", 1), ("C", 4)][..]),
+            ("B", &[("C", 2), ("D", 5)][..]),
+            ("C", &[("D", 1)][..]),
+            ("D", &[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_visits_level_by_level() {
+        assert_eq!(bfs_vec(&sample_vec(), 0), vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn vec_variant_skips_unreachable_nodes() {
+        let graph = vec![vec![(1, 1)], vec![], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn map_variant_visits_level_by_level() {
+        assert_eq!(bfs(&sample_map(), "A"), vec!["A", "B", "C", "D"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec<&str> = bfs_vec(&sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, bfs(&sample_map(), "A"));
+    }
+}
+```
+
+```rust
+//! Iterative depth-first search with an explicit stack.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dfs_vec`: nodes are `usize` indices and the graph is `Vec<Vec<(usize, u32)>>`.
+//! - `dfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`.
+//!
+//! A node is marked visited when it is popped, not when it is pushed, so it may
+//! sit on the stack more than once. Neighbors are pushed in order, which means the
+//! last neighbor is explored first.
+
+use crate::problems::graph_bfs::GraphAdjList;
+use std::collections::HashSet;
+use std::hash::Hash;
+
+/// DFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn dfs_vec(graph: &[Vec<(usize, u32)>], start_node: usize) -> Vec<usize> {
+    let mut visited = vec![false; graph.len()];
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if visited[current_node] {
+            continue;
+        }
+        visited[current_node] = true;
+        result.push(current_node);
+        for &(neighbor, _) in &graph[current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+/// DFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn dfs<Node>(graph: &GraphAdjList<Node>, start_node: Node) -> Vec<Node>
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if !visited.insert(current_node) {
+            continue;
+        }
+        result.push(current_node);
+        for &(neighbor, _) in graph[&current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    /// A -> B (1), A -> C (4), B -> C (2), B -> D (5), C -> D (1)
+    fn sample_vec() -> Vec<Vec<(usize, u32)>> {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -> HashMap<&'static str, &'static [(&'static str, u32)]> {
+        HashMap::from([
+            ("A", &[("B", 1), ("C", 4)][..]),
+            ("B", &[("C", 2), ("D", 5)][..]),
+            ("C", &[("D", 1)][..]),
+            ("D", &[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_explores_the_last_neighbor_first() {
+        // Pop 0, push 1 and 2; pop 2, push 3; pop 3; pop 1.
+        assert_eq!(dfs_vec(&sample_vec(), 0), vec![0, 2, 3, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(2, 1)], vec![(0, 1)]];
+        assert_eq!(dfs_vec(&graph, 0), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn map_variant_explores_the_last_neighbor_first() {
+        assert_eq!(dfs(&sample_map(), "A"), vec!["A", "C", "D", "B"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec<&str> = dfs_vec(&sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, dfs(&sample_map(), "A"));
+    }
+}
+```
 
 `bfs_vec` sets `visited[start_node] = true` before the loop and marks each neighbor as it
 is enqueued, so the check `!visited[neighbor]` and the mark happen together. The map

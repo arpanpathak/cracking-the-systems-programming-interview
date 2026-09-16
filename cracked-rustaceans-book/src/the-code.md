@@ -2,8 +2,9 @@
 
 ## Layout
 
-The repository holds one Cargo package, `rust-interview-lab`. Three directories in it
-hold everything the chapters read.
+The repository holds one Cargo package. The tree below lists the files this book
+reads; the package also contains concurrency, asynchronous, networking and
+benchmarking code that lies outside the scope of these chapters.
 
 ```text
 rust-interview-lab/
@@ -11,24 +12,66 @@ rust-interview-lab/
 ├── README.md
 ├── BENCHMARKS.md
 ├── src
-│   ├── lib.rs                the crate root and its re-exports
-│   ├── problems/             the library modules, one problem to a file
-│   └── bin/                  the programs, each its own crate with a `main`
-└── benchmarking_examples/    the measured structures and the benchmark
+│   ├── lib.rs                       the crate root and its re-exports
+│   ├── problems
+│   │   ├── mod.rs                   the module list
+│   │   ├── backtracking.rs          Chapter 13
+│   │   ├── binary_search.rs         Chapter 9
+│   │   ├── binary_tree.rs           Chapter 7
+│   │   ├── dp.rs                    Chapter 12
+│   │   ├── graph_topology.rs        Chapter 11
+│   │   ├── linked_list.rs           Chapter 14
+│   │   ├── lru_cache.rs             Chapter 17
+│   │   ├── merge_intervals.rs       Chapter 5
+│   │   ├── min_stack.rs             Chapter 3
+│   │   ├── rate_limiter.rs          Chapter 20
+│   │   ├── sliding_window.rs        Chapter 4
+│   │   ├── state_machine.rs         Chapter 19
+│   │   ├── top_k_frequent.rs        Chapter 6
+│   │   ├── trie.rs                  Chapter 10
+│   │   ├── two_sum.rs               Chapter 1
+│   │   ├── valid_parentheses.rs     Chapter 2
+│   │   └── worker_pool.rs           Chapter 21
+│   └── bin
+│       ├── append_to_file_open_options.rs   Chapter 26
+│       ├── bounded_buffer.rs                Chapter 30
+│       ├── bst_clean.rs                     Chapter 8
+│       ├── command_line_args.rs             Chapter 29
+│       ├── copy_rename_delete_file.rs       Chapter 28
+│       ├── count_islands.rs                 Chapter 23
+│       ├── file_error_handling.rs           Chapter 28
+│       ├── idempotent_operation.rs          Chapter 34
+│       ├── idempotent_operation_with_error_progagation.rs   Chapter 34
+│       ├── list_directory.rs                Chapter 27
+│       ├── ll.rs                            Chapter 16
+│       ├── median_finder.rs                 Chapter 32
+│       ├── mutex_poisoning.rs               Chapter 22
+│       ├── parallel_sum.rs                  Chapter 31
+│       ├── path_buff.rs                     Chapter 27
+│       ├── read_write_file.rs               Chapter 26
+│       ├── readfile_line_by_line.rs         Chapter 26
+│       ├── recusrive_directory_walk.rs      Chapter 27
+│       ├── reverse_string.rs                Chapter 33
+│       ├── shadowing.rs                     Chapter 25
+│       ├── singly_linked_list.rs            Chapter 15
+│       └── syscall_overhead.rs              Chapter 24
+└── benchmarking_examples/           the measured structures and the benchmark
 ```
 
-A module under `src/problems/` holds one problem, one type, or one pair of a type and
-its policy, and ends with a `#[cfg(test)] mod tests`, so the list printed by
-`cargo test` reads as an index of this book. A file under `src/bin/` is a separate
-crate that links the library and has a `main` that runs without arguments; most of
-them carry their own tests as well, so `cargo test` exercises the programs too.
+One file in `src/problems/` is empty, `hash_map.rs`, and nothing in the crate refers to
+it. Chapter 18 reads `lru_cache_easy.rs`, the array-backed cache that keeps its entries
+in a `Vec` and links them by index.
 
-The files under `benchmarking_examples/` are declared as library modules by `src/lib.rs`
-rather than included by each program, so the shared code is compiled once and an unused
-variant is not reported as dead code in the programs that do not measure it.
+## Modules and programs
 
-The package also contains files that no chapter reads. They are working notes rather
-than finished material, and they are left out of the table below.
+Seventeen of the files above are library modules. Each holds one problem, one type,
+or one pair of a type and its policy, and each ends with a `#[cfg(test)] mod tests`,
+so the list printed by `cargo test` reads as an index of this book.
+
+Twenty-two are programs. Files under `src/bin/` are separate crates that link the
+library, and each has a `main` function that runs without arguments. Most of them
+also carry the tests for the code they contain, so `cargo test` exercises the
+programs as well as the library.
 
 ## What the files have in common
 
@@ -53,105 +96,39 @@ than in a comment.
 change that item. Each module keeps its own tests in a `#[cfg(test)] mod tests`, so
 the list printed by `cargo test` reads as an index of the book.
 
-## Every file and the chapter that reads it
-
-The table is the whole of the correspondence between the repository and the book. A
-chapter cites its files again at the head of the chapter and in its listing
-references, and a file read by more than one chapter is listed once with each
-chapter that reads it.
+## Files read by chapters 35 to 59
 
 | File | Chapter |
 |---|---|
-| `src/bin/append_to_file_open_options.rs` | 26 |
-| `src/bin/async_demo.rs` | 56 |
-| `src/bin/bounded_buffer.rs` | 30 |
-| `src/bin/bst_clean.rs` | 8 |
-| `src/bin/command_line_args.rs` | 29 |
-| `src/bin/concurrency_amdahl.rs` | 49 |
-| `src/bin/concurrency_deadlock.rs` | 49 |
-| `src/bin/concurrency_false_sharing.rs` | 48 |
-| `src/bin/copy_rename_delete_file.rs` | 28 |
-| `src/bin/count_islands.rs` | 23 |
-| `src/bin/cs_fib.rs` | 37 |
-| `src/bin/cs_locality.rs` | 48 |
-| `src/bin/dependency_resolutiom.rs` | 65 |
-| `src/bin/epoll_echo.rs` | 53 |
-| `src/bin/false_sharing.rs` | 48 |
-| `src/bin/file_error_handling.rs` | 28 |
-| `src/bin/fun_network_call.rs` | 58 |
-| `src/bin/http_server.rs` | 55 |
-| `src/bin/idempotent_operation.rs` | 34 |
-| `src/bin/idempotent_operation_with_error_progagation.rs` | 34 |
-| `src/bin/list_directory.rs` | 27 |
-| `src/bin/ll.rs` | 16 |
-| `src/bin/lru_cache_arena.rs` | 40 |
-| `src/bin/median_finder.rs` | 32 |
-| `src/bin/merge_k_sorted_lists_divide.rs` | 62 |
-| `src/bin/mutex_poisoning.rs` | 22 |
-| `src/bin/net_ipv4.rs` | 51 |
-| `src/bin/net_window.rs` | 51 |
-| `src/bin/os_paging.rs` | 50 |
-| `src/bin/os_scheduler.rs` | 50 |
-| `src/bin/parallel_sum.rs` | 31 |
-| `src/bin/path_buff.rs` | 27 |
-| `src/bin/read_write_file.rs` | 26 |
-| `src/bin/readfile_line_by_line.rs` | 26 |
-| `src/bin/recusrive_directory_walk.rs` | 27 |
-| `src/bin/reqwest_and_tokio.rs` | 58 |
-| `src/bin/reverse_string.rs` | 33 |
-| `src/bin/shadowing.rs` | 25 |
-| `src/bin/singly_linked_list.rs` | 15 |
-| `src/bin/syscall_overhead.rs` | 24 |
-| `src/bin/tcp_echo_server.rs` | 52 |
-| `src/bin/thread_pool.rs` | 64 |
 | `src/problems/adt_idioms.rs` | 35 |
-| `src/problems/async_mini.rs` | 56 |
-| `src/problems/backtracking.rs` | 13 |
-| `src/problems/binary_search.rs` | 9 |
-| `src/problems/binary_tree.rs` | 7 |
-| `src/problems/bounded_queue.rs` | 46 |
-| `src/problems/bump_allocator.rs` | 39 |
-| `src/problems/consistent_hash.rs` | 42 |
-| `src/problems/dp.rs` | 12 |
-| `src/problems/drills.rs` | 59 |
-| `src/problems/graph_bfs.rs` | 60 |
-| `src/problems/graph_dfs.rs` | 60 |
-| `src/problems/graph_dijkstra.rs` | 61 |
-| `src/problems/graph_topology.rs` | 11 |
-| `src/problems/http_request.rs` | 54 |
-| `src/problems/linked_list.rs` | 14 |
-| `src/problems/lru_cache.rs` | 17 |
-| `src/problems/lru_cache_easy.rs` | 18 |
-| `src/problems/merge_intervals.rs` | 5 |
-| `src/problems/min_stack.rs` | 3 |
-| `src/problems/rate_limiter.rs` | 20 |
-| `src/problems/retry.rs` | 57 |
-| `src/problems/ring_buffer.rs` | 47 |
-| `src/problems/semaphore.rs` | 45 |
-| `src/problems/sharded_cache.rs` | 41 |
-| `src/problems/sliding_window.rs` | 4 |
 | `src/problems/smart_pointers.rs` | 36 |
-| `src/problems/spin_lock.rs` | 44 |
-| `src/problems/state_machine.rs` | 19 |
-| `src/problems/thread_pool_v2.rs` | 64 |
-| `src/problems/thread_pool_v3.rs` | 64 |
-| `src/problems/thread_pool_v4.rs` | 64 |
+| `src/bin/cs_fib.rs` | 37 |
+| `benchmarking_examples/lists/`, `list_box.rs`, `list_enum.rs`, `list_drop.rs`, `benchmark.rs` | 38 |
+| `src/problems/bump_allocator.rs` | 39 |
+| `benchmarking_examples/cache/`, `benchmark.rs` | 40 |
+| `src/problems/sharded_cache.rs` | 41 |
+| `src/problems/consistent_hash.rs` | 42 |
 | `src/problems/threads.rs` | 43 |
+| `src/problems/spin_lock.rs` | 44 |
+| `src/problems/semaphore.rs` | 45 |
+| `src/problems/bounded_queue.rs` | 46 |
+| `src/problems/ring_buffer.rs` | 47 |
+| `src/bin/cs_locality.rs`, `src/bin/concurrency_false_sharing.rs` | 48 |
+| `src/bin/concurrency_amdahl.rs`, `src/bin/concurrency_deadlock.rs` | 49 |
+| `src/bin/os_paging.rs`, `src/bin/os_scheduler.rs` | 50 |
+| `src/bin/net_ipv4.rs`, `src/bin/net_window.rs` | 51 |
+| `src/bin/tcp_echo_server.rs` | 52 |
+| `src/bin/epoll_echo.rs` | 53 |
+| `src/problems/http_request.rs` | 54 |
+| `src/bin/http_server.rs` | 55 |
+| `src/problems/async_mini.rs`, `src/bin/async_demo.rs` | 56 |
+| `src/problems/retry.rs` | 57 |
+| `src/bin/fun_network_call.rs`, `src/bin/reqwest_and_tokio.rs` | 58 |
+| `src/problems/drills.rs` | 59 |
+| `src/bin/lru_cache_arena.rs` | 40 |
+| `src/problems/graph_bfs.rs`, `src/problems/graph_dfs.rs` | 60 |
+| `src/problems/graph_dijkstra.rs` | 61 |
+| `src/bin/merge_k_sorted_lists_divide.rs` | 62 |
 | `src/problems/three_sum.rs` | 63 |
-| `src/problems/top_k_frequent.rs` | 6 |
-| `src/problems/trie.rs` | 10 |
-| `src/problems/two_sum.rs` | 1 |
-| `src/problems/valid_parentheses.rs` | 2 |
-| `src/problems/worker_pool.rs` | 21 |
-| `benchmarking_examples/benchmark.rs` | 38, 40 |
-| `benchmarking_examples/cache/mod.rs` | 40 |
-| `benchmarking_examples/cache/rc_list.rs` | 40 |
-| `benchmarking_examples/list_box.rs` | 38 |
-| `benchmarking_examples/list_drop.rs` | 38 |
-| `benchmarking_examples/list_enum.rs` | 38 |
-| `benchmarking_examples/lists/boxed.rs` | 38 |
-| `benchmarking_examples/lists/boxed_drop.rs` | 38 |
-| `benchmarking_examples/lists/enum_drop.rs` | 38 |
-| `benchmarking_examples/lists/enum_node.rs` | 38 |
-| `benchmarking_examples/lists/mod.rs` | 38 |
-
+| `src/bin/false_sharing.rs` | 48 |
+| `src/bin/thread_pool.rs`, `src/problems/thread_pool_v2.rs`, `thread_pool_v3.rs`, `thread_pool_v4.rs` | 64 |

@@ -47,7 +47,85 @@ most `(n - 1) × q` before it runs again, and slice `t` belongs to task `t mod n
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 50.1</span> The complete program. <code>src/bin/os_paging.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/os_paging.rs">read the file on GitHub</a></p>
+```rust
+//! Virtual memory arithmetic: address to page and offset, page counts, and how a
+//! page fault is classified.
+//!
+//! Run with: cargo run --bin os_paging
+
+const PAGE_SIZE: u64 = 4096;
+
+fn split_page(address: u64) -> (u64, u64) {
+    (address / PAGE_SIZE, address % PAGE_SIZE)
+}
+
+fn pages_needed(bytes: u64) -> u64 {
+    bytes.div_ceil(PAGE_SIZE)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Fault {
+    /// The page is resident; a copy-on-write write or permission upgrade.
+    Minor,
+    /// The mapping is valid but the page must be read from backing store.
+    Major,
+    /// The mapping is valid and resident, but the access permission is wrong.
+    Protection,
+    /// No valid mapping at this address.
+    Invalid,
+}
+
+fn classify_fault(mapped: bool, present: bool, writable: bool) -> Fault {
+    match (mapped, present, writable) {
+        (false, _, _) => Fault::Invalid,
+        (true, false, _) => Fault::Major,
+        (true, true, false) => Fault::Protection,
+        (true, true, true) => Fault::Minor,
+    }
+}
+
+fn main() {
+    println!("page size: {PAGE_SIZE} bytes");
+
+    println!("\naddress -> page, offset");
+    for address in [0u64, 0x1234, 0x1fff, 0x2000] {
+        let (page, offset) = split_page(address);
+        println!("  0x{address:04x} -> page {page:>2}, offset 0x{offset:03x}");
+    }
+
+    println!("\npages needed");
+    for bytes in [0u64, 1, PAGE_SIZE, PAGE_SIZE + 1] {
+        println!("  {bytes:>5} bytes -> {}", pages_needed(bytes));
+    }
+
+    println!("\nfault classification");
+    println!(
+        "  unmapped           -> {:?}",
+        classify_fault(false, false, false)
+    );
+    println!(
+        "  mapped, not in ram -> {:?}",
+        classify_fault(true, false, true)
+    );
+    println!(
+        "  resident, read-only-> {:?}",
+        classify_fault(true, true, false)
+    );
+    println!(
+        "  resident, writable -> {:?}",
+        classify_fault(true, true, true)
+    );
+
+    assert_eq!(split_page(0x1234), (1, 0x234));
+    assert_eq!(pages_needed(0), 0);
+    assert_eq!(pages_needed(PAGE_SIZE + 1), 2);
+    assert_eq!(classify_fault(true, false, true), Fault::Major);
+    assert_eq!(classify_fault(true, true, false), Fault::Protection);
+    assert_eq!(classify_fault(false, true, true), Fault::Invalid);
+
+    println!("\nall checks passed");
+}
+```
 
 `classify_fault` matches on a tuple `(mapped, present, writable)`. The patterns are
 ordered from the most general failure to the most specific: `(false, _, _)` covers every
@@ -58,7 +136,52 @@ that no combination is missing.
 `Fault` derives `PartialEq` and `Eq` so that `assert_eq!` can compare variants, and
 `Debug` so that `{:?}` can print them.
 
-<p class="listing"><span class="listing-label">Listing 50.2</span> The complete program. <code>src/bin/os_scheduler.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/os_scheduler.rs">read the file on GitHub</a></p>
+```rust
+//! Round-robin scheduling: each runnable task gets one fixed time slice in turn,
+//! so no task starves. This is the simplest fair policy a scheduler can use.
+//!
+//! Run with: cargo run --bin os_scheduler
+
+const QUANTUM_MS: u64 = 5;
+
+/// The task chosen on each of `ticks` time slices.
+fn schedule<'a>(tasks: &[&'a str], ticks: usize) -> Vec<&'a str> {
+    if tasks.is_empty() {
+        return Vec::new();
+    }
+    (0..ticks).map(|tick| tasks[tick % tasks.len()]).collect()
+}
+
+fn main() {
+    let tasks = ["encoder", "decoder", "gc"];
+
+    println!("{} runnable tasks, {QUANTUM_MS} ms quantum", tasks.len());
+    for (tick, task) in schedule(&tasks, 7).iter().enumerate() {
+        let start = tick as u64 * QUANTUM_MS;
+        println!(
+            "  slice {tick}: {start:>2}-{:>2} ms  {task}",
+            start + QUANTUM_MS
+        );
+    }
+
+    let order = schedule(&tasks, 7);
+    assert_eq!(
+        order,
+        [
+            "encoder", "decoder", "gc", "encoder", "decoder", "gc", "encoder"
+        ]
+    );
+    assert!(schedule(&[], 3).is_empty());
+
+    // A long task is preempted, not run to completion, which is what bounds its
+    // worst-case latency to one quantum times the number of tasks.
+    println!(
+        "\nworst-case wait for one slice: {} ms",
+        QUANTUM_MS * tasks.len() as u64
+    );
+    println!("all checks passed");
+}
+```
 
 `schedule` maps each tick to `tasks[tick % tasks.len()]` and collects the results. The
 early return for an empty task list prevents a division by zero in `%`.

@@ -60,7 +60,63 @@ The diagram below shows the flow from text to typed value.
 The module has four parts: the newtype, its error, the command and its error, and a
 short iterator example. The first listing shows the newtype.
 
-<p class="listing"><span class="listing-label">Listing 35.1</span> <code>GpuCount</code>, <code>new</code>, and <code>get</code>. <code>src/problems/adt_idioms.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs">read the file on GitHub</a></p>
+```rust
+use std::fmt;
+
+/// A GPU count that is validated at construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GpuCount(u32);
+
+impl GpuCount {
+    pub const MIN: u32 = 1;
+    pub const MAX: u32 = 64;
+
+    /// Validate a raw count.
+    pub fn new(value: u32) -> Result<Self, GpuCountError> {
+        if (Self::MIN..=Self::MAX).contains(&value) {
+            Ok(Self(value))
+        } else {
+            Err(GpuCountError(value))
+        }
+    }
+
+    pub fn get(self) -> u32 {
+        self.0
+    }
+}
+
+/// Why a raw GPU count was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpuCountError(pub u32);
+
+impl fmt::Display for GpuCountError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "gpu count {} is outside {}..={}",
+            self.0,
+            GpuCount::MIN,
+            GpuCount::MAX
+        )
+    }
+}
+
+impl std::error::Error for GpuCountError {}
+
+impl TryFrom<u32> for GpuCount {
+    type Error = GpuCountError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<GpuCount> for u32 {
+    fn from(count: GpuCount) -> u32 {
+        count.0
+    }
+}
+```
 
 The tuple field of `GpuCount` is private, so code outside the module cannot write
 `GpuCount(0)`. The only ways to obtain a value are `GpuCount::new` and
@@ -84,7 +140,83 @@ the other way, and it cannot fail, which is why it is `From` rather than `TryFro
 
 The next listing shows the command type and its parser.
 
-<p class="listing"><span class="listing-label">Listing 35.2</span> <code>Command</code>, <code>parse</code>, and <code>verb</code>. <code>src/problems/adt_idioms.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs">read the file on GitHub</a></p>
+```rust
+/// A closed set of commands, each carrying exactly the data it needs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    List,
+    Get { id: String },
+    Create { name: String, gpus: GpuCount },
+    Delete { id: String },
+}
+
+impl Command {
+    /// Parse one command line.
+    pub fn parse(line: &str) -> Result<Self, CommandError> {
+        let mut parts = line.split_whitespace();
+        let verb = parts.next().ok_or(CommandError::Empty)?;
+
+        match verb {
+            "list" => Ok(Self::List),
+            "get" => Ok(Self::Get {
+                id: argument(&mut parts, "id")?.to_string(),
+            }),
+            "delete" => Ok(Self::Delete {
+                id: argument(&mut parts, "id")?.to_string(),
+            }),
+            "create" => {
+                let name = argument(&mut parts, "name")?.to_string();
+                let raw = argument(&mut parts, "gpu count")?;
+                let value: u32 = raw
+                    .parse()
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                let gpus = GpuCount::new(value)
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                Ok(Self::Create { name, gpus })
+            }
+            other => Err(CommandError::UnknownVerb(other.to_string())),
+        }
+    }
+
+    pub fn verb(&self) -> &'static str {
+        match self {
+            Self::List => "list",
+            Self::Get { .. } => "get",
+            Self::Create { .. } => "create",
+            Self::Delete { .. } => "delete",
+        }
+    }
+}
+
+/// A typed parse failure, so callers can distinguish the cases.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandError {
+    Empty,
+    UnknownVerb(String),
+    MissingArgument(&'static str),
+    InvalidGpuCount(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => write!(formatter, "empty command"),
+            Self::UnknownVerb(verb) => write!(formatter, "unknown verb {verb:?}"),
+            Self::MissingArgument(name) => write!(formatter, "missing argument: {name}"),
+            Self::InvalidGpuCount(raw) => write!(formatter, "invalid gpu count: {raw:?}"),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+fn argument<'a>(
+    parts: &mut impl Iterator<Item = &'a str>,
+    name: &'static str,
+) -> Result<&'a str, CommandError> {
+    parts.next().ok_or(CommandError::MissingArgument(name))
+}
+```
 
 `Command::parse` splits the line on whitespace and takes the verb with
 `parts.next().ok_or(CommandError::Empty)?`. `ok_or` converts `Option` to `Result`, and
@@ -127,7 +259,84 @@ only for conversions that cannot lose information.
 The last listing shows the tests. They exercise every variant of `Command`, every variant
 of `CommandError`, the boundaries of the newtype, and the rendered messages.
 
-<p class="listing"><span class="listing-label">Listing 35.3</span> The tests for the module. <code>src/problems/adt_idioms.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs">read the file on GitHub</a></p>
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_each_command_variant() {
+        assert_eq!(Command::parse("list"), Ok(Command::List));
+        assert_eq!(
+            Command::parse("get wl-7"),
+            Ok(Command::Get { id: "wl-7".into() })
+        );
+        assert_eq!(
+            Command::parse("create triton 4"),
+            Ok(Command::Create {
+                name: "triton".into(),
+                gpus: GpuCount::new(4).expect("valid")
+            })
+        );
+        assert_eq!(
+            Command::parse("delete wl-7"),
+            Ok(Command::Delete { id: "wl-7".into() })
+        );
+    }
+
+    #[test]
+    fn rejects_bad_input_with_typed_errors() {
+        assert_eq!(Command::parse(""), Err(CommandError::Empty));
+        assert_eq!(
+            Command::parse("frobnicate"),
+            Err(CommandError::UnknownVerb("frobnicate".into()))
+        );
+        assert_eq!(
+            Command::parse("get"),
+            Err(CommandError::MissingArgument("id"))
+        );
+        assert_eq!(
+            Command::parse("create triton 0"),
+            Err(CommandError::InvalidGpuCount("0".into()))
+        );
+        assert_eq!(
+            Command::parse("create triton many"),
+            Err(CommandError::InvalidGpuCount("many".into()))
+        );
+    }
+
+    #[test]
+    fn newtype_rejects_out_of_range_values() {
+        assert!(GpuCount::new(1).is_ok());
+        assert!(GpuCount::new(64).is_ok());
+        assert!(GpuCount::new(0).is_err());
+        assert!(GpuCount::new(65).is_err());
+        assert_eq!(u32::from(GpuCount::try_from(8).expect("valid")), 8);
+        assert!(GpuCount::try_from(0).is_err());
+    }
+
+    #[test]
+    fn summarize_reports_count_and_sum() {
+        assert_eq!(summarize(&[]), (0, 0));
+        assert_eq!(summarize(&[1, 2, 3]), (3, 6));
+        assert_eq!(summarize(&[-5, 5]), (2, 0));
+    }
+
+    #[test]
+    fn errors_render_a_reason() {
+        assert_eq!(
+            Command::parse("create triton 0").unwrap_err().to_string(),
+            "invalid gpu count: \"0\""
+        );
+        assert!(
+            GpuCount::new(99)
+                .unwrap_err()
+                .to_string()
+                .contains("outside")
+        );
+    }
+}
+```
 
 ## Intuition
 

@@ -58,7 +58,74 @@ holds, which the borrow checker rejects.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 14.1</span> The complete module, with its tests. <code>src/problems/linked_list.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs">read the file on GitHub</a></p>
+```rust
+//! Reverse a singly linked list.
+//!
+//! Uses `Option<Box<ListNode>>` and a `while let` loop to move pointers in a
+//! borrow-safe way.
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option<Box<ListNode>>,
+}
+
+impl ListNode {
+    pub fn from_slice(values: &[i32]) -> Option<Box<ListNode>> {
+        let mut head = None;
+        for &value in values.iter().rev() {
+            head = Some(Box::new(ListNode {
+                val: value,
+                next: head,
+            }));
+        }
+        head
+    }
+
+    pub fn to_vec(head: Option<Box<ListNode>>) -> Vec<i32> {
+        let mut result = Vec::new();
+        let mut current = head;
+        while let Some(node) = current {
+            result.push(node.val);
+            current = node.next;
+        }
+        result
+    }
+}
+
+pub fn reverse_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    let mut previous = None;
+    let mut current = head;
+
+    while let Some(mut node) = current {
+        current = node.next.take();
+        node.next = previous;
+        previous = Some(node);
+    }
+
+    previous
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reverses_list() {
+        let head = ListNode::from_slice(&[1, 2, 3, 4]);
+        assert_eq!(ListNode::to_vec(reverse_list(head)), vec![4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn handles_empty_and_single() {
+        assert_eq!(reverse_list(None), None);
+        assert_eq!(
+            ListNode::to_vec(reverse_list(ListNode::from_slice(&[42]))),
+            vec![42]
+        );
+    }
+}
+```
 
 `from_slice` builds the list backwards, from the last value to the first, so each new
 node takes the list built so far as its successor. Building forwards would need a
@@ -114,19 +181,6 @@ holds the same data in one allocation, at the cost of not being a linked list.
 
 **The value type is fixed at `i32`.** Nothing in the algorithm depends on the value type,
 and the declaration is not generic.
-
-## Summary
-
-- `Option<Box<ListNode>>` states three things in the type: `None` is the end of the
-  list, the list owns its nodes, and a link is one pointer wide because `None` is
-  stored in the null address.
-- The reversal is a sequence of ownership moves rather than pointer edits: each node is
-  taken out of the old list, its `next` replaced, and the node pushed onto the new
-  head. Nothing is allocated.
-- Because each node is moved once, the reversal is `O(n)` time and `O(1)` space.
-- The derived destructor is recursive, so a list long enough to reverse in constant
-  space can still exhaust the stack when it is dropped. Chapter 38 measures that and
-  writes the iterative destructor.
 
 ## References
 

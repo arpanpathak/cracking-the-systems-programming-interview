@@ -35,7 +35,42 @@ half of another.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 1.1</span> The complete module, with its tests. <code>src/problems/two_sum.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/two_sum.rs">read the file on GitHub</a></p>
+```rust
+//! Two Sum: find the pair of indices whose values add up to a target.
+//!
+//! Use a `HashMap` for one pass: O(n) time, O(n) space.
+
+use std::collections::HashMap;
+
+pub fn two_sum(nums: &[i32], target: i32) -> Option<(usize, usize)> {
+    let mut seen = HashMap::with_capacity(nums.len());
+    for (idx, &num) in nums.iter().enumerate() {
+        match seen.get(&(target - num)) {
+            Some(&prev) => return Some((prev, idx)),
+            None => {
+                seen.insert(num, idx);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finds_pair() {
+        let nums = [2, 7, 11, 15];
+        assert_eq!(two_sum(&nums, 9), Some((0, 1)));
+    }
+
+    #[test]
+    fn returns_none_when_missing() {
+        assert_eq!(two_sum(&[1, 2, 3], 100), None);
+    }
+}
+```
 
 The return type is `Option<(usize, usize)>`. Absence is part of the answer, and a
 caller cannot read index zero as a failure because the indices exist only inside
@@ -146,18 +181,6 @@ for each value. Reporting the pair with the earliest first index requires
 The element type is `i32` and the index type is `usize`. The algorithm depends on
 neither choice, but the signature fixes both, so a slice of `i64`, or of a type that
 is not `Copy`, cannot be passed without changing the declaration.
-
-## Summary
-
-- The value that completes a pair, `t - x`, follows from the element and the target
-  alone, so the second half of a pair is found by lookup rather than by search.
-- The table is keyed by the element's value and holds its index, because the answer is
-  a pair of indices and because one element can be the second half of one pair and the
-  first half of another.
-- Recording each element only after it has been examined is what allows a single pass
-  and what keeps an element from pairing with itself.
-- The `O(n)` expected time rests on the hash function distributing keys evenly; the
-  space is one entry per distinct element.
 
 ## References
 

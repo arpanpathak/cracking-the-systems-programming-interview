@@ -42,7 +42,48 @@ and `[2, 1]` from both appearing. The output is ordered by index, not by value.
 
 ## Implementation
 
-<p class="listing"><span class="listing-label">Listing 13.1</span> The complete module, with its tests. <code>src/problems/backtracking.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/backtracking.rs">read the file on GitHub</a></p>
+```rust
+//! Subsets: enumerate every subset of a set of distinct integers.
+//!
+//! Backtracking with clean `path.push(...)` + recursive exploration + `pop`.
+//! `Vec<Vec<i32>>` is sorted in the tests to avoid order-dependent assertions.
+
+pub fn subsets(nums: Vec<i32>) -> Vec<Vec<i32>> {
+    let mut result = Vec::with_capacity(1 << nums.len());
+    let mut path = Vec::new();
+
+    fn backtrack(nums: &[i32], start: usize, path: &mut Vec<i32>, result: &mut Vec<Vec<i32>>) {
+        result.push(path.clone());
+        for idx in start..nums.len() {
+            path.push(nums[idx]);
+            backtrack(nums, idx + 1, path, result);
+            path.pop();
+        }
+    }
+
+    backtrack(&nums, 0, &mut path, &mut result);
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generates_all_subsets() {
+        let mut subsets = subsets(vec![1, 2, 3]);
+        subsets.sort_unstable();
+        assert_eq!(subsets.len(), 8);
+        assert!(subsets.contains(&vec![]));
+        assert!(subsets.contains(&vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn empty_input_has_one_subset() {
+        assert_eq!(subsets(vec![]), vec![vec![]]);
+    }
+}
+```
 
 `fn backtrack(...)` is a nested function inside `subsets`. A nested `fn` does not
 capture its environment, so the values it needs are passed as parameters: `nums`,
@@ -126,18 +167,6 @@ The other test sorts before comparing.
 **There is no way to stop the search early or to stream the results.** A caller that
 wants the first `k` subsets, or that is searching for a subset with a property, must
 collect all of them first.
-
-## Summary
-
-- Backtracking holds one partial selection and a position: record the selection, try
-  every value from that position onward, and undo each choice before the next.
-- `path.pop()` restores the state the recursive call was entered with, which is the
-  invariant that lets one buffer serve the whole search.
-- `result.push(path.clone())` is the only allocation in the walk, and it is what makes
-  the cost `O(2^n × n)` rather than `O(2^n)`: the output dominates, and the stack is
-  `O(n)`.
-- Starting each call at the current position rather than at zero is what enumerates
-  each subset once instead of each permutation of it.
 
 ## References
 
