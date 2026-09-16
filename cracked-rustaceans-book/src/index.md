@@ -37,11 +37,13 @@
 - **connected components**, counting them by flood fill, [23](#counting-islands)
 - **copy**, `fs::copy` and what it preserves, [28](#file-operations)
 - **cost model**, instructions, memory, stack, compilation, [24](#syscall-overhead)
-- **cycle detection**, a short topological order, [11](#topological-sort)
+- **course schedule**, prerequisites given as names rather than indices, [65](#course-schedule)
+- **cycle detection**, a short topological order, [11](#topological-sort), [65](#course-schedule)
 
 ## D
 
 - **`dead_code` warning**, the unused second merge function, [5](#merge-intervals), [24](#syscall-overhead)
+- **dependency resolution**, an order over named dependencies, [65](#course-schedule)
 - **`Default`**, `#[derive(Default)]` and `#[default]` on a variant, [3](#min-stack), [8](#binary-search-tree), [10](#trie)
 - **destructor**, recursion in derived drop glue, [7](#binary-tree), [14](#reverse-linked-list), [15](#singly-linked-list), [16](#doubly-linked-list)
 - **directory traversal**, `read_dir` and a recursive walk, [27](#paths-and-directories)
@@ -53,6 +55,7 @@
 
 ## E
 
+- **entry API**, `entry`, `or_default` and `or_insert` on a map, [65](#course-schedule)
 - **enum**, states a caller cannot construct illegally, [7](#binary-tree), [8](#binary-search-tree), [19](#state-machine)
 - **epigraph**, attributed quotations in this book, [references](#references)
 - **`ErrorKind`**, branching on a failure without parsing a message, [28](#file-operations)
@@ -77,7 +80,7 @@
 ## I
 
 - **idempotency**, a keyed store that runs an operation at most once, [34](#idempotent-operations)
-- **in-degree**, the counter Kahn's algorithm waits on, [11](#topological-sort)
+- **in-degree**, the counter Kahn's algorithm waits on, [11](#topological-sort), [65](#course-schedule)
 - **index-linked list**, nodes in a vector, links as integers, [18](#lru-cache-array)
 - **`Instant`**, the clock a limiter trusts, [20](#rate-limiter); the clock a measurement reads, [31](#parallel-sum)
 - **interior mutability**, mutation behind a shared reference, [16](#doubly-linked-list)
@@ -89,7 +92,7 @@
 
 ## K
 
-- **Kahn's algorithm**, topological sort by in-degree, [11](#topological-sort)
+- **Kahn's algorithm**, topological sort by in-degree, [11](#topological-sort), [65](#course-schedule)
 - **`key`**, the field a full cache reads back before overwriting a slot, [18](#lru-cache-array)
 
 ## L
@@ -162,7 +165,7 @@
 - **`thread::scope`**, workers that borrow the input, [31](#parallel-sum)
 - **tie-break**, the ordering the top-k result depends on, [6](#top-k-frequent)
 - **token bucket**, burst then rate, [20](#rate-limiter)
-- **topological sort**, an order in which edges point forward, [11](#topological-sort)
+- **topological sort**, an order in which edges point forward, [11](#topological-sort), [65](#course-schedule)
 - **trace**, the state after each step, produced by running the code, [2](#valid-parentheses), [5](#merge-intervals), [9](#binary-search), [11](#topological-sort)
 - **trait object**, `dyn` and what it costs, [21](#worker-pool)
 - **`try_unwrap`**, moving a value out of an `Rc`, [16](#doubly-linked-list)
@@ -175,7 +178,7 @@
 ## V
 
 - **`Vec`**, amortised growth and reuse of a slot, [18](#lru-cache-array)
-- **`VecDeque`**, constant time at both ends, [11](#topological-sort), [17](#lru-cache), [30](#bounded-buffer)
+- **`VecDeque`**, constant time at both ends, [11](#topological-sort), [17](#lru-cache), [30](#bounded-buffer), [65](#course-schedule)
 
 ## W
 

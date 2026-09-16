@@ -345,6 +345,18 @@ eviction, update, refresh, capacity one, a missing key and a zero capacity. A te
 fills a cache of capacity three, evicts one entry, and then reads the other two would
 check that the reused slot and the surviving links agree.
 
+## Summary
+
+- The nodes live in a `Vec` and the links are indices, so the cache holds one
+  allocation rather than one per entry, and a node carries no reference count and no
+  borrow flag.
+- `attach` and `detach` maintain the list; every operation is a constant number of
+  index writes, and a slot freed by eviction is reused rather than returned.
+- Memory is bounded by the capacity, which is the property Chapter 17 does not have.
+- The cost of the index representation is that nothing checks it: a stale index is a
+  wrong entry rather than a compile error or a panic, so the invariants live in the
+  code that maintains the links.
+
 ## References
 
 - Standard library, [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html).

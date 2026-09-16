@@ -54,60 +54,7 @@ one 64-byte cache line                  line 0   [ c0 ........................ ]
 
 ### Sequential and strided sums
 
-```rust
-//! Cache locality: the same data is much faster to walk in order than to jump
-//! around, because memory moves in cache lines and the prefetcher helps only the
-//! sequential case.
-//!
-//! Run with: cargo run --bin cs_locality
-
-use std::time::{Duration, Instant};
-
-/// A power of two, so a stride must be odd to visit every index.
-const ELEMENTS: usize = 4 * 1024 * 1024;
-
-/// Odd, and therefore coprime with `ELEMENTS`: the walk visits every slot once.
-const STRIDE: usize = 1_000_003;
-
-fn sequential_sum(data: &[u64]) -> (u64, Duration) {
-    let start = Instant::now();
-    let sum = data.iter().sum();
-    (sum, start.elapsed())
-}
-
-fn strided_sum(data: &[u64]) -> (u64, Duration) {
-    let start = Instant::now();
-    let mut index = 0usize;
-    let mut sum = 0u64;
-    for _ in 0..data.len() {
-        index = (index + STRIDE) % data.len();
-        sum = sum.wrapping_add(data[index]);
-    }
-    (sum, start.elapsed())
-}
-
-fn main() {
-    let data: Vec<u64> = (0..ELEMENTS as u64).collect();
-    println!(
-        "{} elements, {} MiB",
-        data.len(),
-        data.len() * 8 / (1024 * 1024)
-    );
-
-    let (sequential, sequential_time) = sequential_sum(&data);
-    let (strided, strided_time) = strided_sum(&data);
-
-    println!("\n  sequential: {sequential} in {sequential_time:?}");
-    println!("  strided:    {strided} in {strided_time:?}");
-
-    // Both touch every element exactly once, so the sums must match; only the
-    // access pattern differs.
-    assert_eq!(sequential, strided);
-    assert_eq!(sequential, ELEMENTS as u64 * (ELEMENTS as u64 - 1) / 2);
-
-    println!("\nequal work, different pattern; timings vary by machine");
-}
-```
+<p class="listing"><span class="listing-label">Listing 48.1</span> Sequential and strided sums. <code>src/bin/cs_locality.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_locality.rs">read the file on GitHub</a></p>
 
 `sequential_sum` is `data.iter().sum()`. `strided_sum` advances `index` by `STRIDE`
 modulo the length and adds with `wrapping_add`, which cannot overflow into a panic and
@@ -118,102 +65,7 @@ visited every element once, and both equal `n(n - 1)/2` for the values `0..n`.
 
 ### Padded and unpadded counters
 
-```rust
-//! False sharing: two independent counters that land on the same cache line make
-//! each other slow, because every write moves the line between cores.
-//!
-//! Run with: cargo run --bin concurrency_false_sharing
-
-use std::mem::size_of;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
-use std::time::{Duration, Instant};
-
-const THREADS: usize = 4;
-const ITERATIONS: usize = 2_000_000;
-
-/// Packed by default: consecutive counters share a cache line.
-struct Unpadded(AtomicUsize);
-
-impl Unpadded {
-    fn new() -> Self {
-        Self(AtomicUsize::new(0))
-    }
-
-    fn increment(&self) {
-        self.0.fetch_add(1, Ordering::Relaxed);
-    }
-}
-
-/// Padded to a cache line, so no two counters share one.
-#[repr(align(64))]
-struct Padded(AtomicUsize);
-
-impl Padded {
-    fn new() -> Self {
-        Self(AtomicUsize::new(0))
-    }
-
-    fn increment(&self) {
-        self.0.fetch_add(1, Ordering::Relaxed);
-    }
-}
-
-/// Scoped threads borrow the vector directly, so there is no `Arc` and no clone.
-fn run_unpadded() -> Duration {
-    let counters: Vec<Unpadded> = (0..THREADS).map(|_| Unpadded::new()).collect();
-    let start = Instant::now();
-    thread::scope(|scope| {
-        for counter in &counters {
-            scope.spawn(move || {
-                for _ in 0..ITERATIONS {
-                    counter.increment();
-                }
-            });
-        }
-    });
-    start.elapsed()
-}
-
-fn run_padded() -> Duration {
-    let counters: Vec<Padded> = (0..THREADS).map(|_| Padded::new()).collect();
-    let start = Instant::now();
-    thread::scope(|scope| {
-        for counter in &counters {
-            scope.spawn(move || {
-                for _ in 0..ITERATIONS {
-                    counter.increment();
-                }
-            });
-        }
-    });
-    start.elapsed()
-}
-
-fn main() {
-    println!("atomic:   {} bytes", size_of::<AtomicUsize>());
-    println!(
-        "unpadded: {} bytes (several counters per 64 byte line)",
-        size_of::<Unpadded>()
-    );
-    println!(
-        "padded:   {} bytes (one counter per 64 byte line)",
-        size_of::<Padded>()
-    );
-
-    let unpadded = run_unpadded();
-    let padded = run_padded();
-
-    println!("\n{THREADS} threads x {ITERATIONS} increments, each on its own counter");
-    println!("  unpadded (shared lines): {unpadded:?}");
-    println!("  padded   (own line):     {padded:?}");
-
-    assert!(size_of::<Padded>() >= 64, "padding must fill a cache line");
-    assert!(unpadded.as_nanos() > 0 && padded.as_nanos() > 0);
-
-    println!("\ntimings vary by machine; the padded run is normally the faster one");
-}
-```
+<p class="listing"><span class="listing-label">Listing 48.2</span> Padded and unpadded counters. <code>src/bin/concurrency_false_sharing.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_false_sharing.rs">read the file on GitHub</a></p>
 
 `#[repr(align(64))]` raises the alignment of `Padded` to 64 bytes. The size of a type is
 always a multiple of its alignment, so `size_of::<Padded>()` becomes 64 even though the
@@ -232,56 +84,7 @@ A second program isolates the effect with two counters and no vector:
 [`src/bin/false_sharing.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/false_sharing.rs). Run it with
 `cargo run --release --bin false_sharing`.
 
-```rust
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::thread;
-use std::time::{Duration, Instant};
-
-const ITERS: u64 = 20_000_000;
-
-/// Both counters are guaranteed to live inside one 64-byte cache line.
-#[repr(align(64))]
-struct SameLine {
-    a: AtomicU64,
-    b: AtomicU64,
-}
-
-/// Each of these occupies its own 64-byte block.
-#[repr(align(64))]
-struct Padded(AtomicU64);
-
-fn time<F: FnOnce()>(f: F) -> Duration {
-    let t = Instant::now();
-    f();
-    t.elapsed()
-}
-
-fn main() {
-    // ---- 1. False sharing: two counters on the same cache line ----
-    let same = SameLine { a: AtomicU64::new(0), b: AtomicU64::new(0) };
-
-    let d1 = time(|| {
-        thread::scope(|s| {
-            s.spawn(|| for _ in 0..ITERS { same.a.fetch_add(1, Ordering::Relaxed); });
-            s.spawn(|| for _ in 0..ITERS { same.b.fetch_add(1, Ordering::Relaxed); });
-        });
-    });
-
-    // ---- 2. Padded: same work, but counters are on separate cache lines ----
-    let p0 = Padded(AtomicU64::new(0));
-    let p1 = Padded(AtomicU64::new(0));
-
-    let d2 = time(|| {
-        thread::scope(|s| {
-            s.spawn(|| for _ in 0..ITERS { p0.0.fetch_add(1, Ordering::Relaxed); });
-            s.spawn(|| for _ in 0..ITERS { p1.0.fetch_add(1, Ordering::Relaxed); });
-        });
-    });
-
-    println!("same cache line (false sharing): {:?}", d1);
-    println!("padded (separate lines):         {:?}", d2);
-}
-```
+<p class="listing"><span class="listing-label">Listing 48.3</span> False sharing inside one struct. <code>src/bin/false_sharing.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/false_sharing.rs">read the file on GitHub</a></p>
 
 `SameLine` holds two `AtomicU64` fields, 8 bytes each, and `#[repr(align(64))]` aligns the
 struct to a 64-byte boundary. Its size is rounded up to 64 bytes, so both fields are

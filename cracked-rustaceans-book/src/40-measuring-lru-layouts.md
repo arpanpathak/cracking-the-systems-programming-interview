@@ -40,45 +40,7 @@ the evicted slot, while the list frees the evicted node and allocates a new one.
 
 ### The contract
 
-```rust
-//! Two LRU caches of the same design, stored differently, so one benchmark loop
-//! can cover both.
-//!
-//! [`arena`] keeps nodes in a `Vec` and links them by `usize` index.
-//! [`rc_list`] allocates an `Rc<RefCell<_>>` per node and links them by pointer.
-
-pub mod arena;
-pub mod rc_list;
-
-use std::hash::Hash;
-
-/// The operations every cache supports.
-pub trait Cache<K, V>
-where
-    K: Hash + Eq + Clone,
-    V: Copy,
-{
-    /// A cache that holds at most `capacity` entries.
-    ///
-    /// # Panics
-    /// Panics if `capacity == 0`, since a zero-capacity cache cannot store
-    /// anything.
-    fn new(capacity: usize) -> Self;
-
-    /// Looks up `key`, promoting it to most recently used on a hit.
-    fn get(&mut self, key: &K) -> Option<V>;
-
-    /// Inserts or updates `key`, evicting the least recently used entry when
-    /// the cache is full.
-    fn put(&mut self, key: K, value: V);
-
-    /// How many entries are cached.
-    fn len(&self) -> usize;
-
-    /// The variant's name, for benchmark output.
-    fn variant() -> &'static str;
-}
-```
+<p class="listing"><span class="listing-label">Listing 40.1</span> The contract. <code>benchmarking_examples/cache/mod.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">read the file on GitHub</a></p>
 
 ### The arena
 
@@ -250,82 +212,14 @@ where
 
 ### The reference-counted list
 
-```rust
-//! LRU cache built from an `Rc<RefCell<_>>` doubly linked list.
-//!
-//! The textbook version: `Rc` forward, `Weak` back, and a `HashMap` from key to
-//! node. Every node is its own heap allocation, and every move to the front
-//! clones an `Rc`, upgrades a `Weak`, and borrows the `RefCell`.
-//!
-//! The default drop would free a node, which frees its `next`, one stack frame
-//! per element, so `Drop` is written to unlink iteratively.
-
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::rc::{Rc, Weak};
-
-use super::Cache;
-
-type Link<K, V> = Option<Rc<RefCell<Node<K, V>>>>;
-
-struct Node<K, V> {
-    key: K,
-    value: V,
-    prev: Weak<RefCell<Node<K, V>>>,
-    next: Link<K, V>,
-}
-
-pub struct LruCache<K, V> {
-    cap: usize,
-    map: HashMap<K, Rc<RefCell<Node<K, V>>>>,
-    head: Link<K, V>,
-    tail: Link<K, V>,
-}
-```
+<p class="listing"><span class="listing-label">Listing 40.2</span> The reference-counted list. <code>benchmarking_examples/cache/rc_list.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
 
 `Link<K, V>` is the type alias for an owning, optional forward link. The backward link
 `prev` is a `Weak`, so two neighbours do not keep each other alive. The cache holds
 three kinds of strong reference to a node: the map entry, the previous node's `next`
 (or `head`), and, for the last node, `tail`.
 
-```rust
-impl<K, V> LruCache<K, V>
-where
-    K: Hash + Eq + Clone,
-    V: Copy,
-{
-    fn detach(&mut self, node: &Rc<RefCell<Node<K, V>>>) {
-        let (prev, next) = {
-            let entry = node.borrow();
-            (entry.prev.clone(), entry.next.clone())
-        };
-
-        match prev.upgrade() {
-            Some(previous) => previous.borrow_mut().next = next.clone(),
-            None => self.head = next.clone(),
-        }
-        match &next {
-            Some(following) => following.borrow_mut().prev = prev,
-            None => self.tail = prev.upgrade(),
-        }
-    }
-
-    fn push_front(&mut self, node: Rc<RefCell<Node<K, V>>>) {
-        let head = self.head.clone();
-        {
-            let mut entry = node.borrow_mut();
-            entry.prev = Weak::new();
-            entry.next = head.clone();
-        }
-        match &head {
-            Some(previous) => previous.borrow_mut().prev = Rc::downgrade(&node),
-            None => self.tail = Some(node.clone()),
-        }
-        self.head = Some(node);
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 40.3</span> The reference-counted list, continued. <code>benchmarking_examples/cache/rc_list.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
 
 `detach` first clones both links out of the node inside a block, so the `Ref` guard
 from `node.borrow()` ends before any `borrow_mut` runs. `RefCell` checks borrows at
@@ -342,77 +236,7 @@ upgraded predecessor.
 the old head's `prev` a `Weak` to the node. If the list was empty, the node becomes
 the tail as well.
 
-```rust
-impl<K, V> Cache<K, V> for LruCache<K, V>
-where
-    K: Hash + Eq + Clone,
-    V: Copy,
-{
-    fn new(capacity: usize) -> Self {
-        assert!(capacity > 0, "capacity must be > 0");
-        Self {
-            cap: capacity,
-            map: HashMap::new(),
-            head: None,
-            tail: None,
-        }
-    }
-
-    fn get(&mut self, key: &K) -> Option<V> {
-        let node = self.map.get(key)?.clone();
-        self.detach(&node);
-        self.push_front(node.clone());
-        Some(node.borrow().value)
-    }
-
-    fn put(&mut self, key: K, value: V) {
-        if let Some(node) = self.map.get(&key).cloned() {
-            node.borrow_mut().value = value;
-            self.detach(&node);
-            self.push_front(node);
-            return;
-        }
-
-        if self.map.len() >= self.cap {
-            if let Some(victim) = self.tail.clone() {
-                let old_key = victim.borrow().key.clone();
-                self.map.remove(&old_key);
-                self.detach(&victim);
-            }
-        }
-
-        let node = Rc::new(RefCell::new(Node {
-            key: key.clone(),
-            value,
-            prev: Weak::new(),
-            next: None,
-        }));
-        self.map.insert(key, node.clone());
-        self.push_front(node);
-    }
-
-    fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    fn variant() -> &'static str {
-        "Rc<RefCell> list"
-    }
-}
-
-impl<K, V> Drop for LruCache<K, V> {
-    fn drop(&mut self) {
-        // Unlink iteratively: dropping a million-node chain recursively overflows
-        // the stack.
-        let mut current = self.head.take();
-        while let Some(node) = current {
-            let next = node.borrow_mut().next.take();
-            node.borrow_mut().prev = Weak::new();
-            current = next;
-        }
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 40.4</span> The reference-counted list, continued. <code>benchmarking_examples/cache/rc_list.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
 
 `get` clones the `Rc` out of the map before calling `detach`, because `detach` takes
 `&mut self` and the map entry borrows `self`. The clone is a reference-count
@@ -424,115 +248,7 @@ measured: the default destructor would free a 65,536-node chain recursively.
 
 ### The benchmark
 
-```rust
-// ---------------------------------------------------------------------------
-// Cache: arena vs Rc<RefCell> linked list
-// ---------------------------------------------------------------------------
-
-/// Request stream with realistic locality: four requests in five come from a hot
-/// set of 1% of the keys, the rest from the whole space.
-fn key_at(state: u64) -> u64 {
-    let mixed = state >> 17;
-    if (state >> 33) % 100 < 80 {
-        mixed % (KEY_SPACE / 100)
-    } else {
-        mixed % KEY_SPACE
-    }
-}
-
-/// The fastest of `CACHE_RUNS` timed passes, with the hit count and final size
-/// from the last one. Each pass starts from an empty cache, so the stream is the
-/// same every time.
-fn best_cache_run<C: Cache<u64, u64>>() -> (Duration, u64, usize) {
-    let mut best = Duration::MAX;
-    let mut hits = 0;
-    let mut len = 0;
-
-    for _ in 0..CACHE_RUNS {
-        let mut cache = C::new(CACHE_CAPACITY);
-        let (elapsed, run_hits) = cache_workload(&mut cache);
-        best = best.min(elapsed);
-        hits = run_hits;
-        len = cache.len();
-    }
-    (best, hits, len)
-}
-
-/// The same request stream against any cache.
-fn cache_workload<C: Cache<u64, u64>>(cache: &mut C) -> (Duration, u64) {
-    let mut state = 0x9e37_79b9_7f4a_7c15u64;
-    let mut hits = 0u64;
-
-    let start = Instant::now();
-    for _ in 0..OPERATIONS {
-        state = state
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        let key = key_at(state);
-
-        match cache.get(&key) {
-            Some(value) => {
-                hits += 1;
-                black_box(value);
-            }
-            None => cache.put(key, key.rotate_left(17)),
-        }
-    }
-    (start.elapsed(), hits)
-}
-
-fn cache_benchmark() {
-    println!(
-        "LRU cache: {} entries, {} requests over {} keys",
-        with_thousands(CACHE_CAPACITY as u64),
-        with_thousands(OPERATIONS),
-        with_thousands(KEY_SPACE)
-    );
-    println!("A miss inserts and evicts the least recently used entry.");
-    println!("Best of {CACHE_RUNS} runs per cache.\n");
-
-    let (arena_time, arena_hits, arena_len) = best_cache_run::<ArenaCache<u64, u64>>();
-    let (list_time, list_hits, list_len) = best_cache_run::<RcCache<u64, u64>>();
-
-    // Same population and same hit count, or this compares nothing.
-    assert_eq!(arena_len, list_len);
-    assert_eq!(
-        arena_hits, list_hits,
-        "the two runs saw different request streams"
-    );
-
-    println!(
-        "  hit rate: {:.1}%  ({} hits, {} inserts)\n",
-        arena_hits as f64 * 100.0 / OPERATIONS as f64,
-        with_thousands(arena_hits),
-        with_thousands(OPERATIONS - arena_hits)
-    );
-
-    let per_request = |elapsed: Duration| elapsed.as_nanos() as f64 / OPERATIONS as f64;
-
-    // `{:.2?}` uses Duration's own Debug format, rounded to two decimals.
-    println!("  {:<22} {:>12} {:>13}", "storage", "total", "per request");
-    println!("  {}", "-".repeat(48));
-    for (name, elapsed) in [
-        (
-            <ArenaCache<u64, u64> as Cache<u64, u64>>::variant(),
-            arena_time,
-        ),
-        (<RcCache<u64, u64> as Cache<u64, u64>>::variant(), list_time),
-    ] {
-        println!(
-            "  {name:<22} {elapsed:>12.2?} {:>8.0} ns",
-            per_request(elapsed)
-        );
-    }
-
-    let speedup = list_time.as_secs_f64() / arena_time.as_secs_f64();
-    println!(
-        "\n  the arena is {speedup:.2}x faster on the same requests: {arena_time:.2?} against {list_time:.2?}"
-    );
-    println!("  the arena reuses the evicted slot; the list frees a node and allocates another");
-}
-```
+<p class="listing"><span class="listing-label">Listing 40.5</span> The benchmark. <code>benchmarking_examples/benchmark.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">read the file on GitHub</a></p>
 
 `key_at` uses two different ranges of bits from the generator state: bits above 33
 choose between the hot set and the whole space, and bits above 17 choose the key. The
@@ -556,24 +272,7 @@ chapter 18 prints in full; its test module is named `tests_for_lru`. It adds a `
 that runs the eviction sequence traced in chapter 18. Run it with
 `cargo run --bin lru_cache_arena`.
 
-```rust
-fn main() {
-    let mut cache = LruCache::new(2);
-
-    cache.put("A", 10);
-    cache.put("B", 20);
-    println!("get A = {:?}", cache.get(&"A")); // Some(10), A now MRU
-
-    cache.put("C", 30); // evicts B (LRU)
-
-    println!("get B = {:?}", cache.get(&"B")); // None
-    println!("get A = {:?}", cache.get(&"A")); // Some(10)
-    println!("get C = {:?}", cache.get(&"C")); // Some(30)
-
-    cache.put("A", 99);
-    println!("get A = {:?}", cache.get(&"A")); // Some(99)
-}
-```
+<p class="listing"><span class="listing-label">Listing 40.6</span> The arena cache as a standalone program. <code>src/bin/lru_cache_arena.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">read the file on GitHub</a></p>
 
 The program prints:
 

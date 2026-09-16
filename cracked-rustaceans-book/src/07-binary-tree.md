@@ -49,155 +49,7 @@ with no payload, so it occupies no heap space.
 
 ## Implementation
 
-```rust
-//! Binary tree as an algebraic data type.
-//!
-//! ```text
-//! Tree = Empty
-//!      | Node { value, left: Box<Tree>, right: Box<Tree> }
-//! ```
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Tree {
-    Empty,
-    Node {
-        value: i32,
-        left: Box<Tree>,
-        right: Box<Tree>,
-    },
-}
-
-impl Tree {
-    pub fn max_depth(&self) -> usize {
-        match self {
-            Tree::Empty => 0,
-            Tree::Node { left, right, .. } => 1 + left.max_depth().max(right.max_depth()),
-        }
-    }
-
-    pub fn invert(&mut self) {
-        match self {
-            Tree::Empty => {}
-            Tree::Node { left, right, .. } => {
-                left.invert();
-                right.invert();
-                std::mem::swap(left, right);
-            }
-        }
-    }
-
-    pub fn preorder(&self) -> Vec<i32> {
-        let mut out = Vec::new();
-        self.collect_preorder(&mut out);
-        out
-    }
-
-    pub fn inorder(&self) -> Vec<i32> {
-        let mut out = Vec::new();
-        self.collect_inorder(&mut out);
-        out
-    }
-
-    pub fn postorder(&self) -> Vec<i32> {
-        let mut out = Vec::new();
-        self.collect_postorder(&mut out);
-        out
-    }
-
-    fn collect_preorder(&self, out: &mut Vec<i32>) {
-        match self {
-            Tree::Empty => {}
-            Tree::Node { value, left, right } => {
-                out.push(*value);
-                left.collect_preorder(out);
-                right.collect_preorder(out);
-            }
-        }
-    }
-
-    fn collect_inorder(&self, out: &mut Vec<i32>) {
-        match self {
-            Tree::Empty => {}
-            Tree::Node { value, left, right } => {
-                left.collect_inorder(out);
-                out.push(*value);
-                right.collect_inorder(out);
-            }
-        }
-    }
-
-    fn collect_postorder(&self, out: &mut Vec<i32>) {
-        match self {
-            Tree::Empty => {}
-            Tree::Node { value, left, right } => {
-                left.collect_postorder(out);
-                right.collect_postorder(out);
-                out.push(*value);
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn leaf(value: i32) -> Tree {
-        Tree::Node {
-            value,
-            left: Box::new(Tree::Empty),
-            right: Box::new(Tree::Empty),
-        }
-    }
-
-    fn node(value: i32, left: Tree, right: Tree) -> Tree {
-        Tree::Node {
-            value,
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-    }
-
-    fn sample() -> Tree {
-        node(3, leaf(9), node(20, leaf(15), leaf(7)))
-    }
-
-    #[test]
-    fn max_depth_works() {
-        assert_eq!(Tree::Empty.max_depth(), 0);
-        assert_eq!(leaf(1).max_depth(), 1);
-        assert_eq!(sample().max_depth(), 3);
-    }
-
-    #[test]
-    fn invert_swaps_subtrees() {
-        let mut tree = sample();
-        tree.invert();
-
-        match &tree {
-            Tree::Node { left, right, .. } => {
-                match left.as_ref() {
-                    Tree::Node { value, .. } => assert_eq!(*value, 20),
-                    _ => panic!("expected left node"),
-                }
-                match right.as_ref() {
-                    Tree::Node { value, .. } => assert_eq!(*value, 9),
-                    _ => panic!("expected right node"),
-                }
-            }
-            _ => panic!("expected node"),
-        }
-    }
-
-    #[test]
-    fn traversals_work() {
-        let tree = sample();
-        assert_eq!(tree.preorder(), vec![3, 9, 20, 15, 7]);
-        assert_eq!(tree.inorder(), vec![9, 3, 15, 20, 7]);
-        assert_eq!(tree.postorder(), vec![9, 15, 7, 20, 3]);
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 7.1</span> The complete module, with its tests. <code>src/problems/binary_tree.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs">read the file on GitHub</a></p>
 
 `max_depth` uses `..` in the pattern to ignore `value`, and computes
 `1 + left.max_depth().max(right.max_depth())` without a binding for the child depths.
@@ -277,6 +129,19 @@ count writes a recursive helper or a loop with a work list.
 roots of the two subtrees were exchanged, which catches an `invert` that does nothing
 and not one that swaps the children of the root only. Asserting `tree.preorder()`
 against the mirrored sequence would test the whole tree in one line.
+
+## Summary
+
+- The tree is an algebraic data type with an `Empty` variant and a `Node` variant that
+  owns both children, so a half-present node is not representable and no function tests
+  for one.
+- Boxing the children puts the recursion in the type: a `Tree` value has a fixed size
+  however many nodes exist.
+- Every operation visits each node once, `O(n)`, and the stack cost is the height, so
+  the shape of the tree, not its size, decides how much stack is needed.
+- The derived destructor recurses as well, which is why a degenerate tree can exhaust
+  the stack while being dropped rather than while being read. Chapter 38 measures that
+  case and replaces the destructor.
 
 ## References
 

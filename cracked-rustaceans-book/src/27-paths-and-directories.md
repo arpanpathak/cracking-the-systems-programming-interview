@@ -38,74 +38,15 @@ and `?` on that call stops the walk at the first unreadable directory.
 `path_buff.rs` builds one path with `join` and another with `push`, then reads
 parts of the second:
 
-```rust
-use std::path::{Path, PathBuf};
-
-fn main() {
-    let dir = Path::new("/tmp");
-    let file = dir.join("data.txt");
-
-    let mut buf = PathBuf::from(dir);
-    buf.push("nested");
-    buf.push("file.txt");
-
-    println!("file: {}", file.display());
-    println!("buf:  {}", buf.display());
-    println!("parent: {:?}", buf.parent());
-    println!("file_name: {:?}", buf.file_name());
-    println!("ext: {:?}", buf.extension());
-}
-```
+<p class="listing"><span class="listing-label">Listing 27.1</span> The complete program. <code>src/bin/path_buff.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/path_buff.rs">read the file on GitHub</a></p>
 
 `list_directory.rs` prints one line per entry of the working directory:
 
-```rust
-use std::fs;
-use std::io;
-
-fn main() -> io::Result<()> {
-    for entry in fs::read_dir(".")? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            println!("[DIR]  {}", path.display());
-        } else {
-            println!("[FILE] {}", path.display());
-        }
-    }
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 27.2</span> The complete program. <code>src/bin/list_directory.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs">read the file on GitHub</a></p>
 
 `recusrive_directory_walk.rs` repeats that loop for every subdirectory:
 
-```rust
-use std::fs;
-use std::io;
-use std::path::Path;
-
-fn walk(dir: &Path) -> io::Result<()> {
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        let file_type = entry.file_type()?;
-
-        if file_type.is_dir() {
-            println!("[DIR]  {}", path.display());
-            walk(&path)?;
-        } else {
-            println!("[FILE] {}", path.display());
-        }
-    }
-    Ok(())
-}
-
-fn main() -> io::Result<()> {
-    walk(Path::new("."))?;
-    Ok(())
-}
-```
+<p class="listing"><span class="listing-label">Listing 27.3</span> The complete program. <code>src/bin/recusrive_directory_walk.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/recusrive_directory_walk.rs">read the file on GitHub</a></p>
 
 `Path::display` is the conversion for printing. `Path` is not guaranteed to be
 valid UTF-8, so it does not implement `Display`; `display` returns a wrapper that

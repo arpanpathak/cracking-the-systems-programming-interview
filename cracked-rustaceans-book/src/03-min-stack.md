@@ -37,71 +37,7 @@ time, which is where the bound comes from.
 
 ## Implementation
 
-```rust
-//! Min Stack: O(1) push, pop, top, and get_min.
-//!
-//! We keep a parallel `mins` stack. Each push stores the current minimum at that
-//! point in history, so pop is symmetric.
-
-#[derive(Debug, Default)]
-pub struct MinStack {
-    values: Vec<i32>,
-    mins: Vec<i32>,
-}
-
-impl MinStack {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn push(&mut self, val: i32) {
-        match self.mins.last() {
-            Some(&min) if min <= val => self.mins.push(min),
-            _ => self.mins.push(val),
-        }
-        self.values.push(val);
-    }
-
-    pub fn pop(&mut self) -> Option<i32> {
-        self.mins.pop();
-        self.values.pop()
-    }
-
-    pub fn top(&self) -> Option<i32> {
-        self.values.last().copied()
-    }
-
-    pub fn get_min(&self) -> Option<i32> {
-        self.mins.last().copied()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn stack_tracks_minimum() {
-        let mut stack = MinStack::new();
-        stack.push(-2);
-        stack.push(0);
-        stack.push(-3);
-        assert_eq!(stack.get_min(), Some(-3));
-        assert_eq!(stack.pop(), Some(-3));
-        assert_eq!(stack.top(), Some(0));
-        assert_eq!(stack.get_min(), Some(-2));
-    }
-
-    #[test]
-    fn handles_duplicates() {
-        let mut stack = MinStack::new();
-        stack.push(1);
-        stack.push(1);
-        stack.pop();
-        assert_eq!(stack.get_min(), Some(1));
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 3.1</span> The complete module, with its tests. <code>src/problems/min_stack.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs">read the file on GitHub</a></p>
 
 `MinStack::new` returns `Self::default()`, so the constructor and the `Default`
 implementation cannot disagree.
@@ -195,6 +131,17 @@ vectors would differ in length and the invariant would break. Rust aborts the pr
 on allocation failure, so the case is unreachable through this function. The
 invariant holds because of the order of two adjacent statements, which the compiler
 does not check.
+
+## Summary
+
+- The minimum is stored at every depth rather than searched for: a second vector holds
+  at index `i` the smallest value among `values[0..=i]`.
+- The invariant survives a `pop` untouched, because removing the last entry of both
+  vectors leaves every remaining index correct, so nothing is recomputed.
+- `push` appends either the incoming value or the current minimum, and `get_min` reads
+  the last entry, so all four operations are constant time.
+- The price is one extra `i32` per element. It is the memory paid for a minimum that
+  never costs a scan.
 
 ## References
 

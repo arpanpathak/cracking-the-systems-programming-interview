@@ -55,96 +55,7 @@ returns: Some(0)
 
 ## Implementation
 
-```rust
-// Singly linked list using an algebraic data type.
-//
-//    List<T> = Empty
-//            | Node { value: T, next: Link<T> }
-//
-// `Empty` is the end of the list.
-
-type Link<T> = Box<List<T>>;
-
-pub enum List<T> {
-    Empty,
-    Node { value: T, next: Link<T> },
-}
-
-impl<T> List<T> {
-    pub fn new() -> Self {
-        List::Empty
-    }
-
-    pub fn is_empty(&self) -> bool {
-        matches!(self, List::Empty)
-    }
-
-    pub fn len(&self) -> usize {
-        match self {
-            List::Empty => 0,
-            List::Node { next, .. } => 1 + next.len(),
-        }
-    }
-
-    /// O(1)
-    pub fn push_front(&mut self, value: T) {
-        let old = std::mem::replace(self, List::Empty);
-        *self = List::Node {
-            value,
-            next: Link::new(old),
-        };
-    }
-
-    /// O(1)
-    pub fn pop_front(&mut self) -> Option<T> {
-        match std::mem::replace(self, List::Empty) {
-            List::Empty => None,
-            List::Node { value, next } => {
-                *self = *next;
-                Some(value)
-            }
-        }
-    }
-
-}
-
-fn main() {
-    let mut list = List::new();
-    list.push_front(2);
-    list.push_front(1);
-    list.push_front(0);
-
-    assert_eq!(list.len(), 3);
-    assert_eq!(list.pop_front(), Some(0));
-    assert_eq!(list.pop_front(), Some(1));
-    assert_eq!(list.pop_front(), Some(2));
-    println!("ok");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn push_pop_works() {
-        let mut list = List::new();
-        list.push_front(1);
-        list.push_front(2);
-        assert_eq!(list.pop_front(), Some(2));
-        assert_eq!(list.pop_front(), Some(1));
-        assert_eq!(list.pop_front(), None);
-    }
-
-    #[test]
-    fn len_works() {
-        let mut list = List::new();
-        assert_eq!(list.len(), 0);
-        list.push_front(1);
-        list.push_front(2);
-        assert_eq!(list.len(), 2);
-    }
-}
-```
+<p class="listing"><span class="listing-label">Listing 15.1</span> The complete program, with its tests. <code>src/bin/singly_linked_list.rs</code> &middot; <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs">read the file on GitHub</a></p>
 
 `push_front` moves the old list into a new `Box`. The old value comes from
 `std::mem::replace(self, List::Empty)`, which leaves `self` in a valid state that the
@@ -211,6 +122,18 @@ when the list is released is `O(n)`. The two have to be considered together.
 
 **There is no `Clone`, no `Debug`, and no iterator.** A caller cannot print the list,
 cannot copy it, and cannot write `for value in &list`.
+
+## Summary
+
+- The layout is the one of Chapter 14 with the empty case named in the type: `Empty`
+  ends the list and is also the empty list, so there is no sentinel and no nullable
+  field.
+- `push_front` and `pop_front` are constant time because both work at the head, where
+  ownership of the rest of the list can be moved in one step.
+- `len` and the derived destructor are recursive, so the length of the list is bounded
+  by the stack rather than by the heap.
+- Naming the empty case costs nothing at run time here, and it buys a `match` that the
+  compiler checks for exhaustiveness at every use.
 
 ## References
 
