@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -206,8 +206,46 @@ follows pointers to separate heap blocks. On a miss at capacity, the arena overw
 the evicted slot, while the list frees the evicted node and allocates a new one.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <h3 id="the-contract"><a class="header" href="#the-contract">The contract</a></h3>
-<p class="listing"><span class="listing-label">Listing 40.1</span> The contract. <code>benchmarking_examples/cache/mod.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Two LRU caches of the same design, stored differently, so one benchmark loop
+//! can cover both.
+//!
+//! [`arena`] keeps nodes in a `Vec` and links them by `usize` index.
+//! [`rc_list`] allocates an `Rc&lt;RefCell&lt;_&gt;&gt;` per node and links them by pointer.
 
+pub mod arena;
+pub mod rc_list;
+
+use std::hash::Hash;
+
+/// The operations every cache supports.
+pub trait Cache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    /// A cache that holds at most `capacity` entries.
+    ///
+    /// # Panics
+    /// Panics if `capacity == 0`, since a zero-capacity cache cannot store
+    /// anything.
+    fn new(capacity: usize) -&gt; Self;
+
+    /// Looks up `key`, promoting it to most recently used on a hit.
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt;;
+
+    /// Inserts or updates `key`, evicting the least recently used entry when
+    /// the cache is full.
+    fn put(&amp;mut self, key: K, value: V);
+
+    /// How many entries are cached.
+    fn len(&amp;self) -&gt; usize;
+
+    /// The variant's name, for benchmark output.
+    fn variant() -&gt; &amp;'static str;
+}
+<span class="boring">}</span></code></pre>
 <h3 id="the-arena"><a class="header" href="#the-arena">The arena</a></h3>
 <p>The arena version is the cache from chapter 18 with its public methods moved into the
 trait implementation. The first listing shows the types and <code>touch</code>, and the second the
@@ -374,14 +412,82 @@ where
 <p><code>get</code> returns <code>Some(self.nodes[i].value)</code>, a copy, because the trait bound is
 <code>V: Copy</code>. Chapter 18’s version returned <code>Option&lt;&amp;V&gt;</code>.</p>
 <h3 id="the-reference-counted-list"><a class="header" href="#the-reference-counted-list">The reference-counted list</a></h3>
-<p class="listing"><span class="listing-label">Listing 40.2</span> The reference-counted list. <code>benchmarking_examples/cache/rc_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! LRU cache built from an `Rc&lt;RefCell&lt;_&gt;&gt;` doubly linked list.
+//!
+//! The textbook version: `Rc` forward, `Weak` back, and a `HashMap` from key to
+//! node. Every node is its own heap allocation, and every move to the front
+//! clones an `Rc`, upgrades a `Weak`, and borrows the `RefCell`.
+//!
+//! The default drop would free a node, which frees its `next`, one stack frame
+//! per element, so `Drop` is written to unlink iteratively.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::rc::{Rc, Weak};
+
+use super::Cache;
+
+type Link&lt;K, V&gt; = Option&lt;Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;&gt;;
+
+struct Node&lt;K, V&gt; {
+    key: K,
+    value: V,
+    prev: Weak&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;,
+    next: Link&lt;K, V&gt;,
+}
+
+pub struct LruCache&lt;K, V&gt; {
+    cap: usize,
+    map: HashMap&lt;K, Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;&gt;,
+    head: Link&lt;K, V&gt;,
+    tail: Link&lt;K, V&gt;,
+}
+<span class="boring">}</span></code></pre>
 <p><code>Link&lt;K, V&gt;</code> is the type alias for an owning, optional forward link. The backward link
 <code>prev</code> is a <code>Weak</code>, so two neighbours do not keep each other alive. The cache holds
 three kinds of strong reference to a node: the map entry, the previous node’s <code>next</code>
 (or <code>head</code>), and, for the last node, <code>tail</code>.</p>
-<p class="listing"><span class="listing-label">Listing 40.3</span> The reference-counted list, continued. <code>benchmarking_examples/cache/rc_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn detach(&amp;mut self, node: &amp;Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;) {
+        let (prev, next) = {
+            let entry = node.borrow();
+            (entry.prev.clone(), entry.next.clone())
+        };
 
+        match prev.upgrade() {
+            Some(previous) =&gt; previous.borrow_mut().next = next.clone(),
+            None =&gt; self.head = next.clone(),
+        }
+        match &amp;next {
+            Some(following) =&gt; following.borrow_mut().prev = prev,
+            None =&gt; self.tail = prev.upgrade(),
+        }
+    }
+
+    fn push_front(&amp;mut self, node: Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;) {
+        let head = self.head.clone();
+        {
+            let mut entry = node.borrow_mut();
+            entry.prev = Weak::new();
+            entry.next = head.clone();
+        }
+        match &amp;head {
+            Some(previous) =&gt; previous.borrow_mut().prev = Rc::downgrade(&amp;node),
+            None =&gt; self.tail = Some(node.clone()),
+        }
+        self.head = Some(node);
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>detach</code> first clones both links out of the node inside a block, so the <code>Ref</code> guard
 from <code>node.borrow()</code> ends before any <code>borrow_mut</code> runs. <code>RefCell</code> checks borrows at
 run time, and a guard that lives longer than it needs to is the usual cause of an
@@ -394,8 +500,78 @@ upgraded predecessor.</p>
 <p><code>push_front</code> clears the node’s <code>prev</code>, points its <code>next</code> at the old head, and makes
 the old head’s <code>prev</code> a <code>Weak</code> to the node. If the list was empty, the node becomes
 the tail as well.</p>
-<p class="listing"><span class="listing-label">Listing 40.4</span> The reference-counted list, continued. <code>benchmarking_examples/cache/rc_list.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;K, V&gt; Cache&lt;K, V&gt; for LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap: capacity,
+            map: HashMap::new(),
+            head: None,
+            tail: None,
+        }
+    }
 
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let node = self.map.get(key)?.clone();
+        self.detach(&amp;node);
+        self.push_front(node.clone());
+        Some(node.borrow().value)
+    }
+
+    fn put(&amp;mut self, key: K, value: V) {
+        if let Some(node) = self.map.get(&amp;key).cloned() {
+            node.borrow_mut().value = value;
+            self.detach(&amp;node);
+            self.push_front(node);
+            return;
+        }
+
+        if self.map.len() &gt;= self.cap {
+            if let Some(victim) = self.tail.clone() {
+                let old_key = victim.borrow().key.clone();
+                self.map.remove(&amp;old_key);
+                self.detach(&amp;victim);
+            }
+        }
+
+        let node = Rc::new(RefCell::new(Node {
+            key: key.clone(),
+            value,
+            prev: Weak::new(),
+            next: None,
+        }));
+        self.map.insert(key, node.clone());
+        self.push_front(node);
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.map.len()
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "Rc&lt;RefCell&gt; list"
+    }
+}
+
+impl&lt;K, V&gt; Drop for LruCache&lt;K, V&gt; {
+    fn drop(&amp;mut self) {
+        // Unlink iteratively: dropping a million-node chain recursively overflows
+        // the stack.
+        let mut current = self.head.take();
+        while let Some(node) = current {
+            let next = node.borrow_mut().next.take();
+            node.borrow_mut().prev = Weak::new();
+            current = next;
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>get</code> clones the <code>Rc</code> out of the map before calling <code>detach</code>, because <code>detach</code> takes
 <code>&amp;mut self</code> and the map entry borrows <code>self</code>. The clone is a reference-count
 increment. Each hit therefore performs several count updates, a <code>Weak</code> upgrade, and
@@ -403,8 +579,116 @@ four or more <code>RefCell</code> borrow checks, none of which the arena needs.<
 <p>The <code>Drop</code> implementation unlinks the chain iteratively for the reason chapter 38
 measured: the default destructor would free a 65,536-node chain recursively.</p>
 <h3 id="the-benchmark"><a class="header" href="#the-benchmark">The benchmark</a></h3>
-<p class="listing"><span class="listing-label">Listing 40.5</span> The benchmark. <code>benchmarking_examples/benchmark.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// ---------------------------------------------------------------------------
+// Cache: arena vs Rc&lt;RefCell&gt; linked list
+// ---------------------------------------------------------------------------
 
+/// Request stream with realistic locality: four requests in five come from a hot
+/// set of 1% of the keys, the rest from the whole space.
+fn key_at(state: u64) -&gt; u64 {
+    let mixed = state &gt;&gt; 17;
+    if (state &gt;&gt; 33) % 100 &lt; 80 {
+        mixed % (KEY_SPACE / 100)
+    } else {
+        mixed % KEY_SPACE
+    }
+}
+
+/// The fastest of `CACHE_RUNS` timed passes, with the hit count and final size
+/// from the last one. Each pass starts from an empty cache, so the stream is the
+/// same every time.
+fn best_cache_run&lt;C: Cache&lt;u64, u64&gt;&gt;() -&gt; (Duration, u64, usize) {
+    let mut best = Duration::MAX;
+    let mut hits = 0;
+    let mut len = 0;
+
+    for _ in 0..CACHE_RUNS {
+        let mut cache = C::new(CACHE_CAPACITY);
+        let (elapsed, run_hits) = cache_workload(&amp;mut cache);
+        best = best.min(elapsed);
+        hits = run_hits;
+        len = cache.len();
+    }
+    (best, hits, len)
+}
+
+/// The same request stream against any cache.
+fn cache_workload&lt;C: Cache&lt;u64, u64&gt;&gt;(cache: &amp;mut C) -&gt; (Duration, u64) {
+    let mut state = 0x9e37_79b9_7f4a_7c15u64;
+    let mut hits = 0u64;
+
+    let start = Instant::now();
+    for _ in 0..OPERATIONS {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let key = key_at(state);
+
+        match cache.get(&amp;key) {
+            Some(value) =&gt; {
+                hits += 1;
+                black_box(value);
+            }
+            None =&gt; cache.put(key, key.rotate_left(17)),
+        }
+    }
+    (start.elapsed(), hits)
+}
+
+fn cache_benchmark() {
+    println!(
+        "LRU cache: {} entries, {} requests over {} keys",
+        with_thousands(CACHE_CAPACITY as u64),
+        with_thousands(OPERATIONS),
+        with_thousands(KEY_SPACE)
+    );
+    println!("A miss inserts and evicts the least recently used entry.");
+    println!("Best of {CACHE_RUNS} runs per cache.\n");
+
+    let (arena_time, arena_hits, arena_len) = best_cache_run::&lt;ArenaCache&lt;u64, u64&gt;&gt;();
+    let (list_time, list_hits, list_len) = best_cache_run::&lt;RcCache&lt;u64, u64&gt;&gt;();
+
+    // Same population and same hit count, or this compares nothing.
+    assert_eq!(arena_len, list_len);
+    assert_eq!(
+        arena_hits, list_hits,
+        "the two runs saw different request streams"
+    );
+
+    println!(
+        "  hit rate: {:.1}%  ({} hits, {} inserts)\n",
+        arena_hits as f64 * 100.0 / OPERATIONS as f64,
+        with_thousands(arena_hits),
+        with_thousands(OPERATIONS - arena_hits)
+    );
+
+    let per_request = |elapsed: Duration| elapsed.as_nanos() as f64 / OPERATIONS as f64;
+
+    // `{:.2?}` uses Duration's own Debug format, rounded to two decimals.
+    println!("  {:&lt;22} {:&gt;12} {:&gt;13}", "storage", "total", "per request");
+    println!("  {}", "-".repeat(48));
+    for (name, elapsed) in [
+        (
+            &lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant(),
+            arena_time,
+        ),
+        (&lt;RcCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant(), list_time),
+    ] {
+        println!(
+            "  {name:&lt;22} {elapsed:&gt;12.2?} {:&gt;8.0} ns",
+            per_request(elapsed)
+        );
+    }
+
+    let speedup = list_time.as_secs_f64() / arena_time.as_secs_f64();
+    println!(
+        "\n  the arena is {speedup:.2}x faster on the same requests: {arena_time:.2?} against {list_time:.2?}"
+    );
+    println!("  the arena reuses the evicted slot; the list frees a node and allocates another");
+}
+<span class="boring">}</span></code></pre>
 <p><code>key_at</code> uses two different ranges of bits from the generator state: bits above 33
 choose between the hot set and the whole space, and bits above 17 choose the key. The
 low bits of a linear congruential generator have short periods, so both shifts
@@ -422,8 +706,22 @@ no inherent function of that name to fall back on.</p>
 chapter 18 prints in full; its test module is named <code>tests_for_lru</code>. It adds a <code>main</code>
 that runs the eviction sequence traced in chapter 18. Run it with
 <code>cargo run --bin lru_cache_arena</code>.</p>
-<p class="listing"><span class="listing-label">Listing 40.6</span> The arena cache as a standalone program. <code>src/bin/lru_cache_arena.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust">fn main() {
+    let mut cache = LruCache::new(2);
 
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&amp;"B")); // None
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
+}</code></pre>
 <p>The program prints:</p>
 <pre><code class="language-text">get A = Some(10)
 get B = None
@@ -537,6 +835,22 @@ Addison-Wesley, 1997, Section 3.2.1, on linear congruential generators.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -215,8 +215,52 @@ The crate has no dependency on a random-number library.</p>
 <code>Retry-After</code> value, retrying sooner only earns another 429. The loop waits for the larger
 of the server’s value and its own backoff.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 57.1</span> <code>Retryable</code>, <code>is_retryable</code>, and <code>retry_after</code>. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Retry with exponential backoff, full jitter, and `Retry-After`.
+//!
+//! Every cloud SDK retries. Done badly it makes an outage worse: synchronized
+//! retries from thousands of clients form a thundering herd, and retrying a
+//! non-idempotent `POST` can create duplicate workloads. This module models the
+//! policy explicitly.
+//!
+//! Two details that interviews probe:
+//!
+//! - **Jitter.** Full jitter picks a random delay in `[0, capped_backoff]` so
+//!   clients spread out instead of retrying in lockstep.
+//! - **`Retry-After`.** When the server tells you when to come back, wait at
+//!   least that long; never retry sooner than the server asked.
+//!
+//! The random source is injected as a closure so the delay math is deterministic
+//! under test.
 
+use crate::problems::state_machine::ApiError;
+use std::time::Duration;
+
+/// An error that knows whether retrying could help.
+pub trait Retryable {
+    /// `true` if the operation is worth retrying.
+    fn is_retryable(&amp;self) -&gt; bool;
+
+    /// A server-provided minimum delay, such as HTTP `Retry-After`.
+    fn retry_after(&amp;self) -&gt; Option&lt;Duration&gt; {
+        None
+    }
+}
+
+impl Retryable for ApiError {
+    fn is_retryable(&amp;self) -&gt; bool {
+        ApiError::is_retryable(self)
+    }
+
+    fn retry_after(&amp;self) -&gt; Option&lt;Duration&gt; {
+        match self {
+            ApiError::RateLimited { retry_after } =&gt; Some(*retry_after),
+            _ =&gt; None,
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>retry_after</code> has a default body returning <code>None</code>, so an error type that has no
 server-provided delay implements only <code>is_retryable</code>.</p>
 <p><code>impl Retryable for ApiError</code> calls <code>ApiError::is_retryable(self)</code>, the inherent method
@@ -224,8 +268,64 @@ from chapter 19, which has the same name as the trait method being defined. Meth
 syntax would reach the same function, because inherent methods take priority over trait
 methods, but a reader would have to know that rule to see that <code>self.is_retryable()</code>
 does not recurse. The path form states the target directly.</p>
-<p class="listing"><span class="listing-label">Listing 57.2</span> <code>Jitter</code>, <code>RetryPolicy</code>, and <code>new</code>. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// How randomness is applied to the backoff.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Jitter {
+    /// Delay is exactly the capped exponential backoff.
+    None,
+    /// Delay is `unit_random * capped_backoff` (AWS "full jitter").
+    Full,
+}
 
+/// Backoff configuration.
+#[derive(Debug, Clone, Copy)]
+pub struct RetryPolicy {
+    /// Total attempts, including the first one. Must be at least 1.
+    pub max_attempts: u32,
+    /// Delay before the first retry.
+    pub base_delay: Duration,
+    /// Upper bound on a single delay.
+    pub max_delay: Duration,
+    pub jitter: Jitter,
+}
+
+impl RetryPolicy {
+    pub fn new(
+        max_attempts: u32,
+        base_delay: Duration,
+        max_delay: Duration,
+        jitter: Jitter,
+    ) -&gt; Self {
+        assert!(max_attempts &gt; 0, "max_attempts must be &gt; 0");
+        Self {
+            max_attempts,
+            base_delay,
+            max_delay,
+            jitter,
+        }
+    }
+
+    /// Capped exponential backoff for a zero-based retry attempt:
+    /// `min(base * 2^attempt, max_delay)`.
+    pub fn exponential_delay(&amp;self, attempt: u32) -&gt; Duration {
+        let shift = attempt.min(31);
+        let factor = 1u32 &lt;&lt; shift;
+        self.base_delay.saturating_mul(factor).min(self.max_delay)
+    }
+
+    /// Backoff for `attempt` with `unit_random` in `[0, 1)` applied when jitter
+    /// is enabled.
+    pub fn delay_for(&amp;self, attempt: u32, unit_random: f64) -&gt; Duration {
+        let capped = self.exponential_delay(attempt);
+        match self.jitter {
+            Jitter::None =&gt; capped,
+            Jitter::Full =&gt; capped.mul_f64(unit_random.clamp(0.0, 1.0)),
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>exponential_delay</code> computes <code>2^attempt</code> as <code>1u32 &lt;&lt; attempt.min(31)</code>. The <code>min</code> keeps
 the shift below 32, where shifting a <code>u32</code> would overflow. <code>Duration::saturating_mul</code>
 returns <code>Duration::MAX</code> instead of panicking when the product is too large, and <code>.min</code>
@@ -235,8 +335,43 @@ panics on a negative or non-finite factor. A faulty random source cannot crash t
 loop.</p>
 <p><code>RetryPolicy::new</code> asserts <code>max_attempts &gt; 0</code>. The fields are also <code>pub</code>, so a caller can
 build a policy with a struct literal and bypass the assertion.</p>
-<p class="listing"><span class="listing-label">Listing 57.3</span> <code>retry</code>. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Retry `operation` until it succeeds, fails permanently, or the policy is
+/// exhausted.
+///
+/// `unit_random` must return values in `[0, 1)`; pass `|| 0.0` for deterministic
+/// tests or a real RNG in production.
+pub fn retry&lt;T, E, F, R&gt;(policy: &amp;RetryPolicy, mut operation: F, mut unit_random: R) -&gt; Result&lt;T, E&gt;
+where
+    F: FnMut(u32) -&gt; Result&lt;T, E&gt;,
+    E: Retryable,
+    R: FnMut() -&gt; f64,
+{
+    let mut attempt = 0;
+    loop {
+        match operation(attempt) {
+            Ok(value) =&gt; return Ok(value),
+            Err(error) =&gt; {
+                let exhausted = attempt + 1 &gt;= policy.max_attempts;
+                if exhausted || !error.is_retryable() {
+                    return Err(error);
+                }
 
+                let backoff = policy.delay_for(attempt, unit_random());
+                // Honor the server's hint, but never retry sooner than our own
+                // backoff says is healthy.
+                let delay = error
+                    .retry_after()
+                    .map_or(backoff, |hint| hint.max(backoff));
+
+                std::thread::sleep(delay);
+                attempt += 1;
+            }
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
 <p>The operation is <code>FnMut(u32) -&gt; Result&lt;T, E&gt;</code>. <code>FnMut</code> allows it to update state between
 calls, such as a counter in a test, and the <code>u32</code> argument tells it which attempt it is
 running, which is useful for logging.</p>
@@ -245,8 +380,119 @@ last one. With <code>max_attempts = 3</code>, attempts 0, 1, and 2 run, and the 
 is returned without a final sleep.</p>
 <p><code>error.retry_after().map_or(backoff, |hint| hint.max(backoff))</code> returns the backoff when
 there is no hint and the larger of the two when there is.</p>
-<p class="listing"><span class="listing-label">Listing 57.4</span> The tests for the module. <code>src/problems/retry.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
 
+    fn policy(max_attempts: u32, jitter: Jitter) -&gt; RetryPolicy {
+        RetryPolicy::new(
+            max_attempts,
+            Duration::from_millis(100),
+            Duration::from_millis(1_000),
+            jitter,
+        )
+    }
+
+    #[test]
+    fn exponential_backoff_doubles_until_capped() {
+        let policy = policy(6, Jitter::None);
+        assert_eq!(policy.exponential_delay(0), Duration::from_millis(100));
+        assert_eq!(policy.exponential_delay(1), Duration::from_millis(200));
+        assert_eq!(policy.exponential_delay(2), Duration::from_millis(400));
+        assert_eq!(policy.exponential_delay(3), Duration::from_millis(800));
+        // Capped from here on.
+        assert_eq!(policy.exponential_delay(4), Duration::from_millis(1_000));
+        assert_eq!(policy.exponential_delay(50), Duration::from_millis(1_000));
+    }
+
+    #[test]
+    fn full_jitter_scales_the_delay() {
+        let policy = policy(6, Jitter::Full);
+        assert_eq!(policy.delay_for(2, 0.0), Duration::ZERO);
+        assert_eq!(policy.delay_for(2, 0.5), Duration::from_millis(200));
+        // Values above 1.0 are clamped rather than overflowing.
+        assert_eq!(policy.delay_for(2, 9.9), Duration::from_millis(400));
+    }
+
+    #[test]
+    fn retries_then_succeeds() {
+        let policy = RetryPolicy::new(5, Duration::ZERO, Duration::ZERO, Jitter::None);
+        let mut attempts = 0;
+        let result: Result&lt;u32, ApiError&gt; = retry(
+            &amp;policy,
+            |_| {
+                attempts += 1;
+                if attempts &lt; 3 {
+                    Err(ApiError::Server {
+                        status: 503,
+                        message: "temporarily unavailable".into(),
+                    })
+                } else {
+                    Ok(42)
+                }
+            },
+            || 0.0,
+        );
+
+        assert_eq!(result, Ok(42));
+        assert_eq!(attempts, 3);
+    }
+
+    #[test]
+    fn non_retryable_errors_return_immediately() {
+        let policy = RetryPolicy::new(5, Duration::ZERO, Duration::ZERO, Jitter::None);
+        let mut attempts = 0;
+        let result: Result&lt;(), ApiError&gt; = retry(
+            &amp;policy,
+            |_| {
+                attempts += 1;
+                Err(ApiError::NotFound {
+                    resource_id: "gpu-0".into(),
+                })
+            },
+            || 0.0,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(attempts, 1);
+    }
+
+    #[test]
+    fn exhausted_policy_returns_the_last_error() {
+        let policy = RetryPolicy::new(3, Duration::ZERO, Duration::ZERO, Jitter::None);
+        let mut attempts = 0;
+        let result: Result&lt;(), ApiError&gt; = retry(
+            &amp;policy,
+            |_| {
+                attempts += 1;
+                Err(ApiError::Server {
+                    status: 500,
+                    message: "boom".into(),
+                })
+            },
+            || 0.0,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(attempts, 3);
+    }
+
+    #[test]
+    fn retry_after_is_honored_as_a_floor() {
+        let policy = policy(2, Jitter::None);
+        let error = ApiError::RateLimited {
+            retry_after: Duration::from_secs(5),
+        };
+        let backoff = policy.delay_for(0, 0.0);
+        let chosen = error
+            .retry_after()
+            .map_or(backoff, |hint| hint.max(backoff));
+        assert_eq!(chosen, Duration::from_secs(5));
+    }
+}
+<span class="boring">}</span></code></pre>
 <p>The loop tests use a policy with zero delays, so they run without sleeping.</p>
 <h2 id="intuition"><a class="header" href="#intuition">Intuition</a></h2>
 <p><strong><code>retries_then_succeeds</code> with <code>max_attempts = 5</code> and zero delays</strong></p>
@@ -364,6 +610,22 @@ backoff.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

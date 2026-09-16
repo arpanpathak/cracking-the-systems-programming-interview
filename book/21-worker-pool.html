@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -205,8 +205,114 @@ inputs  ---&gt; [(0,a), (1,b), (2,c), ...]     [(2,x), (0,y), (1,z), ...]
 number of jobs in flight, which is the input length plus the results not yet
 collected.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 21.1</span> The complete module, with its tests. <code>src/problems/worker_pool.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Bounded worker pool with ordered results.
+//!
+//! Cloud CLIs/SDKs often fan out API calls across a bounded number of workers.
+//! This example maps `Vec&lt;T&gt;` to `Vec&lt;R&gt;` with N threads and preserves input
+//! order in the output. It demonstrates `Arc&lt;Mutex&lt;_&gt;&gt;`, channels, scoped
+//! ownership, and panic-free dispatch.
 
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+
+pub fn map_order&lt;T, R, F&gt;(worker_count: usize, inputs: Vec&lt;T&gt;, mapper: F) -&gt; Vec&lt;R&gt;
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -&gt; R + Send + Sync + 'static,
+{
+    assert!(worker_count &gt; 0, "worker_count must be &gt; 0");
+    assert!(!inputs.is_empty(), "inputs must not be empty");
+
+    let expected = inputs.len();
+    let mapper = Arc::new(mapper);
+    let (job_tx, job_rx) = mpsc::channel::&lt;(usize, T)&gt;();
+    let job_rx = Arc::new(Mutex::new(job_rx));
+    let (result_tx, result_rx) = mpsc::channel::&lt;(usize, R)&gt;();
+
+    let mut handles = Vec::with_capacity(worker_count);
+    for _worker_id in 0..worker_count {
+        let mapper = Arc::clone(&amp;mapper);
+        let job_rx = Arc::clone(&amp;job_rx);
+        let result_tx = result_tx.clone();
+        handles.push(thread::spawn(move || {
+            loop {
+                let job = {
+                    let guard = job_rx.lock().expect("job_rx poisoned");
+                    guard.recv()
+                };
+                match job {
+                    Ok((idx, input)) =&gt; {
+                        let output = mapper(input);
+                        if result_tx.send((idx, output)).is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) =&gt; break, // all senders dropped
+                }
+            }
+        }));
+    }
+
+    // Send all jobs, then close the job channel so workers finish after draining it.
+    for (idx, input) in inputs.into_iter().enumerate() {
+        job_tx
+            .send((idx, input))
+            .expect("bounded by memory; channel only blocks until a worker receives");
+    }
+    drop(job_tx);
+
+    // Drop our result sender. Only the worker clones remain, so `iter()` ends
+    // after every worker exits.
+    drop(result_tx);
+
+    // Reassemble results in input order.
+    let mut ordered: Vec&lt;Option&lt;R&gt;&gt; = Vec::new();
+    for (idx, value) in result_rx.iter() {
+        if ordered.len() &lt;= idx {
+            ordered.resize_with(idx + 1, || None);
+        }
+        ordered[idx] = Some(value);
+    }
+
+    for handle in handles {
+        let _ = handle.join();
+    }
+
+    assert_eq!(
+        ordered.len(),
+        expected,
+        "every job must produce exactly one result"
+    );
+    ordered
+        .into_iter()
+        .map(|value| value.expect("all results present"))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_all_inputs_and_preserves_order() {
+        let inputs: Vec&lt;i32&gt; = (0..100).collect();
+        let results = map_order(4, inputs, |x| x * x);
+        assert_eq!(results.len(), 100);
+        for (i, value) in results.iter().enumerate() {
+            assert_eq!(*value, (i as i32) * (i as i32));
+        }
+    }
+
+    #[test]
+    fn one_worker_works() {
+        let results = map_order(1, vec![1, 2, 3], |x| x + 10);
+        assert_eq!(results, vec![11, 12, 13]);
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>mpsc::Receiver</code> is single-consumer, so sharing it between workers requires
 <code>Arc&lt;Mutex&lt;Receiver&lt;_&gt;&gt;&gt;</code>. The lock is taken inside a block and released before the
 mapper runs:</p>
@@ -315,7 +421,7 @@ stack. Scoped threads would lift that restriction.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="42-consistent-hashing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="20-rate-limiter.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -329,7 +435,7 @@ stack. Scoped threads would lift that restriction.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="42-consistent-hashing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="20-rate-limiter.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -346,6 +452,22 @@ stack. Scoped threads would lift that restriction.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

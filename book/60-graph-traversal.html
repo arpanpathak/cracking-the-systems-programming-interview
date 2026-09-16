@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -217,10 +217,231 @@ set is a <code>Vec&lt;bool&gt;</code> indexed directly, with no hashing, and <co
 checked index into a vector. The map variant is the same algorithm with <code>HashSet</code>
 membership and <code>HashMap</code> lookup, which is what a problem with named nodes needs.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 60.1</span> The complete module, with its tests. <code>src/problems/graph_bfs.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Breadth-first search.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `bfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`,
+//!   so `visited` is a plain `Vec&lt;bool&gt;`. This is the version to write first.
+//! - `bfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`
+//!   from a node to a slice of `(neighbor, weight)` edges.
 
-<p class="listing"><span class="listing-label">Listing 60.2</span> The complete module, with its tests. <code>src/problems/graph_dfs.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">read the file on GitHub</a></p>
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::hash::Hash;
 
+/// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
+pub type GraphAdjList&lt;'a, Node&gt; = HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;;
+
+/// BFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn bfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited[start_node] = true;
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+/// BFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn bfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited.insert(start_node);
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        // slice iter yields &amp;(Node, u32); `&amp;` destructures it
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            if visited.insert(neighbor) {
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_visits_level_by_level() {
+        assert_eq!(bfs_vec(&amp;sample_vec(), 0), vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn vec_variant_skips_unreachable_nodes() {
+        let graph = vec![vec![(1, 1)], vec![], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn map_variant_visits_level_by_level() {
+        assert_eq!(bfs(&amp;sample_map(), "A"), vec!["A", "B", "C", "D"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = bfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, bfs(&amp;sample_map(), "A"));
+    }
+}
+<span class="boring">}</span></code></pre>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Iterative depth-first search with an explicit stack.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`.
+//! - `dfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`.
+//!
+//! A node is marked visited when it is popped, not when it is pushed, so it may
+//! sit on the stack more than once. Neighbors are pushed in order, which means the
+//! last neighbor is explored first.
+
+use crate::problems::graph_bfs::GraphAdjList;
+use std::collections::HashSet;
+use std::hash::Hash;
+
+/// DFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn dfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if visited[current_node] {
+            continue;
+        }
+        visited[current_node] = true;
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+/// DFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn dfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if !visited.insert(current_node) {
+            continue;
+        }
+        result.push(current_node);
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_explores_the_last_neighbor_first() {
+        // Pop 0, push 1 and 2; pop 2, push 3; pop 3; pop 1.
+        assert_eq!(dfs_vec(&amp;sample_vec(), 0), vec![0, 2, 3, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(2, 1)], vec![(0, 1)]];
+        assert_eq!(dfs_vec(&amp;graph, 0), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn map_variant_explores_the_last_neighbor_first() {
+        assert_eq!(dfs(&amp;sample_map(), "A"), vec!["A", "C", "D", "B"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = dfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, dfs(&amp;sample_map(), "A"));
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>bfs_vec</code> sets <code>visited[start_node] = true</code> before the loop and marks each neighbor as it
 is enqueued, so the check <code>!visited[neighbor]</code> and the mark happen together. The map
 variant does the same in one call: <code>visited.insert(neighbor)</code> returns <code>true</code> only when
@@ -320,7 +541,7 @@ consistent.</li>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="23-count-islands.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="59-drills.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -334,7 +555,7 @@ consistent.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="23-count-islands.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="59-drills.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -351,6 +572,22 @@ consistent.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

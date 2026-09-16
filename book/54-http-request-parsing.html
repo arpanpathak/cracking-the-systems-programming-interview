@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -213,8 +213,410 @@ disagreement is the basis of request smuggling.</p>
 <p><strong>Bound everything.</strong> A header section larger than 16 KiB, or a body larger than 8 MiB,
 is rejected before the parser allocates for it.</p>
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
-<p class="listing"><span class="listing-label">Listing 54.1</span> The complete module, with its tests. <code>src/problems/http_request.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! HTTP/1.1 request parsing: request line, headers, and body framing.
+//!
+//! The framing checks are the point. `Content-Length` together with
+//! `Transfer-Encoding` is rejected as ambiguous (request smuggling), as are
+//! obsolete line folding and a missing `Host`. Header and body sizes are bounded
+//! so a slow client cannot hold a connection open.
 
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Method {
+    Get,
+    Head,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Options,
+}
+
+impl Method {
+    pub fn parse(token: &amp;str) -&gt; Option&lt;Self&gt; {
+        Some(match token {
+            "GET" =&gt; Self::Get,
+            "HEAD" =&gt; Self::Head,
+            "POST" =&gt; Self::Post,
+            "PUT" =&gt; Self::Put,
+            "PATCH" =&gt; Self::Patch,
+            "DELETE" =&gt; Self::Delete,
+            "OPTIONS" =&gt; Self::Options,
+            _ =&gt; return None,
+        })
+    }
+
+    pub fn is_safe(self) -&gt; bool {
+        matches!(self, Self::Get | Self::Head | Self::Options)
+    }
+
+    pub fn is_idempotent(self) -&gt; bool {
+        matches!(
+            self,
+            Self::Get | Self::Head | Self::Options | Self::Put | Self::Delete
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Version {
+    Http10,
+    Http11,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Limits {
+    pub max_header_bytes: usize,
+    pub max_body_bytes: usize,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Self {
+        Self {
+            max_header_bytes: 16 * 1024,
+            max_body_bytes: 8 * 1024 * 1024,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Request {
+    pub method: Method,
+    pub target: String,
+    pub version: Version,
+    pub headers: Vec&lt;(String, String)&gt;,
+    pub body: Vec&lt;u8&gt;,
+}
+
+impl Request {
+    /// First header value matching `name`, case-insensitively.
+    pub fn header(&amp;self, name: &amp;str) -&gt; Option&lt;&amp;str&gt; {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// HTTP/1.1 reuses the connection unless `Connection: close`; HTTP/1.0 only
+    /// reuses it with `Connection: keep-alive`.
+    pub fn should_keep_alive(&amp;self) -&gt; bool {
+        let connection = self.header("connection").unwrap_or("");
+        let has = |token: &amp;str| {
+            connection
+                .split(',')
+                .any(|part| part.trim().eq_ignore_ascii_case(token))
+        };
+        match self.version {
+            Version::Http11 =&gt; !has("close"),
+            Version::Http10 =&gt; has("keep-alive"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseError {
+    /// Not a complete request yet; read more and retry.
+    Incomplete,
+    Malformed(&amp;'static str),
+    MissingHost,
+    /// `Content-Length` and `Transfer-Encoding` were both present.
+    AmbiguousBodyLength,
+    UnsupportedTransferEncoding,
+    PayloadTooLarge,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Incomplete =&gt; write!(f, "incomplete request"),
+            Self::Malformed(reason) =&gt; write!(f, "malformed request: {reason}"),
+            Self::MissingHost =&gt; write!(f, "HTTP/1.1 requires exactly one Host header"),
+            Self::AmbiguousBodyLength =&gt; {
+                write!(
+                    f,
+                    "Content-Length and Transfer-Encoding are mutually exclusive"
+                )
+            }
+            Self::UnsupportedTransferEncoding =&gt; write!(f, "unsupported Transfer-Encoding"),
+            Self::PayloadTooLarge =&gt; write!(f, "request exceeds configured limits"),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+/// Parse one request from the start of `input`.
+pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    let Some(header_end) = input.windows(4).position(|window| window == b"\r\n\r\n") else {
+        return Err(if input.len() &gt; limits.max_header_bytes {
+            ParseError::PayloadTooLarge
+        } else {
+            ParseError::Incomplete
+        });
+    };
+    if header_end + 4 &gt; limits.max_header_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+
+    let head = &amp;input[..header_end];
+    let body_start = header_end + 4;
+
+    let mut lines = head
+        .split(|byte| *byte == b'\n')
+        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
+
+    let request_line = std::str::from_utf8(lines.next().ok_or(ParseError::Malformed("empty"))?)
+        .map_err(|_| ParseError::Malformed("request line"))?;
+    let mut parts = request_line.split(' ');
+    let method = Method::parse(parts.next().ok_or(ParseError::Malformed("method"))?)
+        .ok_or(ParseError::Malformed("unknown method"))?;
+    let target = parts.next().ok_or(ParseError::Malformed("target"))?;
+    let version = match parts.next() {
+        Some("HTTP/1.1") =&gt; Version::Http11,
+        Some("HTTP/1.0") =&gt; Version::Http10,
+        _ =&gt; return Err(ParseError::Malformed("version")),
+    };
+    if parts.next().is_some() || target.is_empty() {
+        return Err(ParseError::Malformed("request line"));
+    }
+
+    let mut headers = Vec::new();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        if matches!(line.first(), Some(b' ') | Some(b'\t')) {
+            return Err(ParseError::Malformed("obsolete line folding"));
+        }
+        let colon = line
+            .iter()
+            .position(|byte| *byte == b':')
+            .ok_or(ParseError::Malformed("header without colon"))?;
+        let name = std::str::from_utf8(&amp;line[..colon])
+            .map_err(|_| ParseError::Malformed("header name"))?;
+        if name.is_empty() || name.bytes().any(|byte| byte.is_ascii_whitespace()) {
+            return Err(ParseError::Malformed("invalid header name"));
+        }
+        let value = std::str::from_utf8(&amp;line[colon + 1..])
+            .map_err(|_| ParseError::Malformed("header value"))?;
+        headers.push((name.to_string(), value.trim().to_string()));
+    }
+
+    if version == Version::Http11
+        &amp;&amp; headers
+            .iter()
+            .filter(|(name, _)| name.eq_ignore_ascii_case("host"))
+            .count()
+            != 1
+    {
+        return Err(ParseError::MissingHost);
+    }
+
+    let body = parse_body(input, body_start, &amp;headers, limits)?;
+
+    Ok(Request {
+        method,
+        target: target.to_string(),
+        version,
+        headers,
+        body,
+    })
+}
+
+fn parse_body(
+    input: &amp;[u8],
+    body_start: usize,
+    headers: &amp;[(String, String)],
+    limits: Limits,
+) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let collect = |name: &amp;str| -&gt; Vec&lt;&amp;str&gt; {
+        headers
+            .iter()
+            .filter(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+            .collect()
+    };
+    let transfer_encoding = collect("transfer-encoding");
+    let content_length = collect("content-length");
+
+    // Two framing headers is the classic request-smuggling setup.
+    if !transfer_encoding.is_empty() &amp;&amp; !content_length.is_empty() {
+        return Err(ParseError::AmbiguousBodyLength);
+    }
+
+    if !transfer_encoding.is_empty() {
+        let joined = transfer_encoding.join(",");
+        let codings: Vec&lt;&amp;str&gt; = joined
+            .split(',')
+            .map(str::trim)
+            .filter(|token| !token.is_empty())
+            .collect();
+        let all_chunked = codings
+            .iter()
+            .all(|token| token.eq_ignore_ascii_case("chunked"));
+        if !all_chunked
+            || !codings
+                .last()
+                .is_some_and(|t| t.eq_ignore_ascii_case("chunked"))
+        {
+            return Err(ParseError::UnsupportedTransferEncoding);
+        }
+        return decode_chunked(&amp;input[body_start..], limits.max_body_bytes);
+    }
+
+    if content_length.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut lengths = content_length.iter().map(|value| {
+        value
+            .trim()
+            .parse::&lt;usize&gt;()
+            .map_err(|_| ParseError::Malformed("invalid Content-Length"))
+    });
+    let first = lengths.next().expect("non-empty")?;
+    if lengths.any(|length| length != Ok(first)) {
+        return Err(ParseError::Malformed("conflicting Content-Length"));
+    }
+    if first &gt; limits.max_body_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+    let end = body_start + first;
+    if input.len() &lt; end {
+        return Err(ParseError::Incomplete);
+    }
+    Ok(input[body_start..end].to_vec())
+}
+
+fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let mut cursor = 0;
+    let mut body = Vec::new();
+
+    loop {
+        let line_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+        let size_token = data[cursor..line_end]
+            .split(|byte| *byte == b';')
+            .next()
+            .unwrap_or(&amp;[]);
+        let size = usize::from_str_radix(
+            std::str::from_utf8(size_token)
+                .map_err(|_| ParseError::Malformed("chunk size"))?
+                .trim(),
+            16,
+        )
+        .map_err(|_| ParseError::Malformed("chunk size"))?;
+        cursor = line_end + 2;
+
+        if size == 0 {
+            // Consume trailers up to the final empty line.
+            loop {
+                let trailer_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+                let is_empty = trailer_end == cursor;
+                cursor = trailer_end + 2;
+                if is_empty {
+                    return Ok(body);
+                }
+            }
+        }
+
+        if body.len() + size &gt; max_body {
+            return Err(ParseError::PayloadTooLarge);
+        }
+        let chunk_end = cursor
+            .checked_add(size)
+            .ok_or(ParseError::Malformed("chunk overflow"))?;
+        if chunk_end + 2 &gt; data.len() {
+            return Err(ParseError::Incomplete);
+        }
+        body.extend_from_slice(&amp;data[cursor..chunk_end]);
+        if &amp;data[chunk_end..chunk_end + 2] != b"\r\n" {
+            return Err(ParseError::Malformed("chunk not CRLF-terminated"));
+        }
+        cursor = chunk_end + 2;
+    }
+}
+
+fn find_crlf(data: &amp;[u8], from: usize) -&gt; Option&lt;usize&gt; {
+    data.get(from..)?
+        .windows(2)
+        .position(|window| window == b"\r\n")
+        .map(|offset| offset + from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(raw: &amp;[u8]) -&gt; Result&lt;Request, ParseError&gt; {
+        parse_request(raw, Limits::default())
+    }
+
+    #[test]
+    fn parses_a_get_and_a_post_with_content_length() {
+        let get = parse(b"GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\nAccept: */*\r\n\r\n")
+            .expect("valid");
+        assert_eq!(get.method, Method::Get);
+        assert_eq!(get.header("HOST"), Some("api"));
+        assert!(get.body.is_empty());
+        assert!(get.should_keep_alive());
+
+        let post = parse(b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 5\r\n\r\nhello")
+            .expect("valid");
+        assert_eq!(post.body, b"hello");
+        assert!(!post.method.is_idempotent());
+    }
+
+    #[test]
+    fn decodes_chunked_bodies() {
+        let raw = b"POST /u HTTP/1.1\r\nHost: api\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n";
+        assert_eq!(parse(raw).expect("valid").body, b"hello world");
+    }
+
+    #[test]
+    fn rejects_ambiguous_framing_and_bad_framing() {
+        let smuggling = b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\nhello";
+        assert_eq!(parse(smuggling), Err(ParseError::AmbiguousBodyLength));
+
+        let gzip = b"POST / HTTP/1.1\r\nHost: api\r\nTransfer-Encoding: gzip\r\n\r\n";
+        assert_eq!(parse(gzip), Err(ParseError::UnsupportedTransferEncoding));
+    }
+
+    #[test]
+    fn rejects_missing_host_and_line_folding() {
+        assert_eq!(
+            parse(b"GET / HTTP/1.1\r\nAccept: */*\r\n\r\n"),
+            Err(ParseError::MissingHost)
+        );
+        let folded = b"GET / HTTP/1.1\r\nHost: api\r\nX-A: 1\r\n continued\r\n\r\n";
+        assert!(matches!(parse(folded), Err(ParseError::Malformed(_))));
+    }
+
+    #[test]
+    fn reports_incomplete_and_enforces_limits() {
+        assert_eq!(
+            parse(b"GET / HTTP/1.1\r\nHost: api\r\n"),
+            Err(ParseError::Incomplete)
+        );
+        let limits = Limits {
+            max_header_bytes: 1024,
+            max_body_bytes: 10,
+        };
+        let raw = b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 999\r\n\r\n";
+        assert_eq!(parse_request(raw, limits), Err(ParseError::PayloadTooLarge));
+    }
+
+    #[test]
+    fn http_1_0_needs_keep_alive_opt_in() {
+        let raw = b"GET / HTTP/1.0\r\n\r\n";
+        assert!(!parse(raw).expect("valid").should_keep_alive());
+        let raw = b"GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
+        assert!(parse(raw).expect("valid").should_keep_alive());
+    }
+}
+<span class="boring">}</span></code></pre>
 <h3 id="methods-versions-and-the-request-type"><a class="header" href="#methods-versions-and-the-request-type">Methods, versions, and the request type</a></h3>
 <p><code>Method::parse</code> uses <code>Some(match token { ... _ =&gt; return None })</code>. Every arm except the
 last produces a <code>Method</code>, and the last returns from the function, so the <code>match</code>
@@ -387,6 +789,22 @@ zero-copy incremental parser.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

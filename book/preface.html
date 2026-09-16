@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -191,8 +191,7 @@ idiomatic patterns effortlessly with code that you can reproduce under pressure.
 <h2 id="what-you-need-to-know"><a class="header" href="#what-you-need-to-know">What you need to know</a></h2>
 <p>The book assumes that you can read Rust and that you know what <code>Vec</code>, <code>HashMap</code>,
 <code>Option</code> and <code>Result</code> are. Every structure the text uses is built in the text.
-Every cost claim is derived on the page or measured by a program the chapter names,
-with the figure it produced reproduced beside the claim.</p>
+Every cost claim is derived on the page or measured by a program printed beside it.</p>
 <h2 id="how-the-chapters-are-built"><a class="header" href="#how-the-chapters-are-built">How the chapters are built</a></h2>
 <p><strong>Problem Statement.</strong> The input, the output, and the boundary cases.</p>
 <p><strong>Designing a Solution.</strong> The mechanism the solution rests on.</p>
@@ -203,40 +202,21 @@ decisions.</p>
 stated in the same row when a bound depends on an assumption.</p>
 <p><strong>Limitations.</strong> The cases the code does not handle and the resources it does not
 bound.</p>
-<p>A chapter that measures rather than traces prints the figure its program produced,
-together with the conditions under which it was measured.</p>
-<p><strong>Summary.</strong> What the chapter establishes, and where the same mechanism appears
-again.</p>
-<h2 id="how-the-code-is-cited"><a class="header" href="#how-the-code-is-cited">How the code is cited</a></h2>
-<p>A chapter does not reprint the file it reads. Each Implementation section opens with
-one or more listing references, numbered by chapter, which name the file and link to
-it in the repository:</p>
-<p class="listing"><span class="listing-label">Listing 11.1</span> The complete module, with its tests. <code>src/problems/graph_topology.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">read the file on GitHub</a></p>
-
-<p>The reading that follows a reference quotes the expressions it discusses, so the
-argument can be followed without the file open, and the file itself is the one the
-compiler and the tests see. Nothing can drift between the two, which is the reason
-for the arrangement: a printed copy of a program is out of date the first time the
-program is changed. Short excerpts still appear in the text where a few lines make a
-point that prose alone would labour.</p>
+<p>A chapter that measures rather than traces prints the program that produced the
+figure.</p>
 <h2 id="how-the-book-is-organised"><a class="header" href="#how-the-book-is-organised">How the book is organised</a></h2>
-<p>The chapters are grouped into fifteen parts. Parts I to VI cover the data structures
-and the algorithms: sequences and maps, stacks and queues, linked structures, trees
-and tries, graphs, and recursion with dynamic programming. Part VII covers the type
-system, ownership, and the smart pointers, which is where the language stops being
-incidental to the answer. Part VIII covers caches and memory layout, and it is the
-first part in which claims are measured rather than derived.</p>
-<p>Parts IX and X cover threads, the synchronization primitives built from them, and what
-the hardware and the operating system charge for both. Parts XI to XIII cover the
-practical surfaces: files and directories, sockets and HTTP, and asynchronous Rust with
-the clients built on it. Part XIV covers the behaviour expected of a service under
-load and under failure. Part XV is a set of short drills.</p>
-<p>The parts are ordered so that the book can be read from the front, but a chapter is
-self-contained: it names the file it reads, states its own assumptions, and cites the
-chapters it depends on. The chapter numbers are the order in which the chapters were
-written rather than the order in which they are read, and they are kept stable so that
-a reference to a chapter, from the index or from outside the book, continues to
-resolve.</p>
+<p>Chapters 1 to 13 cover arrays, strings, trees, graphs, recursion and search.
+Chapters 14 to 18 cover linked structures and caches. Chapters 19 to 25 cover
+concurrency and the operating system. Chapters 26 to 29 cover files, directories
+and command-line arguments. Chapters 30 and 31 cover coordination and parallelism.
+Chapters 32 and 33 cover a running median and an in-place reversal. Chapter 34
+covers idempotent operations.</p>
+<p>Chapters 35 to 59 cover the rest of the repository: types and smart pointers (35 and
+36), recursion, memory layout, and caches (37 to 42), threads and synchronization
+primitives (43 to 47), performance and the operating system (48 to 50), networking and
+HTTP (51 to 55), an async runtime, retries, and an HTTP client (56 to 58), and the short
+interview drills (59). Chapters 60 to 62 add breadth-first and depth-first search,
+Dijkstra’s shortest paths, and merging k sorted lists, and chapter 63 adds Three Sum. Chapter 64 builds a thread pool in four versions.</p>
 <h2 id="the-repository"><a class="header" href="#the-repository">The repository</a></h2>
 <p>The code is in <code>rust-interview-lab</code>:</p>
 <p><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview">https://github.com/arpanpathak/cracking-the-systems-programming-interview</a></p>
@@ -318,6 +298,22 @@ sources in the References.</p>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

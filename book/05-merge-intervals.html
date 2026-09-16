@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e7769809.css">
+        <link rel="stylesheet" href="theme/custom-26d58639.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1b1e8dbd.js";
+            window.path_to_searchindex_js = "searchindex-f56fc872.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc555f88.js"></script>
+        <script src="toc-068722af.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -200,8 +200,69 @@ interval   merged so far         decision
 <h2 id="implementation"><a class="header" href="#implementation">Implementation</a></h2>
 <p>The file contains two functions. The first consumes the vector it is given; the second
 borrows it.</p>
-<p class="listing"><span class="listing-label">Listing 5.1</span> <code>merge_intervals</code>, <code>merge_intervals2</code>, and <code>merges_overlapping_and_adjacent</code>, with their tests. <code>src/problems/merge_intervals.rs</code> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">read the file on GitHub</a></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Merge Intervals: sort by start, then merge overlapping intervals in one pass.
+//!
+//! The `match out.last_mut()` pattern is intentionally clean: no deep nesting,
+//! no confusing boolean flags.
 
+pub fn merge_intervals(mut intervals: Vec&lt;(i32, i32)&gt;) -&gt; Vec&lt;(i32, i32)&gt; {
+    if intervals.is_empty() {
+        return intervals;
+    }
+
+    intervals.sort_unstable_by_key(|(start, _)| *start);
+
+    let mut merged: Vec&lt;(i32, i32)&gt; = Vec::with_capacity(intervals.len());
+    for (start, end) in intervals {
+        match merged.last_mut() {
+            Some(previous) if start &lt;= previous.1 =&gt; {
+                previous.1 = previous.1.max(end);
+            }
+            _ =&gt; merged.push((start, end)),
+        }
+    }
+    merged
+}
+
+pub fn merge_intervals2(mut intervals: Vec&lt;(i32, i32)&gt;) -&gt; Vec&lt;(i32, i32)&gt; {
+    if intervals.is_empty() {
+        return intervals;
+    }
+
+    intervals.sort_unstable_by_key(|(start, _)| *start);
+
+    let mut merged: Vec&lt;(i32, i32)&gt; = Vec::with_capacity(intervals.len());
+
+    for &amp;(start, end) in &amp;intervals {
+        match merged.last_mut() {
+            Some(previous) if start &lt;= previous.1 =&gt; {
+                previous.1 = previous.1.max(end);
+            }
+            _ =&gt; merged.push((start, end)),
+        }
+    }
+    merged
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merges_overlapping_and_adjacent() {
+        let intervals = vec![(1, 3), (2, 6), (8, 10), (15, 18)];
+        assert_eq!(merge_intervals(intervals), vec![(1, 6), (8, 10), (15, 18)]);
+    }
+
+    #[test]
+    fn handles_empty_and_disjoint() {
+        assert_eq!(merge_intervals(vec![]), vec![]);
+        assert_eq!(merge_intervals(vec![(1, 2), (3, 4)]), vec![(1, 2), (3, 4)]);
+    }
+}
+<span class="boring">}</span></code></pre>
 <p><code>sort_unstable_by_key</code> sorts by the start value and does not preserve the relative order
 of intervals with equal starts. Intervals with equal starts are merged into one, so
 their order cannot matter.</p>
@@ -249,18 +310,6 @@ nothing checks that it agrees with the other one. The assertion
 <p><strong>The element type is <code>i32</code>.</strong> The end of a merged interval is
 <code>previous.1.max(end)</code>, so the function performs no arithmetic and cannot overflow. The
 bound matters only in that a caller with larger times cannot use the function.</p>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<ul>
-<li>Sorting by start removes the need to compare intervals with one another: afterwards
-an interval can overlap only the most recent interval of the output, so the sweep
-costs one comparison per interval.</li>
-<li>The end of a merged interval is the <code>max</code> of the two ends. Assigning the incoming end
-would shrink an interval that contains the next one.</li>
-<li>The sort dominates the cost, <code>O(n log n)</code>, and the output holds at most one interval
-per input.</li>
-<li>The same sort-then-sweep shape answers the neighbouring questions, such as the
-largest gap and the maximum overlap, without a second pass.</li>
-</ul>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>
 <li>Standard library, <a href="https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by_key"><code>slice::sort_unstable_by_key</code></a>.</li>
@@ -303,6 +352,22 @@ largest gap and the maximum overlap, without a second pass.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
