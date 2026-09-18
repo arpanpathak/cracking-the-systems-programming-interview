@@ -32,6 +32,19 @@ fn merge_k(mut lists: Vec<List>) -> List {
     }
 }
 
+// Merge k sorted lists using divide and conquer without heap allocation
+fn merge_k_slice(lists: &mut [List]) -> List {
+    match lists.len() {
+        0 => None,
+        1 => lists[0].take(),
+        _ => {
+            let mid = lists.len() / 2;
+            let (left, right) = lists.split_at_mut(mid);
+            merge(merge_k_slice(left), merge_k_slice(right))
+        }
+    }
+}
+
 // Helper: build a list from a Vec
 // fn from_vec(v: Vec<i32>) -> List {
 //     let mut head = None;
