@@ -2,14 +2,14 @@
 
 ## 3.1 Asynchronous operation model
 
-Provisioning a GPU workload takes time. A request can trigger node scale-up,
-image pull, model download, and device initialization before the workload starts.
-That is minutes, which makes a synchronous create unusable, because the HTTP
-request would time out first.
+Provisioning a GPU workload takes time. A single request can set off node
+scale-up, image pull, model download, and device initialization before the
+workload starts running. You are looking at minutes, which rules out a synchronous
+create: the HTTP request times out long before the resource exists.
 
-The usual solution treats the request and the result as separate resources. The
-API accepts the request, returns immediately, and exposes an operation the client
-polls.
+The usual answer treats the request and the result as two resources. The API
+accepts the request, returns immediately, and exposes an operation for the client
+to poll.
 
 ```mermaid
 sequenceDiagram
@@ -44,14 +44,14 @@ sequenceDiagram
 
 Deletion is asynchronous, because cancelling a running workload means draining
 and releasing the device. `DELETE` therefore returns `202`, and the operation
-reports completion. The operation is also durable, so a client that fails between
-the create call and the first poll can recover by listing operations. That is why
-the operation is a first-class resource rather than a field on the workload.
+reports completion. Operations are durable, so a client that dies between the
+create call and the first poll recovers by listing operations. That durability is
+what makes the operation a first-class resource, with a lifetime of its own.
 
 ## 3.3 Idempotency
 
-A `POST` retried after a timeout may already have succeeded. Without protection,
-the retry creates a second workload that consumes GPU capacity.
+A `POST` retried after a timeout may already have succeeded. Retry it naively and
+you get a second workload consuming GPU capacity that nobody asked for.
 
 The mechanism is a client-supplied idempotency key.
 
@@ -69,29 +69,26 @@ sequenceDiagram
     A-->>C: 202 + operation O1 (same operation)
 ```
 
-Requirements for the key:
+Generate the key once for each logical request, and reuse it across every retry.
+Regenerating it per attempt defeats the whole mechanism. Retain the key and its
+original response for at least as long as a client may keep retrying. Give two
+requests that carry the same key and different bodies a conflict response, since
+you cannot tell what the client intended. Scope the key to a tenant so one tenant
+can leave another's keys alone.
 
-- Generate it once per logical request and reuse it across retries. Do not
-  regenerate it for each attempt.
-- Retain it with the original response for at least the maximum client retry
-  window.
-- Reject two requests carrying the same key with different bodies as a conflict,
-  since the client's intent is ambiguous.
-- Scope keys to a tenant so one tenant cannot affect another.
-
-This is a server-side requirement, but it only helps if the client library
+This is a server-side requirement that pays off only when the client library
 generates and reuses keys automatically. Idempotency the customer implements by
-hand will be implemented inconsistently.
+hand gets implemented inconsistently.
 
 ## 3.4 Pagination
 
 List endpoints use cursor pagination. Offsets are unstable under concurrent
-modification, because an insert or delete between two requests shifts the window
-and causes records to be skipped or returned twice.
+modification: an insert or delete between two requests shifts the window, and
+records get skipped or returned twice.
 
 A cursor encodes a position in the ordered result set. Iteration ends when the
-response carries no cursor, rather than when a page comes back empty, because a
-page can be empty with results still remaining.
+response carries no cursor. A page can come back empty while results remain, so
+treating an empty page as the end of the list loses data.
 
 ```mermaid
 flowchart LR
@@ -102,13 +99,13 @@ flowchart LR
     R3 --> P3["Page 3, no cursor<br/>iteration complete"]
 ```
 
-Cursors should be opaque. Exposing the internal ordering key makes any change to
-the sort order a breaking change.
+Keep cursors opaque. Handing the client the internal ordering key turns any
+change to the sort order into a breaking change.
 
 ## 3.5 Error taxonomy
 
-Responses must distinguish retryable from non-retryable conditions, because the
-correct client behavior differs between them.
+The status code tells the client whether to retry, and the client needs that
+answer to behave correctly.
 
 | Status | Meaning | Client action |
 |---|---|---|
@@ -119,21 +116,21 @@ correct client behavior differs between them.
 | `429` | Rate limited | Retry after the interval in `Retry-After` |
 | `500`, `503` | Server-side failure | Retry with backoff |
 
-A `429` response should carry `Retry-After`, and the client should treat it as a
-lower bound on the delay.
+Send `Retry-After` with a `429`, and the client treats it as a lower bound on the
+delay.
 
 ## 3.6 Versioning
 
-Including the major version in the path lets breaking changes ship under a new
-version while existing clients keep working. The client library should pin the
-major version it was built against, so an SDK upgrade does not change the wire
-contract by accident.
+Put the major version in the path. Breaking changes then ship under a new version
+while existing clients keep working. Pin the major version in the client library,
+so an SDK upgrade never changes the wire contract without you deciding to change
+it.
 
 ## 3.7 Client library responsibilities
 
 The API cannot enforce correct retry behavior, because only the client knows the
-context of a failed call. An SDK that omits the following leaves each customer to
-implement it, and they will be implemented inconsistently.
+context of a failed call. An SDK that omits the following leaves every customer to
+implement it, and they will each do it differently.
 
 ```mermaid
 flowchart LR
@@ -146,20 +143,21 @@ flowchart LR
 
 ### Retry policy
 
-Retries should use exponential backoff with a cap, and full jitter. Full jitter
-draws the delay uniformly from zero to the capped backoff, rather than using the
-capped value directly. Without jitter, many clients failing at once retry in step
-and reproduce the load that caused the failure.
+Retry with exponential backoff, a cap, and full jitter. Full jitter draws the
+delay uniformly from zero to the capped backoff. Without it, thousands of clients
+that fail at the same moment retry in step and rebuild the load that caused the
+failure.
 
-`Retry-After` from the server is a lower bound. Retrying sooner violates the
-server's stated capacity, and retrying later wastes the client's own time budget.
+Treat `Retry-After` from the server as a lower bound. Retrying sooner spends
+capacity the server has told you it does not have, and retrying later burns the
+client's own time budget.
 
 ### Thread safety and connection reuse
 
-A client should be cloneable and safe to share across threads. This is usually a
-cheap handle over shared state, such as a reference-counted inner struct.
-Connection pools should be bounded, and connections returned on completion, so
-that a high-concurrency caller does not exhaust file descriptors.
+Make the client cloneable and safe to share across threads. A cheap handle over
+shared state, such as a reference-counted inner struct, gives you both. Bound the
+connection pool and return connections on completion, so a high-concurrency
+caller runs out of work before it runs out of file descriptors.
 
 ## 3.8 Failure handling
 
@@ -172,9 +170,9 @@ that a high-concurrency caller does not exhaust file descriptors.
 | Uncorrectable error | Memory fault | Remove the device from service |
 | Degraded interconnect | Link or topology problem | No error is raised; throughput falls |
 
-The last case is easily missed. A degraded link raises no error. It produces a
-workload that runs more slowly, and it gets investigated as a performance problem
-until someone checks the interconnect.
+The last row catches people out. A degraded link raises no error. It produces a
+workload that runs slowly, and it gets investigated as a performance problem
+until someone thinks to look at the interconnect.
 
 ### Node drain
 
@@ -201,18 +199,19 @@ sequenceDiagram
 
 ### Blast radius
 
-The cost of a failure is dominated by lost work rather than by restart time.
+Lost work dominates the cost of a failure. Restarting a pod takes seconds;
+redoing six hours of training does not.
 
-The checkpoint interval sets how much computation is discarded. The location of
-checkpoints determines whether they survive the failure of that node, so they
-cannot live only on it. Whether one failed rank restarts the whole job or only
-itself sets the scale of the interruption, and elastic training lets a job
-continue at reduced size. Admission control sets cluster behavior as capacity
-falls, so work that cannot be placed is held rather than queued without bound.
+The checkpoint interval sets how much computation you discard. The location of
+checkpoints decides whether they survive the failure of the node, so keep copies
+somewhere else. Whether one failed rank restarts the whole job or only itself sets
+the scale of the interruption, and elastic training lets a job continue at reduced
+size. Admission control decides what happens to the queue as capacity drops, so
+hold work that cannot be placed and watch the queue depth.
 
 | Level | Action |
 |---|---|
 | Device | Classify the fault, and withdraw the device if it is unreliable |
-| Node | Taint and drain, and do not reschedule onto a suspect node |
+| Node | Taint and drain, and reschedule work elsewhere |
 | Workload | Restart from the most recent valid checkpoint |
-| Fleet | Reduce admitted work to match available capacity |
+| Fleet | Match admitted work to available capacity |

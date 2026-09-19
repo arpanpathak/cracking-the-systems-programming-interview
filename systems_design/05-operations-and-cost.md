@@ -12,10 +12,10 @@ flowchart TB
     USED --> GAP
 ```
 
-Billing on allocation alone lets a tenant reserve a device and leave it unused.
-Billing on utilization alone lets a tenant hold an exclusive device while using
-little of it. Both quantities are needed, and their difference identifies unused
-reserved capacity.
+Bill on allocation alone, and a tenant can reserve a device and leave it unused.
+Bill on utilization alone, and a tenant can hold an exclusive device while using
+a fraction of it. Record both, and the difference between them identifies the
+reserved capacity that nobody is using.
 
 ### Collection
 
@@ -34,20 +34,21 @@ flowchart LR
 | Dimension | Reason for including it |
 |---|---|
 | GPU-seconds | The primary unit of measurement |
-| Device profile | A MIG partition and a complete device are not equivalent |
-| Reserved memory | Accounts for workloads that cannot use an entire device |
+| Device profile | A MIG partition and a complete device are different resources |
+| Reserved memory | Accounts for workloads that use part of a device |
 | Idle time | Separates the cost of reservation from the cost of computation |
 | Preemption events | Quantifies the benefit obtained from the lower-priority tier |
 
 ### Accuracy
 
-On a device shared by time slicing, attribution is approximate. Counters are
-sampled across processes sharing the hardware, so per-tenant values do not sum
-exactly to wall-clock utilization. Document the limitation rather than presenting
-the numbers as precise.
+On a device shared by time slicing, attribution is approximate. The collector
+samples counters across processes sharing the hardware, so per-tenant values
+land near wall-clock utilization and rarely sum to it exactly. Document the
+limitation. A sampled number presented as precise invites a dispute you cannot
+settle.
 
 On MIG, attribution is exact, because the partition is a hardware resource. MIG
-therefore gives precise accounting as well as isolation.
+buys you precise accounting alongside the isolation.
 
 ### Attribution of distributed work
 
@@ -60,8 +61,7 @@ rank and misrepresents the cost of the logical unit of work.
 ### Symptom
 
 A workload that took four hours now takes seven. The code has not changed, and no
-errors are reported. The rate of completed work has fallen while the workload
-still runs correctly.
+errors are reported. Work still completes correctly; the rate has fallen.
 
 ### Layer-by-layer examination
 
@@ -74,12 +74,12 @@ flowchart TB
     L4 --> L5["Placement<br/>device generation, topology, sharing"]
 ```
 
-Ask whether the regression is continuous or intermittent. Intermittent behavior
-points to contention or thermal effects, and continuous behavior to configuration
-or placement.
+Ask first whether the regression is continuous or intermittent. Intermittent
+behavior points at contention or thermal effects, and continuous behavior at
+configuration or placement.
 
 Then ask whether it affects one workload or every workload on the node. One
-points to the workload, and every one to the node.
+points at the workload, and every one at the node.
 
 ### Causes that occur most frequently
 
@@ -93,30 +93,30 @@ points to the workload, and every one to the node.
 | Rising correctable error rate | Performance drift that precedes a hardware failure |
 | Silent configuration change | A library selecting a slower execution path |
 
-The first three explain a large share of reported regressions, and none of them
-raises an error condition.
+The first three explain a large share of reported regressions, and all three
+leave the system running and error-free.
 
 ### Method
 
 Reproduce the workload before diagnosing it, using the same data and the same
-class of node. A regression needs comparison against a known-good measurement, so
-two data points are required.
+class of node. A regression needs a known-good measurement to compare against, so
+collect two data points.
 
 Check the physical layers first. Clock state, thermal state, and contention are
-cheap to rule out and are often the cause. Change one variable at a time, because
-simultaneous changes make the result hard to interpret.
+cheap to rule out and often turn out to be the cause. Change one variable at a
+time, because simultaneous changes leave you unable to interpret the result.
 
 ### Detection
 
 Record per-workload step time as a metric alongside device utilization.
-Utilization measures whether the device was occupied, and it can stay high while
-the rate of completed work falls. Alerting on the ratio of work completed to time
-elapsed catches this class of regression before users report it.
+Utilization records whether the device was occupied, and it can stay high while
+the rate of completed work falls. Alert on the ratio of work completed to time
+elapsed, and you catch this class of regression before users report it.
 
 ## 5.3 Summary
 
-Allocation and utilization are both recorded, and their difference identifies
-unused reserved capacity. The accuracy limits of attribution are documented
-wherever devices are shared. Regressions are diagnosed by layer, beginning with
-the physical layers and proceeding against a known-good measurement. Progress
-rate per workload is instrumented in addition to device utilization.
+Record allocation and utilization, and read the difference as unused reserved
+capacity. Document the accuracy limits of attribution wherever devices are
+shared. Diagnose regressions by layer, starting with the physical layers and
+comparing against a known-good measurement. Instrument progress rate per
+workload alongside device utilization.
