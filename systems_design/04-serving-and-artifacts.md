@@ -18,24 +18,27 @@ flowchart TB
     AUTO --> MS
 ```
 
-The components that carry the design are the **batcher**, which converts
-individual requests into efficient GPU work, and the **autoscaler**, which must
-scale on a metric that reflects GPU demand rather than host CPU utilization.
+The components that carry the design are the batcher, which converts individual
+requests into work of a size the device executes efficiently, and the autoscaler,
+which scales on a metric that reflects demand for the device rather than
+utilization of the host CPU.
 
 ## 4.2 Batching
 
-A GPU is most efficient on large, uniform work. Serving individual requests
-produces many small kernels with launch overhead comparable to execution time,
-and leaves the device underutilized.
+A GPU executes large, uniform work more efficiently than it executes many small
+work items. Serving requests individually produces a large number of short
+kernels whose duration is comparable to the kernel launch overhead, and it leaves
+the device underutilized as a result.
 
-Dynamic batching collects requests that arrive within a short window and executes
-them as one batch. The window length is the tuning parameter:
+Dynamic batching collects the requests that arrive within a short interval and
+executes them as a single batch. The length of that interval is the parameter
+that determines the tradeoff between throughput and latency.
 
 ```mermaid
 flowchart LR
     subgraph N["Without batching"]
         direction LR
-        A1["request"] --> A2["small kernel"] --> A3["idle"] --> A4["request"] --> A5["small kernel"]
+        A1["request"] --> A2["short kernel"] --> A3["idle"] --> A4["request"] --> A5["short kernel"]
     end
 ```
 
@@ -47,83 +50,88 @@ flowchart LR
     end
 ```
 
-| Effect | Consequence |
-|---|---|
-| Larger batch | Higher throughput, better device utilization |
-| Larger batch | Higher latency; a request arriving just after a batch closes waits a full cycle |
-| Fixed window | Predictable worst-case added latency |
-| Adaptive window | Better utilization under load, more complex to reason about |
+A larger batch increases throughput and improves utilization of the device. It
+also increases latency, because a request that arrives shortly after a batch has
+closed waits for the whole of the next interval. A fixed window places a
+predictable bound on the added latency, while an adaptive window produces better
+utilization under load at the cost of being more difficult to reason about.
 
-Because batching couples requests, tail latency degrades before mean latency
-does. A latency SLO should be expressed at a high percentile, and the window
-chosen to satisfy it under the expected arrival distribution.
+Since batching couples requests together, degradation appears in the tail of the
+latency distribution before it appears in the mean. A latency objective should
+therefore be expressed at a high percentile, and the window selected so that the
+objective is met across the expected distribution of arrivals.
 
 ## 4.3 Autoscaling
 
-CPU utilization is a poor scaling signal for GPU serving, because the host
-process is mostly waiting on the device. Relevant signals are:
+Host CPU utilization is a poor scaling signal for GPU serving, because the host
+process is largely waiting on the device. Signals that correspond to actual
+demand are the following.
 
-| Signal | Indicates |
+| Signal | Interpretation |
 |---|---|
-| Queue depth per model | Direct measure of unmet demand |
-| Device utilization | Whether the devices are actually busy |
-| Time to first token or batch latency | Adherence to the SLO |
-| Requests per second per replica | Capacity headroom |
+| Queue depth per model | The quantity of demand that is not being served |
+| Device utilization | Whether the devices are occupied |
+| Batch latency or time to first token | Adherence to the latency objective |
+| Requests per second per replica | Available capacity |
 
-Scaling on the SLO directly (for example, scaling out when p99 latency exceeds
-target) avoids having to model the relationship between utilization and latency,
-which is workload-dependent.
+Scaling directly on the objective, for example by adding replicas when a high
+percentile of latency exceeds its target, avoids the need to model the
+relationship between utilization and latency, which varies by workload.
 
 ## 4.4 Cold start
 
-Loading a large model into device memory takes seconds to minutes depending on
-size, storage path, and memory bandwidth. If replicas scale to zero, the first
-request after an idle period pays that cost and will violate its latency target.
+Loading a large model into device memory takes seconds to minutes, depending on
+the size of the model, the storage path, and memory bandwidth. Where replicas are
+allowed to scale to zero, the first request after an idle period incurs that cost
+and will exceed its latency objective.
 
 | Technique | Effect | Cost |
 |---|---|---|
-| Warm minimum replicas | Bounds worst-case latency | Idle GPU time |
-| Pre-pulled images and weights | Removes download from the critical path | Node disk |
-| Node-local weight cache | Turns a cold load into a memory-mapped read | Disk plus cache management |
-| Scheduled pre-scaling | Scales before predicted peaks | Requires traffic forecasting |
-| Request queueing during load | Prevents errors while a replica warms | Requests wait |
+| Minimum warm replicas | Bounds worst-case latency | Device time that is idle |
+| Pre-pulled images and weights | Removes downloading from the critical path | Node storage |
+| Node-local weight cache | Reduces a cold load to memory-mapped reads | Storage and cache management |
+| Scheduled pre-scaling | Adds capacity before predicted peaks | Requires traffic forecasting |
+| Queueing during load | Avoids errors while a replica initializes | Requests wait |
 
-For large models, the load itself may be bandwidth bound: the time to read the
-weights from storage exceeds the time to compute anything. This makes the local
-cache hit rate a first-order serving metric.
+For very large models the load may be limited by storage bandwidth, in which case
+the time required to read the weights exceeds the time required to compute with
+them. Under those conditions the hit rate of the local cache becomes a primary
+serving metric.
 
-## 4.5 Multi-tenancy and isolation
+## 4.5 Multi-tenancy
 
-Running several tenants on one device requires an explicit isolation choice from
-section 2.5. The relevant properties for serving are:
+Running several tenants on one device requires an explicit choice of isolation
+mechanism, as described in section 2.5. The properties relevant to serving are
+the following.
 
-- **Memory isolation.** A tenant that can exhaust device memory can disrupt
-  co-resident tenants. Only MIG provides hardware separation.
-- **Tail latency.** Time slicing introduces context switches whose latency the
-  tenant does not control and cannot bound.
-- **Accounting.** Utilization attribution is approximate under time slicing and
-  precise under MIG.
+Memory isolation determines whether one tenant can disrupt another by exhausting
+device memory, and only MIG provides hardware separation for this purpose. Time
+slicing introduces context switches whose latency a tenant does not control and
+cannot bound, which affects tail latency. Attribution of utilization is
+approximate under time slicing and precise under MIG, which matters where usage
+is metered.
 
-For latency-sensitive multi-tenant serving, MIG or exclusive devices are the
-defensible choices.
+For multi-tenant serving that must meet a latency objective, MIG or exclusive
+devices are the defensible choices.
 
 ## 4.6 Model distribution
 
-### The arithmetic comes first
+### Scale of the problem
 
-Consider a 100 GB model that must reach 500 nodes:
+Consider a model of 100 GB that has to be delivered to 500 nodes.
 
 ```mermaid
 flowchart LR
     A["100 GB x 500 nodes"] --> B["50 TB of data"]
-    B --> C["from a single source"]
+    B --> C["from a single origin"]
     C --> D["with every node starting at once"]
 ```
 
-Three problems compound here: the total volume, the concentration of that volume
-through one endpoint, and the synchronization of the requests. A simultaneous
-start also means the last node to finish determines deployment completion time,
-so the mean is not the useful metric — the tail is.
+Three factors compound in this situation: the total volume, the fact that the
+volume passes through a single origin, and the fact that the requests are
+synchronized. Because the nodes start together, the last node to finish also
+determines the completion time of the deployment, so the distribution of
+completion times is the relevant measurement rather than the mean.
 
 ### Design
 
@@ -136,45 +144,44 @@ flowchart TB
     P2P --> NC
 ```
 
-**Content addressing.** Artifacts are referenced by digest rather than by mutable
-tag. This lets any cache layer validate what it holds, key entries safely, and
-share identical content between versions.
+Artifacts are referenced by digest rather than by mutable tag. This permits any
+cache layer to verify what it holds, allows entries to be keyed without
+ambiguity, and lets identical content be shared between versions.
 
-**Layered caching.** Caches exist at region and node level, so that the majority
-of requests are satisfied without reaching the origin. For models packaged as
-layers, only changed layers transfer.
+Caching is layered across regions and nodes, so that most requests are satisfied
+without reaching the origin. Where a model is packaged as a set of layers, only
+the layers that differ are transferred.
 
-**Peer-to-peer distribution.** Once a subset of nodes holds a chunk, they serve
-it to peers. This converts a single-source transfer into a mesh and removes the
+Once a subset of nodes holds a portion of an artifact, those nodes serve it to
+peers. This converts a transfer from a single source into a mesh and removes the
 origin from the steady-state path.
 
-**Controlled rollout.** Roll out in waves rather than to all nodes simultaneously.
-The stampede problem exists at every cache layer, and wave-based rollout avoids
-recreating it one level down.
+Rollout is performed in waves rather than to all nodes at once, since the
+conditions that produce contention at the origin also apply at each cache layer.
 
 ### Cache correctness
 
-A node-local cache must track live references. Evicting a model that a running
-pod is still using converts a cache miss into a failure. The cache therefore
-needs reference counting tied to workload lifetime, and eviction must respect
-active references.
+A node-local cache has to account for live references. Evicting a model that a
+running workload is still using turns a cache miss into a failure. The cache
+therefore requires reference counting tied to workload lifetime, and eviction has
+to respect the references that are currently active.
 
 ### Metrics
 
 | Metric | Purpose |
 |---|---|
-| Time to first byte | Whether the origin is the bottleneck |
-| Cache hit rate per layer | Whether layering is effective |
-| Distribution of node completion time | The real deployment duration |
-| Egress volume | Cost driver, scales with node count |
+| Time to first byte | Whether the origin is the limiting factor |
+| Cache hit rate per layer | Whether layering is producing the intended effect |
+| Distribution of node completion time | The duration of the deployment |
+| Egress volume | A cost driver that scales with the number of nodes |
 
-## 4.7 Design summary
+## 4.7 Summary
 
-- Batch requests to match the device's efficient operating point, and express the
-  latency SLO at a high percentile.
-- Scale on queue depth or SLO adherence, not host CPU.
-- Treat cold start as a first-class capacity parameter, not an edge case.
-- Choose the isolation model explicitly; time slicing and MIG differ in kind.
-- Distribute large artifacts through content-addressed, layered caches with a
-  peer-to-peer final hop, and roll out in waves.
-- Reference-count the node-local cache against running workloads.
+Requests are batched to match the operating point at which the device is
+efficient, and the latency objective is expressed at a high percentile. Scaling
+is driven by queue depth or objective adherence rather than host CPU utilization.
+Cold start is treated as a capacity parameter rather than as an edge case. The
+isolation mechanism is chosen explicitly, since time slicing and MIG differ in
+kind. Large artifacts are distributed through content-addressed, layered caches
+with a peer-to-peer final hop, in staggered waves, and the node-local cache is
+reference counted against running workloads.
