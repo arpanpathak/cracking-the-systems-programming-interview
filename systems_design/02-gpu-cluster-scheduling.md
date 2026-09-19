@@ -1,136 +1,194 @@
-# 02. Cluster Scheduling and Fair Sharing
+# 2. Cluster Scheduling and GPU Sharing
 
-How a GPU gets from "a pod asks for one" to "a physical device is assigned."
-This is the most NVIDIA-specific pair of questions in the set.
+This section describes how GPUs are represented to a Kubernetes scheduler, how a
+device is assigned to a container, what constraints placement has to satisfy, and
+how a shared pool is divided between tenants.
 
----
+## 2.1 The resource model
 
-## Q3. Design a scheduler for 1000 GPU nodes.
+GPU capacity is advertised as a Kubernetes **extended resource**. This has three
+consequences that shape every scheduling design:
 
-> You run 1000 nodes, 8 GPUs each. Teams submit training and inference jobs.
-> How does a GPU get assigned to a pod?
+1. **Quantities are integers.** A pod requests 1, 2, or 4 GPUs, not 0.5.
+2. **Request must equal limit.** Extended resources are not oversubscribed, and
+   they are not subject to the normal request/limit distinction.
+3. **The scheduler treats them as opaque counts.** It knows a node has 8 of a
+   named resource. It does not know the device generation, memory capacity,
+   interconnect topology, or health of individual devices unless that
+   information is surfaced separately.
 
-**What they are probing:** whether you know how GPU scheduling actually works in
-Kubernetes, or whether you assume the default scheduler understands GPUs. It
-does not.
+Because of the third point, device properties are communicated through node
+labels, and placement constraints are expressed through node affinity, taints,
+or a custom scheduler plugin.
 
-### The mechanism
+## 2.2 Device plugin architecture
 
-1. **GPUs are not a normal resource.** They are advertised as an *extended
-   resource*, which means integer quantities and request equal to limit. You
-   cannot request half a GPU this way.
-2. **A device plugin advertises them.** A DaemonSet on each node finds the
-   devices and tells the kubelet how many exist.
-3. **The kubelet reports the count to the API server.** Now the scheduler sees
-   `nvidia.com/gpu: 8` on that node like any other resource.
-4. **Allocation is two steps.** The scheduler picks a node with a free unit. Then
-   the kubelet asks the device plugin which *specific* device to hand over.
+A device plugin is a DaemonSet that runs on every GPU node and performs three
+duties:
 
-```mermaid
-flowchart TB
-    POD["Pod requests nvidia.com/gpu: 2"] --> SCHED["kube-scheduler<br/>picks a node with 2 free"]
-    SCHED --> KLT["kubelet on that node"]
-    KLT --> DP["Device plugin<br/>Allocate returns device IDs"]
-    DP --> GPU["2 specific GPUs<br/>mounted into the container"]
-```
-
-### Where the default scheduler is not enough
-
-| Problem | Why the default fails | What you add |
-|---|---|---|
-| Distributed training needs 64 pods at once | Schedules per pod, so you get half a job running and half pending | Gang scheduling (coscheduling, Volcano, Kueue) |
-| GPUs on the same node should be NVLink-adjacent | Scheduler sees an integer count, not topology | Topology-aware plugin or node labels plus affinity |
-| A job needs a specific GPU type or memory size | Labels are free-form and easy to get wrong | Node labels, taints, or a custom scheduler plugin |
-| A team must not exceed its quota | Default has no queue concept | Queues with quota and borrowing |
-| Idle GPUs waste money | Nothing fills or reclaims them | Backfill and preemption policies |
-
-### The design answer
-
-- **Advertise:** device plugin per node, optionally in MIG mode to expose slices.
-- **Place:** weight the scheduler on GPU type, free capacity, topology locality,
-  and queue fairness, in that order of hard constraints first.
-- **Protect:** gang admission so a distributed job is all-or-nothing, and a
-  quota system so one team cannot take the fleet.
-- **Reclaim:** preemption for low-priority work so expensive GPUs do not idle.
-
-```mermaid
-flowchart LR
-    Q["Job queue<br/>per team quota"] --> ADM{"Can the whole<br/>gang be placed?"}
-    ADM -->|"yes"| BIND["Bind all pods"]
-    ADM -->|"no"| WAIT["Hold, do not partially place"]
-    WAIT -->|"capacity freed"| ADM
-```
-
-**Follow-ups**
-
-- Why can gang scheduling deadlock? (Two jobs each hold half the fleet and each
-  waits for the other. You need a reservation or all-or-nothing admission.)
-- Where does MIG fit? (The device plugin advertises each slice as its own
-  resource name, so the scheduler places slices, not GPUs.)
-- How do you handle a job that needs 8 GPUs on one node versus 8 across nodes?
-  (One is a single-node constraint; the other needs a fabric that can carry the
-  collectives. Same count, different placement rule.)
-
----
-
-## Q4. Two teams share a GPU pool and one starves the other.
-
-> A research team runs week-long jobs. A product team runs five-minute inference
-> tasks. The product team's latency is now terrible. Fix it without buying GPUs.
-
-**What they are probing:** fairness, preemption, and the difference between hard
-and soft isolation. Also whether you reach for a scheduler change when the real
-answer might be a queue.
-
-### The reasoning
-
-1. **This is a queueing problem before it is a scheduling problem.** Two very
-   different service-time distributions sharing one pool will always punish the
-   short jobs, because a long job holds the resource for a long time.
-2. **Separate the pools, or separate the priorities.** Either reserve capacity,
-   or make the long jobs preemptible.
-3. **Isolation strength is a dial**, and you should name where you are setting it.
+1. **Discovery.** Enumerate the devices present on the node.
+2. **Registration.** Register the resource name with the kubelet.
+3. **Allocation.** Answer requests for specific devices and return the device
+   identifiers, which the kubelet then mounts into the container.
 
 ```mermaid
 flowchart TB
-    subgraph Pool["Shared GPU pool"]
-        Q1["Research queue<br/>weight 30<br/>preemptible"]
-        Q2["Product queue<br/>weight 70<br/>guaranteed"]
+    subgraph Node["GPU node"]
+        DP["Device plugin (DaemonSet)"]
+        KLT["kubelet"]
+        GPU["GPU devices"]
+        DP -->|"1. register resource name"| KLT
+        DP -->|"2. report healthy inventory"| KLT
+        KLT -->|"3. allocate request"| DP
+        DP -->|"4. return device IDs"| KLT
+        DP --- GPU
     end
-    Q1 --> ALLOC{"Scheduler<br/>allocates by weight<br/>and borrows idle capacity"}
-    Q2 --> ALLOC
-    ALLOC --> G1["GPUs"]
+    KLT -->|"5. node capacity and allocatable"| API["API server"]
+    API --> SCHED["kube-scheduler"]
 ```
 
-### Isolation options, weakest to strongest
+The split matters: the **scheduler** chooses a node, and the **device plugin**
+chooses which device on that node. The scheduler does not see individual devices.
+
+## 2.3 Allocation sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as kube-scheduler
+    participant K as kubelet
+    participant D as Device plugin
+    participant G as GPU
+
+    U->>S: Pod requests nvidia.com/gpu: 2
+    S->>S: Filter nodes with 2 free GPU units
+    S->>S: Score candidates
+    S->>K: Bind pod to selected node
+    K->>D: Allocate(2)
+    D->>D: Select two physical devices
+    D-->>K: Device IDs
+    K->>G: Mount devices into the container
+```
+
+Two properties of this sequence are worth noting. First, allocation is committed
+at bind time, so a node can be over-committed between scheduling and binding if
+capacity changes concurrently. Second, the device plugin is the only component
+with a view of individual devices, so any device-level policy (affinity,
+exclusivity, health) lives there.
+
+## 2.4 Placement constraints
+
+Real GPU workloads have requirements that the default scheduler does not model.
+
+| Constraint | Why it matters | Mechanism |
+|---|---|---|
+| Device type or generation | A workload may require a specific architecture or a minimum memory capacity | Node labels plus node affinity, or a custom scheduler plugin |
+| Topology locality | Collectives between GPUs on different PCIe roots or across NVLink islands are much slower | Topology-aware plugin, or node labels describing the interconnect layout |
+| Co-scheduling (gang) | Distributed training requires all ranks running; partial placement wastes the allocated devices | Coscheduling, Volcano, or Kueue |
+| Exclusive access | A latency-sensitive workload needs a device to itself | Whole-device request, or MIG partitioning |
+| NUMA alignment | Host memory locality affects transfer performance | Topology manager policies |
+
+### Gang scheduling
+
+The default scheduler places pods individually. A 64-rank training job can
+therefore be admitted incrementally, producing a state where half the ranks hold
+GPUs and idle while the rest are pending. Those devices are unavailable to other
+work, so the cluster loses throughput to a job that is not making progress.
 
 ```mermaid
 flowchart LR
-    TS["Time slicing<br/>context switches,<br/>no memory isolation"] --> MPS["MPS<br/>concurrent kernels,<br/>shared memory risk"]
-    MPS --> MIG["MIG<br/>hardware partition,<br/>dedicated memory and SMs"]
+    Q["Pending job"] --> A{"Can every rank<br/>be placed now?"}
+    A -->|"yes"| B["Admit the whole job"]
+    A -->|"no"| C["Hold all ranks in queue"]
+    C -->|"capacity released"| A
 ```
 
-1. **Time slicing** is the default and the weakest. Tenants take turns, and a
-   noisy neighbor costs you latency with no accounting.
-2. **MPS** lets kernels from several processes run concurrently. Better
-   throughput, weaker fault isolation.
-3. **MIG** is a real hardware split with its own memory and SMs. Strongest
-   isolation, but you must pick a fixed partition shape up front.
+The alternative, admitting each rank as capacity appears, is the behavior that
+creates the partial-placement state. All-or-nothing admission is the fix, at the
+cost of leaving resources idle while a large job waits for its last slot.
 
-### The answer you want to give
+## 2.5 GPU sharing models
 
-"I would split by queue first, not by scheduler trickery. Give the product team
-a guaranteed reservation with a high weight, and let research borrow idle
-capacity at a lower priority so it is preemptible. For the latency-sensitive
-tier I would use MIG or at least dedicated time slices so a long job cannot
-degrade them. Then I would add metering so the borrowing is visible and the
-conversation about capacity is based on numbers."
+Three mechanisms allow more than one workload to use a single device. They differ
+primarily in isolation strength.
 
-**Follow-ups**
+```mermaid
+flowchart LR
+    TS["Time slicing<br/>context switching<br/>no memory isolation"] --> MPS["MPS<br/>concurrent kernels<br/>shared memory space"]
+    MPS --> MIG["MIG<br/>hardware partition<br/>dedicated SMs and memory"]
+```
 
-- Why is time slicing bad for latency-sensitive work? (A context switch stalls
-  you behind a kernel you do not control; you cannot bound the tail.)
-- When is MIG the wrong choice? (Small jobs that cannot fill a slice, and
-  workloads that need the whole GPU's memory. You pay for idle capacity.)
-- How do you prevent starvation of the low-priority team? (Aging or a minimum
-  guaranteed share, so borrowing is bounded in time.)
+| Model | Isolation | Cost | Suitable for |
+|---|---|---|---|
+| Exclusive | Complete | One device per workload | Large training, latency-critical inference |
+| Time slicing | None, beyond scheduling | Context switch overhead, unbounded tail latency | Interactive development, low-utilization batch work |
+| MPS | Partial; kernels share a memory space | Requires coordinated launch | Multiple small models on one device |
+| MIG | Strong; dedicated SMs and memory | Fixed partition shapes, possibly idle capacity | Hard multi-tenancy |
+
+### MIG specifics
+
+MIG partitions a device into independent instances with dedicated compute and
+memory. The device plugin advertises each partition profile as a distinct
+extended resource, so the scheduler places partitions rather than whole devices.
+
+The consequences to plan for:
+
+- Partition shapes are fixed and chosen at configuration time, so capacity may
+  be stranded in shapes nobody wants.
+- A workload that needs full device memory cannot use a partition.
+- Accounting and isolation become much cleaner, because a partition is a real
+  resource rather than a scheduling convention.
+
+## 2.6 Fairness, quota, and preemption
+
+When a pool is shared, the dominant risk is that long-running work monopolizes
+devices and starves short interactive work. This is a queueing property, not a
+scheduling algorithm property: a job that holds a device for a week removes that
+device from circulation regardless of how fairly it was chosen.
+
+### Queues with quota
+
+The standard structure is a queue per team or priority class, each with a
+guaranteed share and the ability to borrow idle capacity.
+
+```mermaid
+flowchart TB
+    subgraph Teams["Submitting teams"]
+        T1["Team A<br/>guaranteed 30"]
+        T2["Team B<br/>guaranteed 70"]
+    end
+    T1 --> Q["Admission and queueing"]
+    T2 --> Q
+    Q --> P{"Placement by<br/>guaranteed share,<br/>then borrowing"}
+    P --> G["GPU pool"]
+    P -->|"no capacity"| HOLD["Hold in queue"]
+```
+
+### Preemption
+
+Preemption lets higher-priority work reclaim borrowed capacity. Because GPUs
+cannot be paused cheaply, preemption means:
+
+1. Signal the workload to stop.
+2. Wait for it to release the device, or terminate it.
+3. Restart it later from its last checkpoint.
+
+This is why checkpoint frequency is a scheduling parameter, not only a
+reliability parameter. A job that checkpoints every ten minutes can be preempted
+cheaply; a job that checkpoints daily cannot.
+
+### Preventing starvation
+
+Borrowing must be bounded so the low-priority class is not starved indefinitely.
+The usual mechanisms are aging (a waiting job's effective priority increases over
+time) and a hard maximum on how long capacity may be borrowed.
+
+## 2.7 Design summary
+
+- Advertise capacity through a device plugin; represent placement constraints
+  through node labels and affinity, or a scheduler plugin.
+- Require all-or-nothing admission for distributed jobs.
+- Choose the sharing model from the isolation requirement, and state which one
+  is in use. Time slicing and MIG are not equivalent.
+- Express fairness as queues with guaranteed shares, and preemption as a drain.
+- Treat checkpoint interval as a scheduling input.

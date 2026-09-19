@@ -1,146 +1,180 @@
-# 04. Serving and Artifact Delivery
+# 4. Inference Serving and Model Distribution
 
-The data plane. What happens between a customer request and a tensor on a GPU,
-and how the model gets to the machine in the first place.
+This section covers the data path from a client request to a result, and the
+distribution path by which model artifacts reach the nodes that serve them.
 
----
-
-## Q7. Design a multi-tenant inference path.
-
-> Customers send requests to models you host. There are many tenants, and GPUs
-> are the expensive part. Design the path from request to response.
-
-**What they are probing:** whether you know that inference serving is a batching
-and cold-start problem, not a routing problem, and that you scale on the right
-metric.
-
-### The path
+## 4.1 Serving architecture
 
 ```mermaid
 flowchart TB
     REQ["Client request"] --> LB["Load balancer"]
-    LB --> RTR["Router by model and tenant"]
+    LB --> RTR["Router<br/>by model and tenant"]
     RTR --> Q["Request queue<br/>per model"]
-    Q --> BAT["Dynamic batcher<br/>wait a few ms, form a batch"]
+    Q --> BAT["Dynamic batcher"]
     BAT --> MS["Model server on GPU"]
     MS --> RESP["Response"]
-    MS --> MET["Metrics out<br/>queue depth, SM util, latency"]
-    MET --> AUTOSC["Autoscaler"]
-    AUTOSC --> MS
+    MS --> MET["Metrics<br/>queue depth, utilization, latency"]
+    MET --> AUTO["Autoscaler"]
+    AUTO --> MS
 ```
 
-### The two decisions that matter
+The components that carry the design are the **batcher**, which converts
+individual requests into efficient GPU work, and the **autoscaler**, which must
+scale on a metric that reflects GPU demand rather than host CPU utilization.
 
-1. **Batching.** A GPU is most efficient on large uniform work. Dynamic batching
-   waits a few milliseconds to collect requests into one batch. That trades
-   latency for throughput, and the wait window is the tuning knob.
+## 4.2 Batching
+
+A GPU is most efficient on large, uniform work. Serving individual requests
+produces many small kernels with launch overhead comparable to execution time,
+and leaves the device underutilized.
+
+Dynamic batching collects requests that arrive within a short window and executes
+them as one batch. The window length is the tuning parameter:
 
 ```mermaid
 flowchart LR
-    subgraph B1["No batching: GPU underused, latency low"]
+    subgraph N["Without batching"]
         direction LR
-        R1["req"] --> G1["tiny kernel"] --> I1["idle"] --> R2["req"] --> G2["tiny kernel"]
+        A1["request"] --> A2["small kernel"] --> A3["idle"] --> A4["request"] --> A5["small kernel"]
     end
 ```
 
 ```mermaid
 flowchart LR
-    subgraph B2["Batched: full kernel, latency slightly higher"]
+    subgraph B["With batching"]
         direction LR
-        R3["collect 10 ms"] --> G3["one full kernel"] --> R4["collect 10 ms"]
+        B1["collect for window"] --> B2["full kernel"] --> B3["collect for window"] --> B4["full kernel"]
     end
 ```
 
-2. **Autoscaling metric.** CPU utilization is meaningless here. Scale on GPU
-   utilization and queue depth, or on the SLO you actually promised.
-
-### The cold-start problem
-
-Loading a large model can take tens of seconds to minutes. If you scale to zero,
-the first request after idle pays that cost and violates its SLO.
-
-| Technique | What it buys |
+| Effect | Consequence |
 |---|---|
-| Keep a warm minimum | Bounded latency, some idle cost |
-| Pre-pull images and weights on nodes | Removes the download from the critical path |
-| Node-local weight cache | Turns a cold load into a memory map |
-| Traffic-aware pre-scaling | Scale before the known peak, from history |
+| Larger batch | Higher throughput, better device utilization |
+| Larger batch | Higher latency; a request arriving just after a batch closes waits a full cycle |
+| Fixed window | Predictable worst-case added latency |
+| Adaptive window | Better utilization under load, more complex to reason about |
 
-### The isolation dimension
+Because batching couples requests, tail latency degrades before mean latency
+does. A latency SLO should be expressed at a high percentile, and the window
+chosen to satisfy it under the expected arrival distribution.
 
-Multiple tenants on one GPU need either MIG, MPS, or exclusive devices. Choose
-based on whether you need hard memory isolation. A tenant that can exhaust GPU
-memory and take down a neighbor is not isolated, it is just co-resident.
+## 4.3 Autoscaling
 
-**Follow-ups**
+CPU utilization is a poor scaling signal for GPU serving, because the host
+process is mostly waiting on the device. Relevant signals are:
 
-- Why is p99 worse than p50 under batching? (Batches form and drain; a request
-  that arrives just after a batch closes waits a full cycle.)
-- Where does KV cache fit for large language models? (It consumes device memory
-  per active sequence, so it sets your concurrency limit and therefore your
-  cost per request.)
-- How do you route to a model that is not loaded anywhere? (Queue it against a
-  loading pod, or reject with a retryable status rather than blocking the LB.)
+| Signal | Indicates |
+|---|---|
+| Queue depth per model | Direct measure of unmet demand |
+| Device utilization | Whether the devices are actually busy |
+| Time to first token or batch latency | Adherence to the SLO |
+| Requests per second per replica | Capacity headroom |
 
----
+Scaling on the SLO directly (for example, scaling out when p99 latency exceeds
+target) avoids having to model the relationship between utilization and latency,
+which is workload-dependent.
 
-## Q8. Distribute a 100 GB model to 500 nodes.
+## 4.4 Cold start
 
-> A new model version is 100 GB. You have 500 GPU nodes that each need it. The
-> registry is a single service in one region. Design the distribution.
+Loading a large model into device memory takes seconds to minutes depending on
+size, storage path, and memory bandwidth. If replicas scale to zero, the first
+request after an idle period pays that cost and will violate its latency target.
 
-**What they are probing:** whether you see the arithmetic before the architecture.
-This is a bandwidth question dressed as a deployment question.
+| Technique | Effect | Cost |
+|---|---|---|
+| Warm minimum replicas | Bounds worst-case latency | Idle GPU time |
+| Pre-pulled images and weights | Removes download from the critical path | Node disk |
+| Node-local weight cache | Turns a cold load into a memory-mapped read | Disk plus cache management |
+| Scheduled pre-scaling | Scales before predicted peaks | Requires traffic forecasting |
+| Request queueing during load | Prevents errors while a replica warms | Requests wait |
 
-### Do the arithmetic first
+For large models, the load itself may be bandwidth bound: the time to read the
+weights from storage exceeds the time to compute anything. This makes the local
+cache hit rate a first-order serving metric.
+
+## 4.5 Multi-tenancy and isolation
+
+Running several tenants on one device requires an explicit isolation choice from
+section 2.5. The relevant properties for serving are:
+
+- **Memory isolation.** A tenant that can exhaust device memory can disrupt
+  co-resident tenants. Only MIG provides hardware separation.
+- **Tail latency.** Time slicing introduces context switches whose latency the
+  tenant does not control and cannot bound.
+- **Accounting.** Utilization attribution is approximate under time slicing and
+  precise under MIG.
+
+For latency-sensitive multi-tenant serving, MIG or exclusive devices are the
+defensible choices.
+
+## 4.6 Model distribution
+
+### The arithmetic comes first
+
+Consider a 100 GB model that must reach 500 nodes:
 
 ```mermaid
 flowchart LR
-    A["100 GB x 500 nodes"] --> B["50 TB of egress"]
-    B --> C["from one registry"]
-    C --> D["and every node starts at once"]
+    A["100 GB x 500 nodes"] --> B["50 TB of data"]
+    B --> C["from a single source"]
+    C --> D["with every node starting at once"]
 ```
 
-50 TB through one endpoint is the problem. And if all 500 nodes start together,
-they contend for the same bottleneck and the last node finishes far later than
-the average. A stampede on your own infrastructure.
+Three problems compound here: the total volume, the concentration of that volume
+through one endpoint, and the synchronization of the requests. A simultaneous
+start also means the last node to finish determines deployment completion time,
+so the mean is not the useful metric — the tail is.
 
-### The layered answer
+### Design
 
 ```mermaid
 flowchart TB
-    REG["Registry<br/>source of truth"] --> RC["Regional cache<br/>one per region or AZ"]
+    REG["Registry<br/>source of truth"] --> RC["Regional cache<br/>per region or availability zone"]
     RC --> NC["Node-local cache<br/>NVMe"]
-    NC --> GPU["GPU memory"]
-    RC --> P2P["Peer to peer mesh<br/>nodes share chunks"]
+    NC --> DEV["Device memory"]
+    RC --> P2P["Peer-to-peer distribution"]
     P2P --> NC
 ```
 
-1. **Content-address the artifact.** Reference it by digest, not by tag, so any
-   cache can trust it and key on it safely.
-2. **Cache in layers.** Regional first, then node-local NVMe. Most requests
-   should never reach the registry.
-3. **Distribute the final hop peer to peer.** Once a few nodes have a chunk,
-   they serve it to their neighbors. This is what turns 50 TB from one source
-   into a mesh.
-4. **Control the ramp.** Roll out to a wave of nodes, not all 500 at once, or
-   you reconstruct the stampede one layer down.
-5. **Keep the warm path.** If a node already has last week's model and you only
-   changed layers, transfer layers, not the whole artifact.
+**Content addressing.** Artifacts are referenced by digest rather than by mutable
+tag. This lets any cache layer validate what it holds, key entries safely, and
+share identical content between versions.
 
-### What to watch
+**Layered caching.** Caches exist at region and node level, so that the majority
+of requests are satisfied without reaching the origin. For models packaged as
+layers, only changed layers transfer.
 
-| Signal | Why it matters |
+**Peer-to-peer distribution.** Once a subset of nodes holds a chunk, they serve
+it to peers. This converts a single-source transfer into a mesh and removes the
+origin from the steady-state path.
+
+**Controlled rollout.** Roll out in waves rather than to all nodes simultaneously.
+The stampede problem exists at every cache layer, and wave-based rollout avoids
+recreating it one level down.
+
+### Cache correctness
+
+A node-local cache must track live references. Evicting a model that a running
+pod is still using converts a cache miss into a failure. The cache therefore
+needs reference counting tied to workload lifetime, and eviction must respect
+active references.
+
+### Metrics
+
+| Metric | Purpose |
 |---|---|
-| Time to first byte of the model | Tells you if the registry is the bottleneck |
-| Cache hit rate per layer | Tells you whether layering is actually helping |
-| Node start time distribution | The tail is your real deployment time, not the mean |
-| Egress cost | The bill scales with nodes, not with model size |
+| Time to first byte | Whether the origin is the bottleneck |
+| Cache hit rate per layer | Whether layering is effective |
+| Distribution of node completion time | The real deployment duration |
+| Egress volume | Cost driver, scales with node count |
 
-**Follow-ups**
+## 4.7 Design summary
 
-- Why not just bake the model into the image? (Images get big, registries get
-  hammered, and you lose the ability to share layers between model versions.)
-- What breaks if the node-local cache is not refcounted? (You evict a model a
-  running pod is still using. Cache eviction must respect live references.)
-- How do you verify integrity? (Content addressing gives you the hash for free.)
+- Batch requests to match the device's efficient operating point, and express the
+  latency SLO at a high percentile.
+- Scale on queue depth or SLO adherence, not host CPU.
+- Treat cold start as a first-class capacity parameter, not an edge case.
+- Choose the isolation model explicitly; time slicing and MIG differ in kind.
+- Distribute large artifacts through content-addressed, layered caches with a
+  peer-to-peer final hop, and roll out in waves.
+- Reference-count the node-local cache against running workloads.
