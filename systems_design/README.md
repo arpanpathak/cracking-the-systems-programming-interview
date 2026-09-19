@@ -1,14 +1,16 @@
 # GPU and Cloud Systems Design
 
-A design reference for building GPU-backed cloud services. It covers the GPU
-execution model that motivates the architecture, how GPUs are scheduled and
-shared, how workloads are submitted and observed, how models reach the machines
-that serve them, and how the system behaves when hardware fails.
+This document is a reference on the design of GPU-backed cloud services. It
+covers the GPU execution model and the way that model constrains system
+architecture, the mechanisms by which GPU capacity is scheduled and shared, the
+design of the control plane and its client libraries, the data path used for
+inference serving, and the distribution of model artifacts to the machines that
+serve them. A final section covers metering and the diagnosis of performance
+regressions.
 
-The material is organized as a set of design topics. Each topic states the
-scenario, gives the background needed to reason about it, presents a design, and
-records the tradeoffs and failure modes. Diagrams are Mermaid and render
-directly on GitHub.
+The material is organized by design topic. Each topic presents the background
+required to reason about it, a design, and the associated tradeoffs and failure
+modes. Diagrams are written in Mermaid and render on GitHub.
 
 ## Contents
 
@@ -66,42 +68,54 @@ flowchart TB
 
 ### Layer responsibilities
 
-| Layer | Responsibility | Key concerns |
+| Layer | Responsibility | Principal concerns |
 |---|---|---|
-| Client | Express intent, hide transport details | Retries, pagination, credential handling, config precedence |
+| Client | Express intent and hide transport details | Retries, pagination, credential handling, configuration precedence |
 | Control plane | Validate, persist, place, and track work | Idempotency, asynchronous operations, quota, audit |
-| Data plane | Run the workload and serve traffic | Batching, autoscaling, isolation, cold start |
+| Data plane | Execute workloads and serve traffic | Batching, autoscaling, isolation, cold start |
 | Node | Expose and assign physical devices | Health reporting, device allocation, topology |
 
-## Constraints that shape most decisions
+## Characteristics of GPU resources
 
-Four properties of GPUs drive the architecture more than anything else. Most
-design disagreements resolve once these are stated explicitly.
+Four properties of GPU hardware influence most design decisions in this domain,
+and most design disagreements resolve once they are stated explicitly.
 
-**1. A GPU is a discrete, non-divisible resource in the resource model.**
-Kubernetes extended resources are integers, and the request must equal the limit.
-Sub-device allocation requires either a hardware partition (MIG) or a cooperative
-sharing mechanism (time slicing or MPS). These have very different isolation
-properties and must be chosen deliberately.
+### Allocation granularity
 
-**2. GPUs are expensive to preempt.** Saving and restoring device state costs
-milliseconds and device memory. Preemption is implemented as a drain and restart
-rather than a pause and resume, which affects how scheduling queues and
-checkpointing are designed.
+GPU capacity is represented in Kubernetes as an extended resource, which is
+specified in whole units and requires that the request equal the limit.
+Allocating less than a complete device therefore requires either a hardware
+partition, such as MIG, or a cooperative sharing mechanism, such as time slicing
+or MPS. These mechanisms differ substantially in the isolation they provide, and
+the choice between them has consequences for accounting as well as for
+performance.
 
-**3. Data movement dominates.** GPU memory bandwidth is very high, but host
-transfer bandwidth over PCIe is roughly an order of magnitude lower, and
-interconnect bandwidth between nodes is lower again. Any design that moves data
-frequently has a data movement problem regardless of how the compute is written.
+### Preemption cost
 
-**4. GPUs are not interchangeable.** Device generation, memory capacity, and
-interconnect determine what a workload can run and how well it scales. Placement
-is a correctness concern, not a tuning detail.
+Device state cannot be saved and restored cheaply. Preemption is therefore
+implemented by stopping and later restarting a workload rather than by suspending
+and resuming it. This affects the design of scheduling queues, and it makes the
+frequency of checkpointing a scheduling parameter as well as a reliability one.
 
-## Conventions used in this document
+### Data movement
 
-- Latency and bandwidth figures are order-of-magnitude values for reasoning.
-  Exact numbers vary by generation and interconnect.
-- "Node" means a machine that hosts GPUs. "Device" means one GPU.
-- Where Kubernetes behavior is described, it refers to upstream semantics for
-  the current stable release.
+Device memory bandwidth is high, host transfer bandwidth over PCIe is roughly an
+order of magnitude lower, and inter-node interconnect bandwidth is lower again.
+Any design that moves data frequently has a data movement problem irrespective of
+how the compute is written.
+
+### Heterogeneity
+
+Device generation, memory capacity, and interconnect configuration determine what
+a workload can run and how well it scales. Placement therefore affects whether a
+workload runs correctly and efficiently, and cannot be treated solely as a
+tuning consideration.
+
+## Conventions
+
+- Figures for latency and bandwidth are order-of-magnitude values intended for
+  reasoning about which term dominates. They are not suitable for capacity
+  planning.
+- "Node" refers to a machine that hosts GPUs. "Device" refers to a single GPU.
+- Descriptions of Kubernetes behavior refer to upstream semantics for the
+  current stable release.
