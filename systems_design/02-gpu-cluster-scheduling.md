@@ -1,30 +1,26 @@
 # 2. Cluster Scheduling and GPU Sharing
 
-This section covers how GPU capacity is represented to the Kubernetes scheduler,
-how a device is assigned to a container, the constraints placement must satisfy,
-and how a shared pool is divided between tenants.
-
 ## 2.1 Resource model
 
-GPU capacity is an extended resource. Three properties follow.
+GPU capacity is an extended resource in Kubernetes.
 
-Quantities are whole numbers. A pod requests one, two, or four GPUs. A fractional
-request cannot be expressed this way.
+Quantities are whole numbers. A pod requests 1, 2, or 4 GPUs, and there is no way
+to express half a device through this mechanism.
 
 The request must equal the limit. Extended resources are not oversubscribed.
 
-The scheduler sees only a count. It knows a node has eight units of a named
-resource. It knows nothing about the generation, memory size, topology, or health
-of the individual devices. That information has to come from node labels or a
-scheduler extension. Placement constraints are therefore expressed through node
-affinity, taints, or a custom scheduling component.
+The scheduler sees a count. A node reports eight units of a named resource, and
+nothing about the generation, memory size, topology, or health of the individual
+devices. That information has to come from node labels or a scheduler extension,
+so placement constraints are expressed through node affinity, taints, or a custom
+scheduling component.
 
 ## 2.2 Device plugin architecture
 
-A device plugin is a DaemonSet on each GPU node. It does three things. It
-discovers the devices present, registers the resource name with the kubelet, and
-answers allocation requests with the identifiers of specific devices for the
-kubelet to mount into the container.
+A device plugin is a DaemonSet on each GPU node. It discovers the devices present
+on the node, registers the resource name with the kubelet, and answers allocation
+requests with the identifiers of specific devices for the kubelet to mount into
+the container.
 
 ```mermaid
 flowchart TB
@@ -42,8 +38,8 @@ flowchart TB
     API --> SCHED["kube-scheduler"]
 ```
 
-The split matters. The scheduler picks a node. The device plugin picks a device on
-that node. The scheduler has no visibility into individual devices.
+The scheduler picks the node and the device plugin picks the device on that node.
+The scheduler cannot see individual devices.
 
 ## 2.3 Allocation sequence
 
@@ -65,14 +61,14 @@ sequenceDiagram
     K->>G: Mount devices into the container
 ```
 
-Two properties of this sequence matter. Allocation commits at binding, so a node
-can be over-committed if capacity changes in between. And the device plugin is
-the only component that sees individual devices, so device-level policy such as
-affinity, exclusivity, or health lives there.
+Allocation commits at binding, so a node can be over-committed if capacity
+changes between scheduling and binding. The device plugin is the only component
+that sees individual devices, so device-level policy such as affinity,
+exclusivity, and health is implemented there.
 
 ## 2.4 Placement constraints
 
-GPU workloads often need more than the default scheduler models.
+These constraints are not modelled by the default scheduler.
 
 | Constraint | Reason it matters | Mechanism |
 |---|---|---|
@@ -97,13 +93,12 @@ flowchart LR
     C -->|"capacity released"| A
 ```
 
-Admitting ranks as capacity appears is what creates this state. Requiring all
-ranks to fit before admitting any avoids it, at the cost of idle capacity while a
-large job waits for its last slot.
+Waiting until every rank can be placed avoids this, at the cost of idle capacity
+while a large job waits for its last slot.
 
 ## 2.5 Sharing models
 
-Three mechanisms let more than one workload use a single device. They differ
+Three mechanisms let more than one workload use a single device, and they differ
 mainly in isolation.
 
 ```mermaid
@@ -125,17 +120,16 @@ MIG splits a device into independent instances with dedicated compute and memory
 The device plugin advertises each partition profile as its own extended resource,
 so the scheduler places partitions rather than whole devices.
 
-Three consequences follow. Partition shapes are fixed at configuration time, so
-capacity can be stranded in shapes nobody wants. A workload needing full device
-memory cannot use a partition. And metering and isolation become precise, because
-a partition is a hardware resource rather than a scheduling convention.
+Partition shapes are fixed at configuration time, so capacity can be stranded in
+shapes for which there is no demand. A workload that needs the full memory of a
+device cannot use a partition. Metering becomes precise, because a partition is a
+hardware resource rather than a scheduling convention.
 
 ## 2.6 Fairness and preemption
 
-On a shared pool, the main risk is that long-running work occupies devices and
-delays short interactive work. This is queueing behavior rather than a flaw in the
-placement algorithm. A job holding a device for a week removes it from
-circulation, however fairly it was chosen.
+A job that holds a device for a week removes that device from circulation,
+however fairly it was selected. Fair placement does not correct this, so the
+queue has to bound how long a job may hold capacity.
 
 ### Queues with quota
 
@@ -157,18 +151,18 @@ flowchart TB
 
 ### Preemption
 
-Preemption lets higher-priority work reclaim borrowed capacity. A device cannot be
-suspended cheaply, so preemption means stopping a workload, waiting for it to
+Preemption lets higher-priority work reclaim borrowed capacity. A device cannot
+be suspended cheaply, so preemption means stopping a workload, waiting for it to
 release the device, and restarting it from its last checkpoint.
 
 Checkpoint frequency therefore sets the cost of preemption. A job that
-checkpoints every ten minutes is cheap to preempt. One that checkpoints daily is
-not.
+checkpoints every ten minutes is cheap to preempt, and one that checkpoints daily
+is not.
 
 ### Starvation
 
 Borrowing must be bounded so the lower-priority class is not delayed
-indefinitely. The usual mechanisms are aging, where a waiting job's effective
+indefinitely. The usual mechanisms are aging, in which a waiting job's effective
 priority rises with the time it has waited, and a cap on how long capacity may be
 borrowed.
 
@@ -179,5 +173,5 @@ expressed through node labels and affinity, or through a scheduler extension.
 Distributed jobs need all-or-nothing admission to avoid the partial-placement
 state. The sharing model is chosen from the isolation requirement, and time
 slicing and MIG are not interchangeable. Fairness is expressed as queues with
-guaranteed shares. Preemption is implemented as a drain and restart. The
+guaranteed shares, preemption is implemented as a drain and restart, and the
 checkpoint interval is an input to the scheduling design.

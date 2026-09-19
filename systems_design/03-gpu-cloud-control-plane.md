@@ -1,15 +1,11 @@
 # 3. Control Plane, API Design, and Failure Handling
 
-This section covers how workloads are submitted and tracked, why the API is
-asynchronous, what the client library must do, and how the system responds to
-hardware failure.
-
 ## 3.1 Asynchronous operation model
 
 Provisioning a GPU workload takes time. A request can trigger node scale-up,
 image pull, model download, and device initialization before the workload starts.
-That is minutes, which makes a synchronous create unusable: the HTTP request
-would time out first.
+That is minutes, which makes a synchronous create unusable, because the HTTP
+request would time out first.
 
 The usual solution treats the request and the result as separate resources. The
 API accepts the request, returns immediately, and exposes an operation the client
@@ -46,12 +42,11 @@ sequenceDiagram
 | `GET` | `/v1/operations/{id}` | Read operation status |
 | `GET` | `/v1/gpu-types` | Enumerate the available device types and capacities |
 
-Two conventions need stating. Deletion is asynchronous, because cancelling a
-running workload means draining and releasing the device. `DELETE` therefore
-returns `202`, and the operation reports completion. The operation is also
-durable: a client that fails between the create call and the first poll can
-recover by listing operations. That is why the operation is a first-class
-resource rather than a field on the workload.
+Deletion is asynchronous, because cancelling a running workload means draining
+and releasing the device. `DELETE` therefore returns `202`, and the operation
+reports completion. The operation is also durable, so a client that fails between
+the create call and the first poll can recover by listing operations. That is why
+the operation is a first-class resource rather than a field on the workload.
 
 ## 3.3 Idempotency
 
@@ -91,8 +86,8 @@ hand will be implemented inconsistently.
 ## 3.4 Pagination
 
 List endpoints use cursor pagination. Offsets are unstable under concurrent
-modification: an insert or delete between two requests shifts the window and
-causes records to be skipped or returned twice.
+modification, because an insert or delete between two requests shifts the window
+and causes records to be skipped or returned twice.
 
 A cursor encodes a position in the ordered result set. Iteration ends when the
 response carries no cursor, rather than when a page comes back empty, because a
@@ -137,7 +132,8 @@ contract by accident.
 ## 3.7 Client library responsibilities
 
 The API cannot enforce correct retry behavior, because only the client knows the
-context of a failed call. A usable SDK therefore handles the following.
+context of a failed call. An SDK that omits the following leaves each customer to
+implement it, and they will be implemented inconsistently.
 
 ```mermaid
 flowchart LR
@@ -156,7 +152,7 @@ capped value directly. Without jitter, many clients failing at once retry in ste
 and reproduce the load that caused the failure.
 
 `Retry-After` from the server is a lower bound. Retrying sooner violates the
-server's stated capacity. Retrying later wastes the client's own time budget.
+server's stated capacity, and retrying later wastes the client's own time budget.
 
 ### Thread safety and connection reuse
 
@@ -168,8 +164,6 @@ that a high-concurrency caller does not exhaust file descriptors.
 ## 3.8 Failure handling
 
 ### Device failure
-
-A device can fail in several ways, and the response differs between them.
 
 | Symptom | Usual cause | Response |
 |---|---|---|
@@ -207,15 +201,14 @@ sequenceDiagram
 
 ### Blast radius
 
-The cost of a failure is dominated by lost work rather than by restart time. Four
-decisions set that cost.
+The cost of a failure is dominated by lost work rather than by restart time.
 
 The checkpoint interval sets how much computation is discarded. The location of
-checkpoints determines whether they survive the node failure, so they cannot live
-only on that node. Whether one failed rank restarts the whole job or only itself
-sets the scale of the interruption, and elastic training lets a job continue at
-reduced size. Admission control sets cluster behavior as capacity falls, so work
-that cannot be placed is held rather than queued without bound.
+checkpoints determines whether they survive the failure of that node, so they
+cannot live only on it. Whether one failed rank restarts the whole job or only
+itself sets the scale of the interruption, and elastic training lets a job
+continue at reduced size. Admission control sets cluster behavior as capacity
+falls, so work that cannot be placed is held rather than queued without bound.
 
 | Level | Action |
 |---|---|

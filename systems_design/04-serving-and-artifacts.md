@@ -1,8 +1,5 @@
 # 4. Inference Serving and Model Distribution
 
-This section covers the path from a client request to a result, and how model
-artifacts reach the nodes that serve them.
-
 ## 4.1 Serving architecture
 
 ```mermaid
@@ -18,9 +15,9 @@ flowchart TB
     AUTO --> MS
 ```
 
-Two components carry the design. The batcher converts individual requests into
-work the device executes efficiently. The autoscaler must scale on a metric that
-reflects demand for the device, rather than host CPU utilization.
+The batcher converts individual requests into work the device executes
+efficiently. The autoscaler scales on a metric that reflects demand for the
+device, rather than host CPU utilization.
 
 ## 4.2 Batching
 
@@ -58,8 +55,8 @@ and choose the window to meet it across the expected distribution of arrivals.
 
 ## 4.3 Autoscaling
 
-Host CPU utilization is a poor scaling signal here, because the host process
-mostly waits on the device. Signals that track demand:
+Host CPU utilization is a poor scaling signal, because the host process mostly
+waits on the device. Signals that track demand:
 
 | Signal | Interpretation |
 |---|---|
@@ -87,17 +84,17 @@ objective.
 | Scheduled pre-scaling | Adds capacity before predicted peaks | Requires traffic forecasting |
 | Queueing during load | Avoids errors while a replica initializes | Requests wait |
 
-For very large models the load may be limited by storage bandwidth, so reading
-the weights takes longer than computing with them. The local cache hit rate then
+For very large models the load is limited by storage bandwidth, so reading the
+weights takes longer than computing with them. The local cache hit rate then
 becomes a primary serving metric.
 
 ## 4.5 Multi-tenancy
 
 Several tenants on one device need an explicit isolation choice, as described in
-section 2.5. For serving, three properties matter.
+section 2.5.
 
 Memory isolation decides whether one tenant can disrupt another by exhausting
-device memory. Only MIG provides hardware separation for this.
+device memory, and only MIG provides hardware separation for this.
 
 Time slicing introduces context switches whose latency a tenant cannot control or
 bound, which affects the tail.
@@ -121,10 +118,10 @@ flowchart LR
     C --> D["with every node starting at once"]
 ```
 
-Three factors compound here: the total volume, the passage of that volume through
-a single origin, and the synchronized start. Because the nodes start together,
-the last node to finish sets the deployment completion time. The distribution of
-completion times therefore matters more than the mean.
+Three factors compound: the total volume, the passage of that volume through a
+single origin, and the synchronized start. Because the nodes start together, the
+last node to finish sets the deployment completion time, so the distribution of
+completion times is the useful measurement rather than the mean.
 
 ### Design
 
