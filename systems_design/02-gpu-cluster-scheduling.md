@@ -2,27 +2,20 @@
 
 ## 2.1 Resource model
 
-Kubernetes represents GPU capacity as an extended resource, and three of its
-properties shape everything in this section.
+GPU counts are integers. A pod requests 1, 2, or 4 GPUs.
 
-You ask for whole units. A pod requests 1, 2, or 4 GPUs, and a fractional request
-has no representation in this mechanism.
+Request equals limit, because extended resources carry no oversubscription.
 
-You write the same number twice, because an extended resource carries no
-oversubscription. The request sets the limit.
+The scheduler sees a count: eight units of `nvidia.com/gpu`. Device generation,
+memory size, topology, and health reach it through node labels or a scheduler
+extension, so placement constraints become node affinity, taints, or a custom
+scheduler.
 
-The scheduler sees a count. A node reports that it holds eight units of a named
-resource, and reports nothing about the generation, memory size, topology, or
-health of the individual devices. That detail has to reach the scheduler through
-node labels or a scheduler extension, which is why placement constraints end up
-expressed as node affinity, taints, or a custom scheduling component.
+## 2.2 Device plugin
 
-## 2.2 Device plugin architecture
-
-A device plugin is a DaemonSet on each GPU node. It discovers the devices present
-on the node, registers the resource name with the kubelet, and answers allocation
-requests with the identifiers of specific devices for the kubelet to mount into
-the container.
+A DaemonSet on each GPU node. It discovers the devices, registers the resource
+name with the kubelet, and answers allocation requests with device IDs for the
+kubelet to mount into the container.
 
 ```mermaid
 flowchart TB
@@ -40,9 +33,7 @@ flowchart TB
     API --> SCHED["kube-scheduler"]
 ```
 
-Follow the split in responsibility here, because it explains a lot of behavior
-later. The scheduler picks the node. The device plugin picks the device on that
-node. The scheduler holds no view of individual devices at all.
+The scheduler picks the node. The device plugin picks the device on it.
 
 ## 2.3 Allocation sequence
 
@@ -64,29 +55,25 @@ sequenceDiagram
     K->>G: Mount devices into the container
 ```
 
-Two timing details explain most scheduling surprises. Allocation commits at
-binding, so a node can be over-committed when capacity shifts between scheduling
-and binding. And the device plugin is the only component that sees individual
-devices, so affinity, exclusivity, and health policy all live there.
+Allocation commits at binding, so a node can be over-committed if capacity shifts
+in between. The device plugin is the only component that sees individual devices,
+so affinity, exclusivity, and health policy live there.
 
 ## 2.4 Placement constraints
 
-The default scheduler models none of the following.
-
-| Constraint | Reason it matters | Mechanism |
-|---|---|---|
-| Device type or generation | A workload may require a particular architecture or a minimum memory size | Node labels with node affinity, or a scheduler plugin |
-| Topology locality | Collectives between devices on different PCIe roots or in different NVLink islands run at a lower rate | Topology-aware plugin, or node labels describing the interconnect |
-| Co-scheduling | Distributed training needs all ranks running, and partial placement holds devices that produce no progress | Coscheduling, Volcano, or Kueue |
-| Exclusive access | A latency-sensitive workload may need a device to itself | Whole-device request, or MIG partitioning |
-| NUMA alignment | Host memory locality affects transfer performance | Topology manager policies |
+| Constraint | Mechanism |
+|---|---|
+| Device type or generation | Node labels with node affinity, or a scheduler plugin |
+| Topology locality across PCIe roots or NVLink islands | Topology-aware plugin, or labels describing the interconnect |
+| Co-scheduling | Coscheduling, Volcano, or Kueue |
+| Exclusive access | Whole-device request, or MIG partitioning |
+| NUMA alignment | Topology manager policies |
 
 ### Gang scheduling
 
-The default scheduler places pods one at a time. Picture a 64-rank training job
-starting incrementally: half the ranks hold devices while the rest wait. Those
-devices sit unavailable to other work, so the cluster loses throughput to a job
-that is making no progress.
+The default scheduler places pods one at a time. A 64-rank training job then
+starts partially: some ranks hold devices while the rest wait, and those devices
+produce no progress.
 
 ```mermaid
 flowchart LR
@@ -96,14 +83,10 @@ flowchart LR
     C -->|"capacity released"| A
 ```
 
-Wait until every rank can be placed before admitting any of them. You pay for
-this by leaving capacity idle while a large job waits for its last slot, which is
-usually cheaper than the alternative.
+Wait for every rank before admitting any. The cost is idle capacity while a large
+job waits for its last slot.
 
 ## 2.5 Sharing models
-
-Three mechanisms put more than one workload on a single device, and they differ
-mainly in isolation.
 
 ```mermaid
 flowchart LR
@@ -111,35 +94,32 @@ flowchart LR
     MPS --> MIG["MIG<br/>hardware partition<br/>dedicated SMs and memory"]
 ```
 
-| Model | Isolation | Cost | Suitable for |
-|---|---|---|---|
-| Exclusive | Complete | One device per workload | Large training, latency-critical inference |
-| Time slicing | Limited to scheduling | Context switch overhead, tail latency that cannot be bounded | Interactive development, low-utilization batch work |
-| MPS | Partial, with a shared memory space | Requires coordinated launch | Several small models on one device |
-| MIG | Strong, with dedicated SMs and memory | Fixed partition shapes, which may leave capacity unused | Multi-tenancy needing hardware separation |
+| Model | Isolation | Cost |
+|---|---|---|
+| Exclusive | Complete | One device per workload |
+| Time slicing | Scheduling only | Context switch overhead, unbounded tail latency |
+| MPS | Partial, with a shared memory space | Requires coordinated launch |
+| MIG | Dedicated SMs and memory | Fixed partition shapes |
 
 ### MIG
 
-MIG splits a device into independent instances with dedicated compute and memory.
-The device plugin advertises each partition profile as its own extended resource,
-so the scheduler places partitions, and each partition is a schedulable unit in
-its own right.
+MIG splits a device into instances with dedicated compute and memory. The device
+plugin advertises each partition profile as its own extended resource, so the
+scheduler places partitions.
 
-Three consequences follow from the hardware split. Partition shapes are fixed at
-configuration time, so capacity can strand in shapes for which there is no
-demand. A workload that needs the full memory of a device cannot use a partition.
-And metering becomes precise, because a partition is a hardware resource.
+Three consequences. Partition shapes are fixed at configuration time, so capacity
+strands in shapes nobody wants. A workload needing the full device memory cannot
+use a partition. Metering becomes exact, because a partition is a hardware
+resource.
 
 ## 2.6 Fairness and preemption
 
-A job that holds a device for a week removes that device from circulation,
-however fairly you selected it. Fair placement gives you nothing here, so the
-queue has to bound how long a job may hold capacity.
+A job holding a device for a week removes it from circulation, however fairly it
+was selected. The queue has to bound how long a job holds capacity.
 
-### Queues with quota
+### Queues
 
-Each team or priority class gets a queue with a guaranteed share, plus the
-ability to use capacity that is currently idle.
+Each team or priority class gets a guaranteed share plus idle capacity.
 
 ```mermaid
 flowchart TB
@@ -156,24 +136,20 @@ flowchart TB
 
 ### Preemption
 
-Preemption lets higher-priority work reclaim borrowed capacity. A device cannot be
-suspended cheaply, so preemption stops a workload, waits for it to release the
-device, and restarts it from its last checkpoint.
-
-Checkpoint frequency sets the price of that operation. A job that checkpoints
-every ten minutes is cheap to preempt, and one that checkpoints daily is dear.
+Preemption stops a workload, waits for the device release, and restarts from the
+last checkpoint. Checkpoint frequency sets the price. Every ten minutes is cheap.
+Daily is not.
 
 ### Starvation
 
-Bound the borrowing period, and the lower-priority class keeps making progress.
-Aging raises the effective priority of a waiting job as its wait grows, and a cap
-on borrow duration achieves the same result more bluntly.
+Bound the borrow period. Aging raises a waiting job's effective priority as its
+wait grows. A cap on borrow duration does the same thing more bluntly.
 
 ## 2.7 Summary
 
-A device plugin advertises GPU capacity. Node labels and affinity, or a scheduler
-extension, carry the placement constraints. Distributed jobs need all-or-nothing
-admission to avoid the partial-placement state. Pick the sharing model from the
-isolation you require, because time slicing and MIG differ in kind. Express
-fairness as queues with guaranteed shares, implement preemption as a drain and
-restart, and treat the checkpoint interval as an input to the scheduling design.
+A device plugin advertises capacity. Node labels and affinity, or a scheduler
+extension, carry placement constraints. Distributed jobs need all-or-nothing
+admission. Pick the sharing model from the isolation you need, since time slicing
+and MIG differ in kind. Express fairness as queues with guaranteed shares and
+preemption as a drain and restart. Treat the checkpoint interval as a scheduling
+input.
