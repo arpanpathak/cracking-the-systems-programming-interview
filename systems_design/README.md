@@ -1,10 +1,11 @@
 # GPU and Cloud Systems Design
 
-Design reference for GPU-backed cloud services: the GPU execution model, cluster
-scheduling and sharing, the control plane and its client libraries, inference
-serving, model distribution, and operations.
+This guide covers how GPU-backed cloud services are built: the GPU execution
+model, cluster scheduling and sharing, the control plane and its client
+libraries, inference serving, model distribution, and operations.
 
-Diagrams use Mermaid and render on GitHub.
+Each section introduces the concept, then shows how it behaves in a working
+system, then gives the design. Diagrams use Mermaid and render on GitHub.
 
 ## Contents
 
@@ -73,30 +74,36 @@ flowchart TB
 
 ### Allocation granularity
 
-GPU capacity is an extended resource in Kubernetes. Quantities are whole numbers,
-and the request must equal the limit. Allocating less than a full device requires
-either a hardware partition such as MIG, or cooperative sharing such as time
-slicing or MPS. The two differ in the isolation they provide and in how
-accurately usage can be attributed.
+Kubernetes represents GPU capacity as an extended resource. You ask for whole
+units: 1, 2, or 4 GPUs. Kubernetes grants a unit to one pod at a time, so
+extended resources carry no oversubscription, and the request you write equals
+the limit.
+
+Putting more than one workload on a device means choosing between a hardware
+partition such as MIG and a sharing mechanism such as time slicing or MPS. Each
+option comes with its own isolation and its own accuracy of measurement, and
+section 2.5 compares them.
 
 ### Preemption cost
 
-Saving and restoring device state costs milliseconds and device memory.
-Preemption therefore stops a workload and restarts it later. The checkpoint
-interval sets both the cost of preempting a job and the amount of work a hardware
-failure discards.
+Saving and restoring device state costs milliseconds and a slice of device
+memory, so a GPU workload is preempted by stopping it and starting it again
+later. That makes the checkpoint interval the number that decides how much work a
+preemption costs, and how much a hardware failure discards.
 
 ### Data movement
 
-Device memory bandwidth is on the order of TB/s. PCIe host-to-device bandwidth is
-tens of GB/s, and inter-node fabric is lower again. A design that moves data every
-iteration spends its time on the slowest of those links.
+Device memory moves data at terabytes per second. PCIe host-to-device moves it at
+tens of gigabytes per second, and inter-node fabric runs slower again. A design
+that moves data on every iteration spends most of its time on the slowest link in
+that chain.
 
 ### Heterogeneity
 
-Device generation, memory capacity, and interconnect determine what a workload
-can run and how well it scales. A job placed on a device with too little memory
-does not run at all, so placement affects correctness as well as efficiency.
+Device generation, memory capacity, and interconnect decide what a workload can
+run and how well it scales. A job that needs 80 GB of device memory will not
+start on a 40 GB card, which makes placement a correctness decision as well as a
+performance one.
 
 ## Conventions
 
