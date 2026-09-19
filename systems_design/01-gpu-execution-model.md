@@ -1,35 +1,27 @@
 # 1. GPU Execution Model and Data Movement
 
-## 1.1 Overview
+## 1.1 Throughput against latency
 
-A GPU is a throughput machine. It keeps thousands of threads resident and
-switches between them to hide memory latency.
+A GPU is a throughput machine: thousands of resident threads, memory latency
+hidden by switching between warps. A CPU core is a latency machine: out-of-order
+execution, large caches, branch prediction.
 
-A CPU core is a latency machine. It uses out-of-order execution, large caches,
-and branch prediction so that a few instruction streams run quickly.
+The area budget explains the behavior. A GPU spends most of its die on arithmetic
+units and covers a 400-cycle memory access with other warps. A CPU spends much of
+its die on cache and predictors and makes that access cheap.
 
-The difference shows up in where each one spends its silicon. A GPU gives most of
-its die area to arithmetic units, and covers a memory access of several hundred
-cycles by having other warps ready to issue. A CPU gives a large fraction of its
-die to cache and predictors, and covers the same access by making it cheap in the
-first place.
-
-This is why two kernels with identical arithmetic can differ by more than an
-order of magnitude in achieved throughput. Control flow uniformity and memory
-access pattern decide which result you get.
+Two kernels with identical arithmetic can therefore differ by 10x in throughput,
+depending on control flow uniformity and memory access pattern.
 
 ## 1.2 SIMT execution
 
-Threads are grouped into warps of 32. The scheduler issues one instruction per
-warp, and all 32 threads execute that instruction together. Code that is correct
-for one thread is correct for all of them.
+Threads are grouped into warps of 32. One instruction issues per warp, and all 32
+threads execute it. Code correct for one thread is correct for all of them.
 
-### Warp divergence
+### Divergence
 
-Divergence happens when threads in a warp take different branches. The hardware
-issues one instruction stream per warp, so both paths run, one after the other,
-and the lanes on the inactive path sit masked off. The warp takes as long as the
-sum of the two paths.
+Different branches within a warp run serially, with inactive lanes masked off.
+Warp time is the sum of both paths.
 
 ```mermaid
 flowchart TB
@@ -38,27 +30,19 @@ flowchart TB
     Q -->|"no"| D["Path A runs while lanes on B idle<br/>then Path B runs while lanes on A idle<br/>elapsed time is the sum of both"]
 ```
 
-The split ratio decides how many lanes sit idle while each path runs, and that is
-what determines how much work you waste. Split a warp 16 and 16, and 16 lanes
-idle during each path. Split it 1 and 31, and 31 lanes idle while the short path
-runs.
+The split ratio sets how many lanes idle. Split 16 and 16, and 16 lanes idle on
+each path. Split 1 and 31, and 31 lanes idle while the short path runs.
 
-### Latency hiding
+### Occupancy
 
-Each streaming multiprocessor keeps several warps resident and switches between
-them when one stalls on memory. Occupancy counts the independent warps available
-to cover that latency.
+Each streaming multiprocessor switches between resident warps to cover memory
+latency. Occupancy counts those warps.
 
-Registers per thread, shared memory per block, and block size all cap occupancy.
-Take a kernel that uses 64 registers per thread: it holds roughly half as many
-resident warps as one using 32, so it covers latency less well. A kernel like that
-often runs well below peak with nothing else visibly wrong, which is why
-occupancy is worth checking before you go looking for a cleverer algorithm.
+Registers per thread, shared memory per block, and block size cap occupancy. A
+kernel using 64 registers per thread holds half the resident warps of one using
+32, which reduces latency hiding. Check occupancy before optimizing the algorithm.
 
 ## 1.3 Memory hierarchy
-
-Device memory offers high bandwidth and high latency. The hierarchy keeps reused
-data closer to the compute units, so you pay that latency less often.
 
 ```mermaid
 flowchart TB
@@ -77,14 +61,13 @@ flowchart TB
 | L2 | Per device | About 200 cycles | Hardware |
 | Device memory | Per device | 400 to 600 cycles | Program |
 
-Shared memory sits about an order of magnitude closer than device memory, and
-your program controls what goes in it. Tiling a matrix multiply so that each
-value loaded from device memory is reused from shared memory 128 times cuts
-device memory traffic by roughly that factor.
+Shared memory sits an order of magnitude closer than device memory and is
+program-controlled. Tiling a matrix multiply so each loaded value is reused 128
+times from shared memory cuts device memory traffic by roughly 128x.
 
 ## 1.4 Arithmetic intensity
 
-Arithmetic intensity is arithmetic operations per byte read from memory.
+Operations per byte read from memory.
 
 ```mermaid
 flowchart LR
@@ -93,26 +76,19 @@ flowchart LR
     LOW -->|"increasing reuse raises intensity"| HIGH
 ```
 
-Below the boundary, throughput tracks memory bandwidth, and adding arithmetic
-capacity buys you nothing. Above it, throughput tracks arithmetic capacity, and
-adding bandwidth buys you nothing. The boundary sits at the ratio of peak
-arithmetic throughput to peak memory bandwidth for the device.
+The boundary is peak compute divided by peak bandwidth. Below it, throughput
+tracks bandwidth and more compute buys nothing. Above it, the reverse.
 
-An elementwise operation that reads 4 bytes and performs one operation has an
-intensity of 0.25, which places it far below the boundary on any current device.
-A matrix multiply holding a 128 by 128 tile in shared memory reuses each loaded
-value 128 times, which places it far above. Work out which side of the boundary
-your kernel is on before you optimize it, because the two sides reward entirely
-different work.
+An elementwise operation reading 4 bytes per op has intensity 0.25, far below the
+boundary. A 128 by 128 tiled matrix multiply reuses each load 128 times, far
+above.
 
-## 1.5 Host-device data movement
+## 1.5 Host-device transfers
 
-Device memory and host memory are separate, and data moves between them
-explicitly. That path runs roughly an order of magnitude slower than device
-memory, so a kernel that looks compute-bound on its own can turn out to be
-transfer-bound once you count its input and output.
+Device memory and host memory are separate, and transfers are explicit. That path
+runs roughly 10x slower than device memory.
 
-### Transfer paths
+### Paths
 
 ```mermaid
 flowchart LR
@@ -131,24 +107,17 @@ flowchart LR
 | NVLink, device to device | 300 to 450 GB/s per direction | Tensor and pipeline parallelism |
 | InfiniBand NDR | 50 GB/s per port | Multi-node collectives |
 
-A workload that performs well on one device can become interconnect-limited
-across several, particularly when the collective path settles onto something
-slower than the design assumed.
+### Pinning
 
-### Pinned host memory
-
-Pin the host buffers you transfer from, which means page-locking them. The device
-reaches pinned memory directly through DMA. Pageable memory gets staged through an
-intermediate buffer by the driver, which costs you a copy and adds latency.
-
-Pinning has a cost of its own: pinned pages stay committed for as long as you hold
-them. Allocate a pool and reuse it across transfers.
+Pin, meaning page-lock, the host buffers you transfer from. The device then DMAs
+them directly. Pageable memory gets staged through an intermediate buffer by the
+driver, costing a copy and adding latency. Pool pinned buffers and reuse them,
+since pinned pages stay committed.
 
 ### Streams and overlap
 
-A stream is an ordered sequence of operations on a device. Operations in
-different streams can run concurrently, so a transfer into one buffer can proceed
-while the device computes on another.
+A stream is an ordered queue of device operations. Different streams run
+concurrently, so a transfer can overlap compute.
 
 ```mermaid
 flowchart LR
@@ -168,31 +137,25 @@ flowchart LR
     end
 ```
 
-Double buffering is the usual way to build this. The device computes on one
-buffer while the next one fills, and the two swap roles on the following
-iteration.
+Double buffering computes on one buffer while the next fills, then swaps them.
 
-### Synchronization
+### Blocking synchronization
 
-Any operation that makes the host wait on the device breaks the pipeline and
-stops the next transfer from being issued early. The usual sources are reading a
-scalar result back to the host inside a loop, an explicit synchronization inside
-the step, unpinned host memory, and kernels short enough that launch overhead
-rivals their runtime.
+Any host wait on the device stalls the pipeline and delays the next transfer.
+Sources: reading a scalar back to the host inside a loop, an explicit sync in the
+step, unpinned memory, and kernels short enough that launch overhead rivals
+runtime.
 
-## 1.6 Diagnostic approach
+## 1.6 Diagnosis
 
-A low utilization figure tells you the device executed no work for part of the
-interval. It does not tell you the device is the bottleneck, because the cause
-may sit upstream of it.
+Low utilization means no work executed for part of the interval. The cause may sit
+upstream of the device.
 
-1. Split the interval into compute, transfer, and idle time. A timeline trace
-   gives you this directly, and measuring beats estimating.
-2. When idle time dominates, look at synchronization points and kernel durations.
-   Both show up in the trace.
-3. When transfer time dominates, check buffer pinning and stream configuration.
-4. When neither dominates, check the collective path. Multi-node scaling problems
-   often present as compute problems and turn out to be the interconnect.
+1. Split the interval into compute, transfer, and idle time, using a timeline
+   trace.
+2. Idle dominant: check synchronization points and kernel durations.
+3. Transfer dominant: check pinning and stream configuration.
+4. Neither dominant: check the collective path.
 
 ## 1.7 Reference figures
 
@@ -206,6 +169,3 @@ may sit upstream of it.
 | PCIe Gen4 x16 | 25 GB/s |
 | PCIe Gen5 x16 | 50 GB/s |
 | Warp size | 32 threads |
-
-These values help you reason about which term dominates. They are not suitable
-for capacity planning.
