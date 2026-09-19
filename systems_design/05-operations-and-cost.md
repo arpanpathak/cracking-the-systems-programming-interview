@@ -1,13 +1,13 @@
 # 5. Operations: Metering and Diagnosis
 
-This section covers the operational aspects of a GPU service: the measurement and
-attribution of usage, and the diagnosis of performance regressions.
+This section covers how usage is measured and attributed, and how performance
+regressions are diagnosed.
 
 ## 5.1 Metering
 
 ### Allocation and utilization
 
-Two distinct quantities are involved in measuring GPU usage.
+Two quantities are involved in measuring GPU usage.
 
 ```mermaid
 flowchart TB
@@ -17,10 +17,10 @@ flowchart TB
     USED --> GAP
 ```
 
-Billing on allocation alone allows a tenant to reserve a device and leave it
-unused. Billing on utilization alone allows a tenant to hold an exclusive device
-while consuming very little of it. Both quantities are needed, and the difference
-between them is the operational signal that identifies unused reserved capacity.
+Billing on allocation alone lets a tenant reserve a device and leave it unused.
+Billing on utilization alone lets a tenant hold an exclusive device while using
+little of it. Both quantities are needed, and their difference identifies unused
+reserved capacity.
 
 ### Collection
 
@@ -46,29 +46,27 @@ flowchart LR
 
 ### Accuracy
 
-On a device that is shared by time slicing, attribution is approximate. Counters
-are sampled across processes that share the hardware, and per-tenant values will
-not sum exactly to wall-clock utilization. This limitation is best documented
-rather than presented as precise measurement.
+On a device shared by time slicing, attribution is approximate. Counters are
+sampled across processes sharing the hardware, so per-tenant values do not sum
+exactly to wall-clock utilization. Document the limitation rather than presenting
+the numbers as precise.
 
-On MIG, attribution is exact, because the partition is a hardware resource. This
-is an operational advantage of MIG in addition to the isolation it provides.
+On MIG, attribution is exact, because the partition is a hardware resource. MIG
+therefore gives precise accounting as well as isolation.
 
 ### Attribution of distributed work
 
-A training job that spans many ranks should be attributed to the workload
-identity, and optionally divided by rank thereafter. Attributing usage by pod
-would charge the job once for each rank and misrepresent the cost of the logical
-unit of work.
+Attribute a multi-rank training job to the workload identity, and optionally
+split by rank afterwards. Attributing usage by pod charges the job once for each
+rank and misrepresents the cost of the logical unit of work.
 
 ## 5.2 Diagnosis of performance regressions
 
 ### Symptom
 
-A workload that previously completed in four hours now requires seven, and the
-code of the workload has not changed. The system reports no errors. This is the
-characteristic form of a GPU performance regression: what changes is the rate at
-which work completes, rather than whether the workload runs at all.
+A workload that took four hours now takes seven. The code has not changed, and no
+errors are reported. This is the usual form of a GPU performance regression: the
+rate of completed work changes, while the workload still runs.
 
 ### Layer-by-layer examination
 
@@ -81,50 +79,47 @@ flowchart TB
     L4 --> L5["Placement<br/>device generation, topology, sharing"]
 ```
 
-Two questions reduce the search space considerably. The first is whether the
-regression is continuous or intermittent, since intermittent behavior indicates
-contention or thermal effects while continuous behavior indicates configuration
-or placement. The second is whether it affects a single workload or every
-workload on the node, since the former points to the workload and the latter to
-the node.
+Two questions narrow the search. Is the regression continuous or intermittent?
+Intermittent behavior points to contention or thermal effects, and continuous
+behavior to configuration or placement. Does it affect one workload, or every
+workload on the node? One points to the workload, and every one to the node.
 
 ### Causes that occur most frequently
 
 | Cause | Presentation |
 |---|---|
 | Contention from a co-resident workload | Slower only during activity by another tenant |
-| Clock throttling | Reduced clocks caused by power or thermal limits, with utilization appearing normal |
+| Clock throttling | Reduced clocks from power or thermal limits, with utilization appearing normal |
 | Degraded interconnect | Compute performance unchanged, collective performance reduced |
 | Change in placement | Execution on a different device generation or a less favorable topology |
-| Memory pressure | Additional paging or a reduction in effective batch size |
+| Memory pressure | Additional paging, or a reduction in effective batch size |
 | Rising correctable error rate | Performance drift that precedes a hardware failure |
 | Silent configuration change | A library selecting a slower execution path |
 
-The first three account for a substantial proportion of reported regressions, and
-none of them raises an error condition.
+The first three explain a large share of reported regressions, and none of them
+raises an error condition.
 
 ### Method
 
-The workload should be reproduced before it is diagnosed, using the same data and
-the same class of node. A regression requires comparison against a known-good
-measurement, so two data points are needed. The physical layers are examined
-first, because clock state, thermal state, and contention are inexpensive to rule
-out and are frequently the cause. Only one variable should be changed at a time,
-since simultaneous changes make the result difficult to interpret.
+Reproduce the workload before diagnosing it, using the same data and the same
+class of node. A regression needs comparison against a known-good measurement, so
+two data points are required.
+
+Check the physical layers first. Clock state, thermal state, and contention are
+cheap to rule out and are often the cause. Change one variable at a time, because
+simultaneous changes make the result hard to interpret.
 
 ### Detection
 
-Per-workload step time should be recorded as a metric in addition to device
-utilization. Utilization measures whether the device was occupied, and it can
-remain high while the rate of completed work falls. Alerting on changes in the
-ratio of work completed to time elapsed detects this class of regression before
-it is reported by users.
+Record per-workload step time as a metric alongside device utilization.
+Utilization measures whether the device was occupied, and it can stay high while
+the rate of completed work falls. Alerting on the ratio of work completed to time
+elapsed catches this class of regression before users report it.
 
 ## 5.3 Summary
 
-Allocation and utilization are both recorded, and the difference between them
-identifies unused reserved capacity. The accuracy limits of attribution are
-documented wherever devices are shared. Regressions are diagnosed by layer,
-beginning with the physical layers and proceeding against a known-good
-measurement. Progress rate per workload is instrumented in addition to device
-utilization.
+Allocation and utilization are both recorded, and their difference identifies
+unused reserved capacity. The accuracy limits of attribution are documented
+wherever devices are shared. Regressions are diagnosed by layer, beginning with
+the physical layers and proceeding against a known-good measurement. Progress
+rate per workload is instrumented in addition to device utilization.
