@@ -1,11 +1,10 @@
 # GPU and Cloud Systems Design
 
-A reference for designing GPU-backed cloud services. It covers the GPU execution
-model, cluster scheduling and sharing, the control plane and its client libraries,
-inference serving, model distribution, and operations.
+Design reference for GPU-backed cloud services: the GPU execution model, cluster
+scheduling and sharing, the control plane and its client libraries, inference
+serving, model distribution, and operations.
 
-Each section gives the background, a design, and the tradeoffs. Diagrams use
-Mermaid and render on GitHub.
+Diagrams use Mermaid and render on GitHub.
 
 ## Contents
 
@@ -72,38 +71,36 @@ flowchart TB
 
 ## Properties of GPU resources
 
-Four properties of GPU hardware drive most design decisions in this domain.
-
 ### Allocation granularity
 
 GPU capacity is an extended resource in Kubernetes. Quantities are whole numbers,
 and the request must equal the limit. Allocating less than a full device requires
 either a hardware partition such as MIG, or cooperative sharing such as time
-slicing or MPS. These differ in isolation and in how accurately usage can be
-measured.
+slicing or MPS. The two differ in the isolation they provide and in how
+accurately usage can be attributed.
 
 ### Preemption cost
 
-Device state cannot be saved and restored cheaply. Preemption stops a workload and
-restarts it later; it does not suspend it. Checkpoint frequency is therefore a
-scheduling parameter as well as a reliability one.
+Saving and restoring device state costs milliseconds and device memory.
+Preemption therefore stops a workload and restarts it later. The checkpoint
+interval sets both the cost of preempting a job and the amount of work a hardware
+failure discards.
 
 ### Data movement
 
-Device memory bandwidth is high. Host transfer bandwidth over PCIe is roughly an
-order of magnitude lower, and inter-node fabric is lower again. Any design that
-moves data frequently has a data movement problem, however the compute is
-written.
+Device memory bandwidth is on the order of TB/s. PCIe host-to-device bandwidth is
+tens of GB/s, and inter-node fabric is lower again. A design that moves data every
+iteration spends its time on the slowest of those links.
 
 ### Heterogeneity
 
 Device generation, memory capacity, and interconnect determine what a workload
-can run and how well it scales. Placement affects both correctness and
-efficiency.
+can run and how well it scales. A job placed on a device with too little memory
+does not run at all, so placement affects correctness as well as efficiency.
 
 ## Conventions
 
-- Latency and bandwidth figures are order-of-magnitude values for reasoning about
+- Latency and bandwidth figures are approximate and intended for reasoning about
   which term dominates. They are not suitable for capacity planning.
 - "Node" means a machine hosting GPUs. "Device" means one GPU.
 - Kubernetes behavior refers to upstream semantics for the current stable

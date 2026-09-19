@@ -1,13 +1,8 @@
 # 5. Operations: Metering and Diagnosis
 
-This section covers how usage is measured and attributed, and how performance
-regressions are diagnosed.
-
 ## 5.1 Metering
 
 ### Allocation and utilization
-
-Two quantities are involved in measuring GPU usage.
 
 ```mermaid
 flowchart TB
@@ -65,8 +60,8 @@ rank and misrepresents the cost of the logical unit of work.
 ### Symptom
 
 A workload that took four hours now takes seven. The code has not changed, and no
-errors are reported. This is the usual form of a GPU performance regression: the
-rate of completed work changes, while the workload still runs.
+errors are reported. The rate of completed work has fallen while the workload
+still runs correctly.
 
 ### Layer-by-layer examination
 
@@ -79,10 +74,12 @@ flowchart TB
     L4 --> L5["Placement<br/>device generation, topology, sharing"]
 ```
 
-Two questions narrow the search. Is the regression continuous or intermittent?
-Intermittent behavior points to contention or thermal effects, and continuous
-behavior to configuration or placement. Does it affect one workload, or every
-workload on the node? One points to the workload, and every one to the node.
+Ask whether the regression is continuous or intermittent. Intermittent behavior
+points to contention or thermal effects, and continuous behavior to configuration
+or placement.
+
+Then ask whether it affects one workload or every workload on the node. One
+points to the workload, and every one to the node.
 
 ### Causes that occur most frequently
 
