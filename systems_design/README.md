@@ -1,39 +1,32 @@
-# GPU and Cloud Systems Design Questions
+# GPU and Cloud Systems Design
 
-Short, interview-shaped design questions for GPU cloud roles. Each one carries a
-diagram, the reasoning a strong answer follows, and the follow-ups that decide
-whether the answer was deep or just fast.
+A design reference for building GPU-backed cloud services. It covers the GPU
+execution model that motivates the architecture, how GPUs are scheduled and
+shared, how workloads are submitted and observed, how models reach the machines
+that serve them, and how the system behaves when hardware fails.
 
-No code in this folder. This is the whiteboard half of the loop.
+The material is organized as a set of design topics. Each topic states the
+scenario, gives the background needed to reason about it, presents a design, and
+records the tradeoffs and failure modes. Diagrams are Mermaid and render
+directly on GitHub.
 
-## How to use this
+## Contents
 
-1. Read a question. Close the file. Say the answer out loud for five minutes.
-2. Reopen it and compare against the diagram and the numbered reasoning.
-3. If the follow-ups feel uncomfortable, that is the part to study.
+| Section | Topic | File |
+|---|---|---|
+| 1 | GPU execution model and data movement | [01](01-gpu-execution-model.md) |
+| 2 | Cluster scheduling and GPU sharing | [02](02-gpu-cluster-scheduling.md) |
+| 3 | Control plane, API design, and failure handling | [03](03-gpu-cloud-control-plane.md) |
+| 4 | Inference serving and model distribution | [04](04-serving-and-artifacts.md) |
+| 5 | Operations: metering, audit, and diagnosis | [05](05-operations-and-cost.md) |
 
-## The questions
-
-| # | Question | Theme | File |
-|---|---|---|---|
-| 1 | Why is a GPU fast at matmul and slow at a parser? | Execution model | [01](01-gpu-execution-model.md) |
-| 2 | The job is "GPU bound" at 30% utilization. Where is the time? | Data movement | [01](01-gpu-execution-model.md) |
-| 3 | Design a scheduler for 1000 GPU nodes | Scheduling | [02](02-gpu-cluster-scheduling.md) |
-| 4 | Two teams share a GPU pool and one starves the other | Fairness | [02](02-gpu-cluster-scheduling.md) |
-| 5 | A GPU falls off the bus mid-job | Failure handling | [03](03-gpu-cloud-control-plane.md) |
-| 6 | Design the API to launch a GPU workload | Control plane | [03](03-gpu-cloud-control-plane.md) |
-| 7 | Design a multi-tenant inference path | Serving | [04](04-serving-and-artifacts.md) |
-| 8 | Distribute a 100 GB model to 500 nodes | Artifact delivery | [04](04-serving-and-artifacts.md) |
-| 9 | Who used which GPU, and what did it cost? | Metering | [05](05-operations-and-cost.md) |
-| 10 | "My job got slower" | Debugging | [05](05-operations-and-cost.md) |
-
-## The stack you are designing
+## System overview
 
 ```mermaid
 flowchart TB
     subgraph Client["Client"]
         CLI["CLI / SDK"]
-        IAC["IaC"]
+        IAC["Infrastructure as code"]
     end
 
     subgraph Control["Control plane"]
@@ -71,22 +64,44 @@ flowchart TB
     TRN --> GPUS
 ```
 
-## Four facts that shape every answer
+### Layer responsibilities
 
-Most GPU cloud design questions reduce to these. State them early and the rest
-of the answer organizes itself.
+| Layer | Responsibility | Key concerns |
+|---|---|---|
+| Client | Express intent, hide transport details | Retries, pagination, credential handling, config precedence |
+| Control plane | Validate, persist, place, and track work | Idempotency, asynchronous operations, quota, audit |
+| Data plane | Run the workload and serve traffic | Batching, autoscaling, isolation, cold start |
+| Node | Expose and assign physical devices | Health reporting, device allocation, topology |
 
-1. **A GPU is an integer, not a fraction.** Kubernetes extended resources are
-   whole numbers with request equal to limit. Splitting one GPU means either
-   MIG (a real hardware partition) or time-slicing (a cooperative lie).
-2. **A GPU cannot be preempted cheaply.** Context switches cost milliseconds and
-   video memory. Preemption is a drain, not a pause.
-3. **A GPU is useless without data beside it.** Every design question eventually
-   becomes a data movement question: PCIe, NVLink, InfiniBand, or a cache.
-4. **GPUs are not interchangeable.** Type, memory size, and interconnect decide
-   whether a job runs well. Placement is part of correctness, not tuning.
+## Constraints that shape most decisions
 
-## Reading order
+Four properties of GPUs drive the architecture more than anything else. Most
+design disagreements resolve once these are stated explicitly.
 
-If you only have an hour: **1, 3, 6, 10**. Those are the four that get asked the
-most and cover the widest surface.
+**1. A GPU is a discrete, non-divisible resource in the resource model.**
+Kubernetes extended resources are integers, and the request must equal the limit.
+Sub-device allocation requires either a hardware partition (MIG) or a cooperative
+sharing mechanism (time slicing or MPS). These have very different isolation
+properties and must be chosen deliberately.
+
+**2. GPUs are expensive to preempt.** Saving and restoring device state costs
+milliseconds and device memory. Preemption is implemented as a drain and restart
+rather than a pause and resume, which affects how scheduling queues and
+checkpointing are designed.
+
+**3. Data movement dominates.** GPU memory bandwidth is very high, but host
+transfer bandwidth over PCIe is roughly an order of magnitude lower, and
+interconnect bandwidth between nodes is lower again. Any design that moves data
+frequently has a data movement problem regardless of how the compute is written.
+
+**4. GPUs are not interchangeable.** Device generation, memory capacity, and
+interconnect determine what a workload can run and how well it scales. Placement
+is a correctness concern, not a tuning detail.
+
+## Conventions used in this document
+
+- Latency and bandwidth figures are order-of-magnitude values for reasoning.
+  Exact numbers vary by generation and interconnect.
+- "Node" means a machine that hosts GPUs. "Device" means one GPU.
+- Where Kubernetes behavior is described, it refers to upstream semantics for
+  the current stable release.
