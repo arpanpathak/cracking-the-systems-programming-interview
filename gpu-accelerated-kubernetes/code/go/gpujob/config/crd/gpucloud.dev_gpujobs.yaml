@@ -1,0 +1,98 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: gpujobs.gpucloud.dev
+spec:
+  group: gpucloud.dev
+  names:
+    kind: GpuJob
+    listKind: GpuJobList
+    plural: gpujobs
+    shortNames:
+    - gj
+    singular: gpujob
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.gpus
+      name: GPUs
+      type: integer
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: GpuJob runs one container with a number of GPUs.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: What the user asks for.
+            properties:
+              command:
+                description: Command to run in the container. When empty, the image's
+                  own command runs.
+                items:
+                  type: string
+                type: array
+              gpus:
+                description: Number of GPUs the container requests.
+                format: int32
+                minimum: 0
+                type: integer
+              image:
+                description: Container image to run.
+                type: string
+            required:
+            - gpus
+            - image
+            type: object
+          status:
+            description: What the controller has observed.
+            properties:
+              message:
+                description: The scheduler's reason, when the pod cannot be placed
+                  on a node.
+                type: string
+              observedGeneration:
+                description: The metadata.generation of the spec that this status
+                  describes.
+                format: int64
+                type: integer
+              phase:
+                description: Progress of the job's pod.
+                enum:
+                - Pending
+                - Running
+                - Succeeded
+                - Failed
+                type: string
+            required:
+            - phase
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

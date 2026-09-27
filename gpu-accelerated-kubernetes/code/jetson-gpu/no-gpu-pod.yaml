@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-gpu
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: gpu-check:1
+      imagePullPolicy: Never

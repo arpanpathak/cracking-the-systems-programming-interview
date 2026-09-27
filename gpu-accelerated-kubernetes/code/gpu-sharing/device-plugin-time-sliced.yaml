@@ -1,0 +1,54 @@
+# The device plugin from jetson-gpu/device-plugin.yaml, with its configuration
+# file taken from the ConfigMap in time-slicing-config.yaml. Apply
+# jetson-gpu/device-plugin.yaml again to switch time-slicing off.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-device-plugin
+  template:
+    metadata:
+      labels:
+        app: nvidia-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: plugin
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.20.1
+          env:
+            - name: DEVICE_DISCOVERY_STRATEGY
+              value: tegra
+            - name: NVIDIA_DRIVER_ROOT      # driver root as the node sees it
+              value: /
+            - name: DRIVER_ROOT_CTR_PATH    # the same root inside this container
+              value: /driver-root
+            - name: FAIL_ON_INIT_ERROR
+              value: "true"
+            - name: CONFIG_FILE
+              value: /etc/nvidia-device-plugin/config.yaml
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: driver-root
+              mountPath: /driver-root
+              readOnly: true
+            - name: config
+              mountPath: /etc/nvidia-device-plugin
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: driver-root
+          hostPath:
+            path: /
+        - name: config
+          configMap:
+            name: nvidia-device-plugin-config

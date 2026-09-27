@@ -1,0 +1,15 @@
+# Device plugin configuration that advertises each GPU as four
+# nvidia.com/gpu units. Pods that receive units of the same GPU take turns on it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-device-plugin-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    version: v1
+    sharing:
+      timeSlicing:
+        resources:
+          - name: nvidia.com/gpu
+            replicas: 4

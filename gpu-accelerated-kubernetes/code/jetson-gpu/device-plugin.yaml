@@ -1,0 +1,48 @@
+# NVIDIA device plugin configured for a Jetson. The integrated GPU is found
+# from the Tegra CSV file lists under the driver root. For each pod that
+# requests nvidia.com/gpu, the plugin sets NVIDIA_VISIBLE_DEVICES, and the
+# node's nvidia-container-runtime mounts the devices and libraries.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-device-plugin
+  template:
+    metadata:
+      labels:
+        app: nvidia-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: plugin
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.20.1
+          env:
+            - name: DEVICE_DISCOVERY_STRATEGY
+              value: tegra
+            - name: NVIDIA_DRIVER_ROOT      # driver root as the node sees it
+              value: /
+            - name: DRIVER_ROOT_CTR_PATH    # the same root inside this container
+              value: /driver-root
+            - name: FAIL_ON_INIT_ERROR
+              value: "true"
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: driver-root
+              mountPath: /driver-root
+              readOnly: true
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: driver-root
+          hostPath:
+            path: /

@@ -1,0 +1,14 @@
+   0ms  reflector: list at version 2: [job-a{spec.gpus: 1, status.gpus: 0, v1} job-b{spec.gpus: 8, status.gpus: 0, v2}]
+  20ms  reconcile job-a: status.gpus = 1
+  40ms  reconcile job-b: status.gpus = 8
+ 100ms  --- job-a is edited five times in a burst
+ 120ms  reconcile job-a: write at version 5: 409 Conflict: object has been modified
+ 141ms  reconcile job-a: status.gpus = 6
+ 255ms  --- the watch connection drops
+ 256ms  reflector: watch closed, resuming from version 10
+ 306ms  --- partition: job-b is deleted and the history compacted meanwhile
+ 306ms  reflector: watch closed, resuming from version 10
+ 336ms  reflector: watch from version 10: 410 Gone: resource version too old
+ 337ms  reflector: list at version 11: [job-a{spec.gpus: 6, status.gpus: 6, v10}]
+ 337ms  reconcile job-b: deleted, releasing its GPUs
+ 486ms  final state at version 11: [job-a{spec.gpus: 6, status.gpus: 6, v10}]
