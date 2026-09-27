@@ -228,6 +228,8 @@ pieces by hand.
 Our script, `enable-gpu-in-kind.sh`, copies the files the node lacks and then configures
 containerd:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/enable-gpu-in-kind.sh">code/jetson-gpu/enable-gpu-in-kind.sh</a></p>
+
 ```bash
 {{#include ../code/jetson-gpu/enable-gpu-in-kind.sh}}
 ```
@@ -301,6 +303,8 @@ gpu-lab-control-plane   Ready    control-plane   30s   v1.37.0
 The device plugin runs as a *DaemonSet*, a Kubernetes workload that runs one pod on every
 node, which is exactly what a per-machine agent needs:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/device-plugin.yaml">code/jetson-gpu/device-plugin.yaml</a></p>
+
 ```yaml
 {{#include ../code/jetson-gpu/device-plugin.yaml}}
 ```
@@ -353,6 +357,8 @@ adds two vectors of a million elements on the GPU and prints the device it ran o
 GPU is visible, or the result is wrong, it exits with a non-zero status, so Kubernetes
 marks the pod as failed.
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu_check.cu">code/jetson-gpu/gpu_check.cu</a></p>
+
 ```cpp
 {{#include ../code/jetson-gpu/gpu_check.cu}}
 ```
@@ -373,6 +379,8 @@ kernel: no error, out[0] = 3.0, out[n-1] = 3.0
 The image only has to hold the program and the C++ standard library that Ubuntu
 provides:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/Dockerfile">code/jetson-gpu/Dockerfile</a></p>
+
 ```dockerfile
 {{#include ../code/jetson-gpu/Dockerfile}}
 ```
@@ -388,9 +396,13 @@ $ kind load docker-image gpu-check:1 --name gpu-lab
 We run the image in two pods. The first asks for a GPU and the second does not, so the
 second one tells us whether containers that did not ask for a GPU really stay without one.
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-check-pod.yaml">code/jetson-gpu/gpu-check-pod.yaml</a></p>
+
 ```yaml
 {{#include ../code/jetson-gpu/gpu-check-pod.yaml}}
 ```
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/no-gpu-pod.yaml">code/jetson-gpu/no-gpu-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/jetson-gpu/no-gpu-pod.yaml}}
@@ -420,6 +432,8 @@ for it and so never set `NVIDIA_VISIBLE_DEVICES`.
 We can also look inside a GPU container while it runs, to see every piece of the path at
 work. This pod asks for a GPU and then just sleeps for five minutes, which gives us time to
 look around inside it:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-env-pod.yaml">code/jetson-gpu/gpu-env-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/jetson-gpu/gpu-env-pod.yaml}}

@@ -217,3 +217,16 @@ blockquote {
     font-weight: 600;
     font-size: 1.6rem;
 }
+
+/* Link to a listing's source file on GitHub, shown above the listing. */
+p.listing {
+    margin-block: 0.2em 0.25em;
+    font-family: var(--code-face);
+    font-size: 1.3rem;
+    text-align: right;
+}
+
+p.listing a::before {
+    content: "source: ";
+    color: var(--muted);
+}

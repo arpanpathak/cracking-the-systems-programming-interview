@@ -128,11 +128,15 @@ discussed.
 
 In Go:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+
 ```go
 {{#include ../code/go/informer/server.go}}
 ```
 
 In Rust:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs}}
@@ -169,11 +173,15 @@ once. We call this copy the *cache*.
 
 In Go:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
+
 ```go
 {{#include ../code/go/informer/cache.go}}
 ```
 
 In Rust:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/cache.rs}}
@@ -205,11 +213,15 @@ call this loop the *reflector*.
 
 In Go:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
+
 ```go
 {{#include ../code/go/informer/reflector.go}}
 ```
 
 In Rust:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/reflector.rs}}
@@ -264,11 +276,15 @@ Our model runs a single worker.
 
 In Go:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
+
 ```go
 {{#include ../code/go/informer/queue.go}}
 ```
 
 In Rust:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/queue.rs}}
@@ -315,11 +331,15 @@ bringing what actually exists into agreement with what the user asked for.
 
 In Go:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
+
 ```go
 {{#include ../code/go/informer/controller.go}}
 ```
 
 In Rust:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/controller.rs}}
@@ -373,11 +393,15 @@ with a small `log!` macro, and Go with a `logf` function.
 
 In Go:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">code/go/informer/main.go</a></p>
+
 ```go
 {{#include ../code/go/informer/main.go}}
 ```
 
 In Rust:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">code/rust/informer/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/main.rs}}

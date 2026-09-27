@@ -57,10 +57,21 @@ Kubernetes concept when we first need it.
 
 ## Running the code
 
-The listings in each chapter are included from the files under `code/`, so the code
-printed in the book is the code that runs.
+The book and all of its code live in the
+[`gpu-accelerated-kubernetes`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes) directory of the
+[cracking-the-systems-programming-interview](https://github.com/arpanpathak/cracking-the-systems-programming-interview)
+repository on GitHub:
 
-- `code/go` is one Go module. `informer` is the in-memory model from chapter 1, `gpujob`
+```console
+$ git clone https://github.com/arpanpathak/cracking-the-systems-programming-interview.git
+$ cd cracking-the-systems-programming-interview/gpu-accelerated-kubernetes
+```
+
+The listings in each chapter are included from the files under `code/`, so the code
+printed in the book is the code that runs, and the `source:` link above each listing opens
+that file on GitHub.
+
+- [`code/go`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/go) is one Go module. `informer` is the in-memory model from chapter 1, `gpujob`
   is the controller from section 1.1, built on controller-runtime, and `gpuusage` is the
   GPU accounting tool from chapter 2:
 
@@ -70,7 +81,7 @@ printed in the book is the code that runs.
   $ go run ./gpujob/cmd/controller
   ```
 
-- `code/rust` is one Cargo workspace with the same three programs as packages. `gpujob`
+- [`code/rust`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/rust) is one Cargo workspace with the same three programs as packages. `gpujob`
   and `gpuusage` are built on kube-rs:
 
   ```console
@@ -79,9 +90,9 @@ printed in the book is the code that runs.
   $ cargo run -p gpujob
   ```
 
-- `code/manifests` holds the example objects that both controllers act on.
-- `code/gpu-sharing` holds the CUDA programs and manifests for chapter 2.
-- `code/jetson-gpu` holds the script, manifests, and test program for the kind cluster in
+- [`code/manifests`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/manifests) holds the example objects that both controllers act on.
+- [`code/gpu-sharing`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing) holds the CUDA programs and manifests for chapter 2.
+- [`code/jetson-gpu`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu) holds the script, manifests, and test program for the kind cluster in
   Appendix A.
 
 The Go module declares Go 1.26, and the Rust programs need Rust 1.89 or later, the

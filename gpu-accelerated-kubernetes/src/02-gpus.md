@@ -71,12 +71,16 @@ with it.
 The CUDA runtime reports most of these properties through `cudaGetDeviceProperties`.
 This program prints them, along with the current free and total device memory:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_info.cu">code/gpu-sharing/gpu_info.cu</a></p>
+
 ```cpp
 {{#include ../code/gpu-sharing/gpu_info.cu}}
 ```
 
 The image for this chapter holds `gpu_info` and a second program, `gpu_load`, which we
 use later:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/Dockerfile">code/gpu-sharing/Dockerfile</a></p>
 
 ```dockerfile
 {{#include ../code/gpu-sharing/Dockerfile}}
@@ -91,6 +95,8 @@ $ kind load docker-image gpu-sharing:1 --name gpu-lab
 ```
 
 We run it in a pod that asks for one GPU:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-info-pod.yaml">code/gpu-sharing/gpu-info-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/gpu-info-pod.yaml}}
@@ -138,11 +144,15 @@ cannot ask for half a GPU, and the node never hands out more units than it adver
 every pod that is bound to a node and has not finished, and compares the sum with the
 node's allocatable units. The Go version uses client-go's typed clientset:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
+
 ```go
 {{#include ../code/go/gpuusage/main.go}}
 ```
 
 The Rust version uses kube-rs:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuusage/src/main.rs}}
@@ -186,11 +196,15 @@ We can measure the effect. `gpu_load` launches a kernel ten times, each launch k
 1,024 blocks of 256 threads busy with 200,000 multiply-adds per thread, and prints how
 long the work took:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_load.cu">code/gpu-sharing/gpu_load.cu</a></p>
+
 ```cpp
 {{#include ../code/gpu-sharing/gpu_load.cu}}
 ```
 
 A Job runs four copies of it at once, each asking for one `nvidia.com/gpu`:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-load-job.yaml">code/gpu-sharing/gpu-load-job.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/gpu-load-job.yaml}}
@@ -227,12 +241,16 @@ milliseconds of GPU time:
 Time-slicing is switched on through the device plugin's configuration file. This
 ConfigMap advertises each GPU as four replicas:
 
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/time-slicing-config.yaml">code/gpu-sharing/time-slicing-config.yaml</a></p>
+
 ```yaml
 {{#include ../code/gpu-sharing/time-slicing-config.yaml}}
 ```
 
 The plugin reads the file named by its `CONFIG_FILE` setting. This manifest is the
 plugin from Appendix A with the ConfigMap mounted and `CONFIG_FILE` set:
+
+<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/device-plugin-time-sliced.yaml">code/gpu-sharing/device-plugin-time-sliced.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/device-plugin-time-sliced.yaml}}
