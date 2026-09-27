@@ -1,0 +1,830 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Appendix A. A local GPU cluster with kind - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-d77a6425.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-3c641b8f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-d2103709.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="appendix-a-a-local-gpu-cluster-with-kind"><a class="header" href="#appendix-a-a-local-gpu-cluster-with-kind">Appendix A. A local GPU cluster with kind</a></h1>
+<p>Our controller in section 1.1 runs pods that ask for GPUs. In this appendix, we will set up
+a kind cluster on a Jetson so that those pods really run on the board’s GPU. We will first
+follow a GPU request all the way from a pod to the hardware, so that we know every piece
+involved and why it is there. Then we will look at a fresh kind node, see which of those
+pieces it is missing, and add them one at a time, checking our work after each step.
+Finally we will run a CUDA program in a pod and watch it use the GPU. All the files are in
+<code>code/jetson-gpu</code>.</p>
+<p>We tested every step on this system:</p>
+<pre><code class="language-console">$ tr -d '\0' &lt; /proc/device-tree/model; echo
+NVIDIA Jetson Orin NX Engineering Reference Developer Kit Super
+$ head -1 /etc/nv_tegra_release
+# R36 (release), REVISION: 4.3, GCID: 38968081, BOARD: generic, EABI: aarch64, DATE: Wed Jan  8 01:49:37 UTC 2025
+$ nvidia-ctk --version | head -1
+NVIDIA Container Toolkit CLI version 1.17.3
+$ kind version
+kind v0.33.0 go1.26.7 linux/arm64
+</code></pre>
+<p>Release R36.4.3 of Jetson Linux is part of JetPack 6.2, which ships CUDA 12.6 and the
+NVIDIA Container Toolkit.</p>
+<h2 id="how-a-program-reaches-the-gpu"><a class="header" href="#how-a-program-reaches-the-gpu">How a program reaches the GPU</a></h2>
+<p>The GPU in a Jetson sits on the same chip as the CPU and shares its memory. A program on
+the board reaches it in the same two ways it would reach any device on Linux.</p>
+<p>The first is through <em>device files</em> under <code>/dev</code>. The kernel’s GPU driver creates files
+such as <code>/dev/nvhost-gpu</code> and <code>/dev/nvmap</code>, and a program talks to the driver by opening
+these files and making system calls on them.</p>
+<p>The second is through the <em>user-space driver libraries</em>: code that runs inside the program
+and knows how to talk to those device files. The most important one is <code>libcuda.so</code>, the
+CUDA driver library. When a CUDA program calls a function such as <code>cudaMalloc</code>, the call
+ends up in <code>libcuda.so</code>, which turns it into operations on the device files. JetPack
+installs these libraries under <code>/usr/lib/aarch64-linux-gnu/nvidia</code>.</p>
+<p>A program running directly on the board has both of these. A program in a container has
+neither.</p>
+<h2 id="why-a-container-cannot-see-the-gpu"><a class="header" href="#why-a-container-cannot-see-the-gpu">Why a container cannot see the GPU</a></h2>
+<p>A container’s files come from its image, and its <code>/dev</code> holds only a handful of harmless
+devices such as <code>/dev/null</code>. The GPU’s device files are not there, and the host’s driver
+libraries are not in the image. The image cannot simply bring its own copy of the driver
+libraries, either, because they have to match the kernel driver running on this particular
+board exactly.</p>
+<p>So something has to add the device files and the host’s libraries to each GPU container,
+and it has to do so at the moment the container is created. To see where that can happen,
+we need to know how containers are created.</p>
+<p>When Kubernetes starts a container, the kubelet (the Kubernetes agent on each machine)
+asks the machine’s <em>container engine</em>, containerd in our case, to create it. containerd
+prepares the container’s filesystem and writes a JSON document called the <em>OCI runtime
+specification</em>, which lists everything about the container: its mounts, its device
+files, its environment variables, and the command to run. containerd then hands that
+document to a <em>low-level runtime</em>, usually a program called <code>runc</code>, which creates the
+container exactly as the document says.</p>
+<p>The NVIDIA Container Runtime slots into that hand-off. NVIDIA’s documentation describes it
+as “a shim for OCI-compliant low-level runtimes such as runc”. In practice, containerd is
+configured to call <code>nvidia-container-runtime</code> instead of <code>runc</code>. The NVIDIA runtime reads
+the specification, adds the GPU’s device files and mounts for the driver libraries, and
+then calls <code>runc</code> with the edited document. The container starts with the GPU already in
+place.</p>
+<h2 id="how-the-runtime-knows-what-to-add"><a class="header" href="#how-the-runtime-knows-what-to-add">How the runtime knows what to add</a></h2>
+<p>On a data center machine with PCIe GPUs, the runtime asks the driver which GPUs exist and
+which files each one needs. On a Jetson it reads that information from plain text files
+instead. NVIDIA’s runtime documentation calls this CSV mode: “CSV files at
+<code>/etc/nvidia-container-runtime/host-files-for-container.d</code> define the devices and mounts
+that are to be injected”, and the mode “is primarily targeted at Tegra-based systems
+without NVML available”. NVML is the management library that data center drivers provide;
+Tegra is the family name of NVIDIA’s system-on-chip products, including the Orin in our
+Jetson.</p>
+<p>Each line of a CSV file gives a type and a path. Here are the lines for <code>libcuda</code>:</p>
+<pre><code class="language-console">$ grep -h "libcuda" /etc/nvidia-container-runtime/host-files-for-container.d/drivers.csv
+lib, /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so.1.1
+sym, /usr/lib/aarch64-linux-gnu/libcuda.so
+sym, /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so
+sym, /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so.1
+$ wc -l /etc/nvidia-container-runtime/host-files-for-container.d/*.csv
+   40 /etc/nvidia-container-runtime/host-files-for-container.d/devices.csv
+  285 /etc/nvidia-container-runtime/host-files-for-container.d/drivers.csv
+  325 total
+</code></pre>
+<p>The type tells the runtime what to do with the path:</p>
+<ul>
+<li>A <code>dev</code> line names a device file to add to the container.</li>
+<li>A <code>lib</code> line names a file to <em>bind-mount</em> from the host: the same file appears inside the
+container at the same path, without being copied.</li>
+<li>A <code>sym</code> line names a symbolic link. The runtime recreates the link inside the container,
+pointing at the same target as on the host.</li>
+</ul>
+<p>The <code>libcuda</code> lines show why the last type exists. The real library is
+<code>libcuda.so.1.1</code>, and programs look for it under other names, such as <code>libcuda.so.1</code>, which
+are links to the real file. The runtime mounts the real file once and recreates the links
+around it.</p>
+<p>The lists contain the driver and nothing else. The CUDA toolkit, <code>libcudart</code> and the rest
+of <code>/usr/local/cuda</code>, is not in them, so a container has to bring its own CUDA runtime
+library, either in its image or linked into its program. We will do the latter for our
+test program.</p>
+<p>One question remains: how does the runtime know which containers should get a GPU? It
+looks for an environment variable, <code>NVIDIA_VISIBLE_DEVICES</code>. If a container’s
+specification sets it, the runtime adds the GPU. If not, the runtime passes the
+specification to <code>runc</code> untouched, and the container starts like any other. The next
+piece of the puzzle is who sets that variable.</p>
+<h2 id="how-a-pod-asks-for-a-gpu"><a class="header" href="#how-a-pod-asks-for-a-gpu">How a pod asks for a GPU</a></h2>
+<p>Kubernetes does not know what a GPU is. It knows about CPU and memory, and beyond those it
+supports <em>extended resources</em>: named quantities, such as <code>nvidia.com/gpu</code>, that a machine
+advertises and pods request. The scheduler, the component that chooses a machine for each
+new pod, counts extended resources the same way it counts CPU and memory, without knowing
+what they are. Extended resources come in whole units only, and a machine never hands out
+more units than it advertises.</p>
+<p>A machine advertises an extended resource through a <em>device plugin</em>. A device plugin is a
+small program, usually running as a pod on the machine, that speaks a protocol defined by
+Kubernetes to the kubelet. The conversation goes like this:</p>
+<ol>
+<li>The plugin starts a gRPC server on a Unix socket in <code>/var/lib/kubelet/device-plugins</code>.
+It then connects to the kubelet’s own socket in the same directory, <code>kubelet.sock</code>, and
+registers: “I serve the resource <code>nvidia.com/gpu</code>, and you can reach me at this socket.”</li>
+<li>The kubelet calls the plugin’s <code>ListAndWatch</code> method. The plugin answers with a list of
+device IDs and their health, and keeps the call open to report changes, such as a GPU
+becoming unhealthy. The kubelet adds the number of healthy devices to the machine’s
+advertised capacity, and from that moment the scheduler sees, for example,
+<code>nvidia.com/gpu: 1</code> on our node.</li>
+<li>When the scheduler places a pod that asks for <code>nvidia.com/gpu: 1</code> on the machine, the
+kubelet chooses a free device ID and calls the plugin’s <code>Allocate</code> method with it. The
+plugin answers with what the container needs in order to use that device: environment
+variables, device files, or mounts. The kubelet adds them to the container’s
+configuration before asking containerd to create it.</li>
+<li>The kubelet writes every assignment of a device to a container into a checkpoint file,
+<code>kubelet_internal_checkpoint</code> in the same directory, so that it still knows which
+devices are in use after it restarts.</li>
+</ol>
+<p>NVIDIA’s device plugin can answer <code>Allocate</code> in several ways. Its README lists the options
+for the setting <code>DEVICE_LIST_STRATEGY</code> and describes the default: “<code>envvar</code> (default):
+the <code>NVIDIA_VISIBLE_DEVICES</code> environment variable … is used to select the devices that
+are to be injected by the NVIDIA Container Runtime.” That is the missing link: the plugin
+sets the variable, and the runtime acts on it.</p>
+<p>Putting the whole path together:</p>
+<pre><code class="language-text">pod: limits: nvidia.com/gpu: 1
+ |
+ |  scheduler: places the pod on a machine that advertises a free nvidia.com/gpu
+ v
+kubelet ---- Allocate(device) ----&gt; NVIDIA device plugin
+ |       &lt;--- NVIDIA_VISIBLE_DEVICES=&lt;device&gt; ---
+ v
+containerd: writes the OCI specification, with that variable in the environment
+ |
+ v
+nvidia-container-runtime: sees the variable, reads the CSV lists,
+ |                        adds the device files and library mounts to the
+ |                        specification, and registers hooks that recreate
+ |                        the symlinks and refresh the library cache
+ v
+runc: creates the container
+</code></pre>
+<p>For this path to work, containerd must call the NVIDIA runtime for every container, since
+it cannot know in advance which ones will carry the variable. The plugin’s README says so
+directly: it requires “nvidia-container-runtime configured as the default low-level
+runtime” on each GPU machine. It also mentions an alternative, a RuntimeClass that names
+the <code>nvidia</code> runtime, but then every GPU pod would have to name that RuntimeClass too.</p>
+<h2 id="step-1-create-the-cluster"><a class="header" href="#step-1-create-the-cluster">Step 1: create the cluster</a></h2>
+<p>Now we can build our cluster. A kind cluster with a single node is enough, and the node
+image <code>kindest/node:v1.37.0</code> gives us Kubernetes 1.37:</p>
+<pre><code class="language-console">$ kind create cluster --name gpu-lab --image kindest/node:v1.37.0
+Creating cluster "gpu-lab" ...
+...
+Set kubectl context to "kind-gpu-lab"
+$ kubectl get nodes
+NAME                    STATUS   ROLES           AGE   VERSION
+gpu-lab-control-plane   Ready    control-plane   22s   v1.37.0
+</code></pre>
+<p>kind names the node’s container after the cluster, <code>gpu-lab-control-plane</code>. In the steps
+below, we use that name with <code>docker exec</code> to run commands inside the node.</p>
+<h2 id="what-our-kind-node-is-missing"><a class="header" href="#what-our-kind-node-is-missing">What our kind node is missing</a></h2>
+<p>A kind node is a Docker container that runs systemd, containerd, and the kubelet, much
+like a small virtual machine. kind starts it with Docker’s <code>--privileged</code> option, and a
+privileged container sees all of the host’s device files. So the GPU’s device files are
+already there:</p>
+<pre><code class="language-console">$ docker exec gpu-lab-control-plane ls -l /dev/nvhost-gpu /dev/nvmap
+crw-rw---- 1 root video 487,   1 Sep 26 13:59 /dev/nvhost-gpu
+crw-rw---- 1 root video  10, 124 Sep 26 13:59 /dev/nvmap
+</code></pre>
+<p>Everything else on our path is missing. The node’s files come from the <code>kindest/node</code>
+image, a Debian system that has none of the Jetson’s driver libraries, none of the CSV
+lists, and no NVIDIA Container Toolkit. Its containerd calls plain <code>runc</code>. And no device
+plugin runs on it, so it advertises no <code>nvidia.com/gpu</code>, and every pod that asks for one
+waits forever.</p>
+<p>On a data center cluster, NVIDIA’s GPU Operator would install all of these pieces for us.
+It cannot help here: its platform support page states that “NVIDIA Jetson, or other
+embedded products with integrated GPUs, are not supported.” So we will install the same
+pieces by hand.</p>
+<h2 id="step-2-give-the-node-the-driver-and-the-runtime"><a class="header" href="#step-2-give-the-node-the-driver-and-the-runtime">Step 2: give the node the driver and the runtime</a></h2>
+<p>Our script, <code>enable-gpu-in-kind.sh</code>, copies the files the node lacks and then configures
+containerd:</p>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# Makes the Jetson's integrated GPU usable from pods in a kind cluster.
+#
+# A kind node is a privileged container, so it already sees the GPU's device
+# files. It lacks three things that the host has: the driver libraries listed
+# in the Tegra CSV files, the NVIDIA Container Toolkit binaries, and a
+# containerd configuration that uses nvidia-container-runtime. This script
+# copies the first two into every node and then uses nvidia-ctk, inside the
+# node, to configure the runtime as NVIDIA's documentation describes.
+#
+# Usage: ./enable-gpu-in-kind.sh [cluster-name]
+set -euo pipefail
+
+cluster="${1:-gpu-lab}"
+csv_dir=/etc/nvidia-container-runtime/host-files-for-container.d
+toolkit=(/usr/bin/nvidia-container-runtime /usr/bin/nvidia-container-runtime-hook
+         /usr/bin/nvidia-ctk /usr/bin/nvidia-cdi-hook
+         /etc/nvidia-container-runtime/config.toml)
+
+# Every file named in the CSV lists that exists on this board. Device nodes
+# are left out, because the privileged node already has them.
+mapfile -t host_files &lt; &lt;(cut -d, -f2 "$csv_dir"/*.csv | tr -d ' ' | sort -u |
+    grep -v '^/dev/' | while read -r f; do [[ -e $f ]] &amp;&amp; echo "$f"; done)
+
+for node in $(kind get nodes --name "$cluster"); do
+    echo "$node: copying ${#host_files[@]} driver files and the container toolkit"
+    # The runtime bind-mounts the CSV "lib" entries and recreates the "sym"
+    # entries as links, so symlinks must arrive as symlinks. Paths that are
+    # links on the host are removed first, in case an earlier copy left a
+    # regular file or directory there.
+    for f in "${host_files[@]}"; do [[ -L $f ]] &amp;&amp; echo "$f"; done |
+        docker exec -i "$node" xargs rm -rf
+    tar -cf - --hard-dereference "${host_files[@]}" "$csv_dir" "${toolkit[@]}" 2&gt;/dev/null |
+        docker exec -i "$node" tar -xf - -C /
+
+    # The host runs Ubuntu, where the real ldconfig is /sbin/ldconfig.real.
+    # The kind node runs Debian, where it is /sbin/ldconfig.
+    docker exec "$node" nvidia-ctk config --in-place \
+        --set nvidia-container-cli.ldconfig=@/sbin/ldconfig
+
+    if docker exec "$node" grep -q 'default_runtime_name = "nvidia"' /etc/containerd/config.toml; then
+        echo "$node: containerd already uses the nvidia runtime by default"
+        continue
+    fi
+    echo "$node: configuring containerd and restarting it"
+    docker exec "$node" nvidia-ctk runtime configure --runtime=containerd --set-as-default
+    docker exec "$node" systemctl restart containerd
+done
+</code></pre>
+<p>The script builds its list of files from the CSV lists themselves, so it copies exactly
+what the runtime will later try to mount. It skips the <code>dev</code> lines, because the device
+files are already in the node, and it skips paths that do not exist on this particular
+board.</p>
+<p>Two details of the copy matter, and we ran into both while building this setup. First, <code>sym</code> entries
+must arrive as symbolic links. Suppose a link were copied as a regular file. The runtime
+would bind-mount that file into the container, and then its hook would try to replace the
+mounted file with a link and fail with “device or resource busy”. So the script copies
+links as links, and before copying it deletes any path that is a link on the host, in case
+an earlier copy left a regular file or a directory there. Second, some firmware files are
+<em>hard links</em>, two names for the same file, and <code>--hard-dereference</code> makes tar store each
+name as a separate file so that both arrive intact.</p>
+<p>The host’s configuration file for the runtime, <code>config.toml</code>, travels along with the
+binaries. One setting in it names the <code>ldconfig</code> program, which the runtime runs inside
+each GPU container to refresh the list of libraries the container can load. On the host,
+which runs Ubuntu, that program is <code>/sbin/ldconfig.real</code>. On the kind node, which runs
+Debian, it is <code>/sbin/ldconfig</code>. The script corrects the path with <code>nvidia-ctk config</code>, the
+toolkit’s own tool for editing that file.</p>
+<p>Finally, the script configures containerd with the command from NVIDIA’s installation
+guide, adding <code>--set-as-default</code> because the device plugin requires the NVIDIA runtime to
+be the default. Then it restarts containerd. You might expect that to stop every running
+pod, but it does not: each container is supervised by its own small <em>shim</em> process, which
+keeps running while containerd restarts and reconnects to it afterwards. The check at the
+top of that block skips the whole step when containerd is already configured, so the
+script is safe to run again.</p>
+<p>We run it with the name of our cluster:</p>
+<pre><code class="language-console">$ cd code/jetson-gpu
+$ ./enable-gpu-in-kind.sh gpu-lab
+gpu-lab-control-plane: copying 283 driver files and the container toolkit
+gpu-lab-control-plane: configuring containerd and restarting it
+time="2026-09-26T14:00:01Z" level=info msg="Wrote updated config to /etc/containerd/config.toml"
+time="2026-09-26T14:00:01Z" level=info msg="It is recommended that containerd daemon be restarted."
+</code></pre>
+<p>Version 1.17.3 of the toolkit edits <code>config.toml</code> directly. Newer versions write a
+separate file, <code>/etc/containerd/conf.d/99-nvidia.toml</code>, and add it to the <code>imports</code> list in
+<code>config.toml</code>, as NVIDIA’s installation guide describes. The result is the same.</p>
+<p>Let us check our work. A <code>sym</code> entry should be a link inside the node, the NVIDIA runtime
+should be registered and set as the default, and the node should still be <code>Ready</code>:</p>
+<pre><code class="language-console">$ docker exec gpu-lab-control-plane ls -l /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so
+lrwxrwxrwx 1 root root 14 Jan  8  2025 /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so -&gt; libcuda.so.1.1
+$ docker exec gpu-lab-control-plane grep -A5 'runtimes.nvidia\]' /etc/containerd/config.toml
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+          base_runtime_spec = "/etc/containerd/cri-base.json"
+          runtime_type = "io.containerd.runc.v2"
+
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+            BinaryName = "/usr/bin/nvidia-container-runtime"
+$ docker exec gpu-lab-control-plane grep default_runtime_name /etc/containerd/config.toml
+      default_runtime_name = "nvidia"
+$ kubectl get nodes
+NAME                    STATUS   ROLES           AGE   VERSION
+gpu-lab-control-plane   Ready    control-plane   30s   v1.37.0
+</code></pre>
+<h2 id="step-3-run-the-device-plugin"><a class="header" href="#step-3-run-the-device-plugin">Step 3: run the device plugin</a></h2>
+<p>The device plugin runs as a <em>DaemonSet</em>, a Kubernetes workload that runs one pod on every
+node, which is exactly what a per-machine agent needs:</p>
+<pre><code class="language-yaml"># NVIDIA device plugin configured for a Jetson. The integrated GPU is found
+# from the Tegra CSV file lists under the driver root. For each pod that
+# requests nvidia.com/gpu, the plugin sets NVIDIA_VISIBLE_DEVICES, and the
+# node's nvidia-container-runtime mounts the devices and libraries.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-device-plugin
+  template:
+    metadata:
+      labels:
+        app: nvidia-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: plugin
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.20.1
+          env:
+            - name: DEVICE_DISCOVERY_STRATEGY
+              value: tegra
+            - name: NVIDIA_DRIVER_ROOT      # driver root as the node sees it
+              value: /
+            - name: DRIVER_ROOT_CTR_PATH    # the same root inside this container
+              value: /driver-root
+            - name: FAIL_ON_INIT_ERROR
+              value: "true"
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: driver-root
+              mountPath: /driver-root
+              readOnly: true
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: driver-root
+          hostPath:
+            path: /
+</code></pre>
+<p>The plugin needs to read the same CSV lists and driver files as the runtime, so it mounts
+the node’s whole root filesystem, read-only, at <code>/driver-root</code> inside its own container.
+The two driver-root settings tell it where to find the driver from both points of view:
+<code>NVIDIA_DRIVER_ROOT</code> is where the driver is on the node, and <code>DRIVER_ROOT_CTR_PATH</code> is
+where that same root appears inside the plugin’s container.</p>
+<p><code>DEVICE_DISCOVERY_STRATEGY=tegra</code> tells the plugin to discover the GPU from the CSV lists.
+This setting is not in the plugin’s README; it is defined among the plugin’s command-line
+flags in its source code (<code>cmd/nvidia-device-plugin/main.go</code>), which accepts <code>auto</code>,
+<code>nvml</code>, or <code>tegra</code>. The default, <code>auto</code>, inspects the system and would most likely choose
+the same, but we prefer to be explicit. We leave <code>DEVICE_LIST_STRATEGY</code> at its default,
+<code>envvar</code>, the mechanism we traced above.</p>
+<p>The plugin also offers newer strategies based on CDI, the Container Device Interface, a
+standard file format that describes devices to container engines. They do not work on this
+board: with <code>DEVICE_LIST_STRATEGY=cdi-cri</code>, version 0.20.1 stops at startup with
+<code>CDI --device-list-strategy options are only supported on NVML-based systems</code>.</p>
+<p>We apply the DaemonSet and read the plugin’s log:</p>
+<pre><code class="language-console">$ kubectl apply -f device-plugin.yaml
+$ kubectl -n kube-system rollout status ds/nvidia-device-plugin
+daemon set "nvidia-device-plugin" successfully rolled out
+$ kubectl -n kube-system logs ds/nvidia-device-plugin | tail -6
+I0926 14:00:19.469889  1 main.go:391] Retrieving plugins.
+I0926 14:00:19.469935  1 plugin-manager.go:96] Using requested device discovery strategy: tegra
+I0926 14:00:19.469986  1 plugin-manager.go:50] Using device discovery strategy: tegra
+I0926 14:00:19.470717  1 server.go:198] Starting GRPC server for 'nvidia.com/gpu'
+I0926 14:00:19.472172  1 server.go:142] Starting to serve 'nvidia.com/gpu' on /var/lib/kubelet/device-plugins/nvidia-gpu.sock
+I0926 14:00:19.477135  1 server.go:149] Registered device plugin for 'nvidia.com/gpu' with Kubelet
+$ kubectl get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'; echo
+1
+</code></pre>
+<p>The last three log lines are the first step of the conversation we described earlier: the
+plugin starts its gRPC server, listens on <code>nvidia-gpu.sock</code>, and registers with the
+kubelet. The node now advertises one GPU. If you check within a few seconds of the plugin
+starting, you may still see 0, because the kubelet updates the node’s status shortly after
+the plugin registers.</p>
+<h2 id="step-4-run-a-cuda-program-in-a-pod"><a class="header" href="#step-4-run-a-cuda-program-in-a-pod">Step 4: run a CUDA program in a pod</a></h2>
+<p>To prove the whole path works, we need a program that uses the GPU and tells us so. Ours
+adds two vectors of a million elements on the GPU and prints the device it ran on. If no
+GPU is visible, or the result is wrong, it exits with a non-zero status, so Kubernetes
+marks the pod as failed.</p>
+<pre><code class="language-cpp">// gpu_check proves that a container can use the GPU: it prints the device it
+// sees, adds two vectors of a million elements on the GPU, and checks the
+// result.
+//
+// How it runs, end to end:
+//   1. nvcc compiles this file on the host for the Orin's GPU (-arch=sm_87) and
+//      links the CUDA runtime library statically (-cudart static), so the
+//      binary needs only the CUDA driver library, libcuda, at run time.
+//   2. The binary is copied into the gpu-check:1 image and run in a pod.
+//   3. If the pod requested nvidia.com/gpu, the device plugin sets
+//      NVIDIA_VISIBLE_DEVICES and the NVIDIA container runtime mounts the GPU's
+//      device files and libcuda into the container. If it did not, the
+//      container has neither, and the first CUDA call fails.
+//   4. The vectors live in managed memory, which the CPU and the GPU can both
+//      address, so the program fills them on the CPU, adds them on the GPU,
+//      and reads the result on the CPU without explicit copies.
+//
+// Build: nvcc -O2 -arch=sm_87 -cudart static -o gpu_check gpu_check.cu
+#include &lt;cstdio&gt;
+#include &lt;cuda_runtime.h&gt;
+
+// kElements is the length of each vector.
+constexpr int kElements = 1 &lt;&lt; 20;
+
+// kThreads is the number of threads in each block of the add kernel.
+constexpr int kThreads = 256;
+
+// add writes a[i] + b[i] to out[i]. Each thread handles one element, and
+// threads past the end of the vectors do nothing.
+__global__ void add(const float *a, const float *b, float *out, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i &lt; n) {
+        out[i] = a[i] + b[i];
+    }
+}
+
+// main prints the device, runs the addition, and prints the kernel's status
+// with the first and last results. It exits with status 1 if no GPU is
+// visible, the kernel failed, or the result is wrong.
+int main() {
+    cudaDeviceProp prop;
+    if (cudaGetDeviceProperties(&amp;prop, 0) != cudaSuccess) {
+        std::printf("no CUDA device visible\n");
+        return 1;
+    }
+    std::printf("device: %s, compute %d.%d, %d SMs\n", prop.name, prop.major, prop.minor,
+                prop.multiProcessorCount);
+
+    float *a, *b, *out;
+    cudaMallocManaged(&amp;a, kElements * sizeof(float));
+    cudaMallocManaged(&amp;b, kElements * sizeof(float));
+    cudaMallocManaged(&amp;out, kElements * sizeof(float));
+    for (int i = 0; i &lt; kElements; i++) {
+        a[i] = 1.0f;
+        b[i] = 2.0f;
+    }
+
+    add&lt;&lt;&lt;(kElements + kThreads - 1) / kThreads, kThreads&gt;&gt;&gt;(a, b, out, kElements);
+    cudaError_t err = cudaDeviceSynchronize();
+    std::printf("kernel: %s, out[0] = %.1f, out[n-1] = %.1f\n", cudaGetErrorString(err),
+                out[0], out[kElements - 1]);
+
+    bool ok = err == cudaSuccess &amp;&amp; out[kElements - 1] == 3.0f;
+    cudaFree(a);
+    cudaFree(b);
+    cudaFree(out);
+    return ok ? 0 : 1;
+}
+</code></pre>
+<p>We build it on the board with the CUDA compiler from JetPack. <code>-arch=sm_87</code> targets the
+Orin’s GPU, whose <em>compute capability</em>, NVIDIA’s version number for a GPU’s feature set, is
+8.7. <code>-cudart static</code> links the CUDA runtime library into the program itself, so our image
+does not need to contain it. The only library the program needs at run time is the driver
+library, <code>libcuda</code>, and that is one of the files the NVIDIA runtime mounts.</p>
+<pre><code class="language-console">$ /usr/local/cuda/bin/nvcc -O2 -arch=sm_87 -cudart static -o gpu_check gpu_check.cu
+$ ./gpu_check
+device: Orin, compute 8.7, 8 SMs
+kernel: no error, out[0] = 3.0, out[n-1] = 3.0
+</code></pre>
+<p>The image only has to hold the program and the C++ standard library that Ubuntu
+provides:</p>
+<pre><code class="language-dockerfile">FROM ubuntu:22.04
+COPY gpu_check /usr/local/bin/gpu_check
+CMD ["gpu_check"]
+</code></pre>
+<p>A kind node has its own image store and cannot see the images in the host’s Docker, so we
+build the image and then copy it into the node:</p>
+<pre><code class="language-console">$ docker build -t gpu-check:1 .
+$ kind load docker-image gpu-check:1 --name gpu-lab
+</code></pre>
+<p>We run the image in two pods. The first asks for a GPU and the second does not, so the
+second one tells us whether containers that did not ask for a GPU really stay without one.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-check
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: gpu-check:1
+      imagePullPolicy: Never
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+</code></pre>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: no-gpu
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: gpu-check:1
+      imagePullPolicy: Never
+</code></pre>
+<p><code>imagePullPolicy: Never</code> tells the kubelet to use the image that <code>kind load</code> placed on the
+node and not to look for it in a registry.</p>
+<pre><code class="language-console">$ kubectl apply -f gpu-check-pod.yaml -f no-gpu-pod.yaml
+$ kubectl get pods gpu-check no-gpu
+NAME        READY   STATUS      RESTARTS   AGE
+gpu-check   0/1     Completed   0          15s
+no-gpu      0/1     Error       0          15s
+$ kubectl logs gpu-check
+device: Orin, compute 8.7, 8 SMs
+kernel: no error, out[0] = 3.0, out[n-1] = 3.0
+$ kubectl logs no-gpu
+no CUDA device visible
+$ kubectl delete -f gpu-check-pod.yaml -f no-gpu-pod.yaml
+</code></pre>
+<p>The first pod ran our kernel on the GPU. The second ran the same image, through the same
+default runtime, and saw no GPU, because the device plugin was never asked to allocate one
+for it and so never set <code>NVIDIA_VISIBLE_DEVICES</code>.</p>
+<p>We can also look inside a GPU container while it runs, to see every piece of the path at
+work. This pod asks for a GPU and then just sleeps for five minutes, which gives us time to
+look around inside it:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-env
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: gpu-check:1
+      imagePullPolicy: Never
+      command: ["sleep", "300"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+</code></pre>
+<p>We start it, wait until it is running, and look at its environment, its device files,
+and its driver libraries:</p>
+<pre><code class="language-console">$ kubectl apply -f gpu-env-pod.yaml
+$ kubectl wait --for=condition=Ready pod/gpu-env
+$ kubectl exec gpu-env -- sh -c 'env | grep NVIDIA; ls /dev | grep -E "nvhost-gpu|nvmap"'
+NVIDIA_VISIBLE_DEVICES=tegra
+nvhost-gpu
+nvmap
+$ kubectl exec gpu-env -- sh -c 'ls /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so*'
+/usr/lib/aarch64-linux-gnu/nvidia/libcuda.so
+/usr/lib/aarch64-linux-gnu/nvidia/libcuda.so.1
+/usr/lib/aarch64-linux-gnu/nvidia/libcuda.so.1.1
+</code></pre>
+<p>The device plugin advertises our single GPU under the device ID <code>tegra</code>, and its answer to
+<code>Allocate</code> set <code>NVIDIA_VISIBLE_DEVICES=tegra</code> in the container. The NVIDIA runtime saw the
+variable and added the device files, the real library <code>libcuda.so.1.1</code>, and the two links
+to it. The kubelet’s checkpoint file on the node shows the same allocation from the
+kubelet’s side:</p>
+<pre><code class="language-console">$ docker exec gpu-lab-control-plane cat /var/lib/kubelet/device-plugins/kubelet_internal_checkpoint
+{"Data":{"PodDeviceEntries":[{"PodUID":"bf52b2cd-b611-4e79-86b1-280b283185c3","ContainerName":"check","ResourceName":"nvidia.com/gpu","DeviceIDs":{"-1":["tegra"]},"AllocResp":"Ch8KFk5WSURJQV9WSVNJQkxFX0RFVklDRVMSBXRlZ3Jh"}],"RegisteredDevices":{"nvidia.com/gpu":["tegra"]}},"Checksum":3660592824}
+</code></pre>
+<p><code>RegisteredDevices</code> is the device list the plugin reported through <code>ListAndWatch</code>, and the
+entry under <code>PodDeviceEntries</code> records that the container <code>check</code> of our pod holds the device
+<code>tegra</code>. <code>AllocResp</code> is the plugin’s answer to <code>Allocate</code>, stored in its binary Protocol
+Buffers encoding; decoded, it contains the environment variable
+<code>NVIDIA_VISIBLE_DEVICES=tegra</code>. When we are done looking, we delete the pod so that it
+releases the GPU:</p>
+<pre><code class="language-console">$ kubectl delete -f gpu-env-pod.yaml
+</code></pre>
+<p>Because the plugin advertises the board’s one GPU as one unit, only one pod that asks for
+a GPU can run at a time. Any other GPU pod waits in Pending until the first one finishes,
+and section 1.1 shows a job in exactly that state.</p>
+<h2 id="when-a-step-fails"><a class="header" href="#when-a-step-fails">When a step fails</a></h2>
+<p>We ran into each of these problems while building this setup.</p>
+<p><em>The plugin exits with <code>CDI --device-list-strategy options are only supported on NVML-based systems</code>.</em> <code>DEVICE_LIST_STRATEGY</code> is set to one of the CDI strategies. Remove the
+setting, so that the plugin uses <code>envvar</code>.</p>
+<p><em>A GPU pod fails with <code>failed to create symlink ... device or resource busy</code>.</em> A <code>sym</code>
+entry reached the node as a regular file, so the runtime mounted it and its hook could not
+replace it with a link. Run <code>enable-gpu-in-kind.sh</code> again; it removes such paths before
+copying.</p>
+<p><em>A pod that asked for a GPU prints <code>no CUDA device visible</code>.</em> The container was not created
+through the NVIDIA runtime. Check <code>default_runtime_name</code> in the node’s containerd
+configuration, and make sure containerd was restarted after the change.</p>
+<p><em>A GPU pod stays Pending with <code>Insufficient nvidia.com/gpu</code>.</em> Either the plugin has not
+registered, which its log and the node’s allocatable resources will show, or another pod
+is holding the GPU.</p>
+<p><em>GPU pods fail after the cluster was deleted and created again.</em> A new node starts from
+the <code>kindest/node</code> image, without any of our changes. Run the script and apply the
+DaemonSet again. Restarting the node’s container, or Docker itself, keeps the changes,
+since they live in the container’s filesystem.</p>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>NVIDIA Container Runtime, modes and configuration:
+<a href="https://github.com/NVIDIA/nvidia-container-toolkit/blob/main/cmd/nvidia-container-runtime/README.md">https://github.com/NVIDIA/nvidia-container-toolkit/blob/main/cmd/nvidia-container-runtime/README.md</a></li>
+<li>NVIDIA Container Toolkit, architecture overview:
+<a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html">https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html</a></li>
+<li>NVIDIA Container Toolkit, installation guide, “Configuring containerd (for Kubernetes)”:
+<a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html">https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html</a></li>
+<li>NVIDIA device plugin for Kubernetes, README and source for v0.20.1:
+<a href="https://github.com/NVIDIA/k8s-device-plugin/tree/v0.20.1">https://github.com/NVIDIA/k8s-device-plugin/tree/v0.20.1</a></li>
+<li>NVIDIA GPU Operator, platform support:
+<a href="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/platform-support.html">https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/platform-support.html</a></li>
+<li>JetPack 6.2 release notes:
+<a href="https://docs.nvidia.com/jetson/jetpack/6.2/release-notes/index.html">https://docs.nvidia.com/jetson/jetpack/6.2/release-notes/index.html</a></li>
+<li>NVIDIA Jetson Linux Developer Guide, R36.4.3:
+<a href="https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/index.html">https://docs.nvidia.com/jetson/archives/r36.4.3/DeveloperGuide/index.html</a></li>
+<li>Kubernetes, device plugins:
+<a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/">https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/</a></li>
+<li>kind, configuration: <a href="https://kind.sigs.k8s.io/docs/user/configuration/">https://kind.sigs.k8s.io/docs/user/configuration/</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="02-gpus.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="02-gpus.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

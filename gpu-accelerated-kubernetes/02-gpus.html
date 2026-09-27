@@ -1,0 +1,1005 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>What one GPU means - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-d77a6425.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-3c641b8f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-d2103709.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="2-what-one-gpu-means"><a class="header" href="#2-what-one-gpu-means">2. What one GPU means</a></h1>
+<p>So far our pods have asked for <code>nvidia.com/gpu: 1</code> as if a GPU were a single, indivisible
+thing. In this chapter, we will open that unit up. We will first look at what a GPU is
+made of and measure the one in our cluster, then see exactly what Kubernetes gives a pod
+when it grants one unit. Then we will go through the ways a GPU can be shared or divided:
+time-slicing, the Multi-Process Service, Multi-Instance GPU, virtual GPUs, and Dynamic
+Resource Allocation. We will try time-slicing on our own cluster and measure what it
+does.</p>
+<h2 id="the-programs-in-this-chapter"><a class="header" href="#the-programs-in-this-chapter">The programs in this chapter</a></h2>
+<p>We use four programs, two that run on the GPU and two that look at the cluster.</p>
+<p><code>gpu_info</code> and <code>gpu_load</code> are CUDA programs in <code>code/gpu-sharing</code>. We compile them on the
+host with <code>nvcc</code>, the CUDA compiler, for the compute capability of our GPU, and link the
+CUDA runtime library into each binary. Each binary then needs only the driver library,
+<code>libcuda</code>, at run time, and that library is one of the files the NVIDIA container runtime
+mounts into a GPU container (Appendix A). We copy both binaries into one image,
+<code>gpu-sharing:1</code>, and run them in pods that request <code>nvidia.com/gpu</code>. When such a pod
+starts, the device plugin tells the kubelet to set <code>NVIDIA_VISIBLE_DEVICES</code> in the
+container, the NVIDIA runtime adds the GPU’s device files and <code>libcuda</code>, and the CUDA
+calls in our programs reach the GPU through them.</p>
+<ul>
+<li><code>gpu_info</code> asks the CUDA runtime for the properties of the GPU it sees and prints them,
+one per line. It shows what one <code>nvidia.com/gpu</code> unit contains.</li>
+<li><code>gpu_load</code> launches a compute-heavy kernel ten times, waits for all ten to finish, and
+prints the elapsed time. Several copies running at once show how much GPU time each one
+receives.</li>
+</ul>
+<p><code>gpuusage</code> is written in Go (<code>code/go/gpuusage</code>) and in Rust (<code>code/rust/gpuusage</code>). It is
+an ordinary Kubernetes client that runs on our workstation. It lists every node and every
+pod through the API server, adds up the <code>nvidia.com/gpu</code> units that running pods hold on
+each node, and prints them next to the node’s capacity. It shows the scheduler’s view of
+the GPU: how many units exist and who holds them. We run it in a second terminal, from
+<code>code/go</code> with <code>go run ./gpuusage</code> or from <code>code/rust</code> with <code>cargo run -p gpuusage</code>, while
+the pods from <code>code/gpu-sharing</code> run.</p>
+<h2 id="what-a-gpu-is-made-of"><a class="header" href="#what-a-gpu-is-made-of">What a GPU is made of</a></h2>
+<p>A GPU is a large number of simple processors grouped into <em>streaming multiprocessors</em>
+(SMs). Each SM contains arithmetic units (the CUDA cores for ordinary floating-point and
+integer work, and Tensor Cores for matrix multiplication), a large register file,
+schedulers, and a block of fast on-chip memory that is used as shared memory and L1
+cache. A CUDA program launches a <em>kernel</em>, a function that runs on the GPU, as a grid of
+thread blocks. The GPU assigns each block to an SM, and the SM runs its threads in groups
+of 32, called <em>warps</em>. An SM keeps many warps resident at once and switches between them
+whenever one waits for memory, which is how a GPU hides memory latency: by having other
+work ready, where a CPU would rely on large caches.</p>
+<p>Memory is arranged in levels, from fastest and smallest to slowest and largest:</p>
+<ul>
+<li>registers, private to each thread;</li>
+<li>shared memory and L1 cache, one block per SM;</li>
+<li>the L2 cache, shared by all SMs;</li>
+<li>device memory: HBM on data center GPUs, GDDR on graphics cards, and, on integrated
+GPUs such as the Jetson’s, the same LPDDR memory that the CPU uses.</li>
+</ul>
+<p>Next to the SMs sit fixed-function engines. <em>Copy engines</em> move data between host memory
+and device memory while kernels run, so transfers and computation can overlap. Video
+decoders and encoders (NVDEC and NVENC) and JPEG decoders handle media without using the
+SMs.</p>
+<p>A <em>discrete</em> GPU is a separate card with its own memory, attached over PCIe or a
+dedicated interconnect; a program copies data into that memory before a kernel can use
+it. An <em>integrated</em> GPU sits on the same chip as the CPU and shares the system’s memory
+with it.</p>
+<h2 id="measuring-our-gpu"><a class="header" href="#measuring-our-gpu">Measuring our GPU</a></h2>
+<p>The CUDA runtime reports most of these properties through <code>cudaGetDeviceProperties</code>.
+This program prints them, along with the current free and total device memory:</p>
+<pre><code class="language-cpp">// gpu_info prints what one Kubernetes nvidia.com/gpu unit contains on the
+// machine it runs on: the GPU's compute units, memory, caches, and engines.
+//
+// How it runs, end to end:
+//   1. nvcc compiles this file on the host for the Orin's GPU (-arch=sm_87) and
+//      links the CUDA runtime library statically (-cudart static), so the
+//      binary needs only the CUDA driver library, libcuda, at run time.
+//   2. The binary is copied into the gpu-sharing:1 image and run in a pod that
+//      requests nvidia.com/gpu: 1.
+//   3. The device plugin's Allocate answer sets NVIDIA_VISIBLE_DEVICES in the
+//      container, and the NVIDIA container runtime mounts the GPU's device
+//      files and libcuda into it.
+//   4. The CUDA runtime calls below load libcuda, which opens the device files
+//      and asks the kernel driver for the device's properties.
+//
+// Build: nvcc -O2 -arch=sm_87 -cudart static -o gpu_info gpu_info.cu
+#include &lt;cstdio&gt;
+#include &lt;cuda_runtime.h&gt;
+
+// kGiB is the number of bytes in one gibibyte, for printing memory sizes.
+constexpr double kGiB = 1024.0 * 1024.0 * 1024.0;
+
+// main queries device 0 and prints one property per line. It exits with
+// status 1 when no CUDA device is visible, for example in a container that
+// was not given a GPU.
+int main() {
+    cudaDeviceProp p;
+    if (cudaGetDeviceProperties(&amp;p, 0) != cudaSuccess) {
+        std::printf("no CUDA device visible\n");
+        return 1;
+    }
+
+    // cudaMemGetInfo reports the memory that the driver can still allocate and
+    // the total. On an integrated GPU both come from the system's shared RAM.
+    size_t free_bytes = 0, total_bytes = 0;
+    cudaMemGetInfo(&amp;free_bytes, &amp;total_bytes);
+
+    std::printf("device                      %s\n", p.name);
+    std::printf("compute capability          %d.%d\n", p.major, p.minor);
+    std::printf("integrated with the CPU     %s\n", p.integrated ? "yes" : "no");
+    std::printf("streaming multiprocessors   %d\n", p.multiProcessorCount);
+    std::printf("max resident threads/SM     %d\n", p.maxThreadsPerMultiProcessor);
+    std::printf("registers per SM            %d\n", p.regsPerMultiprocessor);
+    std::printf("shared memory per SM        %zu KiB\n", p.sharedMemPerMultiprocessor / 1024);
+    std::printf("L2 cache                    %d KiB\n", p.l2CacheSize / 1024);
+    std::printf("device memory (total)       %.1f GiB\n", total_bytes / kGiB);
+    std::printf("device memory (free now)    %.1f GiB\n", free_bytes / kGiB);
+    std::printf("copy engines                %d\n", p.asyncEngineCount);
+    std::printf("concurrent kernels          %s\n", p.concurrentKernels ? "yes" : "no");
+    std::printf("managed memory              %s\n", p.managedMemory ? "yes" : "no");
+    return 0;
+}
+</code></pre>
+<p>The image for this chapter holds <code>gpu_info</code> and a second program, <code>gpu_load</code>, which we
+use later:</p>
+<pre><code class="language-dockerfile">FROM ubuntu:22.04
+COPY gpu_info gpu_load /usr/local/bin/
+CMD ["gpu_info"]
+</code></pre>
+<pre><code class="language-console">$ cd code/gpu-sharing
+$ /usr/local/cuda/bin/nvcc -O2 -arch=sm_87 -cudart static -o gpu_info gpu_info.cu
+$ /usr/local/cuda/bin/nvcc -O2 -arch=sm_87 -cudart static -o gpu_load gpu_load.cu
+$ docker build -t gpu-sharing:1 .
+$ kind load docker-image gpu-sharing:1 --name gpu-lab
+</code></pre>
+<p>We run it in a pod that asks for one GPU:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-info
+spec:
+  restartPolicy: Never
+  containers:
+    - name: info
+      image: gpu-sharing:1
+      imagePullPolicy: Never
+      command: ["gpu_info"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+</code></pre>
+<pre><code class="language-console">$ kubectl apply -f gpu-info-pod.yaml
+$ kubectl logs gpu-info
+device                      Orin
+compute capability          8.7
+integrated with the CPU     yes
+streaming multiprocessors   8
+max resident threads/SM     1536
+registers per SM            65536
+shared memory per SM        164 KiB
+L2 cache                    2048 KiB
+device memory (total)       15.3 GiB
+device memory (free now)    1.8 GiB
+copy engines                2
+concurrent kernels          yes
+managed memory              yes
+</code></pre>
+<p>The GPU in our cluster has 8 SMs. An Ampere SM of this generation has 128 CUDA cores,
+which gives the 1,024 cores in NVIDIA’s specification for the Orin NX, and each SM can
+hold 1,536 threads at once, 12,288 for the whole GPU. All SMs share a 2 MiB L2 cache, and
+two copy engines move data. For comparison, a data center H100 SXM5 has 132 SMs and
+80 GB of HBM3 memory.</p>
+<p>The memory lines show what “integrated” means in practice. The GPU’s device memory is
+the board’s 15.3 GiB of LPDDR5, the same memory the operating system and every CPU
+program use. Only 1.8 GiB was free when the pod ran, because other programs on the board
+were using the rest. On a discrete GPU, device memory belongs to the GPU alone; on an
+integrated GPU, the amount available to a kernel depends on everything else running on
+the machine.</p>
+<h2 id="what-one-unit-gives-a-pod"><a class="header" href="#what-one-unit-gives-a-pod">What one unit gives a pod</a></h2>
+<p>By default, the device plugin advertises one <code>nvidia.com/gpu</code> unit for each physical
+GPU, and a pod that is granted a unit receives the whole device: every SM, all of its
+memory, and all of its engines. Kubernetes counts extended resources as integers. A pod
+cannot ask for half a GPU, and the node never hands out more units than it advertises.</p>
+<p><code>gpuusage</code> shows the same accounting that the scheduler does. It sums the GPU limits of
+every pod that is bound to a node and has not finished, and compares the sum with the
+node’s allocatable units. The Go version uses client-go’s typed clientset:</p>
+<pre><code class="language-go">// Command gpuusage reports, for every node in the cluster, how many
+// nvidia.com/gpu units the node advertises, how many are held by pods, and
+// which pods hold them. It is a read-only client: it lists nodes and pods
+// through the API server and does the accounting itself, the same way the
+// scheduler counts extended resources.
+//
+// Run it from code/go, against the cluster in the current kubeconfig context,
+// with:
+//
+//	go run ./gpuusage
+package main
+
+import (
+	"cmp"
+	"context"
+	"fmt"
+	"os"
+	"slices"
+	"text/tabwriter"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+// gpu is the extended resource that the NVIDIA device plugin advertises.
+const gpu corev1.ResourceName = "nvidia.com/gpu"
+
+// holder is a pod that holds GPU units on a node.
+type holder struct {
+	// pod is the pod's namespace and name, as "namespace/name".
+	pod string
+	// units is the number of nvidia.com/gpu units the pod holds.
+	units int64
+}
+
+// podGPUs returns the number of GPU units a pod requests: the sum of the
+// nvidia.com/gpu limits of its containers.
+func podGPUs(pod *corev1.Pod) int64 {
+	var units int64
+	for _, c := range pod.Spec.Containers {
+		if q, ok := c.Resources.Limits[gpu]; ok {
+			units += q.Value()
+		}
+	}
+	return units
+}
+
+// holdsResources reports whether a pod currently holds its resources on a
+// node. A pod holds them from the moment it is bound to a node until it
+// finishes; a pod that has succeeded or failed gives them back.
+func holdsResources(pod *corev1.Pod) bool {
+	finished := pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+	return pod.Spec.NodeName != "" &amp;&amp; !finished
+}
+
+// main runs the report and exits with status 1 on any error.
+func main() {
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run lists every node and every pod, groups the GPU-holding pods by node,
+// and prints one table row per node followed by the pods that hold its units.
+func run(ctx context.Context) error {
+	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		return err
+	}
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	pods, err := clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	holders := map[string][]holder{}
+	for i := range pods.Items {
+		pod := &amp;pods.Items[i]
+		if units := podGPUs(pod); units &gt; 0 &amp;&amp; holdsResources(pod) {
+			name := pod.Namespace + "/" + pod.Name
+			holders[pod.Spec.NodeName] = append(holders[pod.Spec.NodeName], holder{name, units})
+		}
+	}
+
+	table := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "NODE\tCAPACITY\tALLOCATABLE\tIN USE\tFREE")
+	for _, node := range nodes.Items {
+		capacity := node.Status.Capacity[gpu]
+		allocatable := node.Status.Allocatable[gpu]
+		var inUse int64
+		for _, h := range holders[node.Name] {
+			inUse += h.units
+		}
+		fmt.Fprintf(table, "%s\t%d\t%d\t%d\t%d\n",
+			node.Name, capacity.Value(), allocatable.Value(), inUse, allocatable.Value()-inUse)
+	}
+	if err := table.Flush(); err != nil {
+		return err
+	}
+
+	for _, node := range nodes.Items {
+		list := holders[node.Name]
+		slices.SortFunc(list, func(a, b holder) int { return cmp.Compare(a.pod, b.pod) })
+		for _, h := range list {
+			fmt.Printf("  %s holds %d on %s\n", h.pod, h.units, node.Name)
+		}
+	}
+	return nil
+}
+</code></pre>
+<p>The Rust version uses kube-rs:</p>
+<pre class="playground"><code class="language-rust">//! Reports, for every node in the cluster, how many `nvidia.com/gpu` units the
+//! node advertises, how many are held by pods, and which pods hold them. It is
+//! a read-only client: it lists nodes and pods through the API server and does
+//! the accounting itself, the same way the scheduler counts extended resources.
+//!
+//! Run it from `code/rust`, against the cluster in the current kubeconfig
+//! context, with `cargo run -p gpuusage`.
+
+use k8s_openapi::api::core::v1::{Node, Pod};
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use kube::api::ListParams;
+use kube::{Api, Client, ResourceExt};
+use std::collections::BTreeMap;
+use std::error::Error;
+
+/// The extended resource that the NVIDIA device plugin advertises.
+const GPU: &amp;str = "nvidia.com/gpu";
+
+/// A pod that holds GPU units on a node.
+struct Holder {
+    /// The pod's namespace and name, as `namespace/name`.
+    pod: String,
+    /// The number of `nvidia.com/gpu` units the pod holds.
+    units: i64,
+}
+
+/// Returns the number of GPU units a pod requests: the sum of the
+/// `nvidia.com/gpu` limits of its containers.
+fn pod_gpus(pod: &amp;Pod) -&gt; i64 {
+    let Some(spec) = &amp;pod.spec else { return 0 };
+    spec.containers
+        .iter()
+        .filter_map(|c| c.resources.as_ref()?.limits.as_ref()?.get(GPU))
+        .filter_map(|q| q.0.parse::&lt;i64&gt;().ok())
+        .sum()
+}
+
+/// Returns the node a pod currently holds resources on. A pod holds them from
+/// the moment it is bound to a node until it finishes; a pod that has
+/// succeeded or failed gives them back.
+fn holding_node(pod: &amp;Pod) -&gt; Option&lt;&amp;str&gt; {
+    let phase = pod.status.as_ref().and_then(|s| s.phase.as_deref());
+    if matches!(phase, Some("Succeeded" | "Failed")) {
+        return None;
+    }
+    pod.spec.as_ref()?.node_name.as_deref()
+}
+
+/// Reads the number of GPU units from a node's capacity or allocatable map.
+fn gpu_units(resources: Option&lt;&amp;BTreeMap&lt;String, Quantity&gt;&gt;) -&gt; i64 {
+    resources
+        .and_then(|r| r.get(GPU))
+        .and_then(|q| q.0.parse().ok())
+        .unwrap_or(0)
+}
+
+/// Lists every node and every pod, groups the GPU-holding pods by node, and
+/// prints one table row per node followed by the pods that hold its units.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let client = Client::try_default().await?;
+    let nodes = Api::&lt;Node&gt;::all(client.clone())
+        .list(&amp;ListParams::default())
+        .await?;
+    let pods = Api::&lt;Pod&gt;::all(client).list(&amp;ListParams::default()).await?;
+
+    let mut holders: BTreeMap&lt;String, Vec&lt;Holder&gt;&gt; = BTreeMap::new();
+    for pod in &amp;pods {
+        let units = pod_gpus(pod);
+        if let Some(node) = holding_node(pod)
+            &amp;&amp; units &gt; 0
+        {
+            let name = format!("{}/{}", pod.namespace().unwrap_or_default(), pod.name_any());
+            holders
+                .entry(node.to_string())
+                .or_default()
+                .push(Holder { pod: name, units });
+        }
+    }
+
+    println!(
+        "{:&lt;23}{:&lt;10}{:&lt;13}{:&lt;8}FREE",
+        "NODE", "CAPACITY", "ALLOCATABLE", "IN USE"
+    );
+    for node in &amp;nodes {
+        let name = node.name_any();
+        let in_use: i64 = holders
+            .get(&amp;name)
+            .map_or(0, |h| h.iter().map(|h| h.units).sum());
+        let status = node.status.as_ref();
+        let capacity = gpu_units(status.and_then(|s| s.capacity.as_ref()));
+        let allocatable = gpu_units(status.and_then(|s| s.allocatable.as_ref()));
+        println!(
+            "{:&lt;23}{:&lt;10}{:&lt;13}{:&lt;8}{}",
+            name,
+            capacity,
+            allocatable,
+            in_use,
+            allocatable - in_use
+        );
+    }
+    for (node, list) in &amp;mut holders {
+        list.sort_by(|a, b| a.pod.cmp(&amp;b.pod));
+        for h in list.iter() {
+            println!("  {} holds {} on {node}", h.pod, h.units);
+        }
+    }
+    Ok(())
+}</code></pre>
+<p>Both programs list the nodes and the pods with one request each, keep the pods that hold
+GPU units, and group them by node. A pod counts from the moment the scheduler binds it to
+a node until it succeeds or fails; a finished pod has released its units even though the
+object still exists. With no GPU pods running, both print the same report:</p>
+<pre><code class="language-console">$ go run ./gpuusage
+NODE                   CAPACITY  ALLOCATABLE  IN USE  FREE
+gpu-lab-control-plane  1         1            0       1
+$ cargo run -p gpuusage
+NODE                   CAPACITY  ALLOCATABLE  IN USE  FREE
+gpu-lab-control-plane  1         1            0       1
+</code></pre>
+<p>This is simple and gives each pod exclusive use of its GPU, but it is coarse. An
+inference service that keeps 5 percent of the SMs busy still holds the entire GPU, and
+the other 95 percent sits idle while other pods wait. The rest of this chapter covers the
+ways to share or divide a GPU, each with a different trade-off between isolation and
+flexibility.</p>
+<h2 id="sharing-by-taking-turns-time-slicing"><a class="header" href="#sharing-by-taking-turns-time-slicing">Sharing by taking turns: time-slicing</a></h2>
+<p>Without further configuration, a GPU runs work from one process’s CUDA context at a time.
+When several processes use the same GPU, the driver switches between their contexts,
+giving each a slice of time on all the SMs. <em>Time-slicing</em> in Kubernetes uses exactly
+this: the device plugin advertises each GPU as several units, called replicas, and every
+pod that receives a replica of the same GPU gets the same device.</p>
+<p>NVIDIA’s GPU Operator documentation is direct about the cost: “Unlike Multi-Instance GPU
+(MIG), there is no memory or fault-isolation between replicas.” Every pod sees all of
+the GPU’s memory, one pod can allocate so much that the others fail, and, in the words of
+the device plugin’s README, workloads run “in the same fault-domain as of all the others
+(meaning if one workload crashes, they all do)”.</p>
+<p>We can measure the effect. <code>gpu_load</code> launches a kernel ten times, each launch keeping
+1,024 blocks of 256 threads busy with 200,000 multiply-adds per thread, and prints how
+long the work took:</p>
+<pre><code class="language-cpp">// gpu_load keeps the GPU busy with a fixed amount of arithmetic and prints how
+// long the work took. Running it alone and running several copies that share
+// one GPU shows how much GPU time each copy receives.
+//
+// How it runs, end to end:
+//   1. nvcc compiles this file on the host (-arch=sm_87, -cudart static), and
+//      the binary is copied into the gpu-sharing:1 image.
+//   2. Each pod of the gpu-load Job runs it with the pod's name as argument and
+//      receives one nvidia.com/gpu unit, so the NVIDIA container runtime gives
+//      it the GPU's device files and libcuda.
+//   3. main launches the spin kernel kRounds times on the default stream. The
+//      launches queue up on the GPU, and cudaDeviceSynchronize waits until all
+//      of them have finished, so the measured time covers the GPU work.
+//   4. When several pods share the GPU through time-slicing, the driver
+//      switches between their CUDA contexts, and each copy's time grows by the
+//      share of the GPU that the others take.
+//
+// Build: nvcc -O2 -arch=sm_87 -cudart static -o gpu_load gpu_load.cu
+#include &lt;chrono&gt;
+#include &lt;cstdio&gt;
+#include &lt;cuda_runtime.h&gt;
+
+// kBlocks and kThreads give 262,144 threads per launch, enough to occupy every
+// SM of the GPU many times over.
+constexpr int kBlocks = 1024;
+constexpr int kThreads = 256;
+
+// kIterations is the number of multiply-adds each thread performs per launch.
+constexpr int kIterations = 200000;
+
+// kRounds is the number of kernel launches in one measurement.
+constexpr int kRounds = 10;
+
+// spin performs `iterations` dependent multiply-adds on a per-thread value and
+// stores the result, so the compiler cannot remove the loop.
+__global__ void spin(float *out, int iterations) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    float x = i * 1e-6f;
+    for (int k = 0; k &lt; iterations; k++) {
+        x = x * 1.000001f + 0.5f;
+    }
+    out[i] = x;
+}
+
+// main runs the measurement and prints "&lt;name&gt;: &lt;result&gt;, &lt;milliseconds&gt; ms",
+// where name is the first argument. It exits with status 1 if the GPU reported
+// an error.
+int main(int argc, char **argv) {
+    const char *name = argc &gt; 1 ? argv[1] : "load";
+    float *out;
+    cudaMalloc(&amp;out, kBlocks * kThreads * sizeof(float));
+
+    auto start = std::chrono::steady_clock::now();
+    for (int r = 0; r &lt; kRounds; r++) {
+        spin&lt;&lt;&lt;kBlocks, kThreads&gt;&gt;&gt;(out, kIterations);
+    }
+    cudaError_t err = cudaDeviceSynchronize();
+    double ms = std::chrono::duration&lt;double, std::milli&gt;(
+                    std::chrono::steady_clock::now() - start).count();
+
+    std::printf("%s: %s, %.0f ms\n", name, cudaGetErrorString(err), ms);
+    cudaFree(out);
+    return err == cudaSuccess ? 0 : 1;
+}
+</code></pre>
+<p>A Job runs four copies of it at once, each asking for one <code>nvidia.com/gpu</code>:</p>
+<pre><code class="language-yaml"># Four pods, each running the same fixed amount of GPU work and asking for one
+# nvidia.com/gpu. How they run depends on how many units the node advertises.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gpu-load
+spec:
+  completions: 4
+  parallelism: 4
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: load
+          image: gpu-sharing:1
+          imagePullPolicy: Never
+          command: ["sh", "-c", "date +%T.%N | cut -c1-12; gpu_load $HOSTNAME"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+</code></pre>
+<p>With the device plugin as configured in Appendix A, the node advertises one unit. Three
+of the four pods wait in Pending while the first runs:</p>
+<pre><code class="language-console">$ kubectl apply -f gpu-load-job.yaml
+$ kubectl get pods -l job-name=gpu-load
+gpu-load-5wf4d Completed
+gpu-load-mbw4m Pending
+gpu-load-w46sf Pending
+gpu-load-w9h7x ContainerCreating
+$ go run ./gpuusage
+NODE                   CAPACITY  ALLOCATABLE  IN USE  FREE
+gpu-lab-control-plane  1         1            1       0
+  default/gpu-load-w9h7x holds 1 on gpu-lab-control-plane
+</code></pre>
+<p><code>gpuusage</code> shows the reason: the node’s one unit is held by the running pod, so the
+scheduler has nowhere to place the others. Each pod prints its start time and its result.
+They ran one after another, about three seconds apart, and each needed about 620
+milliseconds of GPU time:</p>
+<pre><code class="language-console">23:29:59.987 gpu-load-5wf4d: no error, 612 ms
+23:30:03.466 gpu-load-w9h7x: no error, 622 ms
+23:30:06.487 gpu-load-w46sf: no error, 616 ms
+23:30:09.495 gpu-load-mbw4m: no error, 634 ms
+</code></pre>
+<p>Time-slicing is switched on through the device plugin’s configuration file. This
+ConfigMap advertises each GPU as four replicas:</p>
+<pre><code class="language-yaml"># Device plugin configuration that advertises each GPU as four
+# nvidia.com/gpu units. Pods that receive units of the same GPU take turns on it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-device-plugin-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    version: v1
+    sharing:
+      timeSlicing:
+        resources:
+          - name: nvidia.com/gpu
+            replicas: 4
+</code></pre>
+<p>The plugin reads the file named by its <code>CONFIG_FILE</code> setting. This manifest is the
+plugin from Appendix A with the ConfigMap mounted and <code>CONFIG_FILE</code> set:</p>
+<pre><code class="language-yaml"># The device plugin from jetson-gpu/device-plugin.yaml, with its configuration
+# file taken from the ConfigMap in time-slicing-config.yaml. Apply
+# jetson-gpu/device-plugin.yaml again to switch time-slicing off.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-device-plugin
+  template:
+    metadata:
+      labels:
+        app: nvidia-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: plugin
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.20.1
+          env:
+            - name: DEVICE_DISCOVERY_STRATEGY
+              value: tegra
+            - name: NVIDIA_DRIVER_ROOT      # driver root as the node sees it
+              value: /
+            - name: DRIVER_ROOT_CTR_PATH    # the same root inside this container
+              value: /driver-root
+            - name: FAIL_ON_INIT_ERROR
+              value: "true"
+            - name: CONFIG_FILE
+              value: /etc/nvidia-device-plugin/config.yaml
+          volumeMounts:
+            - name: device-plugins
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: driver-root
+              mountPath: /driver-root
+              readOnly: true
+            - name: config
+              mountPath: /etc/nvidia-device-plugin
+      volumes:
+        - name: device-plugins
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: driver-root
+          hostPath:
+            path: /
+        - name: config
+          configMap:
+            name: nvidia-device-plugin-config
+</code></pre>
+<pre><code class="language-console">$ kubectl apply -f time-slicing-config.yaml -f device-plugin-time-sliced.yaml
+$ kubectl get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}'; echo
+4
+</code></pre>
+<p>The same GPU now counts as four units. Running the same Job again, all four pods start
+at once:</p>
+<pre><code class="language-console">$ kubectl delete job gpu-load
+$ kubectl apply -f gpu-load-job.yaml
+$ kubectl get pods -l job-name=gpu-load
+gpu-load-dk7h8 Running
+gpu-load-grrkx Running
+gpu-load-s4lb2 Running
+gpu-load-t28sd Running
+$ cargo run -p gpuusage
+NODE                   CAPACITY  ALLOCATABLE  IN USE  FREE
+gpu-lab-control-plane  4         4            4       0
+  default/gpu-load-dk7h8 holds 1 on gpu-lab-control-plane
+  default/gpu-load-grrkx holds 1 on gpu-lab-control-plane
+  default/gpu-load-s4lb2 holds 1 on gpu-lab-control-plane
+  default/gpu-load-t28sd holds 1 on gpu-lab-control-plane
+</code></pre>
+<pre><code class="language-console">23:30:25.915 gpu-load-dk7h8: no error, 2198 ms
+23:30:25.996 gpu-load-s4lb2: no error, 2231 ms
+23:30:26.048 gpu-load-grrkx: no error, 2249 ms
+23:30:26.052 gpu-load-t28sd: no error, 2260 ms
+</code></pre>
+<p>Each pod now took about 2,230 milliseconds for the same work, roughly 3.6 times as long
+as it took alone. The four pods took turns on the same 8 SMs. Time-slicing added no
+compute: it changed how many pods can hold the GPU at once and how long each one waits.
+Together, the four runs occupied the GPU for about 2.3 seconds, close to the
+4 × 620 = 2,480 milliseconds they needed one after another.</p>
+<p>The scheduler now believes the node has four GPUs. A pod that asks for two replicas gets
+two units of the same GPU and no more of its time; the plugin’s <code>failRequestsGreaterThanOne</code>
+option rejects such requests to make that explicit. To switch time-slicing off, we apply
+the original plugin manifest again:</p>
+<pre><code class="language-console">$ kubectl apply -f ../jetson-gpu/device-plugin.yaml
+$ go run ./gpuusage
+NODE                   CAPACITY  ALLOCATABLE  IN USE  FREE
+gpu-lab-control-plane  1         1            0       1
+</code></pre>
+<h2 id="running-kernels-side-by-side-mps"><a class="header" href="#running-kernels-side-by-side-mps">Running kernels side by side: MPS</a></h2>
+<p>Time-slicing runs one process’s kernels at a time. NVIDIA’s MPS documentation states the
+underlying rule: without MPS, work “from work queues belonging to different CUDA
+contexts cannot execute concurrently”. A process whose kernels fill only a few SMs leaves
+the rest idle during its slice.</p>
+<p>The <em>Multi-Process Service</em> (MPS) removes that restriction. An MPS server becomes “the
+clients’ shared connection to the GPU and owner of the GPU scheduling resources”, and
+kernels from different processes then run on the GPU at the same time. MPS also lets an
+administrator limit each client: <code>CUDA_MPS_ACTIVE_THREAD_PERCENTAGE</code> caps the share of the
+GPU’s threads a client may use, and <code>CUDA_MPS_PINNED_DEVICE_MEM_LIMIT</code> caps the memory it
+may allocate. Each client has its own GPU address space, but error containment is
+limited: a fatal fault is reported to all clients on the affected GPU, “without
+indicating which client generated the error”.</p>
+<p>The device plugin can hand out MPS shares in the same way as time-slicing replicas, each
+with an equal fraction of the GPU’s memory and compute. Its README marks this support as
+experimental and limits it to whole GPUs without MIG. MPS runs on Tegra devices such as
+ours with restrictions, so we do not use it here.</p>
+<h2 id="dividing-the-hardware-multi-instance-gpu"><a class="header" href="#dividing-the-hardware-multi-instance-gpu">Dividing the hardware: Multi-Instance GPU</a></h2>
+<p>Time-slicing and MPS share one GPU in software. <em>Multi-Instance GPU</em> (MIG) divides it in
+hardware. According to NVIDIA’s MIG user guide, a GPU can be “securely partitioned into
+up to seven separate GPU Instances”, and within each instance “the on-chip crossbar
+ports, L2 cache banks, memory controllers, and DRAM address busses are all assigned
+uniquely to an individual instance”. SMs, copy engines, and decoders are divided as
+well. An instance therefore keeps its cache and memory bandwidth “even if other tasks
+are thrashing their own caches or saturating their DRAM interfaces”, and a fault in one
+instance does not affect the others.</p>
+<p>Instances come in fixed sizes, called profiles. A profile name gives the number of
+compute slices and the memory. The profiles of an H100 with 80 GB, from the MIG user
+guide:</p>
+<pre><code class="language-text">profile      memory   SMs    copy engines   instances per GPU
+-----------  -------  -----  -------------  -----------------
+1g.10gb      1/8      1/7    1              7
+1g.20gb      1/4      1/7    1              4
+2g.20gb      2/8      2/7    2              3
+3g.40gb      4/8      3/7    3              2
+4g.40gb      4/8      4/7    4              1
+7g.80gb      full     7/7    8              1
+</code></pre>
+<p>The device plugin exposes MIG instances according to its <code>MIG_STRATEGY</code> setting: with
+the <code>single</code> strategy every instance is advertised as <code>nvidia.com/gpu</code>, and with the
+<code>mixed</code> strategy each profile gets its own resource name, such as <code>nvidia.com/mig-1g.10gb</code>.
+A pod then asks for a slice of known size and gets guaranteed memory and bandwidth.</p>
+<p>MIG requires a supporting GPU: the A100, H100, H200, and B200 families support seven
+instances, and smaller models support fewer. The Orin in our cluster does not support
+MIG.</p>
+<h2 id="virtual-gpus-for-virtual-machines-vgpu"><a class="header" href="#virtual-gpus-for-virtual-machines-vgpu">Virtual GPUs for virtual machines: vGPU</a></h2>
+<p>Everything so far shares a GPU between containers on the same operating system. NVIDIA’s
+vGPU software shares a GPU between virtual machines: it “enables multiple virtual
+machines (VMs) to have simultaneous, direct access to a single physical GPU”. A vGPU is
+either time-sliced, in which case the GPU “performs the work for each VM serially” under a
+scheduler that can give each VM a fixed or equal share, or backed by a MIG instance, in
+which case VMs run in parallel with MIG’s isolation. Clusters that run virtual machines
+on Kubernetes can use vGPUs to give each VM its own GPU device.</p>
+<h2 id="asking-for-gpus-by-their-properties-dynamic-resource-allocation"><a class="header" href="#asking-for-gpus-by-their-properties-dynamic-resource-allocation">Asking for GPUs by their properties: Dynamic Resource Allocation</a></h2>
+<p>The device plugin model reduces every GPU to an integer count of an opaque name. A pod
+cannot ask for “a GPU with at least 40 GB of memory”, and two containers cannot
+explicitly share one GPU. <em>Dynamic Resource Allocation</em> (DRA), generally available since
+Kubernetes 1.34, replaces the count with structured requests:</p>
+<ul>
+<li>a driver publishes the devices on each node, with their attributes such as model and
+memory size, as <em>ResourceSlice</em> objects;</li>
+<li>a <em>DeviceClass</em> groups devices of one kind, for example all NVIDIA GPUs;</li>
+<li>a pod refers to a <em>ResourceClaim</em>, which requests devices from a class and can filter
+them with expressions over their attributes; several pods can refer to the same claim
+to share its devices.</li>
+</ul>
+<p>The scheduler then allocates concrete devices that satisfy each claim. Our cluster
+already serves these APIs:</p>
+<pre><code class="language-console">$ kubectl api-resources --api-group=resource.k8s.io
+NAME                     SHORTNAMES   APIVERSION           NAMESPACED   KIND
+deviceclasses                         resource.k8s.io/v1   false        DeviceClass
+devicetaintrules                      resource.k8s.io/v1   false        DeviceTaintRule
+resourceclaims                        resource.k8s.io/v1   true         ResourceClaim
+resourceclaimtemplates                resource.k8s.io/v1   true         ResourceClaimTemplate
+resourceslices                        resource.k8s.io/v1   false        ResourceSlice
+</code></pre>
+<p>A driver has to publish the devices, and NVIDIA’s DRA driver describes its GPU support
+as not yet official: “While some GPU allocation features can be tried out, they are not
+yet officially supported.” Our cluster therefore stays with the device plugin.</p>
+<h2 id="choosing-a-method"><a class="header" href="#choosing-a-method">Choosing a method</a></h2>
+<pre><code class="language-text">method          what a pod gets                 memory isolated   faults isolated
+--------------  ------------------------------  ----------------  ---------------
+whole GPU       the entire device               yes               yes
+time-slicing    turns on the entire device      no                no
+MPS             a share of threads and memory   by limits         partly
+MIG             a hardware partition            yes               yes
+vGPU            a device inside a VM            yes               yes
+</code></pre>
+<p>Whole GPUs suit training jobs that keep a GPU busy. Time-slicing suits development and
+light, trusted workloads that tolerate each other. MPS suits many small inference
+processes that each use part of the SMs. MIG suits multi-tenant clusters that need
+guaranteed memory and bandwidth for each tenant. vGPU suits workloads that must run in
+virtual machines.</p>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>NVIDIA Multi-Instance GPU user guide:
+<a href="https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html">https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html</a></li>
+<li>NVIDIA GPU Operator, time-slicing GPUs in Kubernetes:
+<a href="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-sharing.html">https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-sharing.html</a></li>
+<li>NVIDIA device plugin for Kubernetes, “Shared Access to GPUs”:
+<a href="https://github.com/NVIDIA/k8s-device-plugin">https://github.com/NVIDIA/k8s-device-plugin</a></li>
+<li>NVIDIA Multi-Process Service documentation: <a href="https://docs.nvidia.com/deploy/mps/index.html">https://docs.nvidia.com/deploy/mps/index.html</a></li>
+<li>NVIDIA vGPU software user guide:
+<a href="https://docs.nvidia.com/vgpu/latest/grid-vgpu-user-guide/index.html">https://docs.nvidia.com/vgpu/latest/grid-vgpu-user-guide/index.html</a></li>
+<li>Kubernetes, Dynamic Resource Allocation:
+<a href="https://kubernetes.io/docs/concepts/resource-management/dynamic-resource-allocation/">https://kubernetes.io/docs/concepts/resource-management/dynamic-resource-allocation/</a></li>
+<li>Kubernetes v1.34: DRA has graduated to GA:
+<a href="https://kubernetes.io/blog/2025/09/01/kubernetes-v1-34-dra-updates/">https://kubernetes.io/blog/2025/09/01/kubernetes-v1-34-dra-updates/</a></li>
+<li>DRA Driver for NVIDIA GPUs: <a href="https://github.com/NVIDIA/k8s-dra-driver-gpu">https://github.com/NVIDIA/k8s-dra-driver-gpu</a></li>
+<li>NVIDIA Jetson Orin technical specifications:
+<a href="https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/">https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="01-real-cluster.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="appendix-a-jetson-gpu.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="01-real-cluster.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="appendix-a-jetson-gpu.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

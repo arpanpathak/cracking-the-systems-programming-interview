@@ -1,0 +1,219 @@
+/* Typography and layout for the browser edition.
+   Text and headings use Inter; code uses JetBrains Mono. */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+    --content-max-width: 760px;
+    --text-face: "Inter", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --code-face: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+    --ink: #1f2328;
+    --muted: #57606a;
+    --accent: #0b5cad;
+    --rule: #d8dee4;
+    --code-bg: #f6f8fa;
+    --code-border: #e3e8ee;
+    --inline-code-bg: #eff2f5;
+}
+
+:root.navy,
+:root.coal,
+:root.ayu {
+    --ink: var(--fg);
+    --muted: var(--sidebar-fg);
+    --accent: var(--links);
+    --rule: var(--table-border-color);
+    --code-bg: var(--quote-bg);
+    --code-border: var(--table-border-color);
+    --inline-code-bg: var(--quote-bg);
+}
+
+html {
+    font-size: 62.5%; /* 1rem = 10px, mdBook's default */
+}
+
+body {
+    font-family: var(--text-face);
+    font-size: 1.75rem; /* 17.5px */
+    line-height: 1.7;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.content {
+    padding: 1.5em 2em 5em;
+}
+
+.content main {
+    max-width: var(--content-max-width);
+}
+
+p,
+li {
+    text-align: left;
+    hyphens: manual;
+}
+
+p {
+    margin-block: 0 1.1em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--text-face);
+    color: var(--ink);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+}
+
+h1 {
+    font-size: 3.4rem;
+    margin-block: 0.4em 0.9em;
+}
+
+h2 {
+    font-size: 2.5rem;
+    margin-block: 2.2em 0.7em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--rule);
+}
+
+h3 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-block: 1.8em 0.5em;
+}
+
+h4 {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+/* mdBook turns headings into links; keep them the heading colour. */
+.content :is(h1, h2, h3, h4) a.header,
+.content :is(h1, h2, h3, h4) a.header:visited {
+    color: inherit;
+}
+
+a,
+a:visited {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+strong {
+    font-weight: 600;
+}
+
+em {
+    font-style: italic;
+}
+
+/* Code */
+
+code,
+pre,
+pre code {
+    font-family: var(--code-face);
+    font-variant-ligatures: none;
+}
+
+:not(pre) > code {
+    font-size: 0.86em;
+    background: var(--inline-code-bg);
+    padding: 0.12em 0.38em;
+    border-radius: 4px;
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+pre {
+    font-size: 1.4rem;
+    line-height: 1.6;
+    background: var(--code-bg) !important;
+    border: 1px solid var(--code-border);
+    border-radius: 8px;
+    padding: 1.1em 1.3em;
+    margin-block: 0.4em 1.4em;
+}
+
+pre > code.hljs {
+    background: transparent;
+    padding: 0;
+}
+
+/* Lists */
+
+ul,
+ol {
+    padding-left: 1.4em;
+    margin-block: 0 1.1em;
+}
+
+li {
+    margin-block: 0.3em;
+}
+
+/* Tables */
+
+table {
+    border-collapse: collapse;
+    margin-block: 1.4em;
+    font-size: 0.95em;
+}
+
+th,
+td {
+    padding: 0.55em 0.9em;
+    border: 1px solid var(--rule);
+    vertical-align: top;
+}
+
+thead th {
+    background: var(--code-bg);
+    text-align: left;
+    font-weight: 600;
+}
+
+/* Quotations */
+
+blockquote {
+    margin: 1.4em 0;
+    padding: 0.2em 1.2em;
+    border-left: 3px solid var(--accent);
+    background: transparent;
+    color: var(--muted);
+}
+
+/* Sidebar */
+
+.sidebar {
+    font-family: var(--text-face);
+    font-size: 1.5rem;
+}
+
+.chapter li.chapter-item {
+    line-height: 1.5;
+}
+
+.chapter li.part-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.85em;
+    margin-top: 1.4em;
+}
+
+.menu-title {
+    font-weight: 600;
+    font-size: 1.6rem;
+}

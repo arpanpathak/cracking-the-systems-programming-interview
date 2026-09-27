@@ -1,0 +1,1484 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>A GPU job controller on a real cluster - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-d77a6425.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-3c641b8f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-d2103709.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="11-a-gpu-job-controller-on-a-real-cluster"><a class="header" href="#11-a-gpu-job-controller-on-a-real-cluster">1.1 A GPU job controller on a real cluster</a></h1>
+<p>In chapter 1, we built a server, a cache, a reflector, a work queue, and a controller, and
+ran all of them inside one process. In this chapter, we will take that machinery to a real
+Kubernetes cluster and write a controller that runs GPU jobs on a real GPU. We will first
+teach the API server a new kind of object, the GPU job, and then watch those objects
+arrive the way our reflector did. Then we will write the controller, run it, and see a
+CUDA program run on a GPU inside a pod that our controller created. Finally we
+will make two clients collide on the same object and watch the API server’s version check
+stop the second one.</p>
+<p>This time we will not write the machinery ourselves. We will use each language’s standard
+Kubernetes library, which provides the same parts we built by hand:</p>
+<ul>
+<li>In Go, we will use <em>controller-runtime</em>. It is built on client-go, the library whose
+parts we listed at the end of chapter 1, and it is what Kubebuilder, the usual tool for
+starting a Go controller project, generates code for.</li>
+<li>In Rust, we will use <em>kube-rs</em>, published as the <code>kube</code> crate.</li>
+</ul>
+<p>We will introduce each part of these libraries at the moment we need it, and relate it to
+the piece we built in chapter 1.</p>
+<p>Our cluster is created with kind, which runs each Kubernetes node as a Docker container.
+We talk to it with kubectl, the Kubernetes command-line client:</p>
+<pre><code class="language-console">$ kind get clusters
+gpu-lab
+$ kubectl get nodes
+NAME                    STATUS   ROLES           AGE   VERSION
+gpu-lab-control-plane   Ready    control-plane   22s   v1.37.0
+</code></pre>
+<p>Pods in this cluster can use a GPU. Appendix A shows how we set that up.</p>
+<h2 id="the-projects"><a class="header" href="#the-projects">The projects</a></h2>
+<p>Our Go code lives in the module in <code>code/go</code>, next to the model from chapter 1:</p>
+<pre><code class="language-text">module gpuk8s
+
+go 1.26.0
+
+require (
+	k8s.io/api v0.37.1
+	k8s.io/apimachinery v0.37.1
+	k8s.io/client-go v0.37.0
+	sigs.k8s.io/controller-runtime v0.25.1
+)
+</code></pre>
+<p>We depend on four modules. <code>k8s.io/api</code> holds the Go types of the built-in Kubernetes
+objects, such as <code>Pod</code>. <code>k8s.io/apimachinery</code> holds what all objects share: metadata,
+resource quantities such as “2 CPUs”, and the errors the API server returns.
+<code>k8s.io/client-go</code> is the client library, and <code>sigs.k8s.io/controller-runtime</code> is the
+controller framework built on it. We pick versions that match our cluster’s
+Kubernetes 1.37.</p>
+<p>Our Rust code is the <code>gpujob</code> package in the Cargo workspace in <code>code/rust</code>, next to the
+model’s <code>informer</code> package:</p>
+<pre><code class="language-toml">[workspace]
+members = ["informer", "gpujob", "gpuusage"]
+resolver = "3"
+</code></pre>
+<pre><code class="language-toml">[package]
+name = "gpujob"
+version = "0.1.0"
+edition = "2024"
+publish = false
+default-run = "controller"
+
+[dependencies]
+futures = "0.3"
+k8s-openapi = { version = "0.28", features = ["v1_36"] }
+kube = { version = "4.2", features = ["runtime", "derive"] }
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+</code></pre>
+<p><code>kube</code> is the client. We turn on its <code>runtime</code> feature for the controller machinery and
+its <code>derive</code> feature for generating our own object types. <code>k8s-openapi</code> provides the
+Rust types of the built-in objects; its <code>v1_36</code> feature selects the newest Kubernetes
+version it supports. The other dependencies do supporting work: <code>schemars</code> generates JSON
+schemas, <code>serde</code> and <code>serde_json</code> convert objects to and from JSON, <code>tokio</code> runs our
+asynchronous code, <code>futures</code> gives us operations on streams, <code>thiserror</code> derives our
+error type, and <code>tracing</code> writes the controller’s log. Finally, <code>default-run</code> lets us
+start the controller with a plain <code>cargo run -p gpujob</code>.</p>
+<h2 id="teaching-the-api-server-a-new-kind-of-object"><a class="header" href="#teaching-the-api-server-a-new-kind-of-object">Teaching the API server a new kind of object</a></h2>
+<p>In chapter 1 our jobs were records with a GPU count. A real cluster has no such kind of
+object: it knows about pods, services, deployments, and the other built-in kinds, and
+that is all. Fortunately, the API server can be taught new kinds. We describe the new kind
+in a <em>CustomResourceDefinition</em> (CRD): its API group and version, its name, and the
+schema of its fields. Once we install the CRD, the API server stores, validates, lists, and
+watches objects of our new kind exactly as it does its built-in kinds. That means
+everything from chapter 1 applies to our jobs too: they get resource versions, clients
+can list and watch them, and writes can be conditional.</p>
+<p>We will call our kind <code>GpuJob</code>, in the API group <code>gpucloud.dev</code>, version <code>v1</code>. Its spec
+holds a container image, an optional command, and a GPU count. Its status holds a phase,
+a message, and the generation it describes. In both languages, we write the kind as
+ordinary types and let a tool generate the CRD from them.</p>
+<h3 id="in-go"><a class="header" href="#in-go">In Go</a></h3>
+<p>A Go API package usually has two files. The first one names the group and version, and it
+registers our types in a <em>scheme</em>. A scheme is a table that maps Go types to the API kinds
+they represent. A client needs it to know that JSON with <code>"kind": "GpuJob"</code> should become a
+<code>GpuJob</code> value, and which URL to use when it sends one to the server.</p>
+<pre><code class="language-go">// Package v1 defines version v1 of the GpuJob custom resource in the API group
+// gpucloud.dev: a request to run one container with a number of GPUs, and the
+// status that the controller reports back.
+//
+// The comments on the types below become the field descriptions in the
+// generated CustomResourceDefinition, which kubectl explain prints. The
+// +kubebuilder comments are markers that controller-gen reads.
+//
+// +kubebuilder:object:generate=true
+// +groupName=gpucloud.dev
+package v1
+
+import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
+)
+
+//go:generate controller-gen object crd paths=. output:crd:dir=../../config/crd
+
+// GroupVersion is the API group and version of the types in this package.
+var GroupVersion = schema.GroupVersion{Group: "gpucloud.dev", Version: "v1"}
+
+// SchemeBuilder registers the types in this package with a runtime.Scheme.
+var SchemeBuilder = &amp;scheme.Builder{GroupVersion: GroupVersion}
+
+// AddToScheme adds the types in this package to a runtime.Scheme, so that a
+// client can encode and decode them.
+var AddToScheme = SchemeBuilder.AddToScheme
+</code></pre>
+<p>The second file defines the types themselves:</p>
+<pre><code class="language-go">package v1
+
+import (
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// GpuJobSpec is a request to run one container with a number of GPUs.
+type GpuJobSpec struct {
+	// Container image to run.
+	Image string `json:"image"`
+	// Command to run in the container. When empty, the image's own command runs.
+	// +optional
+	Command []string `json:"command,omitempty"`
+	// Number of GPUs the container requests.
+	// +kubebuilder:validation:Minimum=0
+	GPUs int32 `json:"gpus"`
+}
+
+// Phase is the progress of a job, following the phase of its pod.
+// +kubebuilder:validation:Enum=Pending;Running;Succeeded;Failed
+type Phase string
+
+// The phases a job moves through.
+const (
+	// PhasePending means the pod is waiting to be scheduled or for its containers to start.
+	PhasePending Phase = "Pending"
+	// PhaseRunning means the pod's container is running.
+	PhaseRunning Phase = "Running"
+	// PhaseSucceeded means the container exited with status 0.
+	PhaseSucceeded Phase = "Succeeded"
+	// PhaseFailed means the container exited with a non-zero status.
+	PhaseFailed Phase = "Failed"
+)
+
+// GpuJobStatus is the state of a job as the controller last observed it.
+type GpuJobStatus struct {
+	// Progress of the job's pod.
+	Phase Phase `json:"phase"`
+	// The scheduler's reason, when the pod cannot be placed on a node.
+	// +optional
+	Message string `json:"message,omitempty"`
+	// The metadata.generation of the spec that this status describes.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+}
+
+// GpuJob runs one container with a number of GPUs.
+//
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=gj
+// +kubebuilder:printcolumn:name="GPUs",type=integer,JSONPath=".spec.gpus"
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=".status.phase"
+type GpuJob struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object metadata: name, namespace, labels, resource version.
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	// What the user asks for.
+	Spec GpuJobSpec `json:"spec"`
+	// What the controller has observed.
+	// +optional
+	Status GpuJobStatus `json:"status,omitempty"`
+}
+
+// GpuJobList is a list of GpuJob objects, as the API server returns it.
+//
+// +kubebuilder:object:root=true
+type GpuJobList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata, including the list's resource version.
+	metav1.ListMeta `json:"metadata,omitempty"`
+	// The jobs in the list.
+	Items []GpuJob `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&amp;GpuJob{}, &amp;GpuJobList{})
+}
+
+// StatusFromPod derives a job's status from its pod. generation is the job's
+// metadata.generation, recorded as the generation that the status describes.
+func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
+	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		status.Phase = PhaseRunning
+	case corev1.PodSucceeded:
+		status.Phase = PhaseSucceeded
+	case corev1.PodFailed:
+		status.Phase = PhaseFailed
+	}
+	// A pod that cannot be placed explains why in its PodScheduled condition.
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled &amp;&amp; c.Status == corev1.ConditionFalse {
+			status.Message = c.Message
+		}
+	}
+	return status
+}
+</code></pre>
+<p>The comments that begin with <code>+kubebuilder:</code> are <em>markers</em>. They are instructions for
+controller-gen, a code generator from the Kubebuilder project, which reads our source code
+and writes the CRD for us. Let us go through the ones we use:</p>
+<ul>
+<li><code>object:root=true</code> marks <code>GpuJob</code> and <code>GpuJobList</code> as complete API objects, as opposed to
+structs that only appear inside other objects.</li>
+<li><code>subresource:status</code> turns on the <em>status subresource</em>, which we explain below.</li>
+<li><code>resource:shortName=gj</code> lets us type <code>kubectl get gj</code> instead of <code>kubectl get gpujobs</code>.</li>
+<li>The two <code>printcolumn</code> markers add the GPU count and the phase to the table that
+<code>kubectl get</code> prints.</li>
+<li>The <code>validation</code> markers become rules in the schema. The API server enforces them, so a
+job with a negative GPU count or an unknown phase is rejected before our controller ever
+sees it.</li>
+</ul>
+<p>The ordinary comments on our types and fields matter as well: controller-gen copies them
+into the CRD as field descriptions, and <code>kubectl explain gpujob.spec</code> shows them to users.</p>
+<p><code>StatusFromPod</code> works out a job’s status from its pod. The pod’s phase maps directly onto
+our <code>Phase</code>. There is one extra piece of information worth passing on. When the scheduler
+cannot find a machine for a pod, it sets the pod’s <code>PodScheduled</code> condition to <code>False</code> and
+writes the reason in the condition’s message. <code>StatusFromPod</code> copies that message into
+the job’s status, so that a user who runs <code>kubectl get gpujob</code> can see why the job is
+still waiting.</p>
+<p>The <code>go:generate</code> line in <code>groupversion.go</code> tells Go how to run controller-gen. It writes
+two files for us. The first is <code>zz_generated.deepcopy.go</code>, with a <code>DeepCopy</code> method for
+each type. Every Kubernetes API type needs these, because the shared caches described at the end
+of chapter 1 hand out pointers, and a controller must copy an object
+before changing it. The second file is the CRD itself, in <code>gpujob/config/crd</code>. Both
+generated files are checked into the repository, so we only need to run the generator again
+when we change the types:</p>
+<pre><code class="language-console">$ go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.22.0
+$ go generate ./gpujob/api/...
+$ kubectl apply -f gpujob/config/crd/
+customresourcedefinition.apiextensions.k8s.io/gpujobs.gpucloud.dev configured
+</code></pre>
+<h3 id="in-rust"><a class="header" href="#in-rust">In Rust</a></h3>
+<p>In Rust, there is no separate generator to run. kube-rs builds the CRD while our program
+compiles, from derive macros on our types:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! The `GpuJob` custom resource: a request to run one container with a number
+//! of GPUs, and the status that the controller reports back.
+//!
+//! The `///` comments on the spec and status types become the field
+//! descriptions in the generated `CustomResourceDefinition`, which
+//! `kubectl explain gpujob.spec` prints.
+
+use k8s_openapi::api::core::v1::Pod;
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+/// A request to run one container with a number of GPUs.
+///
+/// The `CustomResource` derive generates the `GpuJob` type, which holds this
+/// spec together with the object's metadata and an optional `GpuJobStatus`.
+#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[kube(
+    group = "gpucloud.dev",
+    version = "v1",
+    kind = "GpuJob",
+    namespaced,
+    status = "GpuJobStatus",
+    shortname = "gj",
+    printcolumn = r#"{"name":"GPUs","type":"integer","jsonPath":".spec.gpus"}"#,
+    printcolumn = r#"{"name":"Phase","type":"string","jsonPath":".status.phase"}"#
+)]
+pub struct GpuJobSpec {
+    /// Container image to run.
+    pub image: String,
+    /// Command to run in the container. When empty, the image's own command runs.
+    #[serde(default)]
+    pub command: Vec&lt;String&gt;,
+    /// Number of GPUs the container requests.
+    // Kubernetes schemas support int32 and int64, so the u32 is published as a
+    // non-negative int32.
+    #[schemars(with = "i32", range(min = 0))]
+    pub gpus: u32,
+}
+
+/// The state of a job as the controller last observed it.
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuJobStatus {
+    /// Progress of the job's pod.
+    pub phase: Phase,
+    /// The scheduler's reason, when the pod cannot be placed on a node.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option&lt;String&gt;,
+    /// The `metadata.generation` of the spec that this status describes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_generation: Option&lt;i64&gt;,
+}
+
+/// Progress of a job, following the phase of its pod.
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema)]
+pub enum Phase {
+    /// The pod is waiting to be scheduled or for its containers to start.
+    #[default]
+    Pending,
+    /// The pod's container is running.
+    Running,
+    /// The container exited with status 0.
+    Succeeded,
+    /// The container exited with a non-zero status.
+    Failed,
+}
+
+impl GpuJobStatus {
+    /// Derives a job's status from its pod. `generation` is the job's
+    /// `metadata.generation`, recorded as the generation this status describes.
+    #[must_use]
+    pub fn from_pod(pod: &amp;Pod, generation: Option&lt;i64&gt;) -&gt; Self {
+        let status = pod.status.as_ref();
+        let phase = match status.and_then(|s| s.phase.as_deref()) {
+            Some("Running") =&gt; Phase::Running,
+            Some("Succeeded") =&gt; Phase::Succeeded,
+            Some("Failed") =&gt; Phase::Failed,
+            _ =&gt; Phase::Pending,
+        };
+        // A pod that cannot be placed explains why in its PodScheduled condition.
+        let message = status
+            .and_then(|s| s.conditions.as_ref())
+            .into_iter()
+            .flatten()
+            .find(|c| c.type_ == "PodScheduled" &amp;&amp; c.status == "False")
+            .and_then(|c| c.message.clone());
+        Self {
+            phase,
+            message,
+            observed_generation: generation,
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>The <code>CustomResource</code> derive generates a <code>GpuJob</code> type for us. It holds our spec together
+with the object’s metadata and an optional status, the same shape as the Go struct we
+wrote by hand. The <code>#[kube(...)]</code> attribute does the job of the Go markers. <code>group</code> and
+<code>version</code> place the kind at <code>gpucloud.dev/v1</code>. <code>namespaced</code> makes each job belong to a
+<em>namespace</em>, a named partition of the cluster’s objects, so that two teams can each have a
+job called <code>train</code>. <code>status</code> turns on the status subresource, and <code>shortname</code> and
+<code>printcolumn</code> do the same as their Go counterparts. The <code>///</code> comments become the field
+descriptions, and our <code>Phase</code> enum becomes a string field whose allowed values are the
+variant names.</p>
+<p>One attribute deserves a closer look. The schema that kube-rs generates for a <code>u32</code> has
+the format <code>uint32</code>, which the API server does not recognise, and it complains with a
+warning every time the CRD is applied. The attribute <code>#[schemars(with = "i32", range(min = 0))]</code> publishes the field as a non-negative 32-bit integer instead, which is exactly the
+schema the Go field of type <code>int32</code> with its <code>Minimum=0</code> marker produces, while the Rust
+field itself stays unsigned. <code>from_pod</code> is the Rust version of <code>StatusFromPod</code>.</p>
+<p>A tiny program prints the CRD, and we pipe it straight into kubectl:</p>
+<pre class="playground"><code class="language-rust">//! Prints the `CustomResourceDefinition` for `GpuJob` as JSON, ready for kubectl:
+//!
+//! ```console
+//! cargo run -p gpujob --bin crdgen | kubectl apply -f -
+//! ```
+
+use gpujob::GpuJob;
+use kube::CustomResourceExt;
+
+/// Generates the definition from the `GpuJob` type and prints it.
+fn main() -&gt; serde_json::Result&lt;()&gt; {
+    println!("{}", serde_json::to_string_pretty(&amp;GpuJob::crd())?);
+    Ok(())
+}</code></pre>
+<pre><code class="language-console">$ cargo run -p gpujob --bin crdgen | kubectl apply -f -
+customresourcedefinition.apiextensions.k8s.io/gpujobs.gpucloud.dev created
+</code></pre>
+<p>Our Go and Rust definitions describe the same kind with the same fields. We can install
+either one, and either controller can then serve the jobs.</p>
+<h3 id="the-status-subresource"><a class="header" href="#the-status-subresource">The status subresource</a></h3>
+<p>Why did we turn on the status subresource? Think about two writers touching the same job:
+a user who edits the spec, and our controller, which writes the status. Without the
+subresource, both write the whole object, and whoever writes second can overwrite the
+other’s part with an older copy. With the subresource, the status gets its own endpoint,
+<code>/status</code>. The API server takes only status fields from writes to <code>/status</code>, and only spec
+fields from writes to the main endpoint, so the user and the controller can no longer step
+on each other.</p>
+<p>The subresource has a second effect. The API server now increments <code>metadata.generation</code>
+only when the spec changes. That gives our status field <code>observedGeneration</code> its meaning:
+our controller copies the generation it acted on into it, and anyone comparing the two
+numbers can tell whether the latest spec change has been handled yet.</p>
+<h2 id="watching-the-jobs"><a class="header" href="#watching-the-jobs">Watching the jobs</a></h2>
+<p>In chapter 1, our reflector listed the objects, watched from the list’s version, and
+listed again when the history ran out. Both libraries give us that loop ready-made. To see
+exactly what it delivers, we will write a small program in each language that prints every
+event it receives.</p>
+<p>In Go, the loop comes packaged inside an <em>informer</em>, just like in client-go:
+controller-runtime’s <code>cache</code> package creates one informer per kind of object. To hear
+about changes, we register an <em>event handler</em>: a set of three functions that the informer
+calls whenever it adds, updates, or deletes an object in its cache. Our handlers simply
+print what they receive:</p>
+<pre><code class="language-go">// Command watch-jobs prints the events that an informer delivers for GpuJob
+// objects in the default namespace: the initial list, one object at a time,
+// and then one event per change. Stop it with Ctrl-C.
+//
+// Run it from code/go with:
+//
+//	go run ./gpujob/cmd/watch-jobs
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	toolscache "k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+
+	gpujobv1 "gpuk8s/gpujob/api/v1"
+)
+
+// namespace is the namespace whose jobs the program watches.
+const namespace = "default"
+
+// describe formats a job as its name, GPU count, and resource version.
+func describe(obj any) string {
+	// A deletion that a relist discovered arrives wrapped in a tombstone.
+	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	job := obj.(*gpujobv1.GpuJob)
+	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
+}
+
+// main starts an informer for GpuJob objects and prints one line per event.
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run does the work of main and returns the first error it meets.
+func run() error {
+	scheme := runtime.NewScheme()
+	if err := gpujobv1.AddToScheme(scheme); err != nil {
+		return err
+	}
+	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
+		Scheme:            scheme,
+		DefaultNamespaces: map[string]cache.Config{namespace: {}},
+	})
+	if err != nil {
+		return err
+	}
+	ctx := ctrl.SetupSignalHandler()
+	informer, err := informers.GetInformer(ctx, &amp;gpujobv1.GpuJob{})
+	if err != nil {
+		return err
+	}
+	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
+		AddFunc: func(obj any, isInInitialList bool) {
+			if isInInitialList {
+				fmt.Println("  listed  ", describe(obj))
+			} else {
+				fmt.Println("  changed ", describe(obj))
+			}
+		},
+		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
+		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("list started")
+	go informers.Start(ctx)
+	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
+		return fmt.Errorf("informer did not sync")
+	}
+	fmt.Println("list complete, watching")
+	&lt;-ctx.Done()
+	return nil
+}
+</code></pre>
+<p>The add handler gets an extra flag, <code>isInInitialList</code>, which is true for objects that came
+from the first list, so we can tell the objects that already existed from the ones created
+later. The handler’s registration has a <code>HasSynced</code> method that becomes true once our
+handler has seen the whole initial list, and <code>WaitForCacheSync</code> waits for that moment
+before we print “list complete”. The delete handler may receive a
+<code>DeletedFinalStateUnknown</code> value instead of a job. That is the marker from chapter 1 for a
+deletion that the informer only discovered by relisting, and <code>describe</code> unwraps it.</p>
+<p>In Rust, kube-rs hands us the loop directly as a <em>stream</em>: a sequence of values that
+arrive over time, which we read one at a time with <code>await</code>. It is the asynchronous
+counterpart of an iterator. The function <code>watcher</code> returns a stream of <code>Event</code> values for one
+kind of object:</p>
+<pre class="playground"><code class="language-rust">//! Prints the event stream that a watcher produces for `GpuJob` objects in the
+//! current namespace: the initial list, one object at a time, and then one
+//! event per change. Stop it with Ctrl-C.
+//!
+//! Run it from `code/rust` with `cargo run -p gpujob --bin watch_jobs`.
+
+use futures::TryStreamExt;
+use gpujob::GpuJob;
+use kube::runtime::watcher::{self, Event, watcher};
+use kube::{Api, Client, ResourceExt};
+
+/// Formats a job as its name, GPU count, and resource version.
+fn describe(job: &amp;GpuJob) -&gt; String {
+    let version = job.resource_version().unwrap_or_default();
+    format!("{} gpus={} v{version}", job.name_any(), job.spec.gpus)
+}
+
+/// Watches `GpuJob` objects and prints one line per event.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let jobs: Api&lt;GpuJob&gt; = Api::default_namespaced(Client::try_default().await?);
+    let mut events = std::pin::pin!(watcher(jobs, watcher::Config::default()));
+    while let Some(event) = events.try_next().await? {
+        match event {
+            Event::Init =&gt; println!("list started"),
+            Event::InitApply(job) =&gt; println!("  listed   {}", describe(&amp;job)),
+            Event::InitDone =&gt; println!("list complete, watching"),
+            Event::Apply(job) =&gt; println!("  changed  {}", describe(&amp;job)),
+            Event::Delete(job) =&gt; println!("  deleted  {}", describe(&amp;job)),
+        }
+    }
+    Ok(())
+}</code></pre>
+<p>The <code>Event</code> enum spells out the list-then-watch sequence we reasoned about in chapter 1.
+<code>Init</code>, then one <code>InitApply</code> for each object that existed at the time of the list, then
+<code>InitDone</code>, together make up a list. After that, each event is an <code>Apply</code> for an object
+that was created or changed, or a <code>Delete</code>. If the watch has to start over, for example
+after <code>410 Gone</code>, the stream begins a new <code>Init</code> sequence by itself. A consumer that
+rebuilds its state at every <code>Init</code> therefore gets the same result as the <code>Replace</code> method
+of our chapter 1 cache. kube-rs provides exactly such a consumer and calls it a
+<em>reflector</em>: it applies the events to a store that the rest of the program can read.</p>
+<p>We started each program before any jobs existed and left it running while we did
+everything else in this chapter. The Go program printed:</p>
+<pre><code class="language-console">$ go run ./gpujob/cmd/watch-jobs
+list started
+list complete, watching
+  changed  smoke-test gpus=0 v41900
+  changed  train gpus=1 v41901
+  changed  smoke-test gpus=0 v41904
+  changed  train gpus=1 v41909
+  changed  smoke-test gpus=0 v41920
+  changed  train gpus=1 v41923
+  changed  train gpus=1 v41931
+  changed  smoke-test gpus=0 v41960
+  changed  train gpus=2 v41972
+  changed  train gpus=2 v41977
+  changed  train gpus=2 v41979
+  deleted  smoke-test gpus=0 v41992
+</code></pre>
+<p>And the Rust program printed:</p>
+<pre><code class="language-console">$ cargo run -p gpujob --bin watch_jobs
+list started
+list complete, watching
+  changed  smoke-test gpus=0 v656
+  changed  train gpus=1 v657
+  changed  train gpus=1 v661
+  changed  smoke-test gpus=0 v662
+  changed  train gpus=1 v676
+  changed  smoke-test gpus=0 v684
+  changed  train gpus=1 v688
+  changed  smoke-test gpus=0 v722
+  changed  train gpus=2 v731
+  changed  train gpus=2 v737
+  changed  train gpus=2 v739
+  deleted  smoke-test gpus=0 v752
+</code></pre>
+<p>When we started them again later, with <code>train</code> still in the cluster, each one listed the
+job before it started watching. In Go:</p>
+<pre><code class="language-console">$ go run ./gpujob/cmd/watch-jobs
+list started
+  listed   train gpus=2 v41979
+list complete, watching
+</code></pre>
+<p>In Rust:</p>
+<pre><code class="language-console">$ cargo run -p gpujob --bin watch_jobs
+list started
+  listed   train gpus=2 v739
+list complete, watching
+</code></pre>
+<p>The resource versions are etcd’s revision numbers. Since etcd counts every write in the
+cluster, including those made by Kubernetes’ own components, the numbers of one job
+jump by more than one between its changes. The Go run happened later in the cluster’s
+life, so its numbers are larger. Most of the <code>changed</code> lines are our controller writing a
+new status: the object changes, even though its spec stays the same.</p>
+<h2 id="the-controller"><a class="header" href="#the-controller">The controller</a></h2>
+<p>Now we can write the controller. It will run each <code>GpuJob</code> as a pod and report the
+pod’s progress in the job’s status. Both versions follow the same plan, so we show both
+listings first and then walk through them together.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// Command controller is a controller for GpuJob objects. It runs each job as a
+// pod that requests the job's GPUs, and reports the pod's progress in the
+// job's status.
+//
+// Run it from code/go, against the cluster in the current kubeconfig context,
+// with:
+//
+//	go run ./gpujob/cmd/controller
+package main
+
+import (
+	"context"
+	"os"
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	gpujobv1 "gpuk8s/gpujob/api/v1"
+)
+
+// manager is the field manager name under which the controller writes with
+// server-side apply.
+const manager = "gpujob-controller"
+
+// gpu is the extended resource through which a container requests GPUs.
+const gpu corev1.ResourceName = "nvidia.com/gpu"
+
+// desiredPod builds the pod that should exist for job, as an apply
+// configuration: a partial object that lists only the fields this controller
+// sets.
+//
+// The owner reference makes Kubernetes delete the pod together with the job,
+// and it lets the controller map each pod event to the job that owns the pod.
+func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
+	gpus := corev1.ResourceList{gpu: *resource.NewQuantity(int64(job.Spec.GPUs), resource.DecimalSI)}
+	container := corev1ac.Container().
+		WithName("job").
+		WithImage(job.Spec.Image).
+		WithResources(corev1ac.ResourceRequirements().WithLimits(gpus))
+	if len(job.Spec.Command) &gt; 0 {
+		container.WithCommand(job.Spec.Command...)
+	}
+	owner := metav1ac.OwnerReference().
+		WithAPIVersion(gpujobv1.GroupVersion.String()).
+		WithKind("GpuJob").
+		WithName(job.Name).
+		WithUID(job.UID).
+		WithController(true).
+		WithBlockOwnerDeletion(true)
+	return corev1ac.Pod(job.Name, job.Namespace).
+		WithOwnerReferences(owner).
+		WithSpec(corev1ac.PodSpec().
+			WithRestartPolicy(corev1.RestartPolicyNever).
+			WithContainers(container))
+}
+
+// podGPUs returns the number of GPUs that an existing pod's container
+// requests, read from its limits, and whether the pod has a GPU limit.
+func podGPUs(pod *corev1.Pod) (int32, bool) {
+	if len(pod.Spec.Containers) == 0 {
+		return 0, false
+	}
+	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+	return int32(quantity.Value()), ok
+}
+
+// GpuJobReconciler makes the cluster match each GpuJob.
+type GpuJobReconciler struct {
+	// Client reads objects from the manager's cache and writes to the API server.
+	client.Client
+}
+
+// Reconcile makes the cluster match one job: it ensures the job's pod exists
+// with the requested GPUs, and writes the pod's progress into the job's status.
+func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
+
+	var job gpujobv1.GpuJob
+	if err := r.Get(ctx, req.NamespacedName, &amp;job); err != nil {
+		// A job deleted since it was queued needs nothing: its pod goes with it.
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// The resources of a pod are fixed when it is created. When the job asks
+	// for a different number of GPUs, delete the pod and come back after it is gone.
+	var pod corev1.Pod
+	err := r.Get(ctx, req.NamespacedName, &amp;pod)
+	switch {
+	case err == nil:
+		if gpus, ok := podGPUs(&amp;pod); !ok || gpus != job.Spec.GPUs {
+			log.Info("GPU count changed, replacing pod")
+			if err := r.Delete(ctx, &amp;pod); client.IgnoreNotFound(err) != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		}
+	case !apierrors.IsNotFound(err):
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Apply(ctx, desiredPod(&amp;job), client.FieldOwner(manager), client.ForceOwnership); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// A pod that was just created is not in the cache yet; its zero value
+	// yields the Pending phase, and the pod's creation event triggers the
+	// reconcile that reports its real progress.
+	status := gpujobv1.StatusFromPod(&amp;pod, job.Generation)
+	if job.Status != status {
+		log.Info("status changed", "phase", status.Phase, "message", status.Message)
+		patch := client.MergeFrom(job.DeepCopy())
+		job.Status = status
+		if err := r.Status().Patch(ctx, &amp;job, patch); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	// Changes to the pod trigger the next reconcile through Owns.
+	return ctrl.Result{}, nil
+}
+
+// main builds a manager, registers the reconciler, and runs until Ctrl-C.
+func main() {
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true))) // readable console output
+	setup := ctrl.Log.WithName("setup")
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		setup.Error(err, "registering built-in types")
+		os.Exit(1)
+	}
+	if err := gpujobv1.AddToScheme(scheme); err != nil {
+		setup.Error(err, "registering GpuJob")
+		os.Exit(1)
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:  scheme,
+		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
+	})
+	if err != nil {
+		setup.Error(err, "creating manager")
+		os.Exit(1)
+	}
+
+	err = ctrl.NewControllerManagedBy(mgr).
+		For(&amp;gpujobv1.GpuJob{}).
+		Owns(&amp;corev1.Pod{}).
+		Complete(&amp;GpuJobReconciler{Client: mgr.GetClient()})
+	if err != nil {
+		setup.Error(err, "creating controller")
+		os.Exit(1)
+	}
+
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setup.Error(err, "running manager")
+		os.Exit(1)
+	}
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust">//! A controller for `GpuJob` objects. It runs each job as a pod that requests
+//! the job's GPUs, and reports the pod's progress in the job's status.
+//!
+//! Run it against the cluster in the current kubeconfig context with
+//! `cargo run -p gpujob` from `code/rust` (the package's default binary).
+
+use futures::StreamExt;
+use gpujob::{GpuJob, GpuJobStatus};
+use k8s_openapi::api::core::v1::{Container, Pod, PodSpec, ResourceRequirements};
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use kube::api::{DeleteParams, ObjectMeta, Patch, PatchParams};
+use kube::runtime::controller::{Action, Controller};
+use kube::runtime::watcher;
+use kube::{Api, Client, Resource, ResourceExt};
+use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::time::Duration;
+
+/// The field manager name under which the controller writes with server-side apply.
+const MANAGER: &amp;str = "gpujob-controller";
+
+/// The extended resource through which a container requests GPUs.
+const GPU: &amp;str = "nvidia.com/gpu";
+
+/// Everything a reconcile can fail with.
+#[derive(Debug, thiserror::Error)]
+enum Error {
+    /// A request to the API server failed.
+    #[error("kubernetes API: {0}")]
+    Kube(#[from] kube::Error),
+    /// The status could not be serialized into a patch.
+    #[error("serializing status: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+/// State shared by every reconcile.
+struct Context {
+    /// Client for the cluster's API server.
+    client: Client,
+}
+
+/// Builds the pod that should exist for `job`.
+///
+/// The owner reference makes Kubernetes delete the pod together with the job,
+/// and it lets the controller map each pod event to the job that owns the pod.
+fn desired_pod(job: &amp;GpuJob) -&gt; Pod {
+    let gpus = BTreeMap::from([(GPU.to_string(), Quantity(job.spec.gpus.to_string()))]);
+    Pod {
+        metadata: ObjectMeta {
+            name: Some(job.name_any()),
+            owner_references: job.controller_owner_ref(&amp;()).map(|owner| vec![owner]),
+            ..Default::default()
+        },
+        spec: Some(PodSpec {
+            restart_policy: Some("Never".into()),
+            containers: vec![Container {
+                name: "job".into(),
+                image: Some(job.spec.image.clone()),
+                command: Some(job.spec.command.clone()).filter(|c| !c.is_empty()),
+                resources: Some(ResourceRequirements {
+                    limits: Some(gpus),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}
+
+/// Returns the number of GPUs that an existing pod's container requests, read
+/// from its limits, or `None` if the pod has no GPU limit.
+fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
+    let container = pod.spec.as_ref()?.containers.first()?;
+    let limits = container.resources.as_ref()?.limits.as_ref()?;
+    limits.get(GPU)?.0.parse().ok()
+}
+
+/// Makes the cluster match one job: ensures its pod exists with the requested
+/// GPUs, and writes the pod's progress into the job's status.
+async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result&lt;Action, Error&gt; {
+    let namespace = job.namespace().unwrap_or_default();
+    let name = job.name_any();
+    let pods: Api&lt;Pod&gt; = Api::namespaced(ctx.client.clone(), &amp;namespace);
+    let jobs: Api&lt;GpuJob&gt; = Api::namespaced(ctx.client.clone(), &amp;namespace);
+
+    // The resources of a pod are fixed when it is created. When the job asks
+    // for a different number of GPUs, delete the pod and come back after it is gone.
+    if let Some(pod) = pods.get_opt(&amp;name).await?
+        &amp;&amp; pod_gpus(&amp;pod) != Some(job.spec.gpus)
+    {
+        tracing::info!(%name, "GPU count changed, replacing pod");
+        pods.delete(&amp;name, &amp;DeleteParams::default()).await?;
+        return Ok(Action::requeue(Duration::from_secs(2)));
+    }
+
+    let apply = PatchParams::apply(MANAGER).force();
+    let pod = pods
+        .patch(&amp;name, &amp;apply, &amp;Patch::Apply(desired_pod(&amp;job)))
+        .await?;
+
+    let status = GpuJobStatus::from_pod(&amp;pod, job.metadata.generation);
+    if job.status.as_ref() != Some(&amp;status) {
+        let message = status.message.as_deref().unwrap_or("");
+        tracing::info!(%name, phase = ?status.phase, message, "status changed");
+        let patch = serde_json::json!({
+            "apiVersion": GpuJob::api_version(&amp;()),
+            "kind": GpuJob::kind(&amp;()),
+            "status": status,
+        });
+        jobs.patch_status(&amp;name, &amp;apply, &amp;Patch::Apply(patch))
+            .await?;
+    }
+    // Changes to the pod trigger the next reconcile through `owns`.
+    Ok(Action::await_change())
+}
+
+/// Decides what happens after a failed reconcile: log it and retry in five seconds.
+#[allow(clippy::needless_pass_by_value)] // the signature is fixed by `Controller::run`
+fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&gt;) -&gt; Action {
+    tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
+    Action::requeue(Duration::from_secs(5))
+}
+
+/// Starts the controller and runs it until Ctrl-C.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), kube::Error&gt; {
+    tracing_subscriber::fmt()
+        .with_env_filter("controller=info,kube=warn")
+        .with_target(false)
+        .with_ansi(std::io::IsTerminal::is_terminal(&amp;std::io::stdout()))
+        .init();
+    let client = Client::try_default().await?;
+    let jobs: Api&lt;GpuJob&gt; = Api::all(client.clone());
+    let pods: Api&lt;Pod&gt; = Api::all(client.clone());
+
+    Controller::new(jobs, watcher::Config::default())
+        .owns(pods, watcher::Config::default())
+        .shutdown_on_signal()
+        .run(reconcile, error_policy, Arc::new(Context { client }))
+        .for_each(|result| async move {
+            if let Err(error) = result {
+                tracing::debug!(%error, "reconcile error");
+            }
+        })
+        .await;
+    Ok(())
+}</code></pre>
+<h3 id="the-pod-for-a-job"><a class="header" href="#the-pod-for-a-job">The pod for a job</a></h3>
+<p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
+interesting part is how the pod asks for a GPU. It puts <code>nvidia.com/gpu</code> in its resource
+limits, just as it would put CPU or memory there. Kubernetes calls a resource like this an
+<em>extended resource</em>: a name that Kubernetes itself does not understand, but whose
+quantity a machine can advertise as a whole number, and which the scheduler counts like
+any other resource. The name <code>nvidia.com/gpu</code> is advertised by the NVIDIA device plugin, a
+small program on each GPU machine that counts the GPUs and reports them to Kubernetes;
+Appendix A shows it at work. Extended resources can only be requested in whole units, and
+they are requested through <code>limits</code>. One unit of <code>nvidia.com/gpu</code> is, by default, one whole
+physical GPU; chapter 2 examines what that includes and how a GPU can be divided.</p>
+<p>The pod also carries an <em>owner reference</em>, a note in its metadata that says “this pod
+belongs to that job”. It has two uses. When the job is deleted, Kubernetes’ garbage
+collector, a controller built into every cluster, sees the note and deletes the pod as
+well, so we never have to clean up after deleted jobs ourselves. And because the note has
+its <code>controller</code> flag set, both libraries can take any event about the pod and work out
+which job it belongs to, which is how our controller hears about its pods.</p>
+<p>The two languages build the pod differently. The Go version builds an <em>apply
+configuration</em>, a type from client-go in which every field is optional and is filled in
+through <code>With</code> methods. The value ends up containing exactly the fields our controller
+cares about and nothing else, which matters for the kind of write we are about to do. The
+Rust version builds an ordinary <code>Pod</code> value and leaves everything else at its default;
+serde leaves the empty fields out when it turns the pod into JSON, which has the same
+effect.</p>
+<p><code>podGPUs</code> (<code>pod_gpus</code> in Rust) reads the GPU count back out of an existing pod. In Go it
+returns the count and a flag saying whether the pod had a GPU limit at all. In Rust it
+returns an <code>Option&lt;u32&gt;</code>, and each <code>?</code> bails out with <code>None</code> as soon as any field along the
+way is missing.</p>
+<h3 id="reconciling-a-job"><a class="header" href="#reconciling-a-job">Reconciling a job</a></h3>
+<p>Our reconcile function receives a job and brings the cluster into line with it in three
+steps.</p>
+<p>The first step covers a change that cannot be made in place. Kubernetes fixes a pod’s
+resources when the pod is created, so if the user changes the job’s GPU count, we cannot
+simply edit the pod. Instead we delete the pod and ask to be called again in two seconds,
+by which time it should be gone. The Go version asks for that with
+<code>ctrl.Result{RequeueAfter: 2 * time.Second}</code>, and the Rust version with <code>Action::requeue</code>.
+The Rust condition uses a <em>let chain</em>, <code>if let ... &amp;&amp; ...</code>, available since the 2024
+edition, to check for the pod and compare its GPU count in one expression.</p>
+<p>The second step creates or updates the pod with a single call, using <em>server-side apply</em>.
+We send the pod we want, and the API server merges it into whatever it has stored. The
+server also records which fields each writer set; a writer in this sense is called a
+<em>field manager</em>, and our controller calls itself <code>gpujob-controller</code>. Applying the same
+object twice changes nothing, which makes server-side apply a natural fit for a
+level-triggered controller: we can apply on every single reconcile, without first
+checking whether the pod exists. We also force ownership, with <code>client.ForceOwnership</code> in
+Go and <code>force()</code> in Rust. If some other writer has set a field that we also set, we take
+that field over, which is what we want from a controller that is the only authority over
+its pods.</p>
+<p>The third step works out the job’s status and writes it through the status subresource,
+but only if it differs from the status already stored. Skipping unchanged writes is more
+than a saving. Every write produces a watch event, every event causes a reconcile, and a
+controller that wrote on every reconcile would keep waking itself up forever. The Go
+version writes the status with a <em>merge patch</em>, which sends only the fields that differ
+from a copy of the job we saved before changing it. The Rust version applies the status
+with server-side apply, just as it does the pod.</p>
+<p>The two versions also read the pod differently, and the difference is worth
+understanding. controller-runtime’s client reads from the informer caches that the
+manager keeps, so the Go <code>Get</code> of the pod is a lookup in memory, exactly like the cache
+reads in chapter 1. A pod we have only just created is not in the cache yet; in that case
+the Go version computes the status from an empty pod, which comes out as Pending, and the
+pod’s creation event soon triggers another reconcile that reports the real state.
+kube-rs’s <code>Api</code>, on the other hand, talks to the API server directly, so the Rust
+<code>get_opt</code> is a real GET request. That is fine for our small controller. A Rust controller
+that looks after thousands of pods would keep a reflector store of pods in its <code>Context</code>
+and read them from memory, just as the Go version does.</p>
+<p>When a reconcile fails, the Go version returns the error, and controller-runtime puts the
+job back in the queue with the growing delay we described at the end of chapter 1. The
+Rust version returns the error to kube-rs, which asks our <code>error_policy</code> function what to
+do; ours logs the error and tries again in five seconds.</p>
+<h3 id="starting-the-controller"><a class="header" href="#starting-the-controller">Starting the controller</a></h3>
+<p>In Go, everything a controller process shares lives in a <em>manager</em>: the connection to the
+cluster, the scheme, the informer caches, and the client that reads from them.
+<code>ctrl.NewControllerManagedBy(mgr)</code> builds our controller inside the manager, and each
+call in the chain wires up one piece. <code>For(&amp;GpuJob{})</code> watches jobs and queues the name of
+each job that changes. <code>Owns(&amp;corev1.Pod{})</code> watches pods and queues the name of each pod’s
+owning job, using the owner reference we set. <code>Complete</code> registers our reconciler. Then
+<code>mgr.Start</code> starts the caches, waits for their first lists, and runs the workers until the
+process receives a signal such as Ctrl-C. We switch off the metrics endpoint that a
+manager starts by default, since we do not need it here.</p>
+<p>In Rust, <code>Controller::new</code> starts a watcher and a store for <code>GpuJob</code> objects, and <code>owns</code>
+adds a second watcher, for pods, that queues each pod’s owning job in the same way.
+<code>run</code> starts the work queue and the workers and gives us back a stream with one item per
+finished reconcile, and <code>for_each</code> keeps reading that stream until the program stops.
+<code>shutdown_on_signal</code> ends the stream when we press Ctrl-C.</p>
+<p>In both libraries, the work queue behaves exactly like the one we built in chapter 1: a
+job waits in it at most once, and a job that one worker is reconciling is held back from
+all the others until that worker is done.</p>
+<h2 id="running-it"><a class="header" href="#running-it">Running it</a></h2>
+<p>We will test the controller with two jobs. <code>smoke-test</code> asks for no GPUs and runs a short
+shell command, which tells us the basic machinery works. <code>train</code> asks for one GPU and runs
+<code>gpu-check</code>, a small CUDA program from Appendix A that adds two vectors on the GPU and
+prints which device it used.</p>
+<pre><code class="language-yaml">apiVersion: gpucloud.dev/v1
+kind: GpuJob
+metadata:
+  name: smoke-test
+spec:
+  image: busybox:1.37
+  command: ["sh", "-c", "echo hello from the job; sleep 20"]
+  gpus: 0
+---
+apiVersion: gpucloud.dev/v1
+kind: GpuJob
+metadata:
+  name: train
+spec:
+  image: gpu-check:1
+  gpus: 1
+</code></pre>
+<p>We start the Go controller from <code>code/go</code>, create the jobs, and check on them:</p>
+<pre><code class="language-console">$ go run ./gpujob/cmd/controller
+$ kubectl apply -f ../manifests/gpujobs.yaml
+$ kubectl get gpujobs
+NAME         GPUS   PHASE
+smoke-test   0      Succeeded
+train        1      Succeeded
+$ kubectl logs train
+device: Orin, compute 8.7, 8 SMs
+kernel: no error, out[0] = 3.0, out[n-1] = 3.0
+</code></pre>
+<p>The log of <code>train</code> shows our CUDA kernel running on the cluster’s GPU,
+inside the pod our controller created. After its startup messages, the Go controller
+logged the following lines, shown here with the date and time zone trimmed from the
+timestamps:</p>
+<pre><code class="language-console">15:12:37  INFO  controller  status changed  {"name": "smoke-test", "phase": "Pending", "message": ""}
+15:12:37  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message": ""}
+15:12:38  INFO  controller  status changed  {"name": "smoke-test", "phase": "Running", "message": ""}
+15:12:38  INFO  controller  status changed  {"name": "train", "phase": "Running", "message": ""}
+15:12:40  INFO  controller  status changed  {"name": "train", "phase": "Succeeded", "message": ""}
+15:13:00  INFO  controller  status changed  {"name": "smoke-test", "phase": "Succeeded", "message": ""}
+</code></pre>
+<p>The Rust controller runs from <code>code/rust</code>, and the same steps give the same result:</p>
+<pre><code class="language-console">$ cargo run -p gpujob
+$ kubectl apply -f ../manifests/gpujobs.yaml
+$ kubectl get gpujobs
+NAME         GPUS   PHASE
+smoke-test   0      Succeeded
+train        1      Succeeded
+</code></pre>
+<pre><code class="language-console">14:01:15.949  INFO status changed name=train phase=Pending
+14:01:15.954  INFO status changed name=smoke-test phase=Pending
+14:01:15.985  INFO status changed name=smoke-test phase=Pending
+14:01:17.124  INFO status changed name=train phase=Running
+14:01:18.504  INFO status changed name=smoke-test phase=Running
+14:01:18.959  INFO status changed name=train phase=Succeeded
+14:01:39.957  INFO status changed name=smoke-test phase=Succeeded
+</code></pre>
+<p>In both runs, each job moved from Pending to Running to Succeeded along with its pod, and
+every step reached our controller through the pod watch that <code>Owns</code> or <code>owns</code> set up.
+<code>train</code> finished about two seconds after its pod was created, and <code>smoke-test</code> finished
+after its twenty-second sleep.</p>
+<p>Look at the Rust log once more: <code>smoke-test</code> reported Pending twice, 31 milliseconds
+apart. Here is what happened. The first reconcile wrote the status. The pod’s creation
+then triggered a second reconcile before our own status write had come back through the
+watch, so the job in the cache still had no status, the comparison saw a difference, and
+the controller wrote the same status again. This is the read-your-own-writes gap from the
+end of chapter 1. Here it costs one redundant write, which server-side
+apply turns into a no-op.</p>
+<h2 id="two-writers-one-object"><a class="header" href="#two-writers-one-object">Two writers, one object</a></h2>
+<p>Our controllers never send a resource version when they write, because server-side apply
+does not need one. Many clients do, though: a client that reads an object, changes it, and
+sends the whole object back with an update includes the version it read, and the API
+server applies the same check as our <code>Update</code> in chapter 1. To see that check on a real
+server, we will write a program in which two clients read the <code>train</code> job and then both
+try to write it back.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// Command conflict shows the API server refusing a write with an out-of-date
+// resource version. Two clients read the train job, and both write it back
+// with Update. The first write succeeds and changes the version, so the second
+// fails with 409 Conflict.
+//
+// Run it from code/go, while a GpuJob named train exists, with:
+//
+//	go run ./gpujob/cmd/conflict
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"os"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	gpujobv1 "gpuk8s/gpujob/api/v1"
+)
+
+// job identifies the job that both clients read and write.
+var job = client.ObjectKey{Namespace: "default", Name: "train"}
+
+// main performs the two writes and reports how the server answered each.
+func main() {
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run does the work of main and returns the first unexpected error.
+func run(ctx context.Context) error {
+	scheme := runtime.NewScheme()
+	if err := gpujobv1.AddToScheme(scheme); err != nil {
+		return err
+	}
+	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+	if err != nil {
+		return err
+	}
+
+	var first gpujobv1.GpuJob
+	if err := c.Get(ctx, job, &amp;first); err != nil {
+		return err
+	}
+	second := first.DeepCopy()
+	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
+
+	first.Spec.GPUs++
+	if err := c.Update(ctx, &amp;first); err != nil {
+		return err
+	}
+	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
+
+	second.Spec.GPUs += 2
+	err = c.Update(ctx, second)
+	var status *apierrors.StatusError
+	if errors.As(err, &amp;status) &amp;&amp; status.ErrStatus.Code == http.StatusConflict {
+		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+		return nil
+	}
+	return fmt.Errorf("unexpected result: %v", err)
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust">//! Shows the API server refusing a write with an outdated resource version.
+//! Two clients read the `train` job, and both write it back with `replace`.
+//! The first write succeeds and changes the version, so the second fails with
+//! `409 Conflict`.
+//!
+//! Run it from `code/rust`, while a `GpuJob` named `train` exists, with
+//! `cargo run -p gpujob --bin conflict`.
+
+use gpujob::GpuJob;
+use kube::api::PostParams;
+use kube::{Api, Client, ResourceExt};
+
+/// The job that both clients read and write.
+const JOB: &amp;str = "train";
+
+/// Performs the two writes and reports how the server answered each.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), kube::Error&gt; {
+    let jobs: Api&lt;GpuJob&gt; = Api::default_namespaced(Client::try_default().await?);
+    let mut first = jobs.get(JOB).await?;
+    let mut second = first.clone();
+    println!(
+        "both clients read {JOB} at v{}",
+        first.resource_version().unwrap_or_default()
+    );
+
+    first.spec.gpus += 1;
+    let stored = jobs.replace(JOB, &amp;PostParams::default(), &amp;first).await?;
+    println!(
+        "first write stored, now v{}",
+        stored.resource_version().unwrap_or_default()
+    );
+
+    second.spec.gpus += 2;
+    match jobs.replace(JOB, &amp;PostParams::default(), &amp;second).await {
+        Err(kube::Error::Api(status)) if status.code == 409 =&gt; {
+            println!("second write refused: {} {}", status.code, status.message);
+        }
+        other =&gt; println!("unexpected: {other:?}"),
+    }
+    Ok(())
+}</code></pre>
+<p>The Go version recognises the conflict with <code>errors.As</code>, which digs the API server’s
+status out of the returned error, and compares its code with <code>http.StatusConflict</code>. The
+Rust version matches the error against a pattern with a guard, <code>if status.code == 409</code>,
+and every other outcome falls through to the second arm.</p>
+<pre><code class="language-console">$ go run ./gpujob/cmd/conflict
+both clients read train at v41931
+first write stored, now v41972
+second write refused: 409 Operation cannot be fulfilled on gpujobs.gpucloud.dev "train":
+the object has been modified; please apply your changes to the latest version and try again
+</code></pre>
+<pre><code class="language-console">$ cargo run -p gpujob --bin conflict
+both clients read train at v688
+first write stored, now v731
+second write refused: 409 Operation cannot be fulfilled on gpujobs.gpucloud.dev "train":
+the object has been modified; please apply your changes to the latest version and try again
+</code></pre>
+<p>The first write raised <code>train</code> to two GPUs, and our controllers noticed. The Go
+controller logged:</p>
+<pre><code class="language-console">15:13:07  INFO  controller  GPU count changed, replacing pod  {"name": "train"}
+15:13:07  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message": ""}
+15:13:07  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message":
+          "0/1 nodes are available: 1 Insufficient nvidia.com/gpu. preemption: 0/1 nodes are
+          available: 1 Preemption is not helpful for scheduling."}
+</code></pre>
+<p>And the Rust controller:</p>
+<pre><code class="language-console">14:01:46.101  INFO GPU count changed, replacing pod name=train
+14:01:46.137  INFO status changed name=train phase=Pending
+14:01:46.170  INFO status changed name=train phase=Pending 0/1 nodes are available:
+                   1 Insufficient nvidia.com/gpu. preemption: 0/1 nodes are available:
+                   1 Preemption is not helpful for scheduling.
+</code></pre>
+<p>Each controller deleted the old pod, because a pod’s resources cannot change, and the
+deletion event triggered the reconcile that created the replacement. The replacement asks
+for two GPUs on a machine that has only one, so the scheduler cannot place it anywhere.
+Thanks to the message we copy from the pod’s <code>PodScheduled</code> condition, the job’s status
+tells the user exactly why, and <code>kubectl get gpujobs</code> shows the job as Pending until its
+request is lowered or a machine with two free GPUs joins the cluster.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="01-informers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="02-gpus.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="01-informers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="02-gpus.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

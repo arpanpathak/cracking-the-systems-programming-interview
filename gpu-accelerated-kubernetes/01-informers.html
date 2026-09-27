@@ -1,0 +1,1737 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Keeping a local copy of the cluster - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-d77a6425.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-3c641b8f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-d2103709.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="1-keeping-a-local-copy-of-the-cluster"><a class="header" href="#1-keeping-a-local-copy-of-the-cluster">1. Keeping a local copy of the cluster</a></h1>
+<p>Suppose we want to write a program that runs GPU training jobs on Kubernetes. A user
+creates a job and says “this job needs one GPU”. Our program has to notice the new job,
+start its container on a machine with a free GPU, and write down that the job is
+running. When the user changes the job to ask for two GPUs, our program has to notice
+that too and replace the container. When the user deletes the job, our program has to
+stop the container and free the GPU.</p>
+<p>In Kubernetes, a program like this is called a <em>controller</em>. In this chapter, we will
+learn how a controller finds out what is happening in the cluster, which turns out to be
+the most interesting part of the whole design. We will first build intuition by reasoning
+about the problems a controller runs into, and quickly prototype the data structures that
+solve them: a small API server, a cache, a loop that keeps the cache up to date, a work
+queue, and the controller itself. Then we will run our prototype through a burst of edits,
+a dropped connection, and a network partition, and finally we will map each piece onto
+client-go, the library that real Go controllers use.</p>
+<p>We will build the model twice, in Go and in Rust, with the same six parts and the same
+behaviour. The Go files are in <code>code/go/informer</code>, and we run them with
+<code>go run ./informer</code> from <code>code/go</code>. The Rust files are in <code>code/rust/informer</code>, and we run
+them with <code>cargo run -p informer</code> from <code>code/rust</code>. Neither version needs anything beyond
+its language’s standard library.</p>
+<h2 id="objects-specs-and-statuses"><a class="header" href="#objects-specs-and-statuses">Objects, specs, and statuses</a></h2>
+<p>Kubernetes describes a cluster as a collection of <em>objects</em>. An object is a record with a
+name and two main parts. The <em>spec</em> holds what a user asked for: “run this image with one
+GPU”. The <em>status</em> holds what has actually happened so far: “running on one GPU”. A
+training job in our cluster will be one such object.</p>
+<p>All objects live behind a single HTTP service, the <em>API server</em>. Every read and every
+write of every object goes through it, and it stores the objects in etcd, a replicated
+key-value database. Users, command-line tools, and controllers are all just clients of
+the API server.</p>
+<p>A controller’s job is to compare each object’s spec with the real world and act on any
+difference, then record what it did in the status. To do that well, it needs two things
+from the API server: an accurate view of every object of its kind, and news of every
+change within a fraction of a second. Let us see how to get both.</p>
+<h2 id="numbering-every-write"><a class="header" href="#numbering-every-write">Numbering every write</a></h2>
+<p>The most obvious approach is to ask the API server for every object every few seconds.
+It works for a handful of objects, and it falls apart as the cluster grows. A cluster with
+50,000 pods stores a few kilobytes of JSON per pod, so a single request for all of them
+transfers around 200 megabytes. If a dozen controllers each did that every five seconds,
+the API server would be sending almost half a gigabyte per second, and between two of
+those requests only a handful of pods would have changed.</p>
+<p>What we really want is for the API server to tell us about each change as it happens.
+That idea brings a problem with it. Connections break: networks fail, servers restart,
+and proxies close connections they consider idle. When our connection breaks and we open
+a new one, we need to say “send me everything I missed”, and that requires a way to name
+the point where we left off.</p>
+<p>The API server solves this by numbering its writes. It keeps a single counter for the
+whole store. Every time any object is created, updated, or deleted, it increments the
+counter and stamps the new value onto the object that changed. Kubernetes calls this
+number the object’s <em>resource version</em>. The numbers come straight from etcd, which gives
+every write a <em>revision</em> number from one counter for the whole database.</p>
+<p>The same number helps with a second problem. Imagine two clients read a job at version 7.
+The first changes the GPU count and writes the job back. The second changes the image and
+writes the job back a moment later, still based on what it read at version 7. Without
+any check, the second write would replace the whole object and silently undo the first
+client’s change. With resource versions, the second client sends “I read this at
+version 7” along with its write. The object is now at version 8, so the server refuses
+the write with the HTTP status <code>409 Conflict</code>, and the second client knows it has to read
+the job again and redo its change on top of the new version.</p>
+<h2 id="listing-then-watching"><a class="header" href="#listing-then-watching">Listing, then watching</a></h2>
+<p>With numbered writes, a client can build an exact view of the cluster in two steps.</p>
+<p>First it asks for every object. This request is called a <em>list</em>, and the response carries
+the objects together with the resource version at which the server took the snapshot.
+Then the client opens a <em>watch</em>: a request that stays open and asks the server to send
+every change made after a given version, one <em>event</em> per change. The client passes the
+version it got from the list.</p>
+<p>Passing that version is the important detail. The list and the watch are two separate
+requests, and other clients keep writing in between. Suppose our list is taken at
+version 10, then a user edits a job at version 11, and only then does our watch open, when
+the store is at version 12:</p>
+<pre><code class="language-text">version:   10          11             12
+           list        job-a edited   watch opened
+           snapshot                   from version 10
+                                      -&gt; the server replays event 11,
+                                         then sends new events as they occur
+</code></pre>
+<p>Because the watch asks for everything after version 10, the server first sends us event 11
+from its record of recent changes and then carries on with new events. Our view is the
+snapshot at version 10 plus every change after it: nothing missing, nothing counted twice.
+If we had opened the watch at the current version, 12, we would have skipped the edit at
+version 11 and kept an out-of-date copy of <code>job-a</code> until the job happened to change again.</p>
+<h2 id="when-the-history-runs-out"><a class="header" href="#when-the-history-runs-out">When the history runs out</a></h2>
+<p>The server can only replay changes it still has. etcd keeps every revision of every key
+until it is told to throw old ones away, and that clean-up is called <em>compaction</em>.
+Without it the database would grow forever. The Kubernetes API server asks etcd to
+compact every five minutes by default. After a compaction, a watch that asks to resume
+from an older version cannot be served, because the events it needs have been thrown
+away. The API server answers with the HTTP status <code>410 Gone</code>, and the only way for us to
+get back to an exact view is to list again and watch from the new list’s version.</p>
+<p>Watches also end for ordinary reasons. The API server closes every watch after a timeout,
+chosen at random between 30 and 60 minutes by default, so that thousands of clients do not
+all reconnect at the same moment. A load balancer between us and the server may close a
+connection that has been quiet for too long. And the network may fail for a while, so
+that even new connections fail.</p>
+<p>Each of these calls for a different response, and our client has to tell them apart. If
+the watch simply closed, we reopen it from the last version we received. If we cannot
+connect at all, we wait and try again. If the server says <code>410 Gone</code>, we list again.</p>
+<h2 id="building-the-server"><a class="header" href="#building-the-server">Building the server</a></h2>
+<p>Now we have enough understanding to build a model. We start with the server. It keeps the
+objects in memory, numbers every write, records recent events, and answers lists and
+watches. We also give it three extra methods, <code>DropWatches</code>, <code>Partition</code>, and <code>Heal</code>, so
+that our demonstration at the end of the chapter can cause each of the failures we just
+discussed.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// server.go models the Kubernetes API server. It stores objects, numbers every
+// write, keeps a history of recent changes, and serves lists and watches.
+
+package main
+
+import (
+	"errors"
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
+	"sync"
+)
+
+// Spec is the part of an object that a user writes: the desired state.
+type Spec struct {
+	// GPUs is the number of GPUs the job asks for.
+	GPUs int
+}
+
+// Status is the part of an object that the controller writes: the observed state.
+type Status struct {
+	// GPUs is the number of GPUs the controller has provided to the job.
+	GPUs int
+}
+
+// Object is one stored record, such as a training job.
+type Object struct {
+	// Name identifies the object on the server.
+	Name string
+	// Spec holds what the user asked for.
+	Spec Spec
+	// Status holds what the controller has done about it.
+	Status Status
+	// ResourceVersion is the server's write counter at the object's latest change.
+	ResourceVersion int
+}
+
+// String formats an object for the demonstration's log lines.
+func (o Object) String() string {
+	return fmt.Sprintf("%s{spec.GPUs: %d, status.GPUs: %d, v%d}",
+		o.Name, o.Spec.GPUs, o.Status.GPUs, o.ResourceVersion)
+}
+
+// EventType is the kind of change that an Event records.
+type EventType int
+
+// The kinds of change that a watch reports.
+const (
+	Added    EventType = iota // the object was created
+	Modified                  // the object was updated
+	Deleted                   // the object was removed
+)
+
+// String returns the name that the Kubernetes watch protocol uses for t.
+func (t EventType) String() string {
+	return [...]string{"ADDED", "MODIFIED", "DELETED"}[t]
+}
+
+// Event records one change to one object.
+type Event struct {
+	// Type is the kind of change.
+	Type EventType
+	// Object is the object after the change, or its final state if it was deleted.
+	Object Object
+}
+
+// Errors that the server returns. The first two carry the HTTP status codes
+// that the Kubernetes API server uses for the same conditions.
+var (
+	// ErrGone reports that the history a watch needs has been discarded.
+	ErrGone = errors.New("410 Gone: resource version too old")
+	// ErrConflict reports a conditional write whose resource version is out of date.
+	ErrConflict = errors.New("409 Conflict: object has been modified")
+	// ErrUnreachable reports that the client cannot reach the server.
+	ErrUnreachable = errors.New("server unreachable")
+)
+
+// APIServer stores objects and streams their changes to watchers. Its methods
+// are safe for concurrent use.
+type APIServer struct {
+	// mu guards every field below.
+	mu sync.Mutex
+	// version is the last resource version the server handed out.
+	version int
+	// objects holds the current state of every object, keyed by name.
+	objects map[string]Object
+	// history holds the events newer than compacted, oldest first.
+	history []Event
+	// compacted is the oldest version from which a watch may resume.
+	compacted int
+	// watches holds one channel for each open watch.
+	watches []chan Event
+	// unreachable makes new watches fail, to simulate a network partition.
+	unreachable bool
+}
+
+// NewAPIServer returns an empty server.
+func NewAPIServer() *APIServer {
+	return &amp;APIServer{objects: map[string]Object{}}
+}
+
+// Update creates or replaces an object and returns ErrConflict if the write's
+// condition fails. A non-zero o.ResourceVersion is a condition: the caller read
+// the object at that version and wants the write applied only if the object is
+// still at it. A zero ResourceVersion writes unconditionally.
+func (s *APIServer) Update(o Object) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, exists := s.objects[o.Name]
+	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
+		return ErrConflict
+	}
+	eventType := Modified
+	if !exists {
+		eventType = Added
+	}
+	s.version++
+	o.ResourceVersion = s.version
+	s.objects[o.Name] = o
+	s.publish(Event{eventType, o})
+	return nil
+}
+
+// Delete removes the named object, if it exists.
+func (s *APIServer) Delete(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	o, exists := s.objects[name]
+	if !exists {
+		return
+	}
+	delete(s.objects, name)
+	s.version++
+	o.ResourceVersion = s.version
+	s.publish(Event{Deleted, o})
+}
+
+// publish appends e to the history and sends it to every open watch.
+// The caller must hold s.mu.
+func (s *APIServer) publish(e Event) {
+	s.history = append(s.history, e)
+	for _, w := range s.watches {
+		w &lt;- e
+	}
+}
+
+// List returns every object, sorted by name, and the version at which the
+// snapshot was taken.
+func (s *APIServer) List() ([]Object, int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
+}
+
+// Watch returns a channel that first delivers the stored events newer than
+// version and then every new event, until the server closes it.
+func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch {
+	case s.unreachable:
+		return nil, ErrUnreachable
+	case version &lt; s.compacted:
+		return nil, ErrGone
+	}
+	w := make(chan Event, 1024)
+	for _, e := range s.history {
+		if e.Object.ResourceVersion &gt; version {
+			w &lt;- e
+		}
+	}
+	s.watches = append(s.watches, w)
+	return w, nil
+}
+
+// Compact discards the event history, as etcd discards old versions.
+func (s *APIServer) Compact() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.compacted = s.version
+	s.history = nil
+}
+
+// DropWatches closes every open watch, as a load balancer's idle timeout would.
+func (s *APIServer) DropWatches() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dropWatches()
+}
+
+// Partition closes every open watch and makes new watches fail until Heal.
+func (s *APIServer) Partition() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.unreachable = true
+	s.dropWatches()
+}
+
+// Heal ends a partition, so new watches succeed again.
+func (s *APIServer) Heal() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.unreachable = false
+}
+
+// dropWatches closes and forgets every watch channel. The caller must hold s.mu.
+func (s *APIServer) dropWatches() {
+	for _, w := range s.watches {
+		close(w)
+	}
+	s.watches = nil
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! A model of the Kubernetes API server. It stores objects, numbers every
+//! write, keeps a history of recent changes, and serves lists and watches.
+
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::Mutex;
+use std::sync::mpsc::{Receiver, Sender, channel};
+
+/// The part of an object that a user writes: the desired state.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Spec {
+    /// Number of GPUs the job asks for.
+    pub gpus: u32,
+}
+
+/// The part of an object that the controller writes: the observed state.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Status {
+    /// Number of GPUs the controller has provided to the job.
+    pub gpus: u32,
+}
+
+/// One stored record, such as a training job.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Object {
+    /// Identifies the object on the server.
+    pub name: String,
+    /// What the user asked for.
+    pub spec: Spec,
+    /// What the controller has done about it.
+    pub status: Status,
+    /// The server's write counter at the object's latest change.
+    pub resource_version: u64,
+}
+
+impl Object {
+    /// Returns a new object with the given name and GPU request, an empty
+    /// status, and no resource version.
+    pub fn new(name: &amp;str, gpus: u32) -&gt; Self {
+        Self {
+            name: name.to_string(),
+            spec: Spec { gpus },
+            ..Self::default()
+        }
+    }
+}
+
+impl fmt::Display for Object {
+    /// Formats an object for the demonstration's log lines.
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(
+            f,
+            "{}{{spec.gpus: {}, status.gpus: {}, v{}}}",
+            self.name, self.spec.gpus, self.status.gpus, self.resource_version
+        )
+    }
+}
+
+/// The kind of change that an [`Event`] records.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EventType {
+    /// The object was created.
+    Added,
+    /// The object was updated.
+    Modified,
+    /// The object was removed.
+    Deleted,
+}
+
+/// One change to one object.
+#[derive(Clone, Debug)]
+pub struct Event {
+    /// The kind of change.
+    pub kind: EventType,
+    /// The object after the change, or its final state if it was deleted.
+    pub object: Object,
+}
+
+/// Errors that the server returns. The first two carry the HTTP status codes
+/// that the Kubernetes API server uses for the same conditions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ApiError {
+    /// The history that a watch needs has been discarded.
+    Gone,
+    /// A conditional write carried an out-of-date resource version.
+    Conflict,
+    /// The client cannot reach the server.
+    Unreachable,
+}
+
+impl fmt::Display for ApiError {
+    /// Formats the error the way the Kubernetes API server reports it.
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Self::Gone =&gt; "410 Gone: resource version too old",
+            Self::Conflict =&gt; "409 Conflict: object has been modified",
+            Self::Unreachable =&gt; "server unreachable",
+        })
+    }
+}
+
+/// Everything the server stores, kept behind one lock.
+#[derive(Default)]
+struct State {
+    /// The last resource version the server handed out.
+    version: u64,
+    /// The current state of every object, keyed by name.
+    objects: HashMap&lt;String, Object&gt;,
+    /// The events newer than `compacted`, oldest first.
+    history: Vec&lt;Event&gt;,
+    /// The oldest version from which a watch may resume.
+    compacted: u64,
+    /// One sender for each open watch.
+    watches: Vec&lt;Sender&lt;Event&gt;&gt;,
+    /// Makes new watches fail, to simulate a network partition.
+    unreachable: bool,
+}
+
+impl State {
+    /// Appends `event` to the history and sends it to every open watch.
+    /// Watches whose receiver has gone away are forgotten.
+    fn publish(&amp;mut self, event: Event) {
+        self.watches.retain(|w| w.send(event.clone()).is_ok());
+        self.history.push(event);
+    }
+}
+
+/// Stores objects and streams their changes to watchers. Its methods are safe
+/// to call from several threads.
+#[derive(Default)]
+pub struct ApiServer {
+    /// Guards all of the server's data.
+    state: Mutex&lt;State&gt;,
+}
+
+impl ApiServer {
+    /// Locks the server's data.
+    fn state(&amp;self) -&gt; std::sync::MutexGuard&lt;'_, State&gt; {
+        self.state.lock().expect("server lock poisoned")
+    }
+
+    /// Creates or replaces an object. A non-zero `resource_version` is a
+    /// condition: the caller read the object at that version and wants the
+    /// write applied only if the object is still at it. Zero writes
+    /// unconditionally.
+    pub fn update(&amp;self, mut object: Object) -&gt; Result&lt;(), ApiError&gt; {
+        let mut state = self.state();
+        let current = state.objects.get(&amp;object.name);
+        let current_version = current.map_or(0, |o| o.resource_version);
+        if object.resource_version != 0 &amp;&amp; object.resource_version != current_version {
+            return Err(ApiError::Conflict);
+        }
+        let kind = if current.is_some() {
+            EventType::Modified
+        } else {
+            EventType::Added
+        };
+        state.version += 1;
+        object.resource_version = state.version;
+        state.objects.insert(object.name.clone(), object.clone());
+        state.publish(Event { kind, object });
+        Ok(())
+    }
+
+    /// Removes the named object, if it exists.
+    pub fn delete(&amp;self, name: &amp;str) {
+        let mut state = self.state();
+        let Some(mut object) = state.objects.remove(name) else {
+            return;
+        };
+        state.version += 1;
+        object.resource_version = state.version;
+        state.publish(Event {
+            kind: EventType::Deleted,
+            object,
+        });
+    }
+
+    /// Returns every object, sorted by name, and the version at which the
+    /// snapshot was taken.
+    pub fn list(&amp;self) -&gt; (Vec&lt;Object&gt;, u64) {
+        let state = self.state();
+        let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
+        objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
+        (objects, state.version)
+    }
+
+    /// Returns a receiver that first delivers the stored events newer than
+    /// `version` and then every new event, until the server drops the watch.
+    pub fn watch(&amp;self, version: u64) -&gt; Result&lt;Receiver&lt;Event&gt;, ApiError&gt; {
+        let mut state = self.state();
+        if state.unreachable {
+            return Err(ApiError::Unreachable);
+        }
+        if version &lt; state.compacted {
+            return Err(ApiError::Gone);
+        }
+        let (sender, receiver) = channel();
+        for event in &amp;state.history {
+            if event.object.resource_version &gt; version {
+                sender.send(event.clone()).expect("receiver is held here");
+            }
+        }
+        state.watches.push(sender);
+        Ok(receiver)
+    }
+
+    /// Discards the event history, as etcd discards old versions.
+    pub fn compact(&amp;self) {
+        let mut state = self.state();
+        state.compacted = state.version;
+        state.history.clear();
+    }
+
+    /// Closes every open watch, as a load balancer's idle timeout would.
+    pub fn drop_watches(&amp;self) {
+        self.state().watches.clear();
+    }
+
+    /// Closes every open watch and makes new watches fail until [`Self::heal`].
+    pub fn partition(&amp;self) {
+        let mut state = self.state();
+        state.unreachable = true;
+        state.watches.clear();
+    }
+
+    /// Ends a partition, so new watches succeed again.
+    pub fn heal(&amp;self) {
+        self.state().unreachable = false;
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>The model reduces a job to a GPU count in its spec and in its status.</p>
+<p><code>Update</code> carries both uses of the resource version. A zero version skips the check, which
+the demonstration uses to play a user editing a job. Any other version must equal the
+stored one, and a missing object counts as version 0. Each successful write increments the
+counter and publishes one event. <code>Delete</code> publishes the object’s final state under a new
+version.</p>
+<p><code>publish</code> runs while the server lock is held, and <code>Watch</code> holds the same lock while it
+replays the history and registers the new watch. Every event is therefore either in the
+replayed history or delivered after registration: no watch misses an event or receives
+one twice.</p>
+<p>A Go watch buffers 1,024 events. A client that stops reading would eventually block
+<code>publish</code> while it holds the lock and stall every writer; the real API server closes such
+a watch. The Rust channel is unbounded. In Go the server ends a watch by closing its
+channel; in Rust it drops the sender, which ends the receiver’s loop.</p>
+<p><code>Watch</code> fails with the gone error when the requested version is older than <code>compacted</code>.
+<code>Compact</code>, <code>DropWatches</code>, <code>Partition</code>, and <code>Heal</code> exist only to reproduce the failures
+described above.</p>
+<h2 id="a-local-copy-of-the-objects"><a class="header" href="#a-local-copy-of-the-objects">A local copy of the objects</a></h2>
+<p>Once we have listed and are watching, we can keep our own copy of every object in memory.
+The copy is exact up to the last event we received. Reading an object becomes a map
+lookup instead of a network request, and the server only has to send each change to us
+once. We call this copy the <em>cache</em>.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// cache.go holds the client's local copy of the server's objects.
+
+package main
+
+import "sync"
+
+// Cache is the client's copy of the server's objects, kept current by a
+// Reflector. Its methods are safe for concurrent use.
+type Cache struct {
+	// mu guards objects.
+	mu sync.RWMutex
+	// objects holds the latest known state of every object, keyed by name.
+	objects map[string]Object
+}
+
+// NewCache returns an empty cache.
+func NewCache() *Cache {
+	return &amp;Cache{objects: map[string]Object{}}
+}
+
+// Get returns the cached copy of the named object and whether it exists.
+func (c *Cache) Get(name string) (Object, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	o, ok := c.objects[name]
+	return o, ok
+}
+
+// Apply records one event from a watch.
+func (c *Cache) Apply(e Event) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if e.Type == Deleted {
+		delete(c.objects, e.Object.Name)
+		return
+	}
+	c.objects[e.Object.Name] = e.Object
+}
+
+// Replace installs the result of a fresh list and returns the names of the
+// objects that changed, including objects that disappeared while the client
+// was not watching.
+func (c *Cache) Replace(list []Object) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	old := c.objects
+	c.objects = make(map[string]Object, len(list))
+	var changed []string
+	for _, o := range list {
+		c.objects[o.Name] = o
+		// A name missing from old reads as version 0, so it counts as changed.
+		if old[o.Name].ResourceVersion != o.ResourceVersion {
+			changed = append(changed, o.Name)
+		}
+	}
+	for name := range old {
+		if _, ok := c.objects[name]; !ok {
+			changed = append(changed, name)
+		}
+	}
+	return changed
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! The client's local copy of the server's objects.
+
+use crate::server::{Event, EventType, Object};
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+/// The client's copy of the server's objects, kept current by a
+/// [`Reflector`](crate::reflector::Reflector). Its methods are safe to call
+/// from several threads.
+#[derive(Default)]
+pub struct Cache {
+    /// The latest known state of every object, keyed by name.
+    objects: RwLock&lt;HashMap&lt;String, Object&gt;&gt;,
+}
+
+impl Cache {
+    /// Returns the cached copy of the named object, if it exists.
+    pub fn get(&amp;self, name: &amp;str) -&gt; Option&lt;Object&gt; {
+        let objects = self.objects.read().expect("cache lock poisoned");
+        objects.get(name).cloned()
+    }
+
+    /// Records one event from a watch.
+    pub fn apply(&amp;self, event: Event) {
+        let mut objects = self.objects.write().expect("cache lock poisoned");
+        match event.kind {
+            EventType::Deleted =&gt; objects.remove(&amp;event.object.name),
+            EventType::Added | EventType::Modified =&gt; {
+                objects.insert(event.object.name.clone(), event.object)
+            }
+        };
+    }
+
+    /// Installs the result of a fresh list and returns the names of the
+    /// objects that changed, including objects that disappeared while the
+    /// client was not watching.
+    pub fn replace(&amp;self, list: &amp;[Object]) -&gt; Vec&lt;String&gt; {
+        let mut objects = self.objects.write().expect("cache lock poisoned");
+        let old = std::mem::take(&amp;mut *objects);
+        let mut changed = Vec::new();
+        for object in list {
+            let old_version = old.get(&amp;object.name).map(|o| o.resource_version);
+            if old_version != Some(object.resource_version) {
+                changed.push(object.name.clone());
+            }
+            objects.insert(object.name.clone(), object.clone());
+        }
+        for name in old.keys() {
+            if !objects.contains_key(name) {
+                changed.push(name.clone());
+            }
+        }
+        changed
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Both caches use a read-write lock: every reconcile reads the cache, and only incoming
+events write to it.</p>
+<p><code>Apply</code> records a single event. It stores the object for an addition or a modification
+and removes it for a deletion.</p>
+<p><code>Replace</code> installs the result of a fresh list, and it has one more job that events alone
+cannot do. Think about what happens when we relist after <code>410 Gone</code>. Some objects may have
+been deleted while we were disconnected, and their deletion events were thrown away by the
+compaction. Nobody will ever send us those events. The only evidence that the objects are
+gone is that they are in our old cache and missing from the new list. So <code>Replace</code> builds
+the new contents from the list, reports every object whose version differs from the one we
+had, and then reports every name that was in the old cache but is missing from the list.
+Objects that are new to us have no cached version at all; Go reads the missing entry as
+version 0 and Rust compares against <code>None</code>, so new objects get reported as changed too.</p>
+<h2 id="the-reflector"><a class="header" href="#the-reflector">The reflector</a></h2>
+<p>Next we need a loop that keeps the cache in step with the server. It lists, installs the
+result with <code>Replace</code>, and queues the names of the objects that <code>Replace</code> reported, so
+that the controller will look at them. Then it watches from the list’s version and
+applies each event as it arrives. When the history it needs is gone, it lists again. We
+call this loop the <em>reflector</em>.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// reflector.go keeps a Cache current by listing and watching the server.
+
+package main
+
+import (
+	"errors"
+	"time"
+)
+
+// Reflector copies the server's objects into a cache and queues the name of
+// every object that changes.
+type Reflector struct {
+	// server is the source of objects and events.
+	server *APIServer
+	// cache receives every object the reflector sees.
+	cache *Cache
+	// queue receives the name of every object that changes.
+	queue *WorkQueue
+}
+
+// Run lists every object, watches from the list's version, and lists again
+// whenever the server can no longer resume the watch. It does not return.
+func (r *Reflector) Run() {
+	for {
+		list, version := r.server.List()
+		r.queue.Add(r.cache.Replace(list)...)
+		logf("reflector: list at version %d: %v", version, list)
+		r.watchFrom(version)
+	}
+}
+
+// watchFrom applies events from version onward, reopens the watch after each
+// disconnect, and returns when the server reports that the history is gone.
+func (r *Reflector) watchFrom(version int) {
+	for {
+		w, err := r.server.Watch(version)
+		if errors.Is(err, ErrGone) {
+			logf("reflector: watch from version %d: %v", version, err)
+			return
+		}
+		if err != nil {
+			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
+			continue
+		}
+		for e := range w {
+			// Update the cache before queueing the name, so that a worker
+			// that takes the name reads the object as of this event.
+			r.cache.Apply(e)
+			r.queue.Add(e.Object.Name)
+			version = e.Object.ResourceVersion
+		}
+		logf("reflector: watch closed, resuming from version %d", version)
+	}
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Keeps a [`Cache`] current by listing and watching the server.
+
+use crate::cache::Cache;
+use crate::log;
+use crate::queue::WorkQueue;
+use crate::server::{ApiError, ApiServer};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
+/// Copies the server's objects into a cache and queues the name of every
+/// object that changes.
+pub struct Reflector {
+    /// The source of objects and events.
+    pub server: Arc&lt;ApiServer&gt;,
+    /// Receives every object the reflector sees.
+    pub cache: Arc&lt;Cache&gt;,
+    /// Receives the name of every object that changes.
+    pub queue: Arc&lt;WorkQueue&gt;,
+}
+
+impl Reflector {
+    /// Lists every object, watches from the list's version, and lists again
+    /// whenever the server can no longer resume the watch. It does not return.
+    pub fn run(&amp;self) {
+        loop {
+            let (list, version) = self.server.list();
+            self.queue.add(self.cache.replace(&amp;list));
+            let objects: Vec&lt;String&gt; = list.iter().map(ToString::to_string).collect();
+            log!(
+                "reflector: list at version {version}: [{}]",
+                objects.join(" ")
+            );
+            self.watch_from(version);
+        }
+    }
+
+    /// Applies events from `version` onward, reopens the watch after each
+    /// disconnect, and returns when the server reports that the history is gone.
+    fn watch_from(&amp;self, mut version: u64) {
+        loop {
+            let events = match self.server.watch(version) {
+                Ok(events) =&gt; events,
+                Err(ApiError::Gone) =&gt; {
+                    log!(
+                        "reflector: watch from version {version}: {}",
+                        ApiError::Gone
+                    );
+                    return;
+                }
+                Err(_) =&gt; {
+                    thread::sleep(Duration::from_millis(10)); // client-go backs off exponentially
+                    continue;
+                }
+            };
+            for event in events {
+                version = event.object.resource_version;
+                let name = event.object.name.clone();
+                // Update the cache before queueing the name, so that a worker
+                // that takes the name reads the object as of this event.
+                self.cache.apply(event);
+                self.queue.add([name]);
+            }
+            log!("reflector: watch closed, resuming from version {version}");
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>The heart of the reflector is <code>watchFrom</code> (<code>watch_from</code> in Rust). It keeps a variable,
+<code>version</code>, that always holds the version of the last event it applied to the cache. That
+means our cache is complete up to <code>version</code>, so a new watch opened from <code>version</code> picks up
+exactly where the old one stopped. With that in mind, here is what the function does for
+each of the three ways a watch can end:</p>
+<ul>
+<li>If the watch channel closes because the server dropped the connection, we log the
+version and open a new watch from it. The server replays anything that happened while
+we were reconnecting.</li>
+<li>If <code>Watch</code> fails because the server is unreachable, we wait 10 milliseconds and try
+again with the same version. client-go waits a little longer after each failure in a
+row, so that thousands of clients do not hammer a server that is trying to recover.</li>
+<li>If <code>Watch</code> fails with the gone error, our version is older than the compaction point,
+and no watch can continue from it. <code>watchFrom</code> returns, and <code>Run</code> starts over with a new
+list.</li>
+</ul>
+<p>Look closely at the order of the two calls inside the event loop: we update the cache
+first, and only then queue the object’s name. Suppose we did it the other way round. A
+worker could take the name straight away, read the object from the cache before our update
+landed, see the old state, decide there was nothing to do, and finish. The name would not
+be queued again, and the change would sit unhandled until the object happened to change
+once more. Updating the cache first rules that out.</p>
+<p>client-go uses the same name for this loop, <em>reflector</em>, because it reflects the server’s
+state into local memory. A reflector together with its cache, plus the plumbing that tells
+other code about changes, is what client-go calls an <em>informer</em>.</p>
+<h2 id="a-queue-of-names"><a class="header" href="#a-queue-of-names">A queue of names</a></h2>
+<p>The reflector knows when an object changes, and the controller needs to hear about it.
+The obvious design is for the reflector to call the controller once for every event.
+Let us see why that design breaks down.</p>
+<p>The first problem is bursts. A user who edits a job five times in one second produces five
+events. A controller called five times would start work for four specs that were already
+out of date before the work finished. The second problem is lost events. After a relist,
+<code>Replace</code> tells us which names changed, but the individual events that led there are gone
+for good. A controller that relies on seeing every event would have nothing to react to,
+and it would miss changes every time the history was compacted.</p>
+<p>So we give the controller only the <em>names</em> of objects that changed, and the controller
+reads the object’s current state from the cache when it gets to the name. Five edits now
+put the same name in the queue five times, and if the queue simply ignores a name it
+already holds, they turn into one reconcile that acts on the latest spec. The controller
+takes names from the queue in one or more <em>workers</em>, each processing one name at a time.
+Our model runs a single worker.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// queue.go implements the work queue between the reflector and the controller.
+
+package main
+
+import "sync"
+
+// WorkQueue stores the names of objects that need reconciling. A name waits
+// in the queue at most once, and a name that a worker holds is handed to no
+// other worker until the first calls Done.
+type WorkQueue struct {
+	// mu guards every field below.
+	mu sync.Mutex
+	// cond wakes workers blocked in Get.
+	cond *sync.Cond
+	// queue holds the names ready for a worker, in arrival order.
+	queue []string
+	// dirty holds every name that needs processing.
+	dirty map[string]bool
+	// processing holds every name that a worker currently holds.
+	processing map[string]bool
+}
+
+// NewWorkQueue returns an empty queue.
+func NewWorkQueue() *WorkQueue {
+	q := &amp;WorkQueue{dirty: map[string]bool{}, processing: map[string]bool{}}
+	q.cond = sync.NewCond(&amp;q.mu)
+	return q
+}
+
+// Add marks each name as needing processing. A name that is already pending
+// is left where it is. A name that a worker holds is queued again by Done.
+func (q *WorkQueue) Add(names ...string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for _, name := range names {
+		if q.dirty[name] {
+			continue
+		}
+		q.dirty[name] = true
+		if !q.processing[name] {
+			q.queue = append(q.queue, name)
+			q.cond.Signal()
+		}
+	}
+}
+
+// Get blocks until a name is ready and hands it to the caller.
+func (q *WorkQueue) Get() string {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for len(q.queue) == 0 {
+		q.cond.Wait()
+	}
+	name := q.queue[0]
+	q.queue = q.queue[1:]
+	delete(q.dirty, name)
+	q.processing[name] = true
+	return name
+}
+
+// Done releases a name that Get handed out, and queues it again if it was
+// added while the worker held it.
+func (q *WorkQueue) Done(name string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	delete(q.processing, name)
+	if q.dirty[name] {
+		q.queue = append(q.queue, name)
+		q.cond.Signal()
+	}
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! The work queue between the reflector and the controller.
+
+use std::collections::{HashSet, VecDeque};
+use std::sync::{Condvar, Mutex, MutexGuard};
+
+/// The queue's data, kept behind one lock.
+#[derive(Default)]
+struct State {
+    /// The names ready for a worker, in arrival order.
+    ready: VecDeque&lt;String&gt;,
+    /// Every name that needs processing.
+    dirty: HashSet&lt;String&gt;,
+    /// Every name that a worker currently holds.
+    processing: HashSet&lt;String&gt;,
+}
+
+/// Stores the names of objects that need reconciling. A name waits in the
+/// queue at most once, and a name that a worker holds is handed to no other
+/// worker until the first calls [`WorkQueue::done`].
+#[derive(Default)]
+pub struct WorkQueue {
+    /// Guards the queue's data.
+    state: Mutex&lt;State&gt;,
+    /// Wakes workers blocked in [`WorkQueue::get`].
+    ready: Condvar,
+}
+
+impl WorkQueue {
+    /// Locks the queue's data.
+    fn state(&amp;self) -&gt; MutexGuard&lt;'_, State&gt; {
+        self.state.lock().expect("queue lock poisoned")
+    }
+
+    /// Marks each name as needing processing. A name that is already pending
+    /// is left where it is. A name that a worker holds is queued again by `done`.
+    pub fn add(&amp;self, names: impl IntoIterator&lt;Item = String&gt;) {
+        let mut state = self.state();
+        for name in names {
+            if !state.dirty.insert(name.clone()) {
+                continue;
+            }
+            if !state.processing.contains(&amp;name) {
+                state.ready.push_back(name);
+                self.ready.notify_one();
+            }
+        }
+    }
+
+    /// Blocks until a name is ready and hands it to the caller.
+    pub fn get(&amp;self) -&gt; String {
+        let mut state = self.state();
+        loop {
+            if let Some(name) = state.ready.pop_front() {
+                state.dirty.remove(&amp;name);
+                state.processing.insert(name.clone());
+                return name;
+            }
+            state = self.ready.wait(state).expect("queue lock poisoned");
+        }
+    }
+
+    /// Releases a name that `get` handed out, and queues it again if it was
+    /// added while the worker held it.
+    pub fn done(&amp;self, name: &amp;str) {
+        let mut state = self.state();
+        state.processing.remove(name);
+        if state.dirty.contains(name) {
+            state.ready.push_back(name.to_string());
+            self.ready.notify_one();
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Besides the list of names that are ready for a worker, the queue keeps two sets. <code>dirty</code>
+holds every name that needs processing. <code>processing</code> holds every name that a worker has
+taken and not yet handed back.</p>
+<p>Why the second set? Because an object can change while a worker is in the middle of
+reconciling it. Without <code>processing</code>, the new event would put the name back in the ready
+list, a second worker would take it, and two workers would be acting on the same object at
+once. If both write a status with a version check, one of them fails with a conflict and
+its work is wasted. If both do something outside Kubernetes, like starting a container,
+both succeed, and our job ends up with two containers. So the queue holds the name back
+instead. When <code>Add</code> sees a name that a worker is holding, it marks the name dirty but
+leaves it out of the ready list. When the worker calls <code>Done</code>, the queue notices the mark
+and makes the name ready again, and the next reconcile sees the object as it is after the
+change. The table follows one name through that sequence:</p>
+<pre><code class="language-text">call             ready      dirty      processing   effect
+---------------  ---------  ---------  -----------  --------------------------------
+Add(job-a)       [job-a]    {job-a}    {}           ready for a worker
+Get() -&gt; job-a   []         {}         {job-a}      a worker takes it
+Add(job-a)       []         {job-a}    {job-a}      edited during the run: marked
+Add(job-a)       []         {job-a}    {job-a}      already marked: no change
+Done(job-a)      [job-a]    {job-a}    {}           marked, so ready again
+</code></pre>
+<p>One more detail: a worker that calls <code>Get</code> on an empty queue has to go to sleep until a
+name arrives, and it must not hold the lock while it sleeps, or <code>Add</code> could never get in
+to add one. Both versions solve this with a <em>condition variable</em>, <code>sync.Cond</code> in Go and
+<code>std::sync::Condvar</code> in Rust. Waiting on a condition variable releases the lock and puts
+the worker to sleep in one step. <code>Add</code> and <code>Done</code> signal it whenever they make a name
+ready. The wait sits inside a loop that checks the list again after waking up, because
+with several workers another one may have taken the name first.</p>
+<h2 id="reconciling"><a class="header" href="#reconciling">Reconciling</a></h2>
+<p>Now we can write the controller itself. It takes a name from the queue, reads the object
+from the cache, and makes the world match it. Kubernetes calls this <em>reconciling</em>:
+bringing what actually exists into agreement with what the user asked for.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// controller.go reconciles objects whose names arrive on the work queue.
+
+package main
+
+import "time"
+
+// Controller makes each object's status agree with its spec.
+type Controller struct {
+	// server receives the controller's status writes.
+	server *APIServer
+	// cache supplies the current state of each object.
+	cache *Cache
+	// queue supplies the names of objects to reconcile.
+	queue *WorkQueue
+}
+
+// Run is a single worker: it takes names from the queue one at a time and
+// reconciles them. It does not return.
+func (c *Controller) Run() {
+	for {
+		name := c.queue.Get()
+		err := c.reconcile(name)
+		c.queue.Done(name)
+		if err != nil {
+			c.queue.Add(name) // client-go requeues with a backoff
+		}
+	}
+}
+
+// reconcile reads the named object from the cache and, if its status differs
+// from its spec, writes a new status conditioned on the version it read.
+func (c *Controller) reconcile(name string) error {
+	o, ok := c.cache.Get(name)
+	if !ok {
+		logf("reconcile %s: deleted, releasing its GPUs", name)
+		return nil
+	}
+	if o.Status.GPUs == o.Spec.GPUs {
+		return nil
+	}
+	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
+	o.Status.GPUs = o.Spec.GPUs
+	if err := c.server.Update(o); err != nil {
+		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
+		return err
+	}
+	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+	return nil
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! Reconciles objects whose names arrive on the work queue.
+
+use crate::cache::Cache;
+use crate::log;
+use crate::queue::WorkQueue;
+use crate::server::{ApiError, ApiServer};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
+/// Makes each object's status agree with its spec.
+pub struct Controller {
+    /// Receives the controller's status writes.
+    pub server: Arc&lt;ApiServer&gt;,
+    /// Supplies the current state of each object.
+    pub cache: Arc&lt;Cache&gt;,
+    /// Supplies the names of objects to reconcile.
+    pub queue: Arc&lt;WorkQueue&gt;,
+}
+
+impl Controller {
+    /// A single worker: takes names from the queue one at a time and
+    /// reconciles them. It does not return.
+    pub fn run(&amp;self) {
+        loop {
+            let name = self.queue.get();
+            let result = self.reconcile(&amp;name);
+            self.queue.done(&amp;name);
+            if result.is_err() {
+                self.queue.add([name]); // client-go requeues with a backoff
+            }
+        }
+    }
+
+    /// Reads the named object from the cache and, if its status differs from
+    /// its spec, writes a new status conditioned on the version it read.
+    fn reconcile(&amp;self, name: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
+        let Some(mut object) = self.cache.get(name) else {
+            log!("reconcile {name}: deleted, releasing its GPUs");
+            return Ok(());
+        };
+        if object.status.gpus == object.spec.gpus {
+            return Ok(());
+        }
+        thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
+        object.status.gpus = object.spec.gpus;
+        let version = object.resource_version;
+        match self.server.update(object.clone()) {
+            Ok(()) =&gt; {
+                log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+                Ok(())
+            }
+            Err(error) =&gt; {
+                log!("reconcile {name}: write at version {version}: {error}");
+                Err(error)
+            }
+        }
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><code>reconcile</code> first looks the object up in the cache. If the object is missing, it was
+deleted, and a real controller would now release whatever it had set up for it; our model
+logs a message. If the status already matches the spec, there is nothing to do.
+Otherwise the controller does its work, which our model stands in for with a
+20-millisecond sleep, sets the status, and writes the object back.</p>
+<p>Notice that <code>reconcile</code> looks only at the object’s current state. It does not know, or
+care, why it was called. A name queued once and a name queued ten times lead to the same
+action, and so do a change reported by an event and a change discovered by a relist.
+Engineers call this style <em>level-triggered</em>, a term borrowed from digital electronics,
+where a level-triggered circuit responds to the present level of a signal and an
+<em>edge-triggered</em> circuit responds to each change of the signal. A controller that reacted
+to individual events would be edge-triggered, and it would do wasted work during bursts
+of edits and miss changes whose events a compaction had discarded.</p>
+<p><code>Run</code> is the worker loop. It takes a name, reconciles it, and hands it back with <code>Done</code>.
+If the reconcile failed, it adds the name again so that the next attempt starts from
+whatever the cache holds by then.</p>
+<h2 id="writing-back-to-the-server"><a class="header" href="#writing-back-to-the-server">Writing back to the server</a></h2>
+<p>Our cache always trails the server by the time it takes an event to arrive. During the
+20 milliseconds that <code>reconcile</code> spends working, a user might change the spec. If the
+controller then wrote its copy of the object back unconditionally, it would store the old
+spec together with a status computed for the old spec, and the user’s edit would simply
+disappear.</p>
+<p>This is exactly the situation the resource version check was made for. <code>reconcile</code> writes
+the object with the version it read. If the object changed in the meantime, the server
+refuses the write with a conflict, <code>Run</code> puts the name back in the queue, and the next
+reconcile reads the newer object from the cache. This approach is called <em>optimistic
+concurrency</em>: we take no lock on the object, we assume nobody else will change it, and we
+rely on the server to catch the cases where that assumption was wrong at the moment we
+write.</p>
+<h2 id="running-the-model"><a class="header" href="#running-the-model">Running the model</a></h2>
+<p>Time to see it all work together. <code>main</code> creates two jobs, starts the reflector and the
+controller, and then puts the machinery through each situation from this chapter: a burst
+of edits that arrives while a reconcile is running, a dropped watch, and a partition
+during which a job is deleted and the history is compacted. The Go version runs the
+reflector and the controller as goroutines. The Rust version runs them on threads, each
+holding an <code>Arc</code> handle to the shared server, cache, and queue. Both write their log to
+standard error, with the number of milliseconds since the program started; Rust does this
+with a small <code>log!</code> macro, and Go with a <code>logf</code> function.</p>
+<p>In Go:</p>
+<pre><code class="language-go">// Command informer models how a Kubernetes controller learns about objects:
+// a server that numbers every write, a reflector that lists and watches into
+// a local cache, a work queue of names, and a controller that reconciles them.
+// It then causes a burst of edits, a dropped connection, and a partition, and
+// logs how each part responds.
+//
+// Run it from code/go with:
+//
+//	go run ./informer
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+)
+
+// start is the time the program began, for the relative timestamps in the log.
+var start = time.Now()
+
+// logf prints one log line prefixed with the milliseconds since start.
+func logf(format string, args ...any) {
+	log.Printf("%4dms  %s", time.Since(start).Milliseconds(), fmt.Sprintf(format, args...))
+}
+
+func main() {
+	log.SetFlags(0)
+	server := NewAPIServer()
+	server.Update(Object{Name: "job-a", Spec: Spec{GPUs: 1}})
+	server.Update(Object{Name: "job-b", Spec: Spec{GPUs: 8}})
+
+	cache := NewCache()
+	queue := NewWorkQueue()
+	go (&amp;Reflector{server, cache, queue}).Run()
+	go (&amp;Controller{server, cache, queue}).Run()
+	time.Sleep(100 * time.Millisecond)
+
+	logf("--- job-a is edited five times in a burst")
+	for gpus := 2; gpus &lt;= 6; gpus++ {
+		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+		if gpus == 2 {
+			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
+		}
+	}
+	time.Sleep(150 * time.Millisecond)
+
+	logf("--- the watch connection drops")
+	server.DropWatches()
+	time.Sleep(50 * time.Millisecond)
+
+	logf("--- partition: job-b is deleted and the history compacted meanwhile")
+	server.Partition()
+	server.Delete("job-b")
+	server.Compact()
+	time.Sleep(30 * time.Millisecond)
+	server.Heal()
+	time.Sleep(150 * time.Millisecond)
+
+	list, version := server.List()
+	logf("final state at version %d: %v", version, list)
+}
+</code></pre>
+<p>In Rust:</p>
+<pre class="playground"><code class="language-rust">//! A model of how a Kubernetes controller learns about objects: a server that
+//! numbers every write, a reflector that lists and watches into a local cache,
+//! a work queue of names, and a controller that reconciles them. It then
+//! causes a burst of edits, a dropped connection, and a partition, and logs
+//! how each part responds.
+//!
+//! Run it from `code/rust` with `cargo run -p informer`.
+
+mod cache;
+mod controller;
+mod queue;
+mod reflector;
+mod server;
+
+use cache::Cache;
+use controller::Controller;
+use queue::WorkQueue;
+use reflector::Reflector;
+use server::{ApiServer, Object};
+use std::sync::{Arc, OnceLock};
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// The time the program began, for the relative timestamps in the log.
+static START: OnceLock&lt;Instant&gt; = OnceLock::new();
+
+/// Prints one log line to standard error, prefixed with the milliseconds
+/// since the program began.
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) =&gt; {
+        eprintln!("{:4}ms  {}", $crate::elapsed_ms(), format!($($arg)*))
+    };
+}
+
+/// Returns the milliseconds since the program began.
+pub fn elapsed_ms() -&gt; u128 {
+    START.get_or_init(Instant::now).elapsed().as_millis()
+}
+
+/// Sleeps for the given number of milliseconds.
+fn sleep_ms(ms: u64) {
+    thread::sleep(Duration::from_millis(ms));
+}
+
+fn main() {
+    START.get_or_init(Instant::now);
+    let server = Arc::new(ApiServer::default());
+    server
+        .update(Object::new("job-a", 1))
+        .expect("unconditional write");
+    server
+        .update(Object::new("job-b", 8))
+        .expect("unconditional write");
+
+    let cache = Arc::new(Cache::default());
+    let queue = Arc::new(WorkQueue::default());
+    let reflector = Reflector {
+        server: Arc::clone(&amp;server),
+        cache: Arc::clone(&amp;cache),
+        queue: Arc::clone(&amp;queue),
+    };
+    let controller = Controller {
+        server: Arc::clone(&amp;server),
+        cache,
+        queue,
+    };
+    thread::spawn(move || reflector.run());
+    thread::spawn(move || controller.run());
+    sleep_ms(100);
+
+    log!("--- job-a is edited five times in a burst");
+    for gpus in 2..=6 {
+        server
+            .update(Object::new("job-a", gpus))
+            .expect("unconditional write");
+        if gpus == 2 {
+            sleep_ms(5); // the controller starts on the first edit
+        }
+    }
+    sleep_ms(150);
+
+    log!("--- the watch connection drops");
+    server.drop_watches();
+    sleep_ms(50);
+
+    log!("--- partition: job-b is deleted and the history compacted meanwhile");
+    server.partition();
+    server.delete("job-b");
+    server.compact();
+    sleep_ms(30);
+    server.heal();
+    sleep_ms(150);
+
+    let (list, version) = server.list();
+    let objects: Vec&lt;String&gt; = list.iter().map(ToString::to_string).collect();
+    log!("final state at version {version}: [{}]", objects.join(" "));
+}</code></pre>
+<p>The Go version prints:</p>
+<pre><code class="language-console">$ go run ./informer
+   0ms  reflector: list at version 2: [job-a{spec.GPUs: 1, status.GPUs: 0, v1} job-b{spec.GPUs: 8, status.GPUs: 0, v2}]
+  20ms  reconcile job-a: status.GPUs = 1
+  40ms  reconcile job-b: status.GPUs = 8
+ 101ms  --- job-a is edited five times in a burst
+ 121ms  reconcile job-a: write at version 5: 409 Conflict: object has been modified
+ 141ms  reconcile job-a: status.GPUs = 6
+ 257ms  --- the watch connection drops
+ 257ms  reflector: watch closed, resuming from version 10
+ 307ms  --- partition: job-b is deleted and the history compacted meanwhile
+ 307ms  reflector: watch closed, resuming from version 10
+ 338ms  reflector: watch from version 10: 410 Gone: resource version too old
+ 338ms  reflector: list at version 11: [job-a{spec.GPUs: 6, status.GPUs: 6, v10}]
+ 338ms  reconcile job-b: deleted, releasing its GPUs
+ 489ms  final state at version 11: [job-a{spec.GPUs: 6, status.GPUs: 6, v10}]
+</code></pre>
+<p>The Rust version prints the same sequence of events. Its timings differ by a millisecond
+or two, and its field names follow Rust’s naming conventions:</p>
+<pre><code class="language-console">$ cargo run -p informer
+   0ms  reflector: list at version 2: [job-a{spec.gpus: 1, status.gpus: 0, v1} job-b{spec.gpus: 8, status.gpus: 0, v2}]
+  20ms  reconcile job-a: status.gpus = 1
+  40ms  reconcile job-b: status.gpus = 8
+ 100ms  --- job-a is edited five times in a burst
+ 120ms  reconcile job-a: write at version 5: 409 Conflict: object has been modified
+ 141ms  reconcile job-a: status.gpus = 6
+ 255ms  --- the watch connection drops
+ 256ms  reflector: watch closed, resuming from version 10
+ 306ms  --- partition: job-b is deleted and the history compacted meanwhile
+ 306ms  reflector: watch closed, resuming from version 10
+ 336ms  reflector: watch from version 10: 410 Gone: resource version too old
+ 337ms  reflector: list at version 11: [job-a{spec.gpus: 6, status.gpus: 6, v10}]
+ 337ms  reconcile job-b: deleted, releasing its GPUs
+ 486ms  final state at version 11: [job-a{spec.gpus: 6, status.gpus: 6, v10}]
+</code></pre>
+<p>Let us read the log from the top. The first three lines are the initial list and one
+reconcile for each job. Each status write is itself a change, so the reflector receives an
+event for it and queues the name again. The reconcile that follows finds the status equal
+to the spec and returns quietly, so each job appears only once.</p>
+<p>The burst of five edits led to just two reconciles of <code>job-a</code>. The controller took the
+name right after the first edit, read a spec of 2 GPUs at version 5, and started its
+20 milliseconds of work. The other four edits arrived while it was busy, moving the object
+to version 9, and because the controller was holding the name, the queue marked it dirty.
+When the controller wrote its status with version 5, the server refused it with a
+conflict. <code>Done</code> made the name ready again, the next reconcile read a spec of 6 GPUs at
+version 9, and it wrote a status of 6 at version 10. The specs of 3, 4, and 5 GPUs had been
+replaced before the controller ever read them, so it did no work for them at all.</p>
+<p>When the watch was dropped, the reflector reopened it from version 10, the version of the
+last event it had applied, and there was no need to list. During the partition, <code>job-b</code>
+was deleted at version 11 and the history was compacted, which moved the compaction point
+to 11. When the partition ended, the reflector asked to resume from version 10, the server
+answered <code>410 Gone</code>, and the reflector listed again. The new list held only <code>job-a</code>,
+<code>Replace</code> reported <code>job-b</code> as missing, and the controller found no <code>job-b</code> in the cache and
+released its GPUs. Our client learned about the deletion by comparing the list with its
+cache, because the compaction had thrown the deletion event away.</p>
+<h2 id="the-same-design-in-client-go"><a class="header" href="#the-same-design-in-client-go">The same design in client-go</a></h2>
+<p>Real Go controllers use client-go, either directly or through controller-runtime, a
+higher-level library built on top of it. Every part of our model has a counterpart there:</p>
+<pre><code class="language-text">model                     client-go
+------------------------  ---------------------------------------------------------
+APIServer.List, Watch     ListerWatcher, backed by HTTP list and watch requests
+Reflector                 Reflector
+Cache                     Indexer: a thread-safe store with secondary indexes,
+                          for example all pods on one node
+Reflector and Cache       SharedIndexInformer
+WorkQueue                 workqueue, with the same dirty and processing sets
+Controller.reconcile      the Reconcile method of a controller
+</code></pre>
+<p>client-go also has a few mechanisms that our model leaves out, and each one fixes a
+problem we can now recognize.</p>
+<p>Between the reflector and the cache, client-go puts a queue called the <em>DeltaFIFO</em>. For
+each object it collects the changes in the order they arrived, and the code that updates
+the cache and notifies controllers takes one object at a time along with all of its
+pending changes. When a relist shows that an object has disappeared, the DeltaFIFO emits
+a deletion whose object is wrapped in a <code>DeletedFinalStateUnknown</code> marker. The marker
+warns event handlers that the object they receive is the last state the cache had seen,
+which may be older than the state the object was in when it was deleted.</p>
+<p>The API server can send <em>bookmark</em> events, which carry a resource version and no object.
+They solve a problem with quiet watches. A watch on a kind of object that rarely changes
+can go a long time without any events, so the version it would resume from grows old.
+After the next compaction, reconnecting from that version would fail with <code>410 Gone</code> and
+force a full relist. Bookmarks move the watch’s position forward even when nothing
+changes, so a reconnect usually succeeds.</p>
+<p>An informer can be given a <em>resync period</em>. Every so often it queues the name of every
+object in its cache again, straight from memory and without asking the server for
+anything. This is for controllers that manage something outside Kubernetes, such as a
+cloud load balancer. If someone changes that load balancer by hand, no Kubernetes event
+tells the controller, and a periodic resync gives it a regular chance to notice and fix
+the drift.</p>
+<p>The work queue waits before retrying a name whose reconcile failed. By default the wait
+starts at 5 milliseconds and doubles after each failure, up to 1,000 seconds, and the queue
+also limits how fast it hands out names overall. Our model retries at once. A real
+controller that did that while its writes kept failing, say because of a bug in how it
+builds the object, would flood the API server with requests.</p>
+<p>Finally, informers are shared within a process. If ten controllers in one program all
+care about pods, they share a single pod watch and a single cache through a
+<code>SharedInformerFactory</code>, and each registers its own event handlers and its own work queue.
+The API server then serves one watch per process instead of one per controller.</p>
+<h2 id="sharing-a-cache-safely"><a class="header" href="#sharing-a-cache-safely">Sharing a cache safely</a></h2>
+<p>Our model’s cache hands out copies, so a caller can change what it gets without affecting
+anyone else. client-go’s cache hands out pointers into the shared store instead, to avoid
+copying every object on every read. That has a sharp edge. If a client-go controller
+changes a field of an object it read from the cache, it is changing the very object every
+other controller in the process reads, while the server still holds the original. The
+other controllers now see a state that exists nowhere else. The rule is to call the
+object’s generated <code>DeepCopy</code> method, which copies every nested slice and map, and to
+change the copy.</p>
+<h2 id="reading-your-own-writes"><a class="header" href="#reading-your-own-writes">Reading your own writes</a></h2>
+<p>A controller’s own writes reach its cache the same way everyone else’s do: the server
+stores the write, emits an event, and the reflector applies it. Until that event arrives,
+the cache still shows the state from before the write. Picture a reconcile that creates a
+pod for a job. If a second event for the same job arrives before the pod’s creation event,
+the next reconcile finds no pod in the cache and creates a second one.</p>
+<p>Kubernetes controllers guard against this in two ways. The ReplicaSet controller, which
+keeps a requested number of identical pods running, records <em>expectations</em>: after
+creating three pods, it notes that it expects to see three creation events, and it leaves
+that ReplicaSet alone until the cache has shown them or a timeout has passed. The second
+technique uses two fields that every object carries. The API server increments
+<code>metadata.generation</code> every time the spec changes, and a controller copies the generation
+it acted on into <code>status.observedGeneration</code>. When the two numbers are equal, the status
+describes the current spec. When they differ, both the controller and any user reading
+the object can see that the latest change to the spec has not been handled yet.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="01-real-cluster.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="01-real-cluster.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
