@@ -94,7 +94,13 @@ because `get` returns a copy of it.
 <p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 47 to 67).</p>
 
 ```rust
+impl<K, V> LruCache<K, V>
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
 {{#include ../../rust-interview-lab/src/problems/lru_cache.rs:47:67}}
+}
 ```
 
 `get` looks up the key and returns early with `None` if it is missing: `self.map.get(key)?`. Then it advances the
@@ -107,7 +113,13 @@ triggers eviction.
 <p class="listing"><b>Listing 13.3</b> Eviction (lines 69 to 83).</p>
 
 ```rust
+impl<K, V> LruCache<K, V>
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
 {{#include ../../rust-interview-lab/src/problems/lru_cache.rs:69:83}}
+}
 ```
 
 The loop runs while the map holds more keys than the capacity. Each pass pops the oldest event. The match guard
@@ -184,7 +196,12 @@ Every `get` and `put` ends by moving one node to the front of the list. The meth
 <p class="listing"><b>Listing 13.6</b> <code>new</code> and <code>touch</code> (lines 52 to 104).</p>
 
 ```rust
+impl<K, V> LruCache<K, V>
+where
+    K: Hash + Eq + Clone,
+{
 {{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:52:104}}
+}
 ```
 
 `touch` first copies the node's `prev` and `next` into local variables. `Option<usize>` is `Copy`, so this reads
@@ -205,7 +222,12 @@ empty, the node is also the tail.
 <p class="listing"><b>Listing 13.7</b> <code>get</code> and <code>put</code> (lines 106 to 149).</p>
 
 ```rust
+impl<K, V> LruCache<K, V>
+where
+    K: Hash + Eq + Clone,
+{
 {{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:106:149}}
+}
 ```
 
 `get` finds the index, touches the node, and returns a reference to the value. The return type `Option<&V>`
@@ -262,7 +284,9 @@ This version also fixes the key and value types to `i32`. `i32` is `Copy`, so th
 <p class="listing"><b>Listing 13.10</b> The link operations (lines 63 to 94). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
 
 ```rust
+impl LruCache {
 {{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs:63:94}}
+}
 ```
 
 - `detach` unlinks a node. Its precondition is that the node is in the list.

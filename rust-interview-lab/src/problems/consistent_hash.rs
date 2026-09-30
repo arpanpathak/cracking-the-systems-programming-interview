@@ -116,9 +116,9 @@ mod tests {
         ring.add_node("node-a");
         ring.add_node("node-b");
 
-        let first = ring.get("gpu-job-42").map(str::to_string);
+        let first = ring.get("job-42").map(str::to_string);
         for _ in 0..100 {
-            assert_eq!(ring.get("gpu-job-42").map(str::to_string), first);
+            assert_eq!(ring.get("job-42").map(str::to_string), first);
         }
         assert!(first.is_some());
     }

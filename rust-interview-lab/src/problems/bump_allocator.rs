@@ -3,11 +3,11 @@
 //! Bump allocation is the simplest allocator: hand out bytes from a cursor and
 //! never free an individual block. It is O(1) per allocation, has no fragmentation
 //! bookkeeping, and is freed all at once with [`BumpArena::reset`]. Parsers,
-//! request handlers, and per-frame GPU upload buffers use exactly this shape.
+//! request handlers, and per-frame buffers in games use exactly this shape.
 //!
-//! The point of the exercise is not to beat the system allocator; it is to show
-//! that you understand alignment, the memory layout you hand to hardware, and why
-//! "free everything at once" is both the strength and the limitation.
+//! This version does not try to beat the system allocator. It shows alignment,
+//! the memory layout you hand to hardware, and why "free everything at once" is
+//! both the strength and the limitation.
 
 /// A fixed-capacity bump allocator.
 pub struct BumpArena {

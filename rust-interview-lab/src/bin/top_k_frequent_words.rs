@@ -36,7 +36,7 @@ fn top_k_frequent(sentence: &str, k: usize) -> Vec<(String, u32)> {
 }
 
 fn main() {
-    let sentence = r"This is a fucking sentence. We'll count words.
+    let sentence = r"This is a short sentence. We'll count words.
     Let us count words in this sentence
     ";
 

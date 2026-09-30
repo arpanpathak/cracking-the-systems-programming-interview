@@ -1,4 +1,4 @@
-//! Runs the hand-written async runtime in [`nvidia_rust_interview_lab::problems::async_mini`].
+//! Runs the hand-written async runtime in [`systems_lab::problems::async_mini`].
 //!
 //! There is no Tokio here on purpose: the point is to show that `Future`, `Waker`,
 //! `Poll`, and `Pin` are enough to build an executor, and that `.await` is just
@@ -8,7 +8,7 @@
 //! cargo run --bin async_demo
 //! ```
 
-use nvidia_rust_interview_lab::problems::async_mini::{Delay, MiniExecutor, YieldTimes, block_on};
+use systems_lab::problems::async_mini::{Delay, MiniExecutor, YieldTimes, block_on};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};

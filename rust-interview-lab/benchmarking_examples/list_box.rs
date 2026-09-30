@@ -2,8 +2,8 @@
 //!
 //! Run with: cargo run --bin list_box
 
-use nvidia_rust_interview_lab::lists::SinglyList;
-use nvidia_rust_interview_lab::lists::boxed::LinkedList;
+use systems_lab::lists::SinglyList;
+use systems_lab::lists::boxed::LinkedList;
 
 fn main() {
     let mut list = LinkedList::new();

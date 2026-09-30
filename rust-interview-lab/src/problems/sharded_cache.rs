@@ -5,8 +5,8 @@
 //! cost is that `len` and `clear` must visit every shard, and there is no global
 //! atomic snapshot.
 //!
-//! This is a common SDK/CLI cache shape: per-account token caches, node metadata
-//! caches, and request de-duplication tables.
+//! Typical uses: per-account token caches, metadata caches, and request
+//! de-duplication tables.
 
 use std::collections::HashMap;
 use std::collections::hash_map::RandomState;
@@ -122,19 +122,19 @@ mod tests {
     #[test]
     fn insert_get_remove() {
         let cache: ShardedCache<String, u32> = ShardedCache::new(4);
-        assert_eq!(cache.insert("gpu-a100".into(), 8), None);
-        assert_eq!(cache.get(&"gpu-a100".into()), Some(8));
-        assert_eq!(cache.insert("gpu-a100".into(), 16), Some(8));
-        assert_eq!(cache.get(&"gpu-a100".into()), Some(16));
-        assert_eq!(cache.remove(&"gpu-a100".into()), Some(16));
-        assert!(!cache.contains_key(&"gpu-a100".into()));
+        assert_eq!(cache.insert("server-1".into(), 8), None);
+        assert_eq!(cache.get(&"server-1".into()), Some(8));
+        assert_eq!(cache.insert("server-1".into(), 16), Some(8));
+        assert_eq!(cache.get(&"server-1".into()), Some(16));
+        assert_eq!(cache.remove(&"server-1".into()), Some(16));
+        assert!(!cache.contains_key(&"server-1".into()));
         assert!(cache.is_empty());
     }
 
     #[test]
     fn with_exposes_the_value_without_cloning() {
         let cache: ShardedCache<&str, String> = ShardedCache::new(2);
-        cache.insert("node", "A100".to_string());
+        cache.insert("node", "ABCD".to_string());
         let observed = cache.with(&"node", |value| value.map(|v| v.len()));
         assert_eq!(observed, Some(4));
     }

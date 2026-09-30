@@ -1,0 +1,19 @@
+digraph contract {
+  rankdir=LR; nodesep=0.4; ranksep=0.55;
+  node [fontsize=10 shape=box];
+  poll [label="executor calls\nfuture.poll(cx)" fillcolor="#eef3f7"];
+  ready [label="Poll::Ready(value)\nthe work is done" fillcolor="#e3f1ea"];
+  pending [label="Poll::Pending\nthe work is not done yet" fillcolor="#fbe3d6"];
+  armed [label="the future arranged for\ncx.waker() to be called" fillcolor="#fdf6e8"];
+  park [label="executor parks the thread,\nor runs another task" fillcolor="#fdf6e8"];
+  wake [label="the waker fires" fillcolor="#e3f1ea"];
+  hang [label="no wake ever comes.\nthe task never runs again,\nwith no error and no panic" fillcolor="#fbe3d6" color="#d9622b" fontcolor="#d9622b"];
+
+  poll -> ready [label=" done"];
+  poll -> pending [label=" not finished"];
+  pending -> armed [label=" obligation"];
+  armed -> park;
+  park -> wake -> poll;
+  pending -> hang [label=" waker dropped", color="#d9622b", fontcolor="#d9622b", style=dashed];
+  {rank=same; pending; hang;}
+}

@@ -1,4 +1,4 @@
-//! Rust coding lab for NVIDIA Cloud / SDK / CLI interviews.
+//! Rust systems programming lab: data structures, concurrency, networking, and cloud SDK patterns.
 //!
 //! Contains both:
 //!

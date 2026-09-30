@@ -11,8 +11,7 @@
 //! - [`block_on`] drives one future on the current thread, parking on `Pending`;
 //! - [`MiniExecutor`] queues independent tasks and re-enqueues them when woken.
 //!
-//! It is deliberately small. What it makes concrete is the part interviewers ask
-//! about: why `poll` takes `Pin<&mut Self>`, what `Pending` promises, and where
+//! It is deliberately small. It makes three things concrete: why `poll` takes `Pin<&mut Self>`, what `Pending` promises, and where
 //! `Send` matters for a multi-threaded runtime.
 
 use std::collections::VecDeque;

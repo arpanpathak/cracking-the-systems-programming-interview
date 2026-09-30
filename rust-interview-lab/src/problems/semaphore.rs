@@ -1,8 +1,8 @@
 //! Counting semaphore built from `Mutex` + `Condvar`.
 //!
 //! A semaphore bounds how many callers may proceed at once without protecting any
-//! data. It is the primitive behind connection pools, per-account GPU slot limits,
-//! and bounded fan-out in an SDK or CLI.
+//! data. It is the primitive behind connection pools, per-account limits, and
+//! bounded fan-out in a client library or command-line tool.
 //!
 //! The RAII guard returns the permit on drop, so a panicking worker cannot leak a
 //! permit and slowly deadlock the pool.

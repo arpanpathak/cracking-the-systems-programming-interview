@@ -10,7 +10,7 @@
 //   return `Err(PoisonError)` instead of silently letting another thread
 //   observe an inconsistent partial update.
 //
-// Why this appears in cloud interviews:
+// Where this appears in practice:
 //   - Controllers/reconcilers mutate shared state; a panic while holding a lock
 //     is a real failure mode in worker pools, caches, and rate limiters.
 //   - Rust chooses fail-fast over data corruption: a poisoned mutex tells

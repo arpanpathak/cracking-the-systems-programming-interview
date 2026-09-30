@@ -41,7 +41,7 @@
 - [ ] Run every fenced `rust` listing through `cargo check` in CI
 - [ ] Replace the ASCII diagrams with SVG
 - [x] Rebuild the animations at 2x for a retina screen, with one designed palette
-- [x] Give every animation a zone, a focus wash, and an insight band
+- [x] Give every animation a rail, an insight band, and a rust band for the failing case
 - [x] Check every animation frame in `make lint`, beside the still figures
 - [ ] Ship the animations as animated WebP, which is sharper than GIF at half the size
 

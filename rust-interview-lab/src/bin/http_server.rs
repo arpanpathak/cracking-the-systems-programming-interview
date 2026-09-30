@@ -1,8 +1,7 @@
 //! Minimal HTTP/1.1 server with REST-style routes.
 //!
-//! This is the "write a web server" exercise an SDK/CLI interview often starts
-//! with. It uses only `std::net` plus the request parser in
-//! [`nvidia_rust_interview_lab::problems::http_request`], so the interesting parts
+//! It uses only `std::net` plus the request parser in
+//! [`systems_lab::problems::http_request`], so the interesting parts
 //! stay visible: the accept loop, the keep-alive loop, status codes, and the
 //! routing decision.
 //!
@@ -26,7 +25,7 @@
 //! curl -i -X POST -d '{"gpuCount":1}' http://127.0.0.1:8080/v1/gpu-workloads
 //! ```
 
-use nvidia_rust_interview_lab::problems::http_request::{
+use systems_lab::problems::http_request::{
     Limits, Method, ParseError, Request, parse_request,
 };
 use std::io::{Read, Write};
@@ -183,7 +182,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nvidia_rust_interview_lab::problems::http_request::Version;
+    use systems_lab::problems::http_request::Version;
 
     fn request(method: Method, target: &str) -> Request {
         Request {

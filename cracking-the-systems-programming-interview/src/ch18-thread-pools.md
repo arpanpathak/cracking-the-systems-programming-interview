@@ -101,7 +101,9 @@ inside a job. The other three workers then panicked on `.unwrap()` of the poison
 <p class="listing"><b>Listing 18.2</b> The worker loop and <code>execute</code> (lines 21 to 62). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
 
 ```rust
+impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v2.rs:21:62}}
+}
 ```
 
 The fix is one line. `let job = receiver.lock().unwrap().recv();` is a separate statement, and the temporary guard
@@ -141,7 +143,9 @@ can use `?` and `Box<dyn Error>` with it.
 <p class="listing"><b>Listing 18.5</b> <code>execute</code>, <code>shutdown</code>, and <code>Drop</code> (lines 61 to 87).</p>
 
 ```rust
+impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:61:80}}
+}
 
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:83:87}}
 ```
@@ -206,7 +210,9 @@ Each outcome increments one of two atomic counters, `completed` or `panicked`.
 <p class="listing"><b>Listing 18.9</b> Named workers (lines 67 to 99).</p>
 
 ```rust
+impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:67:99}}
+}
 ```
 
 `thread::Builder` configures a thread before starting it. Here it gives each worker a name, `pool-worker-0` and so
@@ -220,7 +226,9 @@ running.
 <p class="listing"><b>Listing 18.10</b> <code>shutdown</code> and the report (lines 113 to 136).</p>
 
 ```rust
+impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:113:129}}
+}
 
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:132:136}}
 ```

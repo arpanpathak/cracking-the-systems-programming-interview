@@ -1,8 +1,7 @@
 //! A spin lock built from a single `AtomicBool`.
 //!
-//! This is the primitive to write when an interviewer asks for a lock from
-//! scratch. The interesting part is not the loop; it is the memory ordering and
-//! the ownership argument that make the unsafe block sound.
+//! The loop is short. The memory ordering and the ownership argument are what
+//! make the unsafe block sound.
 //!
 //! - `lock`/`try_lock` use a compare-exchange with `Acquire` ordering, so the
 //!   critical section observes every write the previous holder made before it

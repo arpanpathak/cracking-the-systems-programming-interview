@@ -1,6 +1,6 @@
 //! Bounded worker pool with ordered results.
 //!
-//! Cloud CLIs/SDKs often fan out API calls across a bounded number of workers.
+//! Programs often fan out network calls across a bounded number of workers.
 //! This example maps `Vec<T>` to `Vec<R>` with N threads and preserves input
 //! order in the output. It demonstrates `Arc<Mutex<_>>`, channels, scoped
 //! ownership, and panic-free dispatch.

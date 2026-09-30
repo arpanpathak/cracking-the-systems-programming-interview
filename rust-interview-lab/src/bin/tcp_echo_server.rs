@@ -80,13 +80,13 @@ mod tests {
         });
 
         let mut client = TcpStream::connect(address).expect("connect");
-        client.write_all(b"hello gpu").expect("write");
+        client.write_all(b"hello echo").expect("write");
         client.shutdown(Shutdown::Write).expect("half close");
 
         let mut echoed = Vec::new();
         client.read_to_end(&mut echoed).expect("read echo");
 
         server.join().expect("server thread panicked");
-        assert_eq!(echoed, b"hello gpu");
+        assert_eq!(echoed, b"hello echo");
     }
 }

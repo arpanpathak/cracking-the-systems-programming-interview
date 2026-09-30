@@ -7,9 +7,9 @@
 // regions. Two land cells are connected when they are adjacent horizontally
 // or vertically (4-directional). Water cells are not traversable.
 //
-// Why this appears in cloud interviews:
+// Where this shape appears in practice:
 //   - "Islands" are connected-component counting, the same shape used to find
-//     connected GPU nodes, failure domains, network partitions, or storage
+//     connected machines, failure domains, network partitions, or storage
 //     groups in distributed systems.
 //   - The generic implementation accepts any land type (char, u8, bool) and
 //     uses BFS with an explicit visited set, which is easy to reason about.

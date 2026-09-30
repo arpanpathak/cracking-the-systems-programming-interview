@@ -1,8 +1,6 @@
-//! Small algebraic-data-type idioms that are quick to write under time pressure.
+//! Small algebraic-data-type idioms.
 //!
-//! These are the patterns worth reaching for in a live coding round because they
-//! are short, they cannot represent invalid states, and they show the reviewer
-//! that the design is deliberate rather than improvised.
+//! These patterns are short and cannot represent invalid states.
 //!
 //! - A newtype gives a primitive a name and a single validating constructor, so
 //!   an out-of-range value cannot exist.

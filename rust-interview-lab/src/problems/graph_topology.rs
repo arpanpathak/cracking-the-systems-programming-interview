@@ -1,7 +1,7 @@
 //! Topological sort (Kahn's algorithm).
 //!
-//! Common in NVIDIA-style scheduling questions: prerequisite graphs, pipeline
-//! stages, dependency ordering of GPU jobs.
+//! Common in scheduling problems: prerequisite graphs, pipeline
+//! stages, and build or job dependency ordering.
 
 use std::collections::{HashMap, VecDeque};
 

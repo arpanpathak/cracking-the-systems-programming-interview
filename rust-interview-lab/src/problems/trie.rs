@@ -1,7 +1,6 @@
 //! Trie / prefix tree.
 //!
-//! Relevant to NVIDIA-style SDK/CLI/codegen work: autocomplete, filtering GPU
-//! SKUs, command completion, and prefix matching.
+//! Used for autocomplete, command completion, and prefix matching.
 
 use std::collections::HashMap;
 
@@ -63,6 +62,6 @@ mod tests {
 
         assert!(trie.starts_with("gp"));
         assert!(trie.starts_with("gpucloud"));
-        assert!(!trie.starts_with("h100"));
+        assert!(!trie.starts_with("cpu"));
     }
 }

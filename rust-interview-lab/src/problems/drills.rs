@@ -1,8 +1,7 @@
-//! Short answers to the common prompts, sized for a live round.
+//! Compact implementations of the common primitives.
 //!
-//! Each item is a standalone implementation of roughly the length you would write
-//! in an interview. The modules next to this one are reference versions with the
-//! long explanations and full test suites; this file is what you type.
+//! Each item is a short standalone implementation. The modules next to this one
+//! are the full versions with long explanations and complete test suites.
 
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;

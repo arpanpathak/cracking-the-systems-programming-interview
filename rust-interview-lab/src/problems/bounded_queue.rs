@@ -2,8 +2,7 @@
 //!
 //! Unbounded queues are a classic production failure: a fast producer and a slow
 //! consumer turn into an OOM kill instead of a slow response. A bounded queue makes
-//! the producer wait, which is backpressure, and it is the first thing a senior
-//! systems interviewer looks for.
+//! the producer wait, which is backpressure.
 //!
 //! This is an MPMC queue (many producers, many consumers) built from one `Mutex`
 //! and two condition variables: `not_empty` for waiting consumers and `not_full`

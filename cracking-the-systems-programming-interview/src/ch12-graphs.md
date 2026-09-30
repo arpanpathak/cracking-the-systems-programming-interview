@@ -287,7 +287,9 @@ explored, and cannot close a loop.
 ```rust
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:1:11}}
 
+impl<T> Graph<T> {
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:14:30}}
+}
 ```
 
 This `Graph<T>` keeps the node data in `nodes`, and the edges in `adj`, as numbers. `NodeId` is a type alias
@@ -305,7 +307,9 @@ the `&usize` items of the slice iterator into `usize` values.
 <p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 32 to 64).</p>
 
 ```rust
+impl<T> Graph<T> {
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:32:64}}
+}
 ```
 
 These are the algorithms of sections 12.3 and 12.4, written with `neighbors`. The DFS filters out visited
@@ -315,7 +319,9 @@ check after `pop` is still needed. A node can be pushed by two different nodes b
 <p class="listing"><b>Listing 12.9</b> Cycle detection (lines 66 to 82).</p>
 
 ```rust
+impl<T> Graph<T> {
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:66:82}}
+}
 ```
 
 `visit` is a recursive DFS that returns `true` as soon as it finds a cycle. It reads the node's state:

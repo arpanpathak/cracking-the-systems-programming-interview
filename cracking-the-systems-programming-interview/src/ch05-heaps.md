@@ -282,7 +282,9 @@ top of `low`. With an even count, it is the average of the two tops.
 ```rust
 {{#include ../../rust-interview-lab/src/bin/median_finder.rs:1:8}}
 
+impl MedianFinder {
 {{#include ../../rust-interview-lab/src/bin/median_finder.rs:11:27}}
+}
 ```
 
 `add_num` keeps both rules with three moves, and never compares numbers itself:
@@ -308,7 +310,9 @@ Each move is one heap operation, so adding a number is O(log n).
 <p class="listing"><b>Listing 5.5</b> <code>find_median</code> (lines 29 to 38).</p>
 
 ```rust
+impl MedianFinder {
 {{#include ../../rust-interview-lab/src/bin/median_finder.rs:29:38}}
+}
 ```
 
 `*self.low.peek()?` reads the top of `low`. The `?` works on `Option` the same way it works on `Result`. If no number has been added, `peek` returns

@@ -10,7 +10,7 @@
 //     per-call cost. `getpid()` is a tiny syscall, so the measured cost is
 //     close to the irreducible syscall overhead on this kernel/hardware.
 //
-// Why this appears in cloud interviews:
+// Where this appears in practice:
 //   - High-performance data planes care about per-packet or per-I/O syscall
 //     cost. The difference between one syscall per event and batching via
 //     io_uring/recvmmsg can be enormous.

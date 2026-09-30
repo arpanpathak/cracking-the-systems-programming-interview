@@ -8,7 +8,7 @@ mode on the machine listed below. The written report is in
 
 | | |
 |---|---|
-| CPU | `aarch64`, 8 cores (NVIDIA Jetson) |
+| CPU | `aarch64`, 8 cores (development board) |
 | Toolchain | `rustc 1.96.0-nightly (55e86c996 2026-04-02)` |
 | Build | `--release` |
 | Threads | one per measurement |

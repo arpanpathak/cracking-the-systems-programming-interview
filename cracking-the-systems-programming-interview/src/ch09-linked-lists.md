@@ -158,7 +158,9 @@ a list of numbers or of strings. `type Link<T> = Box<List<T>>;` gives the boxed 
 <p class="listing"><b>Listing 9.5</b> Creating, checking, and measuring (lines 16 to 29).</p>
 
 ```rust
+impl<T> List<T> {
 {{#include ../../rust-interview-lab/src/bin/singly_linked_list.rs:16:29}}
+}
 ```
 
 `len` counts the nodes recursively: an empty list has length 0, and a node adds 1 to the length of the rest.
@@ -167,7 +169,9 @@ Each call waits for the next, so a list of n nodes uses n stack frames. Section 
 <p class="listing"><b>Listing 9.6</b> Adding and removing at the front (lines 31 to 49).</p>
 
 ```rust
+impl<T> List<T> {
 {{#include ../../rust-interview-lab/src/bin/singly_linked_list.rs:31:49}}
+}
 ```
 
 Both methods take `&mut self`, so they change the list in place. They use `std::mem::replace` from section 9.2. The method cannot move the old list out of `*self` and assign a new one later. Between those two steps,
@@ -429,7 +433,9 @@ names it once, `OptNodeRef<T>`, with a `type` alias. The list keeps a `head`, a 
 <p class="listing"><b>Listing 9.17</b> <code>new</code>, <code>len</code>, and <code>push_front</code> (lines 28 to 69).</p>
 
 ```rust
+impl<T> LinkedList<T> {
 {{#include ../../rust-interview-lab/src/bin/ll.rs:28:69}}
+}
 ```
 
 `push_front` creates the new node, then looks at the old head with `self.head.take()`:
@@ -446,7 +452,9 @@ overlap.
 <p class="listing"><b>Listing 9.18</b> <code>push_back</code> (lines 71 to 93).</p>
 
 ```rust
+impl<T> LinkedList<T> {
 {{#include ../../rust-interview-lab/src/bin/ll.rs:71:93}}
+}
 ```
 
 `push_back` mirrors it at the other end. The new node's `prev` is set as it is created:
@@ -458,7 +466,9 @@ tail is looked at without being moved. `map(Rc::downgrade)` turns that reference
 <p class="listing"><b>Listing 9.19</b> <code>pop_front</code> (lines 95 to 122).</p>
 
 ```rust
+impl<T> LinkedList<T> {
 {{#include ../../rust-interview-lab/src/bin/ll.rs:95:122}}
+}
 ```
 
 `pop_front` must return the value by ownership, not a reference. To move the value out, the node itself must
@@ -479,7 +489,9 @@ whose `unwrap` needs no `Debug`.
 <p class="listing"><b>Listing 9.20</b> <code>pop_back</code> (lines 124 to 147).</p>
 
 ```rust
+impl<T> LinkedList<T> {
 {{#include ../../rust-interview-lab/src/bin/ll.rs:124:147}}
+}
 ```
 
 `pop_back` mirrors `pop_front`. It follows the weak `prev` link with `upgrade()`, which returns `None` if the
@@ -490,7 +502,9 @@ previous node is gone, then clears that node's `next`.
 <p class="listing"><b>Listing 9.21</b> <code>peek_front</code> and <code>peek_back</code> (lines 149 to 171).</p>
 
 ```rust
+impl<T> LinkedList<T> {
 {{#include ../../rust-interview-lab/src/bin/ll.rs:149:170}}
+}
 ```
 
 `peek_front` returns `Option<Ref<'_, T>>`, not `Option<&T>`. The value is inside a `RefCell`, and a reference

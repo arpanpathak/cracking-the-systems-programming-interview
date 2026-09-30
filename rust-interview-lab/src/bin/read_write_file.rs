@@ -8,7 +8,7 @@ fn read_content_of_file(path: &Path) -> io::Result<String> {
 }
 
 fn main() -> io::Result<()> {
-    fs::write("hello.txt", "Hello, NVIDIA!\n")?;
+    fs::write("hello.txt", "Hello, Rust!\n")?;
 
     // `join` builds a new PathBuf and leaves `base_dir` unchanged.
     let base_dir = PathBuf::from(".");

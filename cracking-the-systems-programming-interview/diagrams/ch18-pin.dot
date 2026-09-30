@@ -1,0 +1,19 @@
+digraph pin {
+  rankdir=LR; nodesep=0.4; ranksep=0.7;
+  node [fontsize=10 shape=box];
+  subgraph cluster_move {
+    label="not pinned: the future can move"; style="rounded"; color="#d9622b"; fontname="Helvetica";
+    m_buf [label="field: buf [u8; 1024]\nafter a move, at 0x2000" fillcolor="#eef3f7"];
+    m_ref [label="field: r: &buf\nstill holds 0x1000" fillcolor="#fbe3d6" color="#d9622b"];
+    m_old [label="the old 0x1000\nfreed or reused" fillcolor="#ffffff" color="#9aa7b4" fontcolor="#5b6b7c" style="dashed"];
+    m_ref -> m_buf [label=" was meant to point here", color="#2f7f86", fontcolor="#2f7f86", style=dashed];
+    m_ref -> m_old [label=" but still points here", color="#d9622b", fontcolor="#d9622b"];
+  }
+  subgraph cluster_pin {
+    label="pinned: the address cannot change"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    p_buf [label="field: buf [u8; 1024]\nstays at 0x1000" fillcolor="#eef3f7"];
+    p_ref [label="field: r: &buf\nholds 0x1000" fillcolor="#e3f1ea"];
+    p_ref -> p_buf [label=" stays valid", color="#2f7f86", fontcolor="#2f7f86"];
+  }
+  m_old -> p_buf [style=invis];
+}

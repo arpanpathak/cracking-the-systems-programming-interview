@@ -237,6 +237,18 @@ class Figure:
         self.parts.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" '
                           f'stroke-width="{width}"{d}{o}/>')
 
+    def shape(self, points, fill=INK, opacity=1.0):
+        """A filled shape from a list of `(x, y)`, for a caret or a small triangle.
+
+        This is a path rather than a `polygon` on purpose. `lint_figures.py` reads
+        a small polygon as an arrowhead and insists it sit on a shaft, which a
+        caret under a value has no reason to do.
+        """
+        o = ' opacity="%s"' % opacity if opacity != 1.0 else ""
+        head = "M %.2f %.2f" % points[0]
+        body = "".join(" L %.2f %.2f" % p for p in points[1:])
+        self.parts.append(f'<path d="{head}{body} Z" fill="{fill}" stroke="none"{o}/>')
+
     def arc(self, cx, cy, r, start_deg, end_deg, color=TEAL, width=2.4, dash=False, opacity=1.0):
         """A stroked arc. Zero degrees is at the top; angles grow clockwise.
 

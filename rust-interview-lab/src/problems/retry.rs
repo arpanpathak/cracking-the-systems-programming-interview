@@ -1,11 +1,11 @@
 //! Retry with exponential backoff, full jitter, and `Retry-After`.
 //!
-//! Every cloud SDK retries. Done badly it makes an outage worse: synchronized
+//! Every network client retries. Done badly it makes an outage worse: synchronized
 //! retries from thousands of clients form a thundering herd, and retrying a
 //! non-idempotent `POST` can create duplicate workloads. This module models the
 //! policy explicitly.
 //!
-//! Two details that interviews probe:
+//! Two details:
 //!
 //! - **Jitter.** Full jitter picks a random delay in `[0, capped_backoff]` so
 //!   clients spread out instead of retrying in lockstep.
@@ -200,7 +200,7 @@ mod tests {
             |_| {
                 attempts += 1;
                 Err(ApiError::NotFound {
-                    resource_id: "gpu-0".into(),
+                    resource_id: "item-0".into(),
                 })
             },
             || 0.0,

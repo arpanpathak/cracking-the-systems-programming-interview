@@ -1,4 +1,4 @@
-//! LRU cache that is actually writable in an interview.
+//! LRU cache without a linked list.
 //!
 //! Design: `HashMap<K, (V, generation)>` + `VecDeque<(K, generation)>`.
 //!

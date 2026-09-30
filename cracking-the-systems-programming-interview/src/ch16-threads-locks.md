@@ -318,7 +318,9 @@ cores doing nothing useful. `std::sync::Mutex` instead asks the operating system
 ```rust
 {{#include ../../rust-interview-lab/src/problems/spin_lock.rs:24:39}}
 
+impl<T> SpinLock<T> {
 {{#include ../../rust-interview-lab/src/problems/spin_lock.rs:42:48}}
+}
 ```
 
 `SpinLock<T>` holds a flag, `locked`, and the protected value inside an `UnsafeCell<T>`. `UnsafeCell` is the one
@@ -342,7 +344,9 @@ lock when it is dropped.
 <p class="listing"><b>Listing 16.10</b> <code>lock</code>, <code>try_lock</code>, and <code>unlock</code> (lines 50 to 84).</p>
 
 ```rust
+impl<T> SpinLock<T> {
 {{#include ../../rust-interview-lab/src/problems/spin_lock.rs:50:84}}
+}
 ```
 
 Taking the lock must be one atomic step: check that it is free and mark it taken, with no other thread slipping
@@ -466,7 +470,9 @@ sometimes wake up with no notification at all, which is called a **spurious wake
 ```rust
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:13:21}}
 
+impl Semaphore {
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:24:45}}
+}
 ```
 
 `acquire_guard` follows the four steps. `self.released.wait(state)` takes the guard, sleeps, and returns a new
@@ -478,7 +484,9 @@ The permit is returned by a guard, the same RAII pattern as in section 16.4.
 <p class="listing"><b>Listing 16.14</b> The other ways to acquire, and <code>release</code> (lines 47 to 103).</p>
 
 ```rust
+impl Semaphore {
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:47:91}}
+}
 
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:94:103}}
 ```

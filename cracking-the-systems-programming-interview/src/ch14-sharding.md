@@ -49,7 +49,12 @@ keys land in the same shard.
 ```rust
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:16:24}}
 
+impl<K, V> ShardedCache<K, V>
+where
+    K: Hash + Eq,
+{
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:30:42}}
+}
 ```
 
 `ShardedCache` has three fields:
@@ -82,7 +87,12 @@ takes more time. The difference is small, but this code runs on every call.
 <p class="listing"><b>Listing 14.2</b> Picking a shard (lines 44 to 49).</p>
 
 ```rust
+impl<K, V> ShardedCache<K, V>
+where
+    K: Hash + Eq,
+{
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:44:49}}
+}
 ```
 
 The method creates a hasher, feeds the key into it with `key.hash(&mut hasher)`, and reads the result with
@@ -100,7 +110,12 @@ to the same place and slow the map down.
 <p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 51 to 78).</p>
 
 ```rust
+impl<K, V> ShardedCache<K, V>
+where
+    K: Hash + Eq,
+{
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:51:78}}
+}
 ```
 
 Each method follows the same three steps: pick the shard, lock it, and call the matching `HashMap` method. The
@@ -149,7 +164,12 @@ blocks forever or panics. A thread waiting forever for a lock is called a **dead
 <p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 94 to 109).</p>
 
 ```rust
+impl<K, V> ShardedCache<K, V>
+where
+    K: Hash + Eq,
+{
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:94:109}}
+}
 ```
 
 `len` locks each shard in turn, reads its size, releases the lock, and adds up the sizes. `clear` also visits the
@@ -250,7 +270,9 @@ the keys, where `hash % N` moved 75%.
 ```rust
 {{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:17:23}}
 
+impl ConsistentHash {
 {{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:26:55}}
+}
 ```
 
 The ring is a `Vec<(u64, Arc<str>)>`, kept sorted by hash. Each entry is one virtual node: its position on the
@@ -293,7 +315,9 @@ fixed, documented algorithm.
 <p class="listing"><b>Listing 14.8</b> <code>get</code> (lines 57 to 68).</p>
 
 ```rust
+impl ConsistentHash {
 {{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:57:68}}
+}
 ```
 
 `get` must find the first ring entry with a hash larger than the key's hash. The ring is sorted, so a binary

@@ -74,3 +74,9 @@ This paragraph shows the target sentence length and tone.
 > element and the block is full, the vector allocates a larger block, copies the elements, and frees the
 > old one. This is why a reference into a vector cannot be held across a `push`. The compiler rejects
 > such code because the push may move every element.
+
+## 7. Animations
+
+Read `tools/ANIMATIONS.md` before adding or changing an animation. Animations are smooth
+motion built with `tools/motion.py`, not keyframe slides, and they target the HTML edition.
+The print edition needs a different treatment, described there.

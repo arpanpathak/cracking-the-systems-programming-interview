@@ -59,7 +59,9 @@ adds them before it checks.
 ```rust
 {{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:6:17}}
 
+impl TokenBucket {
 {{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:20:31}}
+}
 ```
 
 The capacity and the rate never change, so they are plain fields. The token count and the time of the last refill
@@ -72,7 +74,9 @@ time, which can jump when the system clock is corrected.
 <p class="listing"><b>Listing 19.2</b> <code>try_acquire</code> (lines 33 to 50).</p>
 
 ```rust
+impl TokenBucket {
 {{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:33:50}}
+}
 ```
 
 `try_acquire` does all its work under the lock:
@@ -114,7 +118,9 @@ Every call to the locked bucket takes the mutex. Under heavy load, threads wait 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:5:12}}
 
+impl RateLimiter {
 {{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:15:37}}
+}
 ```
 
 The design differs from the locked version in three ways:

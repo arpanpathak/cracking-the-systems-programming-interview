@@ -1,6 +1,6 @@
 //! Binary search on a rotated sorted array.
 //!
-//! Classic O(log n) interview problem. The code uses explicit range bounds and
+//! O(log n). The code uses explicit range bounds and
 //! sorted-half checks; no recursion or nested `if` chains are required.
 
 pub fn search_rotated(nums: &[i32], target: i32) -> Option<usize> {

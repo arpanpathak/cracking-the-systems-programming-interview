@@ -4,14 +4,21 @@ Each builder writes one looping GIF to `src/figures`. A frame shows one step of
 the algorithm the chapter quotes, with the same variable names, so a reader can
 check a frame against the listing beside it.
 
-The drawing area of each frame carries the part of the explanation a reader can
-see: the tinted band for the region under discussion, a faint outline where the
-region was a step ago, and a chip naming each pointer. The insight band is saved
-for the one step where the idea clicks.
+A sequence of values is drawn as a rail: the values above a baseline, the indexes
+below it, and state carried by a colour on the value and by a rule spanning a run.
+A cell is used only where the thing really is a cell, such as a grid square, a
+buffer slot, or a heap node.
+
+Every animation ends on a frame that shows the case the algorithm has to reject,
+in a rust band: a duplicate that drags the window backwards, a target that is
+absent, an amount no coin can make, a closer that matches the wrong opener.
 """
 
 from animlib import *  # noqa: F401,F403
 from animlib import Frame, frames, publish
+
+RAIL = 54.0
+RULE = 116.0
 
 
 def _heap_positions(count, base_x, top, dy, spacing):
@@ -26,18 +33,18 @@ def _heap_positions(count, base_x, top, dy, spacing):
     return out
 
 
-def heap_tree(f, values, base_x, top, dy=62, spacing=210, w=56, h=40,
-              fills=None, strokes=None, colors=None):
-    """Draw a complete binary tree over the array `values`, top-down."""
+def heap_tree(f, values, base_x, top, dy=62, spacing=210, r=21.0, fills=None, strokes=None,
+              colors=None):
+    """A complete binary tree over the array `values`, drawn as small circles."""
     pos = _heap_positions(len(values), base_x, top, dy, spacing)
     for i in range(1, len(values)):
         parent = (i - 1) // 2
-        f.line(pos[parent][0], pos[parent][1] + h / 2, pos[i][0], pos[i][1] - h / 2, BORDER, 1.6)
+        f.line(pos[parent][0], pos[parent][1] + r, pos[i][0], pos[i][1] - r, BORDER, 1.4)
     for i, value in enumerate(values):
         x, y = pos[i]
-        f.cell(x - w / 2, y - h / 2, w, h, value,
-               fills[i] if fills else PALE, strokes[i] if strokes else INK,
-               size=T_CELL - 1, mono=True, color=colors[i] if colors else INK)
+        f.circle(x, y, r, fills[i] if fills else WHITE, strokes[i] if strokes else BORDER, 1.6)
+        f.text(x, y + 6, value, T_CELL - 1, colors[i] if colors else INK, mono=True,
+               anchor="middle")
     return pos
 
 
@@ -48,119 +55,141 @@ def two_sum():
     nums = [2, 7, 11, 15]
     target = 9
     steps = [
-        (0, {}, "miss",
-         "i = 0 holds 2. The partner it needs is 9 - 2 = 7, and the map is empty, so 2 is stored instead."),
-        (1, {2: 0}, "hit",
-         "i = 1 holds 7. The partner it needs is 9 - 7 = 2, and the map holds 2 at index 0. The pair is (0, 1)."),
-        (1, {2: 0}, "done",
-         "The scan stops after two of the four numbers, because the pair is already complete."),
+        (nums, target, 0, {}, "miss",
+         "i = 0 holds 2. The partner it needs is 7, and the map is empty, so 2 is stored instead."),
+        (nums, target, 1, {2: 0}, "hit",
+         "i = 1 holds 7. The partner it needs is 2, and the map holds 2 at index 0. The pair is (0, 1)."),
+        (nums, target, 1, {2: 0}, "done",
+         "The scan stops after two of the four numbers, because the pair is complete."),
+        ([1, 2, 3], 7, 2, {1: 0, 2: 1}, "none",
+         "Now target 7 over 1, 2, 3. Every partner is missing from the map."),
     ]
+    insight_at, fail_at = 1, 3
 
-    cw, gap = 92, 10
-    x0 = PAD
-    panel_x = x0 + 4 * (cw + gap) + 34
-
-    def make(step, height=None, insight_rows=0):
-        i, seen, kind, line = step
-        last = step is steps[-1]
+    def make(step, height=None, rows=0, index=0):
+        seq, want, i, seen, kind, line = step
+        missing = kind == "none"
+        pair = {0, 1} if kind == "done" else set()
         f = Frame(
             "Two Sum: remember each number so a later one can find its partner",
             sub="One pass. For each x, ask the map for target - x.",
-            diagram=210,
-            legend=[("the current number", PINK, RUST), ("the pair", GREEN, TEAL)],
+            diagram=150,
+            legend=[("the pair", TEAL), ("the current number", RUST)],
             step=line,
             note="The map turns a second scan into a single lookup.",
-            pairs=[("i", i, RUST), ("x", nums[i], INK), ("need", target - nums[i], TEAL)],
-            insight=("The map holds the partner of every number already passed, so one pass "
-                     "is enough.") if last else None,
-            height=height, insight_rows=insight_rows,
+            pairs=[("target", want, RUST), ("x", seq[i], INK), ("need", want - seq[i], TEAL),
+                   ("found", "yes" if kind in ("hit", "done") else "no", INK)],
+            insight=("The map holds the partner of every number already passed, so one pass is "
+                     "enough.") if index == insight_at else None,
+            fails=("The pass ends with the map full and no pair in it. A missing pair is the "
+                   "ordinary case, not an error, so the function returns nothing.") if missing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        row_y, ch = t + 56, 62
-        pair = {0, 1} if last else set()
-        cells = row(f, x0, row_y, cw, ch, nums, gap=gap, size=T_CELL + 1,
-                    fills=[GREEN if k in pair else (PINK if k == i else PALE) for k in range(len(nums))],
-                    strokes=[TEAL if k in pair else (RUST if k == i else BORDER) for k in range(len(nums))])
-        index_labels(f, cells, row_y + ch + 20)
-        pointer_down(f, row_center(cells, i)[0], row_y - 2, "i", RUST, gap=24)
+        xs = rail_row(f, t + RAIL, seq, unit=86, gap=14, size=T_VALUE + 1,
+                      colors=[TEAL if k in pair else (RUST if k == i else MUTED)
+                              for k in range(len(seq))],
+                      bolds=[k == i or k in pair for k in range(len(seq))])
+        index_row(f, xs, t + RAIL + 44, halo=True)
+        pointer(f, xs[i], t + RAIL - 16, "i", RUST, above=True)
 
-        f.panel(panel_x, row_y - 14, W - PAD - panel_x, ch + 28, "the map: value -> index")
+        # The map is drawn as the pairs it holds, not as an empty panel.
+        f.text(PAD, t + RULE + 24, "the map", T_MARK, MUTED, layer="text")
+        x = PAD + 78
         if not seen:
-            f.text(panel_x + 18, row_y + 44, "empty", T_STEP, MUTED, mono=True)
-        for k, (value, index) in enumerate(sorted(seen.items())):
-            f.text(panel_x + 18, row_y + 46 + k * 30, "%d  ->  %d" % (value, index), T_STEP,
-                   INK, mono=True, bold=True)
+            f.text(x, t + RULE + 24, "empty", T_MARK, MUTED, mono=True, layer="text")
+        for value, at in sorted(seen.items()):
+            label = "%d -> %d" % (value, at)
+            w = text_width(label, T_MARK + 1, True) + 20
+            f.rect(x, t + RULE + 10, w, 20, PALE, BORDER, 4)
+            f.text(x + w / 2, t + RULE + 24, label, T_MARK + 1, INK, mono=True,
+                   anchor="middle")
+            x += w + 10
+        f.text(W - PAD, t + RULE + 24, "look up %d" % (want - seq[i]), T_MARK,
+               TEAL if kind == "hit" else MUTED, mono=True, anchor="end", layer="text")
         if kind == "hit":
-            f.glow(panel_x + 120, row_y + 44 + 30 * len(seen), 74, TEAL, 0.34)
-        f.text(panel_x + 18, row_y + 100, "look up  %d" % (target - nums[i]), T_STEP - 1,
-               TEAL if kind == "hit" else MUTED, mono=True, bold=kind == "hit")
+            f.glow(xs[i], t + RAIL - 14, 40, TEAL, 0.3)
         return f
 
-    publish("ch03-two-sum.gif", frames(make, steps), [2600] * len(steps))
+    publish("ch03-two-sum.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # ---------------------------------------------------------- Brackets (3.6.1)
 
 def brackets():
     """A stack of openers, popped by every closer."""
-    text = "([{}])"
     steps = [
-        (-1, "", "Start before the first character. The stack is empty."),
-        (0, "(", "An opener, so it goes on the stack. The stack records what still waits for a partner."),
-        (1, "([", "Another opener, pushed on top of the first."),
-        (2, "([{", "A third opener, pushed. From the bottom up, the stack is ( [ { ."),
-        (3, "([", "A closer. Pop the top, which is '{', and compare. It matches, so the pair is closed."),
-        (4, "(", "A closer. Pop '[' and compare. It matches."),
-        (5, "", "A closer. Pop '(' and compare. It matches, and the stack is empty again."),
-        (6, "", "No characters are left and the stack is empty, so every opener found its closer."),
+        ("([{}])", -1, "", None,
+         "Start before the first character. The stack is empty."),
+        ("([{}])", 0, "(", None,
+         "An opener, so it goes on the stack. The stack records what still waits for a partner."),
+        ("([{}])", 1, "([", None, "Another opener, pushed on top of the first."),
+        ("([{}])", 2, "([{", None, "A third opener, pushed. From the bottom up, the stack is ( [ { ."),
+        ("([{}])", 3, "([", "match",
+         "A closer. Pop the top, which is '{', and compare. It matches, so the pair is closed."),
+        ("([{}])", 4, "(", "match", "A closer. Pop '[' and compare. It matches."),
+        ("([{}])", 5, "", "match",
+         "A closer. Pop '(' and compare. It matches, and the stack is empty again."),
+        ("([{}])", 6, "", None,
+         "No characters are left and the stack is empty, so every opener found its closer."),
+        ("([)]", 3, "([", "wrong",
+         "Now the input \"([)]\". The closer ')' pops '[' and they do not match."),
     ]
+    insight_at, fail_at = 5, 8
 
-    cw, gap = 56, 8
-    x0 = (W - (len(text) * cw + (len(text) - 1) * gap)) / 2.0
-
-    def make(step, height=None, insight_rows=0):
-        i, stack, line = step
-        last = step is steps[-1]
-        previous = steps[steps.index(step) - 1][1] if steps.index(step) else ""
-        popped = previous[-1] if len(previous) > len(stack) else None
+    def make(step, height=None, rows=0, index=0):
+        text, i, stack, kind, line = step
+        failing = kind == "wrong"
         f = Frame(
             "Valid brackets: a closer must match the most recent unmatched opener",
             sub="Counting openers is not enough. The order decides the answer.",
-            diagram=240,
-            legend=[("the stack", GREEN, TEAL), ("the character now", PINK, RUST)],
+            diagram=190,
+            legend=[("on the stack", TEAL), ("the character now", RUST)],
             step=line,
             note="The stack is the reason a single counter cannot answer this.",
             pairs=[("i", i, RUST), ("char", text[i] if 0 <= i < len(text) else "-", INK),
                    ("stack", len(stack), TEAL)],
-            insight=("A closer must match the most recent opener, which is what a stack "
-                     "hands back.") if last else None,
-            height=height, insight_rows=insight_rows,
+            insight=("A closer must match the most recent opener, which is what a stack hands "
+                     "back.") if index == insight_at else None,
+            fails=("The counts are even and the string is still invalid: ')' arrives while '[' is "
+                   "on top. The stack catches this, and counting openers cannot.") if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        f.text(PAD, t + 34, "input", T_CHIP, MUTED)
-        boxes = row(f, x0, t + 46, cw, 56, text, gap=gap, size=T_CELL,
-                    fills=[PINK if k == i else PALE for k in range(len(text))],
-                    strokes=[RUST if k == i else BORDER for k in range(len(text))],
-                    colors=[WHITE if k == i else INK for k in range(len(text))])
-        index_labels(f, boxes, t + 124)
+        xs = rail_row(f, t + RAIL, list(text), unit=46, gap=10, size=T_VALUE + 1,
+                      colors=[RUST if k == i else (TEAL if k <= i else MUTED)
+                              for k in range(len(text))],
+                      bolds=[k == i for k in range(len(text))])
+        if 0 <= i < len(text):
+            pointer(f, xs[i], t + RAIL - 16, "i", RUST, above=True)
+        index_row(f, xs, t + RAIL + 44, halo=True)
 
-        sy = t + 160
-        f.text(PAD, sy + 30, "stack", T_CHIP, MUTED)
+        # The stack is a row of circles that grows to the right.
+        f.text(PAD, t + RULE + 6, "stack", T_MARK, MUTED, layer="text")
+        sx = PAD + 68
         if stack:
-            sboxes = row(f, x0, sy, cw, 54, stack, gap=gap, size=T_CELL,
-                         fills=[GREEN] * len(stack))
-            top = row_center(sboxes, len(stack) - 1)
-            f.text(top[0], sy + 78, "top", T_CHIP, TEAL, anchor="middle", bold=True)
-            f.arrow(top[0], sy + 70, top[0], sy + 60, TEAL, 1.5)
+            for k, ch in enumerate(stack):
+                top = k == len(stack) - 1
+                x = sx + 34 + k * 56
+                f.circle(x, t + RULE, 22, GREEN if top else WHITE,
+                         RUST if (top and failing) else (TEAL if top else BORDER), 1.8)
+                f.text(x, t + RULE + 7, ch, T_VALUE - 1, INK, mono=True, anchor="middle")
+            f.text(sx + 34 + (len(stack) - 1) * 56, t + RULE + 44, "top", T_MARK,
+                   RUST if failing else TEAL, anchor="middle", bold=True, layer="text")
         else:
-            f.rect(x0, sy, cw, 54, WHITE, BORDER, 6, dash=True)
-            f.text(x0 + cw / 2, sy + 34, "empty", T_CHIP, MUTED, anchor="middle")
-        if popped is not None:
-            f.text(x0 + max(1, len(stack)) * (cw + gap) + 12, sy + 34,
-                   "popped %s" % popped, T_CHIP, RUST, mono=True, bold=True)
+            f.text(sx, t + RULE + 7, "empty", T_MARK, MUTED, mono=True, layer="text")
+        if failing:
+            mark = sx + 34 + len(stack) * 56
+            cross(f, mark, t + RULE, RUST, 12.0, 2.6)
+            f.text(mark + 26, t + RULE + 6, "wrong opener on top", T_MARK, RUST,
+                   anchor="start", bold=True, layer="text")
         return f
 
-    publish("ch03-brackets.gif", frames(make, steps), [2100] * len(steps))
+    publish("ch03-brackets.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # --------------------------------------------------------- Three Sum (3.7.2)
@@ -171,8 +200,8 @@ def _three_sum_trace(nums):
     for i in range(n - 2):
         if i > 0 and nums[i] == nums[i - 1]:
             trace.append((i, i + 1, n - 1, None,
-                          "nums[%d] repeats the value just before it, so every triple that starts "
-                          "here has already been found." % i))
+                          "nums[%d] repeats the value before it, so every triple that starts here "
+                          "has already been found." % i))
             continue
         lo, hi = i + 1, n - 1
         while lo < hi:
@@ -180,17 +209,16 @@ def _three_sum_trace(nums):
             if total == 0:
                 found = (nums[i], nums[lo], nums[hi])
                 trace.append((i, lo, hi, found,
-                              "The sum is 0, so (%d, %d, %d) is a triple. Move both pointers inward "
-                              "and keep looking." % found))
+                              "The sum is 0, so (%d, %d, %d) is a triple. Move both pointers inward." % found))
                 lo += 1
                 hi -= 1
             elif total < 0:
                 trace.append((i, lo, hi, None,
-                              "The sum is %d, below 0. The left value must grow, so lo moves right." % total))
+                              "The sum is %d, below 0, so the left value must grow and lo moves right." % total))
                 lo += 1
             else:
                 trace.append((i, lo, hi, None,
-                              "The sum is %d, above 0. The right value must shrink, so hi moves left." % total))
+                              "The sum is %d, above 0, so the right value must shrink and hi moves left." % total))
                 hi -= 1
     return trace
 
@@ -199,58 +227,62 @@ def three_sum():
     """Fix one value, then close two pointers over the rest of the sorted array."""
     nums = [-4, -1, -1, 0, 1, 2]
     trace = _three_sum_trace(nums)
-    # The triples found up to and including each step, worked out once. A frame
-    # is rebuilt several times while the canvas height settles, so a builder
-    # closure must not accumulate anything.
-    so_far = []
-    running = []
+    so_far, running = [], []
     for record in trace:
         if record[3]:
             running = running + [record[3]]
         so_far.append(running)
+    # The case with no answer at all, run over an array that has no triple.
+    empty_nums = [1, 2, 3, 4]
+    empty_trace = _three_sum_trace(empty_nums)
+    steps = ([(nums, record, k) for k, record in enumerate(trace)]
+             + [(empty_nums, empty_trace[-1], len(trace) - 1)])
+    insight_at, fail_at = 3, len(steps) - 1
 
-    cw, gap = 86, 8
-    x0 = (W - (len(nums) * cw + (len(nums) - 1) * gap)) / 2.0
-
-    def make(step, height=None, insight_rows=0):
-        i, lo, hi, triple, line = step
-        found = so_far[trace.index(step)]
-        first_triple = bool(triple) and len(found) == 1
+    def make(step, height=None, rows=0, index=0):
+        seq, record, at_step = step
+        i, lo, hi, triple, line = record
+        failing = index == fail_at
+        found = so_far[min(at_step, len(so_far) - 1)] if not failing else []
         f = Frame(
             "Three Sum: fix one number, then close two pointers over the rest",
             sub="Sorted input turns a pointer move into a decision instead of a guess.",
-            diagram=260,
-            legend=[("fixed", CREAM, TEAL), ("the two pointers", CREAM, BRASS), ("the triple", GREEN, TEAL)],
+            diagram=170,
+            legend=[("found", TEAL), ("the pointers", BRASS), ("ruled out", BORDER)],
             step=line,
             note="Every move drops one index, so the pair of pointers costs one scan, not two.",
             pairs=[("i", i, TEAL), ("lo", lo, BRASS), ("hi", hi, RUST),
-                   ("sum", nums[i] + nums[lo] + nums[hi] if lo < len(nums) and hi >= 0 else "-", INK)],
-            insight=("A sum that is too small needs a larger left value, and the array is "
-                     "sorted, so lo moves right.") if first_triple else None,
-            height=height, insight_rows=insight_rows,
+                   ("sum", seq[i] + seq[lo] + seq[hi] if lo < len(seq) and hi >= 0 else "-", INK)],
+            insight=("A sum below zero can only be fixed by a larger left value, and the array is "
+                     "sorted, so lo moves right.") if index == insight_at else None,
+            fails=("The pointers have met at every i and no triple sums to zero. The answer is the "
+                   "empty list, which is a real answer and not a failure of the search."
+                   ) if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        row_y, ch = t + 66, 62
-        fills = [GREEN if triple and k in (i, lo, hi) else
-                 (CREAM if k in (i, lo, hi) else PALE) for k in range(len(nums))]
-        strokes = [TEAL if triple and k in (i, lo, hi) else
-                   (TEAL if k == i else (BRASS if k in (lo, hi) else BORDER))
-                   for k in range(len(nums))]
-        cells = row(f, x0, row_y, cw, ch, nums, gap=gap, size=T_CELL + 1, fills=fills,
-                    strokes=strokes)
-        index_labels(f, cells, row_y + ch + 20)
-        f.zone(x0 + lo * (cw + gap) - 10, row_y - 10, (hi - lo) * (cw + gap) + cw + 20, ch + 20,
-               color=BRASS, dash=True, opacity=0.07)
-        pointer_down(f, row_center(cells, i)[0], row_y - 2, "i", TEAL, gap=24)
-        pointer_up(f, row_center(cells, lo)[0], row_y + ch + 2, "lo", BRASS, gap=22, leader=False)
-        pointer_up(f, row_center(cells, hi)[0], row_y + ch + 2, "hi", RUST, gap=22, leader=False)
-
-        f.text(PAD, t + 224, "triples so far:  %s"
-               % ("  ".join("(%d,%d,%d)" % t3 for t3 in found) or "none"),
-               T_STEP - 1, TEAL if found else MUTED, mono=True)
+        xs = rail_row(f, t + RAIL, seq, unit=84, gap=10, size=T_VALUE,
+                      colors=[TEAL if triple and k in (i, lo, hi) else
+                              (INK if k == i else (BRASS if k in (lo, hi) else MUTED))
+                              for k in range(len(seq))],
+                      bolds=[k in (i, lo, hi) for k in range(len(seq))])
+        if lo <= hi:
+            f.line(xs[lo] - 16, t + RULE, xs[hi] + 16, t + RULE, BRASS, 3.0)
+        pointer(f, xs[i], t + RAIL - 16, "i", TEAL, above=True)
+        pointer(f, xs[min(lo, len(seq) - 1)], t + RULE + 34, "lo", BRASS, above=False)
+        pointer(f, xs[max(hi, 0)], t + RULE + 34, "hi", RUST, above=False)
+        index_row(f, xs, t + RAIL + 44, halo=True)
+        f.text(PAD, t + RULE + 4, "triples:  %s"
+               % ("  ".join("(%d,%d,%d)" % tr for tr in found) or "none"),
+               T_MARK, TEAL if found else MUTED, mono=True, layer="text")
+        if failing:
+            f.text(W - PAD, t + RULE + 4, "no triple sums to zero", T_MARK, RUST,
+                   anchor="end", layer="text")
         return f
 
-    publish("ch03-three-sum.gif", frames(make, trace), [2300] * len(trace))
+    publish("ch03-three-sum.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # ---------------------------------------------------- Merge intervals (3.9)
@@ -260,68 +292,82 @@ def merge_intervals():
     raw = [(15, 18), (2, 6), (1, 3), (8, 10)]
     ordered = sorted(raw)
     steps = [
-        (raw, None, set(), -1, "The input arrives unsorted, so no range can be trusted to arrive next."),
-        (ordered, None, set(), -1, "Sort by start. Now any range that overlaps the last one always arrives next."),
-        (ordered, ordered[0], set(), 0, "Start with [1, 3] as the current merged range."),
-        (ordered, (1, 6), {0}, 1, "[2, 6] starts at 2, which is not after 3, so it overlaps. The end grows to 6."),
-        (ordered, (8, 10), {0, 1}, 2, "[8, 10] starts after 6, so it does not overlap. Keep [1, 6] and start [8, 10]."),
-        (ordered, (15, 18), {0, 1, 2}, 3, "[15, 18] starts after 10, so keep [8, 10] and start [15, 18]."),
-        (ordered, None, {0, 1, 2, 3}, -1, "The input ends, so the last range is kept. Twenty ticks became three ranges."),
+        (raw, [], None, "The input arrives unsorted, so no range can be trusted to arrive next."),
+        (ordered, [], None, "Sort by start. Now any range that overlaps the last one always arrives next."),
+        (ordered, [], (1, 3), "Start with [1, 3] as the current merged range."),
+        (ordered, [], (1, 6), "[2, 6] starts at 2, not after 3, so it overlaps and the end grows to 6."),
+        (ordered, [(1, 6)], (8, 10), "[8, 10] starts after 6, so [1, 6] is kept and [8, 10] becomes current."),
+        (ordered, [(1, 6), (8, 10)], (15, 18), "[15, 18] starts after 10, so [8, 10] is kept."),
+        (ordered, [(1, 6), (8, 10), (15, 18)], None, "The input ends. Twenty ticks became three ranges."),
+        ([], [], None, "An empty input has no ranges, so the answer is the empty list."),
     ]
-    merged_after = [set(), set(), set(), set(), {(1, 6)}, {(1, 6), (8, 10)},
-                    {(1, 6), (8, 10), (15, 18)}]
+    insight_at, fail_at = 6, 7
 
     def x_of(v):
-        return 66 + v * 36
+        return 92 + v * 32
 
-    def bar(f, span, y, h, fill, stroke, text_color=INK, size=T_CHIP):
+    def bar(f, span, y, h, fill, stroke, text_color=INK, size=T_MARK):
         a, b = span
-        f.rect(x_of(a), y, x_of(b) - x_of(a), h, fill, stroke, 4)
+        f.rect(x_of(a), y, max(3.0, x_of(b) - x_of(a)), h, fill, stroke, 3)
         f.text((x_of(a) + x_of(b)) / 2, y + h / 2 + size * 0.36, "%d-%d" % (a, b), size,
                text_color, anchor="middle")
 
-    def make(step, height=None, insight_rows=0):
-        index = steps.index(step)
-        order, current, done, hot, line = step
-        last = step is steps[-1]
+    def make(step, height=None, rows=0, index=0):
+        order, kept, current, line = step
+        failing = not order
+        last = index == insight_at
+        keep = list(kept) + ([current] if current else [])
         f = Frame(
             "Merge intervals: sort by start, then extend or keep",
             sub="Every range is visited once after the sort.",
-            diagram=290,
-            legend=[("kept", GREEN, TEAL), ("current range", CREAM, TEAL), ("waiting", GREY, BORDER)],
+            diagram=250,
+            legend=[("kept", TEAL), ("current", BRASS), ("waiting", BORDER)],
             step=line,
             note="Sorting is what makes the decision local: only the last merged range matters.",
-            pairs=[("current", "%d-%d" % current if current else "-", TEAL),
-                   ("merged", len(merged_after[index]), INK),
-                   ("ranges", len(order), MUTED)],
-            insight=("After the sort, a range either overlaps the last one kept or it starts "
-                     "a new one.") if last else None,
-            height=height, insight_rows=insight_rows,
+            pairs=[("ranges", len(order), MUTED), ("merged", len(kept), INK),
+                   ("current", "%d-%d" % current if current else "-", BRASS)],
+            insight=("After the sort a range either overlaps the last one kept or it starts a new "
+                     "one, so the decision costs one comparison per range.") if last else None,
+            fails=("No ranges arrive at all, so nothing is compared and nothing is merged. The "
+                   "empty input returns the empty list without touching the loop body."
+                   ) if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        f.text(PAD, t + 16, "input order", T_CHIP, MUTED)
+        # The range being merged now is the last raw span inside the running
+        # range. Draw it in the current colour, a span already inside a merged
+        # range in the kept colour, and the rest as still waiting.
+        hot = None
+        if current:
+            for span in order:
+                if current[0] <= span[0] and span[1] <= current[1]:
+                    hot = span
         for k, span in enumerate(order):
-            y = t + 26 + k * 32
-            if k in done:
-                bar(f, span, y, 26, GREEN, TEAL, INK)
-            elif k == hot:
-                bar(f, span, y, 26, CREAM, TEAL, INK)
+            y = t + 16 + k * 30
+            if span == hot:
+                bar(f, span, y, 24, CREAM, BRASS, INK)
+            elif any(a <= span[0] and span[1] <= b for a, b in keep):
+                bar(f, span, y, 24, GREEN, TEAL, INK)
             else:
-                bar(f, span, y, 26, GREY, BORDER, MUTED)
-        axis = t + 186
-        f.line(x_of(0), axis, x_of(20), axis, INK, 1.6)
+                bar(f, span, y, 24, GREY, BORDER, MUTED)
+        axis = t + 16 + len(order) * 30 + 40
+        f.line(x_of(0), axis, x_of(20), axis, INK, 1.4)
         for v in range(0, 21, 5):
-            f.line(x_of(v), axis - 4, x_of(v), axis + 4, INK, 1.2)
-            f.text(x_of(v), axis + 20, str(v), T_CHIP, MUTED, anchor="middle")
-        f.text(PAD, axis + 54, "merged", T_CHIP, MUTED)
-        keep = set(merged_after[index])
-        if order and current:
-            keep = keep | {current}
-        for span in sorted(keep):
-            bar(f, span, axis + 36, 28, GREEN, TEAL, INK, T_CHIP + 1)
+            f.line(x_of(v), axis, x_of(v), axis + 7, BORDER, 1.2)
+            f.text(x_of(v), axis + 26, str(v), T_MARK, MUTED, anchor="middle")
+        if not failing:
+            f.text(PAD, axis - 24, "merged", T_MARK, MUTED, layer="text")
+            for span in sorted(keep):
+                bar(f, span, axis - 46, 26, GREEN, TEAL, INK, T_MARK + 1)
+        else:
+            cross(f, W / 2 - 96, axis + 46, RUST, 13.0, 2.6)
+            f.text(W / 2 - 74, axis + 52, "nothing arrives, so nothing is merged",
+                   T_MARK, RUST, anchor="start", bold=True, layer="text")
         return f
 
-    publish("ch03-merge-intervals.gif", frames(make, steps), [2200] * len(steps))
+    publish("ch03-merge-intervals.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # ------------------------------------------------------- Rotate grid (3.11)
@@ -351,143 +397,127 @@ def rotate_grid():
                       "Reverse row %d in place. The two ends of the row trade places." % r))
     steps.append((snap(), [], ("done", None),
                   "The grid has turned a quarter turn clockwise, using two sweeps of swaps."))
+    steps.append(([[1]], [], ("1 x 1", (0, 0)),
+                  "A 1 x 1 grid has no cell to trade with, so both sweeps do nothing."))
+    insight_at, fail_at = len(steps) - 2, len(steps) - 1
 
-    cw, gap = 78, 8
-    x0 = (W - (3 * cw + 2 * gap)) / 2.0
-
-    def make(step, height=None, insight_rows=0):
+    def make(step, height=None, rows=0, index=0):
         values, hot, kind, line = step
-        last = step is steps[-1]
+        size = len(values)
+        failing = size == 1
+        side = 62.0 if size == 3 else 62.0
+        gap = 10.0
+        span = size * side + (size - 1) * gap
+        x0 = (W - span) / 2.0
         f = Frame(
             "Rotate a grid in place: transpose, then reverse every row",
             sub="Two sweeps of simple swaps, with no second grid and no extra memory.",
-            diagram=310,
-            legend=[("swapping now", PINK, RUST), ("in place", PALE, BORDER)],
+            diagram=250,
+            legend=[("swapping now", RUST), ("in place", BORDER)],
             step=line,
             note="A transpose swaps across the diagonal. Reversing each row then turns it clockwise.",
-            pairs=[("sweep", kind[0], RUST),
-                   ("cell", "%d,%d" % kind[1] if kind[1] else "-", INK),
-                   ("grid", "3 x 3", MUTED)],
-            insight=("Transpose then reverse is the rotation, and both sweeps work in place."
-                     ) if last else None,
-            height=height, insight_rows=insight_rows,
+            pairs=[("sweep", kind[0], RUST), ("grid", "%d x %d" % (size, size), MUTED)],
+            insight=("Transpose then reverse is the rotation, and both sweeps trade pairs in place, "
+                     "so the grid needs no second array.") if index == insight_at else None,
+            fails=("With one row and one column there is no pair to swap, so both loops run zero "
+                   "times and the grid is already its own rotation.") if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        y0 = t + 44
-        for c in range(3):
-            f.text(x0 + c * (cw + gap) + cw / 2, t + 14, "col %d" % c, T_CHIP, MUTED,
-                   anchor="middle")
+        y0 = t + 66
+        for c in range(size):
+            f.text(x0 + c * (side + gap) + side / 2, t + 34, "col %d" % c, T_MARK, MUTED,
+                   anchor="middle", layer="text")
         for r, row_values in enumerate(values):
-            f.text(x0 - 18, y0 + r * (cw + gap) + cw / 2 + 5, "row %d" % r, T_CHIP, MUTED,
-                   anchor="end")
+            f.text(x0 - 16, y0 + r * (side + gap) + side / 2 + 5, "row %d" % r, T_MARK, MUTED,
+                   anchor="end", layer="text")
             for c, value in enumerate(row_values):
-                x = x0 + c * (cw + gap)
-                y = y0 + r * (cw + gap)
+                x = x0 + c * (side + gap)
+                y = y0 + r * (side + gap)
                 on = (r, c) in hot
-                f.cell(x, y, cw, cw, value, PINK if on else PALE, RUST if on else BORDER,
-                       size=T_CELL + 1, color=WHITE if on else INK)
-        if len(hot) == 2:
-            a, b = hot
-            f.text(x0 - 120, y0 + 40, "swap", T_CHIP, RUST, mono=True, bold=True)
-            f.text(x0 - 120, y0 + 64, "(%d,%d)" % a, T_CHIP, INK, mono=True)
-            f.text(x0 - 120, y0 + 84, "(%d,%d)" % b, T_CHIP, INK, mono=True)
-            f.arrow(x0 - 40, y0 + 74, x0 - 8, y0 + 74, RUST, 1.8)
-        f.text(W - PAD, y0 + 40, "clockwise", T_CHIP, MUTED, anchor="end")
-        f.arrow(W - PAD - 110, y0 + 66, W - PAD, y0 + 66, TEAL, 2.0)
+                f.cell(x, y, side, side, value, WHITE, RUST if on else BORDER,
+                       size=T_VALUE, color=RUST if on else INK, rx=6,
+                       width=2.0 if on else 1.2)
+        if len(hot) == 2 and hot[0] != hot[1]:
+            f.text(x0 - 96, y0 + 40, "swap", T_MARK, RUST, mono=True, bold=True, layer="text")
+            f.text(x0 - 96, y0 + 62, "(%d,%d)" % hot[0], T_MARK, INK, mono=True, layer="text")
+            f.text(x0 - 96, y0 + 82, "(%d,%d)" % hot[1], T_MARK, INK, mono=True, layer="text")
+            f.arrow(x0 - 40, y0 + 72, x0 - 8, y0 + 72, RUST, 1.8)
+        f.text(W - PAD, t + 44, "clockwise", T_MARK, MUTED, anchor="end", layer="text")
+        f.arrow(W - PAD - 96, t + 70, W - PAD, t + 70, TEAL, 2.0)
+        if failing:
+            f.text(W / 2, y0 + 110, "nothing to rotate", T_MARK, RUST, anchor="middle",
+                   bold=True, layer="text")
         return f
 
-    publish("ch03-rotate-grid.gif", frames(make, steps), [2000] * len(steps))
+    publish("ch03-rotate-grid.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # -------------------------------------------- Rotated binary search (3.10.1)
 
 def rotated_search():
-    """Binary search on a rotated sorted array."""
+    """Binary search on a rotated sorted array, then for a value that is absent."""
     nums = [4, 5, 6, 7, 0, 1, 2]
-    target = 0
-    lo, hi, steps = 0, len(nums), []
-    while lo < hi:
-        mid = lo + (hi - lo) // 2
-        if nums[mid] == target:
-            steps.append((lo, hi, mid, None,
-                          "mid points at 0, which is the target. The search ends after three comparisons."))
-            break
-        if nums[lo] <= nums[mid]:
-            inside = nums[lo] <= target < nums[mid]
-            steps.append((lo, hi, mid, (lo, mid),
-                          "The left half %d..%d is sorted and 0 is %s it, so the search %s"
-                          % (nums[lo], nums[mid], "inside" if inside else "not inside",
-                             "moves there: hi = mid." if inside else "moves right: lo = mid + 1.")))
-            if inside:
-                hi = mid
-            else:
-                lo = mid + 1
-        else:
-            inside = nums[mid] < target <= nums[hi - 1]
-            steps.append((lo, hi, mid, (mid, hi - 1),
-                          "The right half %d..%d is sorted and 0 is %s it, so the search %s"
-                          % (nums[mid], nums[hi - 1], "inside" if inside else "not inside",
-                             "moves there: lo = mid + 1." if inside else "moves left: hi = mid.")))
-            if inside:
-                lo = mid + 1
-            else:
-                hi = mid
+    steps = [
+        (nums, 0, 0, 6, 3, "lo = 0, hi = 6, mid = 3. The left half 4..7 is sorted, and 0 is not in it, so lo = 4."),
+        (nums, 0, 4, 6, 5, "lo = 4, hi = 6, mid = 5. The left half 0..1 is sorted and holds 0, so hi = 5."),
+        (nums, 0, 4, 5, 4, "lo = 4, hi = 5, mid = 4. a[4] = 0. Found after three comparisons."),
+        (nums, 9, 0, 6, 3, "Now search for 9. mid = 3, and the sorted left half 4..7 does not hold it, so lo = 4."),
+        (nums, 9, 4, 6, 5, "mid = 5. The sorted left half 0..1 does not hold 9, so lo = 6."),
+        (nums, 9, 7, 6, 6, "lo has passed hi, so the range is empty and the search reports -1."),
+    ]
+    insight_at, fail_at = 2, 5
 
-    cw, gap = 76, 10
-    x0 = (W - (len(nums) * cw + (len(nums) - 1) * gap)) / 2.0
-
-    def make(step, height=None, insight_rows=0):
-        lo, hi, mid, sorted_half, line = step
-        last = step is steps[-1]
+    def make(step, height=None, rows=0, index=0):
+        seq, target, lo, hi, mid, line = step
+        found = index == insight_at
         f = Frame(
             "Binary search on a rotated sorted array",
             sub="At every split, at least one half is still sorted. That half decides the move.",
-            diagram=260,
-            legend=[("the sorted half", GREEN, TEAL), ("ruled out", GREY, BORDER),
-                    ("still in range", PALE, INK)],
+            diagram=170,
+            legend=[("the sorted half", TEAL), ("ruled out", BORDER)],
             step=line,
-            note="A sorted half can be tested with two comparisons, which is what keeps the cost logarithmic.",
-            pairs=[("lo", lo, TEAL), ("hi", hi, RUST), ("mid", mid, INK),
-                   ("nums[mid]", nums[mid], BRASS)],
-            insight=("A rotated array is two sorted runs, so one half at mid is always sorted."
-                     ) if last else None,
-            height=height, insight_rows=insight_rows,
+            note="One half of a rotated array is always sorted, and a sorted half is two comparisons to test.",
+            pairs=[("target", target, RUST), ("lo", lo, TEAL), ("hi", hi, TEAL), ("mid", mid, INK)],
+            insight=("A rotated array is two sorted runs, so one of the two halves at mid is always "
+                     "sorted.") if found else None,
+            fails=("The array is rotated, not unsorted: every half that was tested was sorted, and 9 "
+                   "is in none of them. The scan reports -1.") if index == fail_at else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        row_y, ch = t + 62, 58
-        fills, strokes, colors = [], [], []
-        for k in range(len(nums)):
-            if k == mid:
-                fills.append(CREAM); strokes.append(BRASS); colors.append(INK)
-            elif lo <= k < hi:
-                fills.append(PALE); strokes.append(INK); colors.append(INK)
-            else:
-                fills.append(GREY); strokes.append(BORDER); colors.append(MUTED)
-        if sorted_half:
+        live = lo <= hi
+        mid = min(max(mid, 0), len(seq) - 1)
+        sorted_half = ((lo, mid) if seq[lo] <= seq[mid] else (mid, hi)) if live else (0, 0)
+        xs = rail_row(f, t + RAIL, seq, unit=74, gap=12, size=T_VALUE,
+                      colors=[TEAL if found and k == mid else
+                              (INK if lo <= k <= hi else MUTED) for k in range(len(seq))],
+                      bolds=[found and k == mid for k in range(len(seq))])
+        if live:
+            f.line(xs[lo] - 20, t + RULE, xs[hi] + 20, t + RULE, BORDER, 2.4)
             a, b = sorted_half
-            for k in range(max(0, a), min(len(nums) - 1, b) + 1):
-                if lo <= k < hi:
-                    fills[k], strokes[k] = GREEN, TEAL
-        cells = row(f, x0, row_y, cw, ch, nums, gap=gap, size=T_CELL, fills=fills,
-                    strokes=strokes, colors=colors)
-        index_labels(f, cells, row_y + ch + 20)
-        left = x0 + lo * (cw + gap)
-        right = x0 + (hi - 1) * (cw + gap) + cw
-        f.line(left, row_y + ch + 40, right, row_y + ch + 40, TEAL, 2.0)
-        for x in (left, right):
-            f.line(x, row_y + ch + 40, x, row_y + ch + 50, TEAL, 2.0)
-        chip(f, left, row_y + ch + 74, "lo", TEAL)
-        chip(f, right, row_y + ch + 74, "hi", TEAL)
-        pointer_down(f, row_center(cells, mid)[0], row_y - 2, "mid", BRASS, gap=24)
+            f.line(xs[a] - 20, t + RULE, xs[b] + 20, t + RULE, TEAL, 4.0)
+            f.text(xs[a] - 26, t + RULE + 5, "lo", T_MARK, TEAL, anchor="end", layer="text")
+            f.text(xs[hi] + 26, t + RULE + 5, "hi", T_MARK, TEAL, anchor="start", layer="text")
+            pointer(f, xs[mid], t + RAIL - 16, "mid", INK, above=True)
+        else:
+            f.text(W / 2, t + RULE + 6, "the range is empty", T_MARK, RUST, anchor="middle",
+                   bold=True, layer="text")
+        if found:
+            f.glow(xs[mid], t + RAIL - 4, 42, TEAL, 0.35)
+        index_row(f, xs, t + RAIL + 44, halo=True)
         return f
 
-    publish("ch03-rotated-search.gif", frames(make, steps), [2600] * len(steps))
+    publish("ch03-rotated-search.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # ------------------------------------------------------------- KMP (3.12)
 
 def _kmp_lps(needle):
-    """The table, and one record for every comparison the build makes."""
     lps = [0] * len(needle)
     filled = {0}
     length, i = 0, 1
@@ -500,9 +530,8 @@ def _kmp_lps(needle):
             lps[i] = length
             filled.add(i)
             trace.append((i, compared, length, set(filled), "match",
-                          "needle[%d] = '%s' equals needle[%d] = '%s', so the matched prefix grows "
-                          "to %d and lps[%d] = %d." % (i, needle[i], compared, needle[compared],
-                                                       length, i, length)))
+                          "needle[%d] equals needle[%d], so the matched prefix grows to %d and "
+                          "lps[%d] = %d." % (i, compared, length, i, length)))
             i += 1
         elif length > 0:
             length = lps[length - 1]
@@ -513,8 +542,8 @@ def _kmp_lps(needle):
             lps[i] = 0
             filled.add(i)
             trace.append((i, compared, 0, set(filled), "zero",
-                          "needle[%d] does not match needle[0] and length is already 0, so "
-                          "lps[%d] = 0 and i moves on." % (i, i)))
+                          "needle[%d] does not match needle[0] and length is already 0, so lps[%d] = 0 "
+                          "and i moves on." % (i, i)))
             i += 1
     return lps, trace
 
@@ -523,54 +552,51 @@ def kmp_lps():
     """Build the longest-proper-prefix table for the needle."""
     needle = "aabaaac"
     lps, trace = _kmp_lps(needle)
-    cw, gap = 68, 8
-    x0 = (W - (len(needle) * cw + (len(needle) - 1) * gap)) / 2.0
+    steps = [(needle, r) for r in trace] + [("a", trace[0])]
+    insight_at, fail_at = 3, len(steps) - 1
 
-    def make(step, height=None, insight_rows=0):
-        i, compared, length, filled, kind, line = step
-        last = step is trace[-1]
+    def make(step, height=None, rows=0, index=0):
+        seq, record = step
+        i, compared, length, filled, kind, line = record
+        failing = index == fail_at
         f = Frame(
             "KMP, first step: the longest proper prefix that is also a suffix",
             sub="The table is built from the needle alone, before the haystack is read.",
-            diagram=290,
-            legend=[("matched prefix", GREEN, TEAL), ("compared with i", CREAM, BRASS),
-                    ("not written yet", GREY, BORDER)],
+            diagram=200,
+            legend=[("matched prefix", TEAL), ("compared with i", BRASS), ("not written yet", BORDER)],
             step=line,
             note="The table is what the search falls back to, so it is built once, up front.",
-            pairs=[("i", i, RUST), ("length", length, TEAL),
-                   ("needle[length]", needle[length] if length < len(needle) else "-", BRASS)],
-            insight=("On a mismatch the table says how much of the prefix still matches."
-                     ) if last else None,
-            height=height, insight_rows=insight_rows,
+            pairs=[("i", i if not failing else 0, RUST), ("length", length, TEAL),
+                   ("needle[length]", seq[length] if length < len(seq) else "-", BRASS)],
+            insight=("On a mismatch the table says how much of the prefix still matches, so no pair "
+                     "of characters is compared twice.") if index == insight_at else None,
+            fails=("A one-character needle never enters the loop: lps[0] is 0 by definition, so the "
+                   "table is written before the first comparison.") if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        fills, strokes, colors = [], [], []
-        for k in range(len(needle)):
-            if k == i:
-                fills.append(PINK); strokes.append(RUST); colors.append(WHITE)
-            elif k == compared and kind != "start":
-                fills.append(CREAM); strokes.append(BRASS); colors.append(INK)
-            elif k < length:
-                fills.append(GREEN); strokes.append(TEAL); colors.append(INK)
-            else:
-                fills.append(PALE); strokes.append(BORDER); colors.append(INK)
-        f.text(PAD, t + 82, "needle", T_CHIP, MUTED)
-        nb = row(f, x0, t + 56, cw, 54, needle, gap=gap, size=T_CELL,
-                 fills=fills, strokes=strokes, colors=colors)
-        index_labels(f, nb, t + 130)
-        f.text(PAD, t + 202, "lps", T_CHIP, MUTED)
-        values = [str(lps[k]) if k in filled else "." for k in range(len(needle))]
-        row(f, x0, t + 176, cw, 54, values, gap=gap, size=T_CELL - 1,
-            fills=[CREAM if k == i else GREY for k in range(len(needle))],
-            strokes=[BRASS if k == i else BORDER for k in range(len(needle))],
-            colors=[INK if k in filled else MUTED for k in range(len(needle))])
-        pointer_down(f, row_center(nb, i)[0], t + 54, "i", RUST, gap=22)
-        if kind == "match" and compared < len(needle):
-            f.text(row_center(nb, compared)[0], t + 138, "length", T_CHIP, BRASS, mono=True,
-                   anchor="middle", bold=True)
+        xs = rail_row(f, t + RAIL, list(seq), unit=62, gap=8, size=T_VALUE,
+                      colors=[RUST if k == i and not failing else
+                              (BRASS if k == compared else (TEAL if k < length else MUTED))
+                              for k in range(len(seq))],
+                      bolds=[k <= length for k in range(len(seq))])
+        index_row(f, xs, t + RAIL + 44, halo=True)
+        pointer(f, xs[min(i, len(seq) - 1)], t + RAIL - 16, "i", RUST, above=True)
+        if kind == "match" and compared < len(seq) and not failing:
+            band(f, xs, 0, length - 1, t + RAIL + 66, TEAL, 3.0,
+                 label="the prefix that matches")
+
+        values = [str(lps[k]) if k in filled else "." for k in range(len(seq))]
+        rail_row(f, t + 156, values, unit=62, gap=8, size=T_CELL + 1,
+                 colors=[BRASS if k == i and not failing else
+                         (INK if k in filled else MUTED) for k in range(len(seq))],
+                 ticks=False)
+        f.text(PAD, t + 156, "lps", T_MARK, MUTED, layer="text")
         return f
 
-    publish("ch03-kmp-lps.gif", frames(make, trace), [2300] * len(trace))
+    publish("ch03-kmp-lps.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 def _kmp_search(haystack, needle):
@@ -605,55 +631,59 @@ def kmp_search():
     """Search for the needle without ever moving right backwards."""
     haystack, needle = "aabaaabaaac", "aabaaac"
     trace = _kmp_search(haystack, needle)
-    cw, gap = 54, 8
-    x0 = (W - (len(haystack) * cw + (len(haystack) - 1) * gap)) / 2.0
+    # The same search for a needle that is not there at all.
+    missing_trace = _kmp_search("aabaab", "aabaaac")
+    steps = [(haystack, needle, r) for r in trace] + [("aabaab", needle, missing_trace[-1])]
+    insight_at, fail_at = len(trace) - 1, len(steps) - 1
 
-    def make(step, height=None, insight_rows=0):
-        left, right, kind, compared, line = step
-        last = step is trace[-1]
+    def make(step, height=None, rows=0, index=0):
+        text, ndl, record = step
+        left, right, kind, compared, line = record
+        failing = index == fail_at
         start = right - left + 1 if kind in ("match", "found") else right - left
         start = max(start, 0)
         f = Frame(
             "KMP search: reuse the characters that already matched",
             sub="right only ever moves forward. On a mismatch, left falls back instead.",
-            diagram=290,
-            legend=[("matched so far", GREEN, TEAL), ("the character under right", PINK, RUST)],
+            diagram=210,
+            legend=[("matched so far", TEAL), ("the character under right", RUST)],
             step=line,
             note="Green is one run of characters that matched, reused rather than re-read.",
             pairs=[("left", left, TEAL), ("right", right, RUST), ("start", start, INK)],
             insight=("right never moves backwards, so each character of the text is read once."
-                     ) if last else None,
-            height=height, insight_rows=insight_rows,
+                     ) if index == insight_at else None,
+            fails=("The text ends with left at 0. The needle never aligned, so the search reports "
+                   "\"not found\" and costs one pass over the text.") if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        hy = t + 52
-        f.text(PAD, hy + 30, "text", T_CHIP, MUTED)
-        hb = row(f, x0, hy, cw, 52, list(haystack), gap=gap, size=T_CELL - 1,
-                 fills=[GREEN if start <= k <= right else PALE for k in range(len(haystack))],
-                 strokes=[BORDER] * len(haystack))
-        index_labels(f, hb, hy + 74)
-        if 0 <= right < len(haystack):
-            f.cell(x0 + right * (cw + gap), hy, cw, 52, haystack[right], PINK, RUST,
-                   size=T_CELL - 1, color=WHITE)
-        pointer_down(f, x0 + right * (cw + gap) + cw / 2, hy - 2, "right", RUST, gap=22)
+        xs = rail_row(f, t + RAIL, list(text), unit=48, gap=7, size=T_VALUE - 1,
+                      colors=[RUST if k == right else
+                              (TEAL if start <= k <= right else MUTED) for k in range(len(text))],
+                      bolds=[start <= k <= right for k in range(len(text))])
+        index_row(f, xs, t + RAIL + 40, halo=True)
+        pointer(f, xs[min(right, len(text) - 1)], t + RAIL - 14, "right", RUST, above=True)
 
-        ny = t + 168
-        f.text(PAD, ny + 30, "needle", T_CHIP, MUTED)
-        for k, ch in enumerate(needle):
-            x = x0 + (start + k) * (cw + gap)
-            if x + cw > W - PAD:
+        # The needle sits under the text at the offset start implies.
+        ny = t + RULE + 34
+        for k, ch in enumerate(ndl):
+            x = xs[0] + (start + k) * (48 + 7)
+            if x - 24 > W - PAD or x > xs[-1] + 40:
                 continue
-            matched = k < left and (start + k) <= right
+            matched = k < left and (start + k) <= right and not failing
             here = k == compared
-            f.cell(x, ny, cw, 52, ch,
-                   PINK if here else (GREEN if matched else PALE),
+            f.cell(x - 22, ny - 20, 44, 40, ch, WHITE,
                    RUST if here else (TEAL if matched else BORDER),
-                   size=T_CELL - 1, color=WHITE if here else INK)
-        if kind == "found":
-            f.glow(x0 + start * (cw + gap) + 3 * (cw + gap), ny + 26, 96, TEAL, 0.42)
+                   size=T_VALUE - 1, color=INK, rx=6, width=2.0 if here or matched else 1.2)
+        f.text(PAD, ny, "needle", T_MARK, MUTED, layer="text")
+        if failing:
+            f.text(W - PAD, ny, "the needle never fits", T_MARK, RUST, anchor="end",
+                   layer="text")
         return f
 
-    publish("ch03-kmp-search.gif", frames(make, trace), [2200] * len(trace))
+    publish("ch03-kmp-search.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # ------------------------------------------------------------- Heaps (5.2)
@@ -670,63 +700,73 @@ def heap_sift():
     i = len(heap) - 1
     while i > 0 and heap[(i - 1) // 2] < heap[i]:
         parent = (i - 1) // 2
-        child_value, parent_value = heap[i], heap[parent]
         heap[i], heap[parent] = heap[parent], heap[i]
         steps.append((heap[:], [parent, i], TEAL, "climb",
-                      "%d is greater than its parent %d, so they swap and %d climbs to index %d."
-                      % (child_value, parent_value, child_value, parent)))
+                      "The child is greater than its parent, so they swap and the new value climbs "
+                      "to index %d." % parent))
         i = parent
     steps.append((heap[:], [], GREEN, "climb",
-                  "Index 0 has no parent, so the climb stops. Every parent is at least as large as its children again."))
+                  "Index 0 has no parent, so the climb stops and the heap is valid again."))
     root, last_value = heap[0], heap.pop()
     heap[0] = last_value
     steps.append((heap[:], [0], RUST, "sink",
-                  "pop() returns the root, %d. The last value, %d, moves to the root and then sinks."
-                  % (root, last_value)))
+                  "pop() returns the root, %d. The last value, %d, moves to the root and sinks." % (root, last_value)))
     i = 0
     while True:
         children = [c for c in (2 * i + 1, 2 * i + 2) if c < len(heap)]
         big = max(children, key=lambda c: heap[c]) if children else i
         if not children or heap[big] <= heap[i]:
             break
-        child_value, here = heap[big], heap[i]
         heap[i], heap[big] = heap[big], heap[i]
         steps.append((heap[:], [i, big], RUST, "sink",
-                      "The larger child is %d at index %d, above %d at index %d, so they swap."
-                      % (child_value, big, here, i)))
+                      "The larger child is above its parent, so they swap and the value sinks to index %d." % big))
         i = big
     steps.append((heap[:], [], GREEN, "sink",
                   "Neither child is larger, so the sink stops and the heap is valid again."))
+    steps.append(([42], [], RUST, "sink",
+                  "pop() on a heap of one value: the root leaves and the heap is empty."))
+    insight_at, fail_at = len(steps) - 3, len(steps) - 1
 
-    def make(step, height=None, insight_rows=0):
+    def make(step, height=None, rows=0, index=0):
         values, hot, accent, phase, line = step
-        last = step is steps[-1]
+        failing = len(values) == 1 and index == fail_at
         f = Frame(
             "Heap push and pop: a new value climbs, the last value sinks",
             sub="A max-heap in an array. The children of i are 2i+1 and 2i+2; the parent is (i-1)/2.",
-            diagram=340,
-            legend=[("on the move", CREAM, BRASS), ("in place", PALE, BORDER)],
+            diagram=300,
+            legend=[("on the move", BRASS), ("in place", BORDER)],
             step=line,
-            note="The tree is the array: no links and no allocation, and the parent of i is one division away.",
+            note="The tree is the array: no links, no allocation, and the parent of i is one division away.",
             pairs=[("phase", phase, RUST), ("index 0", values[0], TEAL), ("size", len(values), INK)],
-            insight=("A heap of n values is log n levels deep, so a climb or a sink costs "
-                     "log n.") if last else None,
-            height=height, insight_rows=insight_rows,
+            insight=("A heap of n values is log n levels deep, so a climb or a sink costs log n."
+                     ) if index == insight_at else None,
+            fails=("After the root leaves there is no last value to move up, so the heap is empty and "
+                   "a second pop has nothing to return.") if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        fills = [CREAM if k in hot else PALE for k in range(len(values))]
+        fills = [CREAM if k in hot else WHITE for k in range(len(values))]
         strokes = [accent if k in hot else BORDER for k in range(len(values))]
-        boxes = row(f, PAD, t + 10, 62, 50, values, gap=8, size=T_CELL - 1, fills=fills,
-                    strokes=strokes)
-        index_labels(f, boxes, t + 78)
+        xs = rail_row(f, t + 40, values, unit=62, gap=10, size=T_VALUE,
+                      colors=[INK] * len(values), bolds=[k in hot for k in range(len(values))],
+                      ticks=False, x0=PAD + 40)
+        for k, x in enumerate(xs):
+            f.rect(x - 28, t + 22, 56, 6, strokes[k], "none", 2)
+        index_labels(f, [(x - 28, t + 22, 56, 6) for x in xs], t + 64)
         if hot:
-            f.glow(row_center(boxes, min(hot))[0], t + 35, 60, accent, 0.35)
-        f.text(PAD, t + 118, "the same values as a tree", T_CHIP, MUTED)
-        heap_tree(f, values, base_x=420, top=t + 156, dy=64, spacing=220,
+            f.glow(xs[min(hot)], t + 40, 48, accent, 0.3)
+        f.text(PAD, t + 128, "the same values as a tree", T_MARK, MUTED, layer="text")
+        heap_tree(f, values, base_x=470, top=t + 170, dy=62, spacing=210, r=19,
                   fills=fills, strokes=strokes)
+        if failing:
+            cross(f, 470, t + 210, RUST, 26.0, 2.8)
+            f.text(470, t + 250, "the heap is empty", T_MARK, RUST, anchor="middle",
+                   bold=True, layer="text")
         return f
 
-    publish("ch05-heap-sift.gif", frames(make, steps), [2200] * len(steps))
+    publish("ch05-heap-sift.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # -------------------------------------------------- Top k frequent (5.4)
@@ -742,70 +782,76 @@ def top_k():
                 break
         else:
             counts.append((v, 1))
-    k = 2
     heap = []
-
-    def times(n):
-        return "once" if n == 1 else "%d times" % n
-
-    steps = [(list(heap), None, "start",
-              "Count each number first, then keep a min-heap of size k over the counts, so the root is the weakest entry still kept.")]
+    steps = [(list(heap), None, 2, "start",
+              "Count each number first, then keep a min-heap of size k over the counts.")]
     for value, count in counts:
-        if len(heap) < k:
+        if len(heap) < 2:
             heap.append((value, count))
             heap.sort(key=lambda e: e[1])
-            steps.append((list(heap), (value, count), "push",
-                          "%d appears %s and the heap has room, so it goes in." % (value, times(count))))
+            steps.append((list(heap), (value, count), 2, "push",
+                          "%d appears %d times and the heap has room, so it goes in." % (value, count)))
         elif count > heap[0][1]:
             out = heap[0]
             heap[0] = (value, count)
             heap.sort(key=lambda e: e[1])
-            steps.append((list(heap), (value, count), "replace",
-                          "%d appears %s, more than the smallest count kept, %d, so %d is dropped."
-                          % (value, times(count), out[1], out[0])))
+            steps.append((list(heap), (value, count), 2, "replace",
+                          "%d appears %d times, more than the smallest kept count %d, so %d is dropped."
+                          % (value, count, out[1], out[0])))
         else:
-            steps.append((list(heap), (value, count), "skip",
-                          "%d appears %s, no more than the smallest count kept, %d, so it is ignored."
-                          % (value, times(count), heap[0][1])))
-    steps.append((list(heap), None, "done",
-                  "Every number has been counted once. The heap holds the %d values with the largest counts." % k))
+            steps.append((list(heap), (value, count), 2, "skip",
+                          "%d appears %d times, no more than the smallest kept count %d, so it is ignored."
+                          % (value, count, heap[0][1])))
+    steps.append((list(heap), None, 2, "done",
+                  "Every number has been counted once. The heap holds the two values with the largest counts."))
+    steps.append(([(1, 3), (2, 2), (3, 1)], None, 9, "k too big",
+                  "Now k = 9 over the same counts. The heap has room for nine entries and only three exist."))
+    insight_at, fail_at = len(steps) - 2, len(steps) - 1
 
-    cw, gap = 84, 8
-    cx0 = (W - (len(counts) * cw + (len(counts) - 1) * gap)) / 2.0
-
-    def make(step, height=None, insight_rows=0):
-        values, arriving, kind, line = step
-        last = step is steps[-1]
+    def make(step, height=None, rows=0, index=0):
+        values, arriving, k, kind, line = step
+        too_big = kind == "k too big"
         f = Frame(
             "The k most frequent values: a heap of size k, never bigger",
             sub="The heap stores k entries, so its cost does not grow with the input.",
-            diagram=290,
-            legend=[("kept", GREEN, TEAL), ("just arrived", CREAM, BRASS), ("ignored", GREY, BORDER)],
+            diagram=180,
+            legend=[("kept", TEAL), ("just arrived", BRASS), ("ignored", BORDER)],
             step=line,
             note="The root of a min-heap is the weakest entry kept, so a new count is compared with it alone.",
-            pairs=[("arriving", "%d : %d" % arriving if arriving else "-", BRASS),
-                   ("kept", len(values), TEAL), ("k", k, INK)],
-            insight=("The heap holds k entries, so each new count costs log k, never a full "
-                     "sort.") if last else None,
-            height=height, insight_rows=insight_rows,
+            pairs=[("k", k, INK), ("kept", len(values), TEAL),
+                   ("arriving", "%d : %d" % arriving if arriving else "-", BRASS)],
+            insight=("The heap holds k entries, so each new count costs log k rather than a full sort."
+                     ) if index == insight_at else None,
+            fails=("k larger than the number of distinct values is not an error. The heap simply "
+                   "never fills, so the answer is every value there is.") if too_big else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
         t = f.top
-        f.text(PAD, t + 22, "counts", T_CHIP, MUTED)
-        row(f, cx0, t + 32, cw, 56, ["%d : %d" % c for c in counts], gap=gap, size=T_CELL - 1,
-            fills=[CREAM if arriving and c == arriving else PALE for c in counts],
-            strokes=[BRASS if arriving and c == arriving else BORDER for c in counts])
-        f.text(PAD, t + 126, "the best k, as a min-heap", T_CHIP, MUTED)
+        f.text(PAD, t + 20, "counts", T_MARK, MUTED, layer="text")
+        cxs = rail_row(f, t + 40, ["%d:%d" % c for c in counts], unit=84, gap=10,
+                       size=T_CELL, ticks=False, x0=PAD + 110,
+                       colors=[BRASS if arriving and c == arriving else
+                               (INK if c in values else MUTED) for c in counts],
+                       bolds=[c in values for c in counts])
+        f.text(PAD, t + 124, "the best k, as a min-heap", T_MARK, MUTED, layer="text")
         if values:
-            hb = row(f, cx0, t + 138, cw, 56, ["%d : %d" % e for e in values], gap=gap,
-                     size=T_CELL - 1, fills=[GREEN] * len(values), strokes=[TEAL] * len(values))
-            f.text(row_center(hb, 0)[0], t + 216, "root: the smallest count kept", T_CHIP, TEAL,
-                   anchor="middle", bold=True)
+            hxs = rail_row(f, t + 144, ["%d:%d" % e for e in values], unit=84, gap=10,
+                           size=T_CELL, ticks=False, x0=PAD + 110,
+                           colors=[INK] * len(values))
+            for x in hxs:
+                f.rect(x - 38, t + 126, 76, 5, TEAL, "none", 2)
+            f.text(hxs[0], t + 186, "root: the smallest count kept", T_MARK, TEAL,
+                   anchor="middle", bold=True, layer="text")
         else:
-            f.rect(cx0, t + 138, cw, 56, WHITE, BORDER, 6, dash=True)
-            f.text(cx0 + cw / 2, t + 172, "empty", T_CHIP, MUTED, anchor="middle")
+            f.text(PAD + 110, t + 148, "empty", T_MARK, MUTED, mono=True, layer="text")
+        if too_big:
+            f.text(W - PAD, t + 124, "the heap never fills", T_MARK, RUST, anchor="end",
+                   layer="text")
         return f
 
-    publish("ch05-top-k.gif", frames(make, steps), [2200] * len(steps))
+    publish("ch05-top-k.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # -------------------------------------------------- Coin change DP (6.1)
@@ -815,7 +861,7 @@ def coin_change():
     coins, amount = [1, 2, 5], 11
     dp = [None] * (amount + 1)
     dp[0] = 0
-    trace = [(0, 0, None, dp[:], ["dp[0] = 0. Zero coins make zero, whatever the coins are."])]
+    trace = [(0, 0, None, dp[:], "dp[0] = 0. Zero coins make zero, whatever the coins are.")]
     for t_ in range(1, amount + 1):
         best, src, options = None, None, []
         for c in coins:
@@ -825,58 +871,68 @@ def coin_change():
                     best, src = dp[t_ - c] + 1, t_ - c
         dp[t_] = best
         trace.append((t_, best, src, dp[:],
-                      ["dp[%d] reads %s." % (t_, ", ".join("dp[%d] + 1 = %d" % (t_ - c, v)
-                                                          for c, v in options)),
-                       "The smallest is %d, so dp[%d] = %d." % (best, t_, best)]))
+                      "dp[%d] reads %s, and the smallest is %d."
+                      % (t_, ", ".join("dp[%d] + 1 = %d" % (t_ - c, v) for c, v in options), best)))
+    steps = [(coins, amount, r) for r in trace] + [([3, 5], 7, None)]
+    insight_at, fail_at = len(trace) - 1, len(steps) - 1
 
-    cw, gap = 58, 6
-    x0 = (W - ((amount + 1) * cw + amount * gap)) / 2.0
-
-    def make(step, height=None, insight_rows=0):
-        t_, best, src, snapshot, lines = step
-        last = step is trace[-1]
+    def make(step, height=None, rows=0, index=0):
+        cs, want, record = step
+        failing = record is None
+        if failing:
+            table = [None] * (want + 1)
+            table[0] = 0
+            for t_ in range(1, want + 1):
+                best = None
+                for c in cs:
+                    if c <= t_ and table[t_ - c] is not None:
+                        best = table[t_ - c] + 1 if best is None else min(best, table[t_ - c] + 1)
+                table[t_] = best
+            t_, best, src = want, table[want], None
+            snapshot = table
+            line = "Now coins 3 and 5 for the amount 7. No combination of them makes 7."
+        else:
+            t_, best, src, snapshot, line = record
         f = Frame(
             "Coin change: the fewest coins for every amount up to 11",
-            sub="dp[t] is the smallest of dp[t - coin] + 1 over the coins 1, 2, and 5.",
-            diagram=250,
-            legend=[("being filled", PINK, RUST), ("read by it", CREAM, TEAL),
-                    ("not reachable", GREY, BORDER)],
-            step=" ".join(lines),
+            sub="dp[t] is the smallest of dp[t - coin] + 1 over the coins.",
+            diagram=170,
+            legend=[("being filled", RUST), ("read by it", BRASS), ("unreachable", BORDER)],
+            step=line,
             note="A dot means the amount cannot be made from the coins, so no rule reaches it yet.",
-            pairs=[("t", t_, RUST), ("dp[t]", best if best is not None else "-", TEAL),
-                   ("coins", " ".join(str(c) for c in coins), INK)],
-            insight=("dp[t] reads only entries below t, so the table fills left to right, once."
-                     ) if last else None,
-            height=height, insight_rows=insight_rows,
+            pairs=[("coins", " ".join(str(c) for c in cs), INK), ("t", t_, RUST),
+                   ("dp[t]", best if best is not None else "unreachable", TEAL)],
+            insight=("dp[t] reads only entries below t, so the table fills left to right and each "
+                     "entry is computed once.") if index == insight_at else None,
+            fails=("Some amounts cannot be made at all, and the table leaves them holding \"no "
+                   "answer\" rather than 0. Reporting 0 coins would be the wrong answer.") if failing else None,
+            at=(index, len(steps)),
+            height=height, insight_rows=rows,
         )
-        t2 = f.top
-        values = [str(snapshot[k]) if snapshot[k] is not None else "." for k in range(amount + 1)]
-        sources = ({t_ - c for c in coins if c <= t_ and snapshot[t_ - c] is not None}
-                   if last else {src})
-        fills, strokes, colors = [], [], []
-        for k in range(amount + 1):
-            if k == t_:
-                fills.append(PINK); strokes.append(RUST); colors.append(WHITE)
-            elif k in sources and snapshot[k] is not None:
-                fills.append(CREAM); strokes.append(TEAL); colors.append(INK)
-            elif snapshot[k] is None:
-                fills.append(GREY); strokes.append(BORDER); colors.append(MUTED)
-            else:
-                fills.append(PALE); strokes.append(BORDER); colors.append(INK)
-        boxes = row(f, x0, t2 + 60, cw, 56, values, gap=gap, size=T_CELL - 2,
-                    fills=fills, strokes=strokes, colors=colors)
-        index_labels(f, boxes, t2 + 136)
-        f.text(row_center(boxes, t_)[0], t2 + 38, "t", T_CHIP, RUST, anchor="middle", bold=True)
-        for k in sorted(x for x in sources if x is not None):
-            if 0 <= k < len(boxes) and k != t_:
-                f.line(row_center(boxes, k)[0], t2 + 46, row_center(boxes, k)[0], t2 + 52,
-                       TEAL, 1.6)
-                f.arrow(row_center(boxes, k)[0], t2 + 50, row_center(boxes, t_)[0], t2 + 50,
-                        TEAL, 1.4, head=7)
-        f.text(PAD, t2 + 196, "dp", T_CHIP, MUTED)
+        t = f.top
+        values = [str(snapshot[k]) if snapshot[k] is not None else "." for k in range(want + 1)]
+        sources = ({t_ - c for c in cs if c <= t_ and snapshot[t_ - c] is not None}
+                   if not failing else {t_ - c for c in cs if c <= t_ and snapshot[t_ - c] is not None})
+        xs = rail_row(f, t + RAIL, values, unit=52, gap=6, size=T_CELL + 1,
+                      colors=[BRASS if k in sources and k != t_ else
+                              (RUST if k == t_ else (INK if snapshot[k] is not None else MUTED))
+                              for k in range(want + 1)],
+                      bolds=[k == t_ for k in range(want + 1)], ticks=False)
+        for k, x in enumerate(xs):
+            f.rect(x - 21, t + RAIL + 12, 42, 5,
+                   RUST if k == t_ else (BRASS if k in sources and k != t_ else BORDER),
+                   "none", 2)
+        index_row(f, xs, t + RAIL + 38, halo=True)
+        f.text(PAD, t + RAIL + 2, "dp", T_MARK, MUTED, layer="text")
+        if failing:
+            f.text(W - PAD, t + RAIL + 2, "no combination makes %d" % t_, T_MARK, RUST,
+                   anchor="end", layer="text")
+            f.text(W / 2, t + RULE + 4, "with coins 3 and 5, the amounts 1, 2, 4 and 7 stay unreachable",
+                   T_MARK, RUST, anchor="middle", layer="text")
         return f
 
-    publish("ch06-coin-change.gif", frames(make, trace), [2100] * len(trace))
+    publish("ch06-coin-change.gif", frames(make, steps),
+            holds(len(steps), longer=(insight_at, fail_at)))
 
 
 # -------------------------------------------------------- Subsets (6.2)
@@ -888,62 +944,78 @@ def subsets():
 
     def backtrack(start, path):
         result.append(list(path))
-        records.append((list(path), start))
+        records.append((nums, list(path), start))
         for idx in range(start, len(nums)):
             path.append(nums[idx])
             backtrack(idx + 1, path)
             path.pop()
 
     backtrack(0, [])
+    records.append(([], [], 0))
+
     nodes = [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
-    pos = {(): (410, 26), (1,): (220, 108), (2,): (410, 108), (3,): (600, 108),
-           (1, 2): (150, 190), (1, 3): (300, 190), (2, 3): (410, 190),
-           (1, 2, 3): (150, 272)}
+    pos = {(): (410, 34), (1,): (250, 106), (2,): (410, 106), (3,): (570, 106),
+           (1, 2): (180, 178), (1, 3): (320, 178), (2, 3): (410, 178),
+           (1, 2, 3): (180, 250)}
     edges = [((), (1,)), ((), (2,)), ((), (3,)), ((1,), (1, 2)), ((1,), (1, 3)),
              ((2,), (2, 3)), ((1, 2), (1, 2, 3))]
+    insight_at, fail_at = len(records) - 2, len(records) - 1
 
     def label(node):
         return "{}" if not node else "{%s}" % ",".join(str(v) for v in node)
 
-    def make(step, height=None, insight_rows=0):
-        path, start = step
-        index = records.index(step)
-        last = step is records[-1]
+    def make(step, height=None, rows=0, index=0):
+        seq, path, start = step
         cur = tuple(path)
+        empty = not seq
+        last = index == insight_at
         f = Frame(
             "Subsets: every path down the tree is one subset",
             sub="Each call records the path so far, then tries every larger index.",
-            diagram=330,
-            legend=[("the path now", CREAM, BRASS), ("its prefixes", GREEN, TEAL),
-                    ("off the path", PALE, BORDER)],
-            step="The call reaches %s and records it, then tries each index from %d upward."
-                 % (label(cur), start),
+            diagram=296,
+            legend=[("the path now", BRASS), ("its prefixes", TEAL), ("off the path", BORDER)],
+            step=("An empty input has one subset, the empty set, and the loop never runs."
+                  if empty else
+                  "The call reaches %s and records it, then tries each index from %d upward."
+                  % (label(cur), start)),
             note="Backtracking pops the value it added, so one path buffer serves the whole tree.",
             pairs=[("path", label(cur), BRASS), ("start", start, INK),
-                   ("recorded", index + 1, TEAL)],
-            insight=("Every node of the tree is one subset, and a tree of n choices has 2^n "
-                     "nodes.") if last else None,
-            height=height, insight_rows=insight_rows,
+                   ("recorded", 1 if empty else index + 1, TEAL)],
+            insight=("Every node of the tree is one subset, and a tree of n choices has 2^n nodes."
+                     ) if last else None,
+            fails=("With no values to choose between there is nothing to branch on, so the whole "
+                   "answer is the one empty subset. The count is still 2^0 = 1.") if empty else None,
+            at=(index, len(records)),
+            height=height, insight_rows=rows,
         )
         t = f.top
+        if empty:
+            f.text(W / 2, t + 130, "{}   one subset", T_VALUE, INK, mono=True,
+                   anchor="middle")
+            f.text(W / 2, t + 170, "the loop has nothing to iterate over", T_MARK, MUTED,
+                   anchor="middle", layer="text")
+            return f
         local = {k: (x, y + t) for k, (x, y) in pos.items()}
         for a, b in edges:
-            ax, ay = local[a][0], local[a][1] + 20
-            bx, by = local[b][0], local[b][1] - 20
             on = cur[:len(a)] == a and cur[:len(b)] == b
-            f.line(ax, ay, bx, by, TEAL if on else BORDER, 2.6 if on else 1.6)
+            f.line(local[a][0], local[a][1] + 22, local[b][0], local[b][1] - 22,
+                   TEAL if on else BORDER, 2.4 if on else 1.4)
         for key in nodes:
             x, y = local[key]
             prefix = tuple(key) == cur[:len(key)]
-            f.cell(x - 56, y - 20, 112, 40, label(key),
-                   CREAM if key == cur else (GREEN if prefix else PALE),
-                   BRASS if key == cur else (TEAL if prefix else BORDER),
-                   size=T_CHIP + 2, mono=True)
-        f.text(PAD, t + 308, "recorded: %s" % "  ".join(label(tuple(r)) for r in result[:index + 1]),
-               T_CHIP, MUTED, mono=True)
+            here = key == cur
+            text = label(key)
+            r = max(26.0, text_width(text, T_CELL - 2, True) / 2.0 + 11)
+            f.circle(x, y, r, WHITE, BRASS if here else (TEAL if prefix else BORDER),
+                     2.2 if here or prefix else 1.2)
+            f.text(x, y + 6, text, T_CELL - 2, INK, mono=True, anchor="middle", bold=here)
+        f.text(PAD, t + 278, "recorded:  %s"
+               % "  ".join(label(tuple(r)) for r in result[:index + 1]),
+               T_MARK, MUTED, mono=True, layer="text")
         return f
 
-    publish("ch06-subsets.gif", frames(make, records), [2100] * len(records))
+    publish("ch06-subsets.gif", frames(make, records),
+            holds(len(records), longer=(insight_at, fail_at)))
 
 
 BUILDERS = {

@@ -1,0 +1,23 @@
+digraph cost {
+  rankdir=TB; nodesep=0.45; ranksep=0.35;
+  node [fontsize=10 shape=box];
+  subgraph cluster_threads {
+    label="one thread per connection\n10,000 stacks of 2 MiB"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    t1 [label="thread 1\n2 MiB stack" fillcolor="#fdf6e8"];
+    t2 [label="thread 2\n2 MiB stack" fillcolor="#fdf6e8"];
+    t3 [label="...\nthe rest of the threads" fillcolor="#ffffff"];
+    t4 [label="thread 10,000\n2 MiB stack" fillcolor="#fdf6e8"];
+    t1 -> t2 -> t3 -> t4 [style=invis];
+  }
+  subgraph cluster_tasks {
+    label="one future per connection\none stack, 10,000 small state machines"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    w [label="one worker thread\n1 stack" fillcolor="#e3f1ea"];
+    f1 [label="task 1\nstate machine" fillcolor="#eef3f7"];
+    f2 [label="task 2\nstate machine" fillcolor="#eef3f7"];
+    f3 [label="...\nthe rest of the tasks" fillcolor="#ffffff"];
+    f4 [label="task 10,000\nstate machine" fillcolor="#eef3f7"];
+    w -> f1 [style=invis];
+    f1 -> f2 -> f3 -> f4 [style=invis];
+  }
+  t1 -> w [style=invis];
+}

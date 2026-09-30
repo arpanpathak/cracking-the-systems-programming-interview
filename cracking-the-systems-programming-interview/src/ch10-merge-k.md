@@ -77,7 +77,9 @@ In each round, the list at position `i` absorbs the list at `i + interval`. The 
 <p class="listing"><b>Listing 10.1</b> The interval loop (lines 20 to 35). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
 
 ```rust
+impl MergeKSorted {
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:20:35}}
+}
 ```
 
 The two `while` loops follow figure 10.3. The outer one doubles `interval`. The inner one steps `i` by
@@ -102,7 +104,9 @@ The merge of two lists uses a **dummy head** and a **tail pointer** (figure 10.4
 <p class="listing"><b>Listing 10.2</b> Merging two lists (lines 37 to 51).</p>
 
 ```rust
+impl MergeKSorted {
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:37:51}}
+}
 ```
 
 `dummy` is a throwaway node, and `tail` is a mutable reference to the last node of the output. At the start,
@@ -258,7 +262,9 @@ Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape
 <p class="listing"><b>Listing 10.11</b> The merge (lines 36 to 61).</p>
 
 ```rust
+impl MergeKSorted {
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs:36:61}}
+}
 ```
 
 The loop picks `smaller` with a `match` on both fronts. The two `Empty` arms attach the other list and leave

@@ -12,11 +12,11 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use nvidia_rust_interview_lab::cache::Cache;
-use nvidia_rust_interview_lab::cache::arena::LruCache as ArenaCache;
-use nvidia_rust_interview_lab::cache::rc_list::LruCache as RcCache;
-use nvidia_rust_interview_lab::lists::SinglyList;
-use nvidia_rust_interview_lab::lists::{boxed, boxed_drop, enum_drop, enum_node};
+use systems_lab::cache::Cache;
+use systems_lab::cache::arena::LruCache as ArenaCache;
+use systems_lab::cache::rc_list::LruCache as RcCache;
+use systems_lab::lists::SinglyList;
+use systems_lab::lists::{boxed, boxed_drop, enum_drop, enum_node};
 
 const CACHE_CAPACITY: usize = 65_536;
 const KEY_SPACE: u64 = 131_072;

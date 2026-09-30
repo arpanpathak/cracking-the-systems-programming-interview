@@ -99,7 +99,9 @@ skipped bytes are called **padding**. Figure 15.2 shows two allocations and the 
 <p class="listing"><b>Listing 15.1</b> <code>alloc</code> (lines 27 to 42) and <code>align_up</code> (lines 65 to 68). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bump_allocator.rs">src/problems/bump_allocator.rs</a></p>
 
 ```rust
+impl BumpArena {
 {{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:27:42}}
+}
 
 {{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:65:68}}
 ```

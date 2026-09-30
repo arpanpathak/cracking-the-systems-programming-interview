@@ -121,7 +121,7 @@ still attached.
 
 | Property | Value |
 |---|---|
-| Processor | AArch64, 8 cores, NVIDIA Jetson development board |
+| Processor | AArch64, 8 cores, development board |
 | Compiler | `rustc` 1.96.0-nightly |
 | Build profile | `--release` |
 | Concurrency | one thread per measurement |

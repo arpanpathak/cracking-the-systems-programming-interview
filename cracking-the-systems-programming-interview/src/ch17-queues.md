@@ -130,7 +130,9 @@ thread for each change. Two condition variables wake the right kind of thread di
 ```rust
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:19:24}}
 
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:27:38}}
+}
 ```
 
 `VecDeque::with_capacity(capacity)` allocates room for every item at the start, so the deque never grows later.
@@ -139,7 +141,9 @@ A capacity of 0 is rejected, because nothing could ever be pushed.
 <p class="listing"><b>Listing 17.4</b> <code>push</code> (lines 40 to 74).</p>
 
 ```rust
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:40:74}}
+}
 ```
 
 The comments in `push` explain each decision. Figure 17.3 puts the steps of a blocked `push` in order.
@@ -165,7 +169,9 @@ program would be correct either way.
 <p class="listing"><b>Listing 17.5</b> <code>pop</code> (lines 76 to 100).</p>
 
 ```rust
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:76:100}}
+}
 ```
 
 `pop` mirrors `push`. It waits on `not_empty` while the queue is empty, removes the front item, unlocks, and wakes
@@ -240,7 +246,9 @@ method, which replaces the `PoisonError` with `QueuePoisonedError`.
 <p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 46 to 66).</p>
 
 ```rust
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:46:66}}
+}
 ```
 
 Each `lock()` and `wait()` call ends in `.map_poison()?`. The logic is the same as listing 17.4, and each method
@@ -281,7 +289,9 @@ between threads: each thread returns a `Result`, and `join` hands it to the main
 <p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 27 to 40). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 ```rust
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:27:40}}
+}
 ```
 
 Why `.map_err(|e| e.to_string())` instead of `?` directly? A `PoisonError` contains the guard, and the guard
@@ -405,7 +415,9 @@ mutex, because threads check it together with the items.
 <p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 45 to 80).</p>
 
 ```rust
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:45:80}}
+}
 ```
 
 Both methods use a `loop` that checks every condition after each wakeup.
@@ -420,7 +432,9 @@ items already in it. Only a closed queue that is empty returns `None`. A consume
 <p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 92 to 102).</p>
 
 ```rust
+impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:92:102}}
+}
 ```
 
 `close` sets the flag and wakes every waiting thread on both condition variables with `notify_all`. Each woken
@@ -505,7 +519,9 @@ Three new pieces of Rust appear here:
 <p class="listing"><b>Listing 17.18</b> <code>push</code> and <code>pop</code> (lines 69 to 103).</p>
 
 ```rust
+impl<T, const N: usize> SpscRing<T, N> {
 {{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:69:103}}
+}
 ```
 
 `push` loads its own counter, `tail`, with `Relaxed`, because only this thread writes it. It loads the other

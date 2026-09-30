@@ -64,7 +64,9 @@ directly, because its size would have no end. A `Box` is one pointer, so a node 
 <p class="listing"><b>Listing 11.2</b> Depth and inversion (lines 19 to 35).</p>
 
 ```rust
+impl Tree {
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:19:35}}
+}
 ```
 
 Each method is a `match` with two arms. The `Empty` arm is the **base case**, the input small enough to answer
@@ -96,7 +98,9 @@ when a node is visited relative to its children (figure 11.2).
 <p class="listing"><b>Listing 11.3</b> The public traversal methods (lines 37 to 53).</p>
 
 ```rust
+impl Tree {
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:37:53}}
+}
 ```
 
 Each public method creates an empty `Vec`, passes it to a private helper, and returns it. Creating the vector
@@ -105,7 +109,9 @@ once and passing it down avoids building a new vector at every node.
 <p class="listing"><b>Listing 11.4</b> The recursive helpers (lines 55 to 86).</p>
 
 ```rust
+impl Tree {
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:55:86}}
+}
 ```
 
 The three helpers are identical except for one line: where `out.push(*value)` appears relative to the two
@@ -159,7 +165,9 @@ removal code uses.
 <p class="listing"><b>Listing 11.7</b> Creating, inserting, and searching (lines 17 to 47).</p>
 
 ```rust
+impl<T: Ord> BST<T> {
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:17:47}}
+}
 ```
 
 `insert` takes `&mut self` because it changes the tree in place. It walks down with recursive calls. When it
@@ -189,7 +197,9 @@ Removing a value is the hardest operation, because the tree must keep its orderi
 <p class="listing"><b>Listing 11.8</b> Removal (lines 49 to 90).</p>
 
 ```rust
+impl<T: Ord> BST<T> {
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:49:90}}
+}
 ```
 
 The first two cases need to replace `*self` with one of its own children. That is not straightforward, because
@@ -218,7 +228,9 @@ visiting subtrees that cannot contain an answer.
 <p class="listing"><b>Listing 11.9</b> Range queries (lines 92 to 114).</p>
 
 ```rust
+impl<T: Ord> BST<T> {
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:92:114}}
+}
 ```
 
 `range_helper` collects matching values into an accumulator, `acc`. Its three branches skip work:
@@ -282,7 +294,9 @@ The second implementation writes removal and range queries differently.
 <p class="listing"><b>Listing 11.11</b> Removal and <code>pop_min</code> (lines 47 to 82). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
 
 ```rust
+impl<T: Ord> BST<T> {
 {{#include ../../rust-interview-lab/src/bin/bst_easy.rs:47:82}}
+}
 ```
 
 This `remove` uses a helper `take`, defined at the end of the file, that swaps in `Empty` with
@@ -308,7 +322,9 @@ a queue that always returns the smallest value.
 <p class="listing"><b>Listing 11.12</b> A range query that returns a new vector (lines 84 to 100).</p>
 
 ```rust
+impl<T: Ord> BST<T> {
 {{#include ../../rust-interview-lab/src/bin/bst_easy.rs:84:100}}
+}
 ```
 
 This `range` returns a new `Vec` from each call and joins the children's results with `extend`. It is shorter
@@ -455,7 +471,9 @@ tree: read a value and a count, then read that many subtrees.
 <p class="listing"><b>Listing 11.18</b> Writing the pairs (lines 33 to 50). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
 
 ```rust
+impl<T> TreeNode<T> {
 {{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:33:50}}
+}
 ```
 
 `serialize` walks the tree in pre-order without recursion, using a `Vec` as a **stack**: the last item pushed
@@ -468,7 +486,9 @@ a tree whose values can become strings gets a `serialize` method.
 <p class="listing"><b>Listing 11.19</b> Reading the pairs back (lines 52 to 66).</p>
 
 ```rust
+impl<T> TreeNode<T> {
 {{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:52:66}}
+}
 ```
 
 `deserialize` is recursive. `pos` is a `&mut usize`, a position in the token list shared by all the calls. Each

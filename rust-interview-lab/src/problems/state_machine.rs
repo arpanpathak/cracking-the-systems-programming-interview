@@ -1,6 +1,6 @@
 //! Algebraic data types / enum state machines.
 //!
-//! NVIDIA cloud SDKs model workloads as finite state machines. Rust `enum` is
+//! Cloud SDKs model workloads as finite state machines. Rust `enum` is
 //! perfect for this: invalid states are unrepresentable and transitions are
 //! explicit `match` arms, not nested `if` chains.
 
@@ -90,7 +90,7 @@ impl ApiError {
     }
 }
 
-/// Typical NVIDIA SDK helper: never expose nested `if let` soup to callers.
+/// Typical SDK helper: never expose nested `if let` soup to callers.
 pub fn parse_gpu_count(raw: &str) -> Result<u32, ApiError> {
     match raw.trim() {
         "" => Err(ApiError::InvalidRequest("gpuCount is empty".into())),

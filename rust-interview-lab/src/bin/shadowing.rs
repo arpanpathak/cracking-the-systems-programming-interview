@@ -10,7 +10,7 @@
 //     declaring it `mut`.
 //   - The old binding is no longer reachable after the shadowing `let`.
 //
-// Why this appears in interviews:
+// Where this appears in practice:
 //   - Rust SDK code often shadows parsed/deserialized values to convert them
 //     from raw input to typed domain values:
 //

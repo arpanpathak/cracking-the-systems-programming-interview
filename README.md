@@ -96,7 +96,7 @@ The print edition is at
 ### Animations
 
 Each algorithmic chapter carries a looping GIF beside the listing it explains.
-A frame is one step of the algorithm, held for about two seconds, with the same
+A frame is one step of the algorithm, held for about four seconds, with the same
 variable names the listing uses. Between two steps the drawing cross-fades while
 the prose changes in one clean step, so a pointer glides without the sentence
 blurring.
@@ -113,10 +113,19 @@ python3 tools/lint_animations.py            # label collisions, overflows, stray
 A frame is built from `animlib.Frame`, which lays out the title, the drawing
 area, and the foot. The builder paints only inside the drawing area, and the
 foot is measured before the canvas is created, so a long sentence in one frame
-cannot push the scoreboard off another. The drawing area carries a tinted zone
-for the region under discussion, a dashed outline where that region was a step
-ago, and a chip naming each pointer. The insight band is saved for the one step
-where the idea clicks.
+cannot push the scoreboard off another.
+
+A sequence of values is a rail: the values above a baseline, their indexes below,
+and a short coloured bar under each station for its state. A run such as a window
+or a live range is one coloured rule spanning its stations, and a pointer is a
+small caret with a name. A cell is reserved for something that really is a cell,
+such as a grid square, a buffer slot, or a tree node.
+
+A cream band marks the step where the idea clicks. A rust band marks the case the
+algorithm has to reject: an unmatched closer, an amount no coin can make, a
+target that is absent. An algorithm shown only succeeding is an algorithm the
+reader cannot debug, so an animation with such a case shows it in a rust band. A
+progress rail at the foot says where the frame sits in the loop.
 
 GIF has 256 colours per frame, and the type is antialiased, so the palette is
 built from the figure colours rather than clustered from the pixels. Clustering

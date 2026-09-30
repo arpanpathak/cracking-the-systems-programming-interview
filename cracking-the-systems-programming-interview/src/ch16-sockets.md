@@ -86,6 +86,11 @@ makes it concrete (figure 16.2).
 window 64000 B vs product 100000000 B: link is starved, the window too small
 ```
 
+<figure class="anim">
+<img src="figures/ch16-bdp.gif" alt="A sender and a receiver joined by a link with a data lane and an ACK lane. A gauge above shows 16 slots, the packets the link holds in one round trip. With a window of 4, the sender sends 4 packets, stops with the label window full, and waits a round trip for ACKs while most of the link is empty; the link is busy 25 percent of the time. With a window of 16, packets leave continuously, the first ACK returns as the 16th packet leaves, and the link is busy 100 percent of the time. Last, a window of 1 against the real numbers: 1 GB/s times 100 ms is 100,000,000 bytes in flight, and a 64,000-byte window gives 640 KB/s.">
+<figcaption><b>Animation 16.1</b> The window caps how many packets are unacknowledged. When it is smaller than the bandwidth-delay product, the sender spends each round trip waiting, and the link carries nothing.</figcaption>
+</figure>
+
 Latency costs as much as bandwidth for bulk transfers. That is why TCP's window-scaling option
 exists: the original 16-bit window field caps at 65,535 bytes. On Linux, `net.ipv4.tcp_rmem` and
 `tcp_wmem` bound how large the kernel lets the windows grow.
@@ -108,8 +113,8 @@ the test avoid colliding with other programs. `listener.incoming()` is an endles
 `accept`, and each accepted stream moves into its own thread.
 
 <figure class="anim">
-<img src="figures/ch16-tcp-handshake.gif" alt="Six frames between a client and a server lifeline. The client sends SYN, the server replies SYN+ACK, the client sends ACK, data flows both ways, and the close sends FIN in both directions.">
-<figcaption><b>Animation 16.3</b> What happens between <code>accept</code> returning and the first byte echoed back. Each arrow crosses the two lifelines, and the labels carry the sequence numbers. Three arrows are needed before either side can send data: the client proposes a number, the server acknowledges it and proposes its own, and the client acknowledges that. The close at the end is a matching exchange, which is why a socket that has sent FIN can still read until its peer sends one.</figcaption>
+<img src="figures/ch16-tcp-handshake.gif" alt="The echo server's test as two robots, a client and a server, joined by a wire, each with its TCP state above it and a kernel receive buffer below it. The server thread sleeps in accept. The client's connect sends SYN seq 1000; the server's kernel, not the server thread, answers SYN+ACK seq 5000 ack 1001; the client sends ACK 5001, and both sides are ESTABLISHED. The connection waits in the accept queue until accept takes it. write_all sends hello echo as one 10-byte segment into the server's receive buffer, read returns 10, and write_all sends it back. shutdown sends FIN; the server's read returns 0, the handler returns, and the server sends its own FIN; read_to_end returns the echo, and the client's last ACK closes the server side. A second run deletes the shutdown line: both sides block in read forever.">
+<figcaption><b>Animation 16.2</b> The test from listing 16.3, one segment at a time. The kernel completes the handshake before <code>accept</code> returns, and each direction closes with its own FIN. Without <code>shutdown</code>, no FIN is sent, and both reads wait forever.</figcaption>
 </figure>
 
 
@@ -124,7 +129,7 @@ the test avoid colliding with other programs. `listener.incoming()` is an endles
 - `write_all` loops over partial writes until every byte is sent.
 
 The test is a model of how to test a server. It binds an ephemeral port, runs `handle_connection` for
-exactly one connection in a thread, writes `"hello gpu"`, and then half-closes with
+exactly one connection in a thread, writes `"hello echo"`, and then half-closes with
 `shutdown(Shutdown::Write)`. The half-close sends FIN, so the server's `read` returns 0 and the server
 finishes. The client's read side stays open, so `read_to_end` can collect the echo.
 
@@ -179,6 +184,11 @@ there at registration.
 `Connection` is two fields, `out` and `out_pos`, and `has_pending_output` compares them. That buffer keeps
 one slow client harmless. Its reply waits in memory, and the loop moves on to other sockets instead of
 blocking in `write`.
+
+<figure class="anim">
+<img src="figures/ch16-epoll.gif" alt="One robot, the event loop thread, beside a panel of registered sockets. Each row shows an fd, its interest set, a readiness light, and for clients an out buffer. The thread sleeps in epoll_wait. Two clients connect, the listener fd 3 lights up, and accept4 turns them into fd 5 and fd 6 until it returns EAGAIN. fd 5 sends 1 KB and fd 6 sends 12 KB; one epoll_wait returns both. fd 5's reply is written in full. fd 6's write stops at EAGAIN with 4 KB left, so the 4 KB stays in out and fd 6's interest becomes IN and OUT while the thread moves on. Later fd 6 turns writable, flush sends the rest, and the interest returns to IN. In a last run fd 6 is blocking: the thread is stuck in write, while fd 5 and a new connection sit ready and ignored.">
+<figcaption><b>Animation 16.3</b> The loop from listing 16.4 serving three sockets on one thread. A slow client leaves bytes in its <code>out</code> buffer, not a blocked thread. One blocking socket would stop every other socket.</figcaption>
+</figure>
 
 `main` ignores `SIGPIPE`. By default, writing to a socket whose peer has gone away raises `SIGPIPE`, which
 kills the process. With the signal ignored, `write` returns `EPIPE` instead. Rust's standard library does
