@@ -1,0 +1,10 @@
+digraph sm {
+  rankdir=LR; nodesep=0.3;
+  node [fontsize=10 shape=box];
+  s0 [label="Start" fillcolor="#fdf6e8"];
+  s1 [label="Awaiting first\nholds YieldTimes(1)"];
+  s2 [label="Awaiting second\nholds first: usize,\nYieldTimes(2)"];
+  s3 [label="Done\nReady(first + second)" fillcolor="#e3f1ea"];
+  s0 -> s1 [label=" poll"]; s1 -> s1 [label=" Pending"]; s1 -> s2 [label=" inner Ready(1)"];
+  s2 -> s2 [label=" Pending"]; s2 -> s3 [label=" inner Ready(2)"];
+}

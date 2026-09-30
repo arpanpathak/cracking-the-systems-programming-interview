@@ -1,0 +1,14 @@
+digraph fs {
+  rankdir=TB; nodesep=0.5; ranksep=0.45; compound=true;
+  node [fontsize=10];
+  subgraph cluster_top { label="SameLine: a and b in one 64-byte line"; style="rounded"; color="#d9622b"; fontname="Helvetica";
+    c0 [label="core 0\nfetch_add(a)" shape=box]; c1 [label="core 1\nfetch_add(b)" shape=box];
+    line1 [shape=record fillcolor="#fbe3d6" label="{cache line (64 B)|{a: 8 B|b: 8 B|48 B unused}}"];
+    c0 -> line1 [label=" needs the line\n exclusive" color="#d9622b"]; c1 -> line1 [label=" needs the line\n exclusive" color="#d9622b"];
+  }
+  subgraph cluster_bot { label="Padded: #[repr(align(64))], one counter per line"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    d0 [label="core 0\nfetch_add(p0)" shape=box]; d1 [label="core 1\nfetch_add(p1)" shape=box];
+    l0 [shape=record fillcolor="#e3f1ea" label="{line A|{p0: 8 B|56 B padding}}"]; l1 [shape=record fillcolor="#e3f1ea" label="{line B|{p1: 8 B|56 B padding}}"];
+    d0 -> l0 [color="#2f7f86"]; d1 -> l1 [color="#2f7f86"];
+  }
+}

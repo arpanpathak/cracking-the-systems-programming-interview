@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 290.0" width="760" height="290.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Memory latency on an Intel Core i5-1038NG7, measured with a dependent pointer chase</text>
+<text x="20" y="52" font-size="10.0" fill="#5b6b7c" text-anchor="start" >data size</text>
+<text x="110" y="52" font-size="10.0" fill="#5b6b7c" text-anchor="start" >where it fits</text>
+<text x="330" y="52" font-size="10.0" fill="#5b6b7c" text-anchor="start" >time per dependent load</text>
+<text x="20" y="80" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">16 KiB</text>
+<text x="110" y="80" font-size="10.0" fill="#1d2733" text-anchor="start" >fits in L1 (48 KiB per core)</text>
+<rect x="330" y="62" width="76.60501008487509" height="26" rx="3" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="414.60501008487506" y="80" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">2.2 ns</text>
+<text x="20" y="116" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">256 KiB</text>
+<text x="110" y="116" font-size="10.0" fill="#1d2733" text-anchor="start" >fits in L2 (512 KiB per core)</text>
+<rect x="330" y="98" width="124.2822411989186" height="26" rx="3" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="462.2822411989186" y="116" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">5.6 ns</text>
+<text x="20" y="152" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">2 MiB</text>
+<text x="110" y="152" font-size="10.0" fill="#1d2733" text-anchor="start" >fits in L3 (6 MiB, shared)</text>
+<rect x="330" y="134" width="248.17020129521694" height="26" rx="3" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="586.1702012952169" y="152" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">42.3 ns</text>
+<text x="20" y="188" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">32 MiB</text>
+<text x="110" y="188" font-size="10.0" fill="#1d2733" text-anchor="start" >main memory</text>
+<rect x="330" y="170" width="315.85034375014766" height="26" rx="3" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="653.8503437501477" y="188" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">120.0 ns</text>
+<text x="20" y="224" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">256 MiB</text>
+<text x="110" y="224" font-size="10.0" fill="#1d2733" text-anchor="start" >main memory</text>
+<rect x="330" y="206" width="328.75899589383107" height="26" rx="3" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="666.7589958938311" y="224" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">146.2 ns</text>
+<text x="20" y="256" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Each load's address comes from the previous load, so the loads cannot overlap. The bar length is logarithmic.</text>
+<text x="20" y="272" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The larger sizes also pay for address translation misses (section 15.5). A cache line is 64 bytes on this CPU.</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 190" width="620" height="190" font-family="Helvetica, Arial, sans-serif">
+<text x="10" y="18" font-size="12" fill="#1d2733" font-weight="bold">1 GB/s link, 100 ms round trip: 100,000,000 bytes must be in flight</text>
+<rect x="60" y="50" width="500" height="44" rx="22" fill="#eef3f7" stroke="#1d2733" stroke-width="2"/>
+<rect x="62" y="52" width="3.2" height="40" fill="#d9622b"/>
+<text x="30" y="77" font-size="11" fill="#1d2733">send</text><text x="566" y="77" font-size="11" fill="#1d2733">recv</text>
+<text x="75" y="120" font-size="11" fill="#d9622b">64,000 B window: 0.064% of the pipe is full, the sender idles until ACKs return</text>
+<text x="75" y="142" font-size="11" fill="#1d2733">throughput = window / RTT = 64,000 B / 0.1 s = 640 KB/s on a 1 GB/s link</text>
+<text x="75" y="164" font-size="11" fill="#2f7f86">fix: window scaling (RFC 7323) lets the window reach the bandwidth-delay product</text>
+</svg>

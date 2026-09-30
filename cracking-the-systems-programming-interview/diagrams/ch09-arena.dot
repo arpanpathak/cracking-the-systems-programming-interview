@@ -1,0 +1,9 @@
+digraph arena {
+  rankdir=LR; nodesep=0.3; ranksep=0.6;
+  node [fontsize=10];
+  map [shape=record fillcolor="#fdf6e8" label="{lookup_table: HashMap&lt;K, usize&gt;|<a>\"A\" -&gt; 2|<b>\"B\" -&gt; 0|<c>\"C\" -&gt; 1}"];
+  nodes [shape=record label="{nodes: Vec&lt;Node&gt;|<s0>[0] key B  prev 1  next None|<s1>[1] key C  prev 2  next 0|<s2>[2] key A  prev None  next 1}"];
+  ends [shape=record fillcolor="#e3f1ea" label="{head = Some(2)  (MRU)|tail = Some(0)  (LRU, next to evict)}"];
+  map:a -> nodes:s2; map:b -> nodes:s0; map:c -> nodes:s1;
+  nodes:s2 -> ends [style=invis];
+}

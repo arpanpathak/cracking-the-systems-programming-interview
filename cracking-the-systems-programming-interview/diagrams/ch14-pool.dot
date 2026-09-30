@@ -1,0 +1,13 @@
+digraph pool {
+  rankdir=LR; nodesep=0.25; ranksep=0.5;
+  node [fontsize=10 shape=box];
+  caller [label="caller\nexecute(job)" fillcolor="#fdf6e8"];
+  tx [label="Sender<Job>\n(Option: None after shutdown)"];
+  ch [label="channel\nmpsc::channel: unbounded\nmpsc::sync_channel(n): bounded" shape=cylinder fillcolor="#ffffff"];
+  rx [label="Arc<Mutex<Receiver<Job>>>" fillcolor="#e9eef3"];
+  subgraph cluster_w { label="workers: Vec<JoinHandle<()>>"; style="rounded"; color="#2f7f86"; fontname="Menlo";
+    w0 [label="worker 0\nlock, recv, unlock, run"]; w1 [label="worker 1"]; w2 [label="worker 2"]; w3 [label="worker 3"]; }
+  caller -> tx -> ch -> rx;
+  rx -> w0; rx -> w1; rx -> w2; rx -> w3;
+  note [shape=note fillcolor="#ffffff" fontname="Helvetica" label="Job = Box<dyn FnOnce() + Send + 'static>\lshutdown: drop the Sender, recv() returns Err\lonce the queue is empty, workers exit, join them\l"];
+}

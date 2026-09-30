@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 190.0" width="760" height="190.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Finding the owner: partition_point on the sorted Vec</text>
+<text x="20" y="58" font-size="10.0" fill="#5b6b7c" text-anchor="start" >ring</text>
+<rect x="80" y="42" width="100" height="28" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="130.0" y="59.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(12, a)</text>
+<text x="130" y="88" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >0</text>
+<rect x="180" y="42" width="100" height="28" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="230.0" y="59.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(31, b)</text>
+<text x="230" y="88" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >1</text>
+<rect x="280" y="42" width="100" height="28" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="330.0" y="59.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(47, c)</text>
+<text x="330" y="88" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >2</text>
+<rect x="380" y="42" width="100" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="430.0" y="59.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(58, a)</text>
+<text x="430" y="88" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >3</text>
+<rect x="480" y="42" width="100" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="530.0" y="59.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(73, b)</text>
+<text x="530" y="88" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >4</text>
+<rect x="580" y="42" width="100" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="630.0" y="59.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(90, c)</text>
+<text x="630" y="88" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >5</text>
+<text x="20" y="118" font-size="10.0" fill="#1d2733" text-anchor="start" >key hash 50: point &lt;= 50 is true for indexes 0 to 2 and false from index 3, so partition_point returns 3.</text>
+<text x="20" y="138" font-size="10.0" fill="#1d2733" text-anchor="start" >The owner is ring[3], node a. A hash above 90 would return 6, the length, which wraps to index 0.</text>
+<text x="20" y="162" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The predicate must be true for a prefix and false after it. A sorted ring guarantees that.</text>
+</svg>

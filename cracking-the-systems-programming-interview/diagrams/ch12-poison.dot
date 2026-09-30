@@ -1,0 +1,9 @@
+digraph poison {
+  rankdir=LR; nodesep=0.3; ranksep=0.35;
+  node [fontsize=10 shape=box];
+  a [label="Branch A\nlock() -> Ok(guard)"]; b [label="stock -= 1,000\ncash += 1,200"]; c [label="panic! while\nguard is alive" fillcolor="#fbe3d6"];
+  d [label="guard dropped during\nunwinding: mutex\nmarked poisoned" fillcolor="#fbe3d6"];
+  e [label="Audit\nlock() -> Err(PoisonError)"]; f [label="into_inner() -> guard\nrepair: cash -= 200,\nsettled = true" fillcolor="#e3f1ea"];
+  g [label="poison flag stays set\n(clear_poison() to reset)"];
+  a -> b -> c -> d -> e -> f -> g;
+}

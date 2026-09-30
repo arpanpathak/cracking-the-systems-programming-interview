@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270.0" width="760" height="270.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Version 1: a map with stamps, and a queue of access events</text>
+<text x="20" y="48" font-size="11.0" fill="#5b6b7c" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">calls: put(a,1) put(b,2) get(a) put(c,3), capacity 2</text>
+<text x="20" y="80" font-size="10.0" fill="#5b6b7c" text-anchor="start" >recency: VecDeque&lt;(K, u64)&gt;, oldest event at the front</text>
+<rect x="20" y="90" width="100" height="28" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="70.0" y="107.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(a, 1)</text>
+<text x="70" y="136" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >stale: a is now at 3</text>
+<rect x="130" y="90" width="100" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="180.0" y="107.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(b, 2)</text>
+<text x="180" y="136" font-size="9.0" fill="#d9622b" text-anchor="middle" >current: evict b</text>
+<rect x="240" y="90" width="100" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="290.0" y="107.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(a, 3)</text>
+<rect x="350" y="90" width="100" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="400.0" y="107.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(c, 4)</text>
+<text x="20" y="170" font-size="10.0" fill="#5b6b7c" text-anchor="start" >map: HashMap&lt;K, (V, u64)&gt;, each key's value and its latest stamp</text>
+<rect x="20" y="180" width="40" height="28" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="40.0" y="197.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">a</text>
+<rect x="60" y="180" width="90" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="197.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(1, 3)</text>
+<rect x="170" y="180" width="40" height="28" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="190.0" y="197.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">b</text>
+<rect x="210" y="180" width="90" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="255.0" y="197.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(2, 2)</text>
+<rect x="320" y="180" width="40" height="28" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="340.0" y="197.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">c</text>
+<rect x="360" y="180" width="90" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="405.0" y="197.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(3, 4)</text>
+<text x="480" y="90" font-size="10.0" fill="#1d2733" text-anchor="start" >put(c, 3) makes the map hold 3 keys.</text>
+<text x="480" y="108" font-size="10.0" fill="#1d2733" text-anchor="start" >Eviction pops events from the front:</text>
+<text x="480" y="126" font-size="10.0" fill="#1d2733" text-anchor="start" >(a, 1): a's stamp is 3, not 1. Skip.</text>
+<text x="480" y="144" font-size="10.0" fill="#1d2733" text-anchor="start" >(b, 2): b's stamp is 2. Remove b.</text>
+<text x="20" y="240" font-size="10.0" fill="#5b6b7c" text-anchor="start" >An event is current only if its stamp equals the key's stamp in the map. Older events for the same key are skipped.</text>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 280.0" width="760" height="280.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">A token bucket with capacity 5 and a refill of 1 token per second (the test it_works)</text>
+<line x1="60" y1="220" x2="660" y2="220" stroke="#1d2733" stroke-width="1.4"/>
+<line x1="60" y1="220" x2="60" y2="60" stroke="#1d2733" stroke-width="1.4"/>
+<text x="52" y="224.0" font-size="10.0" fill="#5b6b7c" text-anchor="end" >0</text>
+<text x="52" y="192.0" font-size="10.0" fill="#5b6b7c" text-anchor="end" >1</text>
+<line x1="60" y1="188.0" x2="660" y2="188.0" stroke="#e3e8ee" stroke-width="0.8"/>
+<text x="52" y="160.0" font-size="10.0" fill="#5b6b7c" text-anchor="end" >2</text>
+<line x1="60" y1="156.0" x2="660" y2="156.0" stroke="#e3e8ee" stroke-width="0.8"/>
+<text x="52" y="128.0" font-size="10.0" fill="#5b6b7c" text-anchor="end" >3</text>
+<line x1="60" y1="124.0" x2="660" y2="124.0" stroke="#e3e8ee" stroke-width="0.8"/>
+<text x="52" y="96.0" font-size="10.0" fill="#5b6b7c" text-anchor="end" >4</text>
+<line x1="60" y1="92.0" x2="660" y2="92.0" stroke="#e3e8ee" stroke-width="0.8"/>
+<text x="52" y="64.0" font-size="10.0" fill="#5b6b7c" text-anchor="end" >5</text>
+<line x1="60" y1="60.0" x2="660" y2="60.0" stroke="#e3e8ee" stroke-width="0.8"/>
+<text x="20" y="44" font-size="10.0" fill="#5b6b7c" text-anchor="start" >tokens</text>
+<text x="60" y="236" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >0 s</text>
+<text x="360" y="236" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >1 s</text>
+<polyline points="60.0,60.0 70.0,60.0 70.0,92.0 84.0,92.0 84.0,124.0 98.0,124.0 98.0,156.0 112.0,156.0 112.0,188.0 126.0,188.0 126.0,220.0 150.0,220.0 360.0,190.2 370.0,188.0 370.0,220.0 390.0,217.8" fill="none" stroke="#2f7f86" stroke-width="2.2"/>
+<text x="154" y="70" font-size="10.0" fill="#2f7f86" text-anchor="start" >five try_acquire calls take all 5</text>
+<text x="169" y="90" font-size="10.0" fill="#d9622b" text-anchor="start" >the 6th finds 0 tokens: false</text>
+<text x="404" y="110" font-size="10.0" fill="#2f7f86" text-anchor="start" >after 1 s, 1 token has refilled: true</text>
+<text x="419" y="130" font-size="10.0" fill="#d9622b" text-anchor="start" >then 0 again: false</text>
+<text x="20" y="262" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Each call first adds elapsed seconds x rate, capped at the capacity, then takes one token if at least one is there.</text>
+</svg>

@@ -1,0 +1,16 @@
+digraph framing {
+  rankdir=TB; nodesep=0.3; ranksep=0.3;
+  node [fontsize=10 shape=box];
+  a [label="find \\r\\n\\r\\n in the bytes" fillcolor="#fdf6e8"];
+  inc [label="Incomplete\n(or PayloadTooLarge past\nmax_header_bytes)" fillcolor="#fbe3d6"];
+  b [label="request line: METHOD SP target SP HTTP/1.x"];
+  c [label="headers: reject folding, names with spaces,\nlines without a colon"];
+  d [label="HTTP/1.1: exactly one Host" ];
+  e [label="framing headers?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  both [label="AmbiguousBodyLength" fillcolor="#fbe3d6"];
+  te [label="Transfer-Encoding:\nall chunked, chunked last\n-> decode_chunked"];
+  cl [label="Content-Length:\nall values equal, <= max_body\n-> take that many bytes"];
+  none [label="neither:\nempty body"];
+  a -> inc [label=" not found"]; a -> b [label=" found"]; b -> c -> d -> e;
+  e -> both [label=" both"]; e -> te [label=" TE only"]; e -> cl [label=" CL only"]; e -> none [label=" none"];
+}

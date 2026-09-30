@@ -1,0 +1,9 @@
+digraph trie {
+  rankdir=LR; nodesep=0.15; ranksep=0.3;
+  node [shape=circle fixedsize=true width=0.42 fontname="Menlo" label=""];
+  r [label="root" width=0.6 fillcolor="#fdf6e8"];
+  g; p; u [fillcolor="#e3f1ea" penwidth=2.5]; c; l; o; u2; d [fillcolor="#e3f1ea" penwidth=2.5];
+  r -> g [label="g"]; g -> p [label="p"]; p -> u [label="u"]; u -> c [label="c"]; c -> l [label="l"]; l -> o [label="o"]; o -> u2 [label="u"]; u2 -> d [label="d"];
+  legend [shape=plaintext style="" fixedsize=false label="thick green = terminal: search(\"gpu\") and search(\"gpucloud\") are true;\nsearch(\"gp\") is false but starts_with(\"gp\") is true" fontname="Helvetica" fontsize=10];
+  d -> legend [style=invis];
+}

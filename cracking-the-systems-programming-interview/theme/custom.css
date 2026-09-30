@@ -1,0 +1,139 @@
+/* Browser edition. The print edition uses tools/print.css; both style the same
+   class names that the chapters use: img.plate, .covers, .sidebar, .listing,
+   and figure. */
+
+:root {
+    --book-ink: #1d2733;
+    --book-steel: #5b6b7c;
+    --book-pale: #e9eef3;
+    --book-navy: #16324f;
+    --book-rust: #d9622b;
+    --book-brass: #c89b3c;
+    --content-max-width: 820px;
+}
+
+.navy, .coal, .ayu {
+    --book-ink: #d6dde5;
+    --book-pale: #1f2b38;
+    --book-navy: #9cc3ec;
+}
+
+.content main {
+    font-family: Charter, "Iowan Old Style", Georgia, serif;
+    font-size: 1.72rem;
+    line-height: 1.62;
+}
+
+.content h1, .content h2, .content h3, .content h4 {
+    font-family: "Avenir Next Condensed", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    color: var(--book-navy);
+    letter-spacing: 0.01em;
+}
+
+.content h1 { font-size: 2.4em; margin-top: 0.4em; }
+.content h2 { border-bottom: 1px solid #c9d4de; padding-bottom: 0.2em; margin-top: 2em; }
+
+img.plate {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    margin: 0.5em 0 1em 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+img.cover {
+    display: block;
+    max-width: 520px;
+    width: 100%;
+    margin: 1em auto;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.covers {
+    background: var(--book-pale);
+    border-left: 5px solid var(--book-rust);
+    padding: 0.6em 1.2em 0.2em 1.2em;
+    margin: 0 0 1.5em 0;
+}
+
+.covers > p:first-child {
+    font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--book-navy);
+    margin-bottom: 0.3em;
+}
+
+.sidebar {
+    border: 1px solid #b7c4d1;
+    background: var(--book-pale);
+    padding: 0.6em 1.2em;
+    margin: 1.4em 0;
+    font-size: 0.94em;
+}
+
+.content blockquote {
+    border-left: 4px solid var(--book-brass);
+    background: transparent;
+    margin: 1em 0;
+    padding: 0.2em 1em;
+    font-size: 0.95em;
+}
+
+.listing {
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82em;
+    margin: 1.6em 0 0.2em 0;
+    padding-bottom: 0.25em;
+    border-bottom: 2px solid var(--book-navy);
+}
+
+.listing b, figcaption b { color: var(--book-rust); margin-right: 0.4em; }
+
+.content pre > code { font-size: 0.83em; line-height: 1.5; }
+
+figure { margin: 1.6em 0; text-align: center; }
+figure img { max-width: 100%; }
+
+figcaption {
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82em;
+    text-align: left;
+    border-top: 1px solid #c9d4de;
+    margin-top: 0.5em;
+    padding-top: 0.3em;
+}
+
+/* An animated figure. The still figures call their captions "Figure N"; an
+   animation calls its caption "Animation N" and colours it teal, so a reader
+   can tell at a glance that the picture moves. */
+figure.anim {
+    margin: 1.4em 0 2em 0;
+}
+
+figure.anim img {
+    border: 2px solid var(--book-pale);
+    border-radius: 6px;
+}
+
+figure.anim figcaption b {
+    color: #2f7f86;
+}
+
+.navy figure img, .coal figure img, .ayu figure img {
+    background: #f3f5f7;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+.content table { font-size: 0.9em; }
+.content table thead th { background: var(--book-navy); color: #ffffff; }
+.navy .content table thead th, .coal .content table thead th { color: #0d1620; }
+
+.callout { border-left: 5px solid var(--book-navy); background: var(--book-pale); padding: 0.5em 1.1em; margin: 1.3em 0; font-size: 0.95em; }
+.callout.tip { border-left-color: #2f7f86; }
+.callout.warning { border-left-color: var(--book-rust); }
+.callout.note { border-left-color: var(--book-brass); }
+.callout > p:first-child strong:first-child { font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif; letter-spacing: 0.06em; }
+.summary { border-top: 3px solid var(--book-navy); margin-top: 2em; }

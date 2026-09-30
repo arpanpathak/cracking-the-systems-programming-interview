@@ -1,0 +1,12 @@
+digraph remove {
+  rankdir=TB; nodesep=0.25; ranksep=0.3;
+  node [shape=circle fixedsize=true width=0.45 fontname="Menlo"];
+  subgraph cluster_a { label="1. no left child:\n*self = right"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    a5 [label="5" fillcolor="#fbe3d6"]; a7 [label="7"]; ae [label="Empty" shape=plaintext style="" fontsize=9]; a5 -> ae [style=dashed]; a5 -> a7; }
+  subgraph cluster_b { label="2. no right child:\n*self = left"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    b5 [label="5" fillcolor="#fbe3d6"]; b3 [label="3"]; be [label="Empty" shape=plaintext style="" fontsize=9]; b5 -> b3; b5 -> be [style=dashed]; }
+  subgraph cluster_c { label="3. two children: copy the minimum\nof the right subtree, then remove it there"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    c10 [label="10" fillcolor="#fbe3d6"]; c5 [label="5"]; c15 [label="15"]; c12 [label="12" fillcolor="#e3f1ea"]; c18 [label="18"];
+    c10 -> c5; c10 -> c15; c15 -> c12; c15 -> c18;
+    c12 -> c10 [style=dashed color="#2f7f86" constraint=false label=" value moves up" fontname="Helvetica"]; }
+}

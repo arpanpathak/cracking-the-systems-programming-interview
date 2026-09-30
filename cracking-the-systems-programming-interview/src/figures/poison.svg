@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 230.0" width="760" height="230.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">A panic while holding a MutexGuard poisons the Mutex</text>
+<rect x="20" y="60" width="100" height="44" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="70" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >Branch A</text>
+<text x="70" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >locks</text>
+<rect x="124" y="60" width="100" height="44" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="174" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >stock 5000</text>
+<text x="174" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >to 4000</text>
+<line x1="120" y1="82" x2="124" y2="82" stroke="#5b6b7c" stroke-width="1"/>
+<polygon points="124,82 116.8,85.5 116.8,78.5" fill="#5b6b7c"/>
+<rect x="228" y="60" width="100" height="44" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="278" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >cash 10000</text>
+<text x="278" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >to 11200</text>
+<line x1="224" y1="82" x2="228" y2="82" stroke="#5b6b7c" stroke-width="1"/>
+<polygon points="228,82 220.8,85.5 220.8,78.5" fill="#5b6b7c"/>
+<rect x="332" y="60" width="100" height="44" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="382" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >panic! guard</text>
+<text x="382" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >dropped</text>
+<line x1="328" y1="82" x2="332" y2="82" stroke="#5b6b7c" stroke-width="1"/>
+<polygon points="332,82 324.8,85.5 324.8,78.5" fill="#5b6b7c"/>
+<rect x="436" y="60" width="100" height="44" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="486" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >Mutex</text>
+<text x="486" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >poisoned</text>
+<line x1="432" y1="82" x2="436" y2="82" stroke="#5b6b7c" stroke-width="1"/>
+<polygon points="436,82 428.8,85.5 428.8,78.5" fill="#5b6b7c"/>
+<rect x="540" y="60" width="100" height="44" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="590" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >Audit: lock()</text>
+<text x="590" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >is Err</text>
+<line x1="536" y1="82" x2="540" y2="82" stroke="#5b6b7c" stroke-width="1"/>
+<polygon points="540,82 532.8,85.5 532.8,78.5" fill="#5b6b7c"/>
+<rect x="644" y="60" width="100" height="44" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="694" y="78" font-size="9.0" fill="#1d2733" text-anchor="middle" >into_inner()</text>
+<text x="694" y="94" font-size="9.0" fill="#1d2733" text-anchor="middle" >repairs data</text>
+<line x1="640" y1="82" x2="644" y2="82" stroke="#5b6b7c" stroke-width="1"/>
+<polygon points="644,82 636.8,85.5 636.8,78.5" fill="#5b6b7c"/>
+<text x="20" y="140" font-size="10.0" fill="#1d2733" text-anchor="start" >The transaction stopped halfway: stock went down and cash went up, but it was never marked settled.</text>
+<text x="20" y="158" font-size="10.0" fill="#1d2733" text-anchor="start" >Poisoning makes every later lock() return Err(PoisonError), so no thread reads the half-done state by accident.</text>
+<text x="20" y="176" font-size="10.0" fill="#1d2733" text-anchor="start" >PoisonError::into_inner() hands over the guard anyway, for code that knows how to repair the data.</text>
+<text x="20" y="210" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Repairing the data does not clear the flag: later lock() calls still return Err.</text>
+</svg>

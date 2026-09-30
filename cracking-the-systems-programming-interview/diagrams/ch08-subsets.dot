@@ -1,0 +1,9 @@
+digraph subsets {
+  rankdir=TB; nodesep=0.2; ranksep=0.35;
+  node [shape=box fontsize=10];
+  r [label="[]" fillcolor="#fdf6e8"];
+  a [label="[1]"]; b [label="[2]"]; c [label="[3]"];
+  ab [label="[1,2]"]; ac [label="[1,3]"]; bc [label="[2,3]"]; abc [label="[1,2,3]"];
+  r -> a [label="push 1"]; r -> b [label="push 2"]; r -> c [label="push 3"];
+  a -> ab [label="push 2"]; a -> ac [label="push 3"]; b -> bc [label="push 3"]; ab -> abc [label="push 3"];
+}

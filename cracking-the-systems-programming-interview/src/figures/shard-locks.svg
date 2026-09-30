@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250.0" width="760" height="250.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">One lock for the whole map, or one lock per shard</text>
+<text x="20" y="50" font-size="11.0" fill="#5b6b7c" text-anchor="start" >Mutex&lt;HashMap&gt;: every thread waits for the one lock</text>
+<rect x="40" y="70" width="200" height="120" rx="6" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="140" y="136" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Mutex&lt;HashMap&gt;</text>
+<rect x="260" y="76" width="70" height="22" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="295.0" y="90.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 1</text>
+<text x="338" y="91" font-size="9.0" fill="#2f7f86" text-anchor="start" >holds the lock</text>
+<rect x="260" y="106" width="70" height="22" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="295.0" y="120.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 2</text>
+<text x="338" y="121" font-size="9.0" fill="#d9622b" text-anchor="start" >waits</text>
+<rect x="260" y="136" width="70" height="22" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="295.0" y="150.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 3</text>
+<text x="338" y="151" font-size="9.0" fill="#d9622b" text-anchor="start" >waits</text>
+<rect x="260" y="166" width="70" height="22" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="295.0" y="180.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 4</text>
+<text x="338" y="181" font-size="9.0" fill="#d9622b" text-anchor="start" >waits</text>
+<text x="420" y="50" font-size="11.0" fill="#5b6b7c" text-anchor="start" >ShardedCache: threads on different shards run together</text>
+<rect x="420" y="70" width="72" height="50" rx="5" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="456" y="90" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 0</text>
+<text x="456" y="108" font-size="9.0" fill="#2f7f86" text-anchor="middle" >thread 1</text>
+<rect x="502" y="70" width="72" height="50" rx="5" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="538" y="90" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 1</text>
+<text x="538" y="108" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >idle</text>
+<rect x="584" y="70" width="72" height="50" rx="5" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="620" y="90" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 2</text>
+<text x="620" y="108" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >idle</text>
+<rect x="666" y="70" width="72" height="50" rx="5" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="702" y="90" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 3</text>
+<text x="702" y="108" font-size="9.0" fill="#2f7f86" text-anchor="middle" >thread 2</text>
+<rect x="420" y="140" width="72" height="50" rx="5" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="456" y="160" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 4</text>
+<text x="456" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >idle</text>
+<rect x="502" y="140" width="72" height="50" rx="5" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="538" y="160" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 5</text>
+<text x="538" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >idle</text>
+<rect x="584" y="140" width="72" height="50" rx="5" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="620" y="160" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 6</text>
+<text x="620" y="178" font-size="9.0" fill="#2f7f86" text-anchor="middle" >thread 3</text>
+<rect x="666" y="140" width="72" height="50" rx="5" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="702" y="160" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">shard 7</text>
+<text x="702" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >idle</text>
+<text x="20" y="234" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Two threads wait for each other only when their keys hash to the same shard.</text>
+</svg>

@@ -1,0 +1,10 @@
+digraph clients {
+  rankdir=LR; nodesep=0.25; ranksep=0.4;
+  node [fontsize=10 shape=box];
+  subgraph cluster_a { label="fun_network_call.rs (blocking, std only)"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    a1 [label="IdemCache::get_or_insert(key)" fillcolor="#fdf6e8"]; a2 [label="RetryPolicy::execute\n3 attempts, 100 ms doubling"]; a3 [label="send(): TcpStream,\nhand-built HTTP/1.1,\nConnection: close"];
+    a1 -> a2 -> a3; }
+  subgraph cluster_b { label="reqwest_and_tokio.rs (async)"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    b1 [label="Api::cached(key)" fillcolor="#e3f1ea"]; b2 [label="retry loop on 429 and 5xx,\ntokio::time::sleep, doubling"]; b3 [label="reqwest Client with timeout,\nIdempotency-Key header"];
+    b1 -> b2 -> b3; }
+}

@@ -1,0 +1,9 @@
+digraph ser {
+  rankdir=TB; nodesep=0.3; ranksep=0.35;
+  subgraph cluster_t { label="TreeNode<String>"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    node [shape=box];
+    root; a; b; a1; a2; b1;
+    root -> a; root -> b; a -> a1; a -> a2; b -> b1; }
+  file [shape=record fontname="Menlo" fillcolor="#fdf6e8" label="{tree.bin (pre-order: value, child count)|root  2\la     2\la1    0\la2    0\lb     1\lb1    0\l}"];
+  {rank=same; root; file}
+}

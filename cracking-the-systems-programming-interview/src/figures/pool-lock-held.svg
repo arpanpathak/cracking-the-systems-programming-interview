@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250.0" width="760" height="250.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Four jobs that sleep 200 ms on four workers, measured with each loop shape</text>
+<text x="20" y="56" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">while let Ok(job) = rx.lock().unwrap().recv() { job(); }</text>
+<rect x="20.0" y="66" width="160.0" height="24" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="100.0" y="81.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">worker 0: job</text>
+<rect x="180.0" y="66" width="160.0" height="24" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="260.0" y="81.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">worker 1: job</text>
+<rect x="340.0" y="66" width="160.0" height="24" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="420.0" y="81.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">worker 2: job</text>
+<rect x="500.0" y="66" width="160.0" height="24" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="580.0" y="81.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">worker 3: job</text>
+<text x="668.0" y="83" font-size="11.0" fill="#d9622b" text-anchor="start"  font-weight="bold">814 ms</text>
+<text x="20" y="114" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The guard is a temporary of the while-let condition, so the lock stays held until the job ends.</text>
+<text x="20" y="152" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">let job = rx.lock().unwrap().recv(); match job { ... }</text>
+<rect x="20" y="162" width="160.0" height="14" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="24" y="173" font-size="8.0" fill="#1d2733" text-anchor="start" >worker 0</text>
+<rect x="20" y="178" width="160.0" height="14" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="24" y="189" font-size="8.0" fill="#1d2733" text-anchor="start" >worker 1</text>
+<rect x="20" y="194" width="160.0" height="14" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="24" y="205" font-size="8.0" fill="#1d2733" text-anchor="start" >worker 2</text>
+<rect x="20" y="210" width="160.0" height="14" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="24" y="221" font-size="8.0" fill="#1d2733" text-anchor="start" >worker 3</text>
+<text x="188.0" y="200" font-size="11.0" fill="#2f7f86" text-anchor="start"  font-weight="bold">205 ms</text>
+<text x="20" y="240" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The guard is a temporary of the let statement, so the lock is released before the job runs.</text>
+</svg>

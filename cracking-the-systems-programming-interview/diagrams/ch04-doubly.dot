@@ -1,0 +1,11 @@
+digraph doubly {
+  rankdir=LR; nodesep=0.4;
+  node [shape=record fontname="Menlo" fontsize=10];
+  list [label="{LinkedList|<h>head|<t>tail|len: 4}" fillcolor="#fdf6e8"];
+  n20 [label="{<p>prev|20|<n>next}"]; n10 [label="{<p>prev|10|<n>next}"]; n30 [label="{<p>prev|30|<n>next}"]; n40 [label="{<p>prev|40|<n>next}"];
+  list:h -> n20 [color="#1d2733" penwidth=2];
+  list:t -> n40 [color="#1d2733" penwidth=2];
+  n20:n -> n10 [penwidth=2]; n10:n -> n30 [penwidth=2]; n30:n -> n40 [penwidth=2];
+  n10:p -> n20 [style=dashed color="#2f7f86"]; n30:p -> n10 [style=dashed color="#2f7f86"]; n40:p -> n30 [style=dashed color="#2f7f86"];
+  legend [label="solid: Rc (strong, owning)\ldashed: Weak (non-owning back-link)\l" shape=note style="filled" fillcolor="#ffffff" fontname="Helvetica"];
+}

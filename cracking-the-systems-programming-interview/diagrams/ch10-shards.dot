@@ -1,0 +1,13 @@
+digraph shards {
+  rankdir=LR; nodesep=0.2; ranksep=0.5;
+  node [fontsize=10];
+  key [label="key" shape=box fillcolor="#fdf6e8"];
+  h [label="RandomState hasher\nhash(key) = 0x...b6" shape=box];
+  m [label="index = hash & mask\nmask = 8 - 1 = 0b111" shape=box];
+  subgraph cluster_s { label="shards: Vec<Mutex<HashMap<K, V>>>"; style="rounded"; color="#5b6b7c"; fontname="Menlo";
+    s0 [label="[0] Mutex<HashMap>"]; s1 [label="..."  shape=plaintext style=""]; s6 [label="[6] Mutex<HashMap>" fillcolor="#e3f1ea" penwidth=2]; s7 [label="[7] Mutex<HashMap>"]; }
+  t1 [label="thread 1: key → shard 6" shape=plaintext style="" fontcolor="#2f7f86"];
+  t2 [label="thread 2: key → shard 0\n(does not wait for thread 1)" shape=plaintext style="" fontcolor="#d9622b"];
+  key -> h -> m -> s6 [color="#2f7f86" penwidth=1.8];
+  t1 -> s6 [style=dashed color="#2f7f86"]; t2 -> s0 [style=dashed color="#d9622b"];
+}

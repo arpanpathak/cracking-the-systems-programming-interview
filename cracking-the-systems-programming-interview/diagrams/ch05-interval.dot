@@ -1,0 +1,15 @@
+digraph interval {
+  rankdir=TB; nodesep=0.3; ranksep=0.35;
+  node [shape=box fontsize=10];
+  subgraph cluster_0 { label="start"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    a0 [label="lists[0]"]; a1 [label="lists[1]"]; a2 [label="lists[2]"]; a3 [label="lists[3]"]; a4 [label="lists[4]"]; }
+  subgraph cluster_1 { label="interval = 1"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    b0 [label="0 + 1" fillcolor="#fdf6e8"]; b2 [label="2 + 3" fillcolor="#fdf6e8"]; b4 [label="4"]; }
+  subgraph cluster_2 { label="interval = 2"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    c0 [label="0 + 1 + 2 + 3" fillcolor="#fdf6e8"]; c4 [label="4"]; }
+  subgraph cluster_4 { label="interval = 4"; style="rounded"; color="#c9d4de"; fontname="Helvetica";
+    d0 [label="all five in lists[0]" fillcolor="#e3f1ea"]; }
+  a0 -> b0; a1 -> b0; a2 -> b2; a3 -> b2; a4 -> b4;
+  b0 -> c0; b2 -> c0; b4 -> c4;
+  c0 -> d0; c4 -> d0;
+}

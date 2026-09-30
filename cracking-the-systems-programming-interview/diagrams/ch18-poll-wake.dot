@@ -1,0 +1,11 @@
+digraph pw {
+  rankdir=TB; nodesep=0.5; ranksep=0.3;
+  node [fontsize=10 shape=box];
+  subgraph cluster_e { label="executor thread (block_on)"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    e1 [label="future.as_mut().poll(&mut cx)"]; e2 [label="Delay::poll: not ready,\nstore cx.waker().clone(),\nreturn Pending"]; e3 [label="thread::park()" fillcolor="#eef3f7"]; e4 [label="poll again: ready -> Ready(())" fillcolor="#e3f1ea"];
+    e1 -> e2 -> e3; e3 -> e4 [style=dashed label=" unparked"]; }
+  subgraph cluster_t { label="timer thread (Delay::new)"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    t1 [label="thread::sleep(duration)"]; t2 [label="lock: ready = true,\ntake the waker"]; t3 [label="waker.wake()\n(ThreadWaker: unpark)" fillcolor="#fdf6e8"];
+    t1 -> t2 -> t3; }
+  t3 -> e3 [color="#d9622b" penwidth=2 label=" unpark" fontcolor="#d9622b" constraint=false];
+}

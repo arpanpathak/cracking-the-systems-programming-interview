@@ -1,0 +1,10 @@
+digraph paths {
+  rankdir=LR;
+  subgraph cluster_b { label="borrowed, like &str"; style="rounded"; color="#5b6b7c"; fontname="Helvetica";
+    path [label="&Path"]; }
+  subgraph cluster_o { label="owned, like String"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    pathbuf [label="PathBuf" fillcolor="#fdf6e8"]; }
+  pathbuf -> path [label=" &buf  (Deref)" fontname="Menlo"];
+  path -> pathbuf [label=" .join(\"x\")  (new PathBuf)" fontname="Menlo"];
+  pathbuf -> pathbuf [label=" .push(\"x\")  (in place)" fontname="Menlo"];
+}

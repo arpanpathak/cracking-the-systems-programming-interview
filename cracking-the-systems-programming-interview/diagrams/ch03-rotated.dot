@@ -1,0 +1,9 @@
+digraph rotated {
+  rankdir=LR; nodesep=0.02;
+  node [shape=record fontname="Menlo" fontsize=12];
+  a [label="<0>4|<1>5|<2>6|<3>7|<4>0|<5>1|<6>2" fillcolor="#eef3f7"];
+  lo [label="low = 0" shape=plaintext style="" ]; mid [label="mid = 3\nnums[low] <= nums[mid]\nso [4..7] is sorted" shape=plaintext style="" fontcolor="#2f7f86"];
+  hi [label="high = 7 (exclusive)" shape=plaintext style=""];
+  t [label="target 0 is not in [4, 7)\nso low = mid + 1" shape=plaintext style="" fontcolor="#d9622b"];
+  lo -> a:0; mid -> a:3 [color="#2f7f86"]; a:6 -> hi [dir=back]; a:4 -> t [dir=back color="#d9622b"];
+}

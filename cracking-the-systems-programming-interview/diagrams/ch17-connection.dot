@@ -1,0 +1,12 @@
+digraph conn {
+  rankdir=LR; nodesep=0.3;
+  node [fontsize=10 shape=box];
+  p [label="parse_request(&buffer)" fillcolor="#fdf6e8"];
+  ok [label="route, write response"]; ka [label="keep-alive?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  clr [label="buffer.clear()"]; close [label="return: connection closes" fillcolor="#eef3f7"];
+  rd [label="read more bytes\n(0 bytes: peer left)"];
+  bad [label="400 with the error text,\nConnection: close" fillcolor="#fbe3d6"];
+  p -> ok [label=" Ok"]; ok -> ka; ka -> clr [label=" yes"]; clr -> p; ka -> close [label=" no"];
+  p -> rd [label=" Incomplete"]; rd -> p;
+  p -> bad [label=" other Err"]; bad -> close;
+}

@@ -1,0 +1,8 @@
+digraph wf {
+  rankdir=LR; nodesep=0.4;
+  node [shape=circle fixedsize=true width=0.5 fontname="Menlo"];
+  subgraph cluster_1 { label="0->1, 1->2, 0->2: no deadlock"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    a0 [label="T0"]; a1 [label="T1"]; a2 [label="T2"]; a0 -> a1; a1 -> a2; a0 -> a2; }
+  subgraph cluster_2 { label="0->1, 1->2, 2->0: deadlock"; style="rounded"; color="#d9622b"; fontname="Helvetica";
+    b0 [label="T0" fillcolor="#fbe3d6"]; b1 [label="T1" fillcolor="#fbe3d6"]; b2 [label="T2" fillcolor="#fbe3d6"]; b0 -> b1; b1 -> b2; b2 -> b0 [color="#d9622b" penwidth=2]; }
+}

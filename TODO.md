@@ -40,6 +40,10 @@
 - [ ] Fix the chapter cross-references that assume the old numbering
 - [ ] Run every fenced `rust` listing through `cargo check` in CI
 - [ ] Replace the ASCII diagrams with SVG
+- [x] Rebuild the animations at 2x for a retina screen, with one designed palette
+- [x] Give every animation a zone, a focus wash, and an insight band
+- [x] Check every animation frame in `make lint`, beside the still figures
+- [ ] Ship the animations as animated WebP, which is sharper than GIF at half the size
 
 ## Operator
 
@@ -71,4 +75,4 @@
 - [ ] Add `typos` and a link checker over `docs/` and the book
 - [ ] Add `CONTRIBUTING.md`, issue templates, `CODE_OF_CONDUCT.md`, `SECURITY.md`
 - [ ] Delete the stray build artifact `rust-interview-lab/src/bin/benchmark_cache`
-- [ ] Decide which PDFs to keep in `cracked-rustaceans-book/build/`
+- [ ] Decide whether to commit `cracking-the-systems-programming-interview/build/cracking-the-systems-programming-interview.pdf`

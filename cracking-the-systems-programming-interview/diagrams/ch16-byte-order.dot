@@ -1,0 +1,9 @@
+digraph bo {
+  rankdir=LR; nodesep=0.05;
+  node [shape=record fontname="Menlo" fontsize=11];
+  ip [label="\"127.0.0.1\"" shape=box];
+  oct [label="{[u8; 4]|{127|0|0|1}}" fillcolor="#fdf6e8"];
+  be [label="{u32::from_be_bytes|0x7f000001 = 2130706433}" fillcolor="#e3f1ea"];
+  wire [label="{on the wire (network order)|{0x7f|0x00|0x00|0x01}}" fillcolor="#eef3f7"];
+  ip -> oct [label=" parse"]; oct -> be; be -> wire [label=" to_be_bytes"];
+}

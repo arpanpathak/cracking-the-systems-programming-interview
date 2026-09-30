@@ -1,0 +1,10 @@
+digraph drop {
+  rankdir=TB; nodesep=0.3; ranksep=0.25;
+  node [shape=box fontsize=10];
+  subgraph cluster_r { label="default (recursive) drop"; style="rounded"; color="#d9622b"; fontname="Helvetica";
+    r1 [label="drop(head)"]; r2 [label="drop(node 1).next"]; r3 [label="drop(node 2).next"]; r4 [label="..." shape=plaintext style=""]; r5 [label="drop(node 265,000)\nstack overflow" fillcolor="#fbe3d6"];
+    r1 -> r2 -> r3 -> r4 -> r5; }
+  subgraph cluster_i { label="iterative Drop for LinkedList"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    i1 [label="current = head.take()"]; i2 [label="current = node.next.take()\nnode (now next-less) is freed" fillcolor="#e3f1ea"]; i3 [label="current == None" ];
+    i1 -> i2; i2 -> i2 [label=" loop, one frame"]; i2 -> i3; }
+}

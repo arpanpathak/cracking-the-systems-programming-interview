@@ -1,0 +1,11 @@
+digraph ar {
+  rankdir=TB; nodesep=0.8; ranksep=0.3;
+  node [fontsize=10 shape=box];
+  subgraph cluster_a { label="thread A (holder)"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    a1 [label="compare_exchange_weak(false, true, Acquire)"]; a2 [label="*guard += 1   (critical section)"]; a3 [label="drop(guard): locked.store(false, Release)" fillcolor="#fdf6e8"];
+    a1 -> a2 -> a3; }
+  subgraph cluster_b { label="thread B (next holder)"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    b0 [label="while locked.load(Relaxed) { spin_loop() }"]; b1 [label="compare_exchange_weak(false, true, Acquire)\nreads the value A released" fillcolor="#e3f1ea"]; b2 [label="*guard sees A's increment"];
+    b0 -> b1 -> b2; }
+  a3 -> b1 [label=" synchronizes-with" color="#d9622b" fontcolor="#d9622b" penwidth=2 constraint=false];
+}

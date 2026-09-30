@@ -1,0 +1,7 @@
+digraph kahn {
+  rankdir=LR; nodesep=0.35;
+  node [shape=box];
+  ds [label="datastructs\nindegree 0" fillcolor="#e3f1ea"];
+  algos [label="algos\nindegree 1"]; os [label="os\nindegree 1"]; comp [label="compilers\nindegree 2"];
+  ds -> algos; ds -> os; algos -> comp; os -> comp;
+}

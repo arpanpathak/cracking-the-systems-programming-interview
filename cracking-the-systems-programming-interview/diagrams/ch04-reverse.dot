@@ -1,0 +1,15 @@
+digraph reverse {
+  rankdir=LR; nodesep=0.25; ranksep=0.4; forcelabels=true;
+  node [shape=box];
+  none1 [label="None" shape=plaintext style=""];
+  n1 [label="1"];
+  n2 [label="2" fillcolor="#d7ece9" xlabel="previous"];
+  n3 [label="3" fillcolor="#fbe3d6" xlabel="current"];
+  n4 [label="4"];
+  none2 [label="None" shape=plaintext style=""];
+  none1 -> n1 [dir=back color="#2f7f86" penwidth=2];
+  n1 -> n2 [dir=back color="#2f7f86" penwidth=2 label="reversed"];
+  n2 -> n3 [style=dashed arrowhead=none color="#5b6b7c" label="cut by next.take()"];
+  n3 -> n4 [label="not yet visited"];
+  n4 -> none2;
+}

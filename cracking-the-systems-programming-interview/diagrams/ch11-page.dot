@@ -1,0 +1,7 @@
+digraph page {
+  rankdir=LR; nodesep=0.05;
+  node [shape=record fontname="Menlo" fontsize=11];
+  addr [label="{virtual address 0x1234|{{page number|address / 4096 = 1}|{offset|address % 4096 = 0x234}}}" fillcolor="#fdf6e8"];
+  bits [label="{same split in bits|{bits 63..12|bits 11..0}}" fillcolor="#eef3f7"];
+  addr -> bits [style=invis];
+}

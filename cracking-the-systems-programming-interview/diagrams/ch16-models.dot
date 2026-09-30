@@ -1,0 +1,13 @@
+digraph models {
+  rankdir=LR; nodesep=0.25; ranksep=0.45;
+  node [fontsize=10 shape=box];
+  subgraph cluster_t { label="thread per connection (tcp_echo_server.rs)"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    l1 [label="accept loop\nlistener.incoming()" fillcolor="#fdf6e8"];
+    t1 [label="thread: blocking\nread / write_all"]; t2 [label="thread: blocking\nread / write_all"]; t3 [label="thread: blocking\nread / write_all"];
+    l1 -> t1; l1 -> t2; l1 -> t3; }
+  subgraph cluster_e { label="one thread, readiness events (epoll_echo.rs)"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    ep [label="epoll_wait(epfd, 64 events, 100 ms)" fillcolor="#e3f1ea"];
+    a [label="listen fd readable:\naccept4 until EAGAIN"]; r [label="client readable:\nread until EAGAIN,\nappend to out"]; w [label="client writable:\nflush out from out_pos"];
+    u [label="EPOLLOUT only while\noutput is pending"];
+    ep -> a; ep -> r; ep -> w; r -> u; w -> u; u -> ep [style=dashed]; a -> ep [style=dashed]; }
+}

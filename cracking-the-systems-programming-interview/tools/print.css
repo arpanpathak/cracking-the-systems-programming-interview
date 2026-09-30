@@ -1,0 +1,396 @@
+/* Paged-media stylesheet for the print edition. The browser edition has its own
+   stylesheet in theme/custom.css; the two share the palette and the class names
+   used in the chapters (.covers, .sidebar, .listing, figure). */
+
+:root {
+    --ink: #1d2733;
+    --steel: #5b6b7c;
+    --steel-pale: #e9eef3;
+    --navy: #16324f;
+    --rust: #d9622b;
+    --brass: #c89b3c;
+    --paper: #fbf7ee;
+    --code-bg: #f5f7f9;
+}
+
+@page {
+    size: 7.375in 9.25in;
+    margin: 0.8in 0.7in 0.75in 0.8in;
+
+    @bottom-center {
+        content: counter(page);
+        font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+        font-size: 8.5pt;
+        color: var(--steel);
+    }
+
+    @top-left {
+        content: string(chapter);
+        font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
+        font-size: 8pt;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--steel);
+    }
+}
+
+@page :left {
+    margin-left: 0.7in;
+    margin-right: 0.8in;
+}
+
+@page cover {
+    margin: 0;
+    @bottom-center { content: none; }
+    @top-left { content: none; }
+}
+
+@page quiet {
+    @bottom-center { content: none; }
+    @top-left { content: none; }
+}
+
+@page opener {
+    @top-left { content: none; }
+}
+
+/* ---------------------------------------------------------------- base */
+
+html {
+    font-family: Charter, "Iowan Old Style", Georgia, serif;
+    font-size: 10.2pt;
+    line-height: 1.5;
+    color: var(--ink);
+    hyphens: auto;
+}
+
+body { margin: 0; }
+
+p {
+    margin: 0 0 2.6mm 0;
+    text-align: justify;
+    orphans: 2;
+    widows: 2;
+}
+
+a { color: var(--navy); text-decoration: none; }
+
+strong { font-weight: 700; }
+
+ul, ol { margin: 0 0 2.6mm 0; padding-left: 5.5mm; }
+li { margin-bottom: 1mm; }
+li > p { margin-bottom: 1mm; }
+
+h1, h2, h3, h4 {
+    font-family: "Avenir Next Condensed", "Avenir Next", "Helvetica Neue", sans-serif;
+    color: var(--navy);
+    hyphens: none;
+    break-after: avoid;
+    text-align: left;
+}
+
+h2 {
+    font-size: 15pt;
+    font-weight: 600;
+    margin: 7mm 0 2.5mm 0;
+    padding-bottom: 1mm;
+    border-bottom: 0.8pt solid #c9d4de;
+}
+
+h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    margin: 5mm 0 2mm 0;
+}
+
+h4 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    margin: 4mm 0 1.5mm 0;
+    color: var(--ink);
+}
+
+/* ------------------------------------------------------- cover and title */
+
+.cover-page {
+    page: cover;
+    break-after: page;
+    height: 9.25in;
+    width: 7.375in;
+}
+
+.cover-page img {
+    width: 7.375in;
+    height: 9.25in;
+    object-fit: cover;
+    display: block;
+}
+
+.title-page {
+    page: quiet;
+    break-after: page;
+    padding-top: 1.6in;
+}
+
+.title-page p { text-align: left; hyphens: none; }
+
+.title-main {
+    font-family: Charter, Georgia, serif;
+    font-size: 27pt;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--navy);
+    border-bottom: 3pt solid var(--rust);
+    padding-bottom: 5mm;
+    margin-bottom: 5mm;
+}
+
+.title-sub {
+    font-size: 13pt;
+    font-style: italic;
+    color: var(--steel);
+    margin-bottom: 30mm;
+}
+
+.title-author {
+    font-family: "Avenir Next", sans-serif;
+    font-size: 14pt;
+    font-weight: 600;
+}
+
+.title-repo { font-size: 8.5pt; color: var(--steel); }
+
+/* ------------------------------------------------------------- contents */
+
+.contents {
+    page: quiet;
+    break-after: page;
+}
+
+.contents-title {
+    font-size: 24pt;
+    margin: 0 0 6mm 0;
+}
+
+.contents p { margin: 0; text-align: left; }
+
+.contents a { color: var(--ink); }
+
+.contents a::after {
+    content: leader(".") target-counter(attr(href), page);
+    color: var(--steel);
+}
+
+.toc-part {
+    font-family: "Avenir Next Condensed", sans-serif;
+    font-weight: 600;
+    font-size: 10.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 4mm !important;
+    border-bottom: 0.6pt solid #c9d4de;
+}
+
+.toc-part a { color: var(--navy); }
+.toc-chapter { font-size: 10pt; padding-left: 4mm; line-height: 1.7; }
+.toc-number { display: inline-block; width: 7mm; color: var(--rust); font-family: "Avenir Next", sans-serif; font-weight: 600; }
+.toc-front { font-size: 10pt; font-style: italic; line-height: 1.7; }
+
+/* ---------------------------------------------------------- part pages */
+
+.part-divider {
+    page: quiet;
+    break-before: page;
+    break-after: page;
+    padding-top: 2.2in;
+}
+
+.part-label {
+    font-family: "DIN Condensed", "Avenir Next Condensed", sans-serif;
+    font-size: 15pt;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--rust);
+    text-align: left;
+    margin: 0 0 3mm 0;
+}
+
+.part-name {
+    font-family: Charter, Georgia, serif;
+    font-size: 28pt;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--navy);
+    text-align: left;
+    border-top: 3pt solid var(--navy);
+    padding-top: 5mm;
+}
+
+/* ------------------------------------------------- chapters and openers */
+
+.chapter, .front-matter {
+    break-before: page;
+}
+
+.chapter > p:first-child,
+.front-matter > p:first-child {
+    page: opener;
+}
+
+img.plate {
+    display: block;
+    width: 100%;
+    margin: 0 0 5mm 0;
+    border-radius: 2pt;
+}
+
+.chapter h1, .front-matter h1 {
+    font-size: 25pt;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 5mm 0;
+    string-set: chapter content();
+}
+
+.chapter h1 { page: opener; }
+
+.covers {
+    background: var(--steel-pale);
+    border-left: 3.5pt solid var(--rust);
+    padding: 3mm 5mm 1mm 5mm;
+    margin: 0 0 5mm 0;
+    break-inside: avoid;
+}
+
+.covers p { font-family: "Avenir Next Condensed", sans-serif; font-weight: 600; font-size: 10pt;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--navy); margin-bottom: 1.5mm; }
+.covers ul { margin-bottom: 2mm; }
+.covers li { font-size: 9.8pt; margin-bottom: 0.6mm; }
+
+/* ------------------------------------------------------------ sidebars */
+
+.sidebar {
+    border: 0.9pt solid #b7c4d1;
+    background: #f7f9fb;
+    padding: 3mm 5mm 1mm 5mm;
+    margin: 4mm 0;
+    font-size: 9.4pt;
+    break-inside: avoid;
+}
+
+.sidebar h4, .sidebar > p:first-child strong:first-child {
+    font-family: "Avenir Next Condensed", sans-serif;
+    color: var(--navy);
+}
+
+blockquote {
+    margin: 3mm 0;
+    padding: 1mm 0 1mm 5mm;
+    border-left: 2.5pt solid var(--brass);
+    font-size: 9.6pt;
+}
+
+blockquote p { margin-bottom: 1.2mm; }
+
+/* ------------------------------------------------------------- listings */
+
+.listing {
+    font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    font-size: 8.4pt;
+    color: var(--ink);
+    margin: 4mm 0 1mm 0;
+    padding-bottom: 0.8mm;
+    border-bottom: 1.2pt solid var(--navy);
+    text-align: left;
+    break-after: avoid;
+}
+
+.listing b { color: var(--rust); margin-right: 1.5mm; }
+.listing code { font-size: 8pt; }
+
+code {
+    font-family: "JetBrainsMonoNL Nerd Font Mono", Menlo, monospace;
+    font-size: 8.8pt;
+    hyphens: none;
+}
+
+p code, li code, td code {
+    background: #eef2f5;
+    border-radius: 1.5pt;
+    padding: 0 0.6mm;
+}
+
+pre, .highlight pre {
+    font-family: "JetBrainsMonoNL Nerd Font Mono", Menlo, monospace;
+    font-size: 7.4pt;
+    line-height: 1.38;
+    background: var(--code-bg);
+    border-left: 2pt solid #c9d4de;
+    padding: 2.4mm 3mm;
+    margin: 0 0 4mm 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    text-align: left;
+    hyphens: none;
+}
+
+pre code { font-size: 7.4pt; background: none; padding: 0; }
+
+.highlight { background: none; }
+
+/* ------------------------------------------------------- figures, tables */
+
+figure {
+    margin: 4mm 0 5mm 0;
+    text-align: center;
+    break-inside: avoid;
+}
+
+figure img {
+    max-width: 100%;
+    max-height: 5.2in;
+}
+
+figcaption {
+    font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    font-size: 8.4pt;
+    color: var(--ink);
+    text-align: left;
+    margin-top: 2mm;
+    padding-top: 1mm;
+    border-top: 0.6pt solid #c9d4de;
+}
+
+figcaption b { color: var(--rust); margin-right: 1.5mm; }
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 3mm 0 4mm 0;
+    font-size: 8.8pt;
+    break-inside: avoid;
+}
+
+th {
+    font-family: "Avenir Next Condensed", sans-serif;
+    font-weight: 600;
+    text-align: left;
+    background: var(--navy);
+    color: #ffffff;
+    padding: 1.4mm 2mm;
+}
+
+td {
+    border-bottom: 0.6pt solid #d6dee6;
+    padding: 1.2mm 2mm;
+    vertical-align: top;
+}
+
+tr:nth-child(even) td { background: #f6f8fa; }
+
+hr { border: 0; border-top: 0.6pt solid #c9d4de; margin: 5mm 0; }
+
+.callout { border-left: 3pt solid var(--navy); background: var(--steel-pale); padding: 2mm 4mm 0.5mm 4mm; margin: 3.5mm 0; font-size: 9.5pt; break-inside: avoid; }
+.callout.tip { border-left-color: #2f7f86; }
+.callout.warning { border-left-color: var(--rust); }
+.callout > p:first-child strong:first-child { font-family: "Avenir Next Condensed", sans-serif; letter-spacing: 0.06em; color: var(--navy); }

@@ -1,0 +1,13 @@
+digraph idem {
+  rankdir=LR; nodesep=0.3; ranksep=0.45;
+  node [fontsize=10 shape=box];
+  r1 [label="execute(\"order-1\", charge)\nfirst call" fillcolor="#fdf6e8"];
+  miss [label="store.get: miss" ];
+  run [label="charge() runs\n\"charging card...\"\nreturns txn_42" fillcolor="#fbe3d6"];
+  put [label="store.insert(order-1, txn_42)"];
+  r2 [label="execute(\"order-1\", charge)\nretry after a timeout" fillcolor="#fdf6e8"];
+  hit [label="store.get: hit\nreturn txn_42\ncharge() not called" fillcolor="#e3f1ea"];
+  r1 -> miss -> run -> put;
+  r2 -> hit;
+  put -> hit [style=dashed label=" same key" constraint=false];
+}

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330.0" width="760" height="330.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Three ways to merge k = 4 lists</text>
+<text x="20" y="50" font-size="11.0" fill="#d9622b" text-anchor="start"  font-weight="bold">1. One at a time: O(kN)</text>
+<rect x="20" y="60" width="110" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="75.0" y="77.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L1</text>
+<line x1="130" y1="74" x2="168" y2="74" stroke="#d9622b" stroke-width="1.6"/>
+<polygon points="168,74 160.8,77.5 160.8,70.5" fill="#d9622b"/>
+<rect x="170" y="60" width="120" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="230.0" y="77.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L1+L2</text>
+<line x1="290" y1="74" x2="318" y2="74" stroke="#d9622b" stroke-width="1.6"/>
+<polygon points="318,74 310.8,77.5 310.8,70.5" fill="#d9622b"/>
+<rect x="320" y="60" width="130" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="385.0" y="77.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L1+L2+L3</text>
+<line x1="450" y1="74" x2="468" y2="74" stroke="#d9622b" stroke-width="1.6"/>
+<polygon points="468,74 460.8,77.5 460.8,70.5" fill="#d9622b"/>
+<rect x="470" y="60" width="140" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="540.0" y="77.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">all 4</text>
+<text x="20" y="104" font-size="10.0" fill="#d9622b" text-anchor="start" >The growing result is walked again at every step.</text>
+<text x="20" y="136" font-size="11.0" fill="#2f7f86" text-anchor="start"  font-weight="bold">2. Pairwise rounds: O(N log k)</text>
+<rect x="20" y="146" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="50.0" y="162.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L1</text>
+<rect x="90" y="146" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="120.0" y="162.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L2</text>
+<rect x="160" y="146" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="190.0" y="162.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L3</text>
+<rect x="230" y="146" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="260.0" y="162.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L4</text>
+<rect x="50" y="196" width="80" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="90.0" y="212.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L1+L2</text>
+<rect x="190" y="196" width="80" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="230.0" y="212.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">L3+L4</text>
+<rect x="110" y="240" width="100" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="160.0" y="256.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">all 4</text>
+<line x1="50" y1="172" x2="90" y2="194" stroke="#2f7f86" stroke-width="1.2"/>
+<polygon points="90,194 82.0,193.6 85.4,187.5" fill="#2f7f86"/>
+<line x1="120" y1="172" x2="90" y2="194" stroke="#2f7f86" stroke-width="1.2"/>
+<polygon points="90,194 93.8,186.9 97.9,192.5" fill="#2f7f86"/>
+<line x1="190" y1="172" x2="230" y2="194" stroke="#2f7f86" stroke-width="1.2"/>
+<polygon points="230,194 222.0,193.6 225.4,187.5" fill="#2f7f86"/>
+<line x1="260" y1="172" x2="230" y2="194" stroke="#2f7f86" stroke-width="1.2"/>
+<polygon points="230,194 233.8,186.9 237.9,192.5" fill="#2f7f86"/>
+<line x1="90" y1="222" x2="150" y2="238" stroke="#2f7f86" stroke-width="1.2"/>
+<polygon points="150,238 142.1,239.5 143.9,232.8" fill="#2f7f86"/>
+<line x1="230" y1="222" x2="170" y2="238" stroke="#2f7f86" stroke-width="1.2"/>
+<polygon points="170,238 176.1,232.8 177.9,239.5" fill="#2f7f86"/>
+<text x="20" y="290" font-size="10.0" fill="#2f7f86" text-anchor="start" >Each node takes part in one merge per round;</text>
+<text x="20" y="304" font-size="10.0" fill="#2f7f86" text-anchor="start" >there are log2 k rounds.</text>
+<text x="400" y="136" font-size="11.0" fill="#c89b3c" text-anchor="start"  font-weight="bold">3. A heap of the k heads: O(N log k)</text>
+<rect x="400" y="146" width="100" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="450.0" y="162.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">head of L1</text>
+<line x1="500" y1="159" x2="548" y2="210" stroke="#c89b3c" stroke-width="1.2"/>
+<polygon points="548,210 540.5,207.1 545.6,202.4" fill="#c89b3c"/>
+<rect x="400" y="180" width="100" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="450.0" y="196.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">head of L2</text>
+<line x1="500" y1="193" x2="548" y2="210" stroke="#c89b3c" stroke-width="1.2"/>
+<polygon points="548,210 540.0,210.9 542.4,204.3" fill="#c89b3c"/>
+<rect x="400" y="214" width="100" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="450.0" y="230.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">head of L3</text>
+<line x1="500" y1="227" x2="548" y2="210" stroke="#c89b3c" stroke-width="1.2"/>
+<polygon points="548,210 542.4,215.7 540.0,209.1" fill="#c89b3c"/>
+<rect x="400" y="248" width="100" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="450.0" y="264.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">head of L4</text>
+<line x1="500" y1="261" x2="548" y2="210" stroke="#c89b3c" stroke-width="1.2"/>
+<polygon points="548,210 545.6,217.6 540.5,212.9" fill="#c89b3c"/>
+<rect x="550" y="194" width="110" height="34" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="605.0" y="214.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">min-heap</text>
+<line x1="660" y1="211" x2="700" y2="211" stroke="#c89b3c" stroke-width="1.6"/>
+<polygon points="700,211 692.8,214.5 692.8,207.5" fill="#c89b3c"/>
+<text x="704" y="215" font-size="10.0" fill="#1d2733" text-anchor="start" >output</text>
+<text x="400" y="304" font-size="10.0" fill="#c89b3c" text-anchor="start" >Pop the smallest head, push that list's next node.</text>
+</svg>

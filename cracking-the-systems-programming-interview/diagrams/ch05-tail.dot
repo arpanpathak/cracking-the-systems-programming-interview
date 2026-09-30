@@ -1,0 +1,12 @@
+digraph tail {
+  rankdir=LR; nodesep=0.2; forcelabels=true;
+  node [shape=record fontname="Menlo" fontsize=10];
+  dummy [label="{dummy: 0|<n>next}" fillcolor="#e9eef3" style="filled,dashed"];
+  m1 [label="{1|<n>next}"]; m2 [label="{tail: 1|<n>next}" fillcolor="#fdf6e8"];
+  gap [label="" shape=point width=0.08];
+  l [label="{left: 4|<n>}" ]; l5 [label="5"];
+  r [label="{right: 3|<n>}" fillcolor="#fbe3d6"]; r4 [label="4"];
+  dummy:n -> m1; m1:n -> m2; m2:n -> gap [style=dashed label=" next pick"];
+  l:n -> l5; r:n -> r4;
+  gap -> r [style=dotted color="#d9622b" label=" smaller head"];
+}

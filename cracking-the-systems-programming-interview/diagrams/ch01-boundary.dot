@@ -1,0 +1,11 @@
+digraph boundary {
+  rankdir=LR; nodesep=0.3; ranksep=0.6;
+  node [fontsize=10 shape=box];
+  subgraph cluster_out { label="outside: untrusted"; style="rounded,dashed"; color="#d9622b"; fontname="Helvetica";
+    a [label="\"create triton 4\"\n(&str from a user)"]; b [label="0u32\n(from a config file)"]; }
+  gate [label="parse / try_from\n(the only place\nchecks happen)" shape=box style="rounded,filled" fillcolor="#fdf1e4" penwidth=2];
+  subgraph cluster_in { label="inside: every value is valid"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    c [label="Command::Create {\n  name, gpus: GpuCount(4) }" fillcolor="#e3f1ea" fontname="Menlo"]; d [label="fn schedule(gpus: GpuCount)\nno range check needed" fillcolor="#e3f1ea" fontname="Menlo"]; c -> d; }
+  err [label="Err(CommandError::InvalidGpuCount(\"0\"))" fillcolor="#fbe3d6" fontname="Menlo"];
+  a -> gate; b -> gate; gate -> c [label=" Ok"]; gate -> err [label=" Err"];
+}

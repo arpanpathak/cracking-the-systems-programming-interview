@@ -1,0 +1,13 @@
+digraph cursor {
+  rankdir=LR; nodesep=0.05;
+  node [shape=record fontname="Menlo" fontsize=10 style="filled" fillcolor="#eef3f7"];
+  file [label="{<a>First Line \\n|Second Line \\n|Third Line \\n}|{<b>4\\n|5\\n|6\\n}|{<c>7\\n|8\\n|9\\n}|{10\\n|11\\n|12\\n}|{<e>13\\n}" fillcolor="#fdf6e8"];
+  buf [label="BufReader buffer: 8 KiB read ahead from the cursor, far past the page" shape=box style="rounded,dashed,filled" fillcolor="#fbe3d6" fontname="Helvetica"];
+  c0 [label="cursor = 0" shape=plaintext style="" fontcolor="#2f7f86"];
+  c1 [label="next_cursor = 35\n(sum of bytes_read)" shape=plaintext style="" fontcolor="#2f7f86"];
+  c4 [label="last page:\nfill_buf() is empty,\nnext_cursor = None" shape=plaintext style="" fontcolor="#d9622b"];
+  c0 -> file:a [color="#2f7f86"];
+  c1 -> file:b [color="#2f7f86"];
+  c4 -> file:e [color="#d9622b"];
+  buf -> file:a [style=dashed arrowhead=none color="#d9622b"];
+}

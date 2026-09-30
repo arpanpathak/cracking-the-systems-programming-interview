@@ -1,0 +1,17 @@
+digraph choose {
+  node [shape=box];
+  q1 [label="Does the value need\nmore than one owner?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  q2 [label="Is it recursive or\ntoo big for the stack?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  q3 [label="Do the owners live on\nmore than one thread?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  q4 [label="Must owners mutate it?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  q5 [label="Must owners mutate it?" shape=diamond style="filled" fillcolor="#fdf1e4" fontname="Helvetica"];
+  plain [label="T or &T / &mut T"]; box [label="Box<T>"];
+  rc [label="Rc<T>"]; rcc [label="Rc<RefCell<T>>"];
+  arc [label="Arc<T>"]; arcm [label="Arc<Mutex<T>>\nArc<RwLock<T>>\nArc<Atomic*>"];
+  weak [label="Weak<T> for back-links\n(parents, observers)" fillcolor="#e3f1ea"];
+  q1 -> q2 [label=" no"]; q2 -> box [label=" yes"]; q2 -> plain [label=" no"];
+  q1 -> q3 [label=" yes"];
+  q3 -> q4 [label=" no"]; q4 -> rcc [label=" yes"]; q4 -> rc [label=" no"];
+  q3 -> q5 [label=" yes"]; q5 -> arcm [label=" yes"]; q5 -> arc [label=" no"];
+  rc -> weak [style=dashed arrowhead=none]; arc -> weak [style=dashed arrowhead=none];
+}

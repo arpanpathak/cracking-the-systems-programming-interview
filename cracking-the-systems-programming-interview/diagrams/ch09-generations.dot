@@ -1,0 +1,8 @@
+digraph gens {
+  rankdir=LR; nodesep=0.1;
+  node [shape=record fontsize=10];
+  dq [label="{recency: VecDeque&lt;(K, u64)&gt;  front (oldest) ... back (newest)|{<e1>(a, 1)|<e2>(b, 2)|<e3>(a, 3)|<e4>(c, 4)}}"];
+  map [shape=record fillcolor="#fdf6e8" label="{map: HashMap&lt;K, (V, u64)&gt;|a -&gt; (1, 3)|b -&gt; (2, 2)|c -&gt; (3, 4)}"];
+  note [shape=plaintext style="" fontname="Helvetica" label="evict: pop (a, 1): stale, map has a at gen 3, skip\lpop (b, 2): current, remove b\l"];
+  dq -> map [style=invis]; map -> note [style=invis];
+}

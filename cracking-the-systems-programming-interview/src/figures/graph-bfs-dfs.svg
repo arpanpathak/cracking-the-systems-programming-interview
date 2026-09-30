@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330.0" width="760" height="330.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Breadth first uses a queue; depth first uses a stack</text>
+<line x1="74.14485500374334" y1="140.5700966641711" x2="135.0230947019188" y2="99.98460353205412" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="135.0230947019188,99.98460353205412 131.0,106.9 127.1,101.1" fill="#1d2733"/>
+<line x1="74.14485500374334" y1="159.4299033358289" x2="135.0230947019188" y2="200.0153964679459" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="135.0230947019188,200.0153964679459 127.1,198.9 131.0,193.1" fill="#1d2733"/>
+<line x1="150.0" y1="107.0" x2="150.0" y2="192.0" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="150.0,192.0 146.5,184.8 153.5,184.8" fill="#1d2733"/>
+<line x1="164.57737973711326" y1="98.74642784226795" x2="234.5651273371742" y2="140.73907640230453" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="234.5651273371742,140.73907640230453 226.6,140.0 230.2,134.0" fill="#1d2733"/>
+<line x1="164.57737973711326" y1="201.25357215773204" x2="234.5651273371742" y2="159.26092359769547" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="234.5651273371742,159.26092359769547 230.2,166.0 226.6,160.0" fill="#1d2733"/>
+<rect x="43" y="133" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="60" y="154" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<rect x="133" y="73" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="150" y="94" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">B</text>
+<rect x="133" y="193" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="150" y="214" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">C</text>
+<rect x="233" y="133" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="250" y="154" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">D</text>
+<text x="300" y="50" font-size="11.0" fill="#2f7f86" text-anchor="start"  font-weight="bold">bfs_vec from A (queue: take from the front)</text>
+<text x="300" y="72" font-size="10.0" fill="#5b6b7c" text-anchor="start" >step</text>
+<text x="390" y="72" font-size="10.0" fill="#5b6b7c" text-anchor="start" >queue after</text>
+<text x="530" y="72" font-size="10.0" fill="#5b6b7c" text-anchor="start" >visit order</text>
+<text x="300" y="90" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">start</text>
+<text x="390" y="90" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<text x="530" y="90" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve"></text>
+<text x="300" y="110" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take A</text>
+<text x="390" y="110" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">B C</text>
+<text x="530" y="110" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<text x="300" y="130" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take B</text>
+<text x="390" y="130" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">C D</text>
+<text x="530" y="130" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A B</text>
+<text x="300" y="150" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take C</text>
+<text x="390" y="150" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">D</text>
+<text x="530" y="150" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A B C</text>
+<text x="300" y="170" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take D</text>
+<text x="390" y="170" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">empty</text>
+<text x="530" y="170" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A B C D</text>
+<text x="300" y="200" font-size="11.0" fill="#d9622b" text-anchor="start"  font-weight="bold">dfs_vec from A (stack: take from the top, the right end)</text>
+<text x="300" y="222" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">start</text>
+<text x="390" y="222" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<text x="530" y="222" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve"></text>
+<text x="300" y="237" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take A</text>
+<text x="390" y="237" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">B C</text>
+<text x="530" y="237" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<text x="300" y="252" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take C</text>
+<text x="390" y="252" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">B D</text>
+<text x="530" y="252" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A C</text>
+<text x="300" y="267" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take D</text>
+<text x="390" y="267" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">B</text>
+<text x="530" y="267" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A C D</text>
+<text x="300" y="282" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take B</text>
+<text x="390" y="282" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">C D</text>
+<text x="530" y="282" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">A C D B</text>
+<text x="300" y="297" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take D</text>
+<text x="390" y="297" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">C</text>
+<text x="530" y="297" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">seen: skip</text>
+<text x="300" y="312" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take C</text>
+<text x="390" y="312" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">empty</text>
+<text x="530" y="312" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">seen: skip</text>
+<text x="20" y="230" font-size="10.0" fill="#2f7f86" text-anchor="start" >BFS visits A, B, C, D:</text>
+<text x="20" y="246" font-size="10.0" fill="#2f7f86" text-anchor="start" >nodes one edge away, then two.</text>
+<text x="20" y="270" font-size="10.0" fill="#d9622b" text-anchor="start" >DFS visits A, C, D, B:</text>
+<text x="20" y="286" font-size="10.0" fill="#d9622b" text-anchor="start" >it follows the last neighbor pushed</text>
+<text x="20" y="302" font-size="10.0" fill="#d9622b" text-anchor="start" >as deep as it can go first.</text>
+</svg>

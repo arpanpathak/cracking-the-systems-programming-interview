@@ -1,0 +1,10 @@
+digraph ring {
+  rankdir=LR; nodesep=0.05;
+  node [shape=record fontname="Menlo" fontsize=10];
+  slots [label="<s0>[0] free|<s1>[1] 17|<s2>[2] 18|<s3>[3] 19|<s4>[4] free|<s5>[5] free|<s6>[6] free|<s7>[7] free" fillcolor="#eef3f7"];
+  h [label="head = 9\nindex 9 % 8 = 1\nwritten by consumer" shape=box style="rounded,filled" fillcolor="#e3f1ea" fontname="Helvetica"];
+  t [label="tail = 12\nindex 12 % 8 = 4\nwritten by producer" shape=box style="rounded,filled" fillcolor="#fdf6e8" fontname="Helvetica"];
+  h -> slots:s1 [color="#2f7f86"]; t -> slots:s4 [color="#c89b3c"];
+  len [label="len = tail - head = 3\nfull when len == N (8)" shape=plaintext style="" fontname="Helvetica"];
+  slots:s7 -> len [style=invis];
+}

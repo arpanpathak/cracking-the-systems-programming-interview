@@ -1,0 +1,26 @@
+digraph fib {
+  rankdir=TB; nodesep=0.12; ranksep=0.3;
+  node [shape=box fontsize=10 margin="0.06,0.03"];
+  n1 [label="fib(5)" fillcolor="#eef3f7"];
+  n2 [label="fib(4)" fillcolor="#eef3f7"];
+  n3 [label="fib(3)" fillcolor="#eef3f7"];
+  n4 [label="fib(2)" fillcolor="#eef3f7"];
+  n5 [label="fib(1)" fillcolor="#ffffff"];
+  n6 [label="fib(0)" fillcolor="#ffffff"];
+  n4 -> n5; n4 -> n6;
+  n7 [label="fib(1)" fillcolor="#ffffff"];
+  n3 -> n4; n3 -> n7;
+  n8 [label="fib(2)" fillcolor="#fbe3d6"];
+  n9 [label="fib(1)" fillcolor="#ffffff"];
+  n10 [label="fib(0)" fillcolor="#ffffff"];
+  n8 -> n9; n8 -> n10;
+  n2 -> n3; n2 -> n8;
+  n11 [label="fib(3)" fillcolor="#fbe3d6"];
+  n12 [label="fib(2)" fillcolor="#fbe3d6"];
+  n13 [label="fib(1)" fillcolor="#ffffff"];
+  n14 [label="fib(0)" fillcolor="#ffffff"];
+  n12 -> n13; n12 -> n14;
+  n15 [label="fib(1)" fillcolor="#ffffff"];
+  n11 -> n12; n11 -> n15;
+  n1 -> n2; n1 -> n11;
+}

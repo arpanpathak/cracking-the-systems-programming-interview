@@ -1,0 +1,9 @@
+digraph colors {
+  rankdir=LR; nodesep=0.4;
+  node [shape=circle fixedsize=true width=0.55 fontname="Menlo"];
+  A [label="A" fillcolor="#f6d36b"]; B [label="B" fillcolor="#f6d36b"]; C [label="C" fillcolor="#f6d36b"]; D [label="D" fillcolor="#9fe3c8"]; E [label="E" fillcolor="#eef3f7"];
+  A -> B; B -> C; B -> D;
+  C -> A [color="#d9622b" penwidth=2.4 label=" back edge:\n Visiting -> Visiting" fontcolor="#d9622b"];
+  legend [shape=plaintext fixedsize=false style="" fontname="Helvetica" fontsize=10 label="yellow: Visiting (on the current DFS path)\lgreen: Done (fully explored)\lgrey: Unvisited\l"];
+  E -> legend [style=invis];
+}

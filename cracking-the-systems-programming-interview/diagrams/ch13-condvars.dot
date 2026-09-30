@@ -1,0 +1,12 @@
+digraph cv {
+  rankdir=LR; nodesep=0.35; ranksep=0.6;
+  node [fontsize=10 shape=box];
+  subgraph cluster_p { label="producers"; style="rounded"; color="#c89b3c"; fontname="Helvetica"; p0 [label="producer 0"]; p1 [label="producer 1"]; }
+  q [shape=record fillcolor="#fdf6e8" label="{Mutex&lt;VecDeque&lt;T&gt;&gt;  capacity 3|{item|item|item}}"];
+  subgraph cluster_c { label="consumers"; style="rounded"; color="#2f7f86"; fontname="Helvetica"; c0 [label="consumer 0"]; c1 [label="consumer 1"]; }
+  nf [label="not_full\n(producers wait here\nwhile len == capacity)" shape=ellipse fillcolor="#fbe3d6"];
+  ne [label="not_empty\n(consumers wait here\nwhile the deque is empty)" shape=ellipse fillcolor="#e3f1ea"];
+  p0 -> q [label=" push"]; p1 -> q; q -> c0 [label=" pop"]; q -> c1;
+  c0 -> nf [style=dashed label=" notify_one after pop" color="#d9622b" fontcolor="#d9622b"];
+  p0 -> ne [style=dashed label=" notify_one after push" color="#2f7f86" fontcolor="#2f7f86"];
+}

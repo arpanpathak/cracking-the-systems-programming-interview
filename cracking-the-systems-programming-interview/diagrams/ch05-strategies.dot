@@ -1,0 +1,13 @@
+digraph strategies {
+  rankdir=LR; nodesep=0.25; ranksep=0.5; compound=true;
+  node [shape=box fontsize=10];
+  subgraph cluster_seq { label="one at a time: O(kN)"; style="rounded"; color="#d9622b"; fontname="Helvetica";
+    s1 [label="L1"]; s2 [label="+L2"]; s3 [label="+L3"]; s4 [label="+L4"]; s1 -> s2 -> s3 -> s4; }
+  subgraph cluster_pair { label="pairwise rounds: O(N log k)"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
+    p1 [label="L1"]; p2 [label="L2"]; p3 [label="L3"]; p4 [label="L4"]; p12 [label="L12"]; p34 [label="L34"]; pall [label="L1234" fillcolor="#e3f1ea"];
+    p1 -> p12; p2 -> p12; p3 -> p34; p4 -> p34; p12 -> pall; p34 -> pall; }
+  subgraph cluster_heap { label="k-way heap: O(N log k)"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    h [label="BinaryHeap\n(head value, list index)\nsize <= k" fillcolor="#fdf6e8"]; out [label="output" fillcolor="#e3f1ea"];
+    h1 [label="L1 head"]; h2 [label="L2 head"]; h3 [label="L3 head"]; h4 [label="L4 head"];
+    h1 -> h; h2 -> h; h3 -> h; h4 -> h; h -> out [label=" pop min"]; }
+}

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300.0" width="760" height="300.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Where the nodes live: one block for the arena, one allocation per node for the Rc list</text>
+<text x="20" y="50" font-size="11.0" fill="#5b6b7c" text-anchor="start" >arena: Vec&lt;Node&lt;u64, u64&gt;&gt;, 48 bytes per node, side by side</text>
+<rect x="20" y="60" width="90" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="65.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node 0</text>
+<rect x="110" y="60" width="90" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="155.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node 1</text>
+<rect x="200" y="60" width="90" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="245.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node 2</text>
+<rect x="290" y="60" width="90" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="335.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node 3</text>
+<rect x="380" y="60" width="90" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="425.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node 4</text>
+<rect x="470" y="60" width="90" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="515.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node 5</text>
+<text x="570" y="80" font-size="10.0" fill="#5b6b7c" text-anchor="start" >one allocation, grown rarely</text>
+<text x="20" y="128" font-size="11.0" fill="#5b6b7c" text-anchor="start" >Rc list: each node is a separate heap block of 56 bytes</text>
+<rect x="20" y="138" width="170" height="20" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="151.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">strong count  8</text>
+<rect x="20" y="158" width="170" height="20" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="171.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">weak count  8</text>
+<rect x="20" y="178" width="170" height="20" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="191.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">RefCell borrow flag  8</text>
+<rect x="20" y="198" width="170" height="20" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="211.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">key  8</text>
+<rect x="20" y="218" width="170" height="20" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="231.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">value  8</text>
+<rect x="20" y="238" width="170" height="20" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="251.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">prev: Weak  8</text>
+<rect x="20" y="258" width="170" height="20" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="271.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">next: Option&lt;Rc&gt;  8</text>
+<text x="200" y="152" font-size="9.0" fill="#c89b3c" text-anchor="start" >Rc and RefCell</text>
+<text x="200" y="164" font-size="9.0" fill="#c89b3c" text-anchor="start" >bookkeeping</text>
+<rect x="300" y="150" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="330.0" y="166.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node</text>
+<rect x="440" y="200" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="470.0" y="216.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node</text>
+<rect x="360" y="250" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="390.0" y="266.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node</text>
+<rect x="560" y="160" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="590.0" y="176.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node</text>
+<rect x="620" y="230" width="60" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="650.0" y="246.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">node</text>
+<line x1="360" y1="163" x2="440" y2="205" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="440,205 432.0,204.7 435.2,198.6" fill="#1d2733"/>
+<line x1="500" y1="213" x2="420" y2="255" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="420,255 424.8,248.6 428.0,254.7" fill="#1d2733"/>
+<line x1="420" y1="263" x2="560" y2="173" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="560,173 555.8,179.8 552.1,174.0" fill="#1d2733"/>
+<line x1="590" y1="186" x2="620" y2="235" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="620,235 613.3,230.7 619.2,227.0" fill="#1d2733"/>
+<text x="300" y="292" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Blocks sit wherever the allocator put them. A miss frees one and allocates another.</text>
+</svg>

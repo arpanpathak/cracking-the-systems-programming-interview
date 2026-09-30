@@ -1,0 +1,12 @@
+digraph heaps {
+  rankdir=TB; nodesep=0.25;
+  node [shape=circle fixedsize=true width=0.42 fontname="Menlo"];
+  subgraph cluster_low { label="low: BinaryHeap<i32>  (max-heap, the smaller half)"; style="rounded,filled"; fillcolor="#fdf6e8"; color="#c89b3c"; fontname="Menlo";
+    l3 [label="3" fillcolor="#e8c56b" penwidth=2.5]; l2 [label="2"]; l1 [label="1"]; l0a [label="0"]; l0b [label="0"]; l0c [label="0"];
+    l3 -> l2; l3 -> l1; l2 -> l0a; l2 -> l0b; l1 -> l0c; }
+  subgraph cluster_high { label="high: BinaryHeap<Reverse<i32>>  (min-heap, the larger half)"; style="rounded,filled"; fillcolor="#e3f1ea"; color="#2f7f86"; fontname="Menlo";
+    h5 [label="5" fillcolor="#9fe3c8" penwidth=2.5]; h6a [label="6"]; h6b [label="6"]; h6c [label="6"]; h10 [label="10"];
+    h5 -> h6a; h5 -> h6b; h6a -> h6c; h6a -> h10; }
+  m [label="odd count (11):\nlow has one more,\nmedian = low.peek() = 3" shape=box fixedsize=false width=0 fontname="Helvetica" fillcolor="#ffffff"];
+  l3 -> m [style=dashed color="#d9622b"];
+}

@@ -1,0 +1,10 @@
+digraph rc {
+  rankdir=LR; nodesep=0.3; ranksep=0.6;
+  node [fontsize=10];
+  subgraph cluster_stack { label="stack"; style="rounded"; color="#5b6b7c"; fontname="Helvetica";
+    b [shape=box label="b: Box<Expr>" fontname="Menlo"]; r1 [shape=box label="counter: Rc<RefCell<i32>>" fontname="Menlo"]; r2 [shape=box label="alias: Rc<RefCell<i32>>" fontname="Menlo"]; w [shape=box label="weak: Weak<..>" fontname="Menlo"]; }
+  subgraph cluster_heap { label="heap"; style="rounded"; color="#c89b3c"; fontname="Helvetica";
+    bh [shape=record label="{Expr value}" fillcolor="#eef3f7"];
+    rh [shape=record label="{strong: 2|weak: 1|RefCell borrow flag: 0|value: 11}" fillcolor="#fdf6e8" fontname="Menlo"]; }
+  b -> bh [label=" owns"]; r1 -> rh [label=" shares" color="#2f7f86"]; r2 -> rh [color="#2f7f86"]; w -> rh [style=dashed label=" does not keep alive"];
+}

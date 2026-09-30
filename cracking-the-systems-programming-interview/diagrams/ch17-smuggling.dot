@@ -1,0 +1,11 @@
+digraph smuggle {
+  rankdir=TB; nodesep=0.4; ranksep=0.35;
+  node [fontsize=10 shape=box];
+  req [shape=record fontname="Menlo" fillcolor="#fdf6e8" label="{one TCP message|POST / ...\lContent-Length: 44\lTransfer-Encoding: chunked\l\l0\l\lGET /admin HTTP/1.1 ...\l}"];
+  fe [label="front-end proxy\nframes by Content-Length:\none request"];
+  be [label="back-end server\nframes by chunked:\nPOST ends at \"0\"" fillcolor="#fbe3d6"];
+  hid [label="\"GET /admin\" is read as\nthe start of the NEXT request,\nwhich the proxy never checked" fillcolor="#fbe3d6"];
+  req -> fe -> be -> hid; {rank=same; fe; fix}
+  fix [label="parse_body: both headers present\n-> 400, connection closed" fillcolor="#e3f1ea"];
+  req -> fix [style=dashed color="#2f7f86"];
+}

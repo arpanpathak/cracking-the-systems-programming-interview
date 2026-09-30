@@ -1,0 +1,11 @@
+digraph q {
+  rankdir=TB; nodesep=0.4; ranksep=0.35;
+  node [fontsize=10 shape=box];
+  expr [label="let text = fs::read_to_string(path)?;" fontname="Menlo" fillcolor="#fdf6e8"];
+  res [label="read_to_string returns\nResult<String, io::Error>" ];
+  ok [label="Ok(s)\n? unwraps it:\ntext = s, continue" fillcolor="#e3f1ea"];
+  err [label="Err(e)\n? returns Err(e) from\nthe current function now" fillcolor="#fbe3d6"];
+  expr -> res; res -> ok [label=" success"]; res -> err [label=" failure"];
+  note [shape=note fillcolor="#ffffff" fontname="Helvetica" label="? only works inside a function that\lreturns Result (or Option), such as\lfn main() -> io::Result<()>\l"];
+  err -> note [style=invis];
+}

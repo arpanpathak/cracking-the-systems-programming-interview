@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 260.0" width="760" height="260.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Release and acquire: what one thread wrote before releasing, the next sees after acquiring</text>
+<text x="150" y="52" font-size="11.0" fill="#2f7f86" text-anchor="middle"  font-weight="bold">thread A</text>
+<text x="560" y="52" font-size="11.0" fill="#d9622b" text-anchor="middle"  font-weight="bold">thread B</text>
+<rect x="40" y="64" width="230" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="155.0" y="81.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">lock: CAS false to true (Acquire)</text>
+<rect x="40" y="104" width="230" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="155.0" y="121.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">*value += 1</text>
+<rect x="40" y="144" width="230" height="28" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="155.0" y="161.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">unlock: store false (Release)</text>
+<rect x="450" y="64" width="230" height="28" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="565.0" y="81.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">spin: load is true, wait</text>
+<rect x="450" y="104" width="230" height="28" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="565.0" y="121.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">spin: load is true, wait</text>
+<rect x="450" y="144" width="230" height="28" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="565.0" y="161.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">CAS false to true (Acquire)</text>
+<rect x="450" y="184" width="230" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="565.0" y="201.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">reads *value: sees + 1</text>
+<line x1="270" y1="158" x2="450" y2="158" stroke="#c89b3c" stroke-width="2"/>
+<polygon points="450,158 442.8,161.5 442.8,154.5" fill="#c89b3c"/>
+<text x="360" y="150" font-size="10.0" fill="#c89b3c" text-anchor="middle" >synchronizes with</text>
+<text x="20" y="236" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Release keeps A's earlier writes from moving after the unlock. Acquire keeps B's later reads from moving before the lock.</text>
+<text x="20" y="252" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Together they guarantee that B sees the increment.</text>
+</svg>

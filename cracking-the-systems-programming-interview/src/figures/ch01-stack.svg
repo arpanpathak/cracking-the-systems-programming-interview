@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" width="640" height="260" font-family="Helvetica, Arial, sans-serif">
+<text x="20" y="22" font-size="13" font-weight="bold" fill="#1d2733">The stack while recursive(4) computes recursive(1) at its deepest point</text>
+<rect x="20" y="220" width="260" height="30" rx="3" fill="#eef3f7" stroke="#1d2733"/>
+<text x="30" y="239" font-size="11" font-family="Menlo, monospace">main</text>
+<rect x="20" y="184" width="260" height="30" rx="3" fill="#eef3f7" stroke="#1d2733"/>
+<text x="30" y="203" font-size="11" font-family="Menlo, monospace">timed("recursive", 4, ...)</text>
+<rect x="20" y="148" width="260" height="30" rx="3" fill="#eef3f7" stroke="#1d2733"/>
+<text x="30" y="167" font-size="11" font-family="Menlo, monospace">recursive(4)</text>
+<rect x="20" y="112" width="260" height="30" rx="3" fill="#eef3f7" stroke="#1d2733"/>
+<text x="30" y="131" font-size="11" font-family="Menlo, monospace">recursive(3)</text>
+<rect x="20" y="76" width="260" height="30" rx="3" fill="#eef3f7" stroke="#1d2733"/>
+<text x="30" y="95" font-size="11" font-family="Menlo, monospace">recursive(2)</text>
+<rect x="20" y="40" width="260" height="30" rx="3" fill="#fdf6e8" stroke="#1d2733"/>
+<text x="30" y="59" font-size="11" font-family="Menlo, monospace">recursive(1)</text>
+<text x="300" y="60" font-size="11" fill="#5b6b7c">top of the stack: the running call</text>
+<text x="300" y="230" font-size="11" fill="#5b6b7c">bottom: the first call</text>
+<text x="300" y="130" font-size="11" fill="#1d2733">Each call gets a frame for n and a return address.</text>
+<text x="300" y="148" font-size="11" fill="#1d2733">The stack is n frames deep, even though the</text>
+<text x="300" y="166" font-size="11" fill="#1d2733">total number of calls grows much faster.</text>
+</svg>

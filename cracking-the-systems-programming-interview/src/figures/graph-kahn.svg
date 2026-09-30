@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270.0" width="760" height="270.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Kahn's algorithm: take a node with no remaining prerequisites, then cross it off</text>
+<line x1="152" y1="111.0" x2="208" y2="79.0" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="208,79.0 203.5,85.6 200.0,79.6" fill="#1d2733"/>
+<line x1="152" y1="129.0" x2="208" y2="161.0" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="208,161.0 200.0,160.4 203.5,154.4" fill="#1d2733"/>
+<line x1="332" y1="79.0" x2="388" y2="111.0" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="388,111.0 380.0,110.4 383.5,104.4" fill="#1d2733"/>
+<line x1="332" y1="161.0" x2="388" y2="129.0" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="388,129.0 383.5,135.6 380.0,129.6" fill="#1d2733"/>
+<rect x="30" y="104" width="120" height="32" rx="16" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="90" y="124" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">datastructs</text>
+<rect x="210" y="54" width="120" height="32" rx="16" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="270" y="74" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">algos</text>
+<rect x="210" y="154" width="120" height="32" rx="16" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="270" y="174" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">os</text>
+<rect x="390" y="104" width="120" height="32" rx="16" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="450" y="124" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">compilers</text>
+<text x="90" y="152" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >indegree 0</text>
+<text x="270" y="102" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >indegree 1</text>
+<text x="270" y="202" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >indegree 1</text>
+<text x="450" y="152" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >indegree 2</text>
+<text x="560" y="58" font-size="10.0" fill="#5b6b7c" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">take         indegrees after</text>
+<text x="560" y="80" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">datastructs  algos 0, os 0</text>
+<text x="560" y="100" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">algos        compilers 1</text>
+<text x="560" y="120" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">os           compilers 0</text>
+<text x="560" y="140" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">compilers    </text>
+<text x="20" y="240" font-size="10.0" fill="#5b6b7c" text-anchor="start" >An arrow points from a course to a course that depends on it. The indegree counts the arrows coming in.</text>
+<text x="20" y="256" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Order: datastructs, algos, os, compilers. If a cycle existed, its nodes would never reach indegree 0.</text>
+</svg>

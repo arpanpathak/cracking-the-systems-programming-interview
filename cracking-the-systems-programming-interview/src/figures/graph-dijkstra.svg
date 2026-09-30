@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300.0" width="760" height="300.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Dijkstra's algorithm on the graph in dijkstra.rs, starting at A</text>
+<line x1="75.20526224699857" y1="122.39736887650072" x2="163.90031056200152" y2="78.04984471899924" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="163.90031056200152,78.04984471899924 159.0,84.4 155.9,78.2" fill="#1d2733"/>
+<text x="111.55278640450004" y="96.22360679774998" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">4</text>
+<line x1="75.20526224699857" y1="137.6026311234993" x2="163.90031056200152" y2="181.95015528100075" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="163.90031056200152,181.95015528100075 155.9,181.8 159.0,175.6" fill="#1d2733"/>
+<text x="111.55278640450004" y="171.77639320225" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<line x1="180.0" y1="173.0" x2="180.0" y2="88.0" stroke="#2f7f86" stroke-width="2.2"/>
+<polygon points="180.0,88.0 183.5,95.2 176.5,95.2" fill="#2f7f86"/>
+<text x="170.0" y="134.5" font-size="11.0" fill="#2f7f86" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<line x1="195.20526224699856" y1="77.60263112349928" x2="283.9003105620015" y2="121.95015528100076" stroke="#2f7f86" stroke-width="2.2"/>
+<polygon points="283.9003105620015,121.95015528100076 275.9,121.8 279.0,115.6" fill="#2f7f86"/>
+<text x="247.5527864045" y="95.77639320225002" font-size="11.0" fill="#2f7f86" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<line x1="195.20526224699856" y1="182.3973688765007" x2="283.9003105620015" y2="138.04984471899925" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="283.9003105620015,138.04984471899925 279.0,144.4 275.9,138.2" fill="#1d2733"/>
+<text x="247.5527864045" y="172.22360679775" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">5</text>
+<rect x="43" y="113" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="60" y="134" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<rect x="163" y="53" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="180" y="74" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">B</text>
+<rect x="163" y="173" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="180" y="194" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">C</text>
+<rect x="283" y="113" width="34" height="34" rx="17" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="300" y="134" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">D</text>
+<text x="20" y="250" font-size="10.0" fill="#5b6b7c" text-anchor="start" >A to B directly costs 4.</text>
+<text x="20" y="266" font-size="10.0" fill="#5b6b7c" text-anchor="start" >A to C to B costs 1 + 2 = 3, so the</text>
+<text x="20" y="282" font-size="10.0" fill="#5b6b7c" text-anchor="start" >direct entry (4, B) becomes stale.</text>
+<text x="370" y="50" font-size="10.0" fill="#5b6b7c" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">pop       dist after              heap after (smallest first)</text>
+<rect x="365" y="60" width="385" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+<text x="370" y="74" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">start     A0                      (0,A)</text>
+<rect x="365" y="82" width="385" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+<text x="370" y="96" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">(0,A)     A0 B4 C1                (1,C) (4,B)</text>
+<rect x="365" y="104" width="385" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+<text x="370" y="118" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">(1,C)     A0 B3 C1 D6             (3,B) (4,B) (6,D)</text>
+<rect x="365" y="126" width="385" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+<text x="370" y="140" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">(3,B)     A0 B3 C1 D4             (4,B) (4,D) (6,D)</text>
+<rect x="365" y="148" width="385" height="20" rx="0" fill="#f1f3f5" stroke="none" stroke-width="1.4"/>
+<text x="370" y="162" font-size="10.0" fill="#d9622b" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">(4,B)     stale: 4 &gt; 3            (4,D) (6,D)</text>
+<rect x="365" y="170" width="385" height="20" rx="0" fill="#ffffff" stroke="none" stroke-width="1.4"/>
+<text x="370" y="184" font-size="10.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">(4,D)     D has no edges          (6,D)</text>
+<rect x="365" y="192" width="385" height="20" rx="0" fill="#f1f3f5" stroke="none" stroke-width="1.4"/>
+<text x="370" y="206" font-size="10.0" fill="#d9622b" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">(6,D)     stale: 6 &gt; 4            empty</text>
+<text x="370" y="250" font-size="10.0" fill="#1d2733" text-anchor="start" >Result: A 0, C 1, B 3, D 4. Each pop takes the smallest</text>
+<text x="370" y="266" font-size="10.0" fill="#1d2733" text-anchor="start" >cost in the heap, so the first time a node is popped with</text>
+<text x="370" y="282" font-size="10.0" fill="#1d2733" text-anchor="start" >its recorded cost, that cost is final.</text>
+</svg>

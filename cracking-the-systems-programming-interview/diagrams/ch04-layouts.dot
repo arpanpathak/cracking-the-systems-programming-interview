@@ -1,0 +1,12 @@
+digraph layouts {
+  rankdir=LR; nodesep=0.3; ranksep=0.35;
+  node [shape=record fontname="Menlo" fontsize=10];
+  subgraph cluster_a { label="Option<Box<Node<T>>>   (lists::boxed)"; style="rounded"; color="#5b6b7c"; fontname="Menlo";
+    ah [label="head: 8 B ptr" fillcolor="#fdf6e8"];
+    a1 [label="{value: 30|<n>next}"]; a2 [label="{value: 20|<n>next}"]; a3 [label="{value: 10|<n>next: None}"];
+    ah -> a1; a1:n -> a2; a2:n -> a3; }
+  subgraph cluster_b { label="enum ListNode<T> { Empty, Next(T, Box<ListNode<T>>) }   (lists::enum_node)"; style="rounded"; color="#c89b3c"; fontname="Menlo";
+    bh [label="{head: Next(30)|<n>Box}" fillcolor="#fdf6e8"];
+    b1 [label="{Next(20)|<n>Box}"]; b2 [label="{Next(10)|<n>Box}"]; b3 [label="Empty" fillcolor="#fbe3d6"];
+    bh:n -> b1; b1:n -> b2; b2:n -> b3; }
+}

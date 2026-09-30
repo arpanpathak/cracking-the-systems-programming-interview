@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 306.0" width="760" height="306.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">A virtual address is a page number and an offset. The page table maps pages to physical frames</text>
+<text x="20" y="52" font-size="10.0" fill="#5b6b7c" text-anchor="start" >address 0x1234 with 4096-byte pages (12 offset bits)</text>
+<rect x="20" y="60" width="160" height="30" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="100.0" y="78.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">page 0x1</text>
+<rect x="180" y="60" width="160" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="260.0" y="78.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">offset 0x234</text>
+<text x="100" y="106" font-size="10.0" fill="#5b6b7c" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">0x1234 / 4096 = 1</text>
+<text x="260" y="106" font-size="10.0" fill="#5b6b7c" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">0x1234 % 4096 = 0x234</text>
+<text x="20" y="140" font-size="10.0" fill="#5b6b7c" text-anchor="start" >page table of one process</text>
+<rect x="20" y="150" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="60.0" y="166.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">page 0</text>
+<rect x="100" y="150" width="90" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="145.0" y="166.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">frame 7</text>
+<text x="200" y="167" font-size="10.0" fill="#1d2733" text-anchor="start" >present, read-only</text>
+<rect x="20" y="180" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="60.0" y="196.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">page 1</text>
+<rect x="100" y="180" width="90" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="145.0" y="196.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">frame 3</text>
+<text x="200" y="197" font-size="10.0" fill="#1d2733" text-anchor="start" >present, writable</text>
+<rect x="20" y="210" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="60.0" y="226.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">page 2</text>
+<rect x="100" y="210" width="90" height="26" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="145.0" y="226.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">on disk</text>
+<text x="200" y="227" font-size="10.0" fill="#1d2733" text-anchor="start" >not present</text>
+<rect x="20" y="240" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="60.0" y="256.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">page 3</text>
+<rect x="100" y="240" width="90" height="26" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="145.0" y="256.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">no entry</text>
+<text x="200" y="257" font-size="10.0" fill="#1d2733" text-anchor="start" >unmapped</text>
+<text x="420" y="60" font-size="11.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Accessing a page raises a page fault when:</text>
+<text x="420" y="88" font-size="10.0" fill="#1d2733" text-anchor="start" >the page has no mapping</text>
+<text x="430" y="104" font-size="10.0" fill="#2f7f86" text-anchor="start" >invalid: the program crashes (SIGSEGV)</text>
+<text x="420" y="130" font-size="10.0" fill="#1d2733" text-anchor="start" >the access breaks the page's permission</text>
+<text x="430" y="146" font-size="10.0" fill="#2f7f86" text-anchor="start" >protection: usually a crash</text>
+<text x="420" y="172" font-size="10.0" fill="#1d2733" text-anchor="start" >the page is mapped but not in memory</text>
+<text x="430" y="188" font-size="10.0" fill="#2f7f86" text-anchor="start" >the kernel loads it, then retries</text>
+<text x="420" y="214" font-size="10.0" fill="#1d2733" text-anchor="start" >the kernel must fix the entry first</text>
+<text x="430" y="230" font-size="10.0" fill="#2f7f86" text-anchor="start" >minor: e.g. copy-on-write, first touch</text>
+<text x="20" y="298" font-size="10.0" fill="#5b6b7c" text-anchor="start" >A major fault reads from disk and costs milliseconds. A minor fault only updates tables and costs microseconds.</text>
+</svg>

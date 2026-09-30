@@ -1,0 +1,8 @@
+digraph bump {
+  rankdir=LR; nodesep=0.05;
+  node [shape=record fontname="Menlo" fontsize=10];
+  buf [label="{0|A}|{1..15|padding (15 B)}|{16..19|B B B B}|{20..63|free}"
+       fillcolor="#eef3f7"];
+  note [shape=plaintext style="" fontname="Helvetica" fontsize=10 label="alloc(1, 8) -> [0, 1)\lalloc(4, 16): align_up(1, 16) = 16 -> [16, 20)\lused() = 20, remaining() = 44\l"];
+  buf -> note [style=invis];
+}

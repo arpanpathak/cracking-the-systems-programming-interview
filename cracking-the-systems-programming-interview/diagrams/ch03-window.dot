@@ -1,0 +1,9 @@
+digraph window {
+  rankdir=LR; nodesep=0.02;
+  node [shape=record fontname="Menlo" fontsize=12];
+  s [label="<0>p\n0|<1>w\n1|<2>w\n2|<3>k\n3|<4>e\n4|<5>w\n5" fillcolor="#eef3f7"];
+  st [label="start = max(start, last_seen['w'] + 1) = 3" shape=plaintext style="" fontcolor="#2f7f86"];
+  en [label="end = 5, window \"kew\", longest = 3" shape=plaintext style="" fontcolor="#d9622b"];
+  st -> s:3 [color="#2f7f86"];
+  en -> s:5 [color="#d9622b"];
+}
