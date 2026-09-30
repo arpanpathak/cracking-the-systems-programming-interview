@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch18.png" alt="Flywheel, the tall robot with a terminal face and an oil can, beside a flywheel driven by a piston labelled poll, with futures marked Ready and Pending parked on a rail">
+<img class="plate" src="art/ch22.png" alt="Flywheel, the robot who polls every future, sleeps when none are ready, beside a flywheel driven by a piston, with futures parked on a rail">
 
 # Async Rust from the executor up
 
@@ -16,11 +16,11 @@ This chapter covers
 
 </div>
 
-Chapter 16's echo server gave every client a thread, and chapter 17 parsed HTTP on top of it. That design works for tens or hundreds of clients. It stops working when a program holds thousands of mostly idle connections.
+Chapter 20's echo server gave every client a thread, and chapter 21 parsed HTTP on top of it. That design works for tens or hundreds of clients. It stops working when a program holds thousands of mostly idle connections.
 
 This chapter builds the runtime that replaces one thread per connection with one thread and many waiting tasks. It starts at the bottom, with the single method a `Future` has, and works up to a client on Tokio.
 
-## 18.1 Why a thread per connection does not scale
+## 22.1 Why a thread per connection does not scale
 
 A spawned thread in Rust is given a stack of 2 MiB by default. The stack stays reserved for as long as the thread lives, including all the time the thread spends parked in `read`. Ten thousand idle connections held as threads reserve about 20 GB of address space before any work happens.
 
@@ -28,18 +28,18 @@ The alternative is to keep one thread and represent each connection as a **futur
 
 A **task** is a future a runtime has taken responsibility for. The runtime will poll the future again when there is a reason to.
 
-A suspended future holds only the values alive across its pause points. An idle connection can be a few hundred bytes instead of two megabytes. Ten thousand of them fit in a few megabytes rather than tens of gigabytes. Figure 18.1 contrasts the two arrangements.
+A suspended future holds only the values alive across its pause points. An idle connection can be a few hundred bytes instead of two megabytes. Ten thousand of them fit in a few megabytes rather than tens of gigabytes. Figure 22.1 contrasts the two arrangements.
 
 <figure>
-<img src="figures/ch18-thread-vs-task.svg" alt="On the left, one thread per connection, each thread reserving a 2 MiB stack. On the right, one worker thread holding thousands of small task state machines.">
-<figcaption><b>Figure 18.1</b> A parked thread keeps its stack. A parked future keeps only the values it needs to resume.</figcaption>
+<img src="figures/ch22-thread-vs-task.svg" alt="On the left, one thread per connection, each thread reserving a 2 MiB stack. On the right, one worker thread holding thousands of small task state machines.">
+<figcaption><b>Figure 22.1</b> A parked thread keeps its stack. A parked future keeps only the values it needs to resume.</figcaption>
 </figure>
 
 The cost of this saving is that waiting has to be written as a state machine. `async` and `.await` are the notation that lets the state machine still look like ordinary code.
 
 You can now work out what a thread-per-connection design costs, and name what a future stores instead.
 
-## 18.2 The contract
+## 22.2 The contract
 
 The chapter starts with the one method a `Future` has. A type that implements `Future` answers a single question: has the work finished?
 
@@ -51,11 +51,11 @@ fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 
 `Pending` carries an obligation. Before returning it, the future must arrange for `cx.waker()` to be called once progress is possible. The waker is a handle the executor gives to the future. Calling it tells the executor that this task should be polled again.
 
-The executor has the matching obligation. It polls the task again after a wake. Until a wake arrives it does not poll the task, and it does not spin. Figure 18.2 draws both sides.
+The executor has the matching obligation. It polls the task again after a wake. Until a wake arrives it does not poll the task, and it does not spin. Figure 22.2 draws both sides.
 
 <figure>
-<img src="figures/ch18-contract.svg" alt="The executor polls the future. Ready returns the value. Pending requires the future to arm the waker; the executor parks, the waker fires, and the executor polls again. A dashed branch shows a dropped waker, where the task never runs again.">
-<figcaption><b>Figure 18.2</b> The poll contract. A dropped waker is the one branch with no error and no panic.</figcaption>
+<img src="figures/ch22-contract.svg" alt="The executor polls the future. Ready returns the value. Pending requires the future to arm the waker; the executor parks, the waker fires, and the executor polls again. A dashed branch shows a dropped waker, where the task never runs again.">
+<figcaption><b>Figure 22.2</b> The poll contract. A dropped waker is the one branch with no error and no panic.</figcaption>
 </figure>
 
 Two rules follow from the contract. Polling a future that is not ready is always safe: it returns `Pending` again, so a spurious wake costs one wasted poll. Forgetting to arrange a wake is not safe: the task returns `Pending`, nothing calls its waker, and the task never runs again.
@@ -66,17 +66,17 @@ Two rules follow from the contract. Polling a future that is not ready is always
 
 </div>
 
-One part of the signature is explained in section 18.6: `poll` takes `Pin<&mut Self>`, not `&mut self`. For now, read it as a promise that the future will not move in memory between polls.
+One part of the signature is explained in section 22.6: `poll` takes `Pin<&mut Self>`, not `&mut self`. For now, read it as a promise that the future will not move in memory between polls.
 
 You can now state what each side of the contract promises, and say which broken promise shows up as a hang.
 
-## 18.3 The smallest executor
+## 22.3 The smallest executor
 
 `.await` does not call the operating system. Something has to call `poll` and decide what a `Pending` result means. That something is an **executor**.
 
-The smallest useful executor drives one future on the current thread. When the future is not ready, it parks the thread rather than polling again. Listing 18.1 is the whole of it.
+The smallest useful executor drives one future on the current thread. When the future is not ready, it parks the thread rather than polling again. Listing 22.1 is the whole of it.
 
-<p class="listing"><b>Listing 18.1</b> <code>block_on</code> and its waker (lines 31 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.1</b> <code>block_on</code> and its waker (lines 31 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:31:56}}
@@ -93,21 +93,21 @@ The smallest useful executor drives one future on the current thread. When the f
 `park` and `unpark` also cover a race the loop depends on. If `unpark` runs before `park`, it leaves a token behind, and the next `park` returns at once.
 
 <figure class="anim">
-<img src="figures/ch18-poll-wake.gif" alt="A robot labelled executor thread polls a future that waits on a timer, and hands it a waker drawn as a bell. The future's ready flag is false, so it stores the bell in its waker slot and returns Pending. The executor parks, and its CPU gauge falls to zero. A timer thread sleeps for 50 ms, sets ready to true, takes the bell out of the slot, and rings it, which unparks the executor. The second poll returns Ready. The run then repeats with the line that stores the waker deleted: the timer finds the slot empty, and the executor stays parked forever.">
-<figcaption><b>Animation 18.1</b> <code>block_on</code> driving a future that waits on a timer, the <code>Delay</code> of section 18.4.2, with the line each thread is running. In the second run the waker is never stored, and the executor never wakes.</figcaption>
+<img src="figures/ch22-poll-wake.gif" alt="A robot labelled executor thread polls a future that waits on a timer, and hands it a waker drawn as a bell. The future's ready flag is false, so it stores the bell in its waker slot and returns Pending. The executor parks, and its CPU gauge falls to zero. A timer thread sleeps for 50 ms, sets ready to true, takes the bell out of the slot, and rings it, which unparks the executor. The second poll returns Ready. The run then repeats with the line that stores the waker deleted: the timer finds the slot empty, and the executor stays parked forever.">
+<figcaption><b>Animation 22.1</b> <code>block_on</code> driving a future that waits on a timer, the <code>Delay</code> of section 22.4.2, with the line each thread is running. In the second run the waker is never stored, and the executor never wakes.</figcaption>
 </figure>
 
 You can now read `block_on` line by line and explain why an idle future costs no CPU.
 
-## 18.4 Two futures written by hand
+## 22.4 Two futures written by hand
 
 Almost every future has one of two shapes. The first re-arms itself and asks to be polled again. The second waits on an event outside the executor, and keeps the waker of whoever is waiting for it.
 
-### 18.4.1 A future that yields to itself
+### 22.4.1 A future that yields to itself
 
 `YieldTimes` returns `Pending` a set number of times before it completes. Nothing is blocking it. It is giving the executor a chance to run other tasks before it finishes its own work.
 
-<p class="listing"><b>Listing 18.2</b> <code>YieldTimes</code>, a future that re-arms itself (lines 58 to 92). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.2</b> <code>YieldTimes</code>, a future that re-arms itself (lines 58 to 92). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:58:92}}
@@ -117,13 +117,13 @@ Almost every future has one of two shapes. The first re-arms itself and asks to 
 
 One line asks for the next poll: `context.waker().wake_by_ref()`. It runs, then `poll` returns `Pending`. This is what `tokio::task::yield_now` does. `YieldTimes` completes with the number of times it yielded. A test can use that count to check that the executor suspended and resumed it.
 
-### 18.4.2 A future that waits on a timer
+### 22.4.2 A future that waits on a timer
 
 `Delay` completes after a wall-clock duration. It is the second shape, and it is the one that looks like real I/O.
 
 Its state is a `ready` flag and an optional stored `Waker`, shared with a background thread through `Arc<Mutex<_>>`.
 
-<p class="listing"><b>Listing 18.3</b> <code>Delay</code> state and constructor (lines 94 to 130). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 94 to 130). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:94:130}}
@@ -131,32 +131,32 @@ Its state is a `ready` flag and an optional stored `Waker`, shared with a backgr
 
 `poll` checks `ready`. While it is false, `poll` stores a clone of the current waker and returns `Pending`.
 
-<p class="listing"><b>Listing 18.4</b> <code>Delay</code> as a future (lines 132 to 144). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 132 to 144). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:132:144}}
 ```
 
-The background thread sleeps, sets `ready`, takes the waker out of the state, releases the lock, and calls `wake()`. Figure 18.3 shows the exchange.
+The background thread sleeps, sets `ready`, takes the waker out of the state, releases the lock, and calls `wake()`. Figure 22.3 shows the exchange.
 
 <figure>
-<img src="figures/ch18-poll-wake.svg" alt="The executor polls Delay, which stores the waker and returns Pending; the executor parks. The timer thread sleeps, sets ready, takes the waker, and wakes it, which unparks the executor, which polls again and gets Ready.">
-<figcaption><b>Figure 18.3</b> One <code>Delay</code> from start to finish. The executor thread sleeps in <code>park</code>, not in <code>poll</code>.</figcaption>
+<img src="figures/ch22-poll-wake.svg" alt="The executor polls Delay, which stores the waker and returns Pending; the executor parks. The timer thread sleeps, sets ready, takes the waker, and wakes it, which unparks the executor, which polls again and gets Ready.">
+<figcaption><b>Figure 22.3</b> One <code>Delay</code> from start to finish. The executor thread sleeps in <code>park</code>, not in <code>poll</code>.</figcaption>
 </figure>
 
 Two details make it correct. `poll` stores the waker on every `Pending`, not only the first. A task can be polled with a different waker each time. A runtime may move the task to another thread, and only the latest waker reaches its current owner. The timer thread wakes after dropping the lock, so the woken executor does not immediately block on a mutex the waker still held.
 
-A real runtime replaces one thread per timer with a single timer wheel. It replaces the thread per socket with the `epoll` loop from chapter 16. That loop's reactor keeps wakers by file descriptor, and wakes them when `epoll_wait` reports the descriptor ready.
+A real runtime replaces one thread per timer with a single timer wheel. It replaces the thread per socket with the `epoll` loop from chapter 20. That loop's reactor keeps wakers by file descriptor, and wakes them when `epoll_wait` reports the descriptor ready.
 
 You can now write both shapes: a future that re-arms itself, and a future that keeps a waker for an outside event.
 
-## 18.5 Waking is scheduling
+## 22.5 Waking is scheduling
 
 `block_on` drives one future. A general executor drives many, and it shows that waking a task and scheduling it are the same operation.
 
 A `Task` holds its future, a handle to the executor's queue, and a `completed` flag. It also implements `Wake`. Waking a task pushes an `Arc` of the task back on the queue.
 
-<p class="listing"><b>Listing 18.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 146 to 167). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 146 to 167). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:146:167}}
@@ -164,7 +164,7 @@ A `Task` holds its future, a handle to the executor's queue, and a `completed` f
 
 `spawn` wraps a future in a task and enqueues it.
 
-<p class="listing"><b>Listing 18.6</b> The executor's queue, and <code>spawn</code> (lines 174 to 198). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 174 to 198). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:174:198}}
@@ -173,7 +173,7 @@ A `Task` holds its future, a handle to the executor's queue, and a `completed` f
 
 `run` pops tasks one at a time, builds a waker from the task itself, and polls the future. A `Ready` result marks the task completed, so a late wake is skipped by the `completed` check.
 
-<p class="listing"><b>Listing 18.7</b> <code>MiniExecutor::run</code> (lines 200 to 227). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 200 to 227). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 impl MiniExecutor {
@@ -182,23 +182,23 @@ impl MiniExecutor {
 ```
 
 <figure class="anim">
-<img src="figures/ch18-task-queue.gif" alt="Three task tickets wait on a run queue. Each ticket shows its YieldTimes future, the yields it has left, and a bell for its waker. The executor pops the front ticket and polls it. A yield uses up one dot and rings the ticket's own bell, and the ticket flies to the back of the queue. A ticket with no yields left is stamped Ready and moves to the completed column, in the order 1, 2, 3. In a second run, task 1 returns Pending without ringing its bell. It drops out of the queue and is never polled again, while tasks 2 and 3 finish.">
-<figcaption><b>Animation 18.2</b> Three tasks take turns on one thread. Waking a task pushes it onto the back of the queue, which is what scheduling it means here. A task that returns <code>Pending</code> without a wake leaves the queue for good.</figcaption>
+<img src="figures/ch22-task-queue.gif" alt="Three task tickets wait on a run queue. Each ticket shows its YieldTimes future, the yields it has left, and a bell for its waker. The executor pops the front ticket and polls it. A yield uses up one dot and rings the ticket's own bell, and the ticket flies to the back of the queue. A ticket with no yields left is stamped Ready and moves to the completed column, in the order 1, 2, 3. In a second run, task 1 returns Pending without ringing its bell. It drops out of the queue and is never polled again, while tasks 2 and 3 finish.">
+<figcaption><b>Animation 22.2</b> Three tasks take turns on one thread. Waking a task pushes it onto the back of the queue, which is what scheduling it means here. A task that returns <code>Pending</code> without a wake leaves the queue for good.</figcaption>
 </figure>
 
 `run` returns when the queue is empty. A task that returned `Pending` without waking is waiting on something outside this executor, and this executor has nothing to park on. A real runtime would park on its timer or its I/O reactor instead of returning.
 
 The `+ Send` bound on spawned futures comes from the waker. A waker may be sent to another thread, as `Delay` does, so the task it can reach must be safe to send too. This is the same bound `tokio::spawn` imposes. It is also why holding a `std::sync::MutexGuard` or an `Rc` across an `.await` in a spawned task is a compile error.
 
-Listings 18.8 and 18.9 are the complete pair: the runtime module, and the program that drives it, with no runtime dependency.
+Listings 22.8 and 22.9 are the complete pair: the runtime module, and the program that drives it, with no runtime dependency.
 
-<p class="listing"><b>Listing 18.8</b> The complete runtime, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.8</b> The complete runtime, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs}}
 ```
 
-<p class="listing"><b>Listing 18.9</b> The program that drives the runtime. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/async_demo.rs">src/bin/async_demo.rs</a></p>
+<p class="listing"><b>Listing 22.9</b> The program that drives the runtime. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/async_demo.rs">src/bin/async_demo.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/async_demo.rs}}
@@ -226,7 +226,7 @@ The tasks finish in the order 1, 2, 3 because each yield sends its task to the b
 
 You can now follow a task from `spawn` to `Ready`, and say what `wake` does to the queue.
 
-## 18.6 What `async` compiles to, and why `Pin`
+## 22.6 What `async` compiles to, and why `Pin`
 
 An `async` block or function is notation. The compiler turns it into an anonymous type that implements `Future`. That type is usually an enum with one variant per suspension point, and each variant holds the values alive across that point.
 
@@ -240,27 +240,27 @@ async {
 }
 ```
 
-The compiler writes an enum with four states: `Start`, `Awaiting first`, `Awaiting second`, and `Done`. Figure 18.4 shows the states and the values each one keeps.
+The compiler writes an enum with four states: `Start`, `Awaiting first`, `Awaiting second`, and `Done`. Figure 22.4 shows the states and the values each one keeps.
 
 <figure>
-<img src="figures/ch18-state-machine.svg" alt="States: Start, Awaiting first (holds YieldTimes 1), Awaiting second (holds first and YieldTimes 2), and Done with first plus second. Pending loops back to the same state; an inner Ready moves to the next.">
-<figcaption><b>Figure 18.4</b> The state machine behind the async block. The value <code>first</code> survives the second <code>.await</code>, so it is stored in the second state.</figcaption>
+<img src="figures/ch22-state-machine.svg" alt="States: Start, Awaiting first (holds YieldTimes 1), Awaiting second (holds first and YieldTimes 2), and Done with first plus second. Pending loops back to the same state; an inner Ready moves to the next.">
+<figcaption><b>Figure 22.4</b> The state machine behind the async block. The value <code>first</code> survives the second <code>.await</code>, so it is stored in the second state.</figcaption>
 </figure>
 
 Polling the block runs code until the next `.await` whose inner future returns `Pending`. It saves the state, stores the inner future and the live locals, and returns `Pending` too. A later poll resumes at the saved state rather than starting the block again.
 
 <figure class="anim">
-<img src="figures/ch18-await.gif" alt="The async block's code, with a bookmark at the await where the next poll resumes, beside the future's memory: a state tag and two slots. Poll 1 runs to the first await, stores YieldTimes(1), and the tag flips to AwaitingFirst. Poll 2 resumes at the bookmark. first = 1 moves into memory, YieldTimes(2) is stored, and the tag flips to AwaitingSecond. Poll 3 returns Pending and stays in the same state. Poll 4 computes first + second = 3, returns Ready(3), and the tag flips to Done. A fifth poll would find Done and panic.">
-<figcaption><b>Animation 18.3</b> The same block, one poll at a time. <code>first</code> lives across the second <code>.await</code>, so the future stores it. <code>second</code> does not, so the future never stores it.</figcaption>
+<img src="figures/ch22-await.gif" alt="The async block's code, with a bookmark at the await where the next poll resumes, beside the future's memory: a state tag and two slots. Poll 1 runs to the first await, stores YieldTimes(1), and the tag flips to AwaitingFirst. Poll 2 resumes at the bookmark. first = 1 moves into memory, YieldTimes(2) is stored, and the tag flips to AwaitingSecond. Poll 3 returns Pending and stays in the same state. Poll 4 computes first + second = 3, returns Ready(3), and the tag flips to Done. A fifth poll would find Done and panic.">
+<figcaption><b>Animation 22.3</b> The same block, one poll at a time. <code>first</code> lives across the second <code>.await</code>, so the future stores it. <code>second</code> does not, so the future never stores it.</figcaption>
 </figure>
 
 `first` survives the second `.await`, so it is stored in the `Awaiting second` state. The size of a future is fixed once its type is known. The compiler sizes each state to hold the largest set of locals that can live there.
 
-The remaining question is why `poll` takes `Pin<&mut Self>`. A state can hold a reference to another field of the same state machine. One example is a local buffer that is borrowed and still used across an `.await`. If the machine moved after the borrow was created, the reference would point at the old location. Figure 18.5 shows the two cases.
+The remaining question is why `poll` takes `Pin<&mut Self>`. A state can hold a reference to another field of the same state machine. One example is a local buffer that is borrowed and still used across an `.await`. If the machine moved after the borrow was created, the reference would point at the old location. Figure 22.5 shows the two cases.
 
 <figure>
-<img src="figures/ch18-pin.svg" alt="Left: an unpinned future with a field r holding the address of its own buf. After a move, buf is at a new address but r still holds the old one, which is freed. Right: a pinned future stays at one address, so r stays valid.">
-<figcaption><b>Figure 18.5</b> Why a self-referential future must not move. Pinning keeps a borrow of one field valid across a suspension point.</figcaption>
+<img src="figures/ch22-pin.svg" alt="Left: an unpinned future with a field r holding the address of its own buf. After a move, buf is at a new address but r still holds the old one, which is freed. Right: a pinned future stays at one address, so r stays valid.">
+<figcaption><b>Figure 22.5</b> Why a self-referential future must not move. Pinning keeps a borrow of one field valid across a suspension point.</figcaption>
 </figure>
 
 `Pin<&mut Self>` is the promise that the value will not move after the first poll. That is why `block_on` calls `Box::pin` and why `MiniExecutor` stores `Pin<Box<...>>`. Both keep the future at one address for its whole life.
@@ -268,24 +268,24 @@ The remaining question is why `poll` takes `Pin<&mut Self>`. A state can hold a 
 Pinning is not a property of every type. A type whose values are safe to move even after a poll is `Unpin`, and for those types pinning adds no restriction. `YieldTimes` is `Unpin` because it holds two integers, so its `poll` can call `self.get_mut()` and work with `&mut Self` directly.
 
 <figure class="anim">
-<img src="figures/ch18-pin.gif" alt="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely.">
-<figcaption><b>Animation 18.4</b> A move copies bytes and leaves a reference into the old copy behind. <code>Box::pin</code> keeps the future at one address, so moving the handle the program holds moves only a pointer.</figcaption>
+<img src="figures/ch22-pin.gif" alt="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely.">
+<figcaption><b>Animation 22.4</b> A move copies bytes and leaves a reference into the old copy behind. <code>Box::pin</code> keeps the future at one address, so moving the handle the program holds moves only a pointer.</figcaption>
 </figure>
 
 You can now read an `async` block as an enum of states, and explain what `Pin` stops the compiler from doing.
 
-## 18.7 Two HTTP clients with caching, retries, and idempotency
+## 22.7 Two HTTP clients with caching, retries, and idempotency
 
-The last two programs put a runtime to work. Both send `POST /post` with a JSON body to `httpbin.org`, a public echo service, with the idempotency key `create-demo-001`. Both have the same three layers: a cache, a retry policy, and a transport. Figure 18.6 shows the stacks.
+The last two programs put a runtime to work. Both send `POST /post` with a JSON body to `httpbin.org`, a public echo service, with the idempotency key `create-demo-001`. Both have the same three layers: a cache, a retry policy, and a transport. Figure 22.6 shows the stacks.
 
 <figure>
-<img src="figures/ch18-clients.svg" alt="Two stacks. Blocking client: idempotency cache, then retry policy, then a hand-built HTTP request over TcpStream. Async client: cache lookup, then a retry loop on 429 and 5xx with tokio sleep, then a reqwest client with a timeout and an Idempotency-Key header.">
-<figcaption><b>Figure 18.6</b> The same three layers in both clients: cache, retry, transport.</figcaption>
+<img src="figures/ch22-clients.svg" alt="Two stacks. Blocking client: idempotency cache, then retry policy, then a hand-built HTTP request over TcpStream. Async client: cache lookup, then a retry loop on 429 and 5xx with tokio sleep, then a reqwest client with a timeout and an Idempotency-Key header.">
+<figcaption><b>Figure 22.6</b> The same three layers in both clients: cache, retry, transport.</figcaption>
 </figure>
 
 Chapter 19 built retries and idempotency keys on their own. Here they meet a network call.
 
-### 18.7.1 A blocking client over `TcpStream`
+### 22.7.1 A blocking client over `TcpStream`
 
 The blocking client composes its three layers in one line:
 
@@ -297,7 +297,7 @@ self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))
 
 `send` writes the request by hand. It writes the request line, `Host`, `Connection: close`, and the caller's headers. A body adds `Content-Length`, a blank line, and then the body. `Connection: close` lets `read_to_string` work as the response reader, because the server closes the connection at the end. Chapter 17's parser is the other side of this conversation.
 
-<p class="listing"><b>Listing 18.10</b> Cache, retry, and a hand-written HTTP/1.1 request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">src/bin/fun_network_call.rs</a></p>
+<p class="listing"><b>Listing 22.10</b> Cache, retry, and a hand-written HTTP/1.1 request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">src/bin/fun_network_call.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/fun_network_call.rs}}
@@ -308,7 +308,7 @@ Two gaps separate this from a client you would ship, and both are visible in the
 - The status code is never read. `send` returns whatever follows the first blank line. A `500` error page is returned as success, cached under the idempotency key, and never retried. Only transport errors reach the retry loop.
 - Everything is retried. A policy should ask the error, as `Retryable` does in chapter 19. Here a DNS failure for a misspelled host is retried three times.
 
-### 18.7.2 An async client with `reqwest`
+### 22.7.2 An async client with `reqwest`
 
 The async client reads the status code and makes retry a decision about it. `RETRY` lists the statuses to retry: 429 and four 5xx codes. The `match` on the status then has three arms:
 
@@ -326,9 +326,9 @@ match status {
 }
 ```
 
-`tokio::time::sleep` does not block the thread. It returns a future that registers with Tokio's timer and returns `Pending`, which is the `Delay` of section 18.4.2 done properly. Other tasks run on the same thread while this one waits.
+`tokio::time::sleep` does not block the thread. It returns a future that registers with Tokio's timer and returns `Pending`, which is the `Delay` of section 22.4.2 done properly. Other tasks run on the same thread while this one waits.
 
-<p class="listing"><b>Listing 18.11</b> The same layers on Tokio. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">src/bin/reqwest_and_tokio.rs</a></p>
+<p class="listing"><b>Listing 22.11</b> The same layers on Tokio. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">src/bin/reqwest_and_tokio.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/reqwest_and_tokio.rs}}
@@ -341,17 +341,17 @@ Several choices in this client are deliberate:
 - The cache is a `std::sync::Mutex`. That is allowed in async code because the guard is never held across an `.await`; `cached` and `store` lock, act, and return. The lock is taken with `unwrap_or_else(|e| e.into_inner())`, chapter 16's ignore-the-poison choice. A `HashMap` insert cannot leave the map half-updated, so recovering the guard is safe here.
 - `type Error = Box<dyn std::error::Error + Send + Sync>` lets errors cross task boundaries.
 
-### 18.7.3 The two clients side by side
+### 22.7.3 The two clients side by side
 
 The asynchronous client has the opposite gap from the blocking one. It reads the status code, but a transport error from `send().await?` is not retried at all. The blocking client retries transport errors and never reads the status code. Merging the two means retrying both, with a policy that asks the error which kind it is.
 
 Neither client adds jitter, and neither honors `Retry-After`. Chapter 19 shows both in its delay policy.
 
-### 18.7.4 Where the merged client belongs
+### 22.7.4 Where the merged client belongs
 
-The repository has an empty crate named `rust-async-http-examples`, created for this. Its first program can be the client from section 18.7.2 moved into `lib.rs`, with the retry and cache layers exposed for testing. Its tests can then run against a local server such as chapter 17's, instead of a public one.
+The repository has an empty crate named `rust-async-http-examples`, created for this. Its first program can be the client from section 22.7.2 moved into `lib.rs`, with the retry and cache layers exposed for testing. Its tests can then run against a local server such as chapter 17's, instead of a public one.
 
-## 18.8 Questions that come up
+## 22.8 Questions that come up
 
 **"What happens when a future returns `Pending`?"**
 It has arranged for its waker to be called when it can make progress. The executor stops polling it and runs other tasks. When the waker fires, the executor polls it again.
@@ -384,7 +384,7 @@ Yes, if the guard is dropped before the next `.await`. Holding it across an `.aw
 
 </div>
 
-Chapter 19 collects compact implementations of the structures from parts 2 to 6. Each one is the shortest program that still shows the structure working, and each fits on one screen.
+Chapter 23 collects compact implementations of the structures from parts 2 to 6. Each one is the shortest program that still shows the structure working, and each fits on one screen.
 
 ## Exercises
 
@@ -393,4 +393,4 @@ Chapter 19 collects compact implementations of the structures from parts 2 to 6.
 3. Change `MiniExecutor::run` to return the number of tasks it completed. Test it with tasks that yield different numbers of times.
 4. Give `Delay` a `Drop` that sets a flag the timer thread checks, so a cancelled delay does not keep a thread asleep.
 5. Merge the two HTTP clients. Retry a retryable status and a transport error, add jitter to the delay, and honor `Retry-After` when the server sends it.
-6. Move the async client into `rust-async-http-examples` as a library, and test it against chapter 17's local server.
+6. Move the async client into `rust-async-http-examples` as a library, and test it against chapter 21's local server.

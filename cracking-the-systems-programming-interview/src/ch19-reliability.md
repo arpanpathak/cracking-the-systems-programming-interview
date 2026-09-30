@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch19.png" alt="Governor, the robot engineer, adjusting a flyball governor on a steam engine while a pressure valve releases a measured puff">
+<img class="plate" src="art/ch19.png" alt="Throttle, the robot who meters the steam, one token at a time, beside a token bucket under a refill valve, with tokens leaving through a spout">
 
 # Rate limits, retries, and idempotency
 

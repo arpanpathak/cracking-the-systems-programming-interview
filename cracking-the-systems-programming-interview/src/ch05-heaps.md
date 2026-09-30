@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch05.png" alt="A robot mechanic beside three conveyor belts feeding a heap">
+<img class="plate" src="art/ch05.png" alt="Hoist, the robot who keeps the smallest crate on top, beside a pyramid of crates, the smallest always on top, under a hoist">
 
 # Heaps
 

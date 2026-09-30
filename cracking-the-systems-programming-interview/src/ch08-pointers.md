@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch08.png" alt="A robot mechanic beside crates connected by cables of different kinds">
+<img class="plate" src="art/ch08.png" alt="Hook, the robot who knows who owns every crate, beside a crane holding one boxed crate, and a crate with two tags and a count">
 
 # Ownership and the pointer types
 

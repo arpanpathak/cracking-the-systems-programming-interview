@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch07.png" alt="Rivet, the inspector robot, beside a shape-sorting gate labelled TRY_FROM">
+<img class="plate" src="art/ch07.png" alt="Rivet, the inspector robot who rejects bad parts at the gate, beside a shape sorter: blocks on a belt, and a gate that accepts one profile">
 
 # Types that refuse bad input
 

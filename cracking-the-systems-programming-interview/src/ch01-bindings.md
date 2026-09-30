@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch01.png" alt="A robot mechanic beside a train of gears, each smaller than the last">
+<img class="plate" src="art/ch01.png" alt="Tally, the robot who labels every value it shelves, beside a rack of labelled drawers, one name and one value in each">
 
 # Bindings, functions, and loops
 

@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch10.png" alt="Conveyor, the visored robot with a wrench, beside three conveyor belts of numbered crates merging through a heap into one belt">
+<img class="plate" src="art/ch10.png" alt="Conveyor, the robot who runs the merge line, ten shifts and counting, beside three conveyor belts feeding one">
 
 # Merging k sorted lists
 

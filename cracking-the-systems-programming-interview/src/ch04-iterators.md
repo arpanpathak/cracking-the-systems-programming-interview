@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch04.png" alt="A robot mechanic beside a conveyor that carries items past a sorting gate">
+<img class="plate" src="art/ch04.png" alt="Sprocket, the robot who runs the line one part at a time, beside a belt of parts passing a map press and a filter gate into a collecting bin">
 
 # Iterators and references
 

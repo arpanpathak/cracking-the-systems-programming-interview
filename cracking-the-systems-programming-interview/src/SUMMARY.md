@@ -40,13 +40,13 @@
 
 # Part 6: The network
 
-- [Addresses, windows, and echo servers](ch16-sockets.md)
-- [Parsing and serving HTTP/1.1](ch17-http.md)
-- [Async Rust from the executor up](ch18-async.md)
+- [Addresses, windows, and echo servers](ch20-sockets.md)
+- [Parsing and serving HTTP/1.1](ch21-http.md)
+- [Async Rust from the executor up](ch22-async.md)
 
 # Part 7: Compact implementations
 
-- [Compact implementations](ch19-drills.md)
+- [Compact implementations](ch23-drills.md)
 
 ---
 

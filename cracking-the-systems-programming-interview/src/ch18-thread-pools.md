@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch18.png" alt="Foreman, the robot with a clipboard, handing job tickets from a single slot to a row of identical worker robots at their benches">
+<img class="plate" src="art/ch18.png" alt="Foreman, the robot who hires the crew, sends them home cleanly, beside a job hopper feeding four small worker bots at a line shaft">
 
 # Thread pools
 

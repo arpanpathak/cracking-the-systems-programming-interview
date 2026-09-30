@@ -1,4 +1,4 @@
-"""The chapter 18 animations, drawn with `motion`: things move, rather than swap.
+"""The async chapter animations (ch22-async.md), drawn with `motion`: things move, rather than swap.
 
     python3 tools/animations.py poll-wake task-queue await-state pin
 """
@@ -9,7 +9,7 @@ from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
 
-# ---------------------------------------------------- 18.3: poll, park, wake
+# ---------------------------------------------------- 22.3: poll, park, wake
 
 EX_X, CARD_X, TM_X = 128, 410, 690
 DESK_Y = 258
@@ -317,7 +317,7 @@ def poll_wake():
     return tl, draw, 640
 
 
-# ------------------------------------------------ 18.5: waking is scheduling
+# ------------------------------------------------ 22.5: waking is scheduling
 
 TASK_COLORS = {1: "#3b7dd8", 2: "#8a5cc2", 3: "#c0508a"}
 Q_Y = 196                     # ticket centre line in the queue
@@ -598,7 +598,7 @@ def task_queue():
     return tl, draw, 652
 
 
-# --------------------------------------- 18.6: what an async block compiles to
+# --------------------------------------- 22.6: what an async block compiles to
 
 BLOCK = ["async {",
          "    let first = YieldTimes::new(1).await;",
@@ -882,7 +882,7 @@ def await_state():
     return tl, draw, 560
 
 
-# ---------------------------------------------- 18.6: why a future is pinned
+# ---------------------------------------------- 22.6: why a future is pinned
 
 BOX_W, BOX_H = 230, 150
 BOX_Y = 132
@@ -1113,23 +1113,23 @@ def pin_move():
 
 def build_poll_wake(only=None):
     tl, draw, height = poll_wake()
-    return render("ch18-poll-wake.gif", tl, draw, height, only=only)
+    return render("ch22-poll-wake.gif", tl, draw, height, only=only)
 
 
 def build_task_queue(only=None):
     tl, draw, height = task_queue()
-    return render("ch18-task-queue.gif", tl, draw, height, only=only,
+    return render("ch22-task-queue.gif", tl, draw, height, only=only,
                   extra_colors=TASK_COLORS.values())
 
 
 def build_await_state(only=None):
     tl, draw, height = await_state()
-    return render("ch18-await.gif", tl, draw, height, only=only)
+    return render("ch22-await.gif", tl, draw, height, only=only)
 
 
 def build_pin(only=None):
     tl, draw, height = pin_move()
-    return render("ch18-pin.gif", tl, draw, height, only=only)
+    return render("ch22-pin.gif", tl, draw, height, only=only)
 
 
 BUILDERS = {

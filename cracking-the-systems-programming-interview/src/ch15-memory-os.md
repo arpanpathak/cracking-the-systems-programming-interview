@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch15.png" alt="Gauge, the robot mechanic with a stethoscope, listening to a tall cabinet of stacked memory drawers, the fastest and smallest at the top">
+<img class="plate" src="art/ch15.png" alt="Gauge, the robot who reads the pressure of every cache line, beside a memory board of page frames, and a pressure gauge">
 
 # Memory, CPU caches, and the operating system
 

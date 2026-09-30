@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch16.png" alt="Signal, the visored lineman robot with a screwdriver, beside a lattice radio mast sending waves and a patch panel of sockets labelled 8080">
+<img class="plate" src="art/ch20.png" alt="Signal, the robot who is the lineman of the socket panel, beside a lattice radio mast with waves, and a patch panel of sockets">
 
 # Addresses, windows, and echo servers
 
@@ -20,9 +20,9 @@ byte echoed back? How does one thread serve ten thousand connections? The four p
 answer those in order. The last one uses no runtime and no crate beyond `libc`, so every system call is
 visible.
 
-## 16.1 IPv4 addresses
+## 20.1 IPv4 addresses
 
-<p class="listing"><b>Listing 16.1</b> Parse, classify, and convert IPv4 addresses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_ipv4.rs">src/bin/net_ipv4.rs</a></p>
+<p class="listing"><b>Listing 20.1</b> Parse, classify, and convert IPv4 addresses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_ipv4.rs">src/bin/net_ipv4.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/net_ipv4.rs}}
@@ -39,11 +39,11 @@ part.
 172.31. Rust's patterns are shorter here than the bit masks they replace.
 
 Network byte order is big-endian: the first octet is the most significant byte. `u32::from_be_bytes`
-turns the four octets into that number on any machine, whatever its native order (figure 16.1).
+turns the four octets into that number on any machine, whatever its native order (figure 20.1).
 
 <figure>
-<img src="figures/ch16-byte-order.svg" alt="The string 127.0.0.1 parses to the array 127, 0, 0, 1, which from_be_bytes turns into 0x7f000001; to_be_bytes gives back the bytes in wire order">
-<figcaption><b>Figure 16.1</b> An address as text, as octets, as a <code>u32</code>, and on the wire.</figcaption>
+<img src="figures/ch20-byte-order.svg" alt="The string 127.0.0.1 parses to the array 127, 0, 0, 1, which from_be_bytes turns into 0x7f000001; to_be_bytes gives back the bytes in wire order">
+<figcaption><b>Figure 20.1</b> An address as text, as octets, as a <code>u32</code>, and on the wire.</figcaption>
 </figure>
 
 ```text
@@ -59,9 +59,9 @@ input            parsed              private       as u32
 library's `"1.2.3.4".parse::<std::net::Ipv4Addr>()` rejects both, and `Ipv4Addr::is_private` implements
 the same three ranges. Write your own version; name the standard one.
 
-## 16.2 How much data can be in flight
+## 20.2 How much data can be in flight
 
-<p class="listing"><b>Listing 16.2</b> The effective window and the bandwidth-delay product. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_window.rs">src/bin/net_window.rs</a></p>
+<p class="listing"><b>Listing 20.2</b> The effective window and the bandwidth-delay product. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_window.rs">src/bin/net_window.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/net_window.rs}}
@@ -75,11 +75,11 @@ acknowledgments.
 The bandwidth-delay product is how many bytes a link holds while they travel: bandwidth times round-trip
 time. If the window is smaller than the product, the sender runs out of window before the first
 acknowledgment returns. The link then sits idle for the rest of each round trip. The program's last case
-makes it concrete (figure 16.2).
+makes it concrete (figure 20.2).
 
 <figure>
-<img src="figures/ch16-bdp.svg" alt="A pipe representing a 1 GB/s link with 100 ms RTT, holding 100 MB; a 64 KB window fills a sliver of it; throughput is 640 KB/s">
-<figcaption><b>Figure 16.2</b> A 64,000-byte window on a link whose bandwidth-delay product is 100,000,000 bytes.</figcaption>
+<img src="figures/ch20-bdp.svg" alt="A pipe representing a 1 GB/s link with 100 ms RTT, holding 100 MB; a 64 KB window fills a sliver of it; throughput is 640 KB/s">
+<figcaption><b>Figure 20.2</b> A 64,000-byte window on a link whose bandwidth-delay product is 100,000,000 bytes.</figcaption>
 </figure>
 
 ```text
@@ -87,8 +87,8 @@ window 64000 B vs product 100000000 B: link is starved, the window too small
 ```
 
 <figure class="anim">
-<img src="figures/ch16-bdp.gif" alt="A sender and a receiver joined by a link with a data lane and an ACK lane. A gauge above shows 16 slots, the packets the link holds in one round trip. With a window of 4, the sender sends 4 packets, stops with the label window full, and waits a round trip for ACKs while most of the link is empty; the link is busy 25 percent of the time. With a window of 16, packets leave continuously, the first ACK returns as the 16th packet leaves, and the link is busy 100 percent of the time. Last, a window of 1 against the real numbers: 1 GB/s times 100 ms is 100,000,000 bytes in flight, and a 64,000-byte window gives 640 KB/s.">
-<figcaption><b>Animation 16.1</b> The window caps how many packets are unacknowledged. When it is smaller than the bandwidth-delay product, the sender spends each round trip waiting, and the link carries nothing.</figcaption>
+<img src="figures/ch20-bdp.gif" alt="A sender and a receiver joined by a link with a data lane and an ACK lane. A gauge above shows 16 slots, the packets the link holds in one round trip. With a window of 4, the sender sends 4 packets, stops with the label window full, and waits a round trip for ACKs while most of the link is empty; the link is busy 25 percent of the time. With a window of 16, packets leave continuously, the first ACK returns as the 16th packet leaves, and the link is busy 100 percent of the time. Last, a window of 1 against the real numbers: 1 GB/s times 100 ms is 100,000,000 bytes in flight, and a 64,000-byte window gives 640 KB/s.">
+<figcaption><b>Animation 20.1</b> The window caps how many packets are unacknowledged. When it is smaller than the bandwidth-delay product, the sender spends each round trip waiting, and the link carries nothing.</figcaption>
 </figure>
 
 Latency costs as much as bandwidth for bulk transfers. That is why TCP's window-scaling option
@@ -99,9 +99,9 @@ exists: the original 16-bit window field caps at 65,535 bytes. On Linux, `net.ip
 keeps precision in integer arithmetic. The intermediate product overflows `u64` only when bytes per
 second times milliseconds passes about 1.8 × 10¹⁹, far beyond any real link.
 
-## 16.3 A thread-per-connection echo server
+## 20.3 A thread-per-connection echo server
 
-<p class="listing"><b>Listing 16.3</b> The canonical socket exercise with <code>std::net</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tcp_echo_server.rs">src/bin/tcp_echo_server.rs</a></p>
+<p class="listing"><b>Listing 20.3</b> The canonical socket exercise with <code>std::net</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tcp_echo_server.rs">src/bin/tcp_echo_server.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tcp_echo_server.rs}}
@@ -113,8 +113,8 @@ the test avoid colliding with other programs. `listener.incoming()` is an endles
 `accept`, and each accepted stream moves into its own thread.
 
 <figure class="anim">
-<img src="figures/ch16-tcp-handshake.gif" alt="The echo server's test as two robots, a client and a server, joined by a wire, each with its TCP state above it and a kernel receive buffer below it. The server thread sleeps in accept. The client's connect sends SYN seq 1000; the server's kernel, not the server thread, answers SYN+ACK seq 5000 ack 1001; the client sends ACK 5001, and both sides are ESTABLISHED. The connection waits in the accept queue until accept takes it. write_all sends hello echo as one 10-byte segment into the server's receive buffer, read returns 10, and write_all sends it back. shutdown sends FIN; the server's read returns 0, the handler returns, and the server sends its own FIN; read_to_end returns the echo, and the client's last ACK closes the server side. A second run deletes the shutdown line: both sides block in read forever.">
-<figcaption><b>Animation 16.2</b> The test from listing 16.3, one segment at a time. The kernel completes the handshake before <code>accept</code> returns, and each direction closes with its own FIN. Without <code>shutdown</code>, no FIN is sent, and both reads wait forever.</figcaption>
+<img src="figures/ch20-tcp-handshake.gif" alt="The echo server's test as two robots, a client and a server, joined by a wire, each with its TCP state above it and a kernel receive buffer below it. The server thread sleeps in accept. The client's connect sends SYN seq 1000; the server's kernel, not the server thread, answers SYN+ACK seq 5000 ack 1001; the client sends ACK 5001, and both sides are ESTABLISHED. The connection waits in the accept queue until accept takes it. write_all sends hello echo as one 10-byte segment into the server's receive buffer, read returns 10, and write_all sends it back. shutdown sends FIN; the server's read returns 0, the handler returns, and the server sends its own FIN; read_to_end returns the echo, and the client's last ACK closes the server side. A second run deletes the shutdown line: both sides block in read forever.">
+<figcaption><b>Animation 20.2</b> The test from listing 20.3, one segment at a time. The kernel completes the handshake before <code>accept</code> returns, and each direction closes with its own FIN. Without <code>shutdown</code>, no FIN is sent, and both reads wait forever.</figcaption>
 </figure>
 
 
@@ -137,9 +137,9 @@ Thread per connection is the right default when connections are few or handlers 
 thread costs a kernel stack and scheduling work. At thousands of mostly idle connections, the model
 spends its memory on stacks that wait. That is the case for the next program.
 
-## 16.4 An epoll echo server
+## 20.4 An epoll echo server
 
-<p class="listing"><b>Listing 16.4</b> One thread, many non-blocking sockets, over <code>libc</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">src/bin/epoll_echo.rs</a></p>
+<p class="listing"><b>Listing 20.4</b> One thread, many non-blocking sockets, over <code>libc</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/epoll_echo.rs">src/bin/epoll_echo.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/epoll_echo.rs}}
@@ -147,23 +147,23 @@ spends its memory on stacks that wait. That is the case for the next program.
 
 The whole Linux implementation lives in `mod linux` behind `#[cfg(target_os = "linux")]`, and a second
 `main` for every other platform prints a message instead. The program compiles everywhere and runs where
-epoll exists. Figure 16.3 contrasts the two server models.
+epoll exists. Figure 20.3 contrasts the two server models.
 
 <figure>
-<img src="figures/ch16-models.svg" alt="Top: one thread waits in epoll_wait and dispatches to accept, read, or flush handlers. Bottom: an accept loop spawns one blocking thread per connection.">
-<figcaption><b>Figure 16.3</b> Readiness events against threads. The epoll server's only blocking call is <code>epoll_wait</code>.</figcaption>
+<img src="figures/ch20-models.svg" alt="Top: one thread waits in epoll_wait and dispatches to accept, read, or flush handlers. Bottom: an accept loop spawns one blocking thread per connection.">
+<figcaption><b>Figure 20.3</b> Readiness events against threads. The epoll server's only blocking call is <code>epoll_wait</code>.</figcaption>
 </figure>
 
-### 16.4.1 Setting up the listener by hand
+### 20.4.1 Setting up the listener by hand
 
 `bind_listener` is what `TcpListener::bind` does inside, spelled out. `socket(AF_INET, SOCK_STREAM |
 SOCK_NONBLOCK, 0)` creates a non-blocking socket in one call. `SO_REUSEADDR` lets a restarted server bind
 while old connections sit in `TIME_WAIT`. The `sockaddr_in` is built with `std::mem::zeroed()`, and its
 fields are converted to network order: `port.to_be()` and `INADDR_LOOPBACK.to_be()`. That is the
-byte-order lesson of section 16.1 in its natural habitat. Every failure path closes the fd before returning
+byte-order lesson of section 20.1 in its natural habitat. Every failure path closes the fd before returning
 the error, so nothing leaks, and the `SAFETY` comment explains why the raw pointers are valid.
 
-### 16.4.2 The loop
+### 20.4.2 The loop
 
 `event_loop` registers the listening socket for `EPOLLIN`, then waits, at most 64 events at a time. The
 wait has a 100 ms timeout, so the loop re-checks the `shutdown` flag regularly. `EINTR` (a signal arrived
@@ -186,15 +186,15 @@ one slow client harmless. Its reply waits in memory, and the loop moves on to ot
 blocking in `write`.
 
 <figure class="anim">
-<img src="figures/ch16-epoll.gif" alt="One robot, the event loop thread, beside a panel of registered sockets. Each row shows an fd, its interest set, a readiness light, and for clients an out buffer. The thread sleeps in epoll_wait. Two clients connect, the listener fd 3 lights up, and accept4 turns them into fd 5 and fd 6 until it returns EAGAIN. fd 5 sends 1 KB and fd 6 sends 12 KB; one epoll_wait returns both. fd 5's reply is written in full. fd 6's write stops at EAGAIN with 4 KB left, so the 4 KB stays in out and fd 6's interest becomes IN and OUT while the thread moves on. Later fd 6 turns writable, flush sends the rest, and the interest returns to IN. In a last run fd 6 is blocking: the thread is stuck in write, while fd 5 and a new connection sit ready and ignored.">
-<figcaption><b>Animation 16.3</b> The loop from listing 16.4 serving three sockets on one thread. A slow client leaves bytes in its <code>out</code> buffer, not a blocked thread. One blocking socket would stop every other socket.</figcaption>
+<img src="figures/ch20-epoll.gif" alt="One robot, the event loop thread, beside a panel of registered sockets. Each row shows an fd, its interest set, a readiness light, and for clients an out buffer. The thread sleeps in epoll_wait. Two clients connect, the listener fd 3 lights up, and accept4 turns them into fd 5 and fd 6 until it returns EAGAIN. fd 5 sends 1 KB and fd 6 sends 12 KB; one epoll_wait returns both. fd 5's reply is written in full. fd 6's write stops at EAGAIN with 4 KB left, so the 4 KB stays in out and fd 6's interest becomes IN and OUT while the thread moves on. Later fd 6 turns writable, flush sends the rest, and the interest returns to IN. In a last run fd 6 is blocking: the thread is stuck in write, while fd 5 and a new connection sit ready and ignored.">
+<figcaption><b>Animation 20.3</b> The loop from listing 20.4 serving three sockets on one thread. A slow client leaves bytes in its <code>out</code> buffer, not a blocked thread. One blocking socket would stop every other socket.</figcaption>
 </figure>
 
 `main` ignores `SIGPIPE`. By default, writing to a socket whose peer has gone away raises `SIGPIPE`, which
 kills the process. With the signal ignored, `write` returns `EPIPE` instead. Rust's standard library does
 this for you at startup on Unix, but a program that makes raw `libc` calls should not rely on it.
 
-### 16.4.3 What a production server would change
+### 20.4.3 What a production server would change
 
 The program is a complete, tested event loop, and reading it critically is good practice.
 
@@ -210,9 +210,9 @@ The program is a complete, tested event loop, and reading it critically is good 
   it stays ready. Reading until `EAGAIN` is required in edge-triggered mode and harmless here.
 
 Frameworks such as `mio` (under Tokio) wrap exactly this loop, portably over epoll, kqueue, and IOCP.
-Chapter 18 builds the other half of an async runtime, the part that turns readiness into resumed tasks.
+Chapter 22 builds the other half of an async runtime, the part that turns readiness into resumed tasks.
 
-## 16.5 Questions that come up
+## 20.5 Questions that come up
 
 **"What does a `read` of 0 bytes mean on a TCP socket?"**
 The peer closed its sending side (FIN). No more data will arrive. It is not an error.

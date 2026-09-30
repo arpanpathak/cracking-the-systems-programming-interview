@@ -266,6 +266,59 @@ def robot(x: float, y: float, s: float, head: str = "box", eyes: str = "round", 
 # ------------------------------------------------------------------ machines
 
 
+def machine_bindings(x, y):
+    """A rack of labelled drawers, one name and one value in each."""
+    out = rect(x - 6, y - 58, 372, 214, "url(#steel)", rx=8)
+    for i, (name, value, locked) in enumerate((("x", "5", True), ("name", '"gpu"', True),
+                                               ("count", "0", False))):
+        dy = y - 44 + i * 66
+        out += rect(x + 8, dy, 344, 54, CREAM, rx=6)
+        out += rect(x + 20, dy + 12, 92, 30, "url(#brass)", rx=4) + text(x + 66, dy + 34, name, 18, INK, family="Menlo, monospace", anchor="middle")
+        out += text(x + 140, dy + 36, "= " + value, 22, TEAL, family="Menlo, monospace")
+        out += text(x + 340, dy + 34, "LET" if locked else "LET MUT", 15, RUST if not locked else STEEL, anchor="end", spacing=1.5)
+    return out
+
+
+def machine_iterators(x, y):
+    """A belt of parts passing a map press and a filter gate into a collecting bin."""
+    out = rect(x - 10, y + 70, 380, 16, INK, rx=8)
+    for i, value in enumerate(("1", "2", "3", "4")):
+        out += box(x + 4 + 40 * i, y + 38, 32, 30, STEEL_PALE, value, 15)
+    out += rect(x + 176, y - 30, 60, 70, "url(#steel)", rx=6) + text(x + 206, y + 12, "MAP", 18, INK, anchor="middle")
+    out += line(x + 206, y + 40, x + 206, y + 66, INK, 5)
+    out += rect(x + 254, y + 8, 12, 62, RUST, rx=3) + text(x + 260, y - 4, "FILTER", 15, RUST, anchor="middle")
+    out += rect(x + 300, y + 90, 76, 60, "url(#brass)", rx=6) + text(x + 338, y + 128, "COLLECT", 13, INK, anchor="middle")
+    out += arrow(x + 360, y + 76, x + 344, y + 92, TEAL, 3)
+    return out
+
+
+def machine_heap(x, y):
+    """A pyramid of crates, the smallest always on top, under a hoist."""
+    out = rect(x + 40, y - 70, 290, 14, INK, rx=4) + line(x + 185, y - 56, x + 185, y - 30, INK, 4)
+    rows = [("1",), ("3", "2"), ("7", "4", "5", "9")]
+    for r, crates in enumerate(rows):
+        width = 56 * len(crates) + 10 * (len(crates) - 1)
+        left = x + 185 - width / 2
+        for k, label in enumerate(crates):
+            fill = "url(#brass)" if r == 0 else (CREAM if r == 1 else STEEL_PALE)
+            out += box(left + k * 66, y - 26 + r * 60, 56, 50, fill, label, 20)
+    out += text(x + 262, y - 2, "min on top", 16, TEAL)
+    return out
+
+
+def machine_pointers(x, y):
+    """A crane holding one boxed crate, and a crate with two tags and a count."""
+    out = rect(x, y - 70, 180, 14, INK, rx=4) + line(x + 90, y - 56, x + 90, y + 4, INK, 4)
+    out += box(x + 54, y + 6, 72, 62, "url(#brass)", "Box", 18)
+    out += text(x + 90, y + 96, "one owner", 15, STEEL, anchor="middle")
+    out += box(x + 250, y + 16, 80, 62, CREAM, "Rc", 18)
+    for k, ty in enumerate((y - 30, y + 110)):
+        out += rect(x + 196, ty, 44, 22, STEEL_PALE, rx=4)
+        out += arrow(x + 240, ty + 11, x + 262, y + (22 if k == 0 else 72), TEAL, 2.5)
+    out += circle(x + 340, y + 12, 16, RUST) + text(x + 340, y + 18, "2", 16, CREAM, anchor="middle")
+    return out
+
+
 def machine_types(x, y):
     """A shape sorter: blocks on a belt, and a gate that accepts one profile."""
     out = rect(x, y + 120, 380, 22, INK, rx=11)
@@ -588,25 +641,29 @@ def machine_book(x, y):
 
 CHAPTERS = [
     # number, machine, robot options, name, trade
-    (1, machine_types, dict(head="box", eyes="goggles", antenna="bolt", held="clipboard"), "RIVET", "the inspector who rejects bad parts at the gate"),
+    (1, machine_bindings, dict(head="dome", eyes="round", antenna="bolt", held="clipboard", accent=TEAL), "TALLY", "labels every value it shelves"),
     (2, machine_files, dict(head="tall", eyes="round", antenna="dish", held="flag", accent=TEAL), "LEDGER", "keeper of the file room"),
     (3, machine_arrays, dict(head="tv", eyes="screen", antenna="twin", held="magnifier"), "BINS", "stockroom clerk, finds any part in one look"),
-    (4, machine_chain, dict(head="dome", eyes="mono", antenna="spring", held="hammer", accent=BRASS), "SHACKLE", "chain-smith, splices links without dropping one"),
-    (5, machine_merge, dict(head="box", eyes="visor", antenna="bolt", held="wrench", accent=TEAL), "CONVEYOR", "runs the merge line, ten shifts and counting"),
-    (6, machine_tree, dict(head="tall", eyes="goggles", antenna="twin", held="screwdriver"), "BRANCH", "pipefitter of the manifold"),
-    (7, machine_graph, dict(head="tv", eyes="visor", antenna="dish", held="flag", accent=TEAL), "VALVE", "plumber of shortest paths"),
-    (8, machine_recursion, dict(head="dome", eyes="round", antenna="spring", held="oilcan", accent=BRASS), "COG", "keeps a notebook so no gear turns twice"),
-    (9, machine_lru, dict(head="box", eyes="mono", antenna="bolt", held="clipboard", accent=RUST), "DRAWER", "quartermaster of the hot shelf"),
-    (10, machine_ring, dict(head="tall", eyes="visor", antenna="hat", held="wrench", accent=TEAL), "TURNTABLE", "spins the ring, moves only what must move"),
-    (11, machine_memory, dict(head="tv", eyes="goggles", antenna="spring", held="magnifier", accent=BRASS), "GAUGE", "reads the pressure of every cache line"),
-    (12, machine_locks, dict(head="box", eyes="visor", antenna="twin", held="hammer"), "SPINDLE", "locksmith of the shared axle"),
-    (13, machine_queue, dict(head="dome", eyes="screen", antenna="dish", held="flag", accent=TEAL), "CAROUSEL", "loads the ring, never overfills it"),
-    (14, machine_pool, dict(head="tall", eyes="goggles", antenna="hat", held="clipboard", accent=BRASS), "FOREMAN", "hires the crew, sends them home cleanly"),
-    (15, machine_bucket, dict(head="box", eyes="round", antenna="bolt", held="stopwatch", accent=RUST), "THROTTLE", "meters the steam, one token at a time"),
-    (16, machine_network, dict(head="tv", eyes="visor", antenna="dish", held="screwdriver", accent=TEAL), "SIGNAL", "lineman of the socket panel"),
-    (17, machine_http, dict(head="dome", eyes="mono", antenna="bolt", held="clipboard", accent=BRASS), "COURIER", "reads every header before opening the parcel"),
-    (18, machine_async, dict(head="tall", eyes="screen", antenna="spring", held="oilcan", accent=RUST), "FLYWHEEL", "polls every future, sleeps when none are ready"),
-    (19, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
+    (4, machine_iterators, dict(head="box", eyes="visor", antenna="spring", held="wrench", accent=BRASS), "SPROCKET", "runs the line one part at a time"),
+    (5, machine_heap, dict(head="tall", eyes="mono", antenna="hat", held="hammer", accent=RUST), "HOIST", "keeps the smallest crate on top"),
+    (6, machine_recursion, dict(head="dome", eyes="round", antenna="spring", held="oilcan", accent=BRASS), "COG", "keeps a notebook so no gear turns twice"),
+    (7, machine_types, dict(head="box", eyes="goggles", antenna="bolt", held="clipboard"), "RIVET", "the inspector who rejects bad parts at the gate"),
+    (8, machine_pointers, dict(head="tv", eyes="goggles", antenna="twin", held="clipboard", accent=TEAL), "HOOK", "knows who owns every crate"),
+    (9, machine_chain, dict(head="dome", eyes="mono", antenna="spring", held="hammer", accent=BRASS), "SHACKLE", "chain-smith, splices links without dropping one"),
+    (10, machine_merge, dict(head="box", eyes="visor", antenna="bolt", held="wrench", accent=TEAL), "CONVEYOR", "runs the merge line, ten shifts and counting"),
+    (11, machine_tree, dict(head="tall", eyes="goggles", antenna="twin", held="screwdriver"), "BRANCH", "pipefitter of the manifold"),
+    (12, machine_graph, dict(head="tv", eyes="visor", antenna="dish", held="flag", accent=TEAL), "VALVE", "plumber of shortest paths"),
+    (13, machine_lru, dict(head="box", eyes="mono", antenna="bolt", held="clipboard", accent=RUST), "DRAWER", "quartermaster of the hot shelf"),
+    (14, machine_ring, dict(head="tall", eyes="visor", antenna="hat", held="wrench", accent=TEAL), "TURNTABLE", "spins the ring, moves only what must move"),
+    (15, machine_memory, dict(head="tv", eyes="goggles", antenna="spring", held="magnifier", accent=BRASS), "GAUGE", "reads the pressure of every cache line"),
+    (16, machine_locks, dict(head="box", eyes="visor", antenna="twin", held="hammer"), "SPINDLE", "locksmith of the shared axle"),
+    (17, machine_queue, dict(head="dome", eyes="screen", antenna="dish", held="flag", accent=TEAL), "CAROUSEL", "loads the ring, never overfills it"),
+    (18, machine_pool, dict(head="tall", eyes="goggles", antenna="hat", held="clipboard", accent=BRASS), "FOREMAN", "hires the crew, sends them home cleanly"),
+    (19, machine_bucket, dict(head="box", eyes="round", antenna="bolt", held="stopwatch", accent=RUST), "THROTTLE", "meters the steam, one token at a time"),
+    (20, machine_network, dict(head="tv", eyes="visor", antenna="dish", held="screwdriver", accent=TEAL), "SIGNAL", "lineman of the socket panel"),
+    (21, machine_http, dict(head="dome", eyes="mono", antenna="bolt", held="clipboard", accent=BRASS), "COURIER", "reads every header before opening the parcel"),
+    (22, machine_async, dict(head="tall", eyes="screen", antenna="spring", held="oilcan", accent=RUST), "FLYWHEEL", "polls every future, sleeps when none are ready"),
+    (23, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 
 APPENDICES = [

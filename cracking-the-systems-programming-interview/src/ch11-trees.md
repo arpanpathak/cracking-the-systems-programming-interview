@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch11.png" alt="Branch, the pipefitter robot, beside a manifold of pipes and gears laid out as a binary tree">
+<img class="plate" src="art/ch11.png" alt="Branch, the robot who is the pipefitter of the manifold, beside a branching pipe manifold drawn as a binary tree">
 
 # Trees and tries
 

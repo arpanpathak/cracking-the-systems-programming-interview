@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch17.png" alt="Conveyor, the robot at a loading dock, watching a short belt with room for three crates while a forklift waits for space">
+<img class="plate" src="art/ch17.png" alt="Carousel, the robot who loads the ring, never overfills it, beside a carousel ring buffer beside a conveyor queue">
 
 # Queues and bounded buffers
 

@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch09.png" alt="Shackle, the one-eyed chain-smith robot with a hammer, beside a chain hanging from a crane; one link is marked take()">
+<img class="plate" src="art/ch09.png" alt="Shackle, the robot who is the chain-smith, splices links without dropping one, beside a crane hook holding a chain of links, one opened for splicing">
 
 # Linked lists
 

@@ -1,4 +1,4 @@
-"""The sockets chapter animations (ch16-sockets.md), drawn with `motion`.
+"""The sockets chapter animations (ch20-sockets.md), drawn with `motion`.
 
     python3 tools/animations.py tcp-handshake bdp epoll
 """
@@ -9,7 +9,7 @@ from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
 
-# ------------------------------------------- 16.3: a connection, end to end
+# ------------------------------------------- 20.3: a connection, end to end
 
 CL_X, SV_X = 130, 690
 DESK = 236
@@ -275,7 +275,7 @@ def tcp_handshake():
     return tl, draw, 626
 
 
-# ------------------------------------ 16.2: the bandwidth-delay product
+# ------------------------------------ 20.2: the bandwidth-delay product
 
 RTT = 4.0                 # one round trip, in animation seconds
 SLOTS16 = 16              # packets the link holds in one round trip: the product
@@ -411,7 +411,7 @@ def bdp():
     return tl, draw, 486
 
 
-# ----------------------------------------------------- 16.4: the epoll loop
+# ----------------------------------------------------- 20.4: the epoll loop
 
 LOOP_X, LOOP_DESK = 104, 236
 ROWS = {3: 110, 5: 164, 6: 218}     # fd -> row centre
@@ -662,18 +662,18 @@ def epoll():
 
 def build_tcp_handshake(only=None):
     tl, draw, height = tcp_handshake()
-    return render("ch16-tcp-handshake.gif", tl, draw, height, only=only,
+    return render("ch20-tcp-handshake.gif", tl, draw, height, only=only,
                   extra_colors=("#3b7dd8",))
 
 
 def build_bdp(only=None):
     tl, draw, height = bdp()
-    return render("ch16-bdp.gif", tl, draw, height, only=only, extra_colors=("#3b7dd8",))
+    return render("ch20-bdp.gif", tl, draw, height, only=only, extra_colors=("#3b7dd8",))
 
 
 def build_epoll(only=None):
     tl, draw, height = epoll()
-    return render("ch16-epoll.gif", tl, draw, height, only=only, extra_colors=("#3cc9a4",))
+    return render("ch20-epoll.gif", tl, draw, height, only=only, extra_colors=("#3cc9a4",))
 
 
 BUILDERS = {

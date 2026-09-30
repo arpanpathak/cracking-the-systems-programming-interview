@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch17.png" alt="Courier, the one-eyed dome robot with a clipboard, beside a pneumatic tube carrying a GET request capsule into a sorting office with slots for 200, 404, 400, and 413">
+<img class="plate" src="art/ch21.png" alt="Courier, the robot who reads every header before opening the parcel, beside a pneumatic tube carrying a request capsule into a sorting office">
 
 # Parsing and serving HTTP/1.1
 
@@ -20,15 +20,15 @@ The security bugs in real servers come from disagreeing about where one request 
 The parser is built around that point, and the server on top of it keeps protocol handling separate from
 routing. Each can then be tested alone.
 
-## 17.1 The parser
+## 21.1 The parser
 
-<p class="listing"><b>Listing 17.1</b> An HTTP/1.1 request parser with framing checks and limits. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs">src/problems/http_request.rs</a></p>
+<p class="listing"><b>Listing 21.1</b> An HTTP/1.1 request parser with framing checks and limits. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs">src/problems/http_request.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/http_request.rs}}
 ```
 
-### 17.1.1 Types first
+### 21.1.1 Types first
 
 The file opens with its vocabulary. `Method` is an enum with a `parse` that returns `None` for an unknown
 token, and two predicates from RFC 9110. `is_safe` is true for GET, HEAD, and OPTIONS, which do not change
@@ -37,7 +37,7 @@ needs `is_idempotent`. `Version` has two variants because the parser accepts two
 header and body caps, with defaults of 16 KiB and 8 MiB.
 
 `ParseError` distinguishes the cases a server must treat differently. `Incomplete` is not a failure: it
-means "read more bytes and try again", and the server's loop in section 17.2 depends on it.
+means "read more bytes and try again", and the server's loop in section 21.2 depends on it.
 `PayloadTooLarge` maps naturally to status 413, `MissingHost` and `Malformed` to 400.
 
 `Request::header` finds a header case-insensitively, because header names are case-insensitive. Then
@@ -45,18 +45,18 @@ means "read more bytes and try again", and the server's loop in section 17.2 dep
 unless the client sends `Connection: close`. HTTP/1.0 closes it unless the client sends `Connection:
 keep-alive`. The `has` closure splits the header on commas because `Connection` carries a list.
 
-### 17.1.2 The head of the request
+### 21.1.2 The head of the request
 
 `parse_request` works on `&[u8]`, not `&str`, because an HTTP body is arbitrary bytes and only the head is
 text. It first looks for the blank line that ends the head, `\r\n\r\n`, with `windows(4).position(...)`.
 If it is missing, the request is `Incomplete`. The exception is a buffer already larger than
 `max_header_bytes`: then the client is sending an endless header and gets `PayloadTooLarge`.
-That check stops a slow client from holding memory with a header that never ends. Figure 17.1
+That check stops a slow client from holding memory with a header that never ends. Figure 21.1
 shows the order of the remaining checks.
 
 <figure>
-<img src="figures/ch17-framing.svg" alt="Flowchart: find the end of the head, parse the request line, parse headers, require exactly one Host for HTTP/1.1, then choose body framing: both headers is an error, Transfer-Encoding decodes chunked, Content-Length takes that many bytes, neither means no body">
-<figcaption><b>Figure 17.1</b> The order of checks in <code>parse_request</code> and <code>parse_body</code>.</figcaption>
+<img src="figures/ch21-framing.svg" alt="Flowchart: find the end of the head, parse the request line, parse headers, require exactly one Host for HTTP/1.1, then choose body framing: both headers is an error, Transfer-Encoding decodes chunked, Content-Length takes that many bytes, neither means no body">
+<figcaption><b>Figure 21.1</b> The order of checks in <code>parse_request</code> and <code>parse_body</code>.</figcaption>
 </figure>
 
 The request line must be exactly three space-separated parts: a known method, a non-empty target, and
@@ -68,25 +68,25 @@ different servers interpret it differently, the parser rejects it.
 HTTP/1.1 requires exactly one `Host` header. The count uses `filter(...).count() != 1`, which rejects
 both zero and two.
 
-### 17.1.3 Body framing and request smuggling
+### 21.1.3 Body framing and request smuggling
 
 `parse_body` decides how long the body is, which is what the module's first comment is about. A
 request with both `Content-Length` and `Transfer-Encoding` is rejected as `AmbiguousBodyLength`.
 
-The reason is request smuggling (figure 17.2). A front-end proxy may frame a request by
+The reason is request smuggling (figure 21.2). A front-end proxy may frame a request by
 `Content-Length`, while the back-end server frames the same bytes by `Transfer-Encoding: chunked`. The two
 then disagree about where the request ends. The attacker places a second request in the part the back-end
 treats as "after the body". The back-end runs it as though it arrived on its own, past whatever checks the
 proxy applied. Refusing ambiguous framing outright, and closing the connection, removes the disagreement.
 
 <figure>
-<img src="figures/ch17-smuggling.svg" alt="One message with both Content-Length and Transfer-Encoding; the proxy reads one request, the back-end ends the POST at the zero chunk and reads GET /admin as a new request; the parser rejects the message instead">
-<figcaption><b>Figure 17.2</b> A CL.TE desynchronization. The parser answers such a request with 400 and closes the connection.</figcaption>
+<img src="figures/ch21-smuggling.svg" alt="One message with both Content-Length and Transfer-Encoding; the proxy reads one request, the back-end ends the POST at the zero chunk and reads GET /admin as a new request; the parser rejects the message instead">
+<figcaption><b>Figure 21.2</b> A CL.TE desynchronization. The parser answers such a request with 400 and closes the connection.</figcaption>
 </figure>
 
 <figure class="anim">
-<img src="figures/ch17-http-framing.gif" alt="Five frames. A request with Content-Length frames a five-byte body; a chunked request frames the body with a zero-size chunk; a request carrying both headers is ambiguous; the parser answers it with 400 and closes the connection.">
-<figcaption><b>Animation 17.3</b> The three framing rules on the same request shape. The head always ends at the first blank line; what differs is how the body's length is decided. Content-Length gives an exact byte count, a chunked body carries its own sizes and ends at a zero-size chunk, and a message with both is refused outright. The last frame is the disagreement removed: a connection that closes cannot have its leftover bytes read as a second request.</figcaption>
+<img src="figures/ch21-http-framing.gif" alt="Five frames. A request with Content-Length frames a five-byte body; a chunked request frames the body with a zero-size chunk; a request carrying both headers is ambiguous; the parser answers it with 400 and closes the connection.">
+<figcaption><b>Animation 21.3</b> The three framing rules on the same request shape. The head always ends at the first blank line; what differs is how the body's length is decided. Content-Length gives an exact byte count, a chunked body carries its own sizes and ends at a zero-size chunk, and a message with both is refused outright. The last frame is the disagreement removed: a connection that closes cannot have its leftover bytes read as a second request.</figcaption>
 </figure>
 
 The remaining rules close smaller gaps:
@@ -100,7 +100,7 @@ The remaining rules close smaller gaps:
   claim a huge body and make the server buffer it.
 - If fewer bytes than the length have arrived, the result is `Incomplete`.
 
-### 17.1.4 Chunked bodies
+### 21.1.4 Chunked bodies
 
 `decode_chunked` walks a cursor through `size-in-hex CRLF data CRLF` records until a size of 0, then
 consumes optional trailer lines until an empty line. Chunk extensions after a `;` are ignored, as the RFC
@@ -116,15 +116,15 @@ from sixteen `f`s. The form `size > max_body - body.len()` cannot overflow.
 start of a second, pipelined request in the same buffer. The server below accepts that limitation and
 says so.
 
-## 17.2 A small REST server
+## 21.2 A small REST server
 
-<p class="listing"><b>Listing 17.2</b> Routes, responses, and a keep-alive loop over <code>std::net</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/http_server.rs">src/bin/http_server.rs</a></p>
+<p class="listing"><b>Listing 21.2</b> Routes, responses, and a keep-alive loop over <code>std::net</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/http_server.rs">src/bin/http_server.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/http_server.rs}}
 ```
 
-### 17.2.1 Routing as a pure function
+### 21.2.1 Routing as a pure function
 
 `route(&Request) -> (u16, &'static str, Vec<u8>)` decides the status, content type, and body without
 touching a socket. Its doc comment gives the reason: it is unit-testable, and the tests at the bottom
@@ -135,17 +135,17 @@ empty id or one containing `/` is a 404.
 `build_response` writes the status line, `Content-Length`, an optional `Content-Type`, and a
 `Connection` header that tells the client what the server will do.
 
-### 17.2.2 The connection loop
+### 21.2.2 The connection loop
 
-`handle_connection` accumulates bytes in `buffer` and asks the parser what it has (figure 17.3). On `Ok`,
+`handle_connection` accumulates bytes in `buffer` and asks the parser what it has (figure 21.3). On `Ok`,
 it routes, writes the response, and either closes or clears the buffer for the next request. On
 `Incomplete`, it reads more; a read of 0 means the client left mid-request. Any other error gets a 400
 whose body is the error's `Display` text, and the connection closes. After a framing error the
 server cannot know where the next request starts.
 
 <figure>
-<img src="figures/ch17-connection.svg" alt="State loop: parse; on Ok route and respond, then clear the buffer and loop if keep-alive or close; on Incomplete read more and parse again; on other errors send 400 and close">
-<figcaption><b>Figure 17.3</b> The keep-alive loop in <code>handle_connection</code>.</figcaption>
+<img src="figures/ch21-connection.svg" alt="State loop: parse; on Ok route and respond, then clear the buffer and loop if keep-alive or close; on Incomplete read more and parse again; on other errors send 400 and close">
+<figcaption><b>Figure 21.3</b> The keep-alive loop in <code>handle_connection</code>.</figcaption>
 </figure>
 
 A session with `curl` and `nc` against the server, started with
@@ -175,7 +175,7 @@ Connection: close
 Content-Length and Transfer-Encoding are mutually exclusive
 ```
 
-### 17.2.3 Reading the server against the RFC
+### 21.2.3 Reading the server against the RFC
 
 The same session shows three places where the server departs from RFC 9110. None of them is hard to fix,
 and finding them is good practice.
@@ -210,7 +210,7 @@ id containing `"` produces invalid JSON; a real server serializes with `serde_js
 after each request discards any pipelined bytes that arrived with it, which the module comment
 acknowledges.
 
-## 17.3 Questions that come up
+## 21.3 Questions that come up
 
 **"How does a server know where an HTTP/1.1 request body ends?"**
 `Transfer-Encoding: chunked` means read chunks until a zero-size chunk. Else `Content-Length` gives the

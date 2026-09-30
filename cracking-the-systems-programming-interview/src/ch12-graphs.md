@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch12.png" alt="Switchman, the rail-yard robot, at a lever frame beside a map of tracks joined at junctions">
+<img class="plate" src="art/ch12.png" alt="Valve, the robot who is the plumber of shortest paths, beside pipes and valves wired into a small weighted graph">
 
 # Graphs
 

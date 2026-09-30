@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch13.png" alt="Stacker, the forklift robot, moving the most recently used crate to the front of a short shelf">
+<img class="plate" src="art/ch13.png" alt="Drawer, the robot who is the quartermaster of the hot shelf, beside a rack of drawers with the least recently used crate leaving on a chute">
 
 # An LRU cache
 

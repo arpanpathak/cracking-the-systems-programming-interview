@@ -1,7 +1,7 @@
 # Animations: how they are built, and what to keep doing
 
 Read this before adding or changing any animation in the book. It records the method
-chapter 18 was rebuilt with, the rules that came out of it, and the traps that cost time.
+chapter 22 (async) was rebuilt with, the rules that came out of it, and the traps that cost time.
 
 ## 1. The goal
 
@@ -40,7 +40,7 @@ each chapter before the next one starts.
 - Length: 35 to 65 seconds per loop. Detail the first occurrence of a step, then speed up
   repeats (the builders take a speed factor `k`).
 
-Chapter 18 (`tools/anim_ch18.py`) is the reference implementation of all of this.
+Chapter 22 (`tools/anim_async.py`) is the reference implementation of all of this.
 
 ## 3. The engine: `tools/motion.py`
 
@@ -72,7 +72,7 @@ Workflow:
 
 ```bash
 # preview single frames (seconds) while scripting; PNGs go to $MOTION_PREVIEW
-MOTION_PREVIEW=/some/scratch/dir python3 tools/anim_ch18.py frames poll-wake 0 5.5 13
+MOTION_PREVIEW=/some/scratch/dir python3 tools/anim_async.py frames poll-wake 0 5.5 13
 # render one GIF (about 3 to 5 minutes each)
 python3 tools/animations.py poll-wake
 ```
@@ -109,8 +109,8 @@ arcs, flying objects crossing the title, captions wrapping onto a third line.
 
 | Chapter | Animations | State |
 |---|---|---|
-| 18 async | poll-wake, task-queue, await, pin | motion |
-| 16 sockets | tcp-handshake, bdp, epoll | motion |
+| 22 async | poll-wake, task-queue, await, pin | motion |
+| 20 sockets | tcp-handshake, bdp, epoll | motion |
 | all others | see `grep -o 'figures/[a-z0-9-]*\.gif' src/*.md` | old slides, to convert |
 
 Update this table when a chapter is converted.

@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch02.png" alt="Ledger, the file-room robot, beside a filing cabinet, a stack of pages, and an offset counter reading 4096">
+<img class="plate" src="art/ch02.png" alt="Ledger, the robot who is the keeper of the file room, beside a filing cabinet, a stack of pages, and a paper feed">
 
 # Files, paths, and the command line
 

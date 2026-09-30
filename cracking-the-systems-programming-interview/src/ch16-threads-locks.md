@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch16.png" alt="Gearbox, the robot with interlocking gears for a torso, holding a padlock on a chain between two turning shafts">
+<img class="plate" src="art/ch16.png" alt="Spindle, the robot who is the locksmith of the shared axle, beside spools of thread and a heavy padlock on the shared axle">
 
 # Threads, atomics, and locks
 

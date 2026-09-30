@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch06.png" alt="A robot mechanic beside a train of gears, each half the size of the last">
+<img class="plate" src="art/ch06.png" alt="Cog, the robot who keeps a notebook so no gear turns twice, beside a train of gears, each half the size of the last">
 
 # Recursion and dynamic programming
 

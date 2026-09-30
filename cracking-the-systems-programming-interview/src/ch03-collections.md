@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch03.png" alt="Bins, the stockroom robot with a terminal face, beside a shelf of numbered bins fed by a hash hopper">
+<img class="plate" src="art/ch03.png" alt="Bins, the robot who is the stockroom clerk, finds any part in one look, beside a parts shelf of numbered bins and a hashing hopper">
 
 # Vectors, strings, and hash maps
 

@@ -3,7 +3,7 @@
 These picture the runtime behaviour the chapters describe: an atomic exchange, a
 lock order that deadlocks, a bounded buffer that blocks a producer, and HTTP
 body framing. The sockets and async chapters are drawn frame by frame instead,
-in `anim_sockets` and `anim_ch18`.
+in `anim_sockets` and `anim_async`.
 
 Each frame names the state of every actor and shows the one thing that changed,
 so a reader can follow a race between two threads the way they would follow a
@@ -310,7 +310,7 @@ def token_bucket():
             holds(len(steps), longer=(4, 5)))
 
 
-# ---------------------------------------------------- HTTP framing (17.1)
+# ---------------------------------------------------- HTTP framing (21.1)
 
 def http_framing():
     """How the headers decide where the body ends."""
@@ -367,7 +367,7 @@ def http_framing():
             f.text(PAD + 360, y + 26, "a proxy and a server can disagree here", T_MARK, RUST)
         return f
 
-    publish("ch17-http-framing.gif", frames(make, steps),
+    publish("ch21-http-framing.gif", frames(make, steps),
             holds(len(steps), longer=(1, len(steps) - 1)))
 
 

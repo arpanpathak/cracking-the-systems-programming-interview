@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch14.png" alt="Turntable, the hard-hatted robot with a wrench, beside a large ring with colored shards around its rim and a gear at its center">
+<img class="plate" src="art/ch14.png" alt="Turntable, the robot who spins the ring, moves only what must move, beside a turntable of shards: the consistent-hash ring">
 
 # Shards and consistent hashing
 
