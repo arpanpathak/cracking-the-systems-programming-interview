@@ -17,8 +17,7 @@
 //! On eviction the tail slot is **reused** instead of removed, so no node is
 //! deallocated mid-life and the arena stays dense and index-stable.
 
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash};
 
 use super::Cache;
 
@@ -139,7 +138,8 @@ where
             let old_key = std::mem::replace(&mut self.nodes[i].key, key);
             self.nodes[i].value = value;
             self.lookup_table.remove(&old_key);
-            self.lookup_table.insert(self.nodes[i].key.clone(), i);
+            self.lookup_table
+                .insert(self.nodes[i].key.clone(), i);
             self.touch(i);
         }
     }

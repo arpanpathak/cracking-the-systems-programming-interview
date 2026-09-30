@@ -7,10 +7,12 @@
 //! The default drop would free a node, which frees its `next`, one stack frame
 //! per element, so `Drop` is written to unlink iteratively.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::rc::{Rc, Weak};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::Hash,
+    rc::{Rc, Weak},
+};
 
 use super::Cache;
 

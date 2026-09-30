@@ -1,12 +1,14 @@
-use std::cmp::Reverse as Rev;
-use std::collections::{BinaryHeap, HashMap};
+use std::{
+    cmp::Reverse as Rev,
+    collections::{BinaryHeap, HashMap},
+};
 
 /// Returns vec!<(word, frequency)>, most frequent first.
 fn top_k_frequent(sentence: &str, k: usize) -> Vec<(String, u32)> {
-
     // Split string by white spaces. Map it and trim any non alphanumeric characters. Finally,
     // filter all the empty strings and map everything to lowercase characters.
-    let words: Vec<String> = sentence.split_whitespace()
+    let words: Vec<String> = sentence
+        .split_whitespace()
         .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()))
         .filter(|w| !w.is_empty())
         .map(str::to_lowercase)
@@ -29,7 +31,8 @@ fn top_k_frequent(sentence: &str, k: usize) -> Vec<(String, u32)> {
     }
 
     // Ascending order of Reverse means most frequent first.
-    min_heap.into_sorted_vec()
+    min_heap
+        .into_sorted_vec()
         .into_iter()
         .map(|Rev((frequency, word))| (word.to_string(), frequency))
         .collect()

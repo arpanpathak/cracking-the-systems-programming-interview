@@ -53,10 +53,10 @@ These rules cover most programs. The pointer types in this chapter handle the ca
 
 The module for this chapter starts with a table that summarizes them:
 
-<p class="listing"><b>Listing 8.1</b> The module comment and imports (lines 1 to 25). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">src/problems/smart_pointers.rs</a></p>
+<p class="listing"><b>Listing 8.1</b> The module comment and imports (lines 1 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">src/problems/smart_pointers.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:1:25}}
+{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:1:27}}
 ```
 
 Do not try to memorize the table yet. Each section below covers one row.
@@ -79,10 +79,10 @@ To lay out a type, the compiler must know its size. An `Add(Expr, Expr)` contain
 which may be another `Add`. The size has no end, so the compiler rejects the type. `Box<Expr>` is always 8
 bytes, whatever it points to, so `Add(Box<Expr>, Box<Expr>)` has a fixed size.
 
-<p class="listing"><b>Listing 8.2</b> An expression tree (lines 27 to 41).</p>
+<p class="listing"><b>Listing 8.2</b> An expression tree (lines 29 to 43).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:27:41}}
+{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:29:43}}
 ```
 
 `eval` computes the value of an expression. For a number, the value is the number. For a sum, it evaluates
@@ -136,10 +136,10 @@ but checks them while the program runs instead of at compile time. Figure 8.4 sh
 
 `Rc` and `RefCell` are used together: `Rc<RefCell<T>>` gives several owners who can each change the value.
 
-<p class="listing"><b>Listing 8.3</b> Two handles to one counter (lines 43 to 53).</p>
+<p class="listing"><b>Listing 8.3</b> Two handles to one counter (lines 45 to 55).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:43:53}}
+{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:45:55}}
 ```
 
 Step through it:
@@ -172,10 +172,10 @@ It increases only the weak count, which does not keep the value alive. To use th
 The usual pattern is that parents own children with `Rc`, and children point back to their parents with
 `Weak`.
 
-<p class="listing"><b>Listing 8.4</b> A tree node with a weak parent pointer (lines 55 to 82).</p>
+<p class="listing"><b>Listing 8.4</b> A tree node with a weak parent pointer (lines 57 to 87).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:55:82}}
+{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:57:87}}
 ```
 
 - `parent: RefCell<Weak<TreeNode>>` stores the link to the parent. The `RefCell` allows the link to be
@@ -197,10 +197,10 @@ be sent to other threads. Chapter 16 explains atomic operations in detail.
 `Mutex<T>` is the thread-safe counterpart of `RefCell`. `lock()` returns a guard that gives access to the
 value. If another thread holds the lock, `lock()` waits until it is released, instead of panicking.
 
-<p class="listing"><b>Listing 8.5</b> Several threads adding to one total (lines 84 to 105).</p>
+<p class="listing"><b>Listing 8.5</b> Several threads adding to one total (lines 89 to 110).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:84:105}}
+{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:89:110}}
 ```
 
 Step through it:
@@ -224,10 +224,10 @@ other. It is correct but slow. Chapter 16 measures faster ways to count across t
 `Cow<'a, str>` holds either a borrowed `&'a str` or an owned `String`. Its name stands for "clone on write".
 It fits functions that usually return their input unchanged but sometimes need to change it.
 
-<p class="listing"><b>Listing 8.6</b> Uppercase only when needed (lines 107 to 117).</p>
+<p class="listing"><b>Listing 8.6</b> Uppercase only when needed (lines 112 to 126).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:107:117}}
+{{#include ../../rust-interview-lab/src/problems/smart_pointers.rs:112:126}}
 ```
 
 `normalize` checks whether any byte is a lowercase letter. If there is nothing to change, it returns

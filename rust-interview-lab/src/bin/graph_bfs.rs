@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Default)]
-struct Connection { to: String }
+struct Connection {
+    to: String,
+}
 
 #[derive(Default)]
 struct Graph {
@@ -11,10 +13,13 @@ struct Graph {
 
 impl Graph {
     fn id(&mut self, name: &str) -> usize {
-        *self.ids.entry(name.to_owned()).or_insert_with(|| {
-            self.adj.push(vec![]);
-            self.adj.len() - 1
-        })
+        *self
+            .ids
+            .entry(name.to_owned())
+            .or_insert_with(|| {
+                self.adj.push(vec![]);
+                self.adj.len() - 1
+            })
     }
 
     fn add_edge(&mut self, from: &str, to: &str) {

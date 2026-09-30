@@ -76,10 +76,12 @@ You can now state what each side of the contract promises, and say which broken 
 
 The smallest useful executor drives one future on the current thread. When the future is not ready, it parks the thread rather than polling again. Listing 22.1 is the whole of it.
 
-<p class="listing"><b>Listing 22.1</b> <code>block_on</code> and its waker (lines 31 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.1</b> <code>block_on</code> and its waker (lines 36 to 61). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:31:56}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:17:29}}
+
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:36:61}}
 ```
 
 `block_on` does three things, in order:
@@ -107,10 +109,10 @@ Almost every future has one of two shapes. The first re-arms itself and asks to 
 
 `YieldTimes` returns `Pending` a set number of times before it completes. Nothing is blocking it. It is giving the executor a chance to run other tasks before it finishes its own work.
 
-<p class="listing"><b>Listing 22.2</b> <code>YieldTimes</code>, a future that re-arms itself (lines 58 to 92). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.2</b> <code>YieldTimes</code>, a future that re-arms itself (lines 63 to 97). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:58:92}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:63:97}}
 ```
 
 `YieldTimes` holds two `usize` values, which makes it `Unpin`: safe to move even after a poll. `self.get_mut()` uses that to turn `Pin<&mut Self>` into `&mut Self` without `unsafe`.
@@ -123,18 +125,18 @@ One line asks for the next poll: `context.waker().wake_by_ref()`. It runs, then 
 
 Its state is a `ready` flag and an optional stored `Waker`, shared with a background thread through `Arc<Mutex<_>>`.
 
-<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 94 to 130). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 135). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:94:130}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:99:135}}
 ```
 
 `poll` checks `ready`. While it is false, `poll` stores a clone of the current waker and returns `Pending`.
 
-<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 132 to 144). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 137 to 149). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:132:144}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:137:149}}
 ```
 
 The background thread sleeps, sets `ready`, takes the waker out of the state, releases the lock, and calls `wake()`. Figure 22.3 shows the exchange.
@@ -156,28 +158,28 @@ You can now write both shapes: a future that re-arms itself, and a future that k
 
 A `Task` holds its future, a handle to the executor's queue, and a `completed` flag. It also implements `Wake`. Waking a task pushes an `Arc` of the task back on the queue.
 
-<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 146 to 167). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 151 to 172). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:146:167}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:151:172}}
 ```
 
 `spawn` wraps a future in a task and enqueues it.
 
-<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 174 to 198). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 179 to 203). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:174:198}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:179:203}}
 }
 ```
 
 `run` pops tasks one at a time, builds a waker from the task itself, and polls the future. A `Ready` result marks the task completed, so a late wake is skipped by the `completed` check.
 
-<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 200 to 227). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 205 to 232). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 impl MiniExecutor {
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:200:227}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:205:232}}
 }
 ```
 

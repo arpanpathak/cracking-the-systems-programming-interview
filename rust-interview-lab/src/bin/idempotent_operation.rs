@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::sync::Mutex;
+use std::{collections::HashMap, hash::Hash, sync::Mutex};
 
 pub struct Idempotent<K, V> {
     store: Mutex<HashMap<K, V>>,
@@ -12,7 +10,9 @@ where
     V: Clone,
 {
     pub fn new() -> Self {
-        Self { store: Mutex::new(HashMap::new()) }
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn execute<F>(&self, key: K, f: F) -> Result<V, Box<dyn std::error::Error>>

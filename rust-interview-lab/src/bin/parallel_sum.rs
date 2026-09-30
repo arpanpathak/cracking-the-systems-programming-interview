@@ -1,6 +1,8 @@
-use std::env;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    env,
+    thread,
+    time::{Duration, Instant},
+};
 
 const SIZE: usize = 1_000_000_000;
 
@@ -18,12 +20,19 @@ fn par_i32(data: &[i32], n: usize) -> (i32, Duration) {
                 s.spawn(move || {
                     let chunk = data.len() / n;
                     let start = i * chunk;
-                    let end = if i == n - 1 { data.len() } else { start + chunk };
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
                     data[start..end].iter().sum::<i32>()
                 })
             })
             .collect();
-        handles.into_iter().map(|h| h.join().unwrap()).sum::<i32>()
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::<i32>()
     });
     (sum, t.elapsed())
 }
@@ -42,12 +51,19 @@ fn par_i64(data: &[i64], n: usize) -> (i64, Duration) {
                 s.spawn(move || {
                     let chunk = data.len() / n;
                     let start = i * chunk;
-                    let end = if i == n - 1 { data.len() } else { start + chunk };
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
                     data[start..end].iter().sum::<i64>()
                 })
             })
             .collect();
-        handles.into_iter().map(|h| h.join().unwrap()).sum::<i64>()
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::<i64>()
     });
     (sum, t.elapsed())
 }
@@ -66,12 +82,19 @@ fn par_i128(data: &[i128], n: usize) -> (i128, Duration) {
                 s.spawn(move || {
                     let chunk = data.len() / n;
                     let start = i * chunk;
-                    let end = if i == n - 1 { data.len() } else { start + chunk };
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
                     data[start..end].iter().sum::<i128>()
                 })
             })
             .collect();
-        handles.into_iter().map(|h| h.join().unwrap()).sum::<i128>()
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::<i128>()
     });
     (sum, t.elapsed())
 }

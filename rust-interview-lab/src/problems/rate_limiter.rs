@@ -1,7 +1,6 @@
 //! Thread-safe token bucket rate limiter.
 
-use std::sync::Mutex;
-use std::time::Instant;
+use std::{sync::Mutex, time::Instant};
 
 pub struct TokenBucket {
     /// Max tokens.
@@ -52,9 +51,9 @@ impl TokenBucket {
 
 #[cfg(test)]
 mod tests {
+    use std::{thread, time::Duration};
+
     use super::*;
-    use std::thread;
-    use std::time::Duration;
 
     #[test]
     fn it_works() {

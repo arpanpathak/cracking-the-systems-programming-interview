@@ -86,14 +86,14 @@ fn main() {
     println!("{:?}", to_vec(&merged)); // [1, 1, 2, 3, 4, 4, 5, 6]
 
     // Edge cases
-    println!("{:?}", to_vec(&merge_k(vec![])));           // []
+    println!("{:?}", to_vec(&merge_k(vec![]))); // []
     println!("{:?}", to_vec(&merge_k(vec![None, None]))); // []
     println!("{:?}", to_vec(&merge_k(vec![from_vec(vec![7])]))); // [7]
 
-    let v = [1,2,3,4,5];
+    let v = [1, 2, 3, 4, 5];
 
     match v {
-        [1, .. ] => println!("it starts with one thing...."),
-        [_,..] => println!("I dunno why!"),
+        [1, ..] => println!("it starts with one thing...."),
+        [_, ..] => println!("I dunno why!"),
     }
 }

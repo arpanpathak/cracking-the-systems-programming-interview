@@ -1,8 +1,13 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::hash::Hash;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    hash::Hash,
+};
 
 #[derive(Clone, Copy)]
-enum State { Visiting, Done }
+enum State {
+    Visiting,
+    Done,
+}
 
 #[derive(Default)]
 struct Graph<T> {

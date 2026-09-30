@@ -7,8 +7,10 @@
 //! The RAII guard returns the permit on drop, so a panicking worker cannot leak a
 //! permit and slowly deadlock the pool.
 
-use std::sync::{Condvar, Mutex};
-use std::time::Duration;
+use std::{
+    sync::{Condvar, Mutex},
+    time::Duration,
+};
 
 struct State {
     available: usize,
@@ -36,9 +38,15 @@ impl Semaphore {
 
     /// Block until a permit is available, returning a guard that releases it.
     pub fn acquire_guard(&self) -> SemaphoreGuard<'_> {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
         while state.available == 0 {
-            state = self.released.wait(state).expect("semaphore mutex poisoned");
+            state = self
+                .released
+                .wait(state)
+                .expect("semaphore mutex poisoned");
         }
         state.available -= 1;
         SemaphoreGuard { semaphore: self }
@@ -46,7 +54,10 @@ impl Semaphore {
 
     /// Take a permit only if one is free right now.
     pub fn try_acquire(&self) -> Option<SemaphoreGuard<'_>> {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
         if state.available == 0 {
             None
         } else {
@@ -57,7 +68,10 @@ impl Semaphore {
 
     /// Take a permit, waiting at most `timeout`.
     pub fn try_acquire_timeout(&self, timeout: Duration) -> Option<SemaphoreGuard<'_>> {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
         if state.available > 0 {
             state.available -= 1;
             return Some(SemaphoreGuard { semaphore: self });
@@ -85,7 +99,10 @@ impl Semaphore {
     }
 
     fn release(&self) {
-        let mut state = self.state.lock().expect("semaphore mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
         state.available += 1;
         self.released.notify_one();
     }
@@ -104,10 +121,15 @@ impl Drop for SemaphoreGuard<'_> {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        thread,
+    };
+
     use super::*;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::thread;
 
     #[test]
     fn never_exceeds_the_permit_count() {
@@ -150,7 +172,9 @@ mod tests {
     #[test]
     fn try_acquire_reports_contention() {
         let semaphore = Semaphore::new(1);
-        let first = semaphore.try_acquire().expect("first permit is free");
+        let first = semaphore
+            .try_acquire()
+            .expect("first permit is free");
         assert!(semaphore.try_acquire().is_none());
         drop(first);
         assert!(semaphore.try_acquire().is_some());

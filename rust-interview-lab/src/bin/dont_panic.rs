@@ -12,7 +12,9 @@ fn main() {
 
     match (visa_situation, fear_mongers_bothering) {
         (Situation::UnderControl, _) => {
-            println!("Good for you, good for you, I hope Murphy's law isn't true. Or is it? J.K jk");
+            println!(
+                "Good for you, good for you, I hope Murphy's law isn't true. Or is it? J.K jk"
+            );
         }
         (Situation::GracePeriod, true) => {
             println!(
@@ -22,10 +24,14 @@ fn main() {
             );
         }
         (Situation::GracePeriod, false) => {
-            println!("Grace period, and nobody's bothering you. Breathe. Touch grass, study and chill.");
+            println!(
+                "Grace period, and nobody's bothering you. Breathe. Touch grass, study and chill."
+            );
         }
         (Situation::OutOfStatus, _) => {
-            println!("Hold on, don't be scared, destiny will keep you up, stop crying your heart out");
+            println!(
+                "Hold on, don't be scared, destiny will keep you up, stop crying your heart out"
+            );
         }
     }
 }

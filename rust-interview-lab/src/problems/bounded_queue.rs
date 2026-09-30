@@ -8,8 +8,10 @@
 //! and two condition variables: `not_empty` for waiting consumers and `not_full`
 //! for waiting producers. `close` unblocks everyone so shutdown cannot hang.
 
-use std::collections::VecDeque;
-use std::sync::{Condvar, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Condvar, Mutex},
+};
 
 struct State<T> {
     items: VecDeque<T>,
@@ -57,7 +59,10 @@ impl<T> BoundedQueue<T> {
                 self.not_empty.notify_one();
                 return Ok(());
             }
-            state = self.not_full.wait(state).expect("queue mutex poisoned");
+            state = self
+                .not_full
+                .wait(state)
+                .expect("queue mutex poisoned");
         }
     }
 
@@ -75,7 +80,10 @@ impl<T> BoundedQueue<T> {
             if state.closed {
                 return None;
             }
-            state = self.not_empty.wait(state).expect("queue mutex poisoned");
+            state = self
+                .not_empty
+                .wait(state)
+                .expect("queue mutex poisoned");
         }
     }
 
@@ -102,15 +110,25 @@ impl<T> BoundedQueue<T> {
     }
 
     pub fn is_closed(&self) -> bool {
-        self.state.lock().expect("queue mutex poisoned").closed
+        self.state
+            .lock()
+            .expect("queue mutex poisoned")
+            .closed
     }
 
     pub fn capacity(&self) -> usize {
-        self.state.lock().expect("queue mutex poisoned").capacity
+        self.state
+            .lock()
+            .expect("queue mutex poisoned")
+            .capacity
     }
 
     pub fn len(&self) -> usize {
-        self.state.lock().expect("queue mutex poisoned").items.len()
+        self.state
+            .lock()
+            .expect("queue mutex poisoned")
+            .items
+            .len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -124,11 +142,16 @@ impl<T> BoundedQueue<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        thread,
+        time::Duration,
+    };
+
     use super::*;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::thread;
-    use std::time::Duration;
 
     #[test]
     fn preserves_order_across_threads() {

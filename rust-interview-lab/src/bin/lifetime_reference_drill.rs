@@ -7,7 +7,8 @@ struct User {
 }
 
 fn functional_numbers_drill(slice: &[i32]) -> Vec<i32> {
-    slice.iter()
+    slice
+        .iter()
         .filter(|&&x| x % 2 == 0)
         .map(|&x| x * 10)
         .collect()
@@ -38,9 +39,13 @@ fn ref_slice_to_map<'a>(slice: &[&'a User]) -> HashMap<u32, &'a User> {
 }
 
 fn main() {
-    let vv = vec![1,2,3,4,5,6];
+    let vv = vec![1, 2, 3, 4, 5, 6];
 
-    let filtered: Vec<i32> = vv.iter().filter(|x| *x % 2 == 0).copied().collect();
+    let filtered: Vec<i32> = vv
+        .iter()
+        .filter(|x| *x % 2 == 0)
+        .copied()
+        .collect();
     println!("Filtered : {:?}", filtered);
 
     println!("--- Ultra-Lean Inline Slice Drill ---\n");
@@ -53,9 +58,18 @@ fn main() {
 
     // explicit reference binding holding the inline array literal
     let users: &[User] = &[
-        User { id: 101, name: "Alice".to_string()   },
-        User { id: 102, name: "Bob".to_string()     },
-        User { id: 103, name: "Charlie".to_string() },
+        User {
+            id: 101,
+            name: "Alice".to_string(),
+        },
+        User {
+            id: 102,
+            name: "Bob".to_string(),
+        },
+        User {
+            id: 103,
+            name: "Charlie".to_string(),
+        },
     ];
     println!("\n3. Zero-Allocation Struct Map (From &[User]):");
     let struct_map = struct_slice_to_map(users);
@@ -64,10 +78,7 @@ fn main() {
     }
 
     // explicit reference binding holding the inline array of &User
-    let user_refs: &[&User] = &[
-        struct_map[&101],
-        struct_map[&102],
-    ];
+    let user_refs: &[&User] = &[struct_map[&101], struct_map[&102]];
     println!("\n4. Zero-Allocation Ref Slice Map (From &[&User]):");
     let ref_slice_map = ref_slice_to_map(user_refs);
     for (id, user_ref) in &ref_slice_map {

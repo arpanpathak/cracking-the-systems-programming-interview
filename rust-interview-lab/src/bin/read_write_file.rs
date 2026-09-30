@@ -1,6 +1,8 @@
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    io,
+    path::{Path, PathBuf},
+};
 
 // `&Path` accepts both a `&Path` and a `&PathBuf` argument; `&PathBuf` would not.
 fn read_content_of_file(path: &Path) -> io::Result<String> {

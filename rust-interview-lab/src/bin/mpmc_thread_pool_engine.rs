@@ -1,6 +1,11 @@
-use std::sync::mpsc::{self, Receiver, SendError, SyncSender};
-use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
+use std::{
+    sync::{
+        Arc,
+        Mutex,
+        mpsc::{self, Receiver, SendError, SyncSender},
+    },
+    thread::{self, JoinHandle},
+};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 type SharedLockedChannel = Arc<Mutex<Receiver<Job>>>;
@@ -19,15 +24,20 @@ impl ThreadPool {
             .map(|_| Self::spawn_worker(Arc::clone(&rx)))
             .collect();
 
-        Self { tx: Some(tx), workers }
+        Self {
+            tx: Some(tx),
+            workers,
+        }
     }
 
     fn spawn_worker(rx: SharedLockedChannel) -> JoinHandle<()> {
-        thread::spawn(move || loop {
-            let Ok(receiver) = rx.lock() else { break }; // mutex poisoned
-            let Ok(job) = receiver.recv() else { break }; // channel closed
-            drop(receiver); // release lock before running the job
-            job();
+        thread::spawn(move || {
+            loop {
+                let Ok(receiver) = rx.lock() else { break }; // mutex poisoned
+                let Ok(job) = receiver.recv() else { break }; // channel closed
+                drop(receiver); // release lock before running the job
+                job();
+            }
         })
     }
 

@@ -47,7 +47,6 @@ impl<T> List<T> {
             }
         }
     }
-
 }
 
 fn main() {

@@ -1,5 +1,7 @@
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread::{self, JoinHandle};
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread::{self, JoinHandle},
+};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -18,15 +20,20 @@ impl ThreadPool {
             .map(|_| Self::spawn_worker(Arc::clone(&job_receiver)))
             .collect();
 
-        Self { workers, job_sender: Some(job_sender) }
+        Self {
+            workers,
+            job_sender: Some(job_sender),
+        }
     }
 
     fn spawn_worker(job_receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> JoinHandle<()> {
-        thread::spawn(move || loop {
-            let message = job_receiver.lock().unwrap().recv();
-            match message {
-                Ok(job) => job(),
-                Err(_) => break,
+        thread::spawn(move || {
+            loop {
+                let message = job_receiver.lock().unwrap().recv();
+                match message {
+                    Ok(job) => job(),
+                    Err(_) => break,
+                }
             }
         })
     }

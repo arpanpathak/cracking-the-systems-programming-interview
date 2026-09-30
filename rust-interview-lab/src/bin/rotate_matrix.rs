@@ -15,11 +15,7 @@ fn rotate(m: &mut Vec<Vec<i32>>) {
 }
 
 fn main() {
-    let mut m = vec![
-        vec![1, 2, 3],
-        vec![4, 5, 6],
-        vec![7, 8, 9],
-    ];
+    let mut m = vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]];
 
     rotate(&mut m);
 

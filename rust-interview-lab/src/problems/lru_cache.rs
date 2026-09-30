@@ -7,8 +7,10 @@
 //! it. Stale events are skipped. This keeps amortized O(1) operations while
 //! preserving true LRU semantics.
 
-use std::collections::{HashMap, VecDeque};
-use std::hash::Hash;
+use std::{
+    collections::{HashMap, VecDeque},
+    hash::Hash,
+};
 
 pub struct LruCache<K, V>
 where
@@ -47,7 +49,8 @@ where
     pub fn get(&mut self, key: &K) -> Option<V> {
         let (value, _) = self.map.get(key)?.clone();
         self.generation += 1;
-        self.recency.push_back((key.clone(), self.generation));
+        self.recency
+            .push_back((key.clone(), self.generation));
         self.map
             .insert(key.clone(), (value.clone(), self.generation));
         Some(value)
@@ -82,8 +85,6 @@ where
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

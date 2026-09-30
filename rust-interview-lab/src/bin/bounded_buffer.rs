@@ -1,7 +1,9 @@
-use std::collections::VecDeque;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+    time::Duration,
+};
 
 // A thread-safe bounded buffer (a "shelf" that holds at most `capacity` items).
 //

@@ -1,5 +1,4 @@
-use std::fs;
-use std::io;
+use std::{fs, io};
 
 fn main() -> io::Result<()> {
     fs::write("a.txt", "hello")?;

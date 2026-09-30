@@ -82,16 +82,16 @@ entries of Dijkstra's algorithm in section 12.9.
 To evict, the cache pops events from the front. It skips stale events, and removes the key of the first
 current event. That key is the least recently used one.
 
-<p class="listing"><b>Listing 13.1</b> The type (lines 10 to 22). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
+<p class="listing"><b>Listing 13.1</b> The type (lines 10 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:10:22}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:10:24}}
 ```
 
 The key must be `Clone`, because a copy of it goes into the queue with every event. The value must be `Clone`,
 because `get` returns a copy of it.
 
-<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 47 to 67).</p>
+<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 49 to 70).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
@@ -99,7 +99,7 @@ where
     K: Eq + Hash + Clone,
     V: Clone,
 {
-{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:47:67}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:49:70}}
 }
 ```
 
@@ -110,7 +110,7 @@ generation, records an event, and stores the value again with the new stamp.
 was already present, or `None` if it was new. Only a new key can make the map too large, so only a new key
 triggers eviction.
 
-<p class="listing"><b>Listing 13.3</b> Eviction (lines 69 to 83).</p>
+<p class="listing"><b>Listing 13.3</b> Eviction (lines 72 to 86).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
@@ -118,7 +118,7 @@ where
     K: Eq + Hash + Clone,
     V: Clone,
 {
-{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:69:83}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:72:86}}
 }
 ```
 
@@ -168,10 +168,10 @@ An index is a plain `usize`. The borrow checker does not track it, so a node can
 nodes with no `Rc` and no `RefCell`. The cost is that the compiler cannot catch a wrong index. The code must keep
 the links correct by itself.
 
-<p class="listing"><b>Listing 13.5</b> The node and the cache (lines 20 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
+<p class="listing"><b>Listing 13.5</b> The node and the cache (lines 20 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:20:46}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:20:45}}
 ```
 
 Each node stores its key as well as its value. When a node is evicted, the cache reads the key from the node to
@@ -193,14 +193,14 @@ Every `get` and `put` ends by moving one node to the front of the list. The meth
 <figcaption><b>Figure 13.4</b> Moving C to the front. Only the links around C and at the head change.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 13.6</b> <code>new</code> and <code>touch</code> (lines 52 to 104).</p>
+<p class="listing"><b>Listing 13.6</b> <code>new</code> and <code>touch</code> (lines 51 to 101).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
 where
     K: Hash + Eq + Clone,
 {
-{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:52:104}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:51:101}}
 }
 ```
 
@@ -219,14 +219,14 @@ empty, the node is also the tail.
 
 ### 13.3.2 `get` and `put`
 
-<p class="listing"><b>Listing 13.7</b> <code>get</code> and <code>put</code> (lines 106 to 149).</p>
+<p class="listing"><b>Listing 13.7</b> <code>get</code> and <code>put</code> (lines 103 to 147).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
 where
     K: Hash + Eq + Clone,
 {
-{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:106:149}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:103:147}}
 }
 ```
 
@@ -249,10 +249,12 @@ clone of it.
 
 The file `src/bin/lru_cache_arena.rs` has the same cache with a `main` function:
 
-<p class="listing"><b>Listing 13.8</b> The <code>main</code> function (lines 152 to 167). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
+<p class="listing"><b>Listing 13.8</b> The <code>main</code> function (lines 150 to 165). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/lru_cache_arena.rs:152:167}}
+{{#include ../../rust-interview-lab/src/bin/lru_cache_arena.rs:20:20}}
+
+{{#include ../../rust-interview-lab/src/bin/lru_cache_arena.rs:150:165}}
 ```
 
 ```text
@@ -284,6 +286,8 @@ This version also fixes the key and value types to `i32`. `i32` is `Copy`, so th
 <p class="listing"><b>Listing 13.10</b> The link operations (lines 63 to 94). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs:20:20}}
+
 impl LruCache {
 {{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs:63:94}}
 }
@@ -343,20 +347,20 @@ the trait. The trait methods go in `impl<K, V> Cache<K, V> for LruCache<K, V>`.
 
 ### 13.5.2 The `Rc<RefCell<_>>` list
 
-<p class="listing"><b>Listing 13.14</b> The node and the cache (lines 10 to 31). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
+<p class="listing"><b>Listing 13.14</b> The node and the cache (lines 10 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:10:31}}
+{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:10:33}}
 ```
 
 This is the doubly linked list of chapter 9. A node is `Rc<RefCell<Node>>`: `Rc` so several owners can hold it,
 and `RefCell` so it can be changed through those shared handles. `next` is a strong link, and `prev` is a `Weak`
 link, so two neighbors do not keep each other alive forever. The map holds one more `Rc` to every node.
 
-<p class="listing"><b>Listing 13.15</b> <code>detach</code> and <code>push_front</code> (lines 33 to 67).</p>
+<p class="listing"><b>Listing 13.15</b> <code>detach</code> and <code>push_front</code> (lines 35 to 69).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:33:67}}
+{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:35:69}}
 ```
 
 The logic matches listing 13.10, with pointers instead of indices. The difference is in the ceremony around
@@ -368,10 +372,10 @@ each step:
 - `prev.upgrade()` turns the `Weak` link into an `Rc`, if the node still exists.
 - Each `.clone()` of an `Rc` or a `Weak` increases a reference count, and each drop decreases one.
 
-<p class="listing"><b>Listing 13.16</b> The trait methods and <code>Drop</code> (lines 69 to 137).</p>
+<p class="listing"><b>Listing 13.16</b> The trait methods and <code>Drop</code> (lines 71 to 139).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:69:137}}
+{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:71:139}}
 ```
 
 On a miss with a full cache, `put` removes the tail node from the map and detaches it. When `victim` goes out of
@@ -394,10 +398,12 @@ flag, for 56 bytes. The memory sizes are close. What differs is the number of al
 
 ### 13.5.3 The benchmark
 
-<p class="listing"><b>Listing 13.17</b> The request stream and the timed loop (lines 51 to 105). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+<p class="listing"><b>Listing 13.17</b> The request stream and the timed loop (lines 52 to 106). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:51:105}}
+{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:12:20}}
+
+{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:52:106}}
 ```
 
 A fair comparison needs both caches to see exactly the same requests. The program makes its own request stream
@@ -411,10 +417,10 @@ always produces the same sequence. A generator of this kind is called a **linear
 Each request calls `get`. On a miss, it calls `put`, the way a program fills a cache after it computes a missing
 value. `black_box` tells the compiler to treat the value as used, so the optimizer cannot remove the work.
 
-<p class="listing"><b>Listing 13.18</b> Running and checking both caches (lines 107 to 157).</p>
+<p class="listing"><b>Listing 13.18</b> Running and checking both caches (lines 108 to 158).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:107:157}}
+{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:108:158}}
 ```
 
 `best_cache_run::<ArenaCache<u64, u64>>()` runs the generic function with the arena cache, and the next line runs

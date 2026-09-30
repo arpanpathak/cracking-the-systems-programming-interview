@@ -291,11 +291,13 @@ value in its right subtree. The printed tree shows 12 at the root and 7 where 5 
 
 The second implementation writes removal and range queries differently.
 
-<p class="listing"><b>Listing 11.11</b> Removal and <code>pop_min</code> (lines 47 to 82). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
+<p class="listing"><b>Listing 11.11</b> Removal and <code>pop_min</code> (lines 49 to 84). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/bst_easy.rs:1:4}}
+
 impl<T: Ord> BST<T> {
-{{#include ../../rust-interview-lab/src/bin/bst_easy.rs:47:82}}
+{{#include ../../rust-interview-lab/src/bin/bst_easy.rs:49:84}}
 }
 ```
 
@@ -319,11 +321,11 @@ When the loop ends, `node` refers to the leftmost node. `match node.take()` spli
 right subtree, with no `unreachable!`. The loop uses one stack frame however deep the tree is. `pop_min` is also public, so the tree can serve as
 a queue that always returns the smallest value.
 
-<p class="listing"><b>Listing 11.12</b> A range query that returns a new vector (lines 84 to 100).</p>
+<p class="listing"><b>Listing 11.12</b> A range query that returns a new vector (lines 86 to 102).</p>
 
 ```rust
 impl<T: Ord> BST<T> {
-{{#include ../../rust-interview-lab/src/bin/bst_easy.rs:84:100}}
+{{#include ../../rust-interview-lab/src/bin/bst_easy.rs:86:102}}
 }
 ```
 
@@ -413,10 +415,10 @@ $ cargo run --bin test_tree
 A common variation returns the values grouped by level, as a list of lists. The first list holds the
 root's value, the second the values of its children, and so on. The file solves it twice.
 
-<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 18). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
+<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:1:18}}
+{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:1:17}}
 ```
 
 `level_order` keeps one whole level in `level`, a `Vec` of references to nodes. Each pass of the loop does two
@@ -424,10 +426,10 @@ things. It adds the values of this level to the result. Then it builds the next 
 all the nodes in this level: `level.iter().flat_map(|n| &n.children).collect()`. `flat_map` turns each node into
 its children and joins all those children into one sequence. The loop ends when a level has no nodes.
 
-<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 20 to 39).</p>
+<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 19 to 37).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:20:39}}
+{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:19:37}}
 ```
 
 `level_order_readable` uses one queue, as `bfs` did. The trick is `queue.len()` at the start of each round. At
@@ -468,11 +470,13 @@ tree: read a value and a count, then read that many subtrees.
 <figcaption><b>Figure 11.6</b> Each node is written as its value and its number of children, in pre-order.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 11.18</b> Writing the pairs (lines 33 to 50). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
+<p class="listing"><b>Listing 11.18</b> Writing the pairs (lines 30 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:1:1}}
+
 impl<T> TreeNode<T> {
-{{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:33:50}}
+{{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:30:47}}
 }
 ```
 
@@ -483,11 +487,11 @@ top and is popped first. For each node it writes the value and the child count a
 The line `where T: ToString` sits on the method, not on the whole `impl`. So a tree of any type exists, and only
 a tree whose values can become strings gets a `serialize` method.
 
-<p class="listing"><b>Listing 11.19</b> Reading the pairs back (lines 52 to 66).</p>
+<p class="listing"><b>Listing 11.19</b> Reading the pairs back (lines 49 to 63).</p>
 
 ```rust
 impl<T> TreeNode<T> {
-{{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:52:66}}
+{{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:49:63}}
 }
 ```
 

@@ -6,7 +6,6 @@ struct TreeNode<T> {
     children: Vec<TreeNode<T>>,
 }
 
-
 fn level_order<T>(root: &TreeNode<T>) -> Vec<Vec<&T>> {
     let mut result = Vec::new();
     let mut level = vec![root];
@@ -33,11 +32,9 @@ fn level_order_readable<T>(root: &TreeNode<T>) -> Vec<Vec<&T>> {
         }
 
         result.push(level);
-
     }
     result
 }
-
 
 fn main() {
     let root: TreeNode<String> = TreeNode {
@@ -46,15 +43,22 @@ fn main() {
             TreeNode {
                 value: "branch_a".into(),
                 children: vec![
-                    TreeNode { value: "leaf_1".into(), children: vec![] },
-                    TreeNode { value: "leaf_2".into(), children: vec![] },
+                    TreeNode {
+                        value: "leaf_1".into(),
+                        children: vec![],
+                    },
+                    TreeNode {
+                        value: "leaf_2".into(),
+                        children: vec![],
+                    },
                 ],
             },
             TreeNode {
                 value: "branch_b".into(),
-                children: vec![
-                    TreeNode { value: "leaf_3".into(), children: vec![] },
-                ],
+                children: vec![TreeNode {
+                    value: "leaf_3".into(),
+                    children: vec![],
+                }],
             },
         ],
     };
@@ -66,4 +70,3 @@ fn main() {
         println!("{:?}", level);
     }
 }
-

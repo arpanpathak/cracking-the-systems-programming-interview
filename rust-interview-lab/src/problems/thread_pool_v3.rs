@@ -5,9 +5,11 @@
 //! - Dropping the pool closes the queue and joins every worker, so a pool that goes
 //!   out of scope still finishes the jobs it was given.
 
-use std::fmt;
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
+use std::{
+    fmt,
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -103,8 +105,9 @@ fn worker_loop(receiver: &Mutex<mpsc::Receiver<Job>>) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use super::*;
 
     #[test]
     fn zero_workers_is_an_error() {

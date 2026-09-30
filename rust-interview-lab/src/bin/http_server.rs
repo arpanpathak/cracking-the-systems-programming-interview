@@ -25,12 +25,13 @@
 //! curl -i -X POST -d '{"gpuCount":1}' http://127.0.0.1:8080/v1/gpu-workloads
 //! ```
 
-use systems_lab::problems::http_request::{
-    Limits, Method, ParseError, Request, parse_request,
+use std::{
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    thread,
 };
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread;
+
+use systems_lab::problems::http_request::{Limits, Method, ParseError, Request, parse_request};
 
 /// Map a request to `(status, content_type, body)`.
 ///
@@ -173,7 +174,9 @@ fn main() {
         .unwrap_or_else(|| "127.0.0.1:8080".to_string());
 
     let listener = TcpListener::bind(&address).expect("failed to bind");
-    let local = listener.local_addr().expect("failed to read local address");
+    let local = listener
+        .local_addr()
+        .expect("failed to read local address");
     println!("http server listening on http://{local}");
 
     serve(listener);
@@ -181,8 +184,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use systems_lab::problems::http_request::Version;
+
+    use super::*;
 
     fn request(method: Method, target: &str) -> Request {
         Request {
@@ -210,14 +214,22 @@ mod tests {
         let (status, content_type, body) = route(&request(Method::Post, "/v1/gpu-workloads"));
         assert_eq!(status, 201);
         assert_eq!(content_type, "application/json");
-        assert!(String::from_utf8(body).expect("json").contains("Pending"));
+        assert!(
+            String::from_utf8(body)
+                .expect("json")
+                .contains("Pending")
+        );
     }
 
     #[test]
     fn gets_and_deletes_one_workload() {
         let (status, _, body) = route(&request(Method::Get, "/v1/gpu-workloads/wl-7"));
         assert_eq!(status, 200);
-        assert!(String::from_utf8(body).expect("json").contains("wl-7"));
+        assert!(
+            String::from_utf8(body)
+                .expect("json")
+                .contains("wl-7")
+        );
 
         let (status, _, body) = route(&request(Method::Delete, "/v1/gpu-workloads/wl-7"));
         assert_eq!(status, 204);

@@ -53,10 +53,12 @@ The `Condvar` is for consumers that find the queue empty. Section 16.5 introduce
 releases the mutex and sleeps in one step. When another thread
 calls `notify_one`, one sleeping thread wakes up with the mutex locked again.
 
-<p class="listing"><b>Listing 17.1</b> The queue (lines 7 to 31). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+<p class="listing"><b>Listing 17.1</b> The queue (lines 7 to 29). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs:7:31}}
+{{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs:1:5}}
+
+{{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs:7:29}}
 ```
 
 `push` locks the queue, adds the item, and wakes one waiting consumer. `if let Ok(mut q)` skips the push if the
@@ -128,21 +130,23 @@ thread for each change. Two condition variables wake the right kind of thread di
 <p class="listing"><b>Listing 17.3</b> The type and <code>new</code> (lines 19 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:19:24}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:1:6}}
+
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:21:26}}
 
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:27:38}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:29:40}}
 }
 ```
 
 `VecDeque::with_capacity(capacity)` allocates room for every item at the start, so the deque never grows later.
 A capacity of 0 is rejected, because nothing could ever be pushed.
 
-<p class="listing"><b>Listing 17.4</b> <code>push</code> (lines 40 to 74).</p>
+<p class="listing"><b>Listing 17.4</b> <code>push</code> (lines 42 to 76).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:40:74}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:42:76}}
 }
 ```
 
@@ -166,11 +170,11 @@ After the push, the code drops the guard before calling `notify_one`. If it noti
 would try to lock a mutex that is still held, and wait again at once. Unlocking first avoids that extra wait. The
 program would be correct either way.
 
-<p class="listing"><b>Listing 17.5</b> <code>pop</code> (lines 76 to 100).</p>
+<p class="listing"><b>Listing 17.5</b> <code>pop</code> (lines 78 to 102).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:76:100}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:78:102}}
 }
 ```
 
@@ -229,10 +233,12 @@ return an error instead (figure 17.4).
 
 ### 17.4.1 A custom error type
 
-<p class="listing"><b>Listing 17.7</b> The error and an extension trait (lines 7 to 26). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+<p class="listing"><b>Listing 17.7</b> The error and an extension trait (lines 9 to 31). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:7:26}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:1:7}}
+
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:9:31}}
 ```
 
 `QueuePoisonedError` is a unit struct: it carries no data. It implements `Display` for a readable message, and
@@ -243,11 +249,11 @@ any type, including the standard library's `Result`. A trait used this way is ca
 `impl<T> PoisonMap<T> for Result<T, PoisonError<T>>` gives every `Result<T, PoisonError<T>>` a `map_poison`
 method, which replaces the `PoisonError` with `QueuePoisonedError`.
 
-<p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 46 to 66).</p>
+<p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 51 to 71).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:46:66}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:51:71}}
 }
 ```
 
@@ -280,17 +286,19 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 The third version returns a general error type:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:7:7}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:1:7}}
+
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:9:9}}
 ```
 
 `Box<dyn Error + Send + Sync>` can hold any error type. `+ Send + Sync` is needed because the error travels
 between threads: each thread returns a `Result`, and `join` hands it to the main thread.
 
-<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 27 to 40). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 ```rust
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:27:40}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:29:43}}
 }
 ```
 
@@ -403,20 +411,22 @@ The library version adds a way to **close** the queue (figure 17.5).
 <figcaption><b>Figure 17.5</b> What each operation does after <code>close</code>.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 17.13</b> The state (lines 14 to 25). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.13</b> The state (lines 16 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:14:25}}
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:11:14}}
+
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:16:27}}
 ```
 
 The mutex now protects a small struct: the items, the capacity, and a `closed` flag. The flag must be inside the
 mutex, because threads check it together with the items.
 
-<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 45 to 80).</p>
+<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 88).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:45:80}}
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:47:88}}
 }
 ```
 
@@ -429,11 +439,11 @@ is not lost, and the caller decides what to do with it.
 items already in it. Only a closed queue that is empty returns `None`. A consumer can therefore loop with
 `while let Some(item) = queue.pop()`, and the loop ends after the last item.
 
-<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 92 to 102).</p>
+<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 100 to 110).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
-{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:92:102}}
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:100:110}}
 }
 ```
 
@@ -497,10 +507,12 @@ written before it.
 
 ### 17.7.2 The type
 
-<p class="listing"><b>Listing 17.17</b> The ring (lines 23 to 36). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.17</b> The ring (lines 25 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:23:36}}
+{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:19:23}}
+
+{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:25:38}}
 ```
 
 Three new pieces of Rust appear here:
@@ -516,11 +528,11 @@ Three new pieces of Rust appear here:
 
 ### 17.7.3 Push and pop
 
-<p class="listing"><b>Listing 17.18</b> <code>push</code> and <code>pop</code> (lines 69 to 103).</p>
+<p class="listing"><b>Listing 17.18</b> <code>push</code> and <code>pop</code> (lines 71 to 107).</p>
 
 ```rust
 impl<T, const N: usize> SpscRing<T, N> {
-{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:69:103}}
+{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:71:107}}
 }
 ```
 
@@ -537,10 +549,10 @@ slot with `MaybeUninit::write`, and publishes it by storing `tail + 1` with `Rel
 The counters use `wrapping_add` and `wrapping_sub`. After 2 to the power 64 operations a counter would wrap around
 to 0, and wrapping arithmetic keeps `tail - head` correct across that point.
 
-<p class="listing"><b>Listing 17.19</b> <code>Drop</code> (lines 112 to 117).</p>
+<p class="listing"><b>Listing 17.19</b> <code>Drop</code> (lines 116 to 121).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:112:117}}
+{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:116:121}}
 ```
 
 `MaybeUninit` never drops its contents, because it cannot know whether a value is there. So when the ring is

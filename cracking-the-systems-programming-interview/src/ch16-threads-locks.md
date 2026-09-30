@@ -60,10 +60,12 @@ The file `threads.rs` uses a scope to sum a slice on several threads (figure 16.
 <figcaption><b>Figure 16.1</b> Each worker sums one chunk, borrowing it from the caller's slice.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 16.1</b> <code>available_workers</code> and <code>parallel_sum</code> (lines 27 to 60). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">src/problems/threads.rs</a></p>
+<p class="listing"><b>Listing 16.1</b> <code>available_workers</code> and <code>parallel_sum</code> (lines 31 to 69). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">src/problems/threads.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:27:60}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:23:29}}
+
+{{#include ../../rust-interview-lab/src/problems/threads.rs:31:69}}
 ```
 
 `thread::available_parallelism()` asks the operating system how many threads can run at the same time. On this
@@ -102,10 +104,10 @@ as section 16.2 shows. `RefCell` is `Send` but not `Sync`: its borrow flag is no
 `thread::spawn` and `scope.spawn` require their closures to be `Send`. A closure that captures an `Rc` is
 therefore rejected at compile time.
 
-<p class="listing"><b>Listing 16.2</b> A compile-time check (lines 110 to 114).</p>
+<p class="listing"><b>Listing 16.2</b> A compile-time check (lines 119 to 123).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:110:114}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:119:123}}
 ```
 
 `assert_send_sync` has an empty body. Calling `assert_send_sync::<AtomicCounter>()` compiles only if
@@ -132,10 +134,10 @@ see or change the value in between. `AtomicUsize::fetch_add(1, ordering)` adds 1
 
 ### 16.2.2 A counter without a lock
 
-<p class="listing"><b>Listing 16.3</b> <code>AtomicCounter</code> and <code>scoped_increment</code> (lines 62 to 99).</p>
+<p class="listing"><b>Listing 16.3</b> <code>AtomicCounter</code> and <code>scoped_increment</code> (lines 71 to 108).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:62:99}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:71:108}}
 ```
 
 `increment` takes `&self`, not `&mut self`. An atomic can be changed through a shared reference, the same way a
@@ -165,10 +167,10 @@ ordering argument limits that reordering around the atomic operation.
 
 ### 16.2.4 Initializing a value once
 
-<p class="listing"><b>Listing 16.4</b> <code>OnceLock</code> (lines 101 to 108).</p>
+<p class="listing"><b>Listing 16.4</b> <code>OnceLock</code> (lines 110 to 117).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:101:108}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:110:117}}
 ```
 
 A `static` is a single value shared by the whole program. `OnceLock` holds a value that starts empty and is set at
@@ -201,10 +203,12 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 131 filtered out
 `parallel_sum.rs` times the same idea at a large scale. It sums a billion elements three times, as `i32`, `i64`,
 and `i128`, once on one thread and once on several.
 
-<p class="listing"><b>Listing 16.6</b> The parallel sum for <code>i32</code> (lines 13 to 29). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs">src/bin/parallel_sum.rs</a></p>
+<p class="listing"><b>Listing 16.6</b> The parallel sum for <code>i32</code> (lines 15 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs">src/bin/parallel_sum.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/parallel_sum.rs:13:29}}
+{{#include ../../rust-interview-lab/src/bin/parallel_sum.rs:1:5}}
+
+{{#include ../../rust-interview-lab/src/bin/parallel_sum.rs:15:38}}
 ```
 
 This version divides the work by index instead of with `chunks`. Worker `i` sums the range from `i * chunk` to the
@@ -316,10 +320,12 @@ cores doing nothing useful. `std::sync::Mutex` instead asks the operating system
 <p class="listing"><b>Listing 16.9</b> The lock, the guard, and <code>new</code> (lines 24 to 48). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/spin_lock.rs">src/problems/spin_lock.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:24:39}}
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:19:24}}
+
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:26:41}}
 
 impl<T> SpinLock<T> {
-{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:42:48}}
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:44:50}}
 }
 ```
 
@@ -341,11 +347,11 @@ lock when it is dropped.
 
 ### 16.4.2 Taking and releasing the lock
 
-<p class="listing"><b>Listing 16.10</b> <code>lock</code>, <code>try_lock</code>, and <code>unlock</code> (lines 50 to 84).</p>
+<p class="listing"><b>Listing 16.10</b> <code>lock</code>, <code>try_lock</code>, and <code>unlock</code> (lines 52 to 86).</p>
 
 ```rust
 impl<T> SpinLock<T> {
-{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:50:84}}
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:52:86}}
 }
 ```
 
@@ -392,10 +398,10 @@ does not take the lock, so it needs no ordering.
 
 ### 16.4.4 The guard
 
-<p class="listing"><b>Listing 16.11</b> The guard's traits (lines 93 to 113).</p>
+<p class="listing"><b>Listing 16.11</b> The guard's traits (lines 95 to 115).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:93:113}}
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:95:115}}
 ```
 
 The guard implements three traits:
@@ -468,10 +474,12 @@ sometimes wake up with no notification at all, which is called a **spurious wake
 <p class="listing"><b>Listing 16.13</b> The state and <code>acquire_guard</code> (lines 13 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">src/problems/semaphore.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/semaphore.rs:13:21}}
+{{#include ../../rust-interview-lab/src/problems/semaphore.rs:10:13}}
+
+{{#include ../../rust-interview-lab/src/problems/semaphore.rs:15:23}}
 
 impl Semaphore {
-{{#include ../../rust-interview-lab/src/problems/semaphore.rs:24:45}}
+{{#include ../../rust-interview-lab/src/problems/semaphore.rs:26:53}}
 }
 ```
 
@@ -485,10 +493,10 @@ The permit is returned by a guard, the same RAII pattern as in section 16.4.
 
 ```rust
 impl Semaphore {
-{{#include ../../rust-interview-lab/src/problems/semaphore.rs:47:91}}
+{{#include ../../rust-interview-lab/src/problems/semaphore.rs:55:108}}
 }
 
-{{#include ../../rust-interview-lab/src/problems/semaphore.rs:94:103}}
+{{#include ../../rust-interview-lab/src/problems/semaphore.rs:111:120}}
 ```
 
 `release` adds a permit and wakes one sleeping thread with `notify_one`. It is private, and only the guard's `Drop`
@@ -542,10 +550,12 @@ The data, though, stays half-changed. The standard `Mutex` records that this hap
 The error does not hide the data. `PoisonError::into_inner()` returns the guard anyway, for code that can check
 and repair the data.
 
-<p class="listing"><b>Listing 16.16</b> The recovery function (lines 52 to 80). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs">src/bin/mutex_poisoning.rs</a></p>
+<p class="listing"><b>Listing 16.16</b> The recovery function (lines 54 to 82). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs">src/bin/mutex_poisoning.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/mutex_poisoning.rs:52:80}}
+{{#include ../../rust-interview-lab/src/bin/mutex_poisoning.rs:27:31}}
+
+{{#include ../../rust-interview-lab/src/bin/mutex_poisoning.rs:54:82}}
 ```
 
 `recover_ledger` receives the `PoisonError` and takes the guard out of it. It holds the lock while it corrects the

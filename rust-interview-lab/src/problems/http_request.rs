@@ -133,7 +133,10 @@ impl std::error::Error for ParseError {}
 
 /// Parse one request from the start of `input`.
 pub fn parse_request(input: &[u8], limits: Limits) -> Result<Request, ParseError> {
-    let Some(header_end) = input.windows(4).position(|window| window == b"\r\n\r\n") else {
+    let Some(header_end) = input
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+    else {
         return Err(if input.len() > limits.max_header_bytes {
             ParseError::PayloadTooLarge
         } else {
@@ -151,12 +154,22 @@ pub fn parse_request(input: &[u8], limits: Limits) -> Result<Request, ParseError
         .split(|byte| *byte == b'\n')
         .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
 
-    let request_line = std::str::from_utf8(lines.next().ok_or(ParseError::Malformed("empty"))?)
-        .map_err(|_| ParseError::Malformed("request line"))?;
+    let request_line = std::str::from_utf8(
+        lines
+            .next()
+            .ok_or(ParseError::Malformed("empty"))?,
+    )
+    .map_err(|_| ParseError::Malformed("request line"))?;
     let mut parts = request_line.split(' ');
-    let method = Method::parse(parts.next().ok_or(ParseError::Malformed("method"))?)
-        .ok_or(ParseError::Malformed("unknown method"))?;
-    let target = parts.next().ok_or(ParseError::Malformed("target"))?;
+    let method = Method::parse(
+        parts
+            .next()
+            .ok_or(ParseError::Malformed("method"))?,
+    )
+    .ok_or(ParseError::Malformed("unknown method"))?;
+    let target = parts
+        .next()
+        .ok_or(ParseError::Malformed("target"))?;
     let version = match parts.next() {
         Some("HTTP/1.1") => Version::Http11,
         Some("HTTP/1.0") => Version::Http10,
@@ -180,7 +193,11 @@ pub fn parse_request(input: &[u8], limits: Limits) -> Result<Request, ParseError
             .ok_or(ParseError::Malformed("header without colon"))?;
         let name = std::str::from_utf8(&line[..colon])
             .map_err(|_| ParseError::Malformed("header name"))?;
-        if name.is_empty() || name.bytes().any(|byte| byte.is_ascii_whitespace()) {
+        if name.is_empty()
+            || name
+                .bytes()
+                .any(|byte| byte.is_ascii_whitespace())
+        {
             return Err(ParseError::Malformed("invalid header name"));
         }
         let value = std::str::from_utf8(&line[colon + 1..])

@@ -1,4 +1,5 @@
 use std::{collections::HashMap, sync::Mutex, time::Duration};
+
 use reqwest::{Client, Method, StatusCode};
 use serde_json::Value;
 

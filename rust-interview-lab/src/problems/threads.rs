@@ -20,9 +20,13 @@
 //! 3. A thread pool when the number of units of work is large and threads should
 //!    be reused.
 
-use std::sync::OnceLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
+use std::{
+    sync::{
+        OnceLock,
+        atomic::{AtomicUsize, Ordering},
+    },
+    thread,
+};
 
 /// Number of hardware threads the runtime can use, defaulting to 1.
 pub fn available_workers() -> usize {
@@ -48,7 +52,12 @@ pub fn parallel_sum(values: &[i32]) -> i64 {
         let handles: Vec<_> = values
             .chunks(chunk_size)
             .map(|chunk| {
-                scope.spawn(move || chunk.iter().map(|value| i64::from(*value)).sum::<i64>())
+                scope.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|value| i64::from(*value))
+                        .sum::<i64>()
+                })
             })
             .collect();
 
@@ -115,8 +124,9 @@ pub fn assert_send_sync<T: Send + Sync>() {}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::thread;
+
+    use super::*;
 
     #[test]
     fn parallel_sum_matches_the_sequential_sum() {

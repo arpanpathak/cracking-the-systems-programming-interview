@@ -14,14 +14,19 @@
 //! It is deliberately small. It makes three things concrete: why `poll` takes `Pin<&mut Self>`, what `Pending` promises, and where
 //! `Send` matters for a multi-threaded runtime.
 
-use std::collections::VecDeque;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll, Wake, Waker};
-use std::thread;
-use std::time::Duration;
+use std::{
+    collections::VecDeque,
+    future::Future,
+    pin::Pin,
+    sync::{
+        Arc,
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    task::{Context, Poll, Wake, Waker},
+    thread,
+    time::Duration,
+};
 
 /// Block the current thread until `future` completes.
 ///
@@ -229,9 +234,9 @@ impl MiniExecutor {
 
 #[cfg(test)]
 mod tests {
+    use std::{sync::atomic::AtomicUsize, time::Instant};
+
     use super::*;
-    use std::sync::atomic::AtomicUsize;
-    use std::time::Instant;
 
     #[test]
     fn block_on_drives_a_hand_written_future() {

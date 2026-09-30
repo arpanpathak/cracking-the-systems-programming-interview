@@ -9,7 +9,11 @@ pub enum ListNode {
 
 impl From<Vec<i32>> for NodeLink {
     fn from(vec: Vec<i32>) -> Self {
-        vec.into_iter().rev().fold(NodeLink::default(), |acc, v| NodeLink::new(ListNode::Node(v, acc)))
+        vec.into_iter()
+            .rev()
+            .fold(NodeLink::default(), |acc, v| {
+                NodeLink::new(ListNode::Node(v, acc))
+            })
     }
 }
 
@@ -43,9 +47,15 @@ impl ListNode {
             (ListNode::Empty, l) | (l, ListNode::Empty) => NodeLink::new(l),
             (ListNode::Node(v1, n1), ListNode::Node(v2, n2)) => {
                 if v1 <= v2 {
-                    NodeLink::new(ListNode::Node(v1, Self::merge(n1, NodeLink::new(ListNode::Node(v2, n2)))))
+                    NodeLink::new(ListNode::Node(
+                        v1,
+                        Self::merge(n1, NodeLink::new(ListNode::Node(v2, n2))),
+                    ))
                 } else {
-                    NodeLink::new(ListNode::Node(v2, Self::merge(NodeLink::new(ListNode::Node(v1, n1)), n2)))
+                    NodeLink::new(ListNode::Node(
+                        v2,
+                        Self::merge(NodeLink::new(ListNode::Node(v1, n1)), n2),
+                    ))
                 }
             }
         }

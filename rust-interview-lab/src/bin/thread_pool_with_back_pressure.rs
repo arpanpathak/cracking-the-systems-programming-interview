@@ -1,5 +1,7 @@
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread::{self, JoinHandle};
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread::{self, JoinHandle},
+};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -9,7 +11,8 @@ pub struct ThreadPool {
 }
 
 impl ThreadPool {
-    pub fn new(size: usize, queue_size: usize) -> Self { // changed: queue_size
+    pub fn new(size: usize, queue_size: usize) -> Self {
+        // changed: queue_size
         assert!(size > 0, "pool size must be > 0");
         let (job_sender, job_receiver) = mpsc::sync_channel(queue_size); // changed: bounded queue
         let job_receiver = Arc::new(Mutex::new(job_receiver));
@@ -18,15 +21,20 @@ impl ThreadPool {
             .map(|_| Self::spawn_worker(Arc::clone(&job_receiver)))
             .collect();
 
-        Self { workers, job_sender: Some(job_sender) }
+        Self {
+            workers,
+            job_sender: Some(job_sender),
+        }
     }
 
     fn spawn_worker(job_receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> JoinHandle<()> {
-        thread::spawn(move || loop {
-            let message = job_receiver.lock().unwrap().recv();
-            match message {
-                Ok(job) => job(),
-                Err(_) => break,
+        thread::spawn(move || {
+            loop {
+                let message = job_receiver.lock().unwrap().recv();
+                match message {
+                    Ok(job) => job(),
+                    Err(_) => break,
+                }
             }
         })
     }
@@ -62,7 +70,9 @@ impl Drop for ThreadPool {
 fn main() {
     let pool = ThreadPool::new(4, 10); // 4 workers, at most 10 jobs waiting
 
-    let results: Vec<_> = (0..8).map(|i| pool.submit(move || i * i)).collect();
+    let results: Vec<_> = (0..8)
+        .map(|i| pool.submit(move || i * i))
+        .collect();
 
     for r in results {
         println!("{}", r.recv().unwrap());

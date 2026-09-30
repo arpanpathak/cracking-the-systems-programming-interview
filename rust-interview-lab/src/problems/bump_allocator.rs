@@ -64,7 +64,9 @@ impl BumpArena {
 
 fn align_up(offset: usize, align: usize) -> Option<usize> {
     let mask = align - 1;
-    offset.checked_add(mask).map(|value| value & !mask)
+    offset
+        .checked_add(mask)
+        .map(|value| value & !mask)
 }
 
 #[cfg(test)]

@@ -1,5 +1,4 @@
-use std::fs;
-use std::io;
+use std::{fs, io};
 
 fn main() -> io::Result<()> {
     for entry in fs::read_dir(".")? {

@@ -1,6 +1,8 @@
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
-use std::hash::Hash;
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
 
 #[derive(Debug)]
 struct Edge<Node> {
@@ -34,9 +36,15 @@ where
 
 fn main() {
     let graph: AdjMap<&str> = HashMap::from([
-        ("A", vec![Edge { to: "B", weight: 4 }, Edge { to: "C", weight: 1 }]),
+        (
+            "A",
+            vec![Edge { to: "B", weight: 4 }, Edge { to: "C", weight: 1 }],
+        ),
         ("B", vec![Edge { to: "D", weight: 1 }]),
-        ("C", vec![Edge { to: "B", weight: 2 }, Edge { to: "D", weight: 5 }]),
+        (
+            "C",
+            vec![Edge { to: "B", weight: 2 }, Edge { to: "D", weight: 5 }],
+        ),
         ("D", vec![]),
     ]);
 

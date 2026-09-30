@@ -1,7 +1,4 @@
-use std::collections::VecDeque;
-use std::fs;
-use std::io;
-use std::str::FromStr;
+use std::{collections::VecDeque, fs, io, str::FromStr};
 
 #[derive(Debug)]
 struct TreeNode<T> {
@@ -89,13 +86,22 @@ fn main() -> io::Result<()> {
             TreeNode {
                 value: "a".to_string(),
                 children: vec![
-                    TreeNode { value: "a1".to_string(), children: vec![] },
-                    TreeNode { value: "a2".to_string(), children: vec![] },
+                    TreeNode {
+                        value: "a1".to_string(),
+                        children: vec![],
+                    },
+                    TreeNode {
+                        value: "a2".to_string(),
+                        children: vec![],
+                    },
                 ],
             },
             TreeNode {
                 value: "b".to_string(),
-                children: vec![TreeNode { value: "b1".to_string(), children: vec![] }],
+                children: vec![TreeNode {
+                    value: "b1".to_string(),
+                    children: vec![],
+                }],
             },
         ],
     };

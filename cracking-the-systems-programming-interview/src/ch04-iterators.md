@@ -138,10 +138,10 @@ rejects that. You would write `|s|` and use `s` as a reference instead.
 The program for this chapter starts with a small `User` type and two functions that do similar work in two
 styles.
 
-<p class="listing"><b>Listing 4.1</b> The <code>User</code> type and two ways to transform a slice (lines 1 to 22). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lifetime_reference_drill.rs">src/bin/lifetime_reference_drill.rs</a></p>
+<p class="listing"><b>Listing 4.1</b> The <code>User</code> type and two ways to transform a slice (lines 1 to 23). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lifetime_reference_drill.rs">src/bin/lifetime_reference_drill.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:1:22}}
+{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:1:23}}
 ```
 
 `functional_numbers_drill` is the chain from figure 4.3. `collect()` knows to build a `Vec<i32>` because
@@ -212,10 +212,10 @@ user, in a `HashMap<u32, &User>`, and leave the users where they are. Figure 4.6
 The map of references is cheaper. It also depends on the users staying alive while the map is used. The
 function's signature states that dependency with a lifetime.
 
-<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 24 to 30).</p>
+<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 25 to 31).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:24:30}}
+{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:25:31}}
 ```
 
 Read the signature the way section 4.6 showed. For some lifetime `'a`, the input is a slice of users valid
@@ -231,10 +231,10 @@ stores that reference. No `User` is cloned.
 The second function takes a different input. Instead of a slice of users, it takes a slice of references to
 users.
 
-<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 32 to 38).</p>
+<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 33 to 39).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:32:38}}
+{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:33:39}}
 ```
 
 The type `&[&'a User]` has two references in it:

@@ -24,9 +24,11 @@
 //   cargo run --bin mutex_poisoning
 // ============================================================================
 
-use std::error::Error;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use std::thread;
+use std::{
+    error::Error,
+    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    thread,
+};
 
 /// Shared ledger state. In a real system this would be behind a transactional
 /// store; here it is plain in-memory state to illustrate lock poisoning.

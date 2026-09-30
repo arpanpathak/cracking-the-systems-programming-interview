@@ -14,7 +14,9 @@ fn topo_sort(courses: &[Course]) -> Vec<String> {
         indegree.insert(name.clone(), depends_on.len());
         adj.entry(name.clone()).or_default();
         for dep in depends_on {
-            adj.entry(dep.clone()).or_default().push(name.clone());
+            adj.entry(dep.clone())
+                .or_default()
+                .push(name.clone());
             indegree.entry(dep.clone()).or_insert(0);
         }
     }
@@ -36,17 +38,29 @@ fn topo_sort(courses: &[Course]) -> Vec<String> {
         }
         order.push(node);
     }
-    
-    if order.len() == indegree.len() { order } else { Vec::new() }
+
+    if order.len() == indegree.len() {
+        order
+    } else {
+        Vec::new()
+    }
 }
 
 fn main() {
     let courses = vec![
-        Course { name: "algos".into(), depends_on: vec!["datastructs".into()] },
-        Course { name: "compilers".into(), depends_on: vec!["algos".into(), "os".into()] },
-        Course { name: "os".into(), depends_on: vec!["datastructs".into()] },
+        Course {
+            name: "algos".into(),
+            depends_on: vec!["datastructs".into()],
+        },
+        Course {
+            name: "compilers".into(),
+            depends_on: vec!["algos".into(), "os".into()],
+        },
+        Course {
+            name: "os".into(),
+            depends_on: vec!["datastructs".into()],
+        },
     ];
-
 
     let coned2 = courses.clone();
 

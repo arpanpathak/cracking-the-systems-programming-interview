@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},
-    thread
+    thread,
 };
 
 #[derive(Default)]
@@ -11,7 +11,6 @@ struct SyncQueue {
 }
 
 impl SyncQueue {
-
     fn push(&self, item: i32) {
         if let Ok(mut q) = self.items.lock() {
             q.push_back(item);
@@ -26,17 +25,16 @@ impl SyncQueue {
             .wait_while(q, |q| q.is_empty())
             .ok()?;
         q.pop_front()
-
     }
 }
 
 fn main() {
     let q = Arc::new(SyncQueue::default());
 
-    // producer 
+    // producer
     let producer = {
         let q = Arc::clone(&q);
-        thread::spawn(move || { 
+        thread::spawn(move || {
             for i in 0..5 {
                 q.push(i);
                 println!("Producer pushed {i}");
@@ -44,18 +42,15 @@ fn main() {
         })
     };
 
-
     let consumer = {
         let q = Arc::clone(&q);
-        thread::spawn(move || { 
+        thread::spawn(move || {
             for _ in 0..5 {
                 println!("Cosnumer popped: {:?}", q.pop());
             }
         })
     };
 
-
     producer.join().unwrap();
     consumer.join().unwrap();
-
 }

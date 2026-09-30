@@ -9,9 +9,9 @@
 //! sit on the stack more than once. Neighbors are pushed in order, which means the
 //! last neighbor is explored first.
 
+use std::{collections::HashSet, hash::Hash};
+
 use crate::problems::graph_bfs::GraphAdjList;
-use std::collections::HashSet;
-use std::hash::Hash;
 
 /// DFS over an index-based adjacency list. Returns nodes in visiting order.
 pub fn dfs_vec(graph: &[Vec<(usize, u32)>], start_node: usize) -> Vec<usize> {
@@ -55,8 +55,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashMap;
+
+    use super::*;
 
     /// A -> B (1), A -> C (4), B -> C (2), B -> D (5), C -> D (1)
     fn sample_vec() -> Vec<Vec<(usize, u32)>> {

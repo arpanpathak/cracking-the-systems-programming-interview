@@ -6,9 +6,11 @@
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use std::collections::HashMap;
-    use std::io;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::{
+        collections::HashMap,
+        io,
+        sync::atomic::{AtomicBool, Ordering},
+    };
 
     const MAX_EVENTS: usize = 64;
     const EPOLL_TIMEOUT_MS: i32 = 100;
@@ -189,7 +191,9 @@ mod linux {
             }
 
             if let Some(connection) = connections.get_mut(&fd) {
-                connection.out.extend_from_slice(&buffer[..read as usize]);
+                connection
+                    .out
+                    .extend_from_slice(&buffer[..read as usize]);
             }
         }
 
@@ -332,12 +336,17 @@ fn main() {
 
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
+    use std::{
+        io::{Read, Write},
+        net::TcpStream,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+        thread,
+    };
+
     use super::linux;
-    use std::io::{Read, Write};
-    use std::net::TcpStream;
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::thread;
 
     #[test]
     fn echoes_a_message_through_the_event_loop() {

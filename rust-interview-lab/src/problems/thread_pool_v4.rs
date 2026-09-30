@@ -8,12 +8,18 @@
 //! - `shutdown` consumes the pool and returns a `Report` with the number of jobs
 //!   that completed and the number that panicked.
 
-use std::fmt;
-use std::io;
-use std::panic::{self, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
+use std::{
+    fmt,
+    io,
+    panic::{self, AssertUnwindSafe},
+    sync::{
+        Arc,
+        Mutex,
+        atomic::{AtomicUsize, Ordering},
+        mpsc,
+    },
+    thread,
+};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -154,10 +160,9 @@ fn worker_loop(receiver: &Mutex<mpsc::Receiver<Job>>, counters: &Counters) {
 
 #[cfg(test)]
 mod tests {
+    use std::{error::Error, sync::mpsc::channel, time::Duration};
+
     use super::*;
-    use std::error::Error;
-    use std::sync::mpsc::channel;
-    use std::time::Duration;
 
     #[test]
     fn reports_completed_jobs() {
@@ -180,8 +185,10 @@ mod tests {
         let pool = ThreadPool::new(1).unwrap();
         let (done_tx, done_rx) = channel();
 
-        pool.execute(|| panic!("job failed on purpose")).unwrap();
-        pool.execute(move || done_tx.send(()).unwrap()).unwrap();
+        pool.execute(|| panic!("job failed on purpose"))
+            .unwrap();
+        pool.execute(move || done_tx.send(()).unwrap())
+            .unwrap();
 
         done_rx
             .recv_timeout(Duration::from_secs(5))

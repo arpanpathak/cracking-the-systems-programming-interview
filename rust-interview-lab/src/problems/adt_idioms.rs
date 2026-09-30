@@ -140,14 +140,18 @@ fn argument<'a>(
     parts: &mut impl Iterator<Item = &'a str>,
     name: &'static str,
 ) -> Result<&'a str, CommandError> {
-    parts.next().ok_or(CommandError::MissingArgument(name))
+    parts
+        .next()
+        .ok_or(CommandError::MissingArgument(name))
 }
 
 /// Count and sum in one pass, without managing an index.
 pub fn summarize(values: &[i32]) -> (usize, i64) {
-    values.iter().fold((0usize, 0i64), |(count, sum), value| {
-        (count + 1, sum + i64::from(*value))
-    })
+    values
+        .iter()
+        .fold((0usize, 0i64), |(count, sum), value| {
+            (count + 1, sum + i64::from(*value))
+        })
 }
 
 #[cfg(test)]
@@ -215,7 +219,9 @@ mod tests {
     #[test]
     fn errors_render_a_reason() {
         assert_eq!(
-            Command::parse("create triton 0").unwrap_err().to_string(),
+            Command::parse("create triton 0")
+                .unwrap_err()
+                .to_string(),
             "invalid gpu count: \"0\""
         );
         assert!(

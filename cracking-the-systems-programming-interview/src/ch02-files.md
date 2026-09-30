@@ -305,10 +305,10 @@ requests. Any copy of the service can read the next page from the cursor alone.
 
 ### 2.7.1 The page type
 
-<p class="listing"><b>Listing 2.10</b> The <code>Page</code> type (lines 1 to 7). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
+<p class="listing"><b>Listing 2.10</b> The <code>Page</code> type (lines 1 to 9). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/file_pagination.rs:1:7}}
+{{#include ../../rust-interview-lab/src/bin/file_pagination.rs:1:9}}
 ```
 
 A `Page` holds the lines and an `Option<u64>` for the next cursor. `None` means there are no more pages.
@@ -327,10 +327,10 @@ third line (figure 2.5).
 
 So `read_page` counts the bytes itself:
 
-<p class="listing"><b>Listing 2.11</b> <code>read_page</code> (lines 9 to 36).</p>
+<p class="listing"><b>Listing 2.11</b> <code>read_page</code> (lines 11 to 38).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/file_pagination.rs:9:36}}
+{{#include ../../rust-interview-lab/src/bin/file_pagination.rs:11:38}}
 ```
 
 `read_page` opens the file and calls `seek(SeekFrom::Start(cursor))`, which moves the file's read position
@@ -404,7 +404,7 @@ This program turns that list into a struct of typed options, or an error message
 <p class="listing"><b>Listing 2.13</b> The options (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs">src/bin/command_line_args.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:1:16}}
+{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:1:19}}
 ```
 
 `Options` has one field per option. The `Default` trait gives the values used when an option is not given.
@@ -412,10 +412,10 @@ This program turns that list into a struct of typed options, or an error message
 
 ### 2.8.2 Parsing
 
-<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 18 to 40).</p>
+<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 43).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:18:40}}
+{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:21:43}}
 ```
 
 `parse` takes `impl IntoIterator<Item = String>`, which means "anything that can produce `String`s one at a
@@ -433,10 +433,10 @@ An argument the program does not know is an error, so a misspelled option is rep
 
 ### 2.8.3 The exit code
 
-<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 42 to 61).</p>
+<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 45 to 64).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:42:61}}
+{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:45:64}}
 ```
 
 A program's **exit code** is a number it returns to whoever started it. Zero means success. `main` returns

@@ -182,7 +182,7 @@ mod tests_for_lru {
         c.put(2, 20);
 
         c.put(1, 100); // update 1, 1 becomes MRU
-        c.put(3, 30);  // evicts 2
+        c.put(3, 30); // evicts 2
 
         assert_eq!(c.get(1), Some(100));
         assert_eq!(c.get(2), None);
@@ -196,7 +196,7 @@ mod tests_for_lru {
         c.put(2, 20);
 
         assert_eq!(c.get(1), Some(10)); // 1 refreshed
-        c.put(3, 30);                   // evicts 2
+        c.put(3, 30); // evicts 2
 
         assert_eq!(c.get(2), None);
         assert_eq!(c.get(1), Some(10));

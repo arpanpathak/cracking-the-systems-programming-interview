@@ -17,7 +17,9 @@ struct MergeKSorted {}
 
 impl MergeKSorted {
     pub fn merge_k_lists(mut lists: Vec<ListNode>) -> ListNode {
-        if lists.is_empty() { return Empty; }
+        if lists.is_empty() {
+            return Empty;
+        }
 
         let (n, mut interval) = (lists.len(), 1);
         while interval < n {
@@ -41,16 +43,29 @@ impl MergeKSorted {
 
         loop {
             let smaller = match (&left, &right) {
-                (Empty, _) => { *tail = right; break; }
-                (_, Empty) => { *tail = left; break; }
+                (Empty, _) => {
+                    *tail = right;
+                    break;
+                }
+                (_, Empty) => {
+                    *tail = left;
+                    break;
+                }
                 (Node { data: l, .. }, Node { data: r, .. }) => {
-                    if l <= r { &mut left } else { &mut right }
+                    if l <= r {
+                        &mut left
+                    } else {
+                        &mut right
+                    }
                 }
             };
 
             if let Node { data, next } = smaller.take() {
                 *smaller = *next;
-                *tail = Node { data, next: LinkTo::new(Empty) };
+                *tail = Node {
+                    data,
+                    next: LinkTo::new(Empty),
+                };
                 if let Node { next, .. } = tail {
                     tail = next;
                 }
@@ -66,7 +81,10 @@ fn main() {
     for values in [vec![1, 4, 5], vec![1, 3, 4], vec![2, 6]] {
         let mut head = Empty;
         for data in values.into_iter().rev() {
-            head = Node { data, next: LinkTo::new(head) };
+            head = Node {
+                data,
+                next: LinkTo::new(head),
+            };
         }
         lists.push(head);
     }

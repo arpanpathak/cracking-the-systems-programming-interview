@@ -235,10 +235,10 @@ ignore its fields.
 
 ### 7.5.3 The parser's errors and helper
 
-<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 117 to 144).</p>
+<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 117 to 146).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:117:144}}
+{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:117:146}}
 ```
 
 `CommandError` lists every way parsing can fail, and its `Display` writes a message for each. Because the
@@ -255,10 +255,10 @@ the original line. So no text is copied until `parse` decides to keep it with `t
 
 The file has one more small function:
 
-<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 146 to 151).</p>
+<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 148 to 155).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:146:151}}
+{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:148:155}}
 ```
 
 `fold` walks the slice once and carries a value along. Here the value is a pair, `(count, sum)`, starting at

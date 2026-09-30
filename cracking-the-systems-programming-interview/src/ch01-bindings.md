@@ -193,6 +193,8 @@ The definition can be written directly as a Rust function. A function that calls
 <p class="listing"><b>Listing 1.4</b> Fibonacci by recursion. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 8 to 15</p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/cs_fib.rs:6:6}}
+
 {{#include ../../rust-interview-lab/src/bin/cs_fib.rs:8:15}}
 ```
 

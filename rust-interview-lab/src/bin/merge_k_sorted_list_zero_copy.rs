@@ -10,7 +10,11 @@ fn merge_two(mut left: NodeLink, mut right: NodeLink) -> NodeLink {
     let mut tail = &mut dummy;
 
     while let (Some(left_head), Some(right_head)) = (&left, &right) {
-        let smaller = if left_head.val <= right_head.val { &mut left } else { &mut right };
+        let smaller = if left_head.val <= right_head.val {
+            &mut left
+        } else {
+            &mut right
+        };
         let mut node = smaller.take().unwrap(); // safe: checked by while let
         *smaller = node.next.take();
         tail = tail.next.insert(node);
@@ -57,12 +61,23 @@ fn print(mut current: &NodeLink) {
 }
 
 fn main() {
-    let lists = vec![build(&[1, 4, 7]), build(&[2, 5, 8]), build(&[0, 3, 6, 9]), None];
+    let lists = vec![
+        build(&[1, 4, 7]),
+        build(&[2, 5, 8]),
+        build(&[0, 3, 6, 9]),
+        None,
+    ];
     print(&merge_k(lists)); // 0 1 2 3 4 5 6 7 8 9
 
     print(&merge_k(vec![build(&[1, 1, 5]), build(&[1, 3])])); // 1 1 1 3 5
     print(&merge_k(vec![])); // (empty line)
 
-    let five = vec![build(&[9]), build(&[1, 5]), build(&[3]), build(&[2, 8]), build(&[4])];
+    let five = vec![
+        build(&[9]),
+        build(&[1, 5]),
+        build(&[3]),
+        build(&[2, 8]),
+        build(&[4]),
+    ];
     print(&merge_k(five)); // 1 2 3 4 5 8 9
 }

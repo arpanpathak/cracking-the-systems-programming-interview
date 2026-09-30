@@ -1,6 +1,4 @@
-use std::fs;
-use std::io;
-use std::path::Path;
+use std::{fs, io, path::Path};
 
 fn walk(dir: &Path) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {

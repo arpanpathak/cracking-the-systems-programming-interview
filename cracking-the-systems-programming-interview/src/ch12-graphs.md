@@ -72,7 +72,9 @@ this chapter solve the same problem both ways, so you can compare them side by s
 The map form in `graph_bfs.rs` has a type alias:
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:13:14}}
+{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:10:13}}
+
+{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:15:16}}
 ```
 
 `GraphAdjList<'a, Node>` is a `HashMap` whose values are borrowed slices, `&'a [(Node, u32)]`. The map does not
@@ -103,10 +105,10 @@ The top half of figure 12.3 follows the queue step by step.
 
 ### 12.3.1 BFS with numbered nodes
 
-<p class="listing"><b>Listing 12.1</b> BFS over the index form (lines 16 to 34). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">src/problems/graph_bfs.rs</a></p>
+<p class="listing"><b>Listing 12.1</b> BFS over the index form (lines 18 to 36). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">src/problems/graph_bfs.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:16:34}}
+{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:18:36}}
 ```
 
 The function sets up three things. `visited` has one `false` per node. `queue` holds the start node. `result`
@@ -122,10 +124,10 @@ queue, and are not in the result.
 
 ### 12.3.2 BFS with any node type
 
-<p class="listing"><b>Listing 12.2</b> BFS over the map form (lines 36 to 57).</p>
+<p class="listing"><b>Listing 12.2</b> BFS over the map form (lines 38 to 59).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:36:57}}
+{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:38:59}}
 ```
 
 The steps are the same. Three things change:
@@ -163,6 +165,8 @@ stack.
 <p class="listing"><b>Listing 12.3</b> DFS over the index form (lines 16 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">src/problems/graph_dfs.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/problems/graph_dfs.rs:12:14}}
+
 {{#include ../../rust-interview-lab/src/problems/graph_dfs.rs:16:33}}
 ```
 
@@ -285,10 +289,10 @@ explored, and cannot close a loop.
 <p class="listing"><b>Listing 12.7</b> The graph and its states (lines 1 to 30). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph.rs">src/bin/cyclic_graph.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:1:11}}
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:1:15}}
 
 impl<T> Graph<T> {
-{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:14:30}}
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:18:37}}
 }
 ```
 
@@ -304,11 +308,11 @@ ownership problems at all.
 numbers". The `+ '_` says the iterator borrows from `self`, so it cannot outlive the graph. `.copied()` turns
 the `&usize` items of the slice iterator into `usize` values.
 
-<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 32 to 64).</p>
+<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 71).</p>
 
 ```rust
 impl<T> Graph<T> {
-{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:32:64}}
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:39:71}}
 }
 ```
 
@@ -316,11 +320,11 @@ These are the algorithms of sections 12.3 and 12.4, written with `neighbors`. Th
 neighbors before pushing them, with `.filter(|&n| !visited[n])`. The filter keeps the stack smaller, but the
 check after `pop` is still needed. A node can be pushed by two different nodes before either copy is popped.
 
-<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 66 to 82).</p>
+<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 73 to 91).</p>
 
 ```rust
 impl<T> Graph<T> {
-{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:66:82}}
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:73:91}}
 }
 ```
 
@@ -401,6 +405,8 @@ a connected area this way is called a **flood fill** (figure 12.5).
 <p class="listing"><b>Listing 12.12</b> Counting islands (lines 27 to 72). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs">src/bin/count_islands.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/count_islands.rs:21:21}}
+
 {{#include ../../rust-interview-lab/src/bin/count_islands.rs:27:72}}
 ```
 
@@ -585,10 +591,12 @@ cost is higher than the recorded one.
 
 ### 12.9.2 Two versions side by side
 
-<p class="listing"><b>Listing 12.16</b> Dijkstra over the index form (lines 20 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">src/problems/graph_dijkstra.rs</a></p>
+<p class="listing"><b>Listing 12.16</b> Dijkstra over the index form (lines 23 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">src/problems/graph_dijkstra.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:20:41}}
+{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:15:21}}
+
+{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:23:44}}
 ```
 
 The distances are a `Vec<Option<u32>>`, where `None` means "no path found yet". Two methods of `Option` read
@@ -603,10 +611,10 @@ The heap holds `Reverse((cost, node))`. `BinaryHeap` pops the largest item, and 
 so the smallest cost comes out first. Tuples compare by their first field, then by their second, so the cost
 decides and the node number breaks ties.
 
-<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 43 to 66).</p>
+<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 69).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:43:66}}
+{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:46:69}}
 ```
 
 In this version, `distances` is a `HashMap` that contains only nodes that have been reached. `Node` also needs
@@ -678,10 +686,12 @@ $ cargo run --bin dijkstra
 The first print shows the graph and is cut short here. A `HashMap` does not keep its entries in any order. The lines of both prints can come out in a different
 order on your machine.
 
-<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 13 to 35). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
+<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 15 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:13:35}}
+{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:1:5}}
+
+{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:15:44}}
 ```
 
 This version stores references to nodes, `&'a Node`, in `dist` and in the heap, so `Node` does not need `Clone`.
@@ -774,10 +784,12 @@ There are two operations:
 - `union(x, y)` finds both roots. If the roots differ, it makes one root point to the other, which joins the two
   groups.
 
-<p class="listing"><b>Listing 12.22</b> Union-find (lines 6 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
+<p class="listing"><b>Listing 12.22</b> Union-find (lines 10 to 50). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:6:41}}
+{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:1:1}}
+
+{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:10:50}}
 ```
 
 `new` makes every node its own group: `parent` is `[0, 1, 2, ...]`, built with `(0..n).collect()`.
@@ -794,10 +806,10 @@ With both tricks, `find` and `union` take nearly constant time in practice.
 
 ### 12.10.2 Kruskal's algorithm
 
-<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 43 to 58).</p>
+<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 52 to 66).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:43:58}}
+{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:52:66}}
 ```
 
 `edges.sort_by_key(|e| e.w)` sorts the edges by weight. Then each edge is offered to `union`. If `union`

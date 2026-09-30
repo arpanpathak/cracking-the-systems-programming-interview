@@ -10,7 +10,9 @@ fn schedule<'a>(tasks: &[&'a str], ticks: usize) -> Vec<&'a str> {
     if tasks.is_empty() {
         return Vec::new();
     }
-    (0..ticks).map(|tick| tasks[tick % tasks.len()]).collect()
+    (0..ticks)
+        .map(|tick| tasks[tick % tasks.len()])
+        .collect()
 }
 
 fn main() {

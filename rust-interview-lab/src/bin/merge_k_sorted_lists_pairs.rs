@@ -18,7 +18,10 @@ fn merge_k_lists(lists: Vec<Link>) -> Link {
 }
 
 fn merge_two(mut a: Link, mut b: Link) -> Link {
-    let mut dummy = Box::new(ListNode { data: 0, next: None });
+    let mut dummy = Box::new(ListNode {
+        data: 0,
+        next: None,
+    });
     let mut tail = &mut dummy;
 
     while let (Some(x), Some(y)) = (&a, &b) {

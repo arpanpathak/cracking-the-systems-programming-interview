@@ -8,10 +8,15 @@
 //! cargo run --bin async_demo
 //! ```
 
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::{Duration, Instant},
+};
+
 use systems_lab::problems::async_mini::{Delay, MiniExecutor, YieldTimes, block_on};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
 
 fn main() {
     println!("== block_on drives a hand-written future ==");

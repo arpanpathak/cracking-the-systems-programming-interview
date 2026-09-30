@@ -1,5 +1,7 @@
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::{
+    fs::File,
+    io::{self, BufRead, BufReader},
+};
 
 fn main() -> io::Result<()> {
     let file = File::open("large.txt")?;

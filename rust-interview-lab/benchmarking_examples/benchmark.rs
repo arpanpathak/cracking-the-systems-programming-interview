@@ -9,14 +9,15 @@
 //! The recursive list variants abort with a stack overflow past roughly 265,000
 //! nodes, so run them below that size or on their own.
 
-use std::hint::black_box;
-use std::time::{Duration, Instant};
+use std::{
+    hint::black_box,
+    time::{Duration, Instant},
+};
 
-use systems_lab::cache::Cache;
-use systems_lab::cache::arena::LruCache as ArenaCache;
-use systems_lab::cache::rc_list::LruCache as RcCache;
-use systems_lab::lists::SinglyList;
-use systems_lab::lists::{boxed, boxed_drop, enum_drop, enum_node};
+use systems_lab::{
+    cache::{Cache, arena::LruCache as ArenaCache, rc_list::LruCache as RcCache},
+    lists::{SinglyList, boxed, boxed_drop, enum_drop, enum_node},
+};
 
 const CACHE_CAPACITY: usize = 65_536;
 const KEY_SPACE: u64 = 131_072;

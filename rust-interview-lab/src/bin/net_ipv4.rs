@@ -5,7 +5,9 @@
 
 /// Parse `a.b.c.d`, rejecting anything that is not exactly four octets.
 fn parse(input: &str) -> Option<[u8; 4]> {
-    let mut parts = input.split('.').map(|part| part.parse::<u8>().ok());
+    let mut parts = input
+        .split('.')
+        .map(|part| part.parse::<u8>().ok());
     let address = [
         parts.next()??,
         parts.next()??,

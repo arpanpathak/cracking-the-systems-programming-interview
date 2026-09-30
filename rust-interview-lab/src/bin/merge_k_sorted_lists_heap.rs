@@ -1,5 +1,4 @@
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 struct ListNode {
     data: u32,
@@ -16,7 +15,10 @@ fn merge_k_lists(mut lists: Vec<Link>) -> Link {
         }
     }
 
-    let mut dummy = Box::new(ListNode { data: 0, next: None });
+    let mut dummy = Box::new(ListNode {
+        data: 0,
+        next: None,
+    });
     let mut tail = &mut dummy;
 
     while let Some(Reverse((_, i))) = heap.pop() {

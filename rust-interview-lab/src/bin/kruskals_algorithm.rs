@@ -1,19 +1,26 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
 
 #[derive(Debug)]
-struct Edge { u: usize, v: usize, w: u32 }
+struct Edge {
+    u: usize,
+    v: usize,
+    w: u32,
+}
 
-struct DisjointSet { parent: Vec<usize>, rank: Vec<usize> }
+struct DisjointSet {
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
 
-impl DisjointSet  {
+impl DisjointSet {
     fn new(n: usize) -> Self {
         Self {
             parent: (0..n).collect(),
-            rank: vec![0; n]
+            rank: vec![0; n],
         }
     }
 
-    fn find(&mut self, elem: usize) -> usize{
+    fn find(&mut self, elem: usize) -> usize {
         if self.parent[elem] != elem {
             self.parent[elem] = self.find(self.parent[elem]);
         }
@@ -24,8 +31,10 @@ impl DisjointSet  {
     fn union(&mut self, x: usize, y: usize) -> bool {
         let (x, y) = (self.find(x), self.find(y));
 
-        if x == y { return false;}
- 
+        if x == y {
+            return false;
+        }
+
         // Note for self : Comparator requires a reference
         match self.rank[x].cmp(&self.rank[y]) {
             Less => self.parent[x] = y,
@@ -33,7 +42,7 @@ impl DisjointSet  {
             Equal => {
                 self.parent[x] = y;
                 self.rank[y] += 1;
-            } 
+            }
         }
 
         true
@@ -54,11 +63,10 @@ fn kruskals(n: usize, mut edges: Vec<Edge>) -> Vec<Edge> {
     }
 
     mst
-
 }
 
 fn main() {
-     let edges = vec![
+    let edges = vec![
         Edge { u: 0, v: 1, w: 4 },
         Edge { u: 0, v: 2, w: 3 },
         Edge { u: 1, v: 2, w: 1 },

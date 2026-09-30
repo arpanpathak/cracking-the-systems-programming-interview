@@ -1,6 +1,8 @@
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
-use std::hash::Hash;
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
 
 struct Edge<Node> {
     to: Node,
@@ -20,10 +22,14 @@ where
         if cost > dist[&node] {
             continue; // stale entry
         }
-        let Some(edges) = graph.get(&node) else { continue }; // node with no outgoing edges
+        let Some(edges) = graph.get(&node) else {
+            continue;
+        }; // node with no outgoing edges
 
         for edge in edges {
-            let Some(new_cost) = cost.checked_add(edge.weight) else { continue }; // overflow
+            let Some(new_cost) = cost.checked_add(edge.weight) else {
+                continue;
+            }; // overflow
             if dist.get(&edge.to).is_none_or(|&d| new_cost < d) {
                 dist.insert(edge.to.clone(), new_cost);
                 heap.push(Reverse((new_cost, edge.to.clone())));
@@ -35,9 +41,15 @@ where
 
 fn main() {
     let graph: AdjMap<&str> = HashMap::from([
-        ("A", vec![Edge { to: "B", weight: 4 }, Edge { to: "C", weight: 1 }]),
+        (
+            "A",
+            vec![Edge { to: "B", weight: 4 }, Edge { to: "C", weight: 1 }],
+        ),
         ("B", vec![Edge { to: "D", weight: 1 }]),
-        ("C", vec![Edge { to: "B", weight: 2 }, Edge { to: "D", weight: 5 }]),
+        (
+            "C",
+            vec![Edge { to: "B", weight: 2 }, Edge { to: "D", weight: 5 }],
+        ),
     ]); // "D" has no entry now, and it no longer panics
 
     println!("{:?}", dijkstra_ssmd_shortest(&graph, "A"));

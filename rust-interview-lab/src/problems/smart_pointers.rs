@@ -18,11 +18,13 @@
 //! break reference cycles, because two strong references in a cycle never reach a
 //! count of zero and the memory is never freed.
 
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    rc::{Rc, Weak},
+    sync::{Arc, Mutex},
+    thread,
+};
 
 /// A recursive type needs indirection, because `Expr` cannot contain itself by
 /// value. `Box` provides the fixed-size indirection.
@@ -77,7 +79,10 @@ impl TreeNode {
 
     /// The parent's value, or `None` once the parent has been dropped.
     pub fn parent_value(&self) -> Option<i32> {
-        self.parent.borrow().upgrade().map(|parent| parent.value)
+        self.parent
+            .borrow()
+            .upgrade()
+            .map(|parent| parent.value)
     }
 }
 
@@ -109,7 +114,11 @@ pub fn total_with_arc_mutex(threads: usize, per_thread: usize) -> usize {
 /// `Cow` is the idiomatic return type for a function that usually passes its
 /// input through unchanged.
 pub fn normalize(input: &str, uppercase: bool) -> Cow<'_, str> {
-    if uppercase && input.bytes().any(|byte| byte.is_ascii_lowercase()) {
+    if uppercase
+        && input
+            .bytes()
+            .any(|byte| byte.is_ascii_lowercase())
+    {
         Cow::Owned(input.to_uppercase())
     } else {
         Cow::Borrowed(input)

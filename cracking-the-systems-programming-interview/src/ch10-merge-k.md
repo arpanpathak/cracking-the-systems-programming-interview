@@ -74,11 +74,11 @@ In each round, the list at position `i` absorbs the list at `i + interval`. The 
 
 ## 10.3 First version: `split_at_mut` and a dummy head
 
-<p class="listing"><b>Listing 10.1</b> The interval loop (lines 20 to 35). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
+<p class="listing"><b>Listing 10.1</b> The interval loop (lines 17 to 34). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
 
 ```rust
 impl MergeKSorted {
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:20:35}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:17:34}}
 }
 ```
 
@@ -101,11 +101,11 @@ The merge of two lists uses a **dummy head** and a **tail pointer** (figure 10.4
 <figcaption><b>Figure 10.4</b> The dummy node gives the output a fixed starting point. <code>tail</code> always points at the last node, where the next one is attached.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 10.2</b> Merging two lists (lines 37 to 51).</p>
+<p class="listing"><b>Listing 10.2</b> Merging two lists (lines 36 to 57).</p>
 
 ```rust
 impl MergeKSorted {
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:37:51}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:36:57}}
 }
 ```
 
@@ -144,7 +144,7 @@ $ cargo run --bin merge_k_sorted_lists_divide
 <p class="listing"><b>Listing 10.4</b> The loop and the merge (lines 19 to 55). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs:19:54}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs:16:56}}
 ```
 
 Look at the inner loop:
@@ -169,10 +169,10 @@ loop body always takes from `left`.
 
 ### 10.4.2 Merge owned lists, with no dummy node
 
-<p class="listing"><b>Listing 10.6</b> The loop and the merge (lines 8 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
+<p class="listing"><b>Listing 10.6</b> The loop and the merge (lines 8 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs:8:41}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs:8:43}}
 ```
 
 This version changes two things.
@@ -205,10 +205,10 @@ consuming it.
 
 ### 10.4.3 The shortest form, with `Option::insert`
 
-<p class="listing"><b>Listing 10.8</b> The merge and the loop (lines 8 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
+<p class="listing"><b>Listing 10.8</b> The merge and the loop (lines 8 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs:8:41}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs:8:45}}
 ```
 
 This version keeps the owned `merge_two` from listing 10.6 and brings back the dummy head. It shortens the tail
@@ -259,11 +259,11 @@ Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape
 `use ListNode::{Empty, Node};` lets the code write `Empty` instead of `ListNode::Empty`. The enum gets its own
 `take`, built on `mem::replace`, so it can be used like `Option::take`.
 
-<p class="listing"><b>Listing 10.11</b> The merge (lines 36 to 61).</p>
+<p class="listing"><b>Listing 10.11</b> The merge (lines 38 to 76).</p>
 
 ```rust
 impl MergeKSorted {
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs:36:61}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs:38:76}}
 }
 ```
 
@@ -288,10 +288,10 @@ holding a new `Empty`. So this version allocates once for every node it outputs.
 
 ### 10.5.2 An enum with standard traits and a recursive merge
 
-<p class="listing"><b>Listing 10.13</b> The type and its conversions (lines 1 to 20). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
+<p class="listing"><b>Listing 10.13</b> The type and its conversions (lines 1 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:1:20}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:1:24}}
 ```
 
 This version uses standard traits in place of hand-written helpers:
@@ -301,10 +301,10 @@ This version uses standard traits in place of hand-written helpers:
 - `impl From<Vec<i32>> for NodeLink` builds a list from a vector. It walks the vector backward with `rev()` and
   uses `fold` to wrap each value around the list built so far. `main` calls it as `vec![1, 4, 5].into()`.
 
-<p class="listing"><b>Listing 10.14</b> The interval loop and a recursive merge (lines 22 to 53).</p>
+<p class="listing"><b>Listing 10.14</b> The interval loop and a recursive merge (lines 26 to 63).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:22:53}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:26:63}}
 ```
 
 `std::mem::take(&mut lists[i + interval])` moves the right list out and leaves the default, an empty list, in

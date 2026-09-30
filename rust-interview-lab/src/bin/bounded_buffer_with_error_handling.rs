@@ -1,15 +1,20 @@
-use std::collections::VecDeque;
-use std::fmt;
-use std::sync::{Arc, Condvar, Mutex, PoisonError};
-use std::thread;
-use std::time::Duration;
+use std::{
+    collections::VecDeque,
+    fmt,
+    sync::{Arc, Condvar, Mutex, PoisonError},
+    thread,
+    time::Duration,
+};
 
 #[derive(Debug)]
 pub struct QueuePoisonedError;
 
 impl fmt::Display for QueuePoisonedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "The queue's internal mutex was poisoned by a panicking thread")
+        write!(
+            f,
+            "The queue's internal mutex was poisoned by a panicking thread"
+        )
     }
 }
 
@@ -77,7 +82,7 @@ fn main() {
             for i in 0..5 {
                 let item = format!("p{}:item{}", p, i);
                 println!("  [producer {}] pushing {}", p, item);
-                
+
                 // Uses match, avoids naming an error variable, uses dbg!
                 match q.push(item) {
                     Ok(_) => {}
@@ -146,7 +151,7 @@ mod tests {
         let handle = thread::spawn(move || {
             // Manually lock the inner mutex so this thread owns the lock guard
             let _guard = queue_clone.inner.lock().unwrap();
-            
+
             // Trigger a serious runtime panic while holding the lock guard!
             panic!("Intentional worker thread crash!");
         });
@@ -155,12 +160,12 @@ mod tests {
         let join_result = handle.join();
         assert!(join_result.is_err(), "The thread was supposed to panic");
 
-        // 4. Now try to interact with the queue. 
+        // 4. Now try to interact with the queue.
         // Because the thread panicked while holding the guard, the Mutex is poisoned.
         // Our push and pop methods should cleanly catch this and return our custom error.
         match queue.push("test_item") {
             Err(QueuePoisonedError) => {
-                // Success! The queue correctly caught the poisoned state 
+                // Success! The queue correctly caught the poisoned state
                 // instead of panicking the main thread.
             }
             Ok(_) => {

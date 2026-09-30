@@ -16,10 +16,12 @@
 //! dedicated cores, and prefer `std::sync::Mutex` (which parks the thread) in
 //! general code.
 
-use std::cell::UnsafeCell;
-use std::hint::spin_loop;
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+    cell::UnsafeCell,
+    hint::spin_loop,
+    ops::{Deref, DerefMut},
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 /// A mutual-exclusion lock that busy-waits instead of parking.
 pub struct SpinLock<T> {
@@ -114,9 +116,9 @@ impl<T> DerefMut for SpinGuard<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    use std::{sync::Arc, thread};
+
     use super::*;
-    use std::sync::Arc;
-    use std::thread;
 
     #[test]
     fn serializes_concurrent_increments() {

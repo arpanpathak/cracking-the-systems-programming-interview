@@ -1,6 +1,8 @@
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
+    thread,
+    time::{Duration, Instant},
+};
 
 const ITERS: u64 = 20_000_000;
 
@@ -23,12 +25,23 @@ fn time<F: FnOnce()>(f: F) -> Duration {
 
 fn main() {
     // ---- 1. False sharing: two counters on the same cache line ----
-    let same = SameLine { a: AtomicU64::new(0), b: AtomicU64::new(0) };
+    let same = SameLine {
+        a: AtomicU64::new(0),
+        b: AtomicU64::new(0),
+    };
 
     let d1 = time(|| {
         thread::scope(|s| {
-            s.spawn(|| for _ in 0..ITERS { same.a.fetch_add(1, Ordering::Relaxed); });
-            s.spawn(|| for _ in 0..ITERS { same.b.fetch_add(1, Ordering::Relaxed); });
+            s.spawn(|| {
+                for _ in 0..ITERS {
+                    same.a.fetch_add(1, Ordering::Relaxed);
+                }
+            });
+            s.spawn(|| {
+                for _ in 0..ITERS {
+                    same.b.fetch_add(1, Ordering::Relaxed);
+                }
+            });
         });
     });
 
@@ -38,8 +51,16 @@ fn main() {
 
     let d2 = time(|| {
         thread::scope(|s| {
-            s.spawn(|| for _ in 0..ITERS { p0.0.fetch_add(1, Ordering::Relaxed); });
-            s.spawn(|| for _ in 0..ITERS { p1.0.fetch_add(1, Ordering::Relaxed); });
+            s.spawn(|| {
+                for _ in 0..ITERS {
+                    p0.0.fetch_add(1, Ordering::Relaxed);
+                }
+            });
+            s.spawn(|| {
+                for _ in 0..ITERS {
+                    p1.0.fetch_add(1, Ordering::Relaxed);
+                }
+            });
         });
     });
 

@@ -1,16 +1,13 @@
-struct MergeKSorted { }
+struct MergeKSorted {}
 
 #[derive(Default)]
 struct ListNode {
     data: u32,
-    next: Option<Box<ListNode>>
+    next: Option<Box<ListNode>>,
 }
 impl ListNode {
-    fn new(data: u32) -> Self { 
-        Self {
-            data,
-            next: None
-        }
+    fn new(data: u32) -> Self {
+        Self { data, next: None }
     }
 }
 
@@ -18,7 +15,9 @@ type OptionalLink<T> = Option<Box<T>>;
 
 impl MergeKSorted {
     pub fn merge_k_lists(mut lists: Vec<OptionalLink<ListNode>>) -> OptionalLink<ListNode> {
-        if lists.is_empty() { return None; }
+        if lists.is_empty() {
+            return None;
+        }
 
         let (n, mut interval) = (lists.len(), 1);
         while interval < n {
@@ -34,12 +33,19 @@ impl MergeKSorted {
         lists[0].take()
     }
 
-    fn merge_two(left: &mut OptionalLink<ListNode>, right: &mut OptionalLink<ListNode>) -> OptionalLink<ListNode> {
+    fn merge_two(
+        left: &mut OptionalLink<ListNode>,
+        right: &mut OptionalLink<ListNode>,
+    ) -> OptionalLink<ListNode> {
         let mut dummy = Box::new(ListNode::new(0));
         let mut tail = &mut dummy;
 
         while let (Some(l), Some(r)) = (left.as_ref(), right.as_ref()) {
-            let smaller = if l.data < r.data { &mut *left } else { &mut *right };
+            let smaller = if l.data < r.data {
+                &mut *left
+            } else {
+                &mut *right
+            };
             let mut head = smaller.take().unwrap();
             *smaller = head.next.take();
             tail.next = Some(head);
@@ -73,7 +79,11 @@ fn to_vec(mut list: &OptionalLink<ListNode>) -> Vec<u32> {
 }
 
 fn main() {
-    let lists = vec![from_slice(&[1, 4, 5]), from_slice(&[1, 3, 4]), from_slice(&[2, 6])];
+    let lists = vec![
+        from_slice(&[1, 4, 5]),
+        from_slice(&[1, 3, 4]),
+        from_slice(&[2, 6]),
+    ];
     let merged = MergeKSorted::merge_k_lists(lists);
     println!("{:?}", to_vec(&merged));
 }
@@ -84,7 +94,11 @@ mod tests {
 
     #[test]
     fn merges_three_lists() {
-        let lists = vec![from_slice(&[1, 4, 5]), from_slice(&[1, 3, 4]), from_slice(&[2, 6])];
+        let lists = vec![
+            from_slice(&[1, 4, 5]),
+            from_slice(&[1, 3, 4]),
+            from_slice(&[2, 6]),
+        ];
         let merged = MergeKSorted::merge_k_lists(lists);
         assert_eq!(to_vec(&merged), vec![1, 1, 2, 3, 4, 4, 5, 6]);
     }

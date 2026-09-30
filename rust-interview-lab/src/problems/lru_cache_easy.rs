@@ -17,8 +17,7 @@
 //! On eviction we **reuse the tail slot** instead of removing it, so no node
 //! is ever deallocated mid-life. That keeps the arena dense and index-stable.
 
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash};
 
 /// A single cache entry, linked into the recency list by index.
 struct Node<K, V> {
@@ -74,10 +73,8 @@ where
         let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
 
         // A node is "linked" if any of its four references exist.
-        let linked = prev.is_some()
-            || next.is_some()
-            || self.head == Some(i)
-            || self.tail == Some(i);
+        let linked =
+            prev.is_some() || next.is_some() || self.head == Some(i) || self.tail == Some(i);
 
         if linked {
             // Splice `i` out of the list.
@@ -143,7 +140,8 @@ where
             let old_key = std::mem::replace(&mut self.nodes[i].key, key);
             self.nodes[i].value = value;
             self.lookup_table.remove(&old_key);
-            self.lookup_table.insert(self.nodes[i].key.clone(), i);
+            self.lookup_table
+                .insert(self.nodes[i].key.clone(), i);
             self.touch(i);
         }
     }
@@ -174,7 +172,7 @@ mod tests {
         c.put("B", 2);
 
         c.put("A", 100); // update A, A becomes MRU
-        c.put("C", 3);   // evicts B
+        c.put("C", 3); // evicts B
 
         assert_eq!(c.get(&"A"), Some(&100));
         assert_eq!(c.get(&"B"), None);
@@ -188,7 +186,7 @@ mod tests {
         c.put("B", 2);
 
         assert_eq!(c.get(&"A"), Some(&1)); // A refreshed
-        c.put("C", 3);                     // evicts B
+        c.put("C", 3); // evicts B
 
         assert_eq!(c.get(&"B"), None);
         assert_eq!(c.get(&"A"), Some(&1));

@@ -340,10 +340,12 @@ A third demo builds a list of five million nodes and drops it:
 The benchmark program measures all four versions with one generic function. The full program also measures
 the caches of chapter 13, and is listed there. This is the part that measures the lists.
 
-<p class="listing"><b>Listing 9.15</b> The list benchmark (lines 159 to 235). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+<p class="listing"><b>Listing 9.15</b> The list benchmark (lines 160 to 236). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:159:235}}
+{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:12:20}}
+
+{{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:160:236}}
 ```
 
 `run_list::<L: SinglyList<u64>>` is **generic** over the list type `L`. The compiler generates a separate copy of the function for each list type. So each list is measured with
@@ -463,11 +465,11 @@ tail is looked at without being moved. `map(Rc::downgrade)` turns that reference
 
 ### 9.8.3 Removing from either end
 
-<p class="listing"><b>Listing 9.19</b> <code>pop_front</code> (lines 95 to 122).</p>
+<p class="listing"><b>Listing 9.19</b> <code>pop_front</code> (lines 95 to 125).</p>
 
 ```rust
 impl<T> LinkedList<T> {
-{{#include ../../rust-interview-lab/src/bin/ll.rs:95:122}}
+{{#include ../../rust-interview-lab/src/bin/ll.rs:95:125}}
 }
 ```
 
@@ -486,11 +488,11 @@ fails, which requires the error type to implement `Debug`. Here the error type i
 does not implement `Debug`, so `.unwrap()` would not compile. `.ok()` turns the `Result` into an `Option`,
 whose `unwrap` needs no `Debug`.
 
-<p class="listing"><b>Listing 9.20</b> <code>pop_back</code> (lines 124 to 147).</p>
+<p class="listing"><b>Listing 9.20</b> <code>pop_back</code> (lines 127 to 157).</p>
 
 ```rust
 impl<T> LinkedList<T> {
-{{#include ../../rust-interview-lab/src/bin/ll.rs:124:147}}
+{{#include ../../rust-interview-lab/src/bin/ll.rs:127:157}}
 }
 ```
 
@@ -503,7 +505,7 @@ previous node is gone, then clears that node's `next`.
 
 ```rust
 impl<T> LinkedList<T> {
-{{#include ../../rust-interview-lab/src/bin/ll.rs:149:170}}
+{{#include ../../rust-interview-lab/src/bin/ll.rs:159:180}}
 }
 ```
 

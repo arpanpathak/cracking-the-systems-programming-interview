@@ -98,11 +98,13 @@ inside a job. The other three workers then panicked on `.unwrap()` of the poison
 
 ## 18.3 Version 2: release the lock before the job
 
-<p class="listing"><b>Listing 18.2</b> The worker loop and <code>execute</code> (lines 21 to 62). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
+<p class="listing"><b>Listing 18.2</b> The worker loop and <code>execute</code> (lines 23 to 64). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v2.rs:10:13}}
+
 impl ThreadPool {
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v2.rs:21:62}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v2.rs:23:64}}
 }
 ```
 
@@ -131,10 +133,12 @@ five seconds instead of hanging it.
 Version 2 still panics in three places: for a size of zero, when `send` fails, and when the lock is poisoned. And
 if the caller forgets to call `join`, the pool is dropped without waiting for its jobs. Version 3 fixes both.
 
-<p class="listing"><b>Listing 18.4</b> The error type (lines 14 to 30). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
+<p class="listing"><b>Listing 18.4</b> The error type (lines 16 to 32). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:14:30}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:8:12}}
+
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:16:32}}
 ```
 
 `PoolError` names the two ways a request can fail. It implements `Display` for a message, and `Error` so callers
@@ -144,10 +148,10 @@ can use `?` and `Box<dyn Error>` with it.
 
 ```rust
 impl ThreadPool {
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:61:80}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:63:82}}
 }
 
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:83:87}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:85:89}}
 ```
 
 The sender is now an `Option<Sender<Job>>`. `shutdown` takes it out with `self.sender.take()`, which leaves `None`
@@ -160,10 +164,10 @@ nothing.
 `impl Drop for ThreadPool` calls `shutdown`. When a pool goes out of scope, it closes its channel and waits for
 every queued job to finish.
 
-<p class="listing"><b>Listing 18.6</b> The worker loop (lines 89 to 102).</p>
+<p class="listing"><b>Listing 18.6</b> The worker loop (lines 91 to 104).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:89:102}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:91:104}}
 ```
 
 The worker loop is now a named function. It uses `let ... else` to leave quietly if the lock is poisoned, and
@@ -191,10 +195,12 @@ Version 4 catches the panic (figure 18.3).
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 18.8</b> The worker loop (lines 138 to 153). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
+<p class="listing"><b>Listing 18.8</b> The worker loop (lines 144 to 159). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:138:153}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:11:22}}
+
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:144:159}}
 ```
 
 `panic::catch_unwind(f)` runs `f`. If `f` panics, the unwinding stops at `catch_unwind`, which returns `Err`.
@@ -207,11 +213,11 @@ the job owns everything it touches, and this loop never looks at its partial sta
 
 Each outcome increments one of two atomic counters, `completed` or `panicked`.
 
-<p class="listing"><b>Listing 18.9</b> Named workers (lines 67 to 99).</p>
+<p class="listing"><b>Listing 18.9</b> Named workers (lines 73 to 105).</p>
 
 ```rust
 impl ThreadPool {
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:67:99}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:73:105}}
 }
 ```
 
@@ -227,10 +233,10 @@ running.
 
 ```rust
 impl ThreadPool {
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:113:129}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:119:135}}
 }
 
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:132:136}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:138:142}}
 ```
 
 `shutdown` takes `self` by value and returns a `Report` with the two counts. The work is in `close_and_join`, which

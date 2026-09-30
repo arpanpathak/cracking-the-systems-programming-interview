@@ -1,6 +1,8 @@
-use std::sync::atomic::{AtomicI64, AtomicU64, Ordering::Relaxed};
-use std::time::{Instant, Duration};
-use std::thread;
+use std::{
+    sync::atomic::{AtomicI64, AtomicU64, Ordering::Relaxed},
+    thread,
+    time::{Duration, Instant},
+};
 
 #[repr(align(64))]
 pub struct RateLimiter {
@@ -26,7 +28,8 @@ impl RateLimiter {
         let now = self.created_at.elapsed().as_secs();
         let last = self.last_refilled_at.fetch_max(now, Relaxed);
         if now > last {
-            self.tokens.fetch_add((now - last) as i64 * self.tokens_per_sec, Relaxed);
+            self.tokens
+                .fetch_add((now - last) as i64 * self.tokens_per_sec, Relaxed);
             self.tokens.fetch_min(self.capacity, Relaxed);
         }
 
@@ -36,7 +39,6 @@ impl RateLimiter {
         self.tokens.fetch_sub(1, Relaxed) > 0
     }
 }
-
 
 fn main() {
     let limiter = RateLimiter::new(5, 5);

@@ -15,7 +15,7 @@ pub fn search_rotated(nums: &[i32], target: i32) -> Option<usize> {
 
         // 6,7, 1,2,3,4,5
         // start = 0 , end = 6, 0 + (6-0)/2 = 3
-        
+
         // 4,5,6,1,2,3
         let left_is_sorted = nums[low] <= nums[mid];
         if left_is_sorted {

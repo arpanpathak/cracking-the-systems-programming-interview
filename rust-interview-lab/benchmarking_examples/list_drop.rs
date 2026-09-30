@@ -5,8 +5,7 @@
 //!
 //! Run with: cargo run --release --bin list_drop
 
-use systems_lab::lists::SinglyList;
-use systems_lab::lists::boxed_drop::LinkedList;
+use systems_lab::lists::{SinglyList, boxed_drop::LinkedList};
 
 fn main() {
     const N: u64 = 5_000_000;

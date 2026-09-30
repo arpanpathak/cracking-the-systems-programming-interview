@@ -184,10 +184,10 @@ The program first turns the text into words, then counts them, then runs the bou
 </figure>
 
 
-<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 36). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
+<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 39). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/top_k_frequent_words.rs:1:36}}
+{{#include ../../rust-interview-lab/src/bin/top_k_frequent_words.rs:1:39}}
 ```
 
 **Turning text into words.** The chain splits on whitespace. Then it trims characters that are not letters
@@ -280,10 +280,10 @@ top of `low`. With an even count, it is the average of the two tops.
 <p class="listing"><b>Listing 5.4</b> The structure and <code>add_num</code> (lines 1 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs">src/bin/median_finder.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/median_finder.rs:1:8}}
+{{#include ../../rust-interview-lab/src/bin/median_finder.rs:1:7}}
 
 impl MedianFinder {
-{{#include ../../rust-interview-lab/src/bin/median_finder.rs:11:27}}
+{{#include ../../rust-interview-lab/src/bin/median_finder.rs:10:26}}
 }
 ```
 
@@ -307,11 +307,11 @@ Each move is one heap operation, so adding a number is O(log n).
 
 ### 5.6.2 Reading the median
 
-<p class="listing"><b>Listing 5.5</b> <code>find_median</code> (lines 29 to 38).</p>
+<p class="listing"><b>Listing 5.5</b> <code>find_median</code> (lines 28 to 37).</p>
 
 ```rust
 impl MedianFinder {
-{{#include ../../rust-interview-lab/src/bin/median_finder.rs:29:38}}
+{{#include ../../rust-interview-lab/src/bin/median_finder.rs:28:37}}
 }
 ```
 

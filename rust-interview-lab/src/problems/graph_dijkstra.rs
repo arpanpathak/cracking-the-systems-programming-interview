@@ -12,10 +12,13 @@
 //! A node can be in the heap several times; an entry whose cost is larger than the
 //! recorded distance is stale and skipped.
 
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
 use crate::problems::graph_bfs::GraphAdjList;
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
-use std::hash::Hash;
 
 /// Shortest distances from `start_node` over an index-based adjacency list.
 pub fn dijkstra_vec(graph: &[Vec<(usize, u32)>], start_node: usize) -> Vec<Option<u32>> {

@@ -7,8 +7,10 @@
 //!
 //! It also accepts any closure in `execute`, so callers no longer write `Box::new`.
 
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -64,10 +66,15 @@ impl ThreadPool {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{
+            Barrier,
+            atomic::{AtomicUsize, Ordering},
+        },
+        time::Duration,
+    };
+
     use super::*;
-    use std::sync::Barrier;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::time::Duration;
 
     #[test]
     fn runs_every_job() {

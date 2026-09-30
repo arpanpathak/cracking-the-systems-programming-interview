@@ -2,8 +2,7 @@
 //!
 //! Run with: cargo run --bin list_enum
 
-use systems_lab::lists::SinglyList;
-use systems_lab::lists::enum_node::LinkedList;
+use systems_lab::lists::{SinglyList, enum_node::LinkedList};
 
 fn main() {
     let mut list = LinkedList::new();

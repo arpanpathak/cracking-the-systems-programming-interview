@@ -116,7 +116,10 @@ impl<T> LinkedList<T> {
             // Safely extract the data. At this point, old_head is the only
             // strong reference (because we removed it from the list and the
             // new head's prev doesn't point to it).
-            let node = Rc::try_unwrap(old_head).ok().unwrap().into_inner();
+            let node = Rc::try_unwrap(old_head)
+                .ok()
+                .unwrap()
+                .into_inner();
             Some(node.data)
         })
     }
@@ -127,7 +130,11 @@ impl<T> LinkedList<T> {
     pub fn pop_back(&mut self) -> Option<T> {
         self.tail.take().and_then(|old_tail| {
             // Get the previous node (upgrade the weak reference).
-            let prev = old_tail.borrow_mut().prev.take().and_then(|w| w.upgrade());
+            let prev = old_tail
+                .borrow_mut()
+                .prev
+                .take()
+                .and_then(|w| w.upgrade());
 
             match prev {
                 Some(prev_node) => {
@@ -141,7 +148,10 @@ impl<T> LinkedList<T> {
 
             self.len -= 1;
 
-            let node = Rc::try_unwrap(old_tail).ok().unwrap().into_inner();
+            let node = Rc::try_unwrap(old_tail)
+                .ok()
+                .unwrap()
+                .into_inner();
             Some(node.data)
         })
     }

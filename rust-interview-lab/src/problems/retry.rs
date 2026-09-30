@@ -15,8 +15,9 @@
 //! The random source is injected as a closure so the delay math is deterministic
 //! under test.
 
-use crate::problems::state_machine::ApiError;
 use std::time::Duration;
+
+use crate::problems::state_machine::ApiError;
 
 /// An error that knows whether retrying could help.
 pub trait Retryable {
@@ -84,7 +85,9 @@ impl RetryPolicy {
     pub fn exponential_delay(&self, attempt: u32) -> Duration {
         let shift = attempt.min(31);
         let factor = 1u32 << shift;
-        self.base_delay.saturating_mul(factor).min(self.max_delay)
+        self.base_delay
+            .saturating_mul(factor)
+            .min(self.max_delay)
     }
 
     /// Backoff for `attempt` with `unit_random` in `[0, 1)` applied when jitter

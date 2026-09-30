@@ -1,5 +1,7 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader}; // BufRead brings `lines()` into scope.
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+}; // BufRead brings `lines()` into scope.
 
 fn main() -> std::io::Result<()> {
     let file = File::open("log.txt")?;

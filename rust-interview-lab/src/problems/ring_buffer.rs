@@ -16,9 +16,11 @@
 //! If you need many producers or consumers, use a mutex-backed queue such as
 //! [`crate::problems::bounded_queue::BoundedQueue`].
 
-use std::cell::UnsafeCell;
-use std::mem::MaybeUninit;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    cell::UnsafeCell,
+    mem::MaybeUninit,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 /// Ring buffer with capacity `N` (the maximum number of queued items).
 pub struct SpscRing<T, const N: usize> {
@@ -80,7 +82,8 @@ impl<T, const N: usize> SpscRing<T, N> {
         unsafe { (*self.slots[index].get()).write(value) };
 
         // Publish the slot to the consumer.
-        self.tail.store(tail.wrapping_add(1), Ordering::Release);
+        self.tail
+            .store(tail.wrapping_add(1), Ordering::Release);
         Ok(())
     }
 
@@ -98,7 +101,8 @@ impl<T, const N: usize> SpscRing<T, N> {
         let value = unsafe { (*self.slots[index].get()).assume_init_read() };
 
         // Publish the freed slot to the producer.
-        self.head.store(head.wrapping_add(1), Ordering::Release);
+        self.head
+            .store(head.wrapping_add(1), Ordering::Release);
         Some(value)
     }
 }
@@ -118,10 +122,12 @@ impl<T, const N: usize> Drop for SpscRing<T, N> {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{Arc, atomic::AtomicUsize},
+        thread,
+    };
+
     use super::*;
-    use std::sync::Arc;
-    use std::sync::atomic::AtomicUsize;
-    use std::thread;
 
     #[test]
     fn is_fifo_within_capacity() {

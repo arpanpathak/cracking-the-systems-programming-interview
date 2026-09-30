@@ -30,10 +30,26 @@ fn max_profit(mut jobs: Vec<Job>) -> u64 {
 
 fn main() {
     let jobs = vec![
-        Job { start: 1, end: 3, profit: 50 },
-        Job { start: 2, end: 4, profit: 10 },
-        Job { start: 3, end: 5, profit: 40 },
-        Job { start: 3, end: 6, profit: 70 },
+        Job {
+            start: 1,
+            end: 3,
+            profit: 50,
+        },
+        Job {
+            start: 2,
+            end: 4,
+            profit: 10,
+        },
+        Job {
+            start: 3,
+            end: 5,
+            profit: 40,
+        },
+        Job {
+            start: 3,
+            end: 6,
+            profit: 70,
+        },
     ];
 
     println!("{}", max_profit(jobs)); // 120

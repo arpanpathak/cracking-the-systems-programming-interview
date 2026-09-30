@@ -9,10 +9,11 @@
 //! Each physical node is placed at `replicas` points (virtual nodes) to smooth the
 //! key distribution; more replicas means a less lumpy ring.
 
-use std::collections::HashSet;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::{
+    collections::{HashSet, hash_map::DefaultHasher},
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 /// A hash ring mapping keys to node names.
 pub struct ConsistentHash {
@@ -36,7 +37,11 @@ impl ConsistentHash {
     /// Add a node and its virtual nodes. Adding a node that already exists is a
     /// no-op.
     pub fn add_node(&mut self, node: &str) {
-        if self.ring.iter().any(|(_, name)| name.as_ref() == node) {
+        if self
+            .ring
+            .iter()
+            .any(|(_, name)| name.as_ref() == node)
+        {
             return;
         }
 
@@ -51,7 +56,8 @@ impl ConsistentHash {
 
     /// Remove a node and all of its virtual nodes.
     pub fn remove_node(&mut self, node: &str) {
-        self.ring.retain(|(_, name)| name.as_ref() != node);
+        self.ring
+            .retain(|(_, name)| name.as_ref() != node);
     }
 
     /// Return the node responsible for `key`, or `None` when the ring is empty.
@@ -62,7 +68,9 @@ impl ConsistentHash {
 
         let hash = hash_of(key);
         // First virtual node strictly clockwise from the key.
-        let index = self.ring.partition_point(|(point, _)| *point <= hash);
+        let index = self
+            .ring
+            .partition_point(|(point, _)| *point <= hash);
         let index = if index == self.ring.len() { 0 } else { index };
         Some(self.ring[index].1.as_ref())
     }
@@ -132,7 +140,9 @@ mod tests {
 
         let mut counts = std::collections::HashMap::new();
         for key in 0..3_000 {
-            let owner = ring.get(&format!("key-{key}")).expect("ring is populated");
+            let owner = ring
+                .get(&format!("key-{key}"))
+                .expect("ring is populated");
             *counts.entry(owner.to_string()).or_insert(0) += 1;
         }
 
@@ -143,20 +153,30 @@ mod tests {
 
     #[test]
     fn adding_a_node_only_moves_keys_to_the_new_node() {
-        let keys: Vec<String> = (0..2_000).map(|i| format!("workload-{i}")).collect();
+        let keys: Vec<String> = (0..2_000)
+            .map(|i| format!("workload-{i}"))
+            .collect();
 
         let mut ring = ConsistentHash::new(128);
         ring.add_node("node-a");
         ring.add_node("node-b");
         let before: Vec<String> = keys
             .iter()
-            .map(|key| ring.get(key).expect("ring is populated").to_string())
+            .map(|key| {
+                ring.get(key)
+                    .expect("ring is populated")
+                    .to_string()
+            })
             .collect();
 
         ring.add_node("node-c");
         let after: Vec<String> = keys
             .iter()
-            .map(|key| ring.get(key).expect("ring is populated").to_string())
+            .map(|key| {
+                ring.get(key)
+                    .expect("ring is populated")
+                    .to_string()
+            })
             .collect();
 
         for (old, new) in before.iter().zip(after.iter()) {

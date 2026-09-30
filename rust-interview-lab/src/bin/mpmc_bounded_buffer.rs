@@ -1,7 +1,8 @@
-use std::thread;
-
-use std::collections::VecDeque;
-use std::sync::{Condvar, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Condvar, Mutex},
+    thread,
+};
 
 pub struct BoundedBuffer<T> {
     queue: Mutex<VecDeque<T>>,
@@ -80,4 +81,3 @@ fn main() {
         }
     });
 }
-

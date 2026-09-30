@@ -8,10 +8,11 @@
 //! Typical uses: per-account token caches, metadata caches, and request
 //! de-duplication tables.
 
-use std::collections::HashMap;
-use std::collections::hash_map::RandomState;
-use std::hash::{BuildHasher, Hash, Hasher};
-use std::sync::Mutex;
+use std::{
+    collections::{HashMap, hash_map::RandomState},
+    hash::{BuildHasher, Hash, Hasher},
+    sync::Mutex,
+};
 
 /// A fixed-size map split across independently locked shards.
 ///
@@ -30,7 +31,7 @@ where
     /// Create a cache with at least `shard_count` shards (rounded to a power of two).
     pub fn new(shard_count: usize) -> Self {
         let shard_count = shard_count.max(1).next_power_of_two();
-        
+
         let shards = (0..shard_count)
             .map(|_| Mutex::new(HashMap::new()))
             .collect();
@@ -73,7 +74,10 @@ where
     /// Use this for read-modify-write on a single key; the closure holds the lock
     /// for its duration, so keep it short and do not call back into the cache.
     pub fn with<R>(&self, key: &K, inspect: impl FnOnce(Option<&V>) -> R) -> R {
-        let guard = self.shard(key).lock().expect("shard mutex poisoned");
+        let guard = self
+            .shard(key)
+            .lock()
+            .expect("shard mutex poisoned");
         inspect(guard.get(key))
     }
 
@@ -104,7 +108,10 @@ where
 
     pub fn clear(&self) {
         for shard in &self.shards {
-            shard.lock().expect("shard mutex poisoned").clear();
+            shard
+                .lock()
+                .expect("shard mutex poisoned")
+                .clear();
         }
     }
 
@@ -115,9 +122,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::{sync::Arc, thread};
+
     use super::*;
-    use std::sync::Arc;
-    use std::thread;
 
     #[test]
     fn insert_get_remove() {

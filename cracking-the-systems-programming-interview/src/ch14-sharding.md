@@ -47,13 +47,15 @@ keys land in the same shard.
 <p class="listing"><b>Listing 14.1</b> The type and the constructor (lines 16 to 42). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sharded_cache.rs">src/problems/sharded_cache.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:16:24}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:11:15}}
+
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:17:25}}
 
 impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:30:42}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:31:43}}
 }
 ```
 
@@ -84,14 +86,14 @@ rest. The result is a number from 0 to 7 (figure 14.2).
 `hash % 8` would give the same answer. The `&` is one simple CPU instruction, while `%` is a division, which
 takes more time. The difference is small, but this code runs on every call.
 
-<p class="listing"><b>Listing 14.2</b> Picking a shard (lines 44 to 49).</p>
+<p class="listing"><b>Listing 14.2</b> Picking a shard (lines 45 to 50).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:44:49}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:45:50}}
 }
 ```
 
@@ -107,14 +109,14 @@ to the same place and slow the map down.
 
 ### 14.1.3 Each method locks one shard
 
-<p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 51 to 78).</p>
+<p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 52 to 82).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:51:78}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:52:82}}
 }
 ```
 
@@ -161,14 +163,14 @@ blocks forever or panics. A thread waiting forever for a lock is called a **dead
 
 ### 14.1.5 Operations on every shard
 
-<p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 94 to 109).</p>
+<p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 98 to 116).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:94:109}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:98:116}}
 }
 ```
 
@@ -268,10 +270,12 @@ the keys, where `hash % N` moved 75%.
 <p class="listing"><b>Listing 14.6</b> The type and <code>add_node</code> (lines 17 to 55). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/consistent_hash.rs">src/problems/consistent_hash.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:17:23}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:12:16}}
+
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:18:24}}
 
 impl ConsistentHash {
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:26:55}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:27:61}}
 }
 ```
 
@@ -291,10 +295,10 @@ adds a pointer to that same block and increases its reference count. No text is 
 `remove_node` keeps every entry that belongs to another server, with `retain`. Removing entries does not
 change the order of the rest, so the ring stays sorted.
 
-<p class="listing"><b>Listing 14.7</b> The hash functions (lines 85 to 100).</p>
+<p class="listing"><b>Listing 14.7</b> The hash functions (lines 93 to 108).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:85:100}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:93:108}}
 ```
 
 `virtual_node_hash` feeds both the server name and the replica number into one hasher. Each replica number gives a
@@ -312,11 +316,11 @@ fixed, documented algorithm.
 
 ### 14.2.4 Finding a key's server
 
-<p class="listing"><b>Listing 14.8</b> <code>get</code> (lines 57 to 68).</p>
+<p class="listing"><b>Listing 14.8</b> <code>get</code> (lines 63 to 76).</p>
 
 ```rust
 impl ConsistentHash {
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:57:68}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:63:76}}
 }
 ```
 

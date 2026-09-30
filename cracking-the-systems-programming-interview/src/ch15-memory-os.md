@@ -96,14 +96,14 @@ skipped bytes are called **padding**. Figure 15.2 shows two allocations and the 
 
 ### 15.2.2 The code
 
-<p class="listing"><b>Listing 15.1</b> <code>alloc</code> (lines 27 to 42) and <code>align_up</code> (lines 65 to 68). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bump_allocator.rs">src/problems/bump_allocator.rs</a></p>
+<p class="listing"><b>Listing 15.1</b> <code>alloc</code> (lines 27 to 42) and <code>align_up</code> (lines 65 to 70). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bump_allocator.rs">src/problems/bump_allocator.rs</a></p>
 
 ```rust
 impl BumpArena {
 {{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:27:42}}
 }
 
-{{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:65:68}}
+{{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:65:70}}
 ```
 
 `align_up` rounds the offset up to the next multiple of `align`. The alignment must be a power of two, which the
@@ -173,6 +173,8 @@ line it loads. The CPU also notices the pattern and fetches the next lines befor
 <p class="listing"><b>Listing 15.3</b> The two loops (lines 9 to 30). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_locality.rs">src/bin/cs_locality.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/cs_locality.rs:7:7}}
+
 {{#include ../../rust-interview-lab/src/bin/cs_locality.rs:9:30}}
 ```
 
@@ -266,19 +268,21 @@ fills the line.
 
 ### 15.4.1 Four counters
 
-<p class="listing"><b>Listing 15.5</b> Two counter types (lines 14 to 39). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_false_sharing.rs">src/bin/concurrency_false_sharing.rs</a></p>
+<p class="listing"><b>Listing 15.5</b> Two counter types (lines 16 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_false_sharing.rs">src/bin/concurrency_false_sharing.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:14:39}}
+{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:6:11}}
+
+{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:16:41}}
 ```
 
 `Unpadded` is 8 bytes, so a `Vec` of four of them fits in 32 bytes, inside one or two cache lines. `Padded` is 64
 bytes, and each one gets a line.
 
-<p class="listing"><b>Listing 15.6</b> The timed run (lines 41 to 55).</p>
+<p class="listing"><b>Listing 15.6</b> The timed run (lines 43 to 57).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:41:55}}
+{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:43:57}}
 ```
 
 The loop `for counter in &counters` gives each thread a reference to its own counter. `move ||` moves that
@@ -488,6 +492,8 @@ cannot check what C code does, so every call to it must be inside an `unsafe` bl
 <p class="listing"><b>Listing 15.12</b> The timed loop (lines 27 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/syscall_overhead.rs">src/bin/syscall_overhead.rs</a></p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/syscall_overhead.rs:25:25}}
+
 {{#include ../../rust-interview-lab/src/bin/syscall_overhead.rs:27:47}}
 ```
 

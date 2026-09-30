@@ -5,8 +5,10 @@
 //! order in the output. It demonstrates `Arc<Mutex<_>>`, channels, scoped
 //! ownership, and panic-free dispatch.
 
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
 
 pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
 where

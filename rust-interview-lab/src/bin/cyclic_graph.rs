@@ -8,11 +8,18 @@ struct Graph<T> {
 }
 
 #[derive(Clone, Copy)]
-enum State { Unvisited, Visiting, Done }
+enum State {
+    Unvisited,
+    Visiting,
+    Done,
+}
 
 impl<T> Graph<T> {
-    fn new() -> Self { 
-        Self { nodes: Vec::new(), adj: Vec::new() }
+    fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            adj: Vec::new(),
+        }
     }
 
     fn add_node(&mut self, data: T) -> NodeId {
@@ -74,7 +81,9 @@ impl<T> Graph<T> {
             State::Done => false,
             State::Unvisited => {
                 state[node] = State::Visiting;
-                let found = self.adj[node].iter().any(|&n| self.visit(n, state));
+                let found = self.adj[node]
+                    .iter()
+                    .any(|&n| self.visit(n, state));
                 state[node] = State::Done;
                 found
             }
@@ -92,11 +101,9 @@ fn main() {
     g.add_edge(b, c);
     g.add_edge(c, a); // closes the cycle
 
-    let names = |ids: Vec<NodeId>| -> Vec<&str> {
-        ids.into_iter().map(|i| g.nodes[i]).collect()
-    };
+    let names = |ids: Vec<NodeId>| -> Vec<&str> { ids.into_iter().map(|i| g.nodes[i]).collect() };
 
-    println!("BFS:   {:?}", names(g.bfs(a)));   // ["A", "B", "C"]
-    println!("DFS:   {:?}", names(g.dfs(a)));   // ["A", "B", "C"]
-    println!("Cycle: {}", g.has_cycle());       // true
+    println!("BFS:   {:?}", names(g.bfs(a))); // ["A", "B", "C"]
+    println!("DFS:   {:?}", names(g.dfs(a))); // ["A", "B", "C"]
+    println!("Cycle: {}", g.has_cycle()); // true
 }

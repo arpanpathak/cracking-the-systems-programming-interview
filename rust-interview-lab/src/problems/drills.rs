@@ -3,15 +3,21 @@
 //! Each item is a short standalone implementation. The modules next to this one
 //! are the full versions with long explanations and complete test suites.
 
-use std::cell::UnsafeCell;
-use std::collections::VecDeque;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex, mpsc};
-use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::{
+    cell::UnsafeCell,
+    collections::{VecDeque, hash_map::DefaultHasher},
+    hash::Hasher,
+    ops::{Deref, DerefMut},
+    sync::{
+        Arc,
+        Condvar,
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 // --- Thread-safe counter (Arc + Mutex) ---
 
@@ -42,7 +48,12 @@ pub fn parallel_sum(values: &[i32]) -> i64 {
         values
             .chunks(chunk_size)
             .map(|chunk| {
-                scope.spawn(move || chunk.iter().map(|value| i64::from(*value)).sum::<i64>())
+                scope.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|value| i64::from(*value))
+                        .sum::<i64>()
+                })
             })
             .map(|handle| handle.join().expect("worker panicked"))
             .sum()
@@ -287,9 +298,11 @@ impl HashRing {
 
     pub fn add(&mut self, node: &str, replicas: usize) {
         for replica in 0..replicas {
-            self.points.push((hash(node, replica), node.to_string()));
+            self.points
+                .push((hash(node, replica), node.to_string()));
         }
-        self.points.sort_unstable_by_key(|(point, _)| *point);
+        self.points
+            .sort_unstable_by_key(|(point, _)| *point);
     }
 
     pub fn get(&self, key: &str) -> Option<&str> {
@@ -297,7 +310,10 @@ impl HashRing {
             return None;
         }
         let hash = hash(key, 0);
-        let index = self.points.partition_point(|(point, _)| *point <= hash) % self.points.len();
+        let index = self
+            .points
+            .partition_point(|(point, _)| *point <= hash)
+            % self.points.len();
         Some(self.points[index].1.as_str())
     }
 }
@@ -378,8 +394,9 @@ impl Route {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::atomic::AtomicUsize;
+
+    use super::*;
 
     #[test]
     fn counter_scoped_sum_and_spin_lock() {
@@ -437,7 +454,11 @@ mod tests {
             3,
             || {
                 attempts += 1;
-                if attempts < 3 { Err("transient") } else { Ok(7) }
+                if attempts < 3 {
+                    Err("transient")
+                } else {
+                    Ok(7)
+                }
             },
             |_| true,
         );
@@ -463,8 +484,8 @@ mod tests {
         let after = ring.get("job-1").map(str::to_string);
         assert!(after == before || after.as_deref() == Some("c"));
 
-        let head =
-            parse_request_head("GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\n\r\n").expect("valid");
+        let head = parse_request_head("GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\n\r\n")
+            .expect("valid");
         assert_eq!(
             (head.method.as_str(), head.target.as_str()),
             ("GET", "/v1/gpu-workloads")

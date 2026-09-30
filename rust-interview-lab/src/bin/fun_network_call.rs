@@ -1,18 +1,34 @@
-use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::net::TcpStream;
-use std::sync::Mutex;
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    net::TcpStream,
+    sync::Mutex,
+    time::Duration,
+};
 
 type RuntimeError = Box<dyn std::error::Error>;
 
 /// header repsesents vec![(key, value)];
 type RequestHeader = Vec<(String, String)>;
 enum RequestType {
-    GET    { path: String, headers: Vec<(String, String)> },
-    OPTION { path: String, headers: Vec<(String, String)> },
-    POST   { path: String, headers: Vec<(String, String)>, body: String },
-    PUT    { path: String, headers: Vec<(String, String)>, body: String },
+    GET {
+        path: String,
+        headers: Vec<(String, String)>,
+    },
+    OPTION {
+        path: String,
+        headers: Vec<(String, String)>,
+    },
+    POST {
+        path: String,
+        headers: Vec<(String, String)>,
+        body: String,
+    },
+    PUT {
+        path: String,
+        headers: Vec<(String, String)>,
+        body: String,
+    },
 }
 
 /// An idempotency cache store to store requests if it's succeeded!
@@ -22,7 +38,9 @@ struct IdemCache {
 
 impl IdemCache {
     fn new() -> Self {
-        Self { store: Mutex::new(HashMap::new()) }
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
     }
 
     fn get_or_insert<F>(&self, key: &str, f: F) -> Result<String, RuntimeError>
@@ -93,45 +111,67 @@ impl HttpClient {
     }
 
     fn execute(&self, key: &str, req: &RequestType) -> Result<String, RuntimeError> {
-        self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))
+        self.cache
+            .get_or_insert(key, || self.retry.execute(|| self.send(req)))
     }
 
     fn send(&self, req: &RequestType) -> Result<String, RuntimeError> {
         let (method, path, headers, body) = match req {
-            RequestType::GET    { path, headers }       => ("GET",     path, headers, None),
-            RequestType::OPTION { path, headers }       => ("OPTIONS", path, headers, None),
-            RequestType::POST   { path, headers, body } => ("POST",    path, headers, Some(body)),
-            RequestType::PUT    { path, headers, body } => ("PUT",     path, headers, Some(body)),
+            RequestType::GET { path, headers } => ("GET", path, headers, None),
+            RequestType::OPTION { path, headers } => ("OPTIONS", path, headers, None),
+            RequestType::POST {
+                path,
+                headers,
+                body,
+            } => ("POST", path, headers, Some(body)),
+            RequestType::PUT {
+                path,
+                headers,
+                body,
+            } => ("PUT", path, headers, Some(body)),
         };
 
         let mut raw = format!(
             "{method} {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
             self.host
         );
-        for (k, v) in headers { raw += &format!("{k}: {v}\r\n"); }
-        if let Some(b) = body { raw += &format!("Content-Length: {}\r\n", b.len()); }
+        for (k, v) in headers {
+            raw += &format!("{k}: {v}\r\n");
+        }
+        if let Some(b) = body {
+            raw += &format!("Content-Length: {}\r\n", b.len());
+        }
         raw += "\r\n";
-        if let Some(b) = body { raw += b; }
+        if let Some(b) = body {
+            raw += b;
+        }
 
         let mut stream = TcpStream::connect((self.host.as_str(), self.port))?;
         stream.write_all(raw.as_bytes())?;
         let mut resp = String::new();
         stream.read_to_string(&mut resp)?;
-        Ok(resp.split_once("\r\n\r\n").map(|(_, b)| b).unwrap_or("").to_string())
+        Ok(resp
+            .split_once("\r\n\r\n")
+            .map(|(_, b)| b)
+            .unwrap_or("")
+            .to_string())
     }
 }
 
 // --- The actual REST call ---
 
 fn create_item(client: &HttpClient, item_name: &str) -> Result<String, RuntimeError> {
-    client.execute("create-demo-001", &RequestType::POST {
-        path: "/post".into(),
-        headers: vec![
-            ("Content-Type".into(), "application/json".into()),
-            ("Accept".into(), "application/json".into()),
-        ],
-        body: format!(r#"{{"name":"{item_name}"}}"#),
-    })
+    client.execute(
+        "create-demo-001",
+        &RequestType::POST {
+            path: "/post".into(),
+            headers: vec![
+                ("Content-Type".into(), "application/json".into()),
+                ("Accept".into(), "application/json".into()),
+            ],
+            body: format!(r#"{{"name":"{item_name}"}}"#),
+        },
+    )
 }
 
 fn main() -> Result<(), RuntimeError> {

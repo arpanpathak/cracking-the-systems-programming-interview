@@ -1,5 +1,7 @@
-use std::cmp::Ordering::{Equal, Greater, Less};
-use std::mem;
+use std::{
+    cmp::Ordering::{Equal, Greater, Less},
+    mem,
+};
 
 #[derive(Debug, Clone)]
 pub enum BST<T> {

@@ -5,11 +5,10 @@ struct TreeNode<T> {
     children: Vec<TreeNode<T>>, // Owned children directly inline
 }
 
-impl<T> TreeNode<T> 
-where 
-    T: Clone + std::fmt::Display
+impl<T> TreeNode<T>
+where
+    T: Clone + std::fmt::Display,
 {
-    
     /// Recursive DFS (Pre-order) - No callbacks
     pub fn dfs(&self) {
         println!("{}", self.value);
@@ -24,7 +23,7 @@ where
 
         while let Some(node) = queue.pop_front() {
             println!("{}", node.value);
-            
+
             for child in &node.children {
                 queue.push_back(child);
             }
@@ -34,30 +33,38 @@ where
 
 fn main() {
     // --- Inline Construction (No variables, no push) ---
-    
+
     let root = TreeNode {
         value: 1,
         children: vec![
             TreeNode {
                 value: 2,
                 children: vec![
-                    TreeNode { value: 4, children: vec![] },
-                    TreeNode { value: 5, children: Vec::new() },
+                    TreeNode {
+                        value: 4,
+                        children: vec![],
+                    },
+                    TreeNode {
+                        value: 5,
+                        children: Vec::new(),
+                    },
                 ],
             },
             TreeNode {
                 value: 3,
-                children: vec![TreeNode { value: 6, children: Vec::new() }],
+                children: vec![TreeNode {
+                    value: 6,
+                    children: Vec::new(),
+                }],
             },
         ],
     };
 
     println!("=== DFS ===");
-    root.dfs(); 
+    root.dfs();
     // Output: 1, 2, 4, 5, 3, 6
 
     println!("\n=== BFS ===");
     root.bfs();
     // Output: 1, 2, 3, 4, 5, 6
 }
-

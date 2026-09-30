@@ -13,9 +13,11 @@
 //! cargo run --bin tcp_echo_server 0.0.0.0:9000
 //! ```
 
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread;
+use std::{
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    thread,
+};
 
 /// Accept connections forever, handling each on its own thread.
 pub fn serve(listener: TcpListener) {
@@ -57,7 +59,9 @@ fn main() {
         .unwrap_or_else(|| "127.0.0.1:0".to_string());
 
     let listener = TcpListener::bind(&address).expect("failed to bind");
-    let local = listener.local_addr().expect("failed to read local address");
+    let local = listener
+        .local_addr()
+        .expect("failed to read local address");
     println!("tcp echo server listening on {local}");
 
     serve(listener);
@@ -65,8 +69,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::net::Shutdown;
+
+    use super::*;
 
     #[test]
     fn echoes_bytes_until_the_client_closes() {
@@ -81,10 +86,14 @@ mod tests {
 
         let mut client = TcpStream::connect(address).expect("connect");
         client.write_all(b"hello echo").expect("write");
-        client.shutdown(Shutdown::Write).expect("half close");
+        client
+            .shutdown(Shutdown::Write)
+            .expect("half close");
 
         let mut echoed = Vec::new();
-        client.read_to_end(&mut echoed).expect("read echo");
+        client
+            .read_to_end(&mut echoed)
+            .expect("read echo");
 
         server.join().expect("server thread panicked");
         assert_eq!(echoed, b"hello echo");

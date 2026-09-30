@@ -328,10 +328,10 @@ code. `String::as_mut_vec` gives you the bytes, but it is marked `unsafe`. **`un
 compiler cannot check a rule, so the programmer must. Here the rule is "the bytes are valid UTF-8 when
 you are done".
 
-<p class="listing"><b>Listing 3.4</b> The reversing function (lines 2 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
+<p class="listing"><b>Listing 3.4</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/reverse_string.rs:2:14}}
+{{#include ../../rust-interview-lab/src/bin/reverse_string.rs:1:14}}
 ```
 
 The function keeps the rule by checking first: `assert!(s.is_ascii())` stops the program unless every byte
@@ -660,10 +660,10 @@ For example, `lps[4] = 2`, because `"aabaa"` starts with `"aa"` and ends with `"
 </figure>
 
 
-<p class="listing"><b>Listing 3.14</b> The search and the table (lines 1 to 35). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
+<p class="listing"><b>Listing 3.14</b> The search and the table (lines 1 to 52). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/kmp_pattern_matching.rs:1:35}}
+{{#include ../../rust-interview-lab/src/bin/kmp_pattern_matching.rs:1:52}}
 ```
 
 `str_str` works on bytes, from `as_bytes()`, so it can index directly. `left` counts how many needle

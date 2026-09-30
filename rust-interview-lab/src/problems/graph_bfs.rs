@@ -7,8 +7,10 @@
 //! - `bfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`
 //!   from a node to a slice of `(neighbor, weight)` edges.
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::hash::Hash;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    hash::Hash,
+};
 
 /// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
 pub type GraphAdjList<'a, Node> = HashMap<Node, &'a [(Node, u32)]>;

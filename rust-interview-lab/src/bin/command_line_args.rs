@@ -1,5 +1,4 @@
-use std::env::args;
-use std::process::ExitCode;
+use std::{env::args, process::ExitCode};
 
 /// The options this program understands.
 #[derive(Debug, PartialEq)]
@@ -11,7 +10,11 @@ struct Options {
 
 impl Default for Options {
     fn default() -> Self {
-        Self { name: String::from("world"), count: 1, verbose: false }
+        Self {
+            name: String::from("world"),
+            count: 1,
+            verbose: false,
+        }
     }
 }
 

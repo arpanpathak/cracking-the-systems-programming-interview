@@ -57,10 +57,12 @@ adds them before it checks.
 <p class="listing"><b>Listing 19.1</b> The bucket (lines 6 to 31). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs">src/problems/rate_limiter.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:6:17}}
+{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:3:3}}
+
+{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:5:16}}
 
 impl TokenBucket {
-{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:20:31}}
+{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:19:30}}
 }
 ```
 
@@ -71,11 +73,11 @@ fraction of a token can arrive between two requests. The bucket starts full.
 `Instant` is the standard library's clock for measuring durations. It only moves forward, unlike the wall-clock
 time, which can jump when the system clock is corrected.
 
-<p class="listing"><b>Listing 19.2</b> <code>try_acquire</code> (lines 33 to 50).</p>
+<p class="listing"><b>Listing 19.2</b> <code>try_acquire</code> (lines 32 to 49).</p>
 
 ```rust
 impl TokenBucket {
-{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:33:50}}
+{{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:32:49}}
 }
 ```
 
@@ -116,10 +118,12 @@ Every call to the locked bucket takes the mutex. Under heavy load, threads wait 
 <p class="listing"><b>Listing 19.4</b> The limiter (lines 5 to 37). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs">src/bin/rate_limiter_atomic_token_bucket.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:5:12}}
+{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:1:5}}
+
+{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:7:14}}
 
 impl RateLimiter {
-{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:15:37}}
+{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:17:40}}
 }
 ```
 
@@ -198,10 +202,12 @@ Retrying well takes three decisions:
 
 ### 19.2.1 Which errors to retry
 
-<p class="listing"><b>Listing 19.6</b> The <code>Retryable</code> trait (lines 21 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
+<p class="listing"><b>Listing 19.6</b> The <code>Retryable</code> trait (lines 22 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/retry.rs:21:43}}
+{{#include ../../rust-interview-lab/src/problems/retry.rs:18:20}}
+
+{{#include ../../rust-interview-lab/src/problems/retry.rs:22:44}}
 ```
 
 `Retryable` is a trait that an error type implements to answer the first question. `is_retryable` has no default,
@@ -239,10 +245,10 @@ Two techniques spread the retries out:
 <figcaption><b>Figure 19.4</b> The same twenty retries, without and with full jitter.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 19.7</b> The policy (lines 45 to 99).</p>
+<p class="listing"><b>Listing 19.7</b> The policy (lines 46 to 102).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/retry.rs:45:99}}
+{{#include ../../rust-interview-lab/src/problems/retry.rs:46:102}}
 ```
 
 `RetryPolicy` holds the four settings. `max_attempts` counts the first try as well, so 3 means one try and two
@@ -260,10 +266,10 @@ with `Duration::mul_f64`. `clamp(0.0, 1.0)` guards against a random source that 
 
 ### 19.2.3 The retry loop
 
-<p class="listing"><b>Listing 19.8</b> <code>retry</code> (lines 101 to 134).</p>
+<p class="listing"><b>Listing 19.8</b> <code>retry</code> (lines 104 to 137).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/retry.rs:101:134}}
+{{#include ../../rust-interview-lab/src/problems/retry.rs:104:137}}
 ```
 
 `retry` is generic over four types. `T` and `E` are the success and error types. `F` is the operation, a closure

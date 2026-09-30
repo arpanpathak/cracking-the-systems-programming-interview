@@ -3,10 +3,12 @@
 //!
 //! Run with: cargo run --bin concurrency_false_sharing
 
-use std::mem::size_of;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    mem::size_of,
+    sync::atomic::{AtomicUsize, Ordering},
+    thread,
+    time::{Duration, Instant},
+};
 
 const THREADS: usize = 4;
 const ITERATIONS: usize = 2_000_000;

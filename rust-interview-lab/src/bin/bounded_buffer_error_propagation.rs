@@ -1,8 +1,10 @@
-use std::collections::VecDeque;
-use std::error::Error;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::{
+    collections::VecDeque,
+    error::Error,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+    time::Duration,
+};
 
 type RuntimeError = Box<dyn Error + Send + Sync>;
 
@@ -25,12 +27,13 @@ impl<T> BoundedQueue<T> {
     }
 
     fn push(&self, item: T) -> Result<(), RuntimeError> {
-        let mut guard = self.inner
-            .lock()
-            .map_err(|e| e.to_string())?;
+        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
 
         while guard.len() == self.capacity {
-            guard = self.not_full.wait(guard).map_err(|e| e.to_string())?;
+            guard = self
+                .not_full
+                .wait(guard)
+                .map_err(|e| e.to_string())?;
         }
 
         guard.push_back(item);
@@ -40,12 +43,11 @@ impl<T> BoundedQueue<T> {
     }
 
     fn pop(&self) -> Result<T, RuntimeError> {
-        let mut guard = self.inner
-            .lock()
-            .map_err(|e| e.to_string())?;
+        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
 
         while guard.is_empty() {
-            guard = self.not_empty
+            guard = self
+                .not_empty
                 .wait(guard)
                 .map_err(|e| e.to_string())?;
         }

@@ -6,7 +6,7 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Interval {
     start: i32,
-    end: i32
+    end: i32,
 }
 pub fn merge_intervals(mut intervals: Vec<Interval>) -> Vec<Interval> {
     if intervals.is_empty() {
@@ -21,7 +21,7 @@ pub fn merge_intervals(mut intervals: Vec<Interval>) -> Vec<Interval> {
             Some(previous) if start <= previous.end => {
                 previous.end = previous.end.max(end);
             }
-            _ => merged.push(Interval{start, end}),
+            _ => merged.push(Interval { start, end }),
         }
     }
     merged

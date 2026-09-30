@@ -43,6 +43,4 @@ mod tests {
         assert!(!is_valid(")"));
         assert!(!is_valid("(("));
     }
-
-    
 }

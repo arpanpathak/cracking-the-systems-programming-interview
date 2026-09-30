@@ -29,7 +29,8 @@ impl Trie {
     }
 
     pub fn search(&self, word: &str) -> bool {
-        self.find_node(word).is_some_and(|node| node.terminal)
+        self.find_node(word)
+            .is_some_and(|node| node.terminal)
     }
 
     pub fn starts_with(&self, prefix: &str) -> bool {

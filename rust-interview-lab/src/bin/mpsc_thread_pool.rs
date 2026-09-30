@@ -1,11 +1,11 @@
 use std::{
     sync::{
-        Mutex, Arc, 
-        mpsc::{self, SyncSender, SendError, Receiver}
+        Arc,
+        Mutex,
+        mpsc::{self, Receiver, SendError, SyncSender},
     },
     thread::{self, JoinHandle},
 };
-
 
 /// Define your necessary data types....
 type Job = Box<dyn FnOnce() + Send + 'static>;
@@ -26,27 +26,32 @@ impl ThreadPool {
             .map(|_| Self::span_worker(Arc::clone(&rx)))
             .collect();
 
-        Self { tx: Some(tx), workers }
+        Self {
+            tx: Some(tx),
+            workers,
+        }
     }
 
     fn span_worker(rx: SharedSyncReceiver) -> JoinHandle<()> {
-        thread::spawn(move || loop {
-            let Ok(receiver) = rx.lock() else { break }; // Mutex poisoned
-            let Ok(job) = receiver.recv() else { break }; // Chapter is closed, just move on!
-                                                          
-            // Small resource optimization, you don't need to hold the lock, just like move to the
-            // right lane after passing...
-            drop(receiver);
+        thread::spawn(move || {
+            loop {
+                let Ok(receiver) = rx.lock() else { break }; // Mutex poisoned
+                let Ok(job) = receiver.recv() else { break }; // Chapter is closed, just move on!
 
-            // It's just a foking function call, innit ?
-            job();
+                // Small resource optimization, you don't need to hold the lock, just like move to the
+                // right lane after passing...
+                drop(receiver);
+
+                // It's just a foking function call, innit ?
+                job();
+            }
         })
     }
 
     // TODO: Define Algebric sum type for enums...
-    pub fn execute<F>(&self, f: F) -> Result<(), SendError<Job>> 
+    pub fn execute<F>(&self, f: F) -> Result<(), SendError<Job>>
     where
-        F: FnOnce() + Send + 'static 
+        F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
         match &self.tx {
@@ -54,11 +59,8 @@ impl ThreadPool {
             None => Err(SendError(job)),
         }
     }
-
-
 }
 
 fn main() {
-    let collection = vec![1,2,3,4,5];
-
+    let collection = vec![1, 2, 3, 4, 5];
 }
