@@ -202,6 +202,8 @@ In memory, every `Command` takes the same space, enough for its largest variant,
 
 ### 7.5.2 Parsing a line of text
 
+Parsing turns one line of text into a `Command`, or into an error that says what was wrong with the line.
+
 <p class="listing"><b>Listing 7.6</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 115).</p>
 
 ```rust
@@ -234,6 +236,8 @@ Steps 6 and 7 can fail for different reasons, but both failures are reported the
 ignore its fields.
 
 ### 7.5.3 The parser's errors and helper
+
+Each way a line can be malformed gets its own error variant, so the caller learns exactly what failed.
 
 <p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 117 to 146).</p>
 

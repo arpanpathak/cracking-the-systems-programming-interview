@@ -40,10 +40,10 @@ sections.
 - [x] ch16 threads and locks
 - [x] ch18 thread pools
 - [x] ch10 merge k lists
-- [ ] ch14 sharding
-- [ ] ch02 files
-- [ ] ch07 types
-- [ ] ch09 linked lists
+- [x] ch14 sharding
+- [x] ch02 files
+- [x] ch07 types
+- [x] ch09 linked lists
 
 ## Phase 2: new material (the eight)
 
@@ -74,3 +74,4 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch16: new 16.1.1 (what a thread is: shared memory, per-thread stack, scheduler, context switch) with figure 16.1; figures renumbered. The rest of ch16 already led with concepts.
 - 2026-10-01 ch18: lead-ins before the version 1 listing and the three short pools; 18.1 already explained the parts
 - 2026-10-01 ch10: lead-ins before eight code versions; 10.6 and 10.7 explain the strategy before the listing. 10.1-10.2 already taught the merge and the strategies.
+- 2026-10-01 ch14, ch02, ch07, ch09: a lead-in sentence before every code-first subsection (19 in all); explanations after the code were already there

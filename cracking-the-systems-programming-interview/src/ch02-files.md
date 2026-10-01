@@ -229,6 +229,8 @@ as a `File`. The trait must be imported, as the second `use` line does.
 
 ### 2.5.2 Copying, renaming, and deleting
 
+The standard library has one function for each of these file operations. The program copies a file, renames the copy, and deletes the original.
+
 <p class="listing"><b>Listing 2.6</b> Copy, rename, remove. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs">src/bin/copy_rename_delete_file.rs</a></p>
 
 ```rust
@@ -264,6 +266,8 @@ A directory is a list of entries. Each entry has a name and a type: a file, a di
 link. A **symbolic link** is an entry that points to another path.
 
 ### 2.6.1 One level
+
+A directory is a list of entries, each a name and a type. The program prints the entries of the current directory and marks which are directories.
 
 <p class="listing"><b>Listing 2.8</b> Listing the current directory. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs">src/bin/list_directory.rs</a></p>
 
@@ -304,6 +308,8 @@ If the cursor is the byte position where the next page starts, the service needs
 requests. Any copy of the service can read the next page from the cursor alone.
 
 ### 2.7.1 The page type
+
+A page is the lines it holds, plus the cursor where the next page starts. The cursor is a byte offset into the file.
 
 <p class="listing"><b>Listing 2.10</b> The <code>Page</code> type (lines 1 to 9). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
 
@@ -401,6 +407,8 @@ This program turns that list into a struct of typed options, or an error message
 
 ### 2.8.1 The options and their defaults
 
+The program's settings live in one struct, with a default value for each setting the user does not give.
+
 <p class="listing"><b>Listing 2.13</b> The options (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs">src/bin/command_line_args.rs</a></p>
 
 ```rust
@@ -411,6 +419,9 @@ This program turns that list into a struct of typed options, or an error message
 `#[derive(Debug, PartialEq)]` lets the tests print and compare `Options` values.
 
 ### 2.8.2 Parsing
+
+Parsing walks the arguments one at a time and fills in the options. It returns an error for an unknown argument, for a flag with no value after it, and for a count that is not
+a number.
 
 <p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 43).</p>
 
@@ -432,6 +443,8 @@ converts the text to a number, and `map_err` replaces a parse error with a messa
 An argument the program does not know is an error, so a misspelled option is reported instead of ignored.
 
 ### 2.8.3 The exit code
+
+`main` ties the pieces together: it parses the arguments, runs, and tells the shell whether it succeeded.
 
 <p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 45 to 64).</p>
 

@@ -208,6 +208,8 @@ one piece of code can measure them all.
 
 ### 9.5.1 One trait for four lists
 
+The four list types are measured by one benchmark, so they share a trait with the operations the benchmark calls.
+
 <p class="listing"><b>Listing 9.8</b> The trait every list implements. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/mod.rs">benchmarking_examples/lists/mod.rs</a></p>
 
 ```rust
@@ -423,6 +425,8 @@ from front to back. The backward links, `prev`, are `Weak` handles, so they do n
 
 ### 9.8.1 The types
 
+A node of the doubly linked list has a value and two links. The link forward owns the next node; the link back is weak, so the two directions do not keep each other alive.
+
 <p class="listing"><b>Listing 9.16</b> Type names, the node, and the list (lines 1 to 26). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs">src/bin/ll.rs</a></p>
 
 ```rust
@@ -433,6 +437,8 @@ The full type of a link is `Option<Rc<RefCell<Node<T>>>>`. It appears in almost 
 names it once, `OptNodeRef<T>`, with a `type` alias. The list keeps a `head`, a `tail`, and its length.
 
 ### 9.8.2 Adding at either end
+
+A new node at the front must point forward to the old head, and the old head must point back to it. The back of the list works the same way, mirrored.
 
 <p class="listing"><b>Listing 9.17</b> <code>new</code>, <code>len</code>, and <code>push_front</code> (lines 28 to 69).</p>
 
@@ -469,6 +475,8 @@ impl<T> LinkedList<T> {
 tail is looked at without being moved. `map(Rc::downgrade)` turns that reference into a weak link.
 
 ### 9.8.3 Removing from either end
+
+Removing the front node means unlinking it from its neighbor and moving its value out to the caller.
 
 <p class="listing"><b>Listing 9.19</b> <code>pop_front</code> (lines 95 to 125).</p>
 
@@ -509,6 +517,8 @@ impl<T> LinkedList<T> {
 previous node is gone, then clears that node's `next`.
 
 ### 9.8.4 Looking without removing
+
+Looking at the front value must not move it out of the list. The caller gets a borrow of the value instead.
 
 <p class="listing"><b>Listing 9.21</b> <code>peek_front</code> and <code>peek_back</code> (lines 149 to 171).</p>
 

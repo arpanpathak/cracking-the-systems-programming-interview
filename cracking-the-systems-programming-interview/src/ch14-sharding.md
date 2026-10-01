@@ -44,6 +44,8 @@ keys land in the same shard.
 
 ### 14.1.1 The type
 
+The cache holds a list of shards, each a `HashMap` behind its own `Mutex`. It also holds the hasher that decides which shard a key belongs to.
+
 <p class="listing"><b>Listing 14.1</b> The type and the constructor (lines 16 to 42). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sharded_cache.rs">src/problems/sharded_cache.rs</a></p>
 
 ```rust
@@ -112,6 +114,8 @@ to the same place and slow the map down.
 
 ### 14.1.3 Each method locks one shard
 
+A single-key operation touches one shard only. It hashes the key, locks that shard, and leaves every other shard free for other threads.
+
 <p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 52 to 82).</p>
 
 ```rust
@@ -167,6 +171,8 @@ would try to lock a `Mutex` that this thread already holds. The standard `Mutex`
 blocks forever or panics. A thread waiting forever for a lock is called a **deadlock**.
 
 ### 14.1.5 Operations on every shard
+
+Some operations need every shard: the total size, and clearing the cache. They visit the shards one at a time.
 
 <p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 98 to 116).</p>
 
@@ -274,6 +280,8 @@ the keys, where `hash % N` moved 75%.
 
 ### 14.2.3 The ring as a sorted `Vec`
 
+The ring of figure 14.4 can be stored as a vector of points, kept sorted by hash. Each point records its position on the ring and the server it belongs to.
+
 <p class="listing"><b>Listing 14.6</b> The type and <code>add_node</code> (lines 17 to 55). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/consistent_hash.rs">src/problems/consistent_hash.rs</a></p>
 
 ```rust
@@ -323,6 +331,8 @@ fixed, documented algorithm.
 </div>
 
 ### 14.2.4 Finding a key's server
+
+To find a key's server, hash the key and find the first point on the ring after that hash. If there is none, wrap around to the first point.
 
 <p class="listing"><b>Listing 14.8</b> <code>get</code> (lines 63 to 76).</p>
 
