@@ -163,7 +163,26 @@ fn main() -> Result<(), Error> {
     let flight = SingleFlight::new();
     let (_, elapsed) = together(4, |i| flight.execute(orders[i], || charge(orders[i])));
     println!(
-        "  executions {}, {:.0} ms",
+        "  single flight:                 executions {}, {:.0} ms",
+        charges.swap(0, Relaxed),
+        elapsed.as_secs_f64() * 1000.0
+    );
+
+    // The store of section 19.3: one lock, held while the work runs.
+    let one_lock: Mutex<HashMap<&str, String>> = Mutex::new(HashMap::new());
+    let (_, elapsed) = together(4, |i| -> Result<String, Error> {
+        let mut store = one_lock
+            .lock()
+            .map_err(|_| "lock poisoned")?;
+        if let Some(txn) = store.get(orders[i]) {
+            return Ok(txn.clone());
+        }
+        let txn = charge(orders[i])?;
+        store.insert(orders[i], txn.clone());
+        Ok(txn)
+    });
+    println!(
+        "  one lock held during the work: executions {}, {:.0} ms",
         charges.swap(0, Relaxed),
         elapsed.as_secs_f64() * 1000.0
     );
