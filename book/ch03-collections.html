@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -718,7 +718,70 @@ sorted, you know which index to move:</p>
 </ul>
 <p>Each fixed number costs one O(n) walk, and there are n fixed numbers, so the whole search is O(n²). Sorting
 costs O(n log n), which is smaller.</p>
-<p class="listing"><b>Listing 3.6</b> Three Sum. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
+<p>The function first sorts, then fixes each number in turn:</p>
+<pre><code class="language-rust">// Import the variants directly into scope
+use std::cmp::Ordering::{Equal, Greater, Less};
+
+pub fn three_sum(numbers: &amp;mut [i32], target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
+    numbers.sort_unstable();
+
+    let mut results = Vec::new();
+    let target = i64::from(target);
+
+    for i in 0..numbers.len() {
+        // Skip a first value that was already used, so triplets stay unique.
+        if i &gt; 0 &amp;&amp; numbers[i] == numbers[i - 1] {
+            continue;
+        }
+
+        let (mut left, mut right) = (i + 1, numbers.len().saturating_sub(1));
+        // ...
+    }
+}</code></pre>
+<ul>
+<li><code>use std::cmp::Ordering::{Equal, Greater, Less};</code> lets the code write <code>Less</code> instead of
+<code>Ordering::Less</code>. The next excerpt matches on these three.</li>
+<li>The <code>continue</code> skips a fixed value equal to the previous one, so the same set is not found twice.</li>
+<li><code>numbers.len().saturating_sub(1)</code> gives 0 instead of underflowing when the slice is empty.</li>
+</ul>
+<p>For each fixed number, <code>left</code> and <code>right</code> close in from the two ends of the rest:</p>
+<pre><code class="language-rust">pub fn three_sum(numbers: &amp;mut [i32], target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
+    // ...
+    for i in 0..numbers.len() {
+        // ...
+        while left &lt; right {
+            // Widen to i64 so the sum of three i32 values cannot overflow.
+            let current_sum = numbers[i] as i64 + numbers[left] as i64 + numbers[right] as i64;
+
+            match current_sum.cmp(&amp;target) {
+                Less =&gt; left += 1,
+                Greater =&gt; right -= 1,
+                Equal =&gt; {
+                    results.push((numbers[i], numbers[left], numbers[right]));
+
+                    while left &lt; right &amp;&amp; numbers[left] == numbers[left + 1] {
+                        left += 1;
+                    }
+                    while left &lt; right &amp;&amp; numbers[right] == numbers[right - 1] {
+                        right -= 1;
+                    }
+
+                    left += 1;
+                    right -= 1;
+                }
+            }
+        }
+    }
+    // ...
+}</code></pre>
+<ul>
+<li>The sum is computed in <code>i64</code>. Three <code>i32</code> values can add up to more than <code>i32</code> can hold. The test
+<code>does_not_overflow_on_extreme_values</code> uses <code>i32::MAX</code> twice to check this.</li>
+<li><code>current_sum.cmp(&amp;target)</code> returns <code>Less</code>, <code>Greater</code>, or <code>Equal</code>, and the <code>match</code> turns each into the move
+from the list above.</li>
+<li>After a match, the two inner <code>while</code> loops step <code>left</code> and <code>right</code> past values equal to the ones in the match.</li>
+</ul>
+<p class="listing"><b>Listing 3.6</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
 
 <pre><code class="language-rust">//! Three Sum: every unique triplet of values that adds up to a target.
 //!
@@ -807,16 +870,6 @@ mod tests {
         );
     }
 }</code></pre>
-<p>A few details:</p>
-<ul>
-<li><code>use std::cmp::Ordering::{Equal, Greater, Less};</code> lets the code write <code>Less</code> instead of
-<code>Ordering::Less</code>. <code>current_sum.cmp(&amp;target)</code> returns one of the three.</li>
-<li>Duplicate sets are skipped at each position. For the fixed number, the <code>continue</code> skips a value equal to
-the previous one. After a match, the two inner <code>while</code> loops step <code>left</code> and <code>right</code> past equal values.</li>
-<li>The sum is computed in <code>i64</code>. Three <code>i32</code> values can add up to more than <code>i32</code> can hold. The test
-<code>does_not_overflow_on_extreme_values</code> uses <code>i32::MAX</code> twice to check this.</li>
-<li><code>numbers.len().saturating_sub(1)</code> gives 0 instead of underflowing when the slice is empty.</li>
-</ul>
 <figure class="anim">
 <video class="motion" src="figures/ch03-three-sum.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1." data-chapters="[[2.4, &quot;i = 0&quot;], [36.6, &quot;i = 1&quot;], [67.2, &quot;i = 3&quot;]]"><img src="figures/ch03-three-sum.gif" alt="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1."></video>
 <figcaption><b>Animation 3.3</b> Three Sum on <code>[-4, -1, -1, 0, 1, 2]</code>, one comparison per step. The sign of the sum decides which pointer moves. The repeated <code>-1</code> at index 2 is skipped.</figcaption>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -1128,6 +1128,106 @@ consumers are still running.</p>
 <h2 id="175-many-producers-and-consumers-with-wait_while"><a class="header" href="#175-many-producers-and-consumers-with-wait_while">17.5 Many producers and consumers with <code>wait_while</code></a></h2>
 <p>The next version is the bounded buffer written more compactly, with <code>wait_while</code> for both waits. Its <code>main</code> uses
 scoped threads, so no <code>Arc</code> is needed.</p>
+<p>The type is the same as in section 17.3. It holds a <code>VecDeque</code> behind a <code>Mutex</code>, a capacity, and one <code>Condvar</code>
+for each thing a thread can wait for:</p>
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    sync::{Condvar, Mutex},
+    thread,
+};
+
+pub struct BoundedBuffer&lt;T&gt; {
+    queue: Mutex&lt;VecDeque&lt;T&gt;&gt;,
+    capacity: usize,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    pub fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+
+        Self {
+            queue: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>push</code> waits while the queue is full. <code>wait_while</code> takes the guard and a condition, and loops for you. It sleeps
+while the condition is true, and returns the guard once it is false. The <code>while</code> loop of section 17.3 is inside
+it, so a spurious wakeup is handled the same way.</p>
+<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    // ...
+    /// Blocks while the buffer is full.
+    pub fn push(&amp;self, item: T) {
+        let cap = self.capacity;
+
+        let mut queue = self.queue.lock().unwrap();
+        queue = self
+            .not_full
+            .wait_while(queue, |q| q.len() &gt;= cap)
+            .unwrap();
+
+        queue.push_back(item);
+        drop(queue);
+
+        self.not_empty.notify_one();
+    }
+    // ...
+}</code></pre>
+<p><code>push</code> reads <code>self.capacity</code> into a local <code>cap</code> before the closure <code>|q| q.len() &gt;= cap</code>. The closure then
+captures a <code>usize</code> instead of borrowing <code>self</code>. After pushing, <code>drop(queue)</code> releases the lock before
+<code>notify_one</code>, so the woken consumer does not wake only to wait for the lock.</p>
+<p><code>pop</code> is the mirror image: it waits while the queue is empty, takes the front item, and wakes one producer.</p>
+<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    // ...
+    /// Blocks while the buffer is empty.
+    pub fn pop(&amp;self) -&gt; T {
+        let mut queue = self.queue.lock().unwrap();
+        queue = self
+            .not_empty
+            .wait_while(queue, |q| q.is_empty())
+            .unwrap();
+
+        let item = queue.pop_front().unwrap();
+        self.not_full.notify_one();
+        item
+    }
+}</code></pre>
+<p><strong>MPMC</strong> stands for multiple producers, multiple consumers. In <code>main</code>, four producers push 10 items each, and two
+consumers pop 20 each:</p>
+<pre><code class="language-rust">fn main() {
+    let buffer = BoundedBuffer::&lt;(usize, usize)&gt;::new(8);
+    let buffer = &amp;buffer;
+
+    const PRODUCERS: usize = 4;
+    const CONSUMERS: usize = 2;
+    const PER_PRODUCER: usize = 10;
+    const PER_CONSUMER: usize = PRODUCERS * PER_PRODUCER / CONSUMERS;
+
+    thread::scope(|s| {
+        for p in 0..PRODUCERS {
+            s.spawn(move || {
+                for i in 0..PER_PRODUCER {
+                    buffer.push((p, i));
+                }
+            });
+        }
+
+        for c in 0..CONSUMERS {
+            s.spawn(move || {
+                for _ in 0..PER_CONSUMER {
+                    let item = buffer.pop();
+                    println!("consumer {c}: {item:?}");
+                }
+            });
+        }
+    });
+}</code></pre>
+<p><code>PER_CONSUMER</code> is computed from the other constants, so every pushed item is popped and every thread finishes.</p>
 <p class="listing"><b>Listing 17.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -1213,11 +1313,6 @@ fn main() {
         }
     });
 }</code></pre>
-<p><strong>MPMC</strong> stands for multiple producers, multiple consumers. Here four producers push 10 items each, and two
-consumers pop 20 each. <code>PER_CONSUMER</code> is computed from the other constants, so every pushed item is popped and
-every thread finishes.</p>
-<p><code>push</code> reads <code>self.capacity</code> into a local <code>cap</code> before the closure <code>|q| q.len() &gt;= cap</code>. The closure then
-captures a <code>usize</code> instead of borrowing <code>self</code>.</p>
 <p><code>let buffer = &amp;buffer;</code> replaces the buffer with a reference to it. Each <code>move</code> closure then copies the reference
 into its thread. The scope guarantees that the buffer outlives all the threads.</p>
 <pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer

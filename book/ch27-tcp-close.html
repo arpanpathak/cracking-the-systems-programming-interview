@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -373,6 +373,10 @@ expired.</li>
 <p>A socket in <code>TIME_WAIT</code> holds a few hundred bytes of kernel memory, which is cheap. The scarce resource is
 the four values it reserves. A client uses a new local port for each connection to a server. The kernel picks it from the <strong>ephemeral port range</strong>: 32768 to 60999 on Linux, which is 28,232 ports. If
 the client closes first, each port stays in <code>TIME_WAIT</code> for 60 seconds. The client can then open about 470 new connections per second to one server address and port. Beyond that, <code>connect</code> fails with <code>EADDRNOTAVAIL</code>.</p>
+<figure>
+<img src="figures/ch27-ports.svg" alt="A client at 10.0.0.5 with ephemeral ports 32768 to 60999, 28,232 ports, has connections from ports 40001 and 40002 to the server 10.0.0.9:443, each in TIME_WAIT with about 60 seconds left. With 28,232 such four-tuples held at once, the next connect fails with EADDRNOTAVAIL. The server uses its one port for every connection.">
+<figcaption><b>Figure 27.2</b> Each closed connection holds its four values for 60 seconds. On the client, the free values run out with the ephemeral ports.</figcaption>
+</figure>
 <p>Three fixes are common:</p>
 <ul>
 <li><strong>Reuse connections.</strong> An HTTP client that keeps connections alive, or a connection pool, as in chapter

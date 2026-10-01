@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -340,6 +340,11 @@ the statement, so the borrow ends there.</li>
 <li><code>*counter.borrow_mut() += 10;</code> does the same through the other handle.</li>
 <li><code>*counter.borrow()</code> reads 11.</li>
 </ol>
+<p>Animation 8.1 runs these steps, with the strong count and the <code>RefCell</code> flag drawn on the heap block.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch08-rc-refcell.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed." data-chapters="[[0.0, &quot;two handles&quot;], [7.98, &quot;borrow&quot;], [26.34, &quot;drop&quot;], [36.3, &quot;two guards&quot;]]"><img src="figures/ch08-rc-refcell.gif" alt="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed."></video>
+<figcaption><b>Animation 8.1</b> Two handles, one value. Each guard ends its borrow when it is dropped; a guard kept alive makes the next <code>borrow_mut</code> panic at run time.</figcaption>
+</figure>
 <p>Each <code>borrow_mut</code> ends before the next starts, so no panic occurs. If you stored the first guard in a variable
 and then called <code>borrow_mut</code> again while it was still alive, the program would panic.</p>
 <h2 id="85-weak-a-pointer-that-does-not-own"><a class="header" href="#85-weak-a-pointer-that-does-not-own">8.5 <code>Weak</code>: a pointer that does not own</a></h2>
@@ -396,7 +401,13 @@ changed after the node exists.</li>
 <li><code>parent_value</code> borrows the link, calls <code>upgrade()</code>, and reads the parent’s value if the parent still
 exists. <code>Option::map</code> applies the closure only when there is a value.</li>
 </ul>
-<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in listing 8.7 checks the behavior. It creates a
+<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in listing 8.7 checks the behavior.</p>
+<p>Animation 8.2 follows that test, then shows the cycle that <code>Weak</code> prevents.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch08-weak-parent.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root&#39;s weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root&#39;s strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked." data-chapters="[[0.0, &quot;weak link&quot;], [16.86, &quot;drop root&quot;], [26.1, &quot;Rc both ways&quot;]]"><img src="figures/ch08-weak-parent.gif" alt="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root&#39;s weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root&#39;s strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked."></video>
+<figcaption><b>Animation 8.2</b> A <code>Weak</code> parent link lets the parent be freed. With <code>Rc</code> in both directions, each node keeps the other alive forever.</figcaption>
+</figure>
+<p>The test creates a
 root and a child, drops the root, and then checks that the child’s <code>parent_value()</code> is <code>None</code>.</p>
 <h2 id="86-arc-and-mutex-sharing-across-threads"><a class="header" href="#86-arc-and-mutex-sharing-across-threads">8.6 <code>Arc</code> and <code>Mutex</code>: sharing across threads</a></h2>
 <p><code>Arc&lt;T&gt;</code> is <code>Rc&lt;T&gt;</code> with an atomic count. An <strong>atomic</strong> operation is one the processor completes as a single step. That stays true even when several

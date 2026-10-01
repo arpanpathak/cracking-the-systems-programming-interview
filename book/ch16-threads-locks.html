@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -1891,6 +1891,53 @@ cycle is the three-state DFS from section 12.6.</p>
 <img src="figures/wait-for.svg" alt="Left: T0 waits for T1 and T2, and T1 waits for T2. There is no cycle. Right: T0 waits for T1, T1 for T2, and T2 for T0, a cycle.">
 <figcaption><b>Figure 16.8</b> The two graphs from the program. Only the right one is deadlocked.</figcaption>
 </figure>
+<p><code>has_deadlock</code> takes the edges as <code>(waiter, holder)</code> pairs. It first turns them into an adjacency list:</p>
+<pre><code class="language-rust">/// Iterative-friendly depth-first search over a small adjacency list.
+fn has_deadlock(waits_for: &amp;[(usize, usize)]) -&gt; bool {
+    let Some(highest) = waits_for
+        .iter()
+        .flat_map(|(a, b)| [*a, *b])
+        .max()
+    else {
+        return false;
+    };
+
+    let mut edges = vec![Vec::new(); highest + 1];
+    for (waiter, holder) in waits_for {
+        edges[*waiter].push(*holder);
+    }
+    // ...
+}</code></pre>
+<p>It finds the largest thread number with a <code>let ... else</code>, so an empty list returns <code>false</code> at once. The
+adjacency list then has one entry per thread, holding the threads it waits for.</p>
+<p>The search is the DFS of section 12.6. The three states are plain numbers: 0 for unvisited, 1 for on the
+current path, and 2 for fully explored:</p>
+<pre><code class="language-rust">fn has_deadlock(waits_for: &amp;[(usize, usize)]) -&gt; bool {
+    // ...
+    // 1 = on the current path, 2 = fully explored.
+    fn visit(node: usize, edges: &amp;[Vec&lt;usize&gt;], state: &amp;mut [u8]) -&gt; bool {
+        match state[node] {
+            1 =&gt; return true,
+            2 =&gt; return false,
+            _ =&gt; state[node] = 1,
+        }
+        for &amp;next in &amp;edges[node] {
+            if visit(next, edges, state) {
+                return true;
+            }
+        }
+        state[node] = 2;
+        false
+    }
+
+    let mut state = vec![0u8; edges.len()];
+    (0..edges.len()).any(|node| visit(node, &amp;edges, &amp;mut state))
+}</code></pre>
+<p><code>visit</code> returns <code>true</code> as soon as it reaches a node in state 1. That node is on the path that led here, so the
+edge closes a cycle. A node in state 2 was explored already and is known to lead to no cycle. <code>any</code> starts a
+search from every node, so a cycle among threads that no other thread waits on is found too.</p>
+<p><code>main</code> checks three graphs. The third, <code>(0, 0)</code>, is a thread waiting for itself, as happens when a thread tries
+to lock a <code>Mutex</code> it already holds.</p>
 <p class="listing"><b>Listing 16.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_deadlock.rs">src/bin/concurrency_deadlock.rs</a></p>
 
 <pre><code class="language-rust">//! Deadlock detection: a deadlock exists exactly when the wait-for graph has a
@@ -1966,10 +2013,6 @@ fn main() {
 
     println!("\nall checks passed");
 }</code></pre>
-<p><code>has_deadlock</code> takes the edges as <code>(waiter, holder)</code> pairs. It finds the largest thread number with a <code>let ... else</code>, so an empty list returns <code>false</code> at once. It then builds an adjacency list and runs the DFS.</p>
-<p>The states are plain numbers here: 0 for unvisited, 1 for on the current path, and 2 for fully explored. An edge
-back to a node in state 1 is a cycle. The third test graph, <code>(0, 0)</code>, is a thread waiting for itself, as happens
-when a thread tries to lock a <code>Mutex</code> it already holds.</p>
 <pre><code class="language-text">$ cargo run --bin concurrency_deadlock
 0-&gt;1, 1-&gt;2, 0-&gt;2     deadlock: false
 0-&gt;1, 1-&gt;2, 2-&gt;0     deadlock: true

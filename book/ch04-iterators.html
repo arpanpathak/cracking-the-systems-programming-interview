@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -255,6 +255,12 @@ is different: it runs the whole chain and gathers the items into a collection, s
 <p>Adapters are <strong>lazy</strong>. <code>iter().filter(...).map(...)</code> only builds a description of the work. Nothing happens
 until something asks for items, as <code>collect</code> or a <code>for</code> loop does. Then each item goes through every stage
 before the next item starts. No temporary vector is created between stages.</p>
+<p>Animation 4.1 runs <code>functional_numbers_drill</code> from listing 4.1 on <code>[10, 15, 20, 25, 30]</code>. The requests go
+backward, from <code>collect</code> toward the slice, and the items come forward one at a time.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch04-lazy-chain.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &amp;10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &amp;15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused." data-chapters="[[0.0, &quot;pull&quot;], [12.46, &quot;one at a time&quot;], [32.64, &quot;no collect&quot;]]"><img src="figures/ch04-lazy-chain.gif" alt="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &amp;10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &amp;15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused."></video>
+<figcaption><b>Animation 4.1</b> <code>collect</code> pulls items through the chain one at a time. Without a consumer, no item is ever asked for, and the chain does nothing.</figcaption>
+</figure>
 <div class="callout warning" markdown="1">
 <p><strong>WARNING:</strong> Because adapters are lazy, a chain that ends without <code>collect</code>, a <code>for</code> loop, or another method
 that consumes it does nothing at all. The compiler warns about such a chain: “unused <code>Map</code> that must be used”.</p>

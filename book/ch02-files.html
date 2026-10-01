@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -361,6 +361,12 @@ the <code>BufRead</code> trait, so the program imports that trait. Without the i
 through the file, so each line is a <code>Result</code>. <code>let line = line?;</code> replaces the <code>Result</code> with the <code>String</code>
 inside it, using the shadowing you saw in section 1.2. <code>enumerate()</code> pairs each line with its index,
 starting at 0, which is why the program prints <code>i + 1</code>.</p>
+<p>Animation 2.1 runs this loop on a 12-byte file of three lines, and counts the <code>read</code> system calls. Then it runs
+the same lines through a reader with no buffer.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch02-bufreader.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes." data-chapters="[[0.0, &quot;BufReader&quot;], [32.22, &quot;no buffer&quot;]]"><img src="figures/ch02-bufreader.gif" alt="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes."></video>
+<figcaption><b>Animation 2.1</b> <code>BufReader</code> makes one large read and serves the lines from memory: 2 calls. Reading one byte at a time costs a system call per byte: 13 calls.</figcaption>
+</figure>
 <h3 id="243-reusing-one-buffer-and-skipping-bad-lines"><a class="header" href="#243-reusing-one-buffer-and-skipping-bad-lines">2.4.3 Reusing one buffer, and skipping bad lines</a></h3>
 <p><code>lines()</code> allocates a new <code>String</code> for every line. For a very large file, you can read every line into the
 same <code>String</code> instead.</p>

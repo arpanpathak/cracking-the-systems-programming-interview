@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -230,6 +230,12 @@ more as the store grows.</p>
 <p>A cache line is 64 bytes, and it arrives as one unit. A program that reads one <code>u64</code> and then the next seven
 pays for a single line and uses all of it. A program that jumps to a new random line on every read pays the
 same 120 ns. It uses one eighth of what it fetched.</p>
+<p>Animation 15.1 follows single reads through the hierarchy, then a line read in order and lines read
+scattered.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch15-mem-hierarchy.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A core robot beside four boxes, L1 48 KiB, L2 512 KiB, L3 6 MiB, and RAM, each labelled with its measured time per dependent read: 2.2, 5.6, 42.3, and 146.2 ns. A read with 16 KiB of data stops at L1 in 2.2 ns; with 2 MiB it reaches L3, 42.3 ns; with 256 MiB it reaches RAM, 146 ns. Then a miss brings a 64-byte line of eight values into L1, and the next seven reads in order hit L1 at about 2 ns each. Last, scattered reads each fetch a new line from RAM and use one value of eight." data-chapters="[[0.0, &quot;one read&quot;], [22.68, &quot;a line&quot;], [41.04, &quot;scattered&quot;]]"><img src="figures/ch15-mem-hierarchy.gif" alt="A core robot beside four boxes, L1 48 KiB, L2 512 KiB, L3 6 MiB, and RAM, each labelled with its measured time per dependent read: 2.2, 5.6, 42.3, and 146.2 ns. A read with 16 KiB of data stops at L1 in 2.2 ns; with 2 MiB it reaches L3, 42.3 ns; with 256 MiB it reaches RAM, 146 ns. Then a miss brings a 64-byte line of eight values into L1, and the next seven reads in order hit L1 at about 2 ns each. Last, scattered reads each fetch a new line from RAM and use one value of eight."></video>
+<figcaption><b>Animation 15.1</b> A read stops at the first level that holds its line. A line read in order serves eight values for one trip; scattered reads pay the trip every time.</figcaption>
+</figure>
 <p>The rest of the chapter comes back to one fact. Data that is close together in memory, and read in order,
 is much cheaper than data scattered around. Keeping related data close together is called <strong>locality</strong>.</p>
 <h2 id="152-a-bump-allocator"><a class="header" href="#152-a-bump-allocator">15.2 A bump allocator</a></h2>
@@ -615,6 +621,11 @@ data, but the hardware moves memory in whole lines, so they share a line.</p>
 <figure>
 <img src="figures/false-sharing.svg" alt="Top: counters a and b sit in one 64-byte line, and the line moves between core 0 and core 1 on every write. Bottom: with 64-byte alignment, a and b are in separate lines, and each core keeps its own line.">
 <figcaption><b>Figure 15.4</b> Two counters in one line, and two counters in separate lines.</figcaption>
+</figure>
+<p>Animation 15.2 shows the line moving between the cores, then the same writes with one line per counter.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch15-false-sharing.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two cores, each with an L1 cache, and a counter of line transfers. Counters a and b share one 64-byte line. Core 0 holds the line and increments a. When core 1 writes b, core 0&#39;s copy is invalidated and the line moves to core 1; when core 0 writes a again, it moves back, and the transfer count climbs with every write. In the padded run, a and b are in separate lines, each core keeps its own line, and the transfer count stays at zero." data-chapters="[[0.0, &quot;one line&quot;], [29.5, &quot;padded&quot;]]"><img src="figures/ch15-false-sharing.gif" alt="Two cores, each with an L1 cache, and a counter of line transfers. Counters a and b share one 64-byte line. Core 0 holds the line and increments a. When core 1 writes b, core 0&#39;s copy is invalidated and the line moves to core 1; when core 0 writes a again, it moves back, and the transfer count climbs with every write. In the padded run, a and b are in separate lines, each core keeps its own line, and the transfer count stays at zero."></video>
+<figcaption><b>Animation 15.2</b> Two threads that share no data still share a line, and the line moves on every write: 838 ms. With one line per counter, nothing moves: 170 ms.</figcaption>
 </figure>
 <p>The fix is to place each counter in its own cache line. <code>#[repr(align(64))]</code> on a struct makes its alignment 64,
 so every value of the type starts on a new line. The size rounds up to a multiple of the alignment, so the value

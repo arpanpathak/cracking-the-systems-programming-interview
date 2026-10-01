@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -609,8 +609,8 @@ extensions after a <code>;</code> are ignored, as the RFC permits.</p>
         )
         .map_err(|_| ParseError::Malformed("chunk size"))?;
         cursor = line_end + 2;
-    // ...
-}
+        // ...
+    }
 }</code></pre>
 <p>A size of 0 ends the body, after optional trailer lines up to an empty line:</p>
 <pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
@@ -774,9 +774,9 @@ header that tells the client what the server will do:</p>
                 }
                 buffer.clear();
             }
-    // ...
-}
-}
+            // ...
+        }
+    }
 }</code></pre>
 <p>On <code>Incomplete</code>, it reads more; a read of 0 means the client left mid-request. Any other error gets a 400
 whose body is the error’s <code>Display</code> text, and the connection closes. After a framing error the server

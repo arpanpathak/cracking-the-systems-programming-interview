@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -492,6 +492,10 @@ labeled as application data, so an observer cannot tell them apart.</li>
 <li><strong><code>application_data</code>, 31 bytes</strong>: the 14 bytes of <code>hello over tls</code>, plus 1 byte for the real content type
 and a 16-byte tag that detects any change.</li>
 </ul>
+<figure>
+<img src="figures/ch28-record.svg" alt="One TLS record: a 5-byte header with type 23, version 3 3, and length 31, sent in the clear, followed by 31 bytes: the 14 encrypted bytes of hello over tls plus one byte for the real content type, and a 16-byte tag that detects any change.">
+<figcaption><b>Figure 28.2</b> The client's last record, byte by byte. Only the header can be read on the wire.</figcaption>
+</figure>
 <p>The plaintext appears nowhere in what the client sent.</p>
 <h2 id="283-when-the-check-fails"><a class="header" href="#283-when-the-check-fails">28.3 When the check fails</a></h2>
 <p>The second and third scenes break one of the client’s checks each:</p>

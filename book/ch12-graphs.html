@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -1174,6 +1174,52 @@ algorithm detects a cycle.</p>
 <figcaption><b>Animation 12.4</b> Kahn's algorithm takes a node when nothing points into it, and removing its edges releases the next ones. With a cycle, the order stops short and the function returns <code>None</code>.</figcaption>
 </figure>
 <h3 id="1281-kahns-algorithm-on-numbered-nodes"><a class="header" href="#1281-kahns-algorithm-on-numbered-nodes">12.8.1 Kahn’s algorithm on numbered nodes</a></h3>
+<p>The input is a node count and a slice of <code>(from, to)</code> edges. The first step builds the adjacency list and
+counts each node’s indegree at the same time:</p>
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    let mut graph = vec![Vec::new(); num_nodes];
+    let mut indegree = vec![0usize; num_nodes];
+
+    for &amp;(from, to) in edges {
+        graph[from].push(to);
+        indegree[to] += 1;
+    }
+    // ...
+}</code></pre>
+<p>The starting queue comes from one iterator chain:</p>
+<pre><code class="language-rust">pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    // ...
+    let mut queue: VecDeque&lt;usize&gt; = (0..num_nodes)
+        .filter(|&amp;n| indegree[n] == 0)
+        .collect();
+    let mut order = Vec::with_capacity(num_nodes);
+    // ...
+}</code></pre>
+<p><code>(0..num_nodes)</code> produces every node number. <code>.filter(|&amp;n| indegree[n] == 0)</code> keeps the nodes with no
+prerequisites, and <code>.collect()</code> builds the <code>VecDeque</code>.</p>
+<p>The loop is Kahn’s algorithm itself:</p>
+<pre><code class="language-rust">pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    // ...
+    while let Some(node) = queue.pop_front() {
+        order.push(node);
+
+        for &amp;next in &amp;graph[node] {
+            indegree[next] -= 1;
+            if indegree[next] == 0 {
+                queue.push_back(next);
+            }
+        }
+    }
+
+    (order.len() == num_nodes).then_some(order)
+}</code></pre>
+<p>Each node taken from the queue goes into <code>order</code>. Removing it removes its outgoing edges, so each neighbor’s
+indegree drops by one. A neighbor whose indegree reaches 0 has no prerequisites left, and joins the queue.</p>
+<p>The last line returns the answer. <code>bool::then_some(order)</code> gives <code>Some(order)</code> if the condition is true, and
+<code>None</code> if it is false. So the function returns <code>None</code> exactly when a cycle kept some nodes out of the order.
+The nodes on a cycle never reach indegree 0.</p>
 <p class="listing"><b>Listing 12.14</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">src/problems/graph_topology.rs</a></p>
 
 <pre><code class="language-rust">//! Topological sort (Kahn's algorithm).
@@ -1257,11 +1303,6 @@ mod tests {
         assert_eq!(order.len(), 3);
     }
 }</code></pre>
-<p>The input is a node count and a slice of <code>(from, to)</code> edges. The first loop builds the adjacency list and
-counts each node’s indegree at the same time.</p>
-<p>The starting queue comes from one iterator chain. <code>(0..num_nodes)</code> produces every node number. <code>.filter(|&amp;n| indegree[n] == 0)</code> keeps the nodes with no prerequisites, and <code>.collect()</code> builds the <code>VecDeque</code>.</p>
-<p>The last line returns the answer. <code>bool::then_some(order)</code> gives <code>Some(order)</code> if the condition is true, and
-<code>None</code> if it is false. So the function returns <code>None</code> exactly when a cycle kept some nodes out of the order.</p>
 <p>The tests check positions rather than one exact order. A graph usually has several valid topological orders, and
 the tests only require that each edge’s source comes before its target.</p>
 <pre><code class="language-text">$ cargo test --lib problems::graph_topology

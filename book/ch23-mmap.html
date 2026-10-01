@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -213,6 +213,12 @@ own frames (figure 23.1). The program reads the file’s bytes where the kernel 
 <figure>
 <img src="figures/ch23-read-vs-mmap.svg" alt="The disk feeds the kernel&#39;s page cache on first access. read copies from the page cache into a Vec in the process, a second copy. A mapping in the process is a set of page table entries that point at the page cache&#39;s frames.">
 <figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into your buffer. A mapping points at the page cache's frames.</figcaption>
+</figure>
+<p>Figure 23.2 places the mapping in the process. It is one more region of the address space, beside the heap and
+the stack. Its page table entries point at frames the kernel already holds for the file.</p>
+<figure>
+<img src="figures/ch23-address-space.svg" alt="A process&#39;s virtual address space from top to bottom: the stack, an unmapped gap, the file mapping from mmap of 64 pages, another gap, the heap with Vec, String, and Box, and the program code. The mapping is translated by the page table, one entry per page, filled on first touch, which points at page cache frames holding the file&#39;s pages, loaded from and written back to the file on disk.">
+<figcaption><b>Figure 23.2</b> A mapping is a region of virtual addresses. Its page table entries point into the page cache.</figcaption>
 </figure>
 <p><code>mmap</code> loads nothing when it returns. The page table entries for the range start empty. The first access
 to each page is a page fault, as in section 15.5. The kernel finds the file’s page in the page cache, or
@@ -404,7 +410,7 @@ file mapping, Linux also fills the entries of the neighbouring pages that are al
 This is <strong>fault-around</strong>, and by default it covers 64 KiB, which is 16 pages, per fault. 64 pages need at
 least 4 such faults. The second pass is 0 faults on both systems.</p>
 <h2 id="232-shared-and-private-mappings"><a class="header" href="#232-shared-and-private-mappings">23.2 Shared and private mappings</a></h2>
-<p>The flags argument decides where a write through the mapping goes (figure 23.2).</p>
+<p>The flags argument decides where a write through the mapping goes (figure 23.3).</p>
 <ul>
 <li><strong><code>MAP_SHARED</code></strong>: the entry points at the page cache frame itself. A write changes the file’s cached
 page. Every process that maps or reads the file sees the change. The kernel writes the dirty page to disk
@@ -415,7 +421,7 @@ points the entry at the copy. This is <strong>copy-on-write</strong>. The file n
 </ul>
 <figure>
 <img src="figures/ch23-shared-private.svg" alt="A MAP_SHARED mapping writes HELLO into the page cache page, which writeback or msync carries to the file on disk. A MAP_PRIVATE mapping reads the page cache page until its first write, then writes world into a private copy that only its process sees.">
-<figcaption><b>Figure 23.2</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
+<figcaption><b>Figure 23.3</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
 </figure>
 <p>Writeback happens on the kernel’s schedule, typically within about 30 seconds. To put the data on disk at a known point, call <code>msync</code>:</p>
 <pre><code class="language-rust">unsafe extern "C" {
@@ -502,7 +508,7 @@ and each fault enters the kernel. When a mapping is removed, every CPU that may 
 read sequentially, and use <code>read</code>.</p>
 <h2 id="233-sending-a-file-to-a-socket"><a class="header" href="#233-sending-a-file-to-a-socket">23.3 Sending a file to a socket</a></h2>
 <p>A static file server sends files to sockets. The simple version reads a chunk of the file into a buffer and
-writes the buffer to the socket, until the file ends. Figure 23.3 shows what each chunk costs. A <code>read</code> copies from the page cache to the buffer. A <code>write</code> copies from the buffer to the socket’s send buffer. The program never looks at the bytes. They pass through it only because <code>read</code> and <code>write</code>
+writes the buffer to the socket, until the file ends. Figure 23.4 shows what each chunk costs. A <code>read</code> copies from the page cache to the buffer. A <code>write</code> copies from the buffer to the socket’s send buffer. The program never looks at the bytes. They pass through it only because <code>read</code> and <code>write</code>
 are the calls it knows.</p>
 <p><code>sendfile</code> moves the bytes from a file to a socket inside the kernel. One call names both descriptors, an
 offset, and a count. The kernel passes the page cache’s pages to the socket, and the bytes never enter the
@@ -510,7 +516,7 @@ process. On network cards that can gather data from several places in memory, th
 to the pages instead of copying them. This is <strong>zero-copy</strong>: no copy of the payload by the CPU.</p>
 <figure>
 <img src="figures/ch23-copies.svg" alt="Top: the read/write loop copies page cache to user buffer with read, user buffer to socket buffer with write, then DMA to the network card, two system calls per chunk. Bottom: sendfile passes the pages from the page cache to the socket buffer inside the kernel, then DMA to the network card, one system call.">
-<figcaption><b>Figure 23.3</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
+<figcaption><b>Figure 23.4</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
 </figure>
 <h3 id="2331-measuring-both"><a class="header" href="#2331-measuring-both">23.3.1 Measuring both</a></h3>
 <p><code>sendfile</code> with a socket as the destination is a Linux call, so <code>zero_copy</code> puts its code in a module

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
+            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -709,6 +709,12 @@ return before the cache is read. Figure 1.5 shows the cache after <code>memoized
 </figure>
 <p>With the cache, each value from 2 to <code>n</code> is computed once, so the time grows in proportion to <code>n</code>. The
 cache uses memory in proportion to <code>n</code>, and the recursion still uses <code>n</code> stack frames.</p>
+<p>Animation 1.1 runs <code>memoized(5)</code> and <code>recursive(5)</code> side by side in time. The tree on the left gains a node per
+call, and the stack on the right holds only the calls that are still waiting.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch01-fib-calls.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A call tree grows on the left and a stack of frames on the right. memoized(5) calls go(5), go(4), go(3), go(2), and go(1); the stack holds five frames. go(1) and go(0) return base values, and go(2) stores 1 in the cache. As the calls return, the cache fills with 1, 2, 3, 5 for slots 2 to 5. When go(4) calls go(2) and go(5) calls go(3), the cache already holds the answer, and they return without further calls: 9 calls in all. Then recursive(5) makes the same tree without a cache: recursive(2) and recursive(3) run again in full, shaded as repeats, for 15 calls." data-chapters="[[0.0, &quot;with a cache&quot;], [25.62, &quot;no cache&quot;]]"><img src="figures/ch01-fib-calls.gif" alt="A call tree grows on the left and a stack of frames on the right. memoized(5) calls go(5), go(4), go(3), go(2), and go(1); the stack holds five frames. go(1) and go(0) return base values, and go(2) stores 1 in the cache. As the calls return, the cache fills with 1, 2, 3, 5 for slots 2 to 5. When go(4) calls go(2) and go(5) calls go(3), the cache already holds the answer, and they return without further calls: 9 calls in all. Then recursive(5) makes the same tree without a cache: recursive(2) and recursive(3) run again in full, shaded as repeats, for 15 calls."></video>
+<figcaption><b>Animation 1.1</b> The stack is only as deep as the chain of waiting calls. With the cache, each value is computed once; without it, whole subtrees repeat.</figcaption>
+</figure>
 <h2 id="18-timing-the-three-versions"><a class="header" href="#18-timing-the-three-versions">1.8 Timing the three versions</a></h2>
 <p>To compare the versions, the program measures how long each call takes.</p>
 <p class="listing"><b>Listing 1.7</b> Timing a function and printing the result. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 43 to 51</p>
@@ -1051,6 +1057,12 @@ the <code>BufRead</code> trait, so the program imports that trait. Without the i
 through the file, so each line is a <code>Result</code>. <code>let line = line?;</code> replaces the <code>Result</code> with the <code>String</code>
 inside it, using the shadowing you saw in section 1.2. <code>enumerate()</code> pairs each line with its index,
 starting at 0, which is why the program prints <code>i + 1</code>.</p>
+<p>Animation 2.1 runs this loop on a 12-byte file of three lines, and counts the <code>read</code> system calls. Then it runs
+the same lines through a reader with no buffer.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch02-bufreader.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes." data-chapters="[[0.0, &quot;BufReader&quot;], [32.22, &quot;no buffer&quot;]]"><img src="figures/ch02-bufreader.gif" alt="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes."></video>
+<figcaption><b>Animation 2.1</b> <code>BufReader</code> makes one large read and serves the lines from memory: 2 calls. Reading one byte at a time costs a system call per byte: 13 calls.</figcaption>
+</figure>
 <h3 id="243-reusing-one-buffer-and-skipping-bad-lines"><a class="header" href="#243-reusing-one-buffer-and-skipping-bad-lines">2.4.3 Reusing one buffer, and skipping bad lines</a></h3>
 <p><code>lines()</code> allocates a new <code>String</code> for every line. For a very large file, you can read every line into the
 same <code>String</code> instead.</p>
@@ -2207,7 +2219,70 @@ sorted, you know which index to move:</p>
 </ul>
 <p>Each fixed number costs one O(n) walk, and there are n fixed numbers, so the whole search is O(n²). Sorting
 costs O(n log n), which is smaller.</p>
-<p class="listing"><b>Listing 3.6</b> Three Sum. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
+<p>The function first sorts, then fixes each number in turn:</p>
+<pre><code class="language-rust">// Import the variants directly into scope
+use std::cmp::Ordering::{Equal, Greater, Less};
+
+pub fn three_sum(numbers: &amp;mut [i32], target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
+    numbers.sort_unstable();
+
+    let mut results = Vec::new();
+    let target = i64::from(target);
+
+    for i in 0..numbers.len() {
+        // Skip a first value that was already used, so triplets stay unique.
+        if i &gt; 0 &amp;&amp; numbers[i] == numbers[i - 1] {
+            continue;
+        }
+
+        let (mut left, mut right) = (i + 1, numbers.len().saturating_sub(1));
+        // ...
+    }
+}</code></pre>
+<ul>
+<li><code>use std::cmp::Ordering::{Equal, Greater, Less};</code> lets the code write <code>Less</code> instead of
+<code>Ordering::Less</code>. The next excerpt matches on these three.</li>
+<li>The <code>continue</code> skips a fixed value equal to the previous one, so the same set is not found twice.</li>
+<li><code>numbers.len().saturating_sub(1)</code> gives 0 instead of underflowing when the slice is empty.</li>
+</ul>
+<p>For each fixed number, <code>left</code> and <code>right</code> close in from the two ends of the rest:</p>
+<pre><code class="language-rust">pub fn three_sum(numbers: &amp;mut [i32], target: i32) -&gt; Vec&lt;(i32, i32, i32)&gt; {
+    // ...
+    for i in 0..numbers.len() {
+        // ...
+        while left &lt; right {
+            // Widen to i64 so the sum of three i32 values cannot overflow.
+            let current_sum = numbers[i] as i64 + numbers[left] as i64 + numbers[right] as i64;
+
+            match current_sum.cmp(&amp;target) {
+                Less =&gt; left += 1,
+                Greater =&gt; right -= 1,
+                Equal =&gt; {
+                    results.push((numbers[i], numbers[left], numbers[right]));
+
+                    while left &lt; right &amp;&amp; numbers[left] == numbers[left + 1] {
+                        left += 1;
+                    }
+                    while left &lt; right &amp;&amp; numbers[right] == numbers[right - 1] {
+                        right -= 1;
+                    }
+
+                    left += 1;
+                    right -= 1;
+                }
+            }
+        }
+    }
+    // ...
+}</code></pre>
+<ul>
+<li>The sum is computed in <code>i64</code>. Three <code>i32</code> values can add up to more than <code>i32</code> can hold. The test
+<code>does_not_overflow_on_extreme_values</code> uses <code>i32::MAX</code> twice to check this.</li>
+<li><code>current_sum.cmp(&amp;target)</code> returns <code>Less</code>, <code>Greater</code>, or <code>Equal</code>, and the <code>match</code> turns each into the move
+from the list above.</li>
+<li>After a match, the two inner <code>while</code> loops step <code>left</code> and <code>right</code> past values equal to the ones in the match.</li>
+</ul>
+<p class="listing"><b>Listing 3.6</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
 
 <pre><code class="language-rust">//! Three Sum: every unique triplet of values that adds up to a target.
 //!
@@ -2296,16 +2371,6 @@ mod tests {
         );
     }
 }</code></pre>
-<p>A few details:</p>
-<ul>
-<li><code>use std::cmp::Ordering::{Equal, Greater, Less};</code> lets the code write <code>Less</code> instead of
-<code>Ordering::Less</code>. <code>current_sum.cmp(&amp;target)</code> returns one of the three.</li>
-<li>Duplicate sets are skipped at each position. For the fixed number, the <code>continue</code> skips a value equal to
-the previous one. After a match, the two inner <code>while</code> loops step <code>left</code> and <code>right</code> past equal values.</li>
-<li>The sum is computed in <code>i64</code>. Three <code>i32</code> values can add up to more than <code>i32</code> can hold. The test
-<code>does_not_overflow_on_extreme_values</code> uses <code>i32::MAX</code> twice to check this.</li>
-<li><code>numbers.len().saturating_sub(1)</code> gives 0 instead of underflowing when the slice is empty.</li>
-</ul>
 <figure class="anim">
 <video class="motion" src="figures/ch03-three-sum.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1." data-chapters="[[2.4, &quot;i = 0&quot;], [36.6, &quot;i = 1&quot;], [67.2, &quot;i = 3&quot;]]"><img src="figures/ch03-three-sum.gif" alt="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1."></video>
 <figcaption><b>Animation 3.3</b> Three Sum on <code>[-4, -1, -1, 0, 1, 2]</code>, one comparison per step. The sign of the sum decides which pointer moves. The repeated <code>-1</code> at index 2 is skipped.</figcaption>
@@ -3067,6 +3132,12 @@ is different: it runs the whole chain and gathers the items into a collection, s
 <p>Adapters are <strong>lazy</strong>. <code>iter().filter(...).map(...)</code> only builds a description of the work. Nothing happens
 until something asks for items, as <code>collect</code> or a <code>for</code> loop does. Then each item goes through every stage
 before the next item starts. No temporary vector is created between stages.</p>
+<p>Animation 4.1 runs <code>functional_numbers_drill</code> from listing 4.1 on <code>[10, 15, 20, 25, 30]</code>. The requests go
+backward, from <code>collect</code> toward the slice, and the items come forward one at a time.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch04-lazy-chain.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &amp;10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &amp;15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused." data-chapters="[[0.0, &quot;pull&quot;], [12.46, &quot;one at a time&quot;], [32.64, &quot;no collect&quot;]]"><img src="figures/ch04-lazy-chain.gif" alt="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &amp;10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &amp;15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused."></video>
+<figcaption><b>Animation 4.1</b> <code>collect</code> pulls items through the chain one at a time. Without a consumer, no item is ever asked for, and the chain does nothing.</figcaption>
+</figure>
 <div class="callout warning" markdown="1">
 <p><strong>WARNING:</strong> Because adapters are lazy, a chain that ends without <code>collect</code>, a <code>for</code> loop, or another method
 that consumes it does nothing at all. The compiler warns about such a chain: “unused <code>Map</code> that must be used”.</p>
@@ -4811,6 +4882,11 @@ the original line. So no text is copied until <code>parse</code> decides to keep
 <p>Now try some bad inputs. An empty line fails at step 2, because there is no first word. <code>ok_or</code> turns the
 <code>None</code> into <code>Err(CommandError::Empty)</code>, and <code>?</code> returns it. The line <code>create triton many</code> fails at step 6,
 because <code>"many"</code> is not a number. The line <code>create triton 0</code> passes step 6 and fails at step 7.</p>
+<p>Animation 7.1 runs the good line and the three bad ones through the stages of the table.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch07-parse-trace.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Five stages in a row: split, verb, name, parse u32, and GpuCount::new. The line create triton 4 is split into three words; the verb is create, the name triton, the count parses as 4, and GpuCount::new accepts it, so parse returns Ok of a Create command. An empty line fails at the verb with Err of Empty. create triton many fails at parse u32 with InvalidGpuCount of many. create triton 0 parses as 0 and fails at GpuCount::new, because 0 is outside 1 to 64, with InvalidGpuCount of 0." data-chapters="[[0.0, &quot;valid&quot;], [21.42, &quot;empty&quot;], [29.82, &quot;not a number&quot;], [38.82, &quot;out of range&quot;]]"><img src="figures/ch07-parse-trace.gif" alt="Five stages in a row: split, verb, name, parse u32, and GpuCount::new. The line create triton 4 is split into three words; the verb is create, the name triton, the count parses as 4, and GpuCount::new accepts it, so parse returns Ok of a Create command. An empty line fails at the verb with Err of Empty. create triton many fails at parse u32 with InvalidGpuCount of many. create triton 0 parses as 0 and fails at GpuCount::new, because 0 is outside 1 to 64, with InvalidGpuCount of 0."></video>
+<figcaption><b>Animation 7.1</b> Each <code>?</code> either passes a value to the next stage or returns a typed error. A count of 0 gets past parsing and stops at the type's gate.</figcaption>
+</figure>
 <p>Steps 6 and 7 can fail for different reasons, but both failures are reported the same way.
 <code>.map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))</code> replaces whatever error came back with
 <code>InvalidGpuCount</code>, carrying the text the user typed. The user then sees their own input in the message.</p>
@@ -5577,6 +5653,11 @@ the statement, so the borrow ends there.</li>
 <li><code>*counter.borrow_mut() += 10;</code> does the same through the other handle.</li>
 <li><code>*counter.borrow()</code> reads 11.</li>
 </ol>
+<p>Animation 8.1 runs these steps, with the strong count and the <code>RefCell</code> flag drawn on the heap block.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch08-rc-refcell.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed." data-chapters="[[0.0, &quot;two handles&quot;], [7.98, &quot;borrow&quot;], [26.34, &quot;drop&quot;], [36.3, &quot;two guards&quot;]]"><img src="figures/ch08-rc-refcell.gif" alt="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed."></video>
+<figcaption><b>Animation 8.1</b> Two handles, one value. Each guard ends its borrow when it is dropped; a guard kept alive makes the next <code>borrow_mut</code> panic at run time.</figcaption>
+</figure>
 <p>Each <code>borrow_mut</code> ends before the next starts, so no panic occurs. If you stored the first guard in a variable
 and then called <code>borrow_mut</code> again while it was still alive, the program would panic.</p>
 <h2 id="85-weak-a-pointer-that-does-not-own"><a class="header" href="#85-weak-a-pointer-that-does-not-own">8.5 <code>Weak</code>: a pointer that does not own</a></h2>
@@ -5633,7 +5714,13 @@ changed after the node exists.</li>
 <li><code>parent_value</code> borrows the link, calls <code>upgrade()</code>, and reads the parent’s value if the parent still
 exists. <code>Option::map</code> applies the closure only when there is a value.</li>
 </ul>
-<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in listing 8.7 checks the behavior. It creates a
+<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in listing 8.7 checks the behavior.</p>
+<p>Animation 8.2 follows that test, then shows the cycle that <code>Weak</code> prevents.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch08-weak-parent.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root&#39;s weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root&#39;s strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked." data-chapters="[[0.0, &quot;weak link&quot;], [16.86, &quot;drop root&quot;], [26.1, &quot;Rc both ways&quot;]]"><img src="figures/ch08-weak-parent.gif" alt="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root&#39;s weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root&#39;s strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked."></video>
+<figcaption><b>Animation 8.2</b> A <code>Weak</code> parent link lets the parent be freed. With <code>Rc</code> in both directions, each node keeps the other alive forever.</figcaption>
+</figure>
+<p>The test creates a
 root and a child, drops the root, and then checks that the child’s <code>parent_value()</code> is <code>None</code>.</p>
 <h2 id="86-arc-and-mutex-sharing-across-threads"><a class="header" href="#86-arc-and-mutex-sharing-across-threads">8.6 <code>Arc</code> and <code>Mutex</code>: sharing across threads</a></h2>
 <p><code>Arc&lt;T&gt;</code> is <code>Rc&lt;T&gt;</code> with an atomic count. An <strong>atomic</strong> operation is one the processor completes as a single step. That stays true even when several
@@ -7456,6 +7543,13 @@ other list whole. Figure 10.1 works through an example.</p>
 </figure>
 <p>With linked lists, “move a node to the output” does not copy the value. It detaches the node from the front of
 its list and links it to the end of the output. No memory is allocated.</p>
+<p>Animation 10.1 runs that merge with the code of listing 10.8, one node at a time. The output starts at a
+<strong>dummy</strong> node, a placeholder whose <code>next</code> will hold the real first node. <code>tail</code> always points at the last node
+of the output.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch10-merge-two.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two linked lists, left 1, 4, 5 and right 1, 3, 4, and an output that starts at a dummy node with tail pointing at it. The two front nodes are compared; left&#39;s 1 wins the tie, is detached from left, and linked after tail, and tail moves onto it. Then right&#39;s 1, right&#39;s 3, left&#39;s 4, and right&#39;s 4 move the same way. right is empty, the loop stops, and one link attaches left&#39;s remaining 5. In a second run the attaching line is deleted, and node 5 is freed when left goes out of scope, so the output has only five nodes." data-chapters="[[0.0, &quot;merge&quot;], [36.84, &quot;no attach&quot;]]"><img src="figures/ch10-merge-two.gif" alt="Two linked lists, left 1, 4, 5 and right 1, 3, 4, and an output that starts at a dummy node with tail pointing at it. The two front nodes are compared; left&#39;s 1 wins the tie, is detached from left, and linked after tail, and tail moves onto it. Then right&#39;s 1, right&#39;s 3, left&#39;s 4, and right&#39;s 4 move the same way. right is empty, the loop stops, and one link attaches left&#39;s remaining 5. In a second run the attaching line is deleted, and node 5 is freed when left goes out of scope, so the output has only five nodes."></video>
+<figcaption><b>Animation 10.1</b> Each step moves one node to the tail. The last line attaches whatever is left; without it, the rest of the list is dropped.</figcaption>
+</figure>
 <h2 id="102-three-strategies-for-k-lists"><a class="header" href="#102-three-strategies-for-k-lists">10.2 Three strategies for k lists</a></h2>
 <p>Figure 10.2 shows three ways to extend two-list merging to k lists.</p>
 <figure>
@@ -7470,6 +7564,11 @@ are about log₂ k rounds, so the total is O(N log k).</p>
 <p><strong>A heap of heads.</strong> Put the front node of each list into a min-heap, the structure from chapter 5. Pop the
 smallest, append it to the output, and push the next node from the same list. Each node goes through one push and one pop on a heap of at most k entries. Each costs O(log k), so the
 total is again O(N log k).</p>
+<p>Animation 10.2 counts node moves for eight lists of three nodes: pairwise rounds against one list at a time.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch10-merge-rounds.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Eight bars, lists[0] to lists[7], each of three nodes, and a counter of node moves. Pairwise: with gap 1, four merges of 3 and 3 take 24 moves; with gap 2, two merges of 6 and 6 take 24 more; with gap 4, one merge of 12 and 12 takes 24, and lists[0] holds all 24 nodes after 72 moves. Then one at a time: each list is merged into the growing lists[0], and the moves add up 6, 9, 12, up to 24, for 105 in total." data-chapters="[[0.0, &quot;pairwise&quot;], [25.02, &quot;one at a time&quot;]]"><img src="figures/ch10-merge-rounds.gif" alt="Eight bars, lists[0] to lists[7], each of three nodes, and a counter of node moves. Pairwise: with gap 1, four merges of 3 and 3 take 24 moves; with gap 2, two merges of 6 and 6 take 24 more; with gap 4, one merge of 12 and 12 takes 24, and lists[0] holds all 24 nodes after 72 moves. Then one at a time: each list is merged into the growing lists[0], and the moves add up 6, 9, 12, up to 24, for 105 in total."></video>
+<figcaption><b>Animation 10.2</b> Pairwise rounds move each node once per round, log₂ 8 = 3 rounds: 72 moves. One at a time walks the growing result again and again: 105 moves for the same 24 nodes.</figcaption>
+</figure>
 <p>For 100 lists of 10,000 nodes each, N is a million. O(kN) is about 100 million steps. O(N log k) is about 7
 million.</p>
 <p>The pairwise strategy has a compact in-place form that most of the ten versions use. It keeps the lists in a
@@ -11553,6 +11652,52 @@ algorithm detects a cycle.</p>
 <figcaption><b>Animation 12.4</b> Kahn's algorithm takes a node when nothing points into it, and removing its edges releases the next ones. With a cycle, the order stops short and the function returns <code>None</code>.</figcaption>
 </figure>
 <h3 id="1281-kahns-algorithm-on-numbered-nodes"><a class="header" href="#1281-kahns-algorithm-on-numbered-nodes">12.8.1 Kahn’s algorithm on numbered nodes</a></h3>
+<p>The input is a node count and a slice of <code>(from, to)</code> edges. The first step builds the adjacency list and
+counts each node’s indegree at the same time:</p>
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    let mut graph = vec![Vec::new(); num_nodes];
+    let mut indegree = vec![0usize; num_nodes];
+
+    for &amp;(from, to) in edges {
+        graph[from].push(to);
+        indegree[to] += 1;
+    }
+    // ...
+}</code></pre>
+<p>The starting queue comes from one iterator chain:</p>
+<pre><code class="language-rust">pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    // ...
+    let mut queue: VecDeque&lt;usize&gt; = (0..num_nodes)
+        .filter(|&amp;n| indegree[n] == 0)
+        .collect();
+    let mut order = Vec::with_capacity(num_nodes);
+    // ...
+}</code></pre>
+<p><code>(0..num_nodes)</code> produces every node number. <code>.filter(|&amp;n| indegree[n] == 0)</code> keeps the nodes with no
+prerequisites, and <code>.collect()</code> builds the <code>VecDeque</code>.</p>
+<p>The loop is Kahn’s algorithm itself:</p>
+<pre><code class="language-rust">pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    // ...
+    while let Some(node) = queue.pop_front() {
+        order.push(node);
+
+        for &amp;next in &amp;graph[node] {
+            indegree[next] -= 1;
+            if indegree[next] == 0 {
+                queue.push_back(next);
+            }
+        }
+    }
+
+    (order.len() == num_nodes).then_some(order)
+}</code></pre>
+<p>Each node taken from the queue goes into <code>order</code>. Removing it removes its outgoing edges, so each neighbor’s
+indegree drops by one. A neighbor whose indegree reaches 0 has no prerequisites left, and joins the queue.</p>
+<p>The last line returns the answer. <code>bool::then_some(order)</code> gives <code>Some(order)</code> if the condition is true, and
+<code>None</code> if it is false. So the function returns <code>None</code> exactly when a cycle kept some nodes out of the order.
+The nodes on a cycle never reach indegree 0.</p>
 <p class="listing"><b>Listing 12.14</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">src/problems/graph_topology.rs</a></p>
 
 <pre><code class="language-rust">//! Topological sort (Kahn's algorithm).
@@ -11636,11 +11781,6 @@ mod tests {
         assert_eq!(order.len(), 3);
     }
 }</code></pre>
-<p>The input is a node count and a slice of <code>(from, to)</code> edges. The first loop builds the adjacency list and
-counts each node’s indegree at the same time.</p>
-<p>The starting queue comes from one iterator chain. <code>(0..num_nodes)</code> produces every node number. <code>.filter(|&amp;n| indegree[n] == 0)</code> keeps the nodes with no prerequisites, and <code>.collect()</code> builds the <code>VecDeque</code>.</p>
-<p>The last line returns the answer. <code>bool::then_some(order)</code> gives <code>Some(order)</code> if the condition is true, and
-<code>None</code> if it is false. So the function returns <code>None</code> exactly when a cycle kept some nodes out of the order.</p>
 <p>The tests check positions rather than one exact order. A graph usually has several valid topological orders, and
 the tests only require that each edge’s source comes before its target.</p>
 <pre><code class="language-text">$ cargo test --lib problems::graph_topology
@@ -15982,6 +16122,12 @@ more as the store grows.</p>
 <p>A cache line is 64 bytes, and it arrives as one unit. A program that reads one <code>u64</code> and then the next seven
 pays for a single line and uses all of it. A program that jumps to a new random line on every read pays the
 same 120 ns. It uses one eighth of what it fetched.</p>
+<p>Animation 15.1 follows single reads through the hierarchy, then a line read in order and lines read
+scattered.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch15-mem-hierarchy.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A core robot beside four boxes, L1 48 KiB, L2 512 KiB, L3 6 MiB, and RAM, each labelled with its measured time per dependent read: 2.2, 5.6, 42.3, and 146.2 ns. A read with 16 KiB of data stops at L1 in 2.2 ns; with 2 MiB it reaches L3, 42.3 ns; with 256 MiB it reaches RAM, 146 ns. Then a miss brings a 64-byte line of eight values into L1, and the next seven reads in order hit L1 at about 2 ns each. Last, scattered reads each fetch a new line from RAM and use one value of eight." data-chapters="[[0.0, &quot;one read&quot;], [22.68, &quot;a line&quot;], [41.04, &quot;scattered&quot;]]"><img src="figures/ch15-mem-hierarchy.gif" alt="A core robot beside four boxes, L1 48 KiB, L2 512 KiB, L3 6 MiB, and RAM, each labelled with its measured time per dependent read: 2.2, 5.6, 42.3, and 146.2 ns. A read with 16 KiB of data stops at L1 in 2.2 ns; with 2 MiB it reaches L3, 42.3 ns; with 256 MiB it reaches RAM, 146 ns. Then a miss brings a 64-byte line of eight values into L1, and the next seven reads in order hit L1 at about 2 ns each. Last, scattered reads each fetch a new line from RAM and use one value of eight."></video>
+<figcaption><b>Animation 15.1</b> A read stops at the first level that holds its line. A line read in order serves eight values for one trip; scattered reads pay the trip every time.</figcaption>
+</figure>
 <p>The rest of the chapter comes back to one fact. Data that is close together in memory, and read in order,
 is much cheaper than data scattered around. Keeping related data close together is called <strong>locality</strong>.</p>
 <h2 id="152-a-bump-allocator"><a class="header" href="#152-a-bump-allocator">15.2 A bump allocator</a></h2>
@@ -16367,6 +16513,11 @@ data, but the hardware moves memory in whole lines, so they share a line.</p>
 <figure>
 <img src="figures/false-sharing.svg" alt="Top: counters a and b sit in one 64-byte line, and the line moves between core 0 and core 1 on every write. Bottom: with 64-byte alignment, a and b are in separate lines, and each core keeps its own line.">
 <figcaption><b>Figure 15.4</b> Two counters in one line, and two counters in separate lines.</figcaption>
+</figure>
+<p>Animation 15.2 shows the line moving between the cores, then the same writes with one line per counter.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch15-false-sharing.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two cores, each with an L1 cache, and a counter of line transfers. Counters a and b share one 64-byte line. Core 0 holds the line and increments a. When core 1 writes b, core 0&#39;s copy is invalidated and the line moves to core 1; when core 0 writes a again, it moves back, and the transfer count climbs with every write. In the padded run, a and b are in separate lines, each core keeps its own line, and the transfer count stays at zero." data-chapters="[[0.0, &quot;one line&quot;], [29.5, &quot;padded&quot;]]"><img src="figures/ch15-false-sharing.gif" alt="Two cores, each with an L1 cache, and a counter of line transfers. Counters a and b share one 64-byte line. Core 0 holds the line and increments a. When core 1 writes b, core 0&#39;s copy is invalidated and the line moves to core 1; when core 0 writes a again, it moves back, and the transfer count climbs with every write. In the padded run, a and b are in separate lines, each core keeps its own line, and the transfer count stays at zero."></video>
+<figcaption><b>Animation 15.2</b> Two threads that share no data still share a line, and the line moves on every write: 838 ms. With one line per counter, nothing moves: 170 ms.</figcaption>
 </figure>
 <p>The fix is to place each counter in its own cache line. <code>#[repr(align(64))]</code> on a struct makes its alignment 64,
 so every value of the type starts on a new line. The size rounds up to a multiple of the alignment, so the value
@@ -18807,6 +18958,53 @@ cycle is the three-state DFS from section 12.6.</p>
 <img src="figures/wait-for.svg" alt="Left: T0 waits for T1 and T2, and T1 waits for T2. There is no cycle. Right: T0 waits for T1, T1 for T2, and T2 for T0, a cycle.">
 <figcaption><b>Figure 16.8</b> The two graphs from the program. Only the right one is deadlocked.</figcaption>
 </figure>
+<p><code>has_deadlock</code> takes the edges as <code>(waiter, holder)</code> pairs. It first turns them into an adjacency list:</p>
+<pre><code class="language-rust">/// Iterative-friendly depth-first search over a small adjacency list.
+fn has_deadlock(waits_for: &amp;[(usize, usize)]) -&gt; bool {
+    let Some(highest) = waits_for
+        .iter()
+        .flat_map(|(a, b)| [*a, *b])
+        .max()
+    else {
+        return false;
+    };
+
+    let mut edges = vec![Vec::new(); highest + 1];
+    for (waiter, holder) in waits_for {
+        edges[*waiter].push(*holder);
+    }
+    // ...
+}</code></pre>
+<p>It finds the largest thread number with a <code>let ... else</code>, so an empty list returns <code>false</code> at once. The
+adjacency list then has one entry per thread, holding the threads it waits for.</p>
+<p>The search is the DFS of section 12.6. The three states are plain numbers: 0 for unvisited, 1 for on the
+current path, and 2 for fully explored:</p>
+<pre><code class="language-rust">fn has_deadlock(waits_for: &amp;[(usize, usize)]) -&gt; bool {
+    // ...
+    // 1 = on the current path, 2 = fully explored.
+    fn visit(node: usize, edges: &amp;[Vec&lt;usize&gt;], state: &amp;mut [u8]) -&gt; bool {
+        match state[node] {
+            1 =&gt; return true,
+            2 =&gt; return false,
+            _ =&gt; state[node] = 1,
+        }
+        for &amp;next in &amp;edges[node] {
+            if visit(next, edges, state) {
+                return true;
+            }
+        }
+        state[node] = 2;
+        false
+    }
+
+    let mut state = vec![0u8; edges.len()];
+    (0..edges.len()).any(|node| visit(node, &amp;edges, &amp;mut state))
+}</code></pre>
+<p><code>visit</code> returns <code>true</code> as soon as it reaches a node in state 1. That node is on the path that led here, so the
+edge closes a cycle. A node in state 2 was explored already and is known to lead to no cycle. <code>any</code> starts a
+search from every node, so a cycle among threads that no other thread waits on is found too.</p>
+<p><code>main</code> checks three graphs. The third, <code>(0, 0)</code>, is a thread waiting for itself, as happens when a thread tries
+to lock a <code>Mutex</code> it already holds.</p>
 <p class="listing"><b>Listing 16.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_deadlock.rs">src/bin/concurrency_deadlock.rs</a></p>
 
 <pre><code class="language-rust">//! Deadlock detection: a deadlock exists exactly when the wait-for graph has a
@@ -18882,10 +19080,6 @@ fn main() {
 
     println!("\nall checks passed");
 }</code></pre>
-<p><code>has_deadlock</code> takes the edges as <code>(waiter, holder)</code> pairs. It finds the largest thread number with a <code>let ... else</code>, so an empty list returns <code>false</code> at once. It then builds an adjacency list and runs the DFS.</p>
-<p>The states are plain numbers here: 0 for unvisited, 1 for on the current path, and 2 for fully explored. An edge
-back to a node in state 1 is a cycle. The third test graph, <code>(0, 0)</code>, is a thread waiting for itself, as happens
-when a thread tries to lock a <code>Mutex</code> it already holds.</p>
 <pre><code class="language-text">$ cargo run --bin concurrency_deadlock
 0-&gt;1, 1-&gt;2, 0-&gt;2     deadlock: false
 0-&gt;1, 1-&gt;2, 2-&gt;0     deadlock: true
@@ -19897,6 +20091,106 @@ consumers are still running.</p>
 <h2 id="175-many-producers-and-consumers-with-wait_while"><a class="header" href="#175-many-producers-and-consumers-with-wait_while">17.5 Many producers and consumers with <code>wait_while</code></a></h2>
 <p>The next version is the bounded buffer written more compactly, with <code>wait_while</code> for both waits. Its <code>main</code> uses
 scoped threads, so no <code>Arc</code> is needed.</p>
+<p>The type is the same as in section 17.3. It holds a <code>VecDeque</code> behind a <code>Mutex</code>, a capacity, and one <code>Condvar</code>
+for each thing a thread can wait for:</p>
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    sync::{Condvar, Mutex},
+    thread,
+};
+
+pub struct BoundedBuffer&lt;T&gt; {
+    queue: Mutex&lt;VecDeque&lt;T&gt;&gt;,
+    capacity: usize,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    pub fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+
+        Self {
+            queue: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>push</code> waits while the queue is full. <code>wait_while</code> takes the guard and a condition, and loops for you. It sleeps
+while the condition is true, and returns the guard once it is false. The <code>while</code> loop of section 17.3 is inside
+it, so a spurious wakeup is handled the same way.</p>
+<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    // ...
+    /// Blocks while the buffer is full.
+    pub fn push(&amp;self, item: T) {
+        let cap = self.capacity;
+
+        let mut queue = self.queue.lock().unwrap();
+        queue = self
+            .not_full
+            .wait_while(queue, |q| q.len() &gt;= cap)
+            .unwrap();
+
+        queue.push_back(item);
+        drop(queue);
+
+        self.not_empty.notify_one();
+    }
+    // ...
+}</code></pre>
+<p><code>push</code> reads <code>self.capacity</code> into a local <code>cap</code> before the closure <code>|q| q.len() &gt;= cap</code>. The closure then
+captures a <code>usize</code> instead of borrowing <code>self</code>. After pushing, <code>drop(queue)</code> releases the lock before
+<code>notify_one</code>, so the woken consumer does not wake only to wait for the lock.</p>
+<p><code>pop</code> is the mirror image: it waits while the queue is empty, takes the front item, and wakes one producer.</p>
+<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    // ...
+    /// Blocks while the buffer is empty.
+    pub fn pop(&amp;self) -&gt; T {
+        let mut queue = self.queue.lock().unwrap();
+        queue = self
+            .not_empty
+            .wait_while(queue, |q| q.is_empty())
+            .unwrap();
+
+        let item = queue.pop_front().unwrap();
+        self.not_full.notify_one();
+        item
+    }
+}</code></pre>
+<p><strong>MPMC</strong> stands for multiple producers, multiple consumers. In <code>main</code>, four producers push 10 items each, and two
+consumers pop 20 each:</p>
+<pre><code class="language-rust">fn main() {
+    let buffer = BoundedBuffer::&lt;(usize, usize)&gt;::new(8);
+    let buffer = &amp;buffer;
+
+    const PRODUCERS: usize = 4;
+    const CONSUMERS: usize = 2;
+    const PER_PRODUCER: usize = 10;
+    const PER_CONSUMER: usize = PRODUCERS * PER_PRODUCER / CONSUMERS;
+
+    thread::scope(|s| {
+        for p in 0..PRODUCERS {
+            s.spawn(move || {
+                for i in 0..PER_PRODUCER {
+                    buffer.push((p, i));
+                }
+            });
+        }
+
+        for c in 0..CONSUMERS {
+            s.spawn(move || {
+                for _ in 0..PER_CONSUMER {
+                    let item = buffer.pop();
+                    println!("consumer {c}: {item:?}");
+                }
+            });
+        }
+    });
+}</code></pre>
+<p><code>PER_CONSUMER</code> is computed from the other constants, so every pushed item is popped and every thread finishes.</p>
 <p class="listing"><b>Listing 17.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -19982,11 +20276,6 @@ fn main() {
         }
     });
 }</code></pre>
-<p><strong>MPMC</strong> stands for multiple producers, multiple consumers. Here four producers push 10 items each, and two
-consumers pop 20 each. <code>PER_CONSUMER</code> is computed from the other constants, so every pushed item is popped and
-every thread finishes.</p>
-<p><code>push</code> reads <code>self.capacity</code> into a local <code>cap</code> before the closure <code>|q| q.len() &gt;= cap</code>. The closure then
-captures a <code>usize</code> instead of borrowing <code>self</code>.</p>
 <p><code>let buffer = &amp;buffer;</code> replaces the buffer with a reference to it. Each <code>move</code> closure then copies the reference
 into its thread. The scope guarantees that the buffer outlives all the threads.</p>
 <pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer
@@ -20839,12 +21128,71 @@ jobs are taken. A worker that sees the <code>Err</code> leaves its loop, and the
 <p>Version 1 writes the pool of figure 18.1 directly. <code>new</code> starts the workers, <code>execute</code> sends a job, and <code>join</code>
 closes the channel and waits for every worker. Each worker locks the shared receiver to take a job. How long it
 keeps that lock decides whether the workers run at the same time.</p>
-<p>A <code>Job</code> is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the job channel and the handles of its workers:</p>
-<pre><code class="language-rust">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+<p>A <code>Job</code> is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the
+job channel and the handles of its workers:</p>
+<pre><code class="language-rust">use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
 
 pub struct ThreadPool {
     sender: mpsc::Sender&lt;Job&gt;,
     workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}</code></pre>
+<p><code>new</code> builds the parts of figure 18.1 and starts the workers:</p>
+<pre><code class="language-rust">impl ThreadPool {
+    pub fn new(size: usize) -&gt; Self {
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let rx = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    while let Ok(job) = rx.lock().unwrap().recv() {
+                        job();
+                    }
+                })
+            })
+            .collect();
+
+        Self { sender, workers }
+    }
+    // ...
+}</code></pre>
+<p><code>mpsc::channel::&lt;Job&gt;()</code> creates the channel. The receiver goes into <code>Arc::new(Mutex::new(...))</code>, so every worker
+can share it and only one at a time can use it. For each worker, <code>Arc::clone(&amp;receiver)</code> makes another handle to
+the same mutex, and <code>thread::spawn(move || ...)</code> starts a thread that owns that handle. The <code>move</code> closure is the
+worker’s whole life: take a job, run it, and repeat until <code>recv</code> fails. <code>collect()</code> gathers the <code>JoinHandle</code>s
+that <code>spawn</code> returned into the <code>workers</code> vector.</p>
+<p>Submitting a job and shutting down are two short methods:</p>
+<pre><code class="language-rust">impl ThreadPool {
+    // ...
+    pub fn execute(&amp;self, job: Job) {
+        self.sender.send(job).unwrap();
+    }
+
+    pub fn join(self) {
+        drop(self.sender);
+        for w in self.workers {
+            let _ = w.join();
+        }
+    }
+}</code></pre>
+<p><code>execute</code> sends the boxed job into the channel. It does not wait for a worker: the job sits in the channel until
+a worker takes it. <code>join</code> takes <code>self</code> by value, so the pool cannot be used after it. <code>drop(self.sender)</code> closes
+the channel. Each worker finishes the jobs still queued, gets <code>Err</code> from <code>recv</code>, and ends. <code>w.join()</code> waits for
+each worker thread to finish.</p>
+<p><code>main</code> queues 10,000 jobs that each print a line, then joins:</p>
+<pre><code class="language-rust">fn main() {
+    let pool = ThreadPool::new(4);
+    for i in 0..10_000 {
+        pool.execute(Box::new(move || println!("task {i}")));
+    }
+
+    pool.join();
 }</code></pre>
 <p class="listing"><b>Listing 18.1</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs">src/bin/thread_pool.rs</a></p>
 
@@ -20899,9 +21247,6 @@ fn main() {
 
     pool.join();
 }</code></pre>
-<p><code>new</code> creates the channel and starts <code>size</code> workers. Each gets its own clone of the <code>Arc</code> around the receiver.
-<code>execute</code> sends a boxed job. <code>join</code> takes <code>self</code> by value, drops the sender to close the channel, and waits for
-every worker. <code>main</code> queues 10,000 jobs that each print a line.</p>
 <p>The program prints 10,000 lines and looks correct. It has one bug, in the worker loop:</p>
 <pre><code class="language-rust">while let Ok(job) = rx.lock().unwrap().recv() {
     job();
@@ -20917,6 +21262,12 @@ loop and once with the loop of version 2. Figure 18.2 shows the result.</p>
 </figure>
 <p>With <code>while let</code>, the four jobs ran one after another and took 814 ms. With the lock released before the job, they
 ran at the same time and took 205 ms. The first pool had four threads but used one at a time.</p>
+<p>Animation 18.1 replays both runs. Watch the lock. In version 2 it is free again before each job starts. In version 1
+it stays with the worker that is running.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch18-pool-lock.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A channel holding four jobs, a receiver with a padlock, and four worker robots. In version 2, worker 1 locks the receiver, takes job 1, and the lock is free again at once; workers 2, 3, and 4 do the same, and all four jobs run together, finishing at 205 ms. In version 1, worker 1 takes job 1 and keeps the lock while it runs; workers 2, 3, and 4 sleep waiting for the lock, and the jobs run one after another, finishing at 814 ms." data-chapters="[[0.0, &quot;version 2&quot;], [27.48, &quot;version 1&quot;]]"><img src="figures/ch18-pool-lock.gif" alt="A channel holding four jobs, a receiver with a padlock, and four worker robots. In version 2, worker 1 locks the receiver, takes job 1, and the lock is free again at once; workers 2, 3, and 4 do the same, and all four jobs run together, finishing at 205 ms. In version 1, worker 1 takes job 1 and keeps the lock while it runs; workers 2, 3, and 4 sleep waiting for the lock, and the jobs run one after another, finishing at 814 ms."></video>
+<figcaption><b>Animation 18.1</b> The same four 200 ms jobs. Released before the job, the lock lets all four run at once. Held through the job, it makes the workers take turns.</figcaption>
+</figure>
 <p>The same bug has a second effect. If a job panics, the panic happens while the guard is alive, so it poisons the
 mutex. When I piped this program’s output into <code>head</code>, which closes the pipe after five lines, <code>println!</code> panicked
 inside a job. The other three workers then panicked on <code>.unwrap()</code> of the poisoned lock, and <code>main</code> panicked when
@@ -21376,6 +21727,12 @@ and jobs queue up forever.</p>
 <figure>
 <img src="figures/pool-catch-unwind.svg" alt="A worker takes a job and runs it inside catch_unwind. Ok increments completed; Err, a caught panic, increments panicked. The worker continues.">
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
+</figure>
+<p>Animation 18.2 shows the difference over many jobs. Version 4 counts the panic and keeps every worker.
+Version 3 loses one worker per panic, until no one is left to run the queue.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch18-pool-panic.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2&#39;s job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker&#39;s thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs." data-chapters="[[0.0, &quot;version 4&quot;], [14.04, &quot;version 3&quot;]]"><img src="figures/ch18-pool-panic.gif" alt="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2&#39;s job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker&#39;s thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs."></video>
+<figcaption><b>Animation 18.2</b> With <code>catch_unwind</code>, a panic costs one job. Without it, each panic costs a worker, and the pool fails silently once all are gone.</figcaption>
 </figure>
 <p class="listing"><b>Listing 18.8</b> The types and the worker loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
 
@@ -22016,6 +22373,11 @@ fn main() {
 <p><code>mpsc::sync_channel(queue_size)</code> creates a channel that holds at most <code>queue_size</code> messages. <code>SyncSender::send</code>
 blocks while the channel is full. This is the backpressure of section 17.1, built into the standard library’s channel. A caller that queues
 jobs faster than the workers run them has to wait.</p>
+<p>Figure 18.4 shows both additions: a queue that can fill up, and a private channel per job for its result.</p>
+<figure>
+<img src="figures/ch18-backpressure.svg" alt="The caller&#39;s submit sends a job and a result Sender into sync_channel(queue_size); when the queue is full, submit blocks. Two workers take jobs from it. A worker sends the job&#39;s value into a per-job channel, whose Receiver was returned to the caller at once; the caller calls recv when it needs the value.">
+<figcaption><b>Figure 18.4</b> A bounded queue slows the caller down when the workers fall behind. Each job carries its own channel back to the caller.</figcaption>
+</figure>
 <p><code>submit</code> returns a result. It creates a new channel for each job, and the job sends its return value into it. The
 caller gets the <code>Receiver</code> back at once, and calls <code>recv()</code> when it needs the value. A value that will be ready
 later is often called a <strong>future</strong>, and chapter 22 builds on that idea.</p>
@@ -22165,11 +22527,131 @@ producer 1, job 0
 <p>The last pool is a single function. <code>map_order</code> applies a function to every input on several threads, and returns
 the results in the same order as the inputs.</p>
 <p>The difficulty is that jobs finish in any order. The fix is to tag each input with its position, and use the tag
-to put each result back in place (figure 18.4).</p>
+to put each result back in place (figure 18.5).</p>
 <figure>
 <img src="figures/pool-ordered.svg" alt="Inputs are sent as index and value pairs. Results arrive out of order as index and result pairs. Each result is stored at its index in a Vec of Options.">
-<figcaption><b>Figure 18.4</b> The index travels with the job, and puts the result back in its slot.</figcaption>
+<figcaption><b>Figure 18.5</b> The index travels with the job, and puts the result back in its slot.</figcaption>
 </figure>
+<p>The function’s signature and its two channels come first:</p>
+<pre><code class="language-rust">use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+pub fn map_order&lt;T, R, F&gt;(worker_count: usize, inputs: Vec&lt;T&gt;, mapper: F) -&gt; Vec&lt;R&gt;
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -&gt; R + Send + Sync + 'static,
+{
+    assert!(worker_count &gt; 0, "worker_count must be &gt; 0");
+    assert!(!inputs.is_empty(), "inputs must not be empty");
+
+    let expected = inputs.len();
+    let mapper = Arc::new(mapper);
+    let (job_tx, job_rx) = mpsc::channel::&lt;(usize, T)&gt;();
+    let job_rx = Arc::new(Mutex::new(job_rx));
+    let (result_tx, result_rx) = mpsc::channel::&lt;(usize, R)&gt;();
+    // ...
+}</code></pre>
+<p><code>T</code> is the input type, <code>R</code> the result type, and <code>F</code> the function applied to each input. Inputs and results
+cross threads, so both must be <code>Send</code>. <code>mapper</code> is shared by all workers, so it goes in an <code>Arc</code>, and it must be
+<code>Sync</code> as well as <code>Send</code>. It has type <code>F: Fn(T) -&gt; R</code>, not <code>FnOnce</code>, because each worker calls it many times.</p>
+<p>Jobs go out as <code>(usize, T)</code> pairs, and results come back as <code>(usize, R)</code> pairs. The <code>usize</code> is the input’s
+position, the tag of figure 18.5.</p>
+<p>Each worker gets its own handle to the mapper, the job receiver, and the result sender:</p>
+<pre><code class="language-rust">pub fn map_order&lt;T, R, F&gt;(worker_count: usize, inputs: Vec&lt;T&gt;, mapper: F) -&gt; Vec&lt;R&gt;
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -&gt; R + Send + Sync + 'static,
+{
+    // ...
+    let mut handles = Vec::with_capacity(worker_count);
+    for _worker_id in 0..worker_count {
+        let mapper = Arc::clone(&amp;mapper);
+        let job_rx = Arc::clone(&amp;job_rx);
+        let result_tx = result_tx.clone();
+        handles.push(thread::spawn(move || {
+            loop {
+                let job = {
+                    let guard = job_rx.lock().expect("job_rx poisoned");
+                    guard.recv()
+                };
+                match job {
+                    Ok((idx, input)) =&gt; {
+                        let output = mapper(input);
+                        if result_tx.send((idx, output)).is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) =&gt; break, // all senders dropped
+                }
+            }
+        }));
+    }
+    // ...
+}</code></pre>
+<p>The worker takes the job inside a block: <code>let job = { let guard = ...; guard.recv() };</code>. The guard is dropped
+at the end of the block, so the lock is released before <code>mapper</code> runs. This is the third way in this chapter to
+write the fix from section 18.3. If the result channel is closed, the caller has gone, and the worker stops.</p>
+<p>The caller sends every job, then gives up its own senders:</p>
+<pre><code class="language-rust">pub fn map_order&lt;T, R, F&gt;(worker_count: usize, inputs: Vec&lt;T&gt;, mapper: F) -&gt; Vec&lt;R&gt;
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -&gt; R + Send + Sync + 'static,
+{
+    // ...
+    // Send all jobs, then close the job channel so workers finish after draining it.
+    for (idx, input) in inputs.into_iter().enumerate() {
+        job_tx
+            .send((idx, input))
+            .expect("bounded by memory; channel only blocks until a worker receives");
+    }
+    drop(job_tx);
+
+    // Drop our result sender. Only the worker clones remain, so `iter()` ends
+    // after every worker exits.
+    drop(result_tx);
+    // ...
+}</code></pre>
+<p><code>enumerate()</code> attaches each input’s position. Dropping <code>job_tx</code> closes the job channel, so the workers stop when
+the queue is empty. Dropping the caller’s <code>result_tx</code> leaves only the workers’ clones. <code>result_rx.iter()</code> then
+ends when the last worker exits and drops its clone.</p>
+<p>Last, the results are put back in input order:</p>
+<pre><code class="language-rust">pub fn map_order&lt;T, R, F&gt;(worker_count: usize, inputs: Vec&lt;T&gt;, mapper: F) -&gt; Vec&lt;R&gt;
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -&gt; R + Send + Sync + 'static,
+{
+    // ...
+    // Reassemble results in input order.
+    let mut ordered: Vec&lt;Option&lt;R&gt;&gt; = Vec::new();
+    for (idx, value) in result_rx.iter() {
+        if ordered.len() &lt;= idx {
+            ordered.resize_with(idx + 1, || None);
+        }
+        ordered[idx] = Some(value);
+    }
+
+    for handle in handles {
+        let _ = handle.join();
+    }
+
+    assert_eq!(
+        ordered.len(),
+        expected,
+        "every job must produce exactly one result"
+    );
+    ordered
+        .into_iter()
+        .map(|value| value.expect("all results present"))
+        .collect()
+}</code></pre>
+<p>Each result is stored at its index in <code>ordered</code>, a <code>Vec&lt;Option&lt;R&gt;&gt;</code>, which grows as needed with <code>resize_with</code>.
+At the end, every slot must hold <code>Some</code>, and the options are unwrapped into the final <code>Vec&lt;R&gt;</code>.</p>
 <p class="listing"><b>Listing 18.15</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs">src/problems/worker_pool.rs</a></p>
 
 <pre><code class="language-rust">//! Bounded worker pool with ordered results.
@@ -22279,17 +22761,6 @@ mod tests {
         assert_eq!(results, vec![11, 12, 13]);
     }
 }</code></pre>
-<p>The function uses two channels. Jobs go out as <code>(usize, T)</code> pairs, and results come back as <code>(usize, R)</code> pairs.</p>
-<p><code>mapper</code> is shared by all workers, so it goes in an <code>Arc</code>, and it must be <code>Sync</code> as well as <code>Send</code>. It has type
-<code>F: Fn(T) -&gt; R</code>, not <code>FnOnce</code>, because each worker calls it many times.</p>
-<p>The worker loop takes the job inside a block: <code>let job = { let guard = ...; guard.recv() };</code>. The guard is dropped
-at the end of the block, so the lock is released before <code>mapper</code> runs. This is the third way in this chapter to
-write the same fix.</p>
-<p>After sending every job, the function drops its own <code>job_tx</code> so that the workers stop when the queue is empty. It
-also drops its own <code>result_tx</code>. Only the workers’ clones remain, and <code>result_rx.iter()</code> ends when the last worker
-exits and drops its clone.</p>
-<p>Each result is stored at its index in <code>ordered</code>, a <code>Vec&lt;Option&lt;R&gt;&gt;</code>, which grows as needed with <code>resize_with</code>. At
-the end, every slot must hold <code>Some</code>, and the options are unwrapped into the final <code>Vec&lt;R&gt;</code>.</p>
 <pre><code class="language-text">$ cargo test --lib problems::worker_pool
 running 2 tests
 test problems::worker_pool::tests::one_worker_works ... ok
@@ -25509,8 +25980,8 @@ extensions after a <code>;</code> are ignored, as the RFC permits.</p>
         )
         .map_err(|_| ParseError::Malformed("chunk size"))?;
         cursor = line_end + 2;
-    // ...
-}
+        // ...
+    }
 }</code></pre>
 <p>A size of 0 ends the body, after optional trailer lines up to an empty line:</p>
 <pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
@@ -25674,9 +26145,9 @@ header that tells the client what the server will do:</p>
                 }
                 buffer.clear();
             }
-    // ...
-}
-}
+            // ...
+        }
+    }
 }</code></pre>
 <p>On <code>Incomplete</code>, it reads more; a read of 0 means the client left mid-request. Any other error gets a 400
 whose body is the error’s <code>Display</code> text, and the connection closes. After a framing error the server
@@ -27948,6 +28419,12 @@ own frames (figure 23.1). The program reads the file’s bytes where the kernel 
 <img src="figures/ch23-read-vs-mmap.svg" alt="The disk feeds the kernel&#39;s page cache on first access. read copies from the page cache into a Vec in the process, a second copy. A mapping in the process is a set of page table entries that point at the page cache&#39;s frames.">
 <figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into your buffer. A mapping points at the page cache's frames.</figcaption>
 </figure>
+<p>Figure 23.2 places the mapping in the process. It is one more region of the address space, beside the heap and
+the stack. Its page table entries point at frames the kernel already holds for the file.</p>
+<figure>
+<img src="figures/ch23-address-space.svg" alt="A process&#39;s virtual address space from top to bottom: the stack, an unmapped gap, the file mapping from mmap of 64 pages, another gap, the heap with Vec, String, and Box, and the program code. The mapping is translated by the page table, one entry per page, filled on first touch, which points at page cache frames holding the file&#39;s pages, loaded from and written back to the file on disk.">
+<figcaption><b>Figure 23.2</b> A mapping is a region of virtual addresses. Its page table entries point into the page cache.</figcaption>
+</figure>
 <p><code>mmap</code> loads nothing when it returns. The page table entries for the range start empty. The first access
 to each page is a page fault, as in section 15.5. The kernel finds the file’s page in the page cache, or
 reads it from disk if it is not there. Then it fills in the page table entry and restarts the instruction
@@ -28138,7 +28615,7 @@ file mapping, Linux also fills the entries of the neighbouring pages that are al
 This is <strong>fault-around</strong>, and by default it covers 64 KiB, which is 16 pages, per fault. 64 pages need at
 least 4 such faults. The second pass is 0 faults on both systems.</p>
 <h2 id="232-shared-and-private-mappings"><a class="header" href="#232-shared-and-private-mappings">23.2 Shared and private mappings</a></h2>
-<p>The flags argument decides where a write through the mapping goes (figure 23.2).</p>
+<p>The flags argument decides where a write through the mapping goes (figure 23.3).</p>
 <ul>
 <li><strong><code>MAP_SHARED</code></strong>: the entry points at the page cache frame itself. A write changes the file’s cached
 page. Every process that maps or reads the file sees the change. The kernel writes the dirty page to disk
@@ -28149,7 +28626,7 @@ points the entry at the copy. This is <strong>copy-on-write</strong>. The file n
 </ul>
 <figure>
 <img src="figures/ch23-shared-private.svg" alt="A MAP_SHARED mapping writes HELLO into the page cache page, which writeback or msync carries to the file on disk. A MAP_PRIVATE mapping reads the page cache page until its first write, then writes world into a private copy that only its process sees.">
-<figcaption><b>Figure 23.2</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
+<figcaption><b>Figure 23.3</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
 </figure>
 <p>Writeback happens on the kernel’s schedule, typically within about 30 seconds. To put the data on disk at a known point, call <code>msync</code>:</p>
 <pre><code class="language-rust">unsafe extern "C" {
@@ -28236,7 +28713,7 @@ and each fault enters the kernel. When a mapping is removed, every CPU that may 
 read sequentially, and use <code>read</code>.</p>
 <h2 id="233-sending-a-file-to-a-socket"><a class="header" href="#233-sending-a-file-to-a-socket">23.3 Sending a file to a socket</a></h2>
 <p>A static file server sends files to sockets. The simple version reads a chunk of the file into a buffer and
-writes the buffer to the socket, until the file ends. Figure 23.3 shows what each chunk costs. A <code>read</code> copies from the page cache to the buffer. A <code>write</code> copies from the buffer to the socket’s send buffer. The program never looks at the bytes. They pass through it only because <code>read</code> and <code>write</code>
+writes the buffer to the socket, until the file ends. Figure 23.4 shows what each chunk costs. A <code>read</code> copies from the page cache to the buffer. A <code>write</code> copies from the buffer to the socket’s send buffer. The program never looks at the bytes. They pass through it only because <code>read</code> and <code>write</code>
 are the calls it knows.</p>
 <p><code>sendfile</code> moves the bytes from a file to a socket inside the kernel. One call names both descriptors, an
 offset, and a count. The kernel passes the page cache’s pages to the socket, and the bytes never enter the
@@ -28244,7 +28721,7 @@ process. On network cards that can gather data from several places in memory, th
 to the pages instead of copying them. This is <strong>zero-copy</strong>: no copy of the payload by the CPU.</p>
 <figure>
 <img src="figures/ch23-copies.svg" alt="Top: the read/write loop copies page cache to user buffer with read, user buffer to socket buffer with write, then DMA to the network card, two system calls per chunk. Bottom: sendfile passes the pages from the page cache to the socket buffer inside the kernel, then DMA to the network card, one system call.">
-<figcaption><b>Figure 23.3</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
+<figcaption><b>Figure 23.4</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
 </figure>
 <h3 id="2331-measuring-both"><a class="header" href="#2331-measuring-both">23.3.1 Measuring both</a></h3>
 <p><code>sendfile</code> with a socket as the destination is a Linux call, so <code>zero_copy</code> puts its code in a module
@@ -29775,6 +30252,10 @@ handler in its read loop, and every other socket waits. A production loop caps t
 It keeps the sockets it stopped early on a list of its own, and returns to them after serving the other
 events. Tokio’s tasks do the same with a budget: after a fixed amount of work, a task yields even if its
 socket still has data.</p>
+<figure>
+<img src="figures/ch25-fair-drain.svg" alt="epoll_wait returns ready sockets. The handler reads up to a cap, for example 64 KiB. If the socket reports EAGAIN, it is drained. If the cap is reached with more data, the socket goes on a still-readable list. The loop serves the other ready sockets, then the still-readable list, then calls epoll_wait again.">
+<figcaption><b>Figure 25.2</b> A capped drain. A busy socket waits its turn on a list of its own, instead of holding the loop.</figcaption>
+</figure>
 <h2 id="253-several-threads-on-one-epoll-epolloneshot"><a class="header" href="#253-several-threads-on-one-epoll-epolloneshot">25.3 Several threads on one epoll: <code>EPOLLONESHOT</code></a></h2>
 <p>A server can run several threads that all call <code>epoll_wait</code> on one epoll instance. In edge-triggered mode,
 a socket can then be handled by two threads at once:</p>
@@ -29822,10 +30303,10 @@ wakes. One of them wins <code>accept</code>. The others get <code>EAGAIN</code> 
 connection costs 64 wakeups and 63 wasted system calls. This is the <strong>thundering herd</strong>.</p>
 <p><strong><code>EPOLLEXCLUSIVE</code></strong>, added in Linux 4.5, marks an instance’s interest in the listener as exclusive. When a
 connection arrives, the kernel wakes one of the exclusive waiters, or a few, instead of all of them
-(figure 25.2). The flag is allowed only with <code>EPOLL_CTL_ADD</code>.</p>
+(figure 25.3). The flag is allowed only with <code>EPOLL_CTL_ADD</code>.</p>
 <figure>
 <img src="figures/ch25-herd.svg" alt="Left: with EPOLLIN, one connection on the listener wakes threads 1 to 4. Right: with EPOLLIN and EPOLLEXCLUSIVE, the same connection wakes thread 1, and threads 2 to 4 keep sleeping.">
-<figcaption><b>Figure 25.2</b> One connection and four waiting threads, with and without <code>EPOLLEXCLUSIVE</code>.</figcaption>
+<figcaption><b>Figure 25.3</b> One connection and four waiting threads, with and without <code>EPOLLEXCLUSIVE</code>.</figcaption>
 </figure>
 <p><code>woken_by_one_connection</code> starts the threads, waits until each has registered the listener, connects one
 client, and counts the threads whose <code>epoll_wait</code> returned an event:</p>
@@ -31182,6 +31663,10 @@ expired.</li>
 <p>A socket in <code>TIME_WAIT</code> holds a few hundred bytes of kernel memory, which is cheap. The scarce resource is
 the four values it reserves. A client uses a new local port for each connection to a server. The kernel picks it from the <strong>ephemeral port range</strong>: 32768 to 60999 on Linux, which is 28,232 ports. If
 the client closes first, each port stays in <code>TIME_WAIT</code> for 60 seconds. The client can then open about 470 new connections per second to one server address and port. Beyond that, <code>connect</code> fails with <code>EADDRNOTAVAIL</code>.</p>
+<figure>
+<img src="figures/ch27-ports.svg" alt="A client at 10.0.0.5 with ephemeral ports 32768 to 60999, 28,232 ports, has connections from ports 40001 and 40002 to the server 10.0.0.9:443, each in TIME_WAIT with about 60 seconds left. With 28,232 such four-tuples held at once, the next connect fails with EADDRNOTAVAIL. The server uses its one port for every connection.">
+<figcaption><b>Figure 27.2</b> Each closed connection holds its four values for 60 seconds. On the client, the free values run out with the ephemeral ports.</figcaption>
+</figure>
 <p>Three fixes are common:</p>
 <ul>
 <li><strong>Reuse connections.</strong> An HTTP client that keeps connections alive, or a connection pool, as in chapter
@@ -31995,6 +32480,10 @@ labeled as application data, so an observer cannot tell them apart.</li>
 <li><strong><code>application_data</code>, 31 bytes</strong>: the 14 bytes of <code>hello over tls</code>, plus 1 byte for the real content type
 and a 16-byte tag that detects any change.</li>
 </ul>
+<figure>
+<img src="figures/ch28-record.svg" alt="One TLS record: a 5-byte header with type 23, version 3 3, and length 31, sent in the clear, followed by 31 bytes: the 14 encrypted bytes of hello over tls plus one byte for the real content type, and a 16-byte tag that detects any change.">
+<figcaption><b>Figure 28.2</b> The client's last record, byte by byte. Only the header can be read on the wire.</figcaption>
+</figure>
 <p>The plaintext appears nowhere in what the client sent.</p>
 <h2 id="283-when-the-check-fails"><a class="header" href="#283-when-the-check-fails">28.3 When the check fails</a></h2>
 <p>The second and third scenes break one of the client’s checks each:</p>
@@ -32751,6 +33240,12 @@ would keep every connection in light use, and none would ever be closed.</p>
 seconds and a few minutes. The server’s <code>FIN</code> arrives while the connection sits in the pool, and nothing
 reads it. The next caller to borrow that connection writes its request into a socket the server has closed.
 Its <code>read</code> then returns 0, or the write draws a reset.</p>
+<p>Figure 29.2 shows the timing with this chapter’s numbers. The server closes idle connections after 50 ms,
+and the pool reuses the connection after 100 ms.</p>
+<figure>
+<img src="figures/ch29-stale.svg" alt="At t = 0 a request finishes and the connection is returned to the pool. At 50 ms the server&#39;s idle timeout fires and it sends FIN, which sits unread in the pooled socket. At 100 ms get lends the connection. Without the check, the write goes out and the read returns 0, so the request fails. With check_alive, a peek sees the FIN first, and the pool closes the connection and connects again.">
+<figcaption><b>Figure 29.2</b> A connection goes stale while it sits in the pool. A check before lending it catches the server's <code>FIN</code>.</figcaption>
+</figure>
 <p><code>take_idle</code> handles both kinds of stale connection:</p>
 <pre><code class="language-rust">/// Whether the server has closed `stream`, checked without blocking: a
 /// readable socket with nothing to read has seen the server's `FIN`.
