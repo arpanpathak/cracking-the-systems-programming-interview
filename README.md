@@ -5,6 +5,7 @@
 **Rust · Linux · Kubernetes · Distributed Systems**
 
 [![Read the book](https://img.shields.io/badge/read%20the%20book-browser%20edition-14508c?style=for-the-badge&logo=mdbook&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/book/)
+[![Release](https://img.shields.io/github/v/release/arpanpathak/cracking-the-systems-programming-interview?filter=book-*&style=for-the-badge&label=release&color=2f7f86)](https://github.com/arpanpathak/cracking-the-systems-programming-interview/releases/latest)
 [![GPU-Accelerated Kubernetes](https://img.shields.io/badge/new%20book-GPU--Accelerated%20Kubernetes-76b900?style=for-the-badge&logo=kubernetes&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/gpu-accelerated-kubernetes/)
 [![PDF](https://img.shields.io/badge/PDF-print%20edition-b1361f?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](cracking-the-systems-programming-interview/build/cracking-the-systems-programming-interview.pdf)
 [![Rust](https://img.shields.io/badge/rust-edition%202024-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
