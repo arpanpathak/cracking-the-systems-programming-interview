@@ -143,6 +143,14 @@ seconds and a few minutes. The server's `FIN` arrives while the connection sits 
 reads it. The next caller to borrow that connection writes its request into a socket the server has closed.
 Its `read` then returns 0, or the write draws a reset.
 
+Figure 29.2 shows the timing with this chapter's numbers. The server closes idle connections after 50 ms,
+and the pool reuses the connection after 100 ms.
+
+<figure>
+<img src="figures/ch29-stale.svg" alt="At t = 0 a request finishes and the connection is returned to the pool. At 50 ms the server's idle timeout fires and it sends FIN, which sits unread in the pooled socket. At 100 ms get lends the connection. Without the check, the write goes out and the read returns 0, so the request fails. With check_alive, a peek sees the FIN first, and the pool closes the connection and connects again.">
+<figcaption><b>Figure 29.2</b> A connection goes stale while it sits in the pool. A check before lending it catches the server's <code>FIN</code>.</figcaption>
+</figure>
+
 `take_idle` handles both kinds of stale connection:
 
 ```rust

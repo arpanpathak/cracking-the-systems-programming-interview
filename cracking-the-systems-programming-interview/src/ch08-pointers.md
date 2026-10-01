@@ -151,6 +151,13 @@ Step through it:
 4. `*counter.borrow_mut() += 10;` does the same through the other handle.
 5. `*counter.borrow()` reads 11.
 
+Animation 8.1 runs these steps, with the strong count and the `RefCell` flag drawn on the heap block.
+
+<figure class="anim">
+<img src="figures/ch08-rc-refcell.gif" alt="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed.">
+<figcaption><b>Animation 8.1</b> Two handles, one value. Each guard ends its borrow when it is dropped; a guard kept alive makes the next <code>borrow_mut</code> panic at run time.</figcaption>
+</figure>
+
 Each `borrow_mut` ends before the next starts, so no panic occurs. If you stored the first guard in a variable
 and then called `borrow_mut` again while it was still alive, the program would panic.
 
@@ -185,7 +192,16 @@ The usual pattern is that parents own children with `Rc`, and children point bac
 - `parent_value` borrows the link, calls `upgrade()`, and reads the parent's value if the parent still
   exists. `Option::map` applies the closure only when there is a value.
 
-The test `weak_parent_link_does_not_keep_the_parent_alive` in listing 8.7 checks the behavior. It creates a
+The test `weak_parent_link_does_not_keep_the_parent_alive` in listing 8.7 checks the behavior.
+
+Animation 8.2 follows that test, then shows the cycle that `Weak` prevents.
+
+<figure class="anim">
+<img src="figures/ch08-weak-parent.gif" alt="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root's weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root's strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked.">
+<figcaption><b>Animation 8.2</b> A <code>Weak</code> parent link lets the parent be freed. With <code>Rc</code> in both directions, each node keeps the other alive forever.</figcaption>
+</figure>
+
+The test creates a
 root and a child, drops the root, and then checks that the child's `parent_value()` is `None`.
 
 ## 8.6 `Arc` and `Mutex`: sharing across threads

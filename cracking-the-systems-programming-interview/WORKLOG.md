@@ -111,12 +111,12 @@ block diagrams, at least one motion animation per core mechanism (with a failing
 listing broken into explained excerpts. Order is by need, measured (words, figures, animations, dumps).
 
 - [x] ch18 thread pools: version 1 and map_order in excerpts; animations pool-lock (205 vs 814 ms) and pool-panic; figure 18.4 bounded queue + result channel. The three short pools in 18.6 remain whole listings with type intros.
-- [ ] ch15 memory, caches, OS (0 animations)
-- [ ] ch10 merge k (0 animations)
-- [ ] ch08 pointers (0 animations)
+- [x] ch15 memory, caches, OS: animations mem-hierarchy and false-sharing
+- [x] ch10 merge k: animations merge-two (with a no-attach failure) and merge-rounds (72 vs 105 moves)
+- [x] ch08 pointers: animations rc-refcell (with a double-borrow panic) and weak-parent (with an Rc cycle leak)
 - [ ] ch04 iterators (0 animations)
 - [ ] ch07 types, ch01 bindings, ch02 files (0 animations)
-- [ ] ch23-ch29: more diagrams (1-3 each)
+- [ ] ch23-ch29: more diagrams (done: ch27 ports, ch28 record, ch29 stale; still thin: ch23, ch25, ch26)
 - [ ] whole-file dumps: ch03, ch09, ch12, ch13, ch16, ch17
 
 ## Future work (draft for the next agent session)

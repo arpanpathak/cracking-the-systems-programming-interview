@@ -38,6 +38,15 @@ other list whole. Figure 10.1 works through an example.
 With linked lists, "move a node to the output" does not copy the value. It detaches the node from the front of
 its list and links it to the end of the output. No memory is allocated.
 
+Animation 10.1 runs that merge with the code of listing 10.8, one node at a time. The output starts at a
+**dummy** node, a placeholder whose `next` will hold the real first node. `tail` always points at the last node
+of the output.
+
+<figure class="anim">
+<img src="figures/ch10-merge-two.gif" alt="Two linked lists, left 1, 4, 5 and right 1, 3, 4, and an output that starts at a dummy node with tail pointing at it. The two front nodes are compared; left's 1 wins the tie, is detached from left, and linked after tail, and tail moves onto it. Then right's 1, right's 3, left's 4, and right's 4 move the same way. right is empty, the loop stops, and one link attaches left's remaining 5. In a second run the attaching line is deleted, and node 5 is freed when left goes out of scope, so the output has only five nodes.">
+<figcaption><b>Animation 10.1</b> Each step moves one node to the tail. The last line attaches whatever is left; without it, the rest of the list is dropped.</figcaption>
+</figure>
+
 ## 10.2 Three strategies for k lists
 
 Figure 10.2 shows three ways to extend two-list merging to k lists.
@@ -57,6 +66,13 @@ are about log₂ k rounds, so the total is O(N log k).
 **A heap of heads.** Put the front node of each list into a min-heap, the structure from chapter 5. Pop the
 smallest, append it to the output, and push the next node from the same list. Each node goes through one push and one pop on a heap of at most k entries. Each costs O(log k), so the
 total is again O(N log k).
+
+Animation 10.2 counts node moves for eight lists of three nodes: pairwise rounds against one list at a time.
+
+<figure class="anim">
+<img src="figures/ch10-merge-rounds.gif" alt="Eight bars, lists[0] to lists[7], each of three nodes, and a counter of node moves. Pairwise: with gap 1, four merges of 3 and 3 take 24 moves; with gap 2, two merges of 6 and 6 take 24 more; with gap 4, one merge of 12 and 12 takes 24, and lists[0] holds all 24 nodes after 72 moves. Then one at a time: each list is merged into the growing lists[0], and the moves add up 6, 9, 12, up to 24, for 105 in total.">
+<figcaption><b>Animation 10.2</b> Pairwise rounds move each node once per round, log₂ 8 = 3 rounds: 72 moves. One at a time walks the growing result again and again: 105 moves for the same 24 nodes.</figcaption>
+</figure>
 
 For 100 lists of 10,000 nodes each, N is a million. O(kN) is about 100 million steps. O(N log k) is about 7
 million.

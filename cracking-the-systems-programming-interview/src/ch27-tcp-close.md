@@ -133,6 +133,11 @@ A socket in `TIME_WAIT` holds a few hundred bytes of kernel memory, which is che
 the four values it reserves. A client uses a new local port for each connection to a server. The kernel picks it from the **ephemeral port range**: 32768 to 60999 on Linux, which is 28,232 ports. If
 the client closes first, each port stays in `TIME_WAIT` for 60 seconds. The client can then open about 470 new connections per second to one server address and port. Beyond that, `connect` fails with `EADDRNOTAVAIL`.
 
+<figure>
+<img src="figures/ch27-ports.svg" alt="A client at 10.0.0.5 with ephemeral ports 32768 to 60999, 28,232 ports, has connections from ports 40001 and 40002 to the server 10.0.0.9:443, each in TIME_WAIT with about 60 seconds left. With 28,232 such four-tuples held at once, the next connect fails with EADDRNOTAVAIL. The server uses its one port for every connection.">
+<figcaption><b>Figure 27.2</b> Each closed connection holds its four values for 60 seconds. On the client, the free values run out with the ephemeral ports.</figcaption>
+</figure>
+
 Three fixes are common:
 
 - **Reuse connections.** An HTTP client that keeps connections alive, or a connection pool, as in chapter

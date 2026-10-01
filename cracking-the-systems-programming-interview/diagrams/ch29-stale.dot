@@ -1,0 +1,11 @@
+digraph stale {
+  rankdir=LR; nodesep=0.3; ranksep=0.45;
+  t0 [label="t = 0\nrequest done,\nconnection returned" fillcolor="#e3f1ea"];
+  t1 [label="t = 50 ms\nserver's idle timeout:\nit sends FIN" fillcolor="#fbe3d6"];
+  t2 [label="FIN sits unread\nin the pooled socket"];
+  t3 [label="t = 100 ms\nget() lends it" fillcolor="#fdf6e8"];
+  bad [label="without the check:\nwrite, then read = 0\nthe request fails" fillcolor="#fbe3d6"];
+  good [label="check_alive:\npeek sees the FIN,\nclose it, connect again" fillcolor="#e3f1ea"];
+  t0 -> t1 -> t2 -> t3;
+  t3 -> bad; t3 -> good;
+}

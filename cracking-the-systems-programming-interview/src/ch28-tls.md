@@ -161,6 +161,11 @@ The client sent four records:
 - **`application_data`, 31 bytes**: the 14 bytes of `hello over tls`, plus 1 byte for the real content type
   and a 16-byte tag that detects any change.
 
+<figure>
+<img src="figures/ch28-record.svg" alt="One TLS record: a 5-byte header with type 23, version 3 3, and length 31, sent in the clear, followed by 31 bytes: the 14 encrypted bytes of hello over tls plus one byte for the real content type, and a 16-byte tag that detects any change.">
+<figcaption><b>Figure 28.2</b> The client's last record, byte by byte. Only the header can be read on the wire.</figcaption>
+</figure>
+
 The plaintext appears nowhere in what the client sent.
 
 ## 28.3 When the check fails

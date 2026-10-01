@@ -1,0 +1,11 @@
+digraph ports {
+  rankdir=LR; nodesep=0.25; ranksep=0.6;
+  client [label="client 10.0.0.5\nephemeral ports\n32768 to 60999\n(28,232 ports)" fillcolor="#e6ecf6"];
+  c1 [label="10.0.0.5:40001 -> 10.0.0.9:443\nTIME_WAIT, 60 s left" fillcolor="#fdf6e8"];
+  c2 [label="10.0.0.5:40002 -> 10.0.0.9:443\nTIME_WAIT, 59 s left" fillcolor="#fdf6e8"];
+  c3 [label="...\n28,232 four-tuples at once" shape=plaintext style=""];
+  c4 [label="the next connect()\nEADDRNOTAVAIL" fillcolor="#fbe3d6"];
+  server [label="server 10.0.0.9:443\none port for every\nconnection" fillcolor="#e3f1ea"];
+  client -> c1; client -> c2; client -> c3; client -> c4 [style=dashed];
+  c1 -> server; c2 -> server;
+}

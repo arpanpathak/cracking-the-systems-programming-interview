@@ -1,0 +1,17 @@
+digraph record {
+  rankdir=LR;
+  rec [shape=plaintext style="" label=<
+    <table border="1" cellborder="1" cellspacing="0" cellpadding="7" color="#1d2733">
+      <tr>
+        <td bgcolor="#e6ecf6"><b>type</b><br/>1 byte<br/>23</td>
+        <td bgcolor="#e6ecf6"><b>version</b><br/>2 bytes<br/>3, 3</td>
+        <td bgcolor="#e6ecf6"><b>length</b><br/>2 bytes<br/>31</td>
+        <td bgcolor="#e3f1ea" width="260"><b>encrypted</b><br/>14 bytes: hello over tls<br/>+ 1 byte: the real content type</td>
+        <td bgcolor="#fdf6e8"><b>tag</b><br/>16 bytes<br/>detects any change</td>
+      </tr>
+      <tr>
+        <td colspan="3">header, sent in the clear</td>
+        <td colspan="2">31 bytes that only the two ends can read and check</td>
+      </tr>
+    </table>>];
+}
