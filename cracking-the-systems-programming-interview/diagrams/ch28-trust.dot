@@ -1,0 +1,13 @@
+digraph trust {
+  rankdir=TB; nodesep=0.5; ranksep=0.5;
+  ca [label="lab CA\nself-signed\n(its key signs the others)" fillcolor="#fdf6e8"];
+  server [label="certificate: localhost\nserver's public key\nsigned by lab CA" fillcolor="#e3f1ea"];
+  client [label="certificate: billing\nclient's public key\nsigned by lab CA" fillcolor="#e6ecf6"];
+  cstore [label="client's trust store\nlab CA" shape=cylinder];
+  sstore [label="server's trust store\n(mutual TLS only)\nlab CA" shape=cylinder];
+  ca -> server [label=" signs"];
+  ca -> client [label=" signs"];
+  cstore -> server [label=" checks: signature,\n dates, name = localhost" style=dashed];
+  sstore -> client [label=" checks: signature,\n dates" style=dashed];
+  { rank=same; cstore; sstore; }
+}

@@ -705,6 +705,23 @@ def machine_poles(x, y):
     return out
 
 
+def machine_seal(x, y):
+    """A press stamping a wax seal on a certificate, and a padlocked pipe carrying records."""
+    out = rect(x, y + 120, 170, 16, INK, rx=3)
+    out += rect(x + 20, y + 40, 130, 84, CREAM, rx=3)
+    out += "".join(line(x + 34, y + 58 + 12 * k, x + 110, y + 58 + 12 * k, STEEL, 2) for k in range(4))
+    out += circle(x + 124, y + 104, 16, RUST) + circle(x + 124, y + 104, 9, "#b84e1f", "none", 0)
+    out += rect(x + 112, y - 40, 24, 70, STEEL, rx=3) + rect(x + 96, y - 52, 56, 16, INK, rx=3)
+    out += line(x + 124, y + 30, x + 124, y + 86, INK, 4)
+    out += rect(x + 220, y + 60, 230, 36, STEEL_LIGHT, rx=18)
+    for k in range(3):
+        bx = x + 240 + 70 * k
+        out += rect(bx, y + 66, 44, 24, TEAL if k else BRASS, rx=5)
+        out += '<path d="M %.1f %.1f v -8 a 7 7 0 0 1 14 0 v 8" fill="none" stroke="%s" stroke-width="3"/>' % (bx + 15, y + 66, INK)
+    out += text(x + 335, y + 128, "TLS 1.3", 18, INK, anchor="middle", spacing=1)
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -767,6 +784,7 @@ CHAPTERS = [
     (25, machine_signal, dict(head="dome", eyes="visor", antenna="bolt", held="flag", accent=RUST), "TRIP", "signalman of the ready list"),
     (26, machine_latch, dict(head="tall", eyes="mono", antenna="hat", held="wrench", accent=TEAL), "LATCH", "keeper of the sleeping queue"),
     (27, machine_poles, dict(head="box", eyes="goggles", antenna="spring", held="clipboard", accent=BRASS), "TAPER", "closer of the line"),
+    (28, machine_seal, dict(head="dome", eyes="goggles", antenna="twin", held="magnifier", accent=TEAL), "SEAL", "notary of the certificate desk"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 

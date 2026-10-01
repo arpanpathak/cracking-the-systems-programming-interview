@@ -64,7 +64,7 @@ then 8 and 9 as they are added, drills last.
   - [x] futex mutex and memory-ordering litmus tests
 - [ ] Part 9, production networking
   - [x] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
-  - [ ] TLS and mTLS with rustls
+  - [x] TLS and mTLS with rustls
   - [ ] client connection pool (bounded, RAII return, idle eviction)
 - [ ] ch19: single-flight idempotency as a section
 
@@ -89,3 +89,5 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch26 Futexes and memory ordering: futex wait/wake, lost wake-up, three-state mutex, measured syscalls, store buffers, TSO vs ARM, litmus tests; figures 26.1-26.3, animations ch26-futex and ch26-store-buffer, plate LATCH; Part 8 added to SUMMARY
 - 2026-10-01 lab: tcp_close.rs (Docker: states from /proc/net/tcp; FIN_WAIT2/CLOSE_WAIT, TIME_WAIT on the active closer, 5 CLOSE_WAIT leak, EADDRINUSE without SO_REUSEADDR, ECONNRESET on unread data)
 - 2026-10-01 ch27 Closing TCP connections: four-segment close, state table, TIME_WAIT purpose and port cost, SO_REUSEADDR, CLOSE_WAIT leaks, RST and lingering close; figure 27.1, animation ch27-close, plate TAPER; Part 9 started in SUMMARY
+- 2026-10-01 lab: Cargo.toml gains rustls 0.23 (ring) and rcgen 0.13; tls_mtls.rs (macOS: TLS 1.3 records 231/1/69/31, name and CA failures, mTLS CertificateRequired vs 481-byte flight)
+- 2026-10-01 ch28 TLS and mutual TLS: certificates and trust, TLS 1.3 handshake table, records on the wire, failures, mTLS, costs; figure 28.1, animation ch28-tls, plate SEAL

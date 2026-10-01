@@ -57,6 +57,7 @@
 # Part 9: Production networking
 
 - [Closing TCP connections](ch27-tcp-close.md)
+- [TLS and mutual TLS](ch28-tls.md)
 
 # Part 10: Compact implementations
 

@@ -1148,6 +1148,168 @@ def build_tcp_close(only=None):
     return render("ch27-close.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 28.2: the TLS 1.3 handshake
+
+TLS_CODE = lines_containing("src/bin/tls_mtls.rs", "let name = ServerName::try_from",
+                            "let mut tls = StreamOwned::new(ClientConnection::new",
+                            "tls.write_all(b\"hello over tls\")?;",
+                            "tls.read_to_string(&mut reply)?;",
+                            ".with_client_cert_verifier(verifier.clone())",
+                            ".with_client_auth_cert(vec![pki.client.cert.clone()]")
+T_CL, T_SV, T_DESK = 130, 690, 200
+T_WIRE, T_A, T_B = 116, 196, 624
+
+
+def padlock(p, x, y, color, opacity=1.0):
+    """A small padlock: an encrypted message."""
+    with p.group(opacity=opacity):
+        p.path("M %s %s v -4 a 4 4 0 0 1 8 0 v 4" % (x - 4, y - 2), stroke=color, width=1.6)
+        p.rect(x - 6, y - 2, 12, 9, color, "none", 2)
+
+
+def tls():
+    tl = Timeline(caption="", kind="step", code=-1.0, msg_u=0.0, msg_a=0.0, msg_label="",
+                  msg_dir=1, msg_locked=0, msg_color="brass", keyed=0.0, checks=0.0,
+                  server_checks=0.0, mutual=0.0, failed=0.0, reply=0.0)
+
+    def send(label, direction, locked=0, color="brass", dur=1.0):
+        tl.set(msg_label=label, msg_dir=direction, msg_locked=locked, msg_color=color, msg_u=0.0)
+        tl.to(0.15, msg_a=1.0)
+        tl.to(dur, in_out, msg_u=1.0)
+        tl.to(0.1, msg_a=0.0)
+
+    def hellos(k=1.0):
+        send("ClientHello: key share, localhost", 1, dur=1.2 * k)
+        send("ServerHello: key share", -1, dur=1.0 * k)
+        tl.to(0.5 * k, back, keyed=1.0)
+
+    tl.chapter("hello")
+    tl.say("The client names the server it expects, and its first write starts the handshake.")
+    tl.set(code=0.0)
+    tl.to(0.3, code=1.0)
+    tl.to(0.3, code=2.0)
+    tl.say("ClientHello carries a key share and the name localhost. It is not encrypted.")
+    send("ClientHello: key share, localhost", 1, dur=1.4)
+    tl.say("The server answers with ServerHello and its own key share, also in the clear.")
+    send("ServerHello: key share", -1, dur=1.2)
+
+    tl.chapter("keys")
+    tl.say("Each side combines its own secret with the other's share. Both now hold the same keys.")
+    tl.to(0.6, back, keyed=1.0)
+    tl.say("Someone watching the wire saw both shares, and still cannot compute the keys.",
+           "insight")
+    tl.wait(0.8)
+
+    tl.chapter("certificate")
+    tl.say("Everything from here is encrypted. The server sends its certificate, signed by the "
+           "lab CA.")
+    send("Certificate: localhost", -1, 1, "teal")
+    tl.say("CertificateVerify signs the handshake with the server's private key. Then Finished.")
+    send("CertificateVerify", -1, 1, "teal", 0.8)
+    send("Finished", -1, 1, "teal", 0.7)
+    tl.say("The client checks the signature chain to the lab CA, the dates, and the name "
+           "localhost.")
+    tl.to(1.6, linear, checks=3.0)
+    tl.wait(0.4)
+
+    tl.chapter("data")
+    tl.say("The client sends Finished. Its 14-byte message goes out as one 31-byte encrypted "
+           "record.")
+    send("Finished", 1, 1, "teal", 0.7)
+    send("31 bytes", 1, 1, "teal", 0.8)
+    tl.to(0.3, code=3.0)
+    send("HELLO OVER TLS", -1, 1, "teal", 0.8)
+    tl.to(0.4, reply=1.0)
+    tl.say("One round trip set up the keys. On the wire, only the two hellos were readable.",
+           "insight")
+    tl.wait(1.2)
+
+    tl.chapter("mutual")
+    tl.say("Mutual TLS. The server is built with a client certificate verifier for the lab CA.")
+    tl.to(0.5, keyed=0.0, checks=0.0, reply=0.0, mutual=1.0)
+    tl.set(code=4.0)
+    hellos(0.6)
+    tl.say("Its encrypted flight also carries CertificateRequest.")
+    send("Certificate, CertificateRequest", -1, 1, "teal", 0.9)
+    tl.to(0.8, linear, checks=3.0)
+    tl.say("The billing client sends its certificate and its own CertificateVerify signature.")
+    tl.set(code=5.0)
+    send("Certificate: billing", 1, 1, "teal", 0.9)
+    send("CertificateVerify", 1, 1, "teal", 0.7)
+    tl.say("The server checks them against the lab CA. Each side now knows the other's key.",
+           "insight")
+    tl.to(1.0, linear, server_checks=2.0)
+    tl.wait(1.0)
+
+    tl.chapter("no certificate")
+    tl.say("Last, a client with no certificate meets the same server.", "fail")
+    tl.to(0.5, keyed=0.0, checks=0.0, server_checks=0.0)
+    tl.set(code=1.0)
+    hellos(0.5)
+    send("Certificate, CertificateRequest", -1, 1, "teal", 0.7)
+    tl.to(0.6, linear, checks=3.0)
+    tl.say("It sends an empty Certificate message. The server has nothing to check.", "fail")
+    send("Certificate: (empty)", 1, 1, "rust", 0.9)
+    tl.say("The server ends the handshake with the alert CertificateRequired. No data moves.",
+           "fail")
+    send("alert: CertificateRequired", -1, 1, "rust", 1.0)
+    tl.to(0.3, keyed=0.0)
+    tl.to(0.4, back, failed=1.0)
+    tl.wait(1.6)
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "The TLS 1.3 handshake",
+                    "One round trip agrees on keys. The client then checks who the server is.")
+        p.line(T_A, T_WIRE, T_B, T_WIRE, LINE, 3)
+        robot(p, T_CL, T_DESK, TEAL, 1.0, 1.0, "client", "rustls")
+        robot(p, T_SV, T_DESK, NIGHT, 1.0, 1.0, "server", "rustls")
+        if s.keyed > 0.01:
+            for x in (T_CL, T_SV):
+                chip(p, x, T_DESK + 62, "same keys", TEAL, TEAL_LT, 10.5, opacity=clamp(s.keyed))
+        if s.mutual > 0.5:
+            chip(p, T_SV, T_DESK - 140, "requires client certificate", NIGHT, NIGHT_LT, 10.5)
+
+        checks = ["signature: lab CA  ok", "dates: valid  ok", "name: localhost  ok"]
+        for k, line in enumerate(checks):
+            a = clamp(s.checks - k)
+            if a > 0.01:
+                p.text(222, 152 + 18 * k, line, 11, TEAL, 700, mono=True, opacity=a)
+        server_checks = ["signature: lab CA  ok", "client: billing"]
+        for k, line in enumerate(server_checks):
+            a = clamp(s.server_checks - k)
+            if a > 0.01:
+                p.text(598, 152 + 18 * k, line, 11, NIGHT, 700, "end", mono=True, opacity=a)
+        if s.reply > 0.01:
+            p.text(222, 214, "reply: HELLO OVER TLS", 11, INK, 700, mono=True,
+                   opacity=clamp(s.reply))
+        if s.failed > 0.01:
+            for x in (T_CL, T_SV):
+                chip(p, x, T_DESK + 62, "handshake failed", RUST, RUST_LT, 10.5,
+                     opacity=clamp(s.failed))
+
+        if s.msg_a > 0.01:
+            a, b = (T_A + 60, T_B - 60) if s.msg_dir > 0 else (T_B - 60, T_A + 60)
+            color, fill = {"brass": (BRASS, BRASS_LT), "teal": (TEAL, TEAL_LT),
+                           "rust": (RUST, RUST_LT)}[s.msg_color]
+            x = lerp(a, b, s.msg_u)
+            w = pill(p, x, T_WIRE, s.msg_label, color, fill, 10.5, opacity=s.msg_a)
+            if s.msg_locked:
+                padlock(p, x - w / 2 - 12, T_WIRE - 2, color, s.msg_a)
+
+        code_panel(p, 26, 290, W - 52, "tls_mtls", TLS_CODE, s.code, size=10.0, lead=15.5,
+                   reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, 436)
+        progress(p, tl, t, total, 522)
+
+    return tl, draw, 556
+
+
+def build_tls(only=None):
+    tl, draw, height = tls()
+    return render("ch28-tls.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
     "pipeline": build_pipeline,
@@ -1155,6 +1317,7 @@ BUILDERS = {
     "futex": build_futex,
     "store-buffer": build_store_buffer,
     "tcp-close": build_tcp_close,
+    "tls": build_tls,
 }
 
 if __name__ == "__main__":
