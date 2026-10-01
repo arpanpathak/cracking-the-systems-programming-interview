@@ -1,0 +1,11 @@
+digraph lifecycle {
+  rankdir=LR; nodesep=0.25; ranksep=0.3;
+  socket [label="socket()\na new fd"];
+  bind [label="bind()\naddress + port"];
+  listen [label="listen()\naccept queue"];
+  accept [label="accept()\none fd per client" fillcolor="#fdf6e8"];
+  rw [label="read() / write()\nbytes both ways" fillcolor="#e3f1ea"];
+  close [label="close()\nFIN"];
+  socket -> bind -> listen -> accept -> rw -> close;
+  accept -> accept [label=" next client" style=dashed];
+}

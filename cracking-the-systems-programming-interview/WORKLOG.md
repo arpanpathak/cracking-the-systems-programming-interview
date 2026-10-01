@@ -35,7 +35,7 @@ sections.
 
 - [x] ch21 HTTP: what a request is on the wire, the parser and server as a
       block diagram, before 21.1
-- [ ] ch20 sockets: addresses, the window, the echo server, and epoll each get a
+- [x] ch20 sockets: addresses, the window, the echo server, and epoll each get a
       concept section and diagram before their listings
 - [ ] ch16 threads and locks
 - [ ] ch18 thread pools
@@ -70,3 +70,4 @@ Newest entry last. One line per finished step: date, item, commit.
 
 - 2026-10-01 plan written
 - 2026-10-01 ch21: new 21.1 (wire format, where a request ends, server parts), figures 21.1 and 21.2, sections and figures renumbered
+- 2026-10-01 ch20: each section opens with the concept (addresses and private ranges, ACKs/RTT/window, the socket lifecycle, non-blocking + epoll lists), code in excerpts, complete programs in 20.5; new figures 20.3 and 20.4; real net_ipv4 output

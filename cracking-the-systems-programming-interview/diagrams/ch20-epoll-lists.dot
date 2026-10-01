@@ -1,0 +1,14 @@
+digraph epolllists {
+  rankdir=LR; nodesep=0.3; ranksep=0.45;
+  subgraph cluster_k { label="kernel: one epoll instance"; labelloc="b"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    interest [label="interest list\nfd 3: IN\nfd 5: IN\nfd 6: IN|OUT"];
+    ready [label="ready list\nfd 5: IN" fillcolor="#e3f1ea"];
+  }
+  ctl [label="epoll_ctl\n(add, modify)"];
+  data [label="data arrives\non fd 5" fillcolor="#fdf6e8"];
+  wait [label="epoll_wait\nreturns the ready list" fillcolor="#e6ecf6"];
+  ctl -> interest;
+  data -> ready [label=" kernel marks it"];
+  interest -> ready [style=dashed arrowhead=none];
+  ready -> wait;
+}
