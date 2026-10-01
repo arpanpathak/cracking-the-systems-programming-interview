@@ -700,6 +700,16 @@ The function returns -1 when the needle is absent, following the convention of t
 your own code, `Option<usize>` states that more clearly. For everyday searching, the standard library's
 `str::find` is also linear time.
 
+## 3.13 The complete files
+
+The sections above showed these files in excerpts. Here each one is whole.
+
+<p class="listing"><b>Listing 3.16</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/merge_intervals.rs}}
+```
+
 <div class="summary" markdown="1">
 
 ## Summary

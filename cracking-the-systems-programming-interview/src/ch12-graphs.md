@@ -855,6 +855,28 @@ total: 8
 
 The tree has four edges for five nodes, as expected.
 
+## 12.11 The complete files
+
+The sections above showed these files in excerpts. Here each one is whole.
+
+<p class="listing"><b>Listing 12.25</b> Breadth-first search, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">src/problems/graph_bfs.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/graph_bfs.rs}}
+```
+
+<p class="listing"><b>Listing 12.26</b> Depth-first search, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">src/problems/graph_dfs.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/graph_dfs.rs}}
+```
+
+<p class="listing"><b>Listing 12.27</b> Dijkstra's algorithm, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">src/problems/graph_dijkstra.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs}}
+```
+
 <div class="summary" markdown="1">
 
 ## Summary

@@ -486,6 +486,22 @@ The two caches do the same O(1) work per request. Three differences in how they 
 This benchmark measures the total, and does not separate the three costs. Exercise 4 suggests a way to
 separate them.
 
+## 13.6 The complete files
+
+The sections above showed these files in excerpts. Here each one is whole.
+
+<p class="listing"><b>Listing 13.20</b> The arena LRU cache. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lru_cache_arena.rs}}
+```
+
+<p class="listing"><b>Listing 13.21</b> The <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> LRU cache used by the benchmark. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs}}
+```
+
 <div class="summary" markdown="1">
 
 ## Summary
