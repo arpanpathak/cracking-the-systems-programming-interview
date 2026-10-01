@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -367,7 +367,7 @@ frequent words survive (figure 5.4).</p>
 <video class="motion" src="figures/ch05-top-k.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)." data-chapters="[[0.0, &quot;count&quot;], [8.16, &quot;heap&quot;]]"><img src="figures/ch05-top-k.gif" alt="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)."></video>
 <figcaption><b>Animation 5.2</b> The bounded heap from listing 5.2 with k = 2. The top of the heap is the least frequent word kept, and it is popped whenever the heap holds k + 1 entries.</figcaption>
 </figure>
-<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 39). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
+<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     cmp::Reverse as Rev,
@@ -388,7 +388,9 @@ fn top_k_frequent(sentence: &amp;str, k: usize) -&gt; Vec&lt;(String, u32)&gt; {
     // Build the frequency map...
     let mut frequencies = HashMap::&lt;&amp;str, u32&gt;::new();
     for word in &amp;words {
-        *frequencies.entry(word.as_str()).or_default() += 1;
+        *frequencies
+            .entry(word.as_str())
+            .or_default() += 1;
     }
 
     // Keep a min heap of size k. Reverse flips the max heap, so the least
@@ -445,7 +447,9 @@ fn top_k_frequent(sentence: &amp;str, k: usize) -&gt; Vec&lt;(String, u32)&gt; {
     // Build the frequency map...
     let mut frequencies = HashMap::&lt;&amp;str, u32&gt;::new();
     for word in &amp;words {
-        *frequencies.entry(word.as_str()).or_default() += 1;
+        *frequencies
+            .entry(word.as_str())
+            .or_default() += 1;
     }
 
     // Keep a min heap of size k. Reverse flips the max heap, so the least
@@ -570,10 +574,10 @@ impl MedianFinder {
             self.high.push(Reverse(val));
         }
 
-        if self.high.len() &gt; self.low.len() {
-            if let Some(Reverse(val)) = self.high.pop() {
-                self.low.push(val);
-            }
+        if self.high.len() &gt; self.low.len()
+            &amp;&amp; let Some(Reverse(val)) = self.high.pop()
+        {
+            self.low.push(val);
         }
     }
     // ...
@@ -643,10 +647,10 @@ impl MedianFinder {
             self.high.push(Reverse(val));
         }
 
-        if self.high.len() &gt; self.low.len() {
-            if let Some(Reverse(val)) = self.high.pop() {
-                self.low.push(val);
-            }
+        if self.high.len() &gt; self.low.len()
+            &amp;&amp; let Some(Reverse(val)) = self.high.pop()
+        {
+            self.low.push(val);
         }
     }
 
@@ -713,7 +717,10 @@ mod tests {
     #[test]
     fn three_values_are_ordered() {
         let mut finder = MedianFinder::new();
-        for (value, median) in [1, 2, 3].into_iter().zip([1.0, 1.5, 2.0]) {
+        for (value, median) in [1, 2, 3]
+            .into_iter()
+            .zip([1.0, 1.5, 2.0])
+        {
             finder.add_num(value);
             assert_eq!(finder.find_median(), Some(median));
         }
@@ -748,7 +755,13 @@ mod tests {
 
         for value in SAMPLE {
             finder.add_num(value);
-            assert!(finder.low.len().abs_diff(finder.high.len()) &lt;= 1);
+            assert!(
+                finder
+                    .low
+                    .len()
+                    .abs_diff(finder.high.len())
+                    &lt;= 1
+            );
         }
     }
 }</code></pre>

@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,7 +178,7 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch23.png" alt="Drill, the robot who is the sergeant of the timed round, beside a drill press over a workpiece stamped with a problem">
+                        <img class="plate" src="art/ch30.png" alt="Drill, the robot who is the sergeant of the timed round, beside a drill press over a workpiece stamped with a problem">
 <h1 id="drills-against-the-clock"><a class="header" href="#drills-against-the-clock">Drills against the clock</a></h1>
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
@@ -196,8 +196,8 @@ problem stated in two sentences, and about forty minutes. <code>drills.rs</code>
 written at the length you can type under that pressure. Each group carries one test, so you know it runs.</p>
 <p>This chapter is a guide to using them. It maps each drill to its chapter, reads the places where the
 short form cuts a corner, and ends with a way to rehearse.</p>
-<h2 id="231-the-drills"><a class="header" href="#231-the-drills">23.1 The drills</a></h2>
-<p class="listing"><b>Listing 23.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
+<h2 id="301-the-drills"><a class="header" href="#301-the-drills">30.1 The drills</a></h2>
+<p class="listing"><b>Listing 30.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
 
 <pre><code class="language-rust">//! Compact implementations of the common primitives.
 //!
@@ -279,7 +279,10 @@ impl&lt;T&gt; SpinLock&lt;T&gt; {
     }
 
     pub fn lock(&amp;self) -&gt; SpinGuard&lt;'_, T&gt; {
-        while self.locked.swap(true, Ordering::Acquire) {
+        while self
+            .locked
+            .swap(true, Ordering::Acquire)
+        {
             std::hint::spin_loop();
         }
         SpinGuard { lock: self }
@@ -292,7 +295,9 @@ pub struct SpinGuard&lt;'a, T&gt; {
 
 impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
     fn drop(&amp;mut self) {
-        self.lock.locked.store(false, Ordering::Release);
+        self.lock
+            .locked
+            .store(false, Ordering::Release);
     }
 }
 
@@ -327,7 +332,10 @@ impl Semaphore {
     pub fn acquire(&amp;self) {
         let mut permits = self.permits.lock().expect("poisoned");
         while *permits == 0 {
-            permits = self.released.wait(permits).expect("poisoned");
+            permits = self
+                .released
+                .wait(permits)
+                .expect("poisoned");
         }
         *permits -= 1;
     }
@@ -386,7 +394,10 @@ impl&lt;T&gt; BlockingQueue&lt;T&gt; {
                 self.not_empty.notify_one();
                 return Ok(());
             }
-            inner = self.not_full.wait(inner).expect("poisoned");
+            inner = self
+                .not_full
+                .wait(inner)
+                .expect("poisoned");
         }
     }
 
@@ -400,7 +411,10 @@ impl&lt;T&gt; BlockingQueue&lt;T&gt; {
             if inner.closed {
                 return None;
             }
-            inner = self.not_empty.wait(inner).expect("poisoned");
+            inner = self
+                .not_empty
+                .wait(inner)
+                .expect("poisoned");
         }
     }
 
@@ -429,7 +443,11 @@ impl ThreadPool {
                 let receiver = Arc::clone(&amp;receiver);
                 thread::spawn(move || {
                     loop {
-                        let Ok(job) = receiver.lock().expect("poisoned").recv() else {
+                        let Ok(job) = receiver
+                            .lock()
+                            .expect("poisoned")
+                            .recv()
+                        else {
                             return;
                         };
                         job();
@@ -704,7 +722,7 @@ mod tests {
     }
 }</code></pre>
 <p>The module comment states the file’s role in one line: the neighbouring modules are the reference
-versions, and this file is what you type. Table 23.1 pairs each drill with the chapter that explains its
+versions, and this file is what you type. Table 30.1 pairs each drill with the chapter that explains its
 full form.</p>
 <div class="table-wrapper">
 <table>
@@ -725,7 +743,7 @@ full form.</p>
 </tbody>
 </table>
 </div>
-<h2 id="232-what-the-short-forms-leave-out"><a class="header" href="#232-what-the-short-forms-leave-out">23.2 What the short forms leave out</a></h2>
+<h2 id="302-what-the-short-forms-leave-out"><a class="header" href="#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></h2>
 <p>A drill is allowed to be simpler than its reference. Knowing <em>what</em> it left out is part of the answer,
 because the follow-up question is usually aimed at exactly that.</p>
 <p><strong>The spin lock uses <code>swap</code>.</strong> <code>while self.locked.swap(true, Acquire) { spin_loop() }</code> is a
@@ -752,7 +770,7 @@ head. For a question about serving requests, chapter 21’s checks are the answe
 <p><strong><code>Port::new</code> is a one-expression validator.</strong> <code>(1..=u16::MAX).contains(&amp;value).then_some(Self(value)).ok_or(..)</code>
 reads left to right as the rule. <code>Route::parse</code> matches the two fixed paths and falls back to
 <code>strip_prefix</code> for the id route, returning <code>None</code> for everything else.</p>
-<h2 id="233-the-drill-that-is-slower-than-it-looks"><a class="header" href="#233-the-drill-that-is-slower-than-it-looks">23.3 The drill that is slower than it looks</a></h2>
+<h2 id="303-the-drill-that-is-slower-than-it-looks"><a class="header" href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></h2>
 <p><code>parallel_sum</code> changed behaviour in the short form. Compare it with the reference in chapter 12:</p>
 <pre><code class="language-rust">// drills.rs
 values
@@ -776,12 +794,12 @@ collect first, then join:              203.482125ms (sum 4)
 <p>The fix is one <code>collect()</code> between the two <code>map</code>s. Chapter 14 drew the same lesson from the
 thread pool. A concurrency test that checks only the answer cannot tell parallel from serial. Put a
 barrier in it, as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code> does, or time it.</p>
-<h2 id="234-running-a-round"><a class="header" href="#234-running-a-round">23.4 Running a round</a></h2>
+<h2 id="304-running-a-round"><a class="header" href="#304-running-a-round">30.4 Running a round</a></h2>
 <p>A 45-minute coding round has a shape. Planning it keeps the last ten minutes, where most of the
-signal is, from being spent debugging (figure 23.1).</p>
+signal is, from being spent debugging (figure 30.1).</p>
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
-<figcaption><b>Figure 23.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
+<figcaption><b>Figure 30.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
 </figure>
 <ul>
 <li><strong>Clarify.</strong> Ask what the inputs are, what should happen on bad input, and what the limits are (size,
@@ -793,7 +811,7 @@ return type decided in minute six saves a rewrite in minute twenty-five.</li>
 <li><strong>Failure modes.</strong> Say what breaks at scale and what you would change: the reference versions in this
 book are that list, written out.</li>
 </ul>
-<h2 id="235-practicing-with-this-repository"><a class="header" href="#235-practicing-with-this-repository">23.5 Practicing with this repository</a></h2>
+<h2 id="305-practicing-with-this-repository"><a class="header" href="#305-practicing-with-this-repository">30.5 Practicing with this repository</a></h2>
 <p>The repository is set up for the drill loop that the problem index in appendix C describes. Write a
 minimal correct version in 30 to 45 minutes, then explain its failure modes and how you would test them.</p>
 <ol>
@@ -806,7 +824,7 @@ minimal correct version in 30 to 45 minutes, then explain its failure modes and 
 <p>The chapters’ “Questions that come up” sections are the follow-ups to rehearse. The history
 this book has followed, ten merges, nine pools, six buffers, is what that loop looks like when you keep
 the drafts.</p>
-<h2 id="236-questions-that-come-up"><a class="header" href="#236-questions-that-come-up">23.6 Questions that come up</a></h2>
+<h2 id="306-questions-that-come-up"><a class="header" href="#306-questions-that-come-up">30.6 Questions that come up</a></h2>
 <p><strong>“Your parallel sum gives the right answer. Is it parallel?”</strong>
 Check that all threads are spawned before any is joined. A lazy iterator that spawns and joins in one
 chain is serial.</p>
@@ -822,7 +840,7 @@ By the question’s scope. Name what a full version adds, and where it would cha
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="ch22-async.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="ch29-conn-pool.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -836,7 +854,7 @@ By the question’s scope. Name what a full version adds, and where it would cha
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="ch22-async.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="ch29-conn-pool.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

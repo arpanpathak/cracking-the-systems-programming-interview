@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1132,6 +1132,13 @@ elements on the heap, so the node’s own size is fixed.</p>
 order they arrived. You put the root in the queue. Then, repeatedly, you take the node at the front, visit it,
 and add its children at the back. Because children join at the back, every node of one level leaves the queue
 before any node of the next.</p>
+<p>A node owns its value and a <code>Vec</code> of child nodes. The children are stored inside the vector itself, not behind pointers, so a node can have any number of them:</p>
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+struct TreeNode&lt;T&gt; {
+    value: T,
+    children: Vec&lt;TreeNode&lt;T&gt;&gt;, // Owned children directly inline
+}</code></pre>
 <p class="listing"><b>Listing 11.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/test_tree.rs">src/bin/test_tree.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::VecDeque;
@@ -1230,7 +1237,7 @@ makes test data easy to check.</p>
 <h3 id="1142-grouping-values-by-level"><a class="header" href="#1142-grouping-values-by-level">11.4.2 Grouping values by level</a></h3>
 <p>A common variation returns the values grouped by level, as a list of lists. The first list holds the
 root’s value, the second the values of its children, and so on. The file solves it twice.</p>
-<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
+<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 20). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::VecDeque;
 
@@ -1245,7 +1252,10 @@ fn level_order&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T
     let mut level = vec![root];
     while !level.is_empty() {
         result.push(level.iter().map(|n| &amp;n.value).collect());
-        level = level.iter().flat_map(|n| &amp;n.children).collect();
+        level = level
+            .iter()
+            .flat_map(|n| &amp;n.children)
+            .collect();
     }
     result
 }</code></pre>
@@ -1253,7 +1263,7 @@ fn level_order&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T
 things. It adds the values of this level to the result. Then it builds the next level from all the children of
 all the nodes in this level: <code>level.iter().flat_map(|n| &amp;n.children).collect()</code>. <code>flat_map</code> turns each node into
 its children and joins all those children into one sequence. The loop ends when a level has no nodes.</p>
-<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 19 to 37).</p>
+<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 22 to 40).</p>
 
 <pre><code class="language-rust">fn level_order_readable&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
     let mut result = Vec::new();
@@ -1295,7 +1305,10 @@ fn level_order&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T
     let mut level = vec![root];
     while !level.is_empty() {
         result.push(level.iter().map(|n| &amp;n.value).collect());
-        level = level.iter().flat_map(|n| &amp;n.children).collect();
+        level = level
+            .iter()
+            .flat_map(|n| &amp;n.children)
+            .collect();
     }
     result
 }
@@ -1353,9 +1366,18 @@ fn main() {
     for level in levels {
         println!("{:?}", level);
     }
+
+    println!("one queue, one level per round:");
+    for level in level_order_readable(&amp;root) {
+        println!("{:?}", level);
+    }
 }</code></pre>
-<p><code>main</code> calls the first version, <code>level_order</code>. It prints the tree with <code>{:#?}</code>, then the levels:</p>
+<p><code>main</code> prints the tree with <code>{:#?}</code>, then the levels from each version. Both give the same three levels:</p>
 <pre><code class="language-text">["root"]
+["branch_a", "branch_b"]
+["leaf_1", "leaf_2", "leaf_3"]
+one queue, one level per round:
+["root"]
 ["branch_a", "branch_b"]
 ["leaf_1", "leaf_2", "leaf_3"]
 </code></pre>
@@ -1370,9 +1392,15 @@ tree: read a value and a count, then read that many subtrees.</p>
 <img src="figures/tree-serialize.svg" alt="A tree with root, a, b, a1, a2, b1, and its serialized form: root 2, a 2, a1 0, a2 0, b 1, b1 0">
 <figcaption><b>Figure 11.6</b> Each node is written as its value and its number of children, in pre-order.</figcaption>
 </figure>
-<p class="listing"><b>Listing 11.18</b> Writing the pairs (lines 30 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
+<p class="listing"><b>Listing 11.18</b> The tree type, and writing the pairs (lines 1 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::VecDeque, fs, io, str::FromStr};
+
+#[derive(Debug)]
+struct TreeNode&lt;T&gt; {
+    value: T,
+    children: Vec&lt;TreeNode&lt;T&gt;&gt;,
+}
 
 impl&lt;T&gt; TreeNode&lt;T&gt; {
     // ...
@@ -1396,6 +1424,8 @@ impl&lt;T&gt; TreeNode&lt;T&gt; {
     }
     // ...
 }</code></pre>
+<p><code>TreeNode&lt;T&gt;</code> is the same shape as in section 11.4: a value and a <code>Vec</code> of child nodes. A node can have any
+number of children.</p>
 <p><code>serialize</code> walks the tree in pre-order without recursion, using a <code>Vec</code> as a <strong>stack</strong>: the last item pushed
 is the first popped. It pushes the children in reverse order, with <code>iter().rev()</code>, so that the first child is on
 top and is popped first. For each node it writes the value and the child count as strings.</p>
@@ -1576,6 +1606,16 @@ autocompletion.</p>
 <video class="motion" src="figures/ch11-trie.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b." data-chapters="[[0.0, &quot;insert cat&quot;], [15.44, &quot;insert car&quot;], [32.44, &quot;insert dog&quot;], [49.44, &quot;queries&quot;]]"><img src="figures/ch11-trie.gif" alt="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b."></video>
 <figcaption><b>Animation 11.2</b> <code>insert</code> creates a node only when the character has no child yet, so words with a common start share nodes. <code>"ca"</code> is a prefix but not a word, and <code>"cab"</code> stops at a missing child.</figcaption>
 </figure>
+<p>A trie is one root node. Each node maps a character to the child node for that character, and <code>terminal</code> marks a node where a stored word ends:</p>
+<pre><code class="language-rust">pub struct Trie {
+    root: Node,
+}
+
+#[derive(Default)]
+struct Node {
+    children: HashMap&lt;char, Node&gt;,
+    terminal: bool,
+}</code></pre>
 <p class="listing"><b>Listing 11.21</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs">src/problems/trie.rs</a></p>
 
 <pre><code class="language-rust">//! Trie / prefix tree.

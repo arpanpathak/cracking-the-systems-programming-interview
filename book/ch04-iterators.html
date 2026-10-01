@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -351,7 +351,7 @@ user, in a <code>HashMap&lt;u32, &amp;User&gt;</code>, and leave the users where
 </figure>
 <p>The map of references is cheaper. It also depends on the users staying alive while the map is used. The
 function’s signature states that dependency with a lifetime.</p>
-<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 25 to 31).</p>
+<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 27 to 33).</p>
 
 <pre><code class="language-rust">fn struct_slice_to_map&lt;'a&gt;(slice: &amp;'a [User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
     let mut map = HashMap::new();
@@ -369,7 +369,7 @@ stores that reference. No <code>User</code> is cloned.</p>
 <h2 id="48-two-lifetimes-in-one-type"><a class="header" href="#48-two-lifetimes-in-one-type">4.8 Two lifetimes in one type</a></h2>
 <p>The second function takes a different input. Instead of a slice of users, it takes a slice of references to
 users.</p>
-<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 33 to 39).</p>
+<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 35 to 41).</p>
 
 <pre><code class="language-rust">fn ref_slice_to_map&lt;'a&gt;(slice: &amp;[&amp;'a User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
     let mut map = HashMap::new();
@@ -419,6 +419,8 @@ fn imperative_numbers_map(slice: &amp;[i32]) -&gt; HashMap&lt;i32, i32&gt; {
     map
 }
 
+// The lifetime could be elided. It is written out because section 4.7 reads it.
+#[allow(clippy::needless_lifetimes)]
 fn struct_slice_to_map&lt;'a&gt;(slice: &amp;'a [User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
     let mut map = HashMap::new();
     for user in slice {
@@ -436,7 +438,7 @@ fn ref_slice_to_map&lt;'a&gt;(slice: &amp;[&amp;'a User]) -&gt; HashMap&lt;u32, 
 }
 
 fn main() {
-    let vv = vec![1, 2, 3, 4, 5, 6];
+    let vv = [1, 2, 3, 4, 5, 6];
 
     let filtered: Vec&lt;i32&gt; = vv
         .iter()

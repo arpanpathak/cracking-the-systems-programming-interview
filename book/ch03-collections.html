@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1128,7 +1128,7 @@ row.</p>
 </figure>
 <p class="listing"><b>Listing 3.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rotate_matrix.rs">src/bin/rotate_matrix.rs</a></p>
 
-<pre><code class="language-rust">fn rotate(m: &amp;mut Vec&lt;Vec&lt;i32&gt;&gt;) {
+<pre><code class="language-rust">fn rotate(m: &amp;mut [Vec&lt;i32&gt;]) {
     let n = m.len();
 
     for i in 0..n {
@@ -1153,7 +1153,7 @@ fn main() {
         println!("{:?}", row);
     }
 }</code></pre>
-<p>The grid is a <code>Vec&lt;Vec&lt;i32&gt;&gt;</code>, a vector of rows. The transpose loop starts <code>j</code> at <code>i + 1</code>, so it visits only
+<p>The grid is a <code>Vec&lt;Vec&lt;i32&gt;&gt;</code>, a vector of rows. <code>rotate</code> takes it as <code>&amp;mut [Vec&lt;i32&gt;]</code>, a mutable slice of rows, because it changes cells but never adds or removes a row. The transpose loop starts <code>j</code> at <code>i + 1</code>, so it visits only
 the cells above the diagonal and swaps each pair once. Visiting every cell would swap each pair twice and
 undo the work.</p>
 <p>The swap uses a temporary variable <code>tmp</code>. <code>std::mem::swap</code> needs two mutable references, and
@@ -1360,6 +1360,116 @@ str_str("hello", "") = 0
 <p>The function returns -1 when the needle is absent, following the convention of the problem it solves. In
 your own code, <code>Option&lt;usize&gt;</code> states that more clearly. For everyday searching, the standard library’s
 <code>str::find</code> is also linear time.</p>
+<h2 id="313-the-complete-files"><a class="header" href="#313-the-complete-files">3.13 The complete files</a></h2>
+<p>The sections above showed these files in excerpts. Here each one is whole.</p>
+<p class="listing"><b>Listing 3.16</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
+
+<pre><code class="language-rust">//! Merge Intervals: sort by start, then merge overlapping intervals in one pass.
+//!
+//! The `match out.last_mut()` pattern is intentionally clean: no deep nesting,
+//! no confusing boolean flags.
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Interval {
+    start: i32,
+    end: i32,
+}
+pub fn merge_intervals(mut intervals: Vec&lt;Interval&gt;) -&gt; Vec&lt;Interval&gt; {
+    if intervals.is_empty() {
+        return intervals;
+    }
+
+    intervals.sort_unstable_by_key(|interval| interval.start);
+
+    let mut merged: Vec&lt;Interval&gt; = Vec::with_capacity(intervals.len());
+    for Interval { start, end } in intervals {
+        match merged.last_mut() {
+            Some(previous) if start &lt;= previous.end =&gt; {
+                previous.end = previous.end.max(end);
+            }
+            _ =&gt; merged.push(Interval { start, end }),
+        }
+    }
+    merged
+}
+
+pub fn merge_intervals2(mut intervals: Vec&lt;(i32, i32)&gt;) -&gt; Vec&lt;(i32, i32)&gt; {
+    if intervals.is_empty() {
+        return intervals;
+    }
+
+    intervals.sort_unstable_by_key(|(start, _)| *start);
+
+    let mut merged: Vec&lt;(i32, i32)&gt; = Vec::with_capacity(intervals.len());
+
+    for &amp;(start, end) in &amp;intervals {
+        match merged.last_mut() {
+            Some(previous) if start &lt;= previous.1 =&gt; {
+                previous.1 = previous.1.max(end);
+            }
+            _ =&gt; merged.push((start, end)),
+        }
+    }
+    merged
+}
+
+/// In place: `last` is the last merged interval at the front of the vector.
+/// O(1) extra space.
+pub fn merge_intervals_in_place(intervals: &amp;mut Vec&lt;Interval&gt;) {
+    if intervals.is_empty() {
+        return;
+    }
+
+    intervals.sort_unstable_by_key(|interval| interval.start);
+
+    let mut last = 0;
+    for i in 1..intervals.len() {
+        match (intervals[last], intervals[i]) {
+            (previous, current) if current.start &lt;= previous.end =&gt; {
+                intervals[last].end = previous.end.max(current.end);
+            }
+            (_, current) =&gt; {
+                last += 1;
+                intervals[last] = current;
+            }
+        }
+    }
+    intervals.truncate(last + 1);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merges_overlapping_and_adjacent() {
+        let input = [(1, 3), (2, 6), (8, 10), (15, 18)].map(|(start, end)| Interval { start, end });
+        let expected = [(1, 6), (8, 10), (15, 18)].map(|(start, end)| Interval { start, end });
+        assert_eq!(merge_intervals(input.into()), expected);
+    }
+
+    #[test]
+    fn handles_empty_and_disjoint() {
+        assert_eq!(merge_intervals(vec![]), vec![]);
+        let input = [(1, 2), (3, 4)].map(|(start, end)| Interval { start, end });
+        let expected = [(1, 2), (3, 4)].map(|(start, end)| Interval { start, end });
+        assert_eq!(merge_intervals(input.into()), expected);
+    }
+
+    #[test]
+    fn merges_in_place() {
+        let mut intervals: Vec&lt;Interval&gt; = [(8, 10), (1, 3), (15, 18), (2, 6)]
+            .map(|(start, end)| Interval { start, end })
+            .into();
+        merge_intervals_in_place(&amp;mut intervals);
+        let expected = [(1, 6), (8, 10), (15, 18)].map(|(start, end)| Interval { start, end });
+        assert_eq!(intervals, expected);
+
+        let mut empty = vec![];
+        merge_intervals_in_place(&amp;mut empty);
+        assert!(empty.is_empty());
+    }
+}</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>

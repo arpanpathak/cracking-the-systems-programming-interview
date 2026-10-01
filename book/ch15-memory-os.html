@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -657,11 +657,13 @@ impl Padded {
 }</code></pre>
 <p><code>Unpadded</code> is 8 bytes, so a <code>Vec</code> of four of them fits in 32 bytes, inside one or two cache lines. <code>Padded</code> is 64
 bytes, and each one gets a line.</p>
-<p class="listing"><b>Listing 15.6</b> The timed run (lines 43 to 57).</p>
+<p class="listing"><b>Listing 15.6</b> The timed run (lines 43 to 59).</p>
 
 <pre><code class="language-rust">/// Scoped threads borrow the vector directly, so there is no `Arc` and no clone.
 fn run_unpadded() -&gt; Duration {
-    let counters: Vec&lt;Unpadded&gt; = (0..THREADS).map(|_| Unpadded::new()).collect();
+    let counters: Vec&lt;Unpadded&gt; = (0..THREADS)
+        .map(|_| Unpadded::new())
+        .collect();
     let start = Instant::now();
     thread::scope(|scope| {
         for counter in &amp;counters {
@@ -722,7 +724,9 @@ impl Padded {
 
 /// Scoped threads borrow the vector directly, so there is no `Arc` and no clone.
 fn run_unpadded() -&gt; Duration {
-    let counters: Vec&lt;Unpadded&gt; = (0..THREADS).map(|_| Unpadded::new()).collect();
+    let counters: Vec&lt;Unpadded&gt; = (0..THREADS)
+        .map(|_| Unpadded::new())
+        .collect();
     let start = Instant::now();
     thread::scope(|scope| {
         for counter in &amp;counters {
@@ -737,7 +741,9 @@ fn run_unpadded() -&gt; Duration {
 }
 
 fn run_padded() -&gt; Duration {
-    let counters: Vec&lt;Padded&gt; = (0..THREADS).map(|_| Padded::new()).collect();
+    let counters: Vec&lt;Padded&gt; = (0..THREADS)
+        .map(|_| Padded::new())
+        .collect();
     let start = Instant::now();
     thread::scope(|scope| {
         for counter in &amp;counters {
@@ -789,6 +795,17 @@ timings vary by machine; the padded run is normally the faster one
 <h3 id="1542-two-counters"><a class="header" href="#1542-two-counters">15.4.2 Two counters</a></h3>
 <p>The second program makes the sharing certain instead of likely. <code>SameLine</code> holds both counters and is aligned to
 64, so both are guaranteed to be in one line.</p>
+<p><code>#[repr(align(64))]</code> makes every value of the type start at an address that is a multiple of 64. That is the size of a cache line. <code>SameLine</code> puts two counters in one line on purpose. <code>Padded</code> gives one counter a whole line:</p>
+<pre><code class="language-rust">/// Both counters are guaranteed to live inside one 64-byte cache line.
+#[repr(align(64))]
+struct SameLine {
+    a: AtomicU64,
+    b: AtomicU64,
+}
+
+/// Each of these occupies its own 64-byte block.
+#[repr(align(64))]
+struct Padded(AtomicU64);</code></pre>
 <p class="listing"><b>Listing 15.8</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/false_sharing.rs">src/bin/false_sharing.rs</a></p>
 
 <pre><code class="language-rust">use std::{

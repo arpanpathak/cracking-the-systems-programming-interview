@@ -1,0 +1,933 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Closing TCP connections - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-0ec47a42.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch27.png" alt="Taper, the robot who is the closer of the line, beside two telegraph poles whose wire is being lowered, with a sixty-second hourglass hanging from it">
+<h1 id="closing-tcp-connections"><a class="header" href="#closing-tcp-connections">Closing TCP connections</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>How each direction of a TCP connection closes with its own <code>FIN</code></li>
+<li>The states of the side that closes first and of the side that closes second, read from the kernel</li>
+<li><code>TIME_WAIT</code>: what it protects, how long it lasts, and the port limit it puts on busy clients</li>
+<li><code>SO_REUSEADDR</code>, and why a restarted server can bind its port</li>
+<li><code>CLOSE_WAIT</code>: the sockets a server keeps when it never closes, and how to find them</li>
+<li>The reset that replaces <code>FIN</code> when a socket closes with unread data</li>
+</ul>
+</div>
+
+<p>Chapter 20 opened TCP connections and closed them with <code>shutdown</code> and <code>drop</code>. Each close sent a <code>FIN</code>, and
+the other side’s <code>read</code> returned 0. That is all a program sees. The kernel, though, keeps each side of the
+connection in a sequence of states after the program has moved on. Some of those states last a minute. One
+lasts for as long as the program forgets to close the socket.</p>
+<p>This chapter follows a connection through its close, as the kernel records it. The program, <code>tcp_close</code>,
+reads each socket’s state from Linux’s <code>/proc/net/tcp</code> at every step, so its output comes from a Linux
+container. It also shows the two production problems the close states cause, and the reset that a close
+can send instead of a <code>FIN</code>.</p>
+<h2 id="271-two-directions-two-fins"><a class="header" href="#271-two-directions-two-fins">27.1 Two directions, two <code>FIN</code>s</a></h2>
+<p>A TCP connection carries bytes in both directions, and each direction closes on its own. A side that has
+no more bytes to send sends a <strong><code>FIN</code></strong>, and the other side acknowledges it. After that, bytes can still
+flow the other way. The connection is gone only when both directions have closed, which takes four
+segments: <code>FIN</code>, <code>ACK</code>, <code>FIN</code>, <code>ACK</code>.</p>
+<p>The side that sends the first <code>FIN</code> makes the <strong>active close</strong>. The other side makes the <strong>passive
+close</strong>. They pass through different states (figure 27.1):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Side</th><th>State</th><th>Waiting for</th></tr>
+</thead>
+<tbody>
+<tr><td>active</td><td><code>FIN_WAIT1</code></td><td>the <code>ACK</code> of its <code>FIN</code></td></tr>
+<tr><td>active</td><td><code>FIN_WAIT2</code></td><td>the peer’s <code>FIN</code></td></tr>
+<tr><td>active</td><td><code>TIME_WAIT</code></td><td>a fixed time, 60 seconds on Linux, before the connection is forgotten</td></tr>
+<tr><td>passive</td><td><code>CLOSE_WAIT</code></td><td>its own program to close the socket</td></tr>
+<tr><td>passive</td><td><code>LAST_ACK</code></td><td>the <code>ACK</code> of its <code>FIN</code></td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/ch27-close.svg" alt="The client, closing first, goes from ESTABLISHED to FIN_WAIT1 and sends FIN. The server moves to CLOSE_WAIT until its program closes, and sends ACK; the client moves to FIN_WAIT2. The server moves to LAST_ACK and sends FIN; the client moves to TIME_WAIT, 60 seconds on Linux, and sends ACK; the server is CLOSED. After TIME_WAIT the client is CLOSED too.">
+<figcaption><b>Figure 27.1</b> The four segments of a close, and the state each side is in between them.</figcaption>
+</figure>
+<p>Two of these states wait on something other than the network. <code>CLOSE_WAIT</code> waits for the program, and
+lasts until the program closes the socket. <code>TIME_WAIT</code> waits for a clock. Sections 27.2 and 27.3 cover each.</p>
+<h3 id="2711-reading-the-states"><a class="header" href="#2711-reading-the-states">27.1.1 Reading the states</a></h3>
+<p>Linux lists every IPv4 TCP socket in the file <code>/proc/net/tcp</code>, one per line. The second and third columns
+are the local and remote addresses, written as <code>0100007F:1F90</code>: the IP address, then the port, in
+hexadecimal. The fourth column is the state, as a number from <code>01</code> for <code>ESTABLISHED</code> to <code>0B</code> for <code>CLOSING</code>.</p>
+<p>The program parses the lines into the ports and a state name:</p>
+<pre><code class="language-rust">#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        collections::BTreeMap,
+        fs,
+        io::{self, Read, Write},
+        mem,
+        net::{SocketAddr, SocketAddrV4, TcpListener, TcpStream},
+        os::fd::{FromRawFd, OwnedFd},
+        thread,
+        time::Duration,
+    };
+
+    /// Long enough for loopback segments to be sent, received, and acknowledged.
+    pub const SETTLE: Duration = Duration::from_millis(50);
+
+    /// One line of /proc/net/tcp: local port, remote port, and state.
+    struct Entry {
+        local: u16,
+        remote: u16,
+        state: &amp;'static str,
+    }
+
+    /// The name of a TCP state, from the number Linux prints for it.
+    fn state_name(code: u8) -&gt; &amp;'static str {
+        match code {
+            0x01 =&gt; "ESTABLISHED",
+            0x02 =&gt; "SYN_SENT",
+            0x03 =&gt; "SYN_RECV",
+            0x04 =&gt; "FIN_WAIT1",
+            0x05 =&gt; "FIN_WAIT2",
+            0x06 =&gt; "TIME_WAIT",
+            0x07 =&gt; "CLOSE",
+            0x08 =&gt; "CLOSE_WAIT",
+            0x09 =&gt; "LAST_ACK",
+            0x0A =&gt; "LISTEN",
+            0x0B =&gt; "CLOSING",
+            _ =&gt; "UNKNOWN",
+        }
+    }
+
+    /// The port in an address written as `0100007F:1F90`.
+    fn port_of(field: &amp;str) -&gt; Option&lt;u16&gt; {
+        let (_, port) = field.split_once(':')?;
+        u16::from_str_radix(port, 16).ok()
+    }
+
+    /// Every IPv4 TCP socket the kernel knows about.
+    fn entries() -&gt; io::Result&lt;Vec&lt;Entry&gt;&gt; {
+        let table = fs::read_to_string("/proc/net/tcp")?;
+        Ok(table
+            .lines()
+            .skip(1)
+            .filter_map(|line| {
+                let fields: Vec&lt;&amp;str&gt; = line.split_whitespace().collect();
+                Some(Entry {
+                    local: port_of(fields.get(1)?)?,
+                    remote: port_of(fields.get(2)?)?,
+                    state: state_name(u8::from_str_radix(fields.get(3)?, 16).ok()?),
+                })
+            })
+            .collect())
+    }
+    // ...
+}</code></pre>
+<p><code>entries</code> skips the header line, splits each line on whitespace, and keeps the three columns it needs. The
+<code>?</code> operators inside <code>filter_map</code> skip any line that does not parse. All connections in this program run
+over <code>127.0.0.1</code>, so the two ports alone identify a socket.</p>
+<p><code>state</code> looks up one socket, and <code>census</code> counts the states of every socket on one server port:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// The state of the socket whose local and remote ports are `local` and
+    /// `remote`, or "gone" if the kernel has forgotten it.
+    pub fn state(local: SocketAddr, remote: SocketAddr) -&gt; io::Result&lt;&amp;'static str&gt; {
+        Ok(entries()?
+            .into_iter()
+            .find(|entry| entry.local == local.port() &amp;&amp; entry.remote == remote.port())
+            .map_or("gone", |entry| entry.state))
+    }
+
+    /// How many sockets on the server's `port` are in each state, counting
+    /// both the server's side and the clients' side of each connection.
+    pub fn census(port: u16) -&gt; io::Result&lt;BTreeMap&lt;&amp;'static str, usize&gt;&gt; {
+        let mut counts = BTreeMap::new();
+        for entry in entries()? {
+            if entry.state != "LISTEN" &amp;&amp; (entry.local == port || entry.remote == port) {
+                *counts.entry(entry.state).or_insert(0) += 1;
+            }
+        }
+        Ok(counts)
+    }
+
+    /// A connected pair over loopback: (client, server's accepted socket).
+    pub fn connected(listener: &amp;TcpListener) -&gt; io::Result&lt;(TcpStream, TcpStream)&gt; {
+        let client = TcpStream::connect(listener.local_addr()?)?;
+        let (server, _) = listener.accept()?;
+        Ok((client, server))
+    }
+    // ...
+}</code></pre>
+<p>A socket the kernel has forgotten has no line in the file, and <code>state</code> reports it as <code>gone</code>. <code>connected</code>
+returns both ends of a new connection, so one process can watch both sides.</p>
+<h3 id="2712-a-close-step-by-step"><a class="header" href="#2712-a-close-step-by-step">27.1.2 A close, step by step</a></h3>
+<p>The first scene closes a connection the way chapter 20’s echo test did. The client half-closes with
+<code>shutdown(Write)</code>, the server reads to the end and replies, then both drop their sockets. After each step
+the program waits 50 ms, so the loopback segments have arrived, and prints both states:</p>
+<pre><code class="language-text">1. An orderly close, client first, with a half-close
+
+  step                                   client       server
+  connected                              ESTABLISHED  ESTABLISHED
+  client shutdown(Write): FIN sent       FIN_WAIT2    CLOSE_WAIT
+  server read to end, wrote a reply      FIN_WAIT2    CLOSE_WAIT
+  server dropped its socket: FIN sent    TIME_WAIT    gone
+  client read the reply, dropped         TIME_WAIT    gone
+</code></pre>
+<p>The client never shows <code>FIN_WAIT1</code>. On loopback the <code>ACK</code> of its <code>FIN</code> arrived within microseconds, so by
+the time the program looked, the client was in <code>FIN_WAIT2</code>. On a network with a 50 ms round trip,
+<code>FIN_WAIT1</code> would show.</p>
+<p>The third row is the half-close at work. The client’s direction is closed, the server’s is open, and the
+server’s reply still reached the client. After the server dropped its socket, the server’s side passed
+through <code>LAST_ACK</code> and was gone. The client side went to <code>TIME_WAIT</code>, and stayed there after the client
+dropped its socket. <code>TIME_WAIT</code> belongs to the kernel, not to the program.</p>
+<p>Animation 27.1 follows these steps, then shows a server that never closes.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch27-close.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A client robot and a server robot joined by a wire, each with its TCP state above it. The client&#39;s shutdown sends FIN; the server&#39;s kernel acknowledges it, and the states become FIN_WAIT2 and CLOSE_WAIT. The server&#39;s read returns 0, it writes a reply that crosses to the client, and it drops its socket, which sends FIN. The server goes through LAST_ACK to gone, and the client acknowledges and enters TIME_WAIT, where a 60-second clock runs after the client drops its socket. In a second run the server never drops its sockets: five clients connect and close, each leaves a FIN_WAIT2 on the client side and a CLOSE_WAIT on the server, and the server&#39;s count of open descriptors climbs toward its limit." data-chapters="[[0.0, &quot;FIN&quot;], [15.42, &quot;reply&quot;], [23.42, &quot;second FIN&quot;], [42.42, &quot;leak&quot;]]"><img src="figures/ch27-close.gif" alt="A client robot and a server robot joined by a wire, each with its TCP state above it. The client&#39;s shutdown sends FIN; the server&#39;s kernel acknowledges it, and the states become FIN_WAIT2 and CLOSE_WAIT. The server&#39;s read returns 0, it writes a reply that crosses to the client, and it drops its socket, which sends FIN. The server goes through LAST_ACK to gone, and the client acknowledges and enters TIME_WAIT, where a 60-second clock runs after the client drops its socket. In a second run the server never drops its sockets: five clients connect and close, each leaves a FIN_WAIT2 on the client side and a CLOSE_WAIT on the server, and the server&#39;s count of open descriptors climbs toward its limit."></video>
+<figcaption><b>Animation 27.1</b> Each side's <code>FIN</code> closes one direction. A server that never closes leaves every connection in <code>CLOSE_WAIT</code>, holding a descriptor.</figcaption>
+</figure>
+<h2 id="272-time_wait"><a class="header" href="#272-time_wait">27.2 <code>TIME_WAIT</code></a></h2>
+<p>The side that closes first waits in <code>TIME_WAIT</code> before the kernel forgets the connection. The wait covers
+two failures:</p>
+<ul>
+<li><strong>A lost final <code>ACK</code>.</strong> If the last <code>ACK</code> is lost, the peer, still in <code>LAST_ACK</code>, sends its <code>FIN</code> again.
+A side in <code>TIME_WAIT</code> still knows the connection and answers with another <code>ACK</code>. A side that had forgotten it would answer with a reset. The peer would then report an error for a connection that closed cleanly.</li>
+<li><strong>Old segments.</strong> A segment from the old connection can arrive late, delayed in some router. Suppose a new connection with the same four values, both addresses and both ports, exists by then. The old segment could be taken as part of the new stream. <code>TIME_WAIT</code> keeps those four values reserved until such segments have
+expired.</li>
+</ul>
+<p>The TCP standard sets the wait to twice the maximum segment lifetime. Linux fixes it at 60 seconds.</p>
+<h3 id="2721-the-cost-ports-on-a-busy-client"><a class="header" href="#2721-the-cost-ports-on-a-busy-client">27.2.1 The cost: ports on a busy client</a></h3>
+<p>A socket in <code>TIME_WAIT</code> holds a few hundred bytes of kernel memory, which is cheap. The scarce resource is
+the four values it reserves. A client uses a new local port for each connection to a server. The kernel picks it from the <strong>ephemeral port range</strong>: 32768 to 60999 on Linux, which is 28,232 ports. If
+the client closes first, each port stays in <code>TIME_WAIT</code> for 60 seconds. The client can then open about 470 new connections per second to one server address and port. Beyond that, <code>connect</code> fails with <code>EADDRNOTAVAIL</code>.</p>
+<p>Three fixes are common:</p>
+<ul>
+<li><strong>Reuse connections.</strong> An HTTP client that keeps connections alive, or a connection pool, as in chapter
+29, makes few connections and few closes.</li>
+<li><strong>Let the server close first.</strong> Then <code>TIME_WAIT</code> lands on the server. All its connections share its one port, so the entries use up nothing.</li>
+<li><strong><code>net.ipv4.tcp_tw_reuse</code>.</strong> This Linux setting lets an outgoing connection reuse a port in <code>TIME_WAIT</code>
+when TCP timestamps prove its segments are newer.</li>
+</ul>
+<h3 id="2722-binding-a-port-with-connections-in-time_wait"><a class="header" href="#2722-binding-a-port-with-connections-in-time_wait">27.2.2 Binding a port with connections in <code>TIME_WAIT</code></a></h3>
+<p>A server that closes first collects <code>TIME_WAIT</code> entries on its own port. If it restarts within a minute,
+its new listening socket asks for a port that those entries still use. By default, <code>bind</code> refuses.
+<strong><code>SO_REUSEADDR</code></strong> allows the bind as long as no socket on the port is listening. Rust’s <code>TcpListener::bind</code>
+sets it on Unix, so the program uses raw calls to bind both ways:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn socket(domain: c_int, ty: c_int, protocol: c_int) -&gt; c_int; // AF_INET, SOCK_STREAM, 0
+    fn setsockopt(
+        fd: c_int,
+        level: c_int,          // SOL_SOCKET
+        name: c_int,           // SO_REUSEADDR
+        value: *const c_void,  // points at the option's value, a c_int here
+        len: socklen_t,        // its size in bytes
+    ) -&gt; c_int;
+    fn bind(fd: c_int, addr: *const sockaddr, len: socklen_t) -&gt; c_int;
+}</code></pre>
+<p><code>sockaddr</code> is a generic address type. An IPv4 address is a <code>sockaddr_in</code>, passed as a pointer to <code>sockaddr</code>
+with its own size:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// Bind a listening socket to `port` on loopback with raw calls, setting
+    /// `SO_REUSEADDR` only if `reuse` is true. `TcpListener::bind` always sets it.
+    pub fn bind_raw(port: u16, reuse: bool) -&gt; io::Result&lt;OwnedFd&gt; {
+        // SAFETY: socket takes no pointers, and the result is checked.
+        let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0) };
+        if fd &lt; 0 {
+            return Err(io::Error::last_os_error());
+        }
+        // SAFETY: the descriptor was just created, and nothing else owns it.
+        let socket = unsafe { OwnedFd::from_raw_fd(fd) };
+
+        let enable: libc::c_int = 1;
+        let address = SocketAddrV4::new([127, 0, 0, 1].into(), port);
+        // SAFETY: sockaddr_in is plain data, and all zeros is a valid value.
+        let mut raw: libc::sockaddr_in = unsafe { mem::zeroed() };
+        raw.sin_family = libc::AF_INET as libc::sa_family_t;
+        raw.sin_port = address.port().to_be();
+        raw.sin_addr.s_addr = u32::from_ne_bytes(address.ip().octets());
+
+        // SAFETY: the option value and the address are valid for the lengths
+        // passed, and outlive both calls.
+        let result = unsafe {
+            if reuse {
+                libc::setsockopt(
+                    fd,
+                    libc::SOL_SOCKET,
+                    libc::SO_REUSEADDR,
+                    (&amp;enable as *const libc::c_int).cast(),
+                    mem::size_of::&lt;libc::c_int&gt;() as libc::socklen_t,
+                );
+            }
+            libc::bind(
+                fd,
+                (&amp;raw as *const libc::sockaddr_in).cast(),
+                mem::size_of::&lt;libc::sockaddr_in&gt;() as libc::socklen_t,
+            )
+        };
+        if result &lt; 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(socket)
+    }
+    // ...
+}</code></pre>
+<p>The third scene closes one connection server-first, drops the listener, and binds the port again:</p>
+<pre><code class="language-text">3. TIME_WAIT on the server's port, and binding it again
+
+  server closed first, then the client: {"TIME_WAIT": 1}
+  bind port again, SO_REUSEADDR false: Address already in use (os error 98)
+  bind port again, SO_REUSEADDR true : bound
+</code></pre>
+<p>One socket in <code>TIME_WAIT</code> was enough to stop a plain <code>bind</code>.</p>
+<h2 id="273-close_wait"><a class="header" href="#273-close_wait">27.3 <code>CLOSE_WAIT</code></a></h2>
+<p>The side that receives the first <code>FIN</code> moves to <code>CLOSE_WAIT</code>, and stays there until its own program
+closes the socket. The kernel cannot leave <code>CLOSE_WAIT</code> on its own. Only the program knows whether it still
+wants to send.</p>
+<p>A server that never closes a connection after the client has gone leaves it in <code>CLOSE_WAIT</code> for as long as
+the server runs. Each such connection holds a descriptor. The usual causes are a handler that ignores a <code>read</code> of 0, and a connection kept in a map that nothing removes. A reference cycle that keeps a socket’s owner alive does the same.</p>
+<p><code>leaky_server</code> keeps every accepted socket in a <code>Vec</code>, while each client connects and closes at once:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// A server that accepts `clients` connections and never closes them,
+    /// while each client connects and closes at once. Returns the listener's
+    /// port and the accepted sockets, still open.
+    pub fn leaky_server(clients: usize) -&gt; io::Result&lt;(u16, Vec&lt;TcpStream&gt;)&gt; {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let port = listener.local_addr()?.port();
+        let mut kept = Vec::new();
+        for _ in 0..clients {
+            let (client, server) = connected(&amp;listener)?;
+            drop(client);
+            kept.push(server);
+        }
+        thread::sleep(SETTLE);
+        Ok((port, kept))
+    }
+    // ...
+}</code></pre>
+<pre><code class="language-text">2. A server that never closes what clients closed
+
+  while the server keeps 5 sockets: {"CLOSE_WAIT": 5, "FIN_WAIT2": 5}
+  after the server drops them:      {"TIME_WAIT": 5}
+</code></pre>
+<p>Five connections waited at the halfway point of figure 27.1. The clients were in <code>FIN_WAIT2</code>, waiting for a <code>FIN</code>, and the server in <code>CLOSE_WAIT</code>, waiting for itself. When the server dropped the <code>Vec</code>, it sent five
+<code>FIN</code>s, and the clients’ sides moved to <code>TIME_WAIT</code>. The clients had already closed their descriptors.
+Linux keeps such an orphaned <code>FIN_WAIT2</code> socket for 60 seconds (<code>tcp_fin_timeout</code>), then drops it.</p>
+<p>In production, <code>ss -tan state close-wait</code> lists the <code>CLOSE_WAIT</code> sockets of every process. A count that only grows is a leak in the program that owns them. It ends in <code>EMFILE</code>, “Too many open files”, as in section 24.1.</p>
+<h2 id="274-reset-instead-of-fin"><a class="header" href="#274-reset-instead-of-fin">27.4 Reset instead of <code>FIN</code></a></h2>
+<p>A socket that is closed while its receive buffer still holds unread bytes does not send <code>FIN</code>. The kernel
+sends a <strong>reset</strong> (<code>RST</code>) instead, which tells the peer that data was thrown away. The peer’s next <code>read</code>
+fails with <code>ECONNRESET</code>, and any bytes the peer had not yet read from its own buffer are discarded.</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// The client writes bytes the server never reads, then the server closes.
+    /// Returns what the client's next read reports.
+    pub fn close_with_unread_data() -&gt; io::Result&lt;io::Result&lt;usize&gt;&gt; {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let (mut client, server) = connected(&amp;listener)?;
+        client.write_all(b"a request the server never reads")?;
+        thread::sleep(SETTLE);
+        drop(server);
+        thread::sleep(SETTLE);
+        Ok(client.read(&amp;mut [0; 64]))
+    }
+}</code></pre>
+<pre><code class="language-text">4. Closing with unread data
+
+  client read failed: Connection reset by peer (os error 104)
+</code></pre>
+<p>This bites HTTP servers. Suppose a server sends an error response and closes before reading the whole request body. The reset can arrive while the response is still on its way. The client then reports a reset
+instead of the response. Servers avoid it with a <strong>lingering close</strong>. After the response they call <code>shutdown(Write)</code>, read and discard the rest of the request for a short time, then close.</p>
+<p>A program can also ask for a reset on purpose, by setting <code>SO_LINGER</code> with a timeout of 0 before closing.
+The connection skips <code>TIME_WAIT</code>, and the peer gets <code>ECONNRESET</code>. Load balancers use it to drop connections
+quickly. It also discards any unsent data, so it is a poor default.</p>
+<h2 id="275-the-complete-program"><a class="header" href="#275-the-complete-program">27.5 The complete program</a></h2>
+<p class="listing"><b>Listing 27.1</b> The states of a closing connection, read from <code>/proc/net/tcp</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tcp_close.rs">src/bin/tcp_close.rs</a></p>
+
+<pre><code class="language-rust">//! Closing a TCP connection: the states each side passes through, `TIME_WAIT`
+//! on the side that closes first, the `CLOSE_WAIT` sockets a server keeps when
+//! it never closes, and the reset that replaces `FIN` when data goes unread.
+//!
+//! Linux only: the states are read from /proc/net/tcp.
+//! Run with: cargo run --bin tcp_close
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        collections::BTreeMap,
+        fs,
+        io::{self, Read, Write},
+        mem,
+        net::{SocketAddr, SocketAddrV4, TcpListener, TcpStream},
+        os::fd::{FromRawFd, OwnedFd},
+        thread,
+        time::Duration,
+    };
+
+    /// Long enough for loopback segments to be sent, received, and acknowledged.
+    pub const SETTLE: Duration = Duration::from_millis(50);
+
+    /// One line of /proc/net/tcp: local port, remote port, and state.
+    struct Entry {
+        local: u16,
+        remote: u16,
+        state: &amp;'static str,
+    }
+
+    /// The name of a TCP state, from the number Linux prints for it.
+    fn state_name(code: u8) -&gt; &amp;'static str {
+        match code {
+            0x01 =&gt; "ESTABLISHED",
+            0x02 =&gt; "SYN_SENT",
+            0x03 =&gt; "SYN_RECV",
+            0x04 =&gt; "FIN_WAIT1",
+            0x05 =&gt; "FIN_WAIT2",
+            0x06 =&gt; "TIME_WAIT",
+            0x07 =&gt; "CLOSE",
+            0x08 =&gt; "CLOSE_WAIT",
+            0x09 =&gt; "LAST_ACK",
+            0x0A =&gt; "LISTEN",
+            0x0B =&gt; "CLOSING",
+            _ =&gt; "UNKNOWN",
+        }
+    }
+
+    /// The port in an address written as `0100007F:1F90`.
+    fn port_of(field: &amp;str) -&gt; Option&lt;u16&gt; {
+        let (_, port) = field.split_once(':')?;
+        u16::from_str_radix(port, 16).ok()
+    }
+
+    /// Every IPv4 TCP socket the kernel knows about.
+    fn entries() -&gt; io::Result&lt;Vec&lt;Entry&gt;&gt; {
+        let table = fs::read_to_string("/proc/net/tcp")?;
+        Ok(table
+            .lines()
+            .skip(1)
+            .filter_map(|line| {
+                let fields: Vec&lt;&amp;str&gt; = line.split_whitespace().collect();
+                Some(Entry {
+                    local: port_of(fields.get(1)?)?,
+                    remote: port_of(fields.get(2)?)?,
+                    state: state_name(u8::from_str_radix(fields.get(3)?, 16).ok()?),
+                })
+            })
+            .collect())
+    }
+
+    /// The state of the socket whose local and remote ports are `local` and
+    /// `remote`, or "gone" if the kernel has forgotten it.
+    pub fn state(local: SocketAddr, remote: SocketAddr) -&gt; io::Result&lt;&amp;'static str&gt; {
+        Ok(entries()?
+            .into_iter()
+            .find(|entry| entry.local == local.port() &amp;&amp; entry.remote == remote.port())
+            .map_or("gone", |entry| entry.state))
+    }
+
+    /// How many sockets on the server's `port` are in each state, counting
+    /// both the server's side and the clients' side of each connection.
+    pub fn census(port: u16) -&gt; io::Result&lt;BTreeMap&lt;&amp;'static str, usize&gt;&gt; {
+        let mut counts = BTreeMap::new();
+        for entry in entries()? {
+            if entry.state != "LISTEN" &amp;&amp; (entry.local == port || entry.remote == port) {
+                *counts.entry(entry.state).or_insert(0) += 1;
+            }
+        }
+        Ok(counts)
+    }
+
+    /// A connected pair over loopback: (client, server's accepted socket).
+    pub fn connected(listener: &amp;TcpListener) -&gt; io::Result&lt;(TcpStream, TcpStream)&gt; {
+        let client = TcpStream::connect(listener.local_addr()?)?;
+        let (server, _) = listener.accept()?;
+        Ok((client, server))
+    }
+
+    /// Bind a listening socket to `port` on loopback with raw calls, setting
+    /// `SO_REUSEADDR` only if `reuse` is true. `TcpListener::bind` always sets it.
+    pub fn bind_raw(port: u16, reuse: bool) -&gt; io::Result&lt;OwnedFd&gt; {
+        // SAFETY: socket takes no pointers, and the result is checked.
+        let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0) };
+        if fd &lt; 0 {
+            return Err(io::Error::last_os_error());
+        }
+        // SAFETY: the descriptor was just created, and nothing else owns it.
+        let socket = unsafe { OwnedFd::from_raw_fd(fd) };
+
+        let enable: libc::c_int = 1;
+        let address = SocketAddrV4::new([127, 0, 0, 1].into(), port);
+        // SAFETY: sockaddr_in is plain data, and all zeros is a valid value.
+        let mut raw: libc::sockaddr_in = unsafe { mem::zeroed() };
+        raw.sin_family = libc::AF_INET as libc::sa_family_t;
+        raw.sin_port = address.port().to_be();
+        raw.sin_addr.s_addr = u32::from_ne_bytes(address.ip().octets());
+
+        // SAFETY: the option value and the address are valid for the lengths
+        // passed, and outlive both calls.
+        let result = unsafe {
+            if reuse {
+                libc::setsockopt(
+                    fd,
+                    libc::SOL_SOCKET,
+                    libc::SO_REUSEADDR,
+                    (&amp;enable as *const libc::c_int).cast(),
+                    mem::size_of::&lt;libc::c_int&gt;() as libc::socklen_t,
+                );
+            }
+            libc::bind(
+                fd,
+                (&amp;raw as *const libc::sockaddr_in).cast(),
+                mem::size_of::&lt;libc::sockaddr_in&gt;() as libc::socklen_t,
+            )
+        };
+        if result &lt; 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(socket)
+    }
+
+    /// A server that accepts `clients` connections and never closes them,
+    /// while each client connects and closes at once. Returns the listener's
+    /// port and the accepted sockets, still open.
+    pub fn leaky_server(clients: usize) -&gt; io::Result&lt;(u16, Vec&lt;TcpStream&gt;)&gt; {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let port = listener.local_addr()?.port();
+        let mut kept = Vec::new();
+        for _ in 0..clients {
+            let (client, server) = connected(&amp;listener)?;
+            drop(client);
+            kept.push(server);
+        }
+        thread::sleep(SETTLE);
+        Ok((port, kept))
+    }
+
+    /// The client writes bytes the server never reads, then the server closes.
+    /// Returns what the client's next read reports.
+    pub fn close_with_unread_data() -&gt; io::Result&lt;io::Result&lt;usize&gt;&gt; {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let (mut client, server) = connected(&amp;listener)?;
+        client.write_all(b"a request the server never reads")?;
+        thread::sleep(SETTLE);
+        drop(server);
+        thread::sleep(SETTLE);
+        Ok(client.read(&amp;mut [0; 64]))
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn main() -&gt; std::io::Result&lt;()&gt; {
+    use std::{
+        io::{Read, Write},
+        net::{Shutdown, TcpListener},
+        thread,
+    };
+
+    use linux::{SETTLE, census, connected, state};
+
+    println!("1. An orderly close, client first, with a half-close\n");
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let (mut client, mut server) = connected(&amp;listener)?;
+    let (c, s) = (client.local_addr()?, server.local_addr()?);
+    let show = |step: &amp;str| -&gt; std::io::Result&lt;()&gt; {
+        thread::sleep(SETTLE);
+        println!("  {step:&lt;38} {:&lt;12} {}", state(c, s)?, state(s, c)?);
+        Ok(())
+    };
+    println!("  {:&lt;38} {:&lt;12} server", "step", "client");
+    show("connected")?;
+    client.shutdown(Shutdown::Write)?;
+    show("client shutdown(Write): FIN sent")?;
+    let mut request = Vec::new();
+    server.read_to_end(&amp;mut request)?;
+    server.write_all(b"reply")?;
+    show("server read to end, wrote a reply")?;
+    drop(server);
+    show("server dropped its socket: FIN sent")?;
+    let mut reply = String::new();
+    client.read_to_string(&amp;mut reply)?;
+    drop(client);
+    show("client read the reply, dropped")?;
+
+    println!("\n2. A server that never closes what clients closed\n");
+    let (port, kept) = linux::leaky_server(5)?;
+    println!("  while the server keeps 5 sockets: {:?}", census(port)?);
+    drop(kept);
+    thread::sleep(SETTLE);
+    println!("  after the server drops them:      {:?}", census(port)?);
+
+    println!("\n3. TIME_WAIT on the server's port, and binding it again\n");
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let port = listener.local_addr()?.port();
+    let (client, server) = connected(&amp;listener)?;
+    drop(server);
+    thread::sleep(SETTLE);
+    drop(client);
+    drop(listener);
+    thread::sleep(SETTLE);
+    println!(
+        "  server closed first, then the client: {:?}",
+        census(port)?
+    );
+    for reuse in [false, true] {
+        let outcome = match linux::bind_raw(port, reuse) {
+            Ok(_) =&gt; "bound".to_string(),
+            Err(error) =&gt; error.to_string(),
+        };
+        println!("  bind port again, SO_REUSEADDR {reuse:&lt;5}: {outcome}");
+    }
+
+    println!("\n4. Closing with unread data\n");
+    match linux::close_with_unread_data()? {
+        Ok(read) =&gt; println!("  client read returned {read}"),
+        Err(error) =&gt; println!("  client read failed: {error}"),
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("tcp_close reads TCP states from Linux's /proc/net/tcp; run it on Linux");
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use std::{io::ErrorKind, net::TcpListener, thread};
+
+    use super::linux::*;
+
+    #[test]
+    fn the_side_that_closes_first_holds_time_wait() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let (client, server) = connected(&amp;listener).expect("connect");
+        let (c, s) = (client.local_addr().unwrap(), server.local_addr().unwrap());
+        drop(server);
+        thread::sleep(SETTLE);
+        drop(client);
+        thread::sleep(SETTLE);
+        assert_eq!(state(s, c).expect("state"), "TIME_WAIT");
+        assert_eq!(state(c, s).expect("state"), "gone");
+    }
+
+    #[test]
+    fn a_server_that_never_closes_holds_close_wait() {
+        let (port, _kept) = leaky_server(3).expect("server");
+        assert_eq!(
+            census(port)
+                .expect("census")
+                .get("CLOSE_WAIT"),
+            Some(&amp;3)
+        );
+    }
+
+    #[test]
+    fn unread_data_turns_close_into_reset() {
+        let error = close_with_unread_data()
+            .expect("setup")
+            .expect_err("read should fail");
+        assert_eq!(error.kind(), ErrorKind::ConnectionReset);
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin tcp_close
+1. An orderly close, client first, with a half-close
+
+  step                                   client       server
+  connected                              ESTABLISHED  ESTABLISHED
+  client shutdown(Write): FIN sent       FIN_WAIT2    CLOSE_WAIT
+  server read to end, wrote a reply      FIN_WAIT2    CLOSE_WAIT
+  server dropped its socket: FIN sent    TIME_WAIT    gone
+  client read the reply, dropped         TIME_WAIT    gone
+
+2. A server that never closes what clients closed
+
+  while the server keeps 5 sockets: {"CLOSE_WAIT": 5, "FIN_WAIT2": 5}
+  after the server drops them:      {"TIME_WAIT": 5}
+
+3. TIME_WAIT on the server's port, and binding it again
+
+  server closed first, then the client: {"TIME_WAIT": 1}
+  bind port again, SO_REUSEADDR false: Address already in use (os error 98)
+  bind port again, SO_REUSEADDR true : bound
+
+4. Closing with unread data
+
+  client read failed: Connection reset by peer (os error 104)
+</code></pre>
+<h2 id="276-questions-that-come-up"><a class="header" href="#276-questions-that-come-up">27.6 Questions that come up</a></h2>
+<p><strong>“A server has 30,000 sockets in <code>TIME_WAIT</code>. Is that a problem?”</strong>
+Usually not on the server. They share the server’s port and cost little memory. It is a problem on a
+client, where each one holds an ephemeral port to the same destination.</p>
+<p><strong>“A server has 3,000 sockets in <code>CLOSE_WAIT</code> and the number keeps rising. What happened?”</strong>
+The clients closed, and the server never closed its side. Look for a code path that returns without
+dropping the connection, or a collection that keeps connections after they end.</p>
+<p><strong>“Why not shorten <code>TIME_WAIT</code>?”</strong>
+Linux has no setting for it: the 60 seconds is a constant in the kernel. Reusing connections removes the need, and <code>tcp_tw_reuse</code> covers the outgoing case safely.</p>
+<p><strong>“What is the difference between <code>shutdown(Write)</code> and <code>close</code>?”</strong>
+<code>shutdown(Write)</code> sends <code>FIN</code> and keeps the socket open for reading. <code>close</code> releases the descriptor. If no
+other descriptor refers to the socket, the kernel sends <code>FIN</code>, or a reset if unread data remains.</p>
+<p><strong>“Both sides send <code>FIN</code> at the same moment. What happens?”</strong>
+Both go from <code>FIN_WAIT1</code> to <code>CLOSING</code>, a state for this simultaneous close, then both to <code>TIME_WAIT</code>.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Each direction of a connection closes with its own <code>FIN</code> and <code>ACK</code>, four segments in all.</li>
+<li>The side that closes first passes through <code>FIN_WAIT1</code>, <code>FIN_WAIT2</code>, and <code>TIME_WAIT</code>. The other passes
+through <code>CLOSE_WAIT</code> and <code>LAST_ACK</code>.</li>
+<li><code>TIME_WAIT</code> lasts 60 seconds on Linux. It answers a retransmitted <code>FIN</code> and keeps late segments out of a
+new connection with the same addresses and ports.</li>
+<li>On a client, <code>TIME_WAIT</code> holds ephemeral ports: about 470 new connections per second to one server.
+Reusing connections is the fix.</li>
+<li><code>SO_REUSEADDR</code> lets a server bind a port that has connections in <code>TIME_WAIT</code>. <code>TcpListener::bind</code> sets it.</li>
+<li><code>CLOSE_WAIT</code> lasts until the program closes the socket. A growing count is a leak of descriptors.</li>
+<li>Closing with unread data sends a reset, and the peer’s <code>read</code> fails with <code>ECONNRESET</code>.</li>
+</ul>
+</div>
+
+<p>Chapter 28 adds encryption to a connection. It runs TLS with <code>rustls</code>, checks the server’s certificate,
+and then has the server check a certificate from the client.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Add <code>thread::sleep(Duration::from_secs(61))</code> at the end of the first scene and print the client’s state
+again. What does it show?</li>
+<li>Change <code>leaky_server</code> so the server closes first and the clients never do. Which side holds <code>FIN_WAIT2</code>,
+which holds <code>CLOSE_WAIT</code>, and which ends up in <code>TIME_WAIT</code>?</li>
+<li>Open 1,000 connections to one listener in a loop, closing each from the client side, and print the
+<code>census</code> afterwards. Then make the server close first and compare.</li>
+<li>In <code>close_with_unread_data</code>, read the client’s bytes on the server before dropping it. What does the
+client’s <code>read</code> return now?</li>
+<li>Set <code>SO_LINGER</code> to <code>{ l_onoff: 1, l_linger: 0 }</code> on the server’s socket with <code>libc::setsockopt</code> before
+dropping it in the first scene. Which states disappear, and what does the client’s <code>read</code> report?</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch26-futex.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch28-tls.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch26-futex.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch28-tls.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,1011 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>TLS and mutual TLS - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-0ec47a42.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch28.png" alt="Seal, the robot who is the notary of the certificate desk, beside a press that stamps a wax seal onto a certificate, and a padlocked pipe carrying records">
+<h1 id="tls-and-mutual-tls"><a class="header" href="#tls-and-mutual-tls">TLS and mutual TLS</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What TLS adds to a TCP connection: secrecy, integrity, and proof of who the server is</li>
+<li>Certificates, certificate authorities, and the three checks a client makes</li>
+<li>The TLS 1.3 handshake, and the records it puts on the wire, read byte by byte</li>
+<li>A client and server on <code>rustls</code>, with certificates made at startup by <code>rcgen</code></li>
+<li>The errors a client reports for a wrong name and for an unknown authority</li>
+<li>Mutual TLS, where the server checks a certificate from the client</li>
+</ul>
+</div>
+
+<p>The connections in chapters 20 to 27 sent their bytes as they were. Every router between the two machines
+could read them, and could change them without either side noticing. <strong>TLS</strong>, Transport Layer Security,
+runs on top of TCP and fixes three things. The bytes are encrypted, so others cannot read them. Each record
+carries a tag, so a changed byte is detected. And the server proves who it is with a certificate, so the
+client knows it is not talking to an impostor.</p>
+<p>This chapter runs TLS with the <code>rustls</code> crate. The program, <code>tls_mtls</code>, makes its own certificate authority
+and certificates when it starts, runs five connections over loopback, and prints what each side reports.</p>
+<h2 id="281-certificates-and-trust"><a class="header" href="#281-certificates-and-trust">28.1 Certificates and trust</a></h2>
+<p>TLS identifies a server with <strong>public-key cryptography</strong>. A key pair is two numbers: a private key that the
+owner keeps secret, and a public key that anyone may have. A <strong>signature</strong> made with the private key can be
+checked with the public key. Only the holder of the private key can make a signature that checks out.</p>
+<p>A <strong>certificate</strong> is a signed statement: “this public key belongs to <code>localhost</code>, from this date to that
+date”. The signer is a <strong>certificate authority</strong> (CA). A client keeps a <strong>trust store</strong>, a list of CA
+certificates it accepts. When a server presents its certificate, the client makes three checks (figure 28.1):</p>
+<ol>
+<li><strong>The signature.</strong> The certificate is signed by a CA in the trust store, possibly through intermediate
+certificates that the server also sends.</li>
+<li><strong>The dates.</strong> The current time is inside the certificate’s validity period.</li>
+<li><strong>The name.</strong> One of the names in the certificate matches the name the client connected to.</li>
+</ol>
+<p>A certificate is public, so anyone can present one. During the handshake, the server also signs data from
+that handshake with its private key. That signature proves the server holds the key that matches the
+certificate.</p>
+<figure>
+<img src="figures/ch28-trust.svg" alt="The lab CA, self-signed, signs a certificate for localhost holding the server&#39;s public key, and a certificate for billing holding the client&#39;s public key. The client&#39;s trust store holds the lab CA and checks the server certificate&#39;s signature, dates, and name. The server&#39;s trust store, used only for mutual TLS, holds the lab CA and checks the client certificate&#39;s signature and dates.">
+<figcaption><b>Figure 28.1</b> One CA signs both certificates. Each side trusts the CA, and so trusts what it signed.</figcaption>
+</figure>
+<p>On the public internet, trust stores hold a few hundred commercial CAs, and browsers ship them. Inside a
+company, services often trust a private CA of their own, as this program does.</p>
+<h3 id="2811-making-the-certificates"><a class="header" href="#2811-making-the-certificates">28.1.1 Making the certificates</a></h3>
+<p><code>rcgen</code> creates key pairs and certificates in memory. <code>Pki</code> makes a CA, then has it sign one certificate
+for the server and one for the client:</p>
+<pre><code class="language-rust">use std::{
+    io::{self, Read, Write},
+    net::{TcpListener, TcpStream},
+    sync::{Arc, Mutex},
+    thread,
+};
+
+use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, KeyPair};
+use rustls::{
+    ClientConfig,
+    ClientConnection,
+    RootCertStore,
+    ServerConfig,
+    ServerConnection,
+    StreamOwned,
+    crypto::{CryptoProvider, ring},
+    pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName},
+    server::WebPkiClientVerifier,
+};
+
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+/// A certificate and the private key that goes with it.
+struct Identity {
+    cert: CertificateDer&lt;'static&gt;,
+    key: PrivatePkcs8KeyDer&lt;'static&gt;,
+}
+
+impl Identity {
+    fn key(&amp;self) -&gt; PrivateKeyDer&lt;'static&gt; {
+        PrivateKeyDer::Pkcs8(self.key.clone_key())
+    }
+}
+
+/// A certificate authority, and certificates it signed for a server and a client.
+struct Pki {
+    ca: CertificateDer&lt;'static&gt;,
+    server: Identity,
+    client: Identity,
+}
+
+impl Pki {
+    fn new() -&gt; Result&lt;Self, Error&gt; {
+        let ca_key = KeyPair::generate()?;
+        let mut ca_params = CertificateParams::new(Vec::&lt;String&gt;::new())?;
+        ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        ca_params
+            .distinguished_name
+            .push(DnType::CommonName, "lab CA");
+        let ca = ca_params.self_signed(&amp;ca_key)?;
+
+        let issue = |name: &amp;str| -&gt; Result&lt;Identity, Error&gt; {
+            let key = KeyPair::generate()?;
+            let mut params = CertificateParams::new(vec![name.to_string()])?;
+            params
+                .distinguished_name
+                .push(DnType::CommonName, name);
+            let cert = params.signed_by(&amp;key, &amp;ca, &amp;ca_key)?;
+            Ok(Identity {
+                cert: cert.der().clone(),
+                key: PrivatePkcs8KeyDer::from(key.serialize_der()),
+            })
+        };
+        let server = issue("localhost")?;
+        let client = issue("billing")?;
+        Ok(Self {
+            ca: ca.der().clone(),
+            server,
+            client,
+        })
+    }
+
+    /// A trust store holding only this CA.
+    fn roots(&amp;self) -&gt; Result&lt;RootCertStore, Error&gt; {
+        let mut roots = RootCertStore::empty();
+        roots.add(self.ca.clone())?;
+        Ok(roots)
+    }
+}</code></pre>
+<p><code>IsCa::Ca</code> marks the first certificate as one that may sign others. <code>self_signed</code> signs it with its own key. A CA at the top of a chain vouches for itself. A client trusts it only if it is in the trust store.
+<code>CertificateParams::new</code> takes the names the certificate covers. <code>signed_by</code> signs the new certificate’s
+public key with the CA’s key. The private keys never leave the process. <code>roots</code> builds a trust store that
+holds only this CA.</p>
+<h2 id="282-the-tls-13-handshake"><a class="header" href="#282-the-tls-13-handshake">28.2 The TLS 1.3 handshake</a></h2>
+<p>Before any application bytes move, the two sides run a <strong>handshake</strong>. In TLS 1.3 it takes one round trip:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step</th><th>From</th><th>Messages</th><th>Encrypted</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>client</td><td><code>ClientHello</code>: cipher suites, a key share, and the server’s name (SNI)</td><td>no</td></tr>
+<tr><td>2</td><td>server</td><td><code>ServerHello</code>: the chosen suite and the server’s key share</td><td>no</td></tr>
+<tr><td>3</td><td>server</td><td><code>Certificate</code>, <code>CertificateVerify</code> (the signature), <code>Finished</code></td><td>yes</td></tr>
+<tr><td>4</td><td>client</td><td><code>Finished</code></td><td>yes</td></tr>
+</tbody>
+</table>
+</div>
+<p>After step 2, each side combines its own secret with the other’s key share, and both get the same keys. Anyone watching the wire cannot compute them. This is an elliptic-curve Diffie-Hellman exchange. Everything after
+<code>ServerHello</code> is encrypted with those keys, including the server’s certificate. The client checks the
+certificate and the signature in step 3 before it sends step 4. The client’s first application bytes can
+travel with its <code>Finished</code>.</p>
+<p>TLS sends everything in <strong>records</strong>. Each record starts with a 5-byte header: a content type (22 for
+handshake, 23 for application data), a version, and a 2-byte length.</p>
+<h3 id="2821-watching-the-wire"><a class="header" href="#2821-watching-the-wire">28.2.1 Watching the wire</a></h3>
+<p>To see the records, the client’s socket is wrapped in <code>Tap</code>, which keeps a copy of every byte written.
+<code>records</code> walks the copy, one header at a time:</p>
+<pre><code class="language-rust">/// A TCP stream that keeps a copy of every byte it sends.
+struct Tap {
+    stream: TcpStream,
+    sent: Arc&lt;Mutex&lt;Vec&lt;u8&gt;&gt;&gt;,
+}
+
+impl Read for Tap {
+    fn read(&amp;mut self, buffer: &amp;mut [u8]) -&gt; io::Result&lt;usize&gt; {
+        self.stream.read(buffer)
+    }
+}
+
+impl Write for Tap {
+    fn write(&amp;mut self, buffer: &amp;[u8]) -&gt; io::Result&lt;usize&gt; {
+        let written = self.stream.write(buffer)?;
+        self.sent
+            .lock()
+            .expect("tap lock")
+            .extend_from_slice(&amp;buffer[..written]);
+        Ok(written)
+    }
+
+    fn flush(&amp;mut self) -&gt; io::Result&lt;()&gt; {
+        self.stream.flush()
+    }
+}
+
+/// The TLS records in a byte stream, as (content type, length) pairs.
+fn records(mut bytes: &amp;[u8]) -&gt; Vec&lt;(&amp;'static str, usize)&gt; {
+    let mut found = Vec::new();
+    while let [kind, _, _, high, low, rest @ ..] = bytes {
+        let length = usize::from(*high) &lt;&lt; 8 | usize::from(*low);
+        let name = match kind {
+            20 =&gt; "change_cipher_spec",
+            21 =&gt; "alert",
+            22 =&gt; "handshake",
+            23 =&gt; "application_data",
+            _ =&gt; "unknown",
+        };
+        found.push((name, length));
+        bytes = rest.get(length..).unwrap_or_default();
+    }
+    found
+}</code></pre>
+<p>The slice pattern <code>[kind, _, _, high, low, rest @ ..]</code> matches only while at least five bytes remain, and
+names the parts of the header. <code>rest.get(length..)</code> skips the record’s body, and returns <code>None</code> if the body
+is cut short, which ends the loop.</p>
+<h3 id="2822-a-client-and-a-server"><a class="header" href="#2822-a-client-and-a-server">28.2.2 A client and a server</a></h3>
+<p><code>rustls</code> keeps TLS separate from I/O. A <code>ClientConnection</code> or <code>ServerConnection</code> holds the TLS state, and
+<code>StreamOwned</code> joins it to any type that implements <code>Read</code> and <code>Write</code>. The handshake runs inside the first
+<code>read</code> or <code>write</code>.</p>
+<p>The configurations are built in steps. Both name the crypto provider, <code>ring</code>, explicitly. The server gives
+its certificate and key, and the client gives its trust store:</p>
+<pre><code class="language-rust">fn main() -&gt; Result&lt;(), Error&gt; {
+    let pki = Pki::new()?;
+    let server_only = || -&gt; Result&lt;ServerConfig, Error&gt; {
+        Ok(ServerConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()?
+            .with_no_client_auth()
+            .with_single_cert(vec![pki.server.cert.clone()], pki.server.key())?)
+    };
+    let client_trusting = |roots: RootCertStore| -&gt; Result&lt;ClientConfig, Error&gt; {
+        Ok(ClientConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()?
+            .with_root_certificates(roots)
+            .with_no_client_auth())
+    };
+    // ...
+}</code></pre>
+<p><code>with_safe_default_protocol_versions</code> allows TLS 1.3 and 1.2. <code>with_no_client_auth</code> means the server asks
+for no client certificate, and the client offers none.</p>
+<p>The server accepts one connection and answers one message in capitals:</p>
+<pre><code class="language-rust">/// Accept one connection, and answer one message in capitals. Returns what
+/// the server learned about the client, or the error that ended the handshake.
+fn serve_once(listener: TcpListener, config: Arc&lt;ServerConfig&gt;) -&gt; thread::JoinHandle&lt;String&gt; {
+    thread::spawn(move || {
+        let outcome = || -&gt; Result&lt;String, Error&gt; {
+            let (stream, _) = listener.accept()?;
+            let mut tls = StreamOwned::new(ServerConnection::new(config)?, stream);
+            let mut message = [0; 64];
+            let read = tls.read(&amp;mut message)?;
+            tls.write_all(&amp;message[..read].to_ascii_uppercase())?;
+            tls.conn.send_close_notify();
+            tls.flush()?;
+            Ok(match tls.conn.peer_certificates() {
+                Some(chain) =&gt; format!("client presented {} verified certificate", chain.len()),
+                None =&gt; "client presented no certificate".to_string(),
+            })
+        };
+        outcome().unwrap_or_else(|error| format!("handshake failed: {error}"))
+    })
+}</code></pre>
+<p><code>send_close_notify</code> queues a closing alert, which tells the client that the stream ended on purpose. TLS
+needs it because an attacker can cut a TCP connection at any point. Without the alert, the client could not
+tell a complete reply from a truncated one, and <code>rustls</code> reports that case as an error.</p>
+<p>The client connects through the tap, sends <code>hello over tls</code>, and reads the reply:</p>
+<pre><code class="language-rust">/// What one client connection saw.
+struct Session {
+    version: String,
+    suite: String,
+    reply: String,
+    sent: Vec&lt;u8&gt;,
+}
+
+/// Connect to `listener` with `config`, expecting the server to be `name`,
+/// send one message, and read the reply.
+fn connect(listener: &amp;TcpListener, config: ClientConfig, name: &amp;str) -&gt; Result&lt;Session, Error&gt; {
+    let sent = Arc::new(Mutex::new(Vec::new()));
+    let tap = Tap {
+        stream: TcpStream::connect(listener.local_addr()?)?,
+        sent: Arc::clone(&amp;sent),
+    };
+    let name = ServerName::try_from(name.to_string())?;
+    let mut tls = StreamOwned::new(ClientConnection::new(Arc::new(config), name)?, tap);
+
+    tls.write_all(b"hello over tls")?;
+    let mut reply = String::new();
+    tls.read_to_string(&amp;mut reply)?;
+
+    Ok(Session {
+        version: format!(
+            "{:?}",
+            tls.conn
+                .protocol_version()
+                .ok_or("no version")?
+        ),
+        suite: format!(
+            "{:?}",
+            tls.conn
+                .negotiated_cipher_suite()
+                .ok_or("no suite")?
+                .suite()
+        ),
+        reply,
+        sent: sent.lock().expect("tap lock").clone(),
+    })
+}</code></pre>
+<p><code>ServerName</code> is the name the client expects. <code>rustls</code> sends it as SNI in the <code>ClientHello</code>, and checks the
+server’s certificate against it.</p>
+<p>Animation 28.1 follows this connection, then the mutual TLS connections of section 28.4.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch28-tls.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A client robot and a server robot joined by a wire. The client sends ClientHello with its key share and the name localhost. The server answers ServerHello with its key share, and both robots get the same key. Locked messages follow from the server: its certificate, signed by the lab CA; CertificateVerify, a signature with its private key; and Finished. The client checks the signature chain to its trust store, the dates, and that the name is localhost, then sends Finished, and its 14-byte message travels as a locked 31-byte record. In mutual TLS the server also sends CertificateRequest. A client with the billing certificate sends Certificate and CertificateVerify, and the server checks them against the lab CA. A client with no certificate sends an empty Certificate, and the server ends the handshake with the alert CertificateRequired." data-chapters="[[0.0, &quot;hello&quot;], [12.36, &quot;keys&quot;], [22.38, &quot;certificate&quot;], [37.86, &quot;data&quot;], [48.06, &quot;mutual&quot;], [67.38, &quot;no certificate&quot;]]"><img src="figures/ch28-tls.gif" alt="A client robot and a server robot joined by a wire. The client sends ClientHello with its key share and the name localhost. The server answers ServerHello with its key share, and both robots get the same key. Locked messages follow from the server: its certificate, signed by the lab CA; CertificateVerify, a signature with its private key; and Finished. The client checks the signature chain to its trust store, the dates, and that the name is localhost, then sends Finished, and its 14-byte message travels as a locked 31-byte record. In mutual TLS the server also sends CertificateRequest. A client with the billing certificate sends Certificate and CertificateVerify, and the server checks them against the lab CA. A client with no certificate sends an empty Certificate, and the server ends the handshake with the alert CertificateRequired."></video>
+<figcaption><b>Animation 28.1</b> One round trip sets up the keys, and everything after <code>ServerHello</code> is encrypted. In mutual TLS the server asks for a certificate, and refuses a client without one.</figcaption>
+</figure>
+<p><code>main</code> runs the scenes. The first is the plain case:</p>
+<pre><code class="language-text">1. The client checks the server's certificate
+  client: TLSv1_3 TLS13_AES_256_GCM_SHA384, reply "HELLO OVER TLS"
+  client sent records: [("handshake", 231), ("change_cipher_spec", 1), ("application_data", 69), ("application_data", 31)]
+  "hello" readable on the wire: false
+  server: client presented no certificate
+</code></pre>
+<p>The client sent four records:</p>
+<ul>
+<li><strong><code>handshake</code>, 231 bytes</strong>: the <code>ClientHello</code>, the only record the client sent in the clear.</li>
+<li><strong><code>change_cipher_spec</code>, 1 byte</strong>: a record TLS 1.3 does not use. It is sent so that old middleboxes,
+which expect TLS 1.2, let the connection through.</li>
+<li><strong><code>application_data</code>, 69 bytes</strong>: the client’s <code>Finished</code>. In TLS 1.3, encrypted handshake messages are
+labeled as application data, so an observer cannot tell them apart.</li>
+<li><strong><code>application_data</code>, 31 bytes</strong>: the 14 bytes of <code>hello over tls</code>, plus 1 byte for the real content type
+and a 16-byte tag that detects any change.</li>
+</ul>
+<p>The plaintext appears nowhere in what the client sent.</p>
+<h2 id="283-when-the-check-fails"><a class="header" href="#283-when-the-check-fails">28.3 When the check fails</a></h2>
+<p>The second and third scenes break one of the client’s checks each:</p>
+<pre><code class="language-text">2. The client expects a different name
+  client: invalid peer certificate: certificate not valid for name "billing.example"; certificate is only valid for DnsName("localhost")
+  server: handshake failed: unexpected end of file
+
+3. The client does not trust the CA
+  client: invalid peer certificate: UnknownIssuer
+  server: handshake failed: unexpected end of file
+</code></pre>
+<p>In both cases the client stopped in step 3 of the handshake and closed the connection, so the server saw
+the stream end. The certificate was valid in both. The client rejected it because it named a different
+server, or because nothing in the trust store had signed it.</p>
+<p>These checks are the whole of TLS’s protection against an impostor. Encryption to an unchecked server is
+encryption to whoever answered. <code>rustls</code> has no flag to turn the checks off. A program that wants to skip
+them must write its own <code>ServerCertVerifier</code>, under a module named <code>danger</code>.</p>
+<h2 id="284-mutual-tls"><a class="header" href="#284-mutual-tls">28.4 Mutual TLS</a></h2>
+<p>In plain TLS, only the server proves who it is. The client is anonymous at the TLS level, and proves itself,
+if at all, with a password or token inside the encrypted stream. In <strong>mutual TLS</strong> (mTLS), the server asks
+for a certificate in the handshake. The client sends one, with its own <code>CertificateVerify</code> signature. Each
+side then knows which key the other holds.</p>
+<p>Services inside one company use mutual TLS to authenticate each other. The certificate’s name becomes the
+caller’s identity, and the server can then authorize by it: requests from <code>billing</code> may read invoices,
+for example.</p>
+<p>The server adds a client certificate verifier that trusts the same CA:</p>
+<pre><code class="language-rust">fn main() -&gt; Result&lt;(), Error&gt; {
+    // ...
+    let verifier =
+        WebPkiClientVerifier::builder_with_provider(Arc::new(pki.roots()?), provider()).build()?;
+    let mutual = || -&gt; Result&lt;ServerConfig, Error&gt; {
+        Ok(ServerConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()?
+            .with_client_cert_verifier(verifier.clone())
+            .with_single_cert(vec![pki.server.cert.clone()], pki.server.key())?)
+    };
+
+    println!("\n4. Mutual TLS, client without a certificate");
+    run(mutual()?, client_trusting(pki.roots()?)?, "localhost")?;
+
+    println!("\n5. Mutual TLS, client with the billing certificate");
+    let client = ClientConfig::builder_with_provider(provider())
+        .with_safe_default_protocol_versions()?
+        .with_root_certificates(pki.roots()?)
+        .with_client_auth_cert(vec![pki.client.cert.clone()], pki.client.key())?;
+    run(mutual()?, client, "localhost")
+}</code></pre>
+<pre><code class="language-text">4. Mutual TLS, client without a certificate
+  client: received fatal alert: CertificateRequired
+  server: handshake failed: peer sent no certificates
+
+5. Mutual TLS, client with the billing certificate
+  client: TLSv1_3 TLS13_AES_256_GCM_SHA384, reply "HELLO OVER TLS"
+  client sent records: [("handshake", 231), ("change_cipher_spec", 1), ("application_data", 481), ("application_data", 31)]
+  "hello" readable on the wire: false
+  server: client presented 1 verified certificate
+</code></pre>
+<p>The client without a certificate got a fatal alert, <code>CertificateRequired</code>, and the server reported why.
+With the certificate, the client’s encrypted handshake record grew from 69 to 481 bytes. The extra 412
+bytes carry the client’s certificate and its signature.</p>
+<p>Certificates expire, and a service that uses mutual TLS has to replace them before they do. Production
+systems issue certificates that last hours or days, and rotate them automatically. A leaked key is then
+useful only until its certificate expires.</p>
+<h3 id="2841-what-tls-costs"><a class="header" href="#2841-what-tls-costs">28.4.1 What TLS costs</a></h3>
+<ul>
+<li><strong>A round trip.</strong> A new connection waits for TCP’s handshake and then for TLS’s, two round trips before
+the first request. Across regions that is 100 ms or more. <strong>Session resumption</strong> lets a client that has connected before skip the certificate exchange. A connection pool (chapter 29) avoids the handshake for most requests.</li>
+<li><strong>CPU.</strong> The key exchange and the signatures cost tens to hundreds of microseconds per handshake. The
+symmetric encryption of the data afterwards runs at gigabytes per second on modern CPUs.</li>
+<li><strong>Copies.</strong> <code>rustls</code> encrypts in user space, so a TLS server cannot use <code>sendfile</code> to send a file
+without copying it, as section 23.3.2 explained.</li>
+</ul>
+<h2 id="285-the-complete-program"><a class="header" href="#285-the-complete-program">28.5 The complete program</a></h2>
+<p class="listing"><b>Listing 28.1</b> TLS and mutual TLS with <code>rustls</code>, on certificates made by <code>rcgen</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tls_mtls.rs">src/bin/tls_mtls.rs</a></p>
+
+<pre><code class="language-rust">//! TLS with rustls: a client that checks the server's certificate, the errors
+//! it reports when the check fails, and mutual TLS, where the server checks a
+//! certificate from the client as well.
+//!
+//! The certificates are made at startup with rcgen: one certificate authority,
+//! a server certificate for "localhost", and a client certificate for a
+//! service called "billing". Nothing secret is stored on disk.
+//!
+//! Run with: cargo run --bin tls_mtls
+
+use std::{
+    io::{self, Read, Write},
+    net::{TcpListener, TcpStream},
+    sync::{Arc, Mutex},
+    thread,
+};
+
+use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, KeyPair};
+use rustls::{
+    ClientConfig,
+    ClientConnection,
+    RootCertStore,
+    ServerConfig,
+    ServerConnection,
+    StreamOwned,
+    crypto::{CryptoProvider, ring},
+    pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName},
+    server::WebPkiClientVerifier,
+};
+
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+/// A certificate and the private key that goes with it.
+struct Identity {
+    cert: CertificateDer&lt;'static&gt;,
+    key: PrivatePkcs8KeyDer&lt;'static&gt;,
+}
+
+impl Identity {
+    fn key(&amp;self) -&gt; PrivateKeyDer&lt;'static&gt; {
+        PrivateKeyDer::Pkcs8(self.key.clone_key())
+    }
+}
+
+/// A certificate authority, and certificates it signed for a server and a client.
+struct Pki {
+    ca: CertificateDer&lt;'static&gt;,
+    server: Identity,
+    client: Identity,
+}
+
+impl Pki {
+    fn new() -&gt; Result&lt;Self, Error&gt; {
+        let ca_key = KeyPair::generate()?;
+        let mut ca_params = CertificateParams::new(Vec::&lt;String&gt;::new())?;
+        ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        ca_params
+            .distinguished_name
+            .push(DnType::CommonName, "lab CA");
+        let ca = ca_params.self_signed(&amp;ca_key)?;
+
+        let issue = |name: &amp;str| -&gt; Result&lt;Identity, Error&gt; {
+            let key = KeyPair::generate()?;
+            let mut params = CertificateParams::new(vec![name.to_string()])?;
+            params
+                .distinguished_name
+                .push(DnType::CommonName, name);
+            let cert = params.signed_by(&amp;key, &amp;ca, &amp;ca_key)?;
+            Ok(Identity {
+                cert: cert.der().clone(),
+                key: PrivatePkcs8KeyDer::from(key.serialize_der()),
+            })
+        };
+        let server = issue("localhost")?;
+        let client = issue("billing")?;
+        Ok(Self {
+            ca: ca.der().clone(),
+            server,
+            client,
+        })
+    }
+
+    /// A trust store holding only this CA.
+    fn roots(&amp;self) -&gt; Result&lt;RootCertStore, Error&gt; {
+        let mut roots = RootCertStore::empty();
+        roots.add(self.ca.clone())?;
+        Ok(roots)
+    }
+}
+
+/// The ring crypto provider, named explicitly so the program does not depend
+/// on which provider other crates enable.
+fn provider() -&gt; Arc&lt;CryptoProvider&gt; {
+    Arc::new(ring::default_provider())
+}
+
+/// A TCP stream that keeps a copy of every byte it sends.
+struct Tap {
+    stream: TcpStream,
+    sent: Arc&lt;Mutex&lt;Vec&lt;u8&gt;&gt;&gt;,
+}
+
+impl Read for Tap {
+    fn read(&amp;mut self, buffer: &amp;mut [u8]) -&gt; io::Result&lt;usize&gt; {
+        self.stream.read(buffer)
+    }
+}
+
+impl Write for Tap {
+    fn write(&amp;mut self, buffer: &amp;[u8]) -&gt; io::Result&lt;usize&gt; {
+        let written = self.stream.write(buffer)?;
+        self.sent
+            .lock()
+            .expect("tap lock")
+            .extend_from_slice(&amp;buffer[..written]);
+        Ok(written)
+    }
+
+    fn flush(&amp;mut self) -&gt; io::Result&lt;()&gt; {
+        self.stream.flush()
+    }
+}
+
+/// The TLS records in a byte stream, as (content type, length) pairs.
+fn records(mut bytes: &amp;[u8]) -&gt; Vec&lt;(&amp;'static str, usize)&gt; {
+    let mut found = Vec::new();
+    while let [kind, _, _, high, low, rest @ ..] = bytes {
+        let length = usize::from(*high) &lt;&lt; 8 | usize::from(*low);
+        let name = match kind {
+            20 =&gt; "change_cipher_spec",
+            21 =&gt; "alert",
+            22 =&gt; "handshake",
+            23 =&gt; "application_data",
+            _ =&gt; "unknown",
+        };
+        found.push((name, length));
+        bytes = rest.get(length..).unwrap_or_default();
+    }
+    found
+}
+
+/// Accept one connection, and answer one message in capitals. Returns what
+/// the server learned about the client, or the error that ended the handshake.
+fn serve_once(listener: TcpListener, config: Arc&lt;ServerConfig&gt;) -&gt; thread::JoinHandle&lt;String&gt; {
+    thread::spawn(move || {
+        let outcome = || -&gt; Result&lt;String, Error&gt; {
+            let (stream, _) = listener.accept()?;
+            let mut tls = StreamOwned::new(ServerConnection::new(config)?, stream);
+            let mut message = [0; 64];
+            let read = tls.read(&amp;mut message)?;
+            tls.write_all(&amp;message[..read].to_ascii_uppercase())?;
+            tls.conn.send_close_notify();
+            tls.flush()?;
+            Ok(match tls.conn.peer_certificates() {
+                Some(chain) =&gt; format!("client presented {} verified certificate", chain.len()),
+                None =&gt; "client presented no certificate".to_string(),
+            })
+        };
+        outcome().unwrap_or_else(|error| format!("handshake failed: {error}"))
+    })
+}
+
+/// What one client connection saw.
+struct Session {
+    version: String,
+    suite: String,
+    reply: String,
+    sent: Vec&lt;u8&gt;,
+}
+
+/// Connect to `listener` with `config`, expecting the server to be `name`,
+/// send one message, and read the reply.
+fn connect(listener: &amp;TcpListener, config: ClientConfig, name: &amp;str) -&gt; Result&lt;Session, Error&gt; {
+    let sent = Arc::new(Mutex::new(Vec::new()));
+    let tap = Tap {
+        stream: TcpStream::connect(listener.local_addr()?)?,
+        sent: Arc::clone(&amp;sent),
+    };
+    let name = ServerName::try_from(name.to_string())?;
+    let mut tls = StreamOwned::new(ClientConnection::new(Arc::new(config), name)?, tap);
+
+    tls.write_all(b"hello over tls")?;
+    let mut reply = String::new();
+    tls.read_to_string(&amp;mut reply)?;
+
+    Ok(Session {
+        version: format!(
+            "{:?}",
+            tls.conn
+                .protocol_version()
+                .ok_or("no version")?
+        ),
+        suite: format!(
+            "{:?}",
+            tls.conn
+                .negotiated_cipher_suite()
+                .ok_or("no suite")?
+                .suite()
+        ),
+        reply,
+        sent: sent.lock().expect("tap lock").clone(),
+    })
+}
+
+/// Run one client against one server, and print what each side reported.
+fn run(server: ServerConfig, client: ClientConfig, name: &amp;str) -&gt; Result&lt;(), Error&gt; {
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let server = serve_once(listener.try_clone()?, Arc::new(server));
+    match connect(&amp;listener, client, name) {
+        Ok(session) =&gt; {
+            println!(
+                "  client: {} {}, reply {:?}",
+                session.version, session.suite, session.reply
+            );
+            println!("  client sent records: {:?}", records(&amp;session.sent));
+            let visible = session
+                .sent
+                .windows(5)
+                .any(|window| window == b"hello");
+            println!("  \"hello\" readable on the wire: {visible}");
+        }
+        Err(error) =&gt; println!("  client: {error}"),
+    }
+    println!("  server: {}", server.join().expect("server thread"));
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Error&gt; {
+    let pki = Pki::new()?;
+    let server_only = || -&gt; Result&lt;ServerConfig, Error&gt; {
+        Ok(ServerConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()?
+            .with_no_client_auth()
+            .with_single_cert(vec![pki.server.cert.clone()], pki.server.key())?)
+    };
+    let client_trusting = |roots: RootCertStore| -&gt; Result&lt;ClientConfig, Error&gt; {
+        Ok(ClientConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()?
+            .with_root_certificates(roots)
+            .with_no_client_auth())
+    };
+
+    println!("1. The client checks the server's certificate");
+    run(server_only()?, client_trusting(pki.roots()?)?, "localhost")?;
+
+    println!("\n2. The client expects a different name");
+    run(
+        server_only()?,
+        client_trusting(pki.roots()?)?,
+        "billing.example",
+    )?;
+
+    println!("\n3. The client does not trust the CA");
+    run(
+        server_only()?,
+        client_trusting(RootCertStore::empty())?,
+        "localhost",
+    )?;
+
+    let verifier =
+        WebPkiClientVerifier::builder_with_provider(Arc::new(pki.roots()?), provider()).build()?;
+    let mutual = || -&gt; Result&lt;ServerConfig, Error&gt; {
+        Ok(ServerConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()?
+            .with_client_cert_verifier(verifier.clone())
+            .with_single_cert(vec![pki.server.cert.clone()], pki.server.key())?)
+    };
+
+    println!("\n4. Mutual TLS, client without a certificate");
+    run(mutual()?, client_trusting(pki.roots()?)?, "localhost")?;
+
+    println!("\n5. Mutual TLS, client with the billing certificate");
+    let client = ClientConfig::builder_with_provider(provider())
+        .with_safe_default_protocol_versions()?
+        .with_root_certificates(pki.roots()?)
+        .with_client_auth_cert(vec![pki.client.cert.clone()], pki.client.key())?;
+    run(mutual()?, client, "localhost")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn records_are_split_by_their_length_field() {
+        let bytes = [22, 3, 1, 0, 2, 0xAA, 0xBB, 23, 3, 3, 0, 1, 0xCC];
+        assert_eq!(records(&amp;bytes), [("handshake", 2), ("application_data", 1)]);
+    }
+
+    #[test]
+    fn a_trusted_server_answers() {
+        let pki = Pki::new().expect("pki");
+        let server = ServerConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(vec![pki.server.cert.clone()], pki.server.key())
+            .unwrap();
+        let client = ClientConfig::builder_with_provider(provider())
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(pki.roots().unwrap())
+            .with_no_client_auth();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let handle = serve_once(listener.try_clone().unwrap(), Arc::new(server));
+        let session = connect(&amp;listener, client, "localhost").expect("session");
+        assert_eq!(session.reply, "HELLO OVER TLS");
+        handle.join().unwrap();
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin tls_mtls
+1. The client checks the server's certificate
+  client: TLSv1_3 TLS13_AES_256_GCM_SHA384, reply "HELLO OVER TLS"
+  client sent records: [("handshake", 231), ("change_cipher_spec", 1), ("application_data", 69), ("application_data", 31)]
+  "hello" readable on the wire: false
+  server: client presented no certificate
+
+2. The client expects a different name
+  client: invalid peer certificate: certificate not valid for name "billing.example"; certificate is only valid for DnsName("localhost")
+  server: handshake failed: unexpected end of file
+
+3. The client does not trust the CA
+  client: invalid peer certificate: UnknownIssuer
+  server: handshake failed: unexpected end of file
+
+4. Mutual TLS, client without a certificate
+  client: received fatal alert: CertificateRequired
+  server: handshake failed: peer sent no certificates
+
+5. Mutual TLS, client with the billing certificate
+  client: TLSv1_3 TLS13_AES_256_GCM_SHA384, reply "HELLO OVER TLS"
+  client sent records: [("handshake", 231), ("change_cipher_spec", 1), ("application_data", 481), ("application_data", 31)]
+  "hello" readable on the wire: false
+  server: client presented 1 verified certificate
+</code></pre>
+<h2 id="286-questions-that-come-up"><a class="header" href="#286-questions-that-come-up">28.6 Questions that come up</a></h2>
+<p><strong>“What does SNI do, and is it encrypted?”</strong>
+SNI, Server Name Indication, carries the host name in the <code>ClientHello</code>. One IP address can then serve certificates for many names. It is sent in the clear. Encrypted Client Hello (ECH) hides it, where both
+sides support it.</p>
+<p><strong>“Where should TLS end in a system?”</strong>
+At a load balancer, the bytes are plaintext between the balancer and the servers behind it. That is
+acceptable on a trusted network. Mutual TLS between services keeps them encrypted and authenticated all the
+way.</p>
+<p><strong>“A client fails with <code>UnknownIssuer</code> against a server that works in a browser. Why?”</strong>
+Usually the server sends only its own certificate, without the intermediate that links it to a root. A
+browser may have the intermediate cached, and a fresh client does not. The server should send the full chain.</p>
+<p><strong>“What does 0-RTT mean?”</strong>
+A client resuming an earlier session can send application data in its first flight, before the handshake
+completes. An attacker can replay that data, so it is only safe for requests that are idempotent, in the
+sense of chapter 19.</p>
+<p><strong>“How does a server revoke a client’s certificate before it expires?”</strong>
+With a revocation list that the verifier checks, which <code>WebPkiClientVerifier</code> accepts. Short-lived
+certificates often replace revocation: the certificate is not renewed, and it expires within hours.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>TLS adds encryption, tamper detection, and server authentication on top of TCP.</li>
+<li>A certificate binds a name to a public key, signed by a CA. A client checks the signature chain to its
+trust store, the dates, and the name.</li>
+<li>The <code>CertificateVerify</code> signature proves that the server holds the certificate’s private key.</li>
+<li>TLS 1.3 sets up keys in one round trip and encrypts everything after <code>ServerHello</code>. On the wire, only the
+<code>ClientHello</code> was readable, and the 14-byte message became a 31-byte record.</li>
+<li>A wrong name and an unknown CA both fail in the handshake, before any application data moves.</li>
+<li>Mutual TLS has the client present a certificate too. Without one, the server ended the handshake with
+<code>CertificateRequired</code>.</li>
+<li>TLS costs a round trip and some CPU per new connection, which connection reuse avoids.</li>
+</ul>
+</div>
+
+<p>Chapter 29 builds that reuse: a client connection pool. It bounds the number of connections, takes each one back when its user is done, and drops connections idle for too long.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Print the length of the server’s certificate and of the client’s. Compare with the 412 extra bytes in
+the mutual TLS record, and account for the rest.</li>
+<li>Make the server certificate valid for both <code>localhost</code> and <code>api.internal</code> with <code>CertificateParams::new</code>,
+and connect with each name.</li>
+<li>Set the server certificate’s <code>not_after</code> to yesterday with <code>rcgen</code>’s <code>date_time_ymd</code>, and record the
+client’s error.</li>
+<li>Issue the server certificate from an intermediate CA signed by the root, and have the server send only its
+own certificate. Then send the chain. What does the client report in each case?</li>
+<li>Restrict the server to TLS 1.2 with <code>with_protocol_versions(&amp;[&amp;rustls::version::TLS12])</code>. Compare the
+records the client sends with the TLS 1.3 run.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch27-tcp-close.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch29-conn-pool.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch27-tcp-close.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch29-conn-pool.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

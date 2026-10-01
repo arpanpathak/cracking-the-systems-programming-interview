@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -573,6 +573,7 @@ ok
 Which is faster? To answer, the benchmark in this section puts four versions of the same list behind one <strong>trait</strong>. Then
 one piece of code can measure them all.</p>
 <h3 id="951-one-trait-for-four-lists"><a class="header" href="#951-one-trait-for-four-lists">9.5.1 One trait for four lists</a></h3>
+<p>The four list types are measured by one benchmark, so they share a trait with the operations the benchmark calls.</p>
 <p class="listing"><b>Listing 9.8</b> The trait every list implements. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/mod.rs">benchmarking_examples/lists/mod.rs</a></p>
 
 <pre><code class="language-rust">//! Singly linked lists in four variants, so one benchmark loop can cover all of
@@ -1045,6 +1046,7 @@ fn run_list&lt;L: SinglyList&lt;u64&gt;&gt;(elements: usize) {
         with_thousands(elements as u64)
     );
 }</code></pre>
+<p>The whole file is listing 13.19. Chapter 13 adds the cache benchmarks to it, and shows it complete there.</p>
 <p><code>run_list::&lt;L: SinglyList&lt;u64&gt;&gt;</code> is <strong>generic</strong> over the list type <code>L</code>. The compiler generates a separate copy of the function for each list type. So each list is measured with
 its own code.</p>
 <p>The function follows three rules that apply to any small benchmark:</p>
@@ -1110,6 +1112,7 @@ from front to back. The backward links, <code>prev</code>, are <code>Weak</code>
 <figcaption><b>Figure 9.6</b> Strong links run forward and weak links run backward. If the back-links were strong, every pair of neighbors would form a cycle and no node would ever be freed.</figcaption>
 </figure>
 <h3 id="981-the-types"><a class="header" href="#981-the-types">9.8.1 The types</a></h3>
+<p>A node of the doubly linked list has a value and two links. The link forward owns the next node; the link back is weak, so the two directions do not keep each other alive.</p>
 <p class="listing"><b>Listing 9.16</b> Type names, the node, and the list (lines 1 to 26). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs">src/bin/ll.rs</a></p>
 
 <pre><code class="language-rust">// ============================================================================
@@ -1140,6 +1143,7 @@ pub struct LinkedList&lt;T&gt; {
 <p>The full type of a link is <code>Option&lt;Rc&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;&gt;</code>. It appears in almost every function, so the file
 names it once, <code>OptNodeRef&lt;T&gt;</code>, with a <code>type</code> alias. The list keeps a <code>head</code>, a <code>tail</code>, and its length.</p>
 <h3 id="982-adding-at-either-end"><a class="header" href="#982-adding-at-either-end">9.8.2 Adding at either end</a></h3>
+<p>A new node at the front must point forward to the old head, and the old head must point back to it. The back of the list works the same way, mirrored.</p>
 <p class="listing"><b>Listing 9.17</b> <code>new</code>, <code>len</code>, and <code>push_front</code> (lines 28 to 69).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
@@ -1230,6 +1234,7 @@ overlap.</p>
 <code>self.tail.as_ref().map(Rc::downgrade)</code>. <code>as_ref()</code> turns <code>Option&lt;Rc&lt;...&gt;&gt;</code> into <code>Option&lt;&amp;Rc&lt;...&gt;&gt;</code>, so the
 tail is looked at without being moved. <code>map(Rc::downgrade)</code> turns that reference into a weak link.</p>
 <h3 id="983-removing-from-either-end"><a class="header" href="#983-removing-from-either-end">9.8.3 Removing from either end</a></h3>
+<p>Removing the front node means unlinking it from its neighbor and moving its value out to the caller.</p>
 <p class="listing"><b>Listing 9.19</b> <code>pop_front</code> (lines 95 to 125).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
@@ -1238,7 +1243,7 @@ tail is looked at without being moved. <code>map(Rc::downgrade)</code> turns tha
     // pop_front
     // --------------------------------------------------------------------
     pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.head.take().and_then(|old_head| {
+        self.head.take().map(|old_head| {
             // Take ownership of the next node (if any).
             let next = old_head.borrow_mut().next.take();
 
@@ -1262,7 +1267,7 @@ tail is looked at without being moved. <code>map(Rc::downgrade)</code> turns tha
                 .ok()
                 .unwrap()
                 .into_inner();
-            Some(node.data)
+            node.data
         })
     }
     // ...
@@ -1288,7 +1293,7 @@ whose <code>unwrap</code> needs no <code>Debug</code>.</p>
     // pop_back
     // --------------------------------------------------------------------
     pub fn pop_back(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.tail.take().and_then(|old_tail| {
+        self.tail.take().map(|old_tail| {
             // Get the previous node (upgrade the weak reference).
             let prev = old_tail
                 .borrow_mut()
@@ -1312,7 +1317,7 @@ whose <code>unwrap</code> needs no <code>Debug</code>.</p>
                 .ok()
                 .unwrap()
                 .into_inner();
-            Some(node.data)
+            node.data
         })
     }
     // ...
@@ -1320,6 +1325,7 @@ whose <code>unwrap</code> needs no <code>Debug</code>.</p>
 <p><code>pop_back</code> mirrors <code>pop_front</code>. It follows the weak <code>prev</code> link with <code>upgrade()</code>, which returns <code>None</code> if the
 previous node is gone, then clears that node’s <code>next</code>.</p>
 <h3 id="984-looking-without-removing"><a class="header" href="#984-looking-without-removing">9.8.4 Looking without removing</a></h3>
+<p>Looking at the front value must not move it out of the list. The caller gets a borrow of the value instead.</p>
 <p class="listing"><b>Listing 9.21</b> <code>peek_front</code> and <code>peek_back</code> (lines 149 to 171).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
@@ -1452,7 +1458,7 @@ impl&lt;T&gt; LinkedList&lt;T&gt; {
     // pop_front
     // --------------------------------------------------------------------
     pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.head.take().and_then(|old_head| {
+        self.head.take().map(|old_head| {
             // Take ownership of the next node (if any).
             let next = old_head.borrow_mut().next.take();
 
@@ -1476,7 +1482,7 @@ impl&lt;T&gt; LinkedList&lt;T&gt; {
                 .ok()
                 .unwrap()
                 .into_inner();
-            Some(node.data)
+            node.data
         })
     }
 
@@ -1484,7 +1490,7 @@ impl&lt;T&gt; LinkedList&lt;T&gt; {
     // pop_back
     // --------------------------------------------------------------------
     pub fn pop_back(&amp;mut self) -&gt; Option&lt;T&gt; {
-        self.tail.take().and_then(|old_tail| {
+        self.tail.take().map(|old_tail| {
             // Get the previous node (upgrade the weak reference).
             let prev = old_tail
                 .borrow_mut()
@@ -1508,7 +1514,7 @@ impl&lt;T&gt; LinkedList&lt;T&gt; {
                 .ok()
                 .unwrap()
                 .into_inner();
-            Some(node.data)
+            node.data
         })
     }
 

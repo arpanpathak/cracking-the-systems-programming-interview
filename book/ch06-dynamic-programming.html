@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -553,6 +553,13 @@ sorted list, say the first <code>prev</code> jobs. The profit is <code>dp[prev] 
 library provides one as <code>partition_point</code>. Given a condition that is true for a prefix of the list and false
 after it, <code>partition_point</code> returns the length of that prefix.</p>
 <h3 id="642-the-code"><a class="header" href="#642-the-code">6.4.2 The code</a></h3>
+<p>A job is a small <code>Copy</code> struct: when it starts, when it ends, and what it pays.</p>
+<pre><code class="language-rust">#[derive(Debug, Default, Clone, Copy)]
+struct Job {
+    start: u32,
+    end: u32,
+    profit: u64,
+}</code></pre>
 <p class="listing"><b>Listing 6.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/job_scheduling_with_profit_and_deadline.rs">src/bin/job_scheduling_with_profit_and_deadline.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug, Default, Clone, Copy)]

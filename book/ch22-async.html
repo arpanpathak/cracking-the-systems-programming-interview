@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -327,7 +327,7 @@ impl Future for YieldTimes {
 <h3 id="2242-a-future-that-waits-on-a-timer"><a class="header" href="#2242-a-future-that-waits-on-a-timer">22.4.2 A future that waits on a timer</a></h3>
 <p><code>Delay</code> completes after a wall-clock duration. It is the second shape, and it is the one that looks like real I/O.</p>
 <p>Its state is a <code>ready</code> flag and an optional stored <code>Waker</code>, shared with a background thread through <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>.</p>
-<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 135). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 137). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">struct DelayState {
     ready: bool,
@@ -354,7 +354,9 @@ impl Delay {
         thread::spawn(move || {
             thread::sleep(duration);
             let waker = {
-                let mut guard = thread_state.lock().expect("delay mutex poisoned");
+                let mut guard = thread_state
+                    .lock()
+                    .expect("delay mutex poisoned");
                 guard.ready = true;
                 guard.waker.take()
             };
@@ -367,13 +369,16 @@ impl Delay {
     }
 }</code></pre>
 <p><code>poll</code> checks <code>ready</code>. While it is false, <code>poll</code> stores a clone of the current waker and returns <code>Pending</code>.</p>
-<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 137 to 149). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 139 to 154). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">impl Future for Delay {
     type Output = ();
 
     fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
-        let mut guard = self.state.lock().expect("delay mutex poisoned");
+        let mut guard = self
+            .state
+            .lock()
+            .expect("delay mutex poisoned");
         if guard.ready {
             Poll::Ready(())
         } else {
@@ -393,7 +398,7 @@ impl Delay {
 <h2 id="225-waking-is-scheduling"><a class="header" href="#225-waking-is-scheduling">22.5 Waking is scheduling</a></h2>
 <p><code>block_on</code> drives one future. A general executor drives many, and it shows that waking a task and scheduling it are the same operation.</p>
 <p>A <code>Task</code> holds its future, a handle to the executor’s queue, and a <code>completed</code> flag. It also implements <code>Wake</code>. Waking a task pushes an <code>Arc</code> of the task back on the queue.</p>
-<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 151 to 172). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 156 to 177). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">struct Task {
     future: Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;,
@@ -418,7 +423,7 @@ impl Wake for Task {
     }
 }</code></pre>
 <p><code>spawn</code> wraps a future in a task and enqueues it.</p>
-<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 179 to 203). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 184 to 208). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Default)]
 pub struct MiniExecutor {
@@ -448,7 +453,7 @@ impl MiniExecutor {
     // ...
 }</code></pre>
 <p><code>run</code> pops tasks one at a time, builds a waker from the task itself, and polls the future. A <code>Ready</code> result marks the task completed, so a late wake is skipped by the <code>completed</code> check.</p>
-<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 205 to 232). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 210 to 245). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">impl MiniExecutor {
     // ...
@@ -474,9 +479,17 @@ impl MiniExecutor {
 
             let waker = Waker::from(Arc::clone(&amp;task));
             let mut context = Context::from_waker(&amp;waker);
-            let mut future = task.future.lock().expect("task mutex poisoned");
-            if future.as_mut().poll(&amp;mut context).is_ready() {
-                task.completed.store(true, Ordering::Release);
+            let mut future = task
+                .future
+                .lock()
+                .expect("task mutex poisoned");
+            if future
+                .as_mut()
+                .poll(&amp;mut context)
+                .is_ready()
+            {
+                task.completed
+                    .store(true, Ordering::Release);
             }
         }
     }
@@ -613,7 +626,9 @@ impl Delay {
         thread::spawn(move || {
             thread::sleep(duration);
             let waker = {
-                let mut guard = thread_state.lock().expect("delay mutex poisoned");
+                let mut guard = thread_state
+                    .lock()
+                    .expect("delay mutex poisoned");
                 guard.ready = true;
                 guard.waker.take()
             };
@@ -630,7 +645,10 @@ impl Future for Delay {
     type Output = ();
 
     fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
-        let mut guard = self.state.lock().expect("delay mutex poisoned");
+        let mut guard = self
+            .state
+            .lock()
+            .expect("delay mutex poisoned");
         if guard.ready {
             Poll::Ready(())
         } else {
@@ -716,9 +734,17 @@ impl MiniExecutor {
 
             let waker = Waker::from(Arc::clone(&amp;task));
             let mut context = Context::from_waker(&amp;waker);
-            let mut future = task.future.lock().expect("task mutex poisoned");
-            if future.as_mut().poll(&amp;mut context).is_ready() {
-                task.completed.store(true, Ordering::Release);
+            let mut future = task
+                .future
+                .lock()
+                .expect("task mutex poisoned");
+            if future
+                .as_mut()
+                .poll(&amp;mut context)
+                .is_ready()
+            {
+                task.completed
+                    .store(true, Ordering::Release);
             }
         }
     }
@@ -896,12 +922,8 @@ task 3 completed after 3 yield(s)
 </figure>
 <p>Chapter 19 built retries and idempotency keys on their own. Here they meet a network call.</p>
 <h3 id="2271-a-blocking-client-over-tcpstream"><a class="header" href="#2271-a-blocking-client-over-tcpstream">22.7.1 A blocking client over <code>TcpStream</code></a></h3>
-<p>The blocking client composes its three layers in one line:</p>
-<pre><code class="language-rust">self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))</code></pre>
-<p><code>IdemCache</code> is chapter 19’s <code>Idempotent&lt;K, V&gt;</code> store under another name. <code>RetryPolicy::execute</code> retries any error with a doubling delay, <code>base × 2^(attempt - 1)</code>, capped at <code>max_delay</code>. <code>RequestType</code> is an enum whose variants carry exactly the fields each method needs.</p>
-<p><code>send</code> writes the request by hand. It writes the request line, <code>Host</code>, <code>Connection: close</code>, and the caller’s headers. A body adds <code>Content-Length</code>, a blank line, and then the body. <code>Connection: close</code> lets <code>read_to_string</code> work as the response reader, because the server closes the connection at the end. Chapter 17’s parser is the other side of this conversation.</p>
-<p class="listing"><b>Listing 22.10</b> Cache, retry, and a hand-written HTTP/1.1 request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">src/bin/fun_network_call.rs</a></p>
-
+<p>The blocking client is built from four parts: a request type, a cache, a retry policy, and the client that joins
+them. A request is an enum, and each variant carries exactly the fields its HTTP method needs:</p>
 <pre><code class="language-rust">use std::{
     collections::HashMap,
     io::{Read, Write},
@@ -912,30 +934,25 @@ task 3 completed after 3 yield(s)
 
 type RuntimeError = Box&lt;dyn std::error::Error&gt;;
 
-/// header repsesents vec![(key, value)];
+/// Request headers, as (name, value) pairs.
 type RequestHeader = Vec&lt;(String, String)&gt;;
-enum RequestType {
-    GET {
-        path: String,
-        headers: Vec&lt;(String, String)&gt;,
-    },
-    OPTION {
-        path: String,
-        headers: Vec&lt;(String, String)&gt;,
-    },
-    POST {
-        path: String,
-        headers: Vec&lt;(String, String)&gt;,
-        body: String,
-    },
-    PUT {
-        path: String,
-        headers: Vec&lt;(String, String)&gt;,
-        body: String,
-    },
-}
 
-/// An idempotency cache store to store requests if it's succeeded!
+/// A request, with exactly the fields each method needs.
+enum RequestType {
+    Get {
+        path: String,
+        headers: RequestHeader,
+    },
+    Post {
+        path: String,
+        headers: RequestHeader,
+        body: String,
+    },
+}</code></pre>
+<p><code>RuntimeError</code> is a boxed error, so <code>?</code> can return any error type from <code>main</code>. <code>RequestHeader</code> is an alias for a
+list of (name, value) pairs. A <code>Get</code> has no body and a <code>Post</code> has one, so a <code>GET</code> with a body cannot be built.</p>
+<p>The cache keeps each successful response under its idempotency key:</p>
+<pre><code class="language-rust">/// Successful responses, stored by idempotency key.
 struct IdemCache {
     store: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
 }
@@ -951,7 +968,209 @@ impl IdemCache {
     where
         F: FnOnce() -&gt; Result&lt;String, RuntimeError&gt;,
     {
-        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key.to_string(), v.clone());
+        Ok(v)
+    }
+}</code></pre>
+<p><code>IdemCache</code> is chapter 19’s <code>Idempotent&lt;K, V&gt;</code> store with <code>String</code> keys and values. <code>get_or_insert</code> returns the
+stored response if there is one. Otherwise it runs <code>f</code>, stores the result, and returns it. A failure is not
+stored, so a later call tries again. The lock is held while <code>f</code> runs, so two calls with one key cannot both send.</p>
+<p>The retry policy runs an operation up to <code>max_attempts</code> times:</p>
+<pre><code class="language-rust">struct RetryPolicy {
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+}
+
+impl RetryPolicy {
+    fn new() -&gt; Self {
+        Self {
+            max_attempts: 3,
+            base_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(5),
+        }
+    }
+
+    fn execute&lt;F, T&gt;(&amp;self, mut f: F) -&gt; Result&lt;T, RuntimeError&gt;
+    where
+        F: FnMut() -&gt; Result&lt;T, RuntimeError&gt;,
+    {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            match f() {
+                Ok(v) =&gt; return Ok(v),
+                Err(e) if attempt &gt;= self.max_attempts =&gt; return Err(e),
+                Err(_) =&gt; {
+                    let delay = (self.base_delay * 2u32.pow(attempt - 1)).min(self.max_delay);
+                    std::thread::sleep(delay);
+                }
+            }
+        }
+    }
+}</code></pre>
+<p>After each failure except the last, <code>execute</code> sleeps for <code>base × 2^(attempt - 1)</code>, capped at <code>max_delay</code>: 100 ms
+after the first failure, 200 ms after the second. <code>F</code> is <code>FnMut</code>, not <code>FnOnce</code>, because the loop calls it more
+than once.</p>
+<p>The client holds the server’s address and one of each layer. <code>execute</code> joins the layers in one line:</p>
+<pre><code class="language-rust">/// An HTTP/1.1 client with a response cache and a retry policy.
+struct HttpClient {
+    host: String,
+    port: u16,
+    cache: IdemCache,
+    retry: RetryPolicy,
+}
+
+impl HttpClient {
+    fn new(host: &amp;str, port: u16) -&gt; Self {
+        Self {
+            host: host.to_string(),
+            port,
+            cache: IdemCache::new(),
+            retry: RetryPolicy::new(),
+        }
+    }
+
+    fn execute(&amp;self, key: &amp;str, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
+        self.cache
+            .get_or_insert(key, || self.retry.execute(|| self.send(req)))
+    }
+    // ...
+}</code></pre>
+<p>The cache calls the retry policy only on a miss, and the retry policy calls <code>send</code> once per attempt.</p>
+<p><code>send</code> writes the request by hand and reads the response:</p>
+<pre><code class="language-rust">impl HttpClient {
+    // ...
+    fn send(&amp;self, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
+        let (method, path, headers, body) = match req {
+            RequestType::Get { path, headers } =&gt; ("GET", path, headers, None),
+            RequestType::Post {
+                path,
+                headers,
+                body,
+            } =&gt; ("POST", path, headers, Some(body)),
+        };
+
+        let mut raw = format!(
+            "{method} {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
+            self.host
+        );
+        for (k, v) in headers {
+            raw += &amp;format!("{k}: {v}\r\n");
+        }
+        if let Some(b) = body {
+            raw += &amp;format!("Content-Length: {}\r\n", b.len());
+        }
+        raw += "\r\n";
+        if let Some(b) = body {
+            raw += b;
+        }
+
+        let mut stream = TcpStream::connect((self.host.as_str(), self.port))?;
+        stream.write_all(raw.as_bytes())?;
+        let mut resp = String::new();
+        stream.read_to_string(&amp;mut resp)?;
+        Ok(resp
+            .split_once("\r\n\r\n")
+            .map(|(_, b)| b)
+            .unwrap_or("")
+            .to_string())
+    }
+}</code></pre>
+<p>The <code>match</code> turns either variant into the same four parts: the method name, the path, the headers, and an
+optional body. The request text then follows section 21.1. It is the request line, <code>Host</code>,
+<code>Connection: close</code>, and the caller’s headers. A body adds <code>Content-Length</code>, then the blank line, then the body.
+<code>Connection: close</code> lets <code>read_to_string</code> read the whole response, because the server closes the connection at
+the end. <code>split_once("\r\n\r\n")</code> drops the status line and the headers, and keeps the body.</p>
+<p><code>main</code> reads with a <code>GET</code>, then creates an item with a <code>POST</code>. Each request has its own idempotency key:</p>
+<pre><code class="language-rust">// --- The actual REST call ---
+
+fn create_item(client: &amp;HttpClient, item_name: &amp;str) -&gt; Result&lt;String, RuntimeError&gt; {
+    client.execute(
+        "create-demo-001",
+        &amp;RequestType::Post {
+            path: "/post".into(),
+            headers: vec![
+                ("Content-Type".into(), "application/json".into()),
+                ("Accept".into(), "application/json".into()),
+            ],
+            body: format!(r#"{{"name":"{item_name}"}}"#),
+        },
+    )
+}
+
+fn read_items(client: &amp;HttpClient) -&gt; Result&lt;String, RuntimeError&gt; {
+    client.execute(
+        "read-demo-001",
+        &amp;RequestType::Get {
+            path: "/get".into(),
+            headers: vec![("Accept".into(), "application/json".into())],
+        },
+    )
+}
+
+fn main() -&gt; Result&lt;(), RuntimeError&gt; {
+    let client = HttpClient::new("httpbin.org", 80);
+    println!("read:\n{}", read_items(&amp;client)?);
+    println!("created:\n{}", create_item(&amp;client, "demo")?);
+    Ok(())
+}</code></pre>
+<p class="listing"><b>Listing 22.10</b> Cache, retry, and a hand-written HTTP/1.1 request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">src/bin/fun_network_call.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    net::TcpStream,
+    sync::Mutex,
+    time::Duration,
+};
+
+type RuntimeError = Box&lt;dyn std::error::Error&gt;;
+
+/// Request headers, as (name, value) pairs.
+type RequestHeader = Vec&lt;(String, String)&gt;;
+
+/// A request, with exactly the fields each method needs.
+enum RequestType {
+    Get {
+        path: String,
+        headers: RequestHeader,
+    },
+    Post {
+        path: String,
+        headers: RequestHeader,
+        body: String,
+    },
+}
+
+/// Successful responses, stored by idempotency key.
+struct IdemCache {
+    store: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
+}
+
+impl IdemCache {
+    fn new() -&gt; Self {
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn get_or_insert&lt;F&gt;(&amp;self, key: &amp;str, f: F) -&gt; Result&lt;String, RuntimeError&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;String, RuntimeError&gt;,
+    {
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|_| "lock poisoned")?;
         if let Some(v) = store.get(key) {
             return Ok(v.clone());
         }
@@ -995,8 +1214,7 @@ impl RetryPolicy {
     }
 }
 
-/// -- Build a HTTP client with those strategies
-
+/// An HTTP/1.1 client with a response cache and a retry policy.
 struct HttpClient {
     host: String,
     port: u16,
@@ -1021,18 +1239,12 @@ impl HttpClient {
 
     fn send(&amp;self, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
         let (method, path, headers, body) = match req {
-            RequestType::GET { path, headers } =&gt; ("GET", path, headers, None),
-            RequestType::OPTION { path, headers } =&gt; ("OPTIONS", path, headers, None),
-            RequestType::POST {
+            RequestType::Get { path, headers } =&gt; ("GET", path, headers, None),
+            RequestType::Post {
                 path,
                 headers,
                 body,
             } =&gt; ("POST", path, headers, Some(body)),
-            RequestType::PUT {
-                path,
-                headers,
-                body,
-            } =&gt; ("PUT", path, headers, Some(body)),
         };
 
         let mut raw = format!(
@@ -1067,7 +1279,7 @@ impl HttpClient {
 fn create_item(client: &amp;HttpClient, item_name: &amp;str) -&gt; Result&lt;String, RuntimeError&gt; {
     client.execute(
         "create-demo-001",
-        &amp;RequestType::POST {
+        &amp;RequestType::Post {
             path: "/post".into(),
             headers: vec![
                 ("Content-Type".into(), "application/json".into()),
@@ -1078,8 +1290,19 @@ fn create_item(client: &amp;HttpClient, item_name: &amp;str) -&gt; Result&lt;Str
     )
 }
 
+fn read_items(client: &amp;HttpClient) -&gt; Result&lt;String, RuntimeError&gt; {
+    client.execute(
+        "read-demo-001",
+        &amp;RequestType::Get {
+            path: "/get".into(),
+            headers: vec![("Accept".into(), "application/json".into())],
+        },
+    )
+}
+
 fn main() -&gt; Result&lt;(), RuntimeError&gt; {
     let client = HttpClient::new("httpbin.org", 80);
+    println!("read:\n{}", read_items(&amp;client)?);
     println!("created:\n{}", create_item(&amp;client, "demo")?);
     Ok(())
 }</code></pre>
@@ -1089,19 +1312,159 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
 <li>Everything is retried. A policy should ask the error, as <code>Retryable</code> does in chapter 19. Here a DNS failure for a misspelled host is retried three times.</li>
 </ul>
 <h3 id="2272-an-async-client-with-reqwest"><a class="header" href="#2272-an-async-client-with-reqwest">22.7.2 An async client with <code>reqwest</code></a></h3>
-<p>The async client reads the status code and makes retry a decision about it. <code>RETRY</code> lists the statuses to retry: 429 and four 5xx codes. The <code>match</code> on the status then has three arms:</p>
-<pre><code class="language-rust">match status {
-    s if s.is_success() =&gt; {
-        self.store(key, &amp;text);
-        return Ok(text);
-    }
-    s if RETRY.contains(&amp;s) &amp;&amp; attempt &lt; self.cfg.max_attempts =&gt; {
-        tokio::time::sleep(delay).await;
-        delay = (delay * 2).min(self.cfg.max_delay);
-    }
-    s =&gt; return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+<p>The async client keeps the same layers, on Tokio and the <code>reqwest</code> crate. It also reads the status code, and
+decides from it whether to retry. Its settings come first:</p>
+<pre><code class="language-rust">use std::{collections::HashMap, sync::Mutex, time::Duration};
+
+use reqwest::{Client, Method, StatusCode};
+use serde_json::Value;
+
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+const RETRY: [StatusCode; 5] = [
+    StatusCode::TOO_MANY_REQUESTS,
+    StatusCode::INTERNAL_SERVER_ERROR,
+    StatusCode::BAD_GATEWAY,
+    StatusCode::SERVICE_UNAVAILABLE,
+    StatusCode::GATEWAY_TIMEOUT,
+];
+
+struct Config {
+    base: String,
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+    timeout: Duration,
+}
+
+struct Api {
+    http: Client,
+    cache: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
+    cfg: Config,
 }</code></pre>
-<p><code>tokio::time::sleep</code> does not block the thread. It returns a future that registers with Tokio’s timer and returns <code>Pending</code>, which is the <code>Delay</code> of section 22.4.2 done properly. Other tasks run on the same thread while this one waits.</p>
+<p><code>RETRY</code> lists the statuses to retry, where the server may succeed later: 429, Too Many Requests, and four
+5xx codes. <code>Config</code> holds the base URL, the retry settings, and a timeout. <code>Api</code> holds a <code>reqwest::Client</code>, the
+cache, and the configuration. <code>type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;</code> lets errors cross task
+boundaries, because a <code>Send + Sync</code> error can move between Tokio’s worker threads.</p>
+<p><code>new</code> builds the HTTP client, and two helpers read and write the cache:</p>
+<pre><code class="language-rust">impl Api {
+    fn new(cfg: Config) -&gt; Result&lt;Self, Error&gt; {
+        Ok(Self {
+            http: Client::builder()
+                .timeout(cfg.timeout)
+                .build()?,
+            cache: Mutex::new(HashMap::new()),
+            cfg,
+        })
+    }
+
+    fn cached(&amp;self, key: &amp;str) -&gt; Option&lt;String&gt; {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(key)
+            .cloned()
+    }
+
+    fn store(&amp;self, key: &amp;str, text: &amp;str) {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key.into(), text.into());
+    }
+    // ...
+}</code></pre>
+<ul>
+<li><code>Client::builder().timeout(cfg.timeout)</code> bounds every request. A client without a timeout can wait forever on
+a server that accepted the connection and never answered.</li>
+<li>The cache is a <code>std::sync::Mutex</code>. That is allowed in async code because the guard is never held across an
+<code>.await</code>: <code>cached</code> and <code>store</code> lock, act, and return. The lock is taken with
+<code>unwrap_or_else(|e| e.into_inner())</code>, chapter 16’s ignore-the-poison choice. A <code>HashMap</code> insert cannot leave
+the map half-updated, so recovering the guard is safe here.</li>
+</ul>
+<p><code>call</code> checks the cache, then sends and retries:</p>
+<pre><code class="language-rust">impl Api {
+    // ...
+    async fn call(
+        &amp;self,
+        key: &amp;str,
+        method: Method,
+        path: &amp;str,
+        body: Option&lt;&amp;Value&gt;,
+    ) -&gt; Result&lt;String, Error&gt; {
+        if let Some(hit) = self.cached(key) {
+            return Ok(hit);
+        }
+
+        let url = format!("{}{}", self.cfg.base, path);
+        let mut delay = self.cfg.base_delay;
+        let mut attempt = 0;
+
+        loop {
+            attempt += 1;
+
+            let req = self
+                .http
+                .request(method.clone(), &amp;url)
+                .header("Idempotency-Key", key)
+                .header("Accept", "application/json");
+            let req = match body {
+                Some(b) =&gt; req.json(b),
+                None =&gt; req,
+            };
+
+            let resp = req.send().await?;
+            let status = resp.status();
+            let text = resp.text().await?;
+
+            match status {
+                s if s.is_success() =&gt; {
+                    self.store(key, &amp;text);
+                    return Ok(text);
+                }
+                s if RETRY.contains(&amp;s) &amp;&amp; attempt &lt; self.cfg.max_attempts =&gt; {
+                    tokio::time::sleep(delay).await;
+                    delay = (delay * 2).min(self.cfg.max_delay);
+                }
+                s =&gt; return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+            }
+        }
+    }
+}</code></pre>
+<p>Each attempt builds a request with <code>self.http.request(method, url)</code>. It adds two headers, and for a body calls
+<code>req.json(b)</code>, which serializes the JSON value and sets <code>Content-Type</code>. The request carries
+<code>Idempotency-Key: create-demo-001</code>, so a server that honors the header can deduplicate a retried <code>POST</code>. The
+client-side cache gives the same guarantee within one process.</p>
+<p><code>req.send().await?</code> sends the request and waits for the response headers. <code>resp.text().await?</code> waits for the
+body. The <code>match</code> on the status then has three arms:</p>
+<ul>
+<li>A success is stored in the cache and returned.</li>
+<li>A status in <code>RETRY</code>, with attempts left, sleeps and doubles the delay.</li>
+<li>Anything else is returned as an error that names the status and the attempts.</li>
+</ul>
+<p><code>tokio::time::sleep</code> does not block the thread. It returns a future that registers with Tokio’s timer and
+returns <code>Pending</code>, which is the <code>Delay</code> of section 22.4.2 done properly. Other tasks run on the same thread while
+this one waits.</p>
+<p><code>main</code> builds the client and makes one call:</p>
+<pre><code class="language-rust">#[tokio::main]
+async fn main() -&gt; Result&lt;(), Error&gt; {
+    let api = Api::new(Config {
+        base: "https://httpbin.org".into(),
+        max_attempts: 3,
+        base_delay: Duration::from_millis(100),
+        max_delay: Duration::from_secs(5),
+        timeout: Duration::from_secs(15),
+    })?;
+
+    let body = serde_json::json!({ "name": "demo" });
+    let out = api
+        .call("create-demo-001", Method::POST, "/post", Some(&amp;body))
+        .await?;
+    println!("created:\n{out}");
+    Ok(())
+}</code></pre>
+<p><code>#[tokio::main]</code> starts a Tokio runtime and runs <code>main</code> as its first task, so <code>main</code> can be <code>async</code>.
+<code>serde_json::json!</code> builds a JSON value from JSON-like syntax.</p>
 <p class="listing"><b>Listing 22.11</b> The same layers on Tokio. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">src/bin/reqwest_and_tokio.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::HashMap, sync::Mutex, time::Duration};
@@ -1136,7 +1499,9 @@ struct Api {
 impl Api {
     fn new(cfg: Config) -&gt; Result&lt;Self, Error&gt; {
         Ok(Self {
-            http: Client::builder().timeout(cfg.timeout).build()?,
+            http: Client::builder()
+                .timeout(cfg.timeout)
+                .build()?,
             cache: Mutex::new(HashMap::new()),
             cfg,
         })
@@ -1164,9 +1529,8 @@ impl Api {
         path: &amp;str,
         body: Option&lt;&amp;Value&gt;,
     ) -&gt; Result&lt;String, Error&gt; {
-        match self.cached(key) {
-            Some(hit) =&gt; return Ok(hit),
-            None =&gt; {}
+        if let Some(hit) = self.cached(key) {
+            return Ok(hit);
         }
 
         let url = format!("{}{}", self.cfg.base, path);
@@ -1222,13 +1586,6 @@ async fn main() -&gt; Result&lt;(), Error&gt; {
     println!("created:\n{out}");
     Ok(())
 }</code></pre>
-<p>Several choices in this client are deliberate:</p>
-<ul>
-<li><code>Client::builder().timeout(cfg.timeout)</code> bounds every request. A client without a timeout can wait forever on a server that accepted the connection and never answered.</li>
-<li>The request carries <code>Idempotency-Key: create-demo-001</code>, so a server that honors the header can safely deduplicate the retried <code>POST</code>. The client-side cache gives the same guarantee within one process.</li>
-<li>The cache is a <code>std::sync::Mutex</code>. That is allowed in async code because the guard is never held across an <code>.await</code>; <code>cached</code> and <code>store</code> lock, act, and return. The lock is taken with <code>unwrap_or_else(|e| e.into_inner())</code>, chapter 16’s ignore-the-poison choice. A <code>HashMap</code> insert cannot leave the map half-updated, so recovering the guard is safe here.</li>
-<li><code>type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;</code> lets errors cross task boundaries.</li>
-</ul>
 <h3 id="2273-the-two-clients-side-by-side"><a class="header" href="#2273-the-two-clients-side-by-side">22.7.3 The two clients side by side</a></h3>
 <p>The asynchronous client has the opposite gap from the blocking one. It reads the status code, but a transport error from <code>send().await?</code> is not retried at all. The blocking client retries transport errors and never reads the status code. Merging the two means retrying both, with a policy that asks the error which kind it is.</p>
 <p>Neither client adds jitter, and neither honors <code>Retry-After</code>. Chapter 19 shows both in its delay policy.</p>
@@ -1260,7 +1617,7 @@ Yes, if the guard is dropped before the next <code>.await</code>. Holding it acr
 </ul>
 </div>
 
-<p>Chapter 23 collects compact implementations of the structures from parts 2 to 6. Each one is the shortest program that still shows the structure working, and each fits on one screen.</p>
+<p>Chapter 23 goes below the system calls these chapters made. It maps a file into memory and watches the page faults that load it. Then it sends a file to a socket without copying it through the program.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Add a poll counter to <code>block_on</code> and print it. Check that the count matches the number of wakes for <code>Delay</code>, and that a spurious wake adds one poll without breaking anything.</li>
@@ -1279,7 +1636,7 @@ Yes, if the guard is dropped before the next <code>.await</code>. Holding it acr
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="ch23-drills.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="ch23-mmap.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -1293,7 +1650,7 @@ Yes, if the guard is dropped before the next <code>.await</code>. Holding it acr
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="ch23-drills.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="ch23-mmap.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

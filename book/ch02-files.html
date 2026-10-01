@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -450,6 +450,7 @@ and the write as one step. So two programs appending to the same log do not over
 <p><code>writeln!</code> works like <code>println!</code>, but writes to any value that implements the <code>std::io::Write</code> trait, such
 as a <code>File</code>. The trait must be imported, as the second <code>use</code> line does.</p>
 <h3 id="252-copying-renaming-and-deleting"><a class="header" href="#252-copying-renaming-and-deleting">2.5.2 Copying, renaming, and deleting</a></h3>
+<p>The standard library has one function for each of these file operations. The program copies a file, renames the copy, and deletes the original.</p>
 <p class="listing"><b>Listing 2.6</b> Copy, rename, remove. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs">src/bin/copy_rename_delete_file.rs</a></p>
 
 <pre><code class="language-rust">use std::{fs, io};
@@ -497,6 +498,7 @@ cannot use <code>?</code>; it handles every case itself. Run it where <code>miss
 <p>A directory is a list of entries. Each entry has a name and a type: a file, a directory, or a symbolic
 link. A <strong>symbolic link</strong> is an entry that points to another path.</p>
 <h3 id="261-one-level"><a class="header" href="#261-one-level">2.6.1 One level</a></h3>
+<p>A directory is a list of entries, each a name and a type. The program prints the entries of the current directory and marks which are directories.</p>
 <p class="listing"><b>Listing 2.8</b> Listing the current directory. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs">src/bin/list_directory.rs</a></p>
 
 <pre><code class="language-rust">use std::{fs, io};
@@ -557,6 +559,7 @@ a time. With each page, the service returns a <strong>cursor</strong>, a value t
 <p>If the cursor is the byte position where the next page starts, the service needs no memory of past
 requests. Any copy of the service can read the next page from the cursor alone.</p>
 <h3 id="271-the-page-type"><a class="header" href="#271-the-page-type">2.7.1 The page type</a></h3>
+<p>A page is the lines it holds, plus the cursor where the next page starts. The cursor is a byte offset into the file.</p>
 <p class="listing"><b>Listing 2.10</b> The <code>Page</code> type (lines 1 to 9). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -716,6 +719,7 @@ the order you typed them.</p>
 </figure>
 <p>This program turns that list into a struct of typed options, or an error message.</p>
 <h3 id="281-the-options-and-their-defaults"><a class="header" href="#281-the-options-and-their-defaults">2.8.1 The options and their defaults</a></h3>
+<p>The program’s settings live in one struct, with a default value for each setting the user does not give.</p>
 <p class="listing"><b>Listing 2.13</b> The options (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs">src/bin/command_line_args.rs</a></p>
 
 <pre><code class="language-rust">use std::{env::args, process::ExitCode};
@@ -740,7 +744,8 @@ impl Default for Options {
 <p><code>Options</code> has one field per option. The <code>Default</code> trait gives the values used when an option is not given.
 <code>#[derive(Debug, PartialEq)]</code> lets the tests print and compare <code>Options</code> values.</p>
 <h3 id="282-parsing"><a class="header" href="#282-parsing">2.8.2 Parsing</a></h3>
-<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 43).</p>
+<p>Parsing walks the arguments one at a time and fills in the options. An unknown argument is an error. So is a flag with no value after it, and a count that is not a number.</p>
+<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 47).</p>
 
 <pre><code class="language-rust">/// Turn the arguments after the program name into `Options`.
 fn parse(arguments: impl IntoIterator&lt;Item = String&gt;) -&gt; Result&lt;Options, String&gt; {
@@ -750,10 +755,14 @@ fn parse(arguments: impl IntoIterator&lt;Item = String&gt;) -&gt; Result&lt;Opti
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
             "--name" =&gt; {
-                options.name = arguments.next().ok_or("--name needs a value")?;
+                options.name = arguments
+                    .next()
+                    .ok_or("--name needs a value")?;
             }
             "--count" =&gt; {
-                let value = arguments.next().ok_or("--count needs a value")?;
+                let value = arguments
+                    .next()
+                    .ok_or("--count needs a value")?;
                 options.count = value
                     .parse()
                     .map_err(|_| format!("--count needs a number, got {value:?}"))?;
@@ -775,7 +784,8 @@ the message. Then <code>?</code> returns that error from <code>parse</code>. The
 converts the text to a number, and <code>map_err</code> replaces a parse error with a message that includes the text.</p>
 <p>An argument the program does not know is an error, so a misspelled option is reported instead of ignored.</p>
 <h3 id="283-the-exit-code"><a class="header" href="#283-the-exit-code">2.8.3 The exit code</a></h3>
-<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 45 to 64).</p>
+<p><code>main</code> ties the pieces together: it parses the arguments, runs, and tells the shell whether it succeeded.</p>
+<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 49 to 68).</p>
 
 <pre><code class="language-rust">fn main() -&gt; ExitCode {
     let options = match parse(args().skip(1)) {
@@ -832,10 +842,14 @@ fn parse(arguments: impl IntoIterator&lt;Item = String&gt;) -&gt; Result&lt;Opti
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
             "--name" =&gt; {
-                options.name = arguments.next().ok_or("--name needs a value")?;
+                options.name = arguments
+                    .next()
+                    .ok_or("--name needs a value")?;
             }
             "--count" =&gt; {
-                let value = arguments.next().ok_or("--count needs a value")?;
+                let value = arguments
+                    .next()
+                    .ok_or("--count needs a value")?;
                 options.count = value
                     .parse()
                     .map_err(|_| format!("--count needs a number, got {value:?}"))?;
@@ -874,7 +888,11 @@ mod tests {
     use super::*;
 
     fn parse_args(arguments: &amp;[&amp;str]) -&gt; Result&lt;Options, String&gt; {
-        parse(arguments.iter().map(|value| value.to_string()))
+        parse(
+            arguments
+                .iter()
+                .map(|value| value.to_string()),
+        )
     }
 
     #[test]
@@ -891,7 +909,11 @@ mod tests {
 
     #[test]
     fn verbose_is_a_flag() {
-        assert!(parse_args(&amp;["--verbose"]).unwrap().verbose);
+        assert!(
+            parse_args(&amp;["--verbose"])
+                .unwrap()
+                .verbose
+        );
         assert!(!parse_args(&amp;[]).unwrap().verbose);
     }
 

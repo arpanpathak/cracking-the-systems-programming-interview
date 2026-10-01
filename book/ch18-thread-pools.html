@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -220,6 +220,16 @@ and shares the mutex through an <code>Arc</code>. A worker locks the mutex, call
 <p><strong>Shutdown.</strong> When every <code>Sender</code> is dropped, the channel closes. <code>recv()</code> then returns <code>Err</code> once the remaining
 jobs are taken. A worker that sees the <code>Err</code> leaves its loop, and the thread ends.</p>
 <h2 id="182-version-1-and-a-bug-you-can-measure"><a class="header" href="#182-version-1-and-a-bug-you-can-measure">18.2 Version 1, and a bug you can measure</a></h2>
+<p>Version 1 writes the pool of figure 18.1 directly. <code>new</code> starts the workers, <code>execute</code> sends a job, and <code>join</code>
+closes the channel and waits for every worker. Each worker locks the shared receiver to take a job. How long it
+keeps that lock decides whether the workers run at the same time.</p>
+<p>A <code>Job</code> is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the job channel and the handles of its workers:</p>
+<pre><code class="language-rust">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    sender: mpsc::Sender&lt;Job&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}</code></pre>
 <p class="listing"><b>Listing 18.1</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs">src/bin/thread_pool.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -296,12 +306,19 @@ mutex. When I piped this program’s output into <code>head</code>, which closes
 inside a job. The other three workers then panicked on <code>.unwrap()</code> of the poisoned lock, and <code>main</code> panicked when
 <code>send</code> found no worker left.</p>
 <h2 id="183-version-2-release-the-lock-before-the-job"><a class="header" href="#183-version-2-release-the-lock-before-the-job">18.3 Version 2: release the lock before the job</a></h2>
-<p class="listing"><b>Listing 18.2</b> The worker loop and <code>execute</code> (lines 23 to 64). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
+<p class="listing"><b>Listing 18.2</b> The pool type, the worker loop, and <code>execute</code> (lines 10 to 64). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     sync::{Arc, Mutex, mpsc},
     thread,
 };
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    sender: mpsc::Sender&lt;Job&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
 
 impl ThreadPool {
     /// Start `size` workers. Panics if `size` is zero.
@@ -347,6 +364,9 @@ impl ThreadPool {
         }
     }
 }</code></pre>
+<p><code>Job</code> is a type alias for the work a pool runs, a boxed closure. The closure runs once (<code>FnOnce</code>), can move
+to another thread (<code>Send</code>), and borrows nothing short-lived (<code>'static</code>). <code>ThreadPool</code> holds the sending end of the
+channel that carries jobs, and the handles of its worker threads.</p>
 <p>The fix is one line. <code>let job = receiver.lock().unwrap().recv();</code> is a separate statement, and the temporary guard
 is dropped at the end of that statement. The lock is released before <code>match</code> runs the job.</p>
 <p>Version 2 also changes <code>execute</code>. It is generic over <code>F: FnOnce() + Send + 'static</code>, and does the boxing itself.
@@ -485,13 +505,15 @@ five seconds instead of hanging it.</p>
 <h2 id="184-version-3-errors-and-shutdown-on-drop"><a class="header" href="#184-version-3-errors-and-shutdown-on-drop">18.4 Version 3: errors, and shutdown on drop</a></h2>
 <p>Version 2 still panics in three places: for a size of zero, when <code>send</code> fails, and when the lock is poisoned. And
 if the caller forgets to call <code>join</code>, the pool is dropped without waiting for its jobs. Version 3 fixes both.</p>
-<p class="listing"><b>Listing 18.4</b> The error type (lines 16 to 32). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
+<p class="listing"><b>Listing 18.4</b> The job type and the error type (lines 8 to 32). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     fmt,
     sync::{Arc, Mutex, mpsc},
     thread,
 };
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
 
 /// Why the pool refused a request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -512,9 +534,15 @@ impl fmt::Display for PoolError {
 impl std::error::Error for PoolError {}</code></pre>
 <p><code>PoolError</code> names the two ways a request can fail. It implements <code>Display</code> for a message, and <code>Error</code> so callers
 can use <code>?</code> and <code>Box&lt;dyn Error&gt;</code> with it.</p>
-<p class="listing"><b>Listing 18.5</b> <code>execute</code>, <code>shutdown</code>, and <code>Drop</code> (lines 61 to 87).</p>
+<p class="listing"><b>Listing 18.5</b> The pool, <code>execute</code>, <code>shutdown</code>, and <code>Drop</code>.</p>
 
-<pre><code class="language-rust">impl ThreadPool {
+<pre><code class="language-rust">pub struct ThreadPool {
+    // `None` after shutdown: dropping the sender is what tells workers to stop.
+    sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
     // ...
     /// Queue a closure to run on the next free worker.
     pub fn execute&lt;F&gt;(&amp;self, job: F) -&gt; Result&lt;(), PoolError&gt;
@@ -733,7 +761,7 @@ and jobs queue up forever.</p>
 <img src="figures/pool-catch-unwind.svg" alt="A worker takes a job and runs it inside catch_unwind. Ok increments completed; Err, a caught panic, increments panicked. The worker continues.">
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
 </figure>
-<p class="listing"><b>Listing 18.8</b> The worker loop (lines 144 to 159). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
+<p class="listing"><b>Listing 18.8</b> The types and the worker loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     fmt,
@@ -748,6 +776,54 @@ and jobs queue up forever.</p>
     thread,
 };
 
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+/// Why the pool could not be created or refused a job.
+#[derive(Debug)]
+pub enum PoolError {
+    NoWorkers,
+    Spawn(io::Error),
+    ShutDown,
+}
+
+impl fmt::Display for PoolError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::NoWorkers =&gt; write!(f, "a thread pool needs at least one worker"),
+            Self::Spawn(error) =&gt; write!(f, "failed to spawn a worker thread: {error}"),
+            Self::ShutDown =&gt; write!(f, "the thread pool has shut down"),
+        }
+    }
+}
+
+impl std::error::Error for PoolError {
+    fn source(&amp;self) -&gt; Option&lt;&amp;(dyn std::error::Error + 'static)&gt; {
+        match self {
+            Self::Spawn(error) =&gt; Some(error),
+            _ =&gt; None,
+        }
+    }
+}
+
+/// What the pool did over its lifetime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Report {
+    pub completed: usize,
+    pub panicked: usize,
+}
+
+#[derive(Default)]
+struct Counters {
+    completed: AtomicUsize,
+    panicked: AtomicUsize,
+}
+
+pub struct ThreadPool {
+    sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+    counters: Arc&lt;Counters&gt;,
+}
+
 fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;, counters: &amp;Counters) {
     loop {
         let Ok(guard) = receiver.lock() else { return };
@@ -759,11 +835,22 @@ fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;, counters: 
         // `AssertUnwindSafe` is sound here: the job owns everything it touches,
         // and a panicking job's partial state is never observed by this loop.
         match panic::catch_unwind(AssertUnwindSafe(job)) {
-            Ok(()) =&gt; counters.completed.fetch_add(1, Ordering::Relaxed),
-            Err(_) =&gt; counters.panicked.fetch_add(1, Ordering::Relaxed),
+            Ok(()) =&gt; counters
+                .completed
+                .fetch_add(1, Ordering::Relaxed),
+            Err(_) =&gt; counters
+                .panicked
+                .fetch_add(1, Ordering::Relaxed),
         };
     }
 }</code></pre>
+<p>Version 4 adds three things to the types of version 3:</p>
+<ul>
+<li><code>PoolError::Spawn(io::Error)</code>, for a worker thread the operating system refused to start. Its <code>source</code>
+method returns the <code>io::Error</code> inside, so a caller can see the cause.</li>
+<li><code>Counters</code>, two atomic counts that every worker updates. The pool and the workers share them through an <code>Arc</code>.</li>
+<li><code>Report</code>, a plain copy of the two counts, which <code>shutdown</code> returns.</li>
+</ul>
 <p><code>panic::catch_unwind(f)</code> runs <code>f</code>. If <code>f</code> panics, the unwinding stops at <code>catch_unwind</code>, which returns <code>Err</code>.
 Otherwise it returns <code>Ok</code> with <code>f</code>’s result.</p>
 <p><code>catch_unwind</code> requires the closure to be <code>UnwindSafe</code>. The trait marks types that cannot leave broken data
@@ -823,8 +910,14 @@ running.</p>
     pub fn shutdown(mut self) -&gt; Report {
         self.close_and_join();
         Report {
-            completed: self.counters.completed.load(Ordering::Relaxed),
-            panicked: self.counters.panicked.load(Ordering::Relaxed),
+            completed: self
+                .counters
+                .completed
+                .load(Ordering::Relaxed),
+            panicked: self
+                .counters
+                .panicked
+                .load(Ordering::Relaxed),
         }
     }
 
@@ -970,8 +1063,14 @@ impl ThreadPool {
     pub fn shutdown(mut self) -&gt; Report {
         self.close_and_join();
         Report {
-            completed: self.counters.completed.load(Ordering::Relaxed),
-            panicked: self.counters.panicked.load(Ordering::Relaxed),
+            completed: self
+                .counters
+                .completed
+                .load(Ordering::Relaxed),
+            panicked: self
+                .counters
+                .panicked
+                .load(Ordering::Relaxed),
         }
     }
 
@@ -1002,8 +1101,12 @@ fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;, counters: 
         // `AssertUnwindSafe` is sound here: the job owns everything it touches,
         // and a panicking job's partial state is never observed by this loop.
         match panic::catch_unwind(AssertUnwindSafe(job)) {
-            Ok(()) =&gt; counters.completed.fetch_add(1, Ordering::Relaxed),
-            Err(_) =&gt; counters.panicked.fetch_add(1, Ordering::Relaxed),
+            Ok(()) =&gt; counters
+                .completed
+                .fetch_add(1, Ordering::Relaxed),
+            Err(_) =&gt; counters
+                .panicked
+                .fetch_add(1, Ordering::Relaxed),
         };
     }
 }
@@ -1057,7 +1160,9 @@ mod tests {
         let pool = ThreadPool::new(1).unwrap();
         let (name_tx, name_rx) = channel();
         pool.execute(move || {
-            let name = thread::current().name().map(str::to_string);
+            let name = thread::current()
+                .name()
+                .map(str::to_string);
             name_tx.send(name).unwrap();
         })
         .unwrap();
@@ -1072,7 +1177,11 @@ mod tests {
     #[test]
     fn spawn_errors_expose_their_source() {
         let error = PoolError::Spawn(io::Error::other("no threads left"));
-        assert!(error.to_string().contains("no threads left"));
+        assert!(
+            error
+                .to_string()
+                .contains("no threads left")
+        );
         assert!(error.source().is_some());
         assert!(PoolError::ShutDown.source().is_none());
     }
@@ -1104,6 +1213,15 @@ thread, <code>pool-worker-0</code>, which shows the thread names at work.</p>
 <h2 id="186-shorter-pools"><a class="header" href="#186-shorter-pools">18.6 Shorter pools</a></h2>
 <p>Three more pools take the lessons of versions 2 and 3 in a more compact form, and each adds one feature.</p>
 <h3 id="1861-shutdown-in-drop-compactly"><a class="header" href="#1861-shutdown-in-drop-compactly">18.6.1 Shutdown in <code>Drop</code>, compactly</a></h3>
+<p>This pool shuts itself down when it goes out of scope. Its <code>Drop</code> closes the channel and joins the workers, so
+the caller never calls a shutdown method.</p>
+<p>The sender is wrapped in an <code>Option</code>, as in version 3, so <code>Drop</code> can close the channel by setting it to <code>None</code>:</p>
+<pre><code class="language-rust">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+    job_sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+}</code></pre>
 <p class="listing"><b>Listing 18.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_bruce_lee.rs">src/bin/thread_pool_bruce_lee.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -1187,6 +1305,15 @@ could take the next job before the others were scheduled. The pool does not prom
 <p><code>Drop</code> calls <code>worker.join().unwrap()</code>. If a job panicked, its worker’s <code>join</code> returns <code>Err</code>, and the <code>unwrap</code> panics
 inside <code>Drop</code>. The later versions use <code>let _ = worker.join();</code> instead.</p>
 <h3 id="1862-a-bounded-queue-and-results"><a class="header" href="#1862-a-bounded-queue-and-results">18.6.2 A bounded queue and results</a></h3>
+<p>This pool adds two features. The queue has a fixed size, so a caller that submits jobs faster than the workers
+run them has to wait. And each job’s return value comes back to the caller.</p>
+<p>The sender is now a <code>SyncSender</code>, the sending end of a channel with a fixed capacity:</p>
+<pre><code class="language-rust">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+    job_sender: Option&lt;mpsc::SyncSender&lt;Job&gt;&gt;, // changed: bounded sender
+}</code></pre>
 <p class="listing"><b>Listing 18.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs">src/bin/thread_pool_with_back_pressure.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -1289,6 +1416,16 @@ later is often called a <strong>future</strong>, and chapter 22 builds on that i
 <p>The results print in order because <code>main</code> calls <code>recv()</code> on the receivers in order, even though the jobs may finish
 in any order.</p>
 <h3 id="1863-many-producers"><a class="header" href="#1863-many-producers">18.6.3 Many producers</a></h3>
+<p>In this pool, several threads submit jobs at the same time, each through its own clone of the <code>Sender</code>. The
+worker loop also handles a poisoned lock and a closed channel separately.</p>
+<p><code>SharedLockedChannel</code> names the type every worker shares: one receiver, behind a <code>Mutex</code>, in an <code>Arc</code>. The pool holds a bounded sender in an <code>Option</code>, and the worker handles:</p>
+<pre><code class="language-rust">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+type SharedLockedChannel = Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;;
+
+pub struct ThreadPool {
+    tx: Option&lt;SyncSender&lt;Job&gt;&gt;,
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+}</code></pre>
 <p class="listing"><b>Listing 18.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs">src/bin/mpmc_thread_pool_engine.rs</a></p>
 
 <pre><code class="language-rust">use std::{

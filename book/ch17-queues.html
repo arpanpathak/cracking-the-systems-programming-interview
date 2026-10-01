@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -700,7 +700,7 @@ impl&lt;T&gt; PoisonMap&lt;T&gt; for Result&lt;T, PoisonError&lt;T&gt;&gt; {
 any type, including the standard library’s <code>Result</code>. A trait used this way is called an <strong>extension trait</strong>.
 <code>impl&lt;T&gt; PoisonMap&lt;T&gt; for Result&lt;T, PoisonError&lt;T&gt;&gt;</code> gives every <code>Result&lt;T, PoisonError&lt;T&gt;&gt;</code> a <code>map_poison</code>
 method, which replaces the <code>PoisonError</code> with <code>QueuePoisonedError</code>.</p>
-<p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 51 to 71).</p>
+<p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 51 to 74).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     // ...
@@ -718,7 +718,10 @@ method, which replaces the <code>PoisonError</code> with <code>QueuePoisonedErro
     fn pop(&amp;self) -&gt; Result&lt;T, QueuePoisonedError&gt; {
         let mut guard = self.inner.lock().map_poison()?;
         while guard.is_empty() {
-            guard = self.not_empty.wait(guard).map_poison()?;
+            guard = self
+                .not_empty
+                .wait(guard)
+                .map_poison()?;
         }
         let item = guard.pop_front().unwrap();
         drop(guard);
@@ -794,7 +797,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     fn pop(&amp;self) -&gt; Result&lt;T, QueuePoisonedError&gt; {
         let mut guard = self.inner.lock().map_poison()?;
         while guard.is_empty() {
-            guard = self.not_empty.wait(guard).map_poison()?;
+            guard = self
+                .not_empty
+                .wait(guard)
+                .map_poison()?;
         }
         let item = guard.pop_front().unwrap();
         drop(guard);
@@ -936,12 +942,15 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 type RuntimeError = Box&lt;dyn Error + Send + Sync&gt;;</code></pre>
 <p><code>Box&lt;dyn Error + Send + Sync&gt;</code> can hold any error type. <code>+ Send + Sync</code> is needed because the error travels
 between threads: each thread returns a <code>Result</code>, and <code>join</code> hands it to the main thread.</p>
-<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 <pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     // ...
     fn push(&amp;self, item: T) -&gt; Result&lt;(), RuntimeError&gt; {
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| e.to_string())?;
 
         while guard.len() == self.capacity {
             guard = self
@@ -992,7 +1001,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     }
 
     fn push(&amp;self, item: T) -&gt; Result&lt;(), RuntimeError&gt; {
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| e.to_string())?;
 
         while guard.len() == self.capacity {
             guard = self
@@ -1008,7 +1020,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     }
 
     fn pop(&amp;self) -&gt; Result&lt;T, RuntimeError&gt; {
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| e.to_string())?;
 
         while guard.is_empty() {
             guard = self
@@ -1249,7 +1264,7 @@ pub struct BoundedQueue&lt;T&gt; {
 }</code></pre>
 <p>The mutex now protects a small struct: the items, the capacity, and a <code>closed</code> flag. The flag must be inside the
 mutex, because threads check it together with the items.</p>
-<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 88).</p>
+<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 94).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     // ...
@@ -1258,7 +1273,10 @@ mutex, because threads check it together with the items.</p>
     /// Returns `Err(item)` if the queue is closed, so the caller keeps ownership
     /// instead of losing the value.
     pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         loop {
             if state.closed {
                 return Err(item);
@@ -1280,7 +1298,10 @@ mutex, because threads check it together with the items.</p>
     /// Returns `None` once the queue is closed and drained, which is how a
     /// consumer loop terminates cleanly.
     pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         loop {
             if let Some(item) = state.items.pop_front() {
                 self.not_full.notify_one();
@@ -1303,7 +1324,7 @@ is not lost, and the caller decides what to do with it.</p>
 <p><code>pop</code> returns <code>Option&lt;T&gt;</code>. It checks for an item before it checks <code>closed</code>, so a closed queue still gives up the
 items already in it. Only a closed queue that is empty returns <code>None</code>. A consumer can therefore loop with
 <code>while let Some(item) = queue.pop()</code>, and the loop ends after the last item.</p>
-<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 100 to 110).</p>
+<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 109 to 122).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     // ...
@@ -1312,7 +1333,10 @@ items already in it. Only a closed queue that is empty returns <code>None</code>
     /// Pending and future `pop` calls return `None` after the queue drains, and
     /// future `push` calls fail. Idempotent.
     pub fn close(&amp;self) {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         state.closed = true;
         drop(state);
         self.not_empty.notify_all();
@@ -1376,7 +1400,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     /// Returns `Err(item)` if the queue is closed, so the caller keeps ownership
     /// instead of losing the value.
     pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         loop {
             if state.closed {
                 return Err(item);
@@ -1398,7 +1425,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     /// Returns `None` once the queue is closed and drained, which is how a
     /// consumer loop terminates cleanly.
     pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         loop {
             if let Some(item) = state.items.pop_front() {
                 self.not_full.notify_one();
@@ -1416,7 +1446,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
 
     /// Pop without blocking.
     pub fn try_pop(&amp;self) -&gt; Option&lt;T&gt; {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         let item = state.items.pop_front();
         if item.is_some() {
             self.not_full.notify_one();
@@ -1429,7 +1462,10 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
     /// Pending and future `pop` calls return `None` after the queue drains, and
     /// future `push` calls fail. Idempotent.
     pub fn close(&amp;self) {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         state.closed = true;
         drop(state);
         self.not_empty.notify_all();
@@ -1487,7 +1523,9 @@ mod tests {
             let queue = Arc::clone(&amp;queue);
             thread::spawn(move || {
                 for value in 0..1_000 {
-                    queue.push(value).expect("queue stays open");
+                    queue
+                        .push(value)
+                        .expect("queue stays open");
                 }
                 queue.close();
             })
@@ -1497,7 +1535,9 @@ mod tests {
         while let Some(value) = queue.pop() {
             received.push(value);
         }
-        producer.join().expect("producer panicked");
+        producer
+            .join()
+            .expect("producer panicked");
 
         assert_eq!(received, (0..1_000).collect::&lt;Vec&lt;_&gt;&gt;());
     }
@@ -1511,7 +1551,9 @@ mod tests {
             let observed_peak = Arc::clone(&amp;observed_peak);
             thread::spawn(move || {
                 for value in 0..200u32 {
-                    queue.push(value).expect("queue stays open");
+                    queue
+                        .push(value)
+                        .expect("queue stays open");
                     observed_peak.fetch_max(queue.len(), Ordering::SeqCst);
                 }
                 queue.close();
@@ -1521,7 +1563,9 @@ mod tests {
         while queue.pop().is_some() {
             thread::sleep(Duration::from_micros(50));
         }
-        producer.join().expect("producer panicked");
+        producer
+            .join()
+            .expect("producer panicked");
 
         assert!(observed_peak.load(Ordering::SeqCst) &lt;= 4);
     }
@@ -1537,7 +1581,12 @@ mod tests {
         thread::sleep(Duration::from_millis(20));
         queue.close();
 
-        assert_eq!(consumer.join().expect("consumer panicked"), None);
+        assert_eq!(
+            consumer
+                .join()
+                .expect("consumer panicked"),
+            None
+        );
     }
 
     #[test]
@@ -1895,8 +1944,12 @@ mod tests {
             })
         };
 
-        producer.join().expect("producer panicked");
-        let received = consumer.join().expect("consumer panicked");
+        producer
+            .join()
+            .expect("producer panicked");
+        let received = consumer
+            .join()
+            .expect("consumer panicked");
 
         assert_eq!(received, (0..ITEMS).collect::&lt;Vec&lt;_&gt;&gt;());
     }
@@ -1913,9 +1966,18 @@ mod tests {
         let dropped = Arc::new(AtomicUsize::new(0));
         {
             let ring = SpscRing::&lt;Tracker, 4&gt;::new();
-            assert!(ring.push(Tracker(Arc::clone(&amp;dropped))).is_ok());
-            assert!(ring.push(Tracker(Arc::clone(&amp;dropped))).is_ok());
-            assert!(ring.push(Tracker(Arc::clone(&amp;dropped))).is_ok());
+            assert!(
+                ring.push(Tracker(Arc::clone(&amp;dropped)))
+                    .is_ok()
+            );
+            assert!(
+                ring.push(Tracker(Arc::clone(&amp;dropped)))
+                    .is_ok()
+            );
+            assert!(
+                ring.push(Tracker(Arc::clone(&amp;dropped)))
+                    .is_ok()
+            );
         }
         assert_eq!(dropped.load(Ordering::SeqCst), 3);
     }

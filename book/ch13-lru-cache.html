@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -263,7 +263,7 @@ where
 }</code></pre>
 <p>The key must be <code>Clone</code>, because a copy of it goes into the queue with every event. The value must be <code>Clone</code>,
 because <code>get</code> returns a copy of it.</p>
-<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 49 to 70).</p>
+<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 49 to 71).</p>
 
 <pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
 where
@@ -287,7 +287,8 @@ where
             .map
             .insert(key.clone(), (value, self.generation))
             .is_none();
-        self.recency.push_back((key, self.generation));
+        self.recency
+            .push_back((key, self.generation));
 
         if is_new {
             self.evict_if_needed();
@@ -300,7 +301,7 @@ generation, records an event, and stores the value again with the new stamp.</p>
 <p><code>put</code> stores the value with a new stamp, and records an event. <code>HashMap::insert</code> returns the old value if the key
 was already present, or <code>None</code> if it was new. Only a new key can make the map too large, so only a new key
 triggers eviction.</p>
-<p class="listing"><b>Listing 13.3</b> Eviction (lines 72 to 86).</p>
+<p class="listing"><b>Listing 13.3</b> Eviction (lines 73 to 87).</p>
 
 <pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
 where
@@ -402,7 +403,8 @@ where
             .map
             .insert(key.clone(), (value, self.generation))
             .is_none();
-        self.recency.push_back((key, self.generation));
+        self.recency
+            .push_back((key, self.generation));
 
         if is_new {
             self.evict_if_needed();
@@ -1255,6 +1257,11 @@ where
     /// How many entries are cached.
     fn len(&amp;self) -&gt; usize;
 
+    /// Whether the cache holds no entries.
+    fn is_empty(&amp;self) -&gt; bool {
+        self.len() == 0
+    }
+
     /// The variant's name, for benchmark output.
     fn variant() -&gt; &amp;'static str;
 }</code></pre>
@@ -1529,12 +1536,12 @@ where
             return;
         }
 
-        if self.map.len() &gt;= self.cap {
-            if let Some(victim) = self.tail.clone() {
-                let old_key = victim.borrow().key.clone();
-                self.map.remove(&amp;old_key);
-                self.detach(&amp;victim);
-            }
+        if self.map.len() &gt;= self.cap
+            &amp;&amp; let Some(victim) = self.tail.clone()
+        {
+            let old_key = victim.borrow().key.clone();
+            self.map.remove(&amp;old_key);
+            self.detach(&amp;victim);
         }
 
         let node = Rc::new(RefCell::new(Node {
@@ -1960,7 +1967,7 @@ fn with_thousands(value: u64) -&gt; String {
     let digits = value.to_string();
     let mut out = String::with_capacity(digits.len() + digits.len() / 3);
     for (index, digit) in digits.chars().enumerate() {
-        if index &gt; 0 &amp;&amp; (digits.len() - index) % 3 == 0 {
+        if index &gt; 0 &amp;&amp; (digits.len() - index).is_multiple_of(3) {
             out.push(',');
         }
         out.push(digit);
@@ -2001,6 +2008,384 @@ them. Chapter 15 explains why nearby memory is faster to reach.</li>
 </ul>
 <p>This benchmark measures the total, and does not separate the three costs. Exercise 4 suggests a way to
 separate them.</p>
+<h2 id="136-the-complete-files"><a class="header" href="#136-the-complete-files">13.6 The complete files</a></h2>
+<p>The sections above showed these files in excerpts. Here each one is whole.</p>
+<p class="listing"><b>Listing 13.20</b> The arena LRU cache. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
+
+<pre><code class="language-rust">//! A fixed-capacity LRU (Least Recently Used) cache.
+//!
+//! ## Design
+//!
+//! Two structures cooperate to give O(1) `get` and `put`:
+//!
+//! * `map: HashMap&lt;K, usize&gt;` — key → index into the arena.
+//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role
+//!   of pointers, sidestepping `Rc&lt;RefCell&lt;…&gt;&gt;` and its borrow-checker pain.
+//!
+//! The arena is stitched into a doubly linked list through `head`/`tail`:
+//!
+//! ```text
+//!   MRU  →  head → … → tail  →  LRU
+//! ```
+//!
+//! On eviction we **reuse the tail slot** instead of removing it, so no node
+//! is ever deallocated mid-life. That keeps the arena dense and index-stable.
+
+use std::{collections::HashMap, hash::Hash};
+
+/// A single cache entry, linked into the recency list by index.
+struct Node&lt;K, V&gt; {
+    /// Retained so we can delete the corresponding map entry when evicting.
+    key: K,
+    value: V,
+    /// Neighbour closer to the MRU end (or `None` if this is `head`).
+    prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (or `None` if this is `tail`).
+    next: Option&lt;usize&gt;,
+}
+
+/// Fixed-capacity LRU cache.
+pub struct LruCache&lt;K, V&gt; {
+    /// Maximum number of entries; `&gt;= 1` (enforced by `new`).
+    cap: usize,
+    /// Key → arena index. The single source of truth for "is this key cached?".
+    lookup_table: HashMap&lt;K, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to be evicted).
+    tail: Option&lt;usize&gt;,
+}
+
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+{
+    /// Create a cache holding at most `cap` entries.
+    ///
+    /// # Panics
+    /// Panics if `cap == 0`, since a zero-capacity cache cannot store anything.
+    pub fn new(cap: usize) -&gt; Self {
+        assert!(cap &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap,
+            lookup_table: HashMap::new(),
+            nodes: Vec::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    /// Promote node `i` to `head` (MRU).
+    ///
+    /// Handles both cases in one pass:
+    /// * **Already linked** — detach from its current neighbours first.
+    /// * **Brand new** — the node has `prev = next = None` and is not yet
+    ///   referenced by `head`/`tail`, so the detach step is skipped.
+    fn touch(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+
+        // A node is "linked" if any of its four references exist.
+        let linked =
+            prev.is_some() || next.is_some() || self.head == Some(i) || self.tail == Some(i);
+
+        if linked {
+            // Splice `i` out of the list.
+            match prev {
+                Some(p) =&gt; self.nodes[p].next = next,
+                None =&gt; self.head = next,
+            }
+            match next {
+                Some(n) =&gt; self.nodes[n].prev = prev,
+                None =&gt; self.tail = prev,
+            }
+        }
+
+        // Splice `i` in at the front.
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        if let Some(h) = self.head {
+            self.nodes[h].prev = Some(i);
+        }
+        self.head = Some(i);
+        if self.tail.is_none() {
+            self.tail = Some(i);
+        }
+    }
+
+    /// Look up `key`, promoting it to MRU on a hit.
+    ///
+    /// Returns `None` if the key is not cached.
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        let i = *self.lookup_table.get(key)?;
+        self.touch(i);
+        Some(&amp;self.nodes[i].value)
+    }
+
+    /// Insert or update `key`. Promotes it to MRU. Evicts the LRU entry if
+    /// the cache is full.
+    pub fn put(&amp;mut self, key: K, value: V) {
+        // Case 1: key already present → update value, promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.touch(i);
+            return;
+        }
+
+        // Case 2: room to grow → append a fresh node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.nodes.push(Node {
+                key: key.clone(),
+                value,
+                prev: None,
+                next: None,
+            });
+            self.lookup_table.insert(key, i);
+            self.touch(i);
+            return;
+        }
+
+        // Case 3: at capacity → reuse the LRU slot.
+        // `tail` is guaranteed to be `Some` here because `cap &gt;= 1` and the
+        // arena is full, but we still handle `None` gracefully.
+        if let Some(i) = self.tail {
+            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
+            self.nodes[i].value = value;
+            self.lookup_table.remove(&amp;old_key);
+            self.lookup_table
+                .insert(self.nodes[i].key.clone(), i);
+            self.touch(i);
+        }
+    }
+}
+
+fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&amp;"B")); // None
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
+}
+
+#[cfg(test)]
+mod tests_for_lru {
+    use super::*;
+
+    #[test]
+    fn basic_eviction() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1)); // A is now MRU
+        c.put("C", 3); // evicts B
+
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1));
+        assert_eq!(c.get(&amp;"C"), Some(&amp;3));
+    }
+
+    #[test]
+    fn updating_existing_key_keeps_it() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        c.put("A", 100); // update A, A becomes MRU
+        c.put("C", 3); // evicts B
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;100));
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"C"), Some(&amp;3));
+    }
+
+    #[test]
+    fn get_refreshes_recency() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1)); // A refreshed
+        c.put("C", 3); // evicts B
+
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut c = LruCache::new(1);
+        c.put("A", 1);
+        c.put("B", 2); // evicts A
+
+        assert_eq!(c.get(&amp;"A"), None);
+        assert_eq!(c.get(&amp;"B"), Some(&amp;2));
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let mut c: LruCache&lt;&amp;str, i32&gt; = LruCache::new(2);
+        assert_eq!(c.get(&amp;"nope"), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be &gt; 0")]
+    fn zero_capacity_panics() {
+        let _: LruCache&lt;&amp;str, i32&gt; = LruCache::new(0);
+    }
+}</code></pre>
+<p class="listing"><b>Listing 13.21</b> The <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> LRU cache used by the benchmark. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
+
+<pre><code class="language-rust">//! LRU cache built from an `Rc&lt;RefCell&lt;_&gt;&gt;` doubly linked list.
+//!
+//! The textbook version: `Rc` forward, `Weak` back, and a `HashMap` from key to
+//! node. Every node is its own heap allocation, and every move to the front
+//! clones an `Rc`, upgrades a `Weak`, and borrows the `RefCell`.
+//!
+//! The default drop would free a node, which frees its `next`, one stack frame
+//! per element, so `Drop` is written to unlink iteratively.
+
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::Hash,
+    rc::{Rc, Weak},
+};
+
+use super::Cache;
+
+type Link&lt;K, V&gt; = Option&lt;Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;&gt;;
+
+struct Node&lt;K, V&gt; {
+    key: K,
+    value: V,
+    prev: Weak&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;,
+    next: Link&lt;K, V&gt;,
+}
+
+pub struct LruCache&lt;K, V&gt; {
+    cap: usize,
+    map: HashMap&lt;K, Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;&gt;,
+    head: Link&lt;K, V&gt;,
+    tail: Link&lt;K, V&gt;,
+}
+
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn detach(&amp;mut self, node: &amp;Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;) {
+        let (prev, next) = {
+            let entry = node.borrow();
+            (entry.prev.clone(), entry.next.clone())
+        };
+
+        match prev.upgrade() {
+            Some(previous) =&gt; previous.borrow_mut().next = next.clone(),
+            None =&gt; self.head = next.clone(),
+        }
+        match &amp;next {
+            Some(following) =&gt; following.borrow_mut().prev = prev,
+            None =&gt; self.tail = prev.upgrade(),
+        }
+    }
+
+    fn push_front(&amp;mut self, node: Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;) {
+        let head = self.head.clone();
+        {
+            let mut entry = node.borrow_mut();
+            entry.prev = Weak::new();
+            entry.next = head.clone();
+        }
+        match &amp;head {
+            Some(previous) =&gt; previous.borrow_mut().prev = Rc::downgrade(&amp;node),
+            None =&gt; self.tail = Some(node.clone()),
+        }
+        self.head = Some(node);
+    }
+}
+
+impl&lt;K, V&gt; Cache&lt;K, V&gt; for LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap: capacity,
+            map: HashMap::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let node = self.map.get(key)?.clone();
+        self.detach(&amp;node);
+        self.push_front(node.clone());
+        Some(node.borrow().value)
+    }
+
+    fn put(&amp;mut self, key: K, value: V) {
+        if let Some(node) = self.map.get(&amp;key).cloned() {
+            node.borrow_mut().value = value;
+            self.detach(&amp;node);
+            self.push_front(node);
+            return;
+        }
+
+        if self.map.len() &gt;= self.cap
+            &amp;&amp; let Some(victim) = self.tail.clone()
+        {
+            let old_key = victim.borrow().key.clone();
+            self.map.remove(&amp;old_key);
+            self.detach(&amp;victim);
+        }
+
+        let node = Rc::new(RefCell::new(Node {
+            key: key.clone(),
+            value,
+            prev: Weak::new(),
+            next: None,
+        }));
+        self.map.insert(key, node.clone());
+        self.push_front(node);
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.map.len()
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "Rc&lt;RefCell&gt; list"
+    }
+}
+
+impl&lt;K, V&gt; Drop for LruCache&lt;K, V&gt; {
+    fn drop(&amp;mut self) {
+        // Unlink iteratively: dropping a million-node chain recursively overflows
+        // the stack.
+        let mut current = self.head.take();
+        while let Some(node) = current {
+            let next = node.borrow_mut().next.take();
+            node.borrow_mut().prev = Weak::new();
+            current = next;
+        }
+    }
+}</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>

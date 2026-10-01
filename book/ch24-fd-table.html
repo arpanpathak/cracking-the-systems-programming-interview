@@ -1,0 +1,963 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>File descriptors, fork, and pipes - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-0ec47a42.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch24.png" alt="Relay, the robot who is the switchboard operator of the descriptor table, beside a switchboard of numbered jacks, with cords from jack 1 and jack 0 to the two ends of a pipe">
+<h1 id="file-descriptors-fork-and-pipes"><a class="header" href="#file-descriptors-fork-and-pipes">File descriptors, fork, and pipes</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>The descriptor table, the open file descriptions it points at, and the lowest-free-number rule</li>
+<li>What <code>fork</code> copies, what <code>exec</code> keeps, and why the child of a threaded program must be careful</li>
+<li>Pipes: a kernel buffer with a read end and a write end, and when a reader sees end-of-file</li>
+<li><code>ls | wc -l</code> built by hand with <code>pipe</code>, <code>fork</code>, <code>dup2</code>, and <code>execvp</code></li>
+<li>A write end left open, which makes a reader wait forever</li>
+<li>Close-on-exec, and the descriptors a child inherits without it</li>
+</ul>
+</div>
+
+<p>Chapter 2 said that <code>open</code> returns a small number, the file descriptor, and that later calls name the
+file by that number. Chapter 20 used the same numbers for sockets. This chapter looks at the table that
+holds those numbers. It shows what happens to the table when a process starts another program. Then it shows how a shell uses the table to join two programs with a pipe.</p>
+<p>The chapter’s program, <code>fd_table</code>, does the shell’s work with raw system calls from the <code>libc</code> crate. It
+watches descriptor numbers being handed out and reused. It builds <code>ls | wc -l</code>, then breaks it by keeping
+one descriptor open too long. Last, it checks which descriptors a child process inherits.</p>
+<h2 id="241-the-descriptor-table"><a class="header" href="#241-the-descriptor-table">24.1 The descriptor table</a></h2>
+<p>Every process has a <strong>descriptor table</strong>. An entry maps a small number to an open file in the kernel. The
+kernel creates the first three entries for most programs: 0 is standard input, 1 is standard output, and 2
+is standard error.</p>
+<p>An entry does not point at the file on disk directly. It points at an <strong>open file description</strong>, a kernel
+object that one <code>open</code> call creates. The description holds the state of that one opening: the current
+offset, and flags such as read-only or <code>O_APPEND</code>. The description points at the file itself (figure 24.1).</p>
+<figure>
+<img src="figures/ch24-tables.svg" alt="A process&#39;s descriptor table maps 0, 1, and 2 to one open file description for the terminal, 3 to a description of a.txt at offset 0, and both 4 and 100 to a second description of a.txt at offset 5. Both descriptions point at the same file on disk.">
+<figcaption><b>Figure 24.1</b> Three levels: descriptor numbers, open file descriptions, and the file. Descriptors 4 and 100 share one offset.</figcaption>
+</figure>
+<p>Three rules follow from this layout:</p>
+<ul>
+<li><strong>Two <code>open</code> calls on one file give two descriptions.</strong> Each has its own offset, so reading through
+descriptor 3 does not move descriptor 4.</li>
+<li><strong>Duplicating a descriptor shares the description.</strong> <code>dup</code>, <code>dup2</code>, and <code>fcntl</code> with <code>F_DUPFD</code> add an
+entry that points at an existing description. A read through either number moves the offset of both.</li>
+<li><strong><code>open</code> returns the lowest free number.</strong> When descriptor 3 is closed, the next <code>open</code> returns 3 again.</li>
+</ul>
+<p>A description lives as long as some entry points at it. <code>close</code> removes one entry. The description, and
+for a pipe or socket the connection behind it, goes away when the last entry is closed.</p>
+<p>The table has a limit, set per process by <code>RLIMIT_NOFILE</code>. A program that never closes its descriptors reaches the limit. Every later <code>open</code>, <code>accept</code>, or <code>socket</code> then fails with <code>EMFILE</code>, “Too many open files”. In Rust, a <code>File</code> or a <code>TcpStream</code> closes its descriptor when it is dropped, which prevents most of
+these leaks.</p>
+<h3 id="2411-watching-the-numbers"><a class="header" href="#2411-watching-the-numbers">24.1.1 Watching the numbers</a></h3>
+<p>On Linux and macOS, the directory <code>/dev/fd</code> lists the calling process’s open descriptors. <code>open_fds</code> reads
+it:</p>
+<pre><code class="language-rust">use std::{
+    ffi::CString,
+    fs::{self, File},
+    io::{self, Read, Write},
+    os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd},
+    path::Path,
+    thread,
+    time::Duration,
+};
+
+/// The descriptors open in this process, read from `/dev/fd`.
+///
+/// Reading the directory opens one more descriptor, which is in the list.
+fn open_fds() -&gt; io::Result&lt;Vec&lt;RawFd&gt;&gt; {
+    let mut fds: Vec&lt;RawFd&gt; = fs::read_dir("/dev/fd")?
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().to_str()?.parse().ok())
+        .collect();
+    fds.sort_unstable();
+    Ok(fds)
+}</code></pre>
+<p>Each directory entry is named after a descriptor number. The second <code>filter_map</code> keeps the names that parse
+as numbers. Reading the directory needs a descriptor of its own, so that one is in the list too.</p>
+<p><code>main</code> opens the same file twice, closes the first descriptor, and opens it a third time:</p>
+<pre><code class="language-rust">fn main() -&gt; io::Result&lt;()&gt; {
+    // ...
+    println!("open at start: {:?}", open_fds()?);
+    let first = File::open(&amp;path)?;
+    let second = File::open(&amp;path)?;
+    println!(
+        "opened two files: fd {} and fd {}",
+        first.as_raw_fd(),
+        second.as_raw_fd()
+    );
+    let freed = first.as_raw_fd();
+    drop(first);
+    let third = File::open(&amp;path)?;
+    println!(
+        "closed fd {freed}, opened another: fd {}\n",
+        third.as_raw_fd()
+    );
+    // ...
+}</code></pre>
+<p>The output shows both rules:</p>
+<pre><code class="language-text">open at start: [0, 1, 2, 3]
+opened two files: fd 3 and fd 4
+closed fd 3, opened another: fd 3
+</code></pre>
+<p>At start, 0 to 2 are the standard streams and 3 is the <code>/dev/fd</code> directory being read. The directory is
+closed when <code>read_dir</code>’s iterator is dropped, so the first <code>File::open</code> gets 3. Closing 3 frees the lowest
+number, and the third <code>open</code> takes it again.</p>
+<h2 id="242-fork-and-exec"><a class="header" href="#242-fork-and-exec">24.2 <code>fork</code> and <code>exec</code></a></h2>
+<p>A Unix process starts another program in two steps.</p>
+<ol>
+<li><strong><code>fork</code></strong> creates a child process that is a copy of the caller. The child gets a copy of the caller’s
+memory, shared copy-on-write as in section 23.2, and a copy of the descriptor table. <code>fork</code> returns
+twice: in the parent it returns the child’s process id, and in the child it returns 0.</li>
+<li><strong><code>exec</code></strong> replaces the program running in the process with a new one. The memory is replaced. The
+descriptor table is kept, except for entries marked <strong>close-on-exec</strong>, which <code>exec</code> closes.</li>
+</ol>
+<p>The table copy is shallow (figure 24.2). The child’s descriptor 100 points at the same open file
+description as the parent’s descriptor 100, so the two processes share one offset. After <code>exec</code>, the new
+program finds its standard streams at 0, 1, and 2 because they were in the table before <code>exec</code> ran.</p>
+<figure>
+<img src="figures/ch24-fork.svg" alt="The parent&#39;s table has 1 for stdout, 100 for a.txt, and 101 for a.txt with close-on-exec. fork copies the table to the child; both tables&#39; entry 100 point at one open file description with a shared offset. After exec, the child keeps 1 and 100, and 101 is closed.">
+<figcaption><b>Figure 24.2</b> <code>fork</code> copies the table, and both copies point at the same descriptions. <code>exec</code> keeps the table and closes the close-on-exec entries.</figcaption>
+</figure>
+<p>A shell uses the gap between the two calls. In the child, after <code>fork</code> and before <code>exec</code>, it rearranges the table. It moves a pipe end to descriptor 0 or 1 with <code>dup2</code>, then calls <code>exec</code>. The new program reads
+descriptor 0 and writes descriptor 1 as always, without knowing they are a pipe.</p>
+<h3 id="2421-what-the-child-may-do-before-exec"><a class="header" href="#2421-what-the-child-may-do-before-exec">24.2.1 What the child may do before <code>exec</code></a></h3>
+<p><code>fork</code> copies only the thread that called it. Suppose another thread held a lock at that moment, such as the memory allocator’s lock. The child’s copy of that lock stays locked forever. No thread exists in
+the child to release it. A child that calls <code>malloc</code> can then deadlock.</p>
+<p>So between <code>fork</code> and <code>exec</code>, the child of a multithreaded program may only make <strong>async-signal-safe</strong> calls. These are calls that take no locks, such as <code>dup2</code>, <code>close</code>, <code>execvp</code>, and <code>_exit</code>. Rust’s test harness runs tests on several threads, so the program follows this rule.</p>
+<p>The program describes the command to run as C strings:</p>
+<pre><code class="language-rust">/// A program name and its arguments, as C strings.
+struct Program(Vec&lt;CString&gt;);
+
+impl Program {
+    fn new(args: &amp;[&amp;str]) -&gt; Self {
+        Self(
+            args.iter()
+                .map(|arg| CString::new(*arg).expect("no NUL byte in an argument"))
+                .collect(),
+        )
+    }
+
+    /// The null-terminated pointer array `execvp` takes. It borrows `self`.
+    fn argv(&amp;self) -&gt; Vec&lt;*const libc::c_char&gt; {
+        self.0
+            .iter()
+            .map(|arg| arg.as_ptr())
+            .chain(std::iter::once(std::ptr::null()))
+            .collect()
+    }
+}</code></pre>
+<p><code>execvp</code> takes an array of pointers to C strings, ending with a null pointer. <code>argv</code> builds that array. The
+pointers point into the <code>CString</code>s, so the array is valid only while the <code>Program</code> is alive.</p>
+<p><code>spawn</code> uses three calls:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn fork() -&gt; pid_t;                      // child's id in the parent, 0 in the child, -1 on error
+    fn dup2(src: c_int, dst: c_int) -&gt; c_int; // make dst refer to src's open file
+    fn execvp(
+        file: *const c_char,                  // program name, searched in PATH
+        argv: *const *const c_char,           // arguments, ending with a null pointer
+    ) -&gt; c_int;                               // returns only on failure
+}</code></pre>
+<p><code>spawn</code> forks, and in the child arranges descriptors 0 and 1 and runs the program:</p>
+<pre><code class="language-rust">/// Start `program` in a child process. `stdin` and `stdout`, when given,
+/// become the child's descriptors 0 and 1. Returns the child's process id.
+fn spawn(
+    program: &amp;Program,
+    stdin: Option&lt;RawFd&gt;,
+    stdout: Option&lt;RawFd&gt;,
+) -&gt; io::Result&lt;libc::pid_t&gt; {
+    // Allocate before `fork`: the child may only make async-signal-safe calls.
+    let argv = program.argv();
+
+    // SAFETY: the child below calls only dup2, execvp, and _exit.
+    let pid = check(unsafe { libc::fork() })?;
+    if pid &gt; 0 {
+        return Ok(pid);
+    }
+
+    // SAFETY: this is the child, a copy of the parent with one thread. dup2 copies
+    // a descriptor without its close-on-exec flag; execvp replaces the program.
+    unsafe {
+        if let Some(fd) = stdin {
+            libc::dup2(fd, 0);
+        }
+        if let Some(fd) = stdout {
+            libc::dup2(fd, 1);
+        }
+        libc::execvp(argv[0], argv.as_ptr());
+        libc::_exit(127)
+    }
+}</code></pre>
+<p><code>argv</code> is built before <code>fork</code>, because building it allocates. In the child, <code>dup2(fd, 1)</code> makes descriptor 1
+point at the same description as <code>fd</code>, closing whatever 1 was before. <code>execvp</code> searches <code>PATH</code> for the
+program and does not return if it succeeds. If it fails, the child exits with status 127, which shells
+report as “command not found”. The child must not return from <code>spawn</code>: it would go on running the
+parent’s code.</p>
+<p>The parent waits for children with <code>waitpid</code>:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn waitpid(
+        pid: pid_t,          // the child to wait for
+        status: *mut c_int,  // filled in; WEXITSTATUS(status) is the exit code
+        options: c_int,      // 0 to wait, WNOHANG to return at once
+    ) -&gt; pid_t;              // the child's id, 0 if WNOHANG and still running, or -1
+}</code></pre>
+<pre><code class="language-rust">/// Wait for the child `pid` to exit, and return its exit status.
+fn wait(pid: libc::pid_t) -&gt; io::Result&lt;i32&gt; {
+    let mut status = 0;
+    // SAFETY: `waitpid` writes the status into the integer it is given.
+    check(unsafe { libc::waitpid(pid, &amp;mut status, 0) })?;
+    Ok(libc::WEXITSTATUS(status))
+}
+
+/// Whether the child `pid` has exited, without waiting for it.
+fn has_exited(pid: libc::pid_t) -&gt; io::Result&lt;bool&gt; {
+    let mut status = 0;
+    // SAFETY: as in `wait`; WNOHANG returns 0 at once if the child is running.
+    let result = check(unsafe { libc::waitpid(pid, &amp;mut status, libc::WNOHANG) })?;
+    Ok(result == pid)
+}</code></pre>
+<p>Until the parent waits for it, an exited child stays in the process table as a <strong>zombie</strong>, holding its
+exit status. <code>WNOHANG</code> asks whether the child has exited without waiting.</p>
+<h2 id="243-pipes"><a class="header" href="#243-pipes">24.3 Pipes</a></h2>
+<p>A <strong>pipe</strong> is a buffer in the kernel with two descriptors: a read end and a write end. Bytes written to the
+write end come out of the read end in the same order. On Linux the buffer holds 64 KiB by default.</p>
+<p>The ends block, and the rules for that are the rules of every pipeline:</p>
+<ul>
+<li><code>read</code> on an empty pipe waits until some process writes.</li>
+<li><code>read</code> returns 0, end-of-file, only when the pipe is empty and <strong>every</strong> descriptor for the write end, in
+every process, is closed.</li>
+<li><code>write</code> to a full pipe waits until the reader makes room.</li>
+<li><code>write</code> after every read end is closed fails. The kernel sends the writer <code>SIGPIPE</code>, and if the writer
+ignores that signal, <code>write</code> returns the error <code>EPIPE</code>.</li>
+</ul>
+<p>A shell runs <code>ls | wc -l</code> in five steps (figure 24.3):</p>
+<ol>
+<li><code>pipe</code> creates the two ends in the shell’s table.</li>
+<li><code>fork</code> a child, <code>dup2</code> the write end onto its descriptor 1, and <code>exec</code> <code>ls</code>.</li>
+<li><code>fork</code> a second child, <code>dup2</code> the read end onto its descriptor 0, and <code>exec</code> <code>wc -l</code>.</li>
+<li>Close both ends in the shell.</li>
+<li>Wait for both children.</li>
+</ol>
+<figure>
+<img src="figures/ch24-pipeline.svg" alt="The parent forks, dup2s, and execs ls and wc -l. ls writes to its fd 1, the write end, into a pipe buffer in the kernel; wc -l reads its fd 0, the read end, and writes the count to the terminal on its fd 1. The parent closes both ends, then waits.">
+<figcaption><b>Figure 24.3</b> <code>ls | wc -l</code> after setup. Only <code>ls</code> holds the write end, and only <code>wc</code> holds the read end.</figcaption>
+</figure>
+<p>Step 4 makes the pipeline finish. After it, the only write end is <code>ls</code>’s descriptor 1. When <code>ls</code> exits,
+that last write end closes, and <code>wc</code> reads end-of-file, prints its count, and exits.</p>
+<h3 id="2431-building-the-pipeline"><a class="header" href="#2431-building-the-pipeline">24.3.1 Building the pipeline</a></h3>
+<p>The C functions take and return plain descriptor numbers:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn pipe(fds: *mut c_int) -&gt; c_int;            // fills [read end, write end]; 0 or -1
+    fn fcntl(fd: c_int, cmd: c_int, ...) -&gt; c_int; // F_SETFD sets flags; F_DUPFD copies
+}</code></pre>
+<p><code>pipe</code> writes two numbers into an array of two. <code>fcntl</code> takes a command and, for most commands, one more
+argument; the <code>...</code> means the number of arguments varies, as with C’s <code>printf</code>. The program wraps the ends in
+<code>OwnedFd</code>s, which close themselves when dropped, and marks both close-on-exec:</p>
+<pre><code class="language-rust">/// Turn a C return value into an `io::Result`: -1 means `errno` holds the error.
+fn check(result: libc::c_int) -&gt; io::Result&lt;libc::c_int&gt; {
+    if result == -1 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(result)
+    }
+}
+
+/// Set close-on-exec on `fd`, so a program started with `exec` does not get it.
+fn set_cloexec(fd: RawFd) -&gt; io::Result&lt;()&gt; {
+    // SAFETY: F_SETFD changes only the descriptor's flags.
+    check(unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) })?;
+    Ok(())
+}
+
+/// A pipe as (read end, write end). Both ends are close-on-exec.
+fn pipe() -&gt; io::Result&lt;(OwnedFd, OwnedFd)&gt; {
+    let mut ends = [0; 2];
+    // SAFETY: `pipe` writes two new descriptors into the array.
+    check(unsafe { libc::pipe(ends.as_mut_ptr()) })?;
+    // SAFETY: both descriptors were just created, and nothing else owns them.
+    let (read_end, write_end) =
+        unsafe { (OwnedFd::from_raw_fd(ends[0]), OwnedFd::from_raw_fd(ends[1])) };
+    set_cloexec(read_end.as_raw_fd())?;
+    set_cloexec(write_end.as_raw_fd())?;
+    Ok((read_end, write_end))
+}</code></pre>
+<p><code>check</code> turns the C convention, -1 with the error in <code>errno</code>, into an <code>io::Result</code>. Close-on-exec on the
+pipe ends replaces the <code>close</code> calls a shell makes in each child. <code>dup2</code> copies a descriptor without its
+close-on-exec flag. So the copy at 0 or 1 survives <code>exec</code>, and the original pipe ends close.</p>
+<p><code>ls_wc</code> is the five steps:</p>
+<pre><code class="language-rust">/// `ls dir | wc -l`, built the way a shell builds it. `wc` writes to this
+/// process's standard output.
+fn ls_wc(dir: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let ls = Program::new(&amp;["ls", dir.to_str().expect("UTF-8 path")]);
+    let wc = Program::new(&amp;["wc", "-l"]);
+
+    let (read_end, write_end) = pipe()?;
+    let writer = spawn(&amp;ls, None, Some(write_end.as_raw_fd()))?;
+    let reader = spawn(&amp;wc, Some(read_end.as_raw_fd()), None)?;
+    drop(read_end);
+    drop(write_end);
+
+    wait(writer)?;
+    wait(reader)?;
+    Ok(())
+}</code></pre>
+<p>The two <code>drop</code> calls are step 4. The program prints the line count of a directory with three files:</p>
+<pre><code class="language-text">ls fd_table_demo | wc -l
+       3
+</code></pre>
+<p>On Linux, <code>wc</code> prints <code>3</code> without the leading spaces.</p>
+<h3 id="2432-a-write-end-left-open"><a class="header" href="#2432-a-write-end-left-open">24.3.2 A write end left open</a></h3>
+<p>Animation 24.1 follows the pipeline, then runs it again without step 4.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch24-pipe.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A parent robot, two child robots named ls and wc, and a pipe between them, with a counter of open write ends. pipe creates fd 3, the read end, and fd 4, the write end, in the parent&#39;s table. fork copies the table to the ls child; dup2 points its fd 1 at the write end, and exec closes fds 3 and 4, which are close-on-exec. The same for wc, with fd 0 on the read end. The parent drops both ends; the write-end counter shows 1, held by ls. ls writes three names into the pipe and exits, the counter drops to 0, and wc&#39;s read returns 0: end-of-file. wc prints 3. In a second run the parent keeps its write end: ls exits, the counter stays at 1, and wc sleeps in read while a clock runs." data-chapters="[[0.0, &quot;fork ls&quot;], [22.14, &quot;fork wc&quot;], [29.58, &quot;close&quot;], [39.3, &quot;data&quot;], [60.9, &quot;write end kept&quot;]]"><img src="figures/ch24-pipe.gif" alt="A parent robot, two child robots named ls and wc, and a pipe between them, with a counter of open write ends. pipe creates fd 3, the read end, and fd 4, the write end, in the parent&#39;s table. fork copies the table to the ls child; dup2 points its fd 1 at the write end, and exec closes fds 3 and 4, which are close-on-exec. The same for wc, with fd 0 on the read end. The parent drops both ends; the write-end counter shows 1, held by ls. ls writes three names into the pipe and exits, the counter drops to 0, and wc&#39;s read returns 0: end-of-file. wc prints 3. In a second run the parent keeps its write end: ls exits, the counter stays at 1, and wc sleeps in read while a clock runs."></video>
+<figcaption><b>Animation 24.1</b> The reader sees end-of-file when the last write end closes. A parent that keeps its copy of the write end keeps the reader waiting.</figcaption>
+</figure>
+<p><code>reader_waits_for_the_write_end</code> measures the failing case. It starts <code>wc -l</code> on a pipe, writes two lines,
+and keeps its write end open for a while:</p>
+<pre><code class="language-rust">/// Start `wc -l` on a pipe, write two lines into it, and keep the write end
+/// open for `hold`. Returns whether `wc` was still running when `hold` ended.
+fn reader_waits_for_the_write_end(hold: Duration) -&gt; io::Result&lt;bool&gt; {
+    let wc = Program::new(&amp;["wc", "-l"]);
+    let (read_end, write_end) = pipe()?;
+    let reader = spawn(&amp;wc, Some(read_end.as_raw_fd()), None)?;
+    drop(read_end);
+
+    let mut writer = File::from(write_end);
+    writer.write_all(b"one\ntwo\n")?;
+    thread::sleep(hold);
+    let still_running = !has_exited(reader)?;
+
+    drop(writer);
+    wait(reader)?;
+    Ok(still_running)
+}</code></pre>
+<pre><code class="language-text">parent writes two lines to wc -l and holds the write end for 1 s:
+       2
+wc still running after 1 s: true
+</code></pre>
+<p><code>wc</code> had both lines after a few microseconds. It was still running after a second, because it cannot know
+that no more lines will come while a write end is open. It printed <code>2</code> only after <code>drop(writer)</code>. A real
+program that forgets the <code>drop</code> waits forever, with nothing using the CPU and no error to report.</p>
+<p>The same bug appears without a pipe. A process that forks a long-lived child, such as a daemon, while it
+holds a socket passes the socket to the child. Closing the socket in the parent then does not close the
+connection, because the child’s descriptor keeps the description alive.</p>
+<h2 id="244-close-on-exec"><a class="header" href="#244-close-on-exec">24.4 Close-on-exec</a></h2>
+<p>A child inherits every descriptor that is not close-on-exec. The child can then do things the parent did
+not intend:</p>
+<ul>
+<li>A listening socket stays bound to its port after the parent exits, so a restarted server fails with
+<code>EADDRINUSE</code>.</li>
+<li>A write end of a pipe stays open, and the reader never sees end-of-file, as in section 24.3.2.</li>
+<li>A file opened with secrets stays readable by a program that should not have it.</li>
+</ul>
+<p>Rust’s standard library sets close-on-exec on every descriptor it creates: files, sockets, and pipes. A
+leak needs a descriptor made outside it, through <code>libc</code> or a C library. <code>duplicate</code> makes one each way:</p>
+<pre><code class="language-rust">/// A copy of `file`'s descriptor, numbered 100 or above, with or without
+/// close-on-exec.
+fn duplicate(file: &amp;File, cloexec: bool) -&gt; io::Result&lt;OwnedFd&gt; {
+    let command = if cloexec {
+        libc::F_DUPFD_CLOEXEC
+    } else {
+        libc::F_DUPFD
+    };
+    // SAFETY: F_DUPFD and F_DUPFD_CLOEXEC create a new descriptor and nothing else.
+    let fd = check(unsafe { libc::fcntl(file.as_raw_fd(), command, 100) })?;
+    // SAFETY: `fcntl` just created this descriptor, and nothing else owns it.
+    Ok(unsafe { OwnedFd::from_raw_fd(fd) })
+}</code></pre>
+<p><code>F_DUPFD</code> creates a copy without close-on-exec, and <code>F_DUPFD_CLOEXEC</code> creates one with it. Both take the
+lowest free number at or above 100. A high number keeps the copy away from the descriptors the child opens
+for itself.</p>
+<p>To find out what a child has open, <code>child_has</code> runs <code>ls /dev/fd</code> as a child and reads its output through a
+pipe:</p>
+<pre><code class="language-rust">/// Run `program` with its standard output on a pipe, and return what it wrote.
+fn output(program: &amp;Program) -&gt; io::Result&lt;String&gt; {
+    let (read_end, write_end) = pipe()?;
+    let child = spawn(program, None, Some(write_end.as_raw_fd()))?;
+    drop(write_end);
+
+    let mut text = String::new();
+    File::from(read_end).read_to_string(&amp;mut text)?;
+    wait(child)?;
+    Ok(text)
+}</code></pre>
+<p><code>output</code> drops its write end as soon as the child has it. Without that <code>drop</code>, <code>read_to_string</code> would
+wait for end-of-file forever, as in section 24.3.2.</p>
+<pre><code class="language-rust">/// Whether a child started with `exec` has descriptor `fd` open.
+fn child_has(fd: &amp;OwnedFd) -&gt; io::Result&lt;bool&gt; {
+    let listing = output(&amp;Program::new(&amp;["ls", "/dev/fd"]))?;
+    let number = fd.as_raw_fd().to_string();
+    Ok(listing
+        .split_whitespace()
+        .any(|name| name == number))
+}</code></pre>
+<pre><code class="language-text">fd 100 without close-on-exec, open in the child: true
+fd 101 with close-on-exec,    open in the child: false
+</code></pre>
+<p><code>pipe</code> sets the flag in a second call, after the pipe exists. Between the two calls, another thread could
+<code>fork</code> and <code>exec</code>, and its child would inherit both ends. Linux has <code>pipe2</code>, which takes <code>O_CLOEXEC</code> and
+creates the ends with the flag already set. <code>open</code> and <code>socket</code> take the same flag. The standard library
+uses these forms where the system has them.</p>
+<h2 id="245-the-complete-program"><a class="header" href="#245-the-complete-program">24.5 The complete program</a></h2>
+<p class="listing"><b>Listing 24.1</b> The descriptor table, <code>ls | wc -l</code> by hand, and close-on-exec. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fd_table.rs">src/bin/fd_table.rs</a></p>
+
+<pre><code class="language-rust">//! The file descriptor table: how a process numbers its open files, what a
+//! child inherits across `fork` and `exec`, and how a shell joins two programs
+//! with a pipe.
+//!
+//! Run with: cargo run --bin fd_table
+
+use std::{
+    ffi::CString,
+    fs::{self, File},
+    io::{self, Read, Write},
+    os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd},
+    path::Path,
+    thread,
+    time::Duration,
+};
+
+/// The descriptors open in this process, read from `/dev/fd`.
+///
+/// Reading the directory opens one more descriptor, which is in the list.
+fn open_fds() -&gt; io::Result&lt;Vec&lt;RawFd&gt;&gt; {
+    let mut fds: Vec&lt;RawFd&gt; = fs::read_dir("/dev/fd")?
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().to_str()?.parse().ok())
+        .collect();
+    fds.sort_unstable();
+    Ok(fds)
+}
+
+/// Turn a C return value into an `io::Result`: -1 means `errno` holds the error.
+fn check(result: libc::c_int) -&gt; io::Result&lt;libc::c_int&gt; {
+    if result == -1 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(result)
+    }
+}
+
+/// Set close-on-exec on `fd`, so a program started with `exec` does not get it.
+fn set_cloexec(fd: RawFd) -&gt; io::Result&lt;()&gt; {
+    // SAFETY: F_SETFD changes only the descriptor's flags.
+    check(unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) })?;
+    Ok(())
+}
+
+/// A pipe as (read end, write end). Both ends are close-on-exec.
+fn pipe() -&gt; io::Result&lt;(OwnedFd, OwnedFd)&gt; {
+    let mut ends = [0; 2];
+    // SAFETY: `pipe` writes two new descriptors into the array.
+    check(unsafe { libc::pipe(ends.as_mut_ptr()) })?;
+    // SAFETY: both descriptors were just created, and nothing else owns them.
+    let (read_end, write_end) =
+        unsafe { (OwnedFd::from_raw_fd(ends[0]), OwnedFd::from_raw_fd(ends[1])) };
+    set_cloexec(read_end.as_raw_fd())?;
+    set_cloexec(write_end.as_raw_fd())?;
+    Ok((read_end, write_end))
+}
+
+/// A copy of `file`'s descriptor, numbered 100 or above, with or without
+/// close-on-exec.
+fn duplicate(file: &amp;File, cloexec: bool) -&gt; io::Result&lt;OwnedFd&gt; {
+    let command = if cloexec {
+        libc::F_DUPFD_CLOEXEC
+    } else {
+        libc::F_DUPFD
+    };
+    // SAFETY: F_DUPFD and F_DUPFD_CLOEXEC create a new descriptor and nothing else.
+    let fd = check(unsafe { libc::fcntl(file.as_raw_fd(), command, 100) })?;
+    // SAFETY: `fcntl` just created this descriptor, and nothing else owns it.
+    Ok(unsafe { OwnedFd::from_raw_fd(fd) })
+}
+
+/// A program name and its arguments, as C strings.
+struct Program(Vec&lt;CString&gt;);
+
+impl Program {
+    fn new(args: &amp;[&amp;str]) -&gt; Self {
+        Self(
+            args.iter()
+                .map(|arg| CString::new(*arg).expect("no NUL byte in an argument"))
+                .collect(),
+        )
+    }
+
+    /// The null-terminated pointer array `execvp` takes. It borrows `self`.
+    fn argv(&amp;self) -&gt; Vec&lt;*const libc::c_char&gt; {
+        self.0
+            .iter()
+            .map(|arg| arg.as_ptr())
+            .chain(std::iter::once(std::ptr::null()))
+            .collect()
+    }
+}
+
+/// Start `program` in a child process. `stdin` and `stdout`, when given,
+/// become the child's descriptors 0 and 1. Returns the child's process id.
+fn spawn(
+    program: &amp;Program,
+    stdin: Option&lt;RawFd&gt;,
+    stdout: Option&lt;RawFd&gt;,
+) -&gt; io::Result&lt;libc::pid_t&gt; {
+    // Allocate before `fork`: the child may only make async-signal-safe calls.
+    let argv = program.argv();
+
+    // SAFETY: the child below calls only dup2, execvp, and _exit.
+    let pid = check(unsafe { libc::fork() })?;
+    if pid &gt; 0 {
+        return Ok(pid);
+    }
+
+    // SAFETY: this is the child, a copy of the parent with one thread. dup2 copies
+    // a descriptor without its close-on-exec flag; execvp replaces the program.
+    unsafe {
+        if let Some(fd) = stdin {
+            libc::dup2(fd, 0);
+        }
+        if let Some(fd) = stdout {
+            libc::dup2(fd, 1);
+        }
+        libc::execvp(argv[0], argv.as_ptr());
+        libc::_exit(127)
+    }
+}
+
+/// Wait for the child `pid` to exit, and return its exit status.
+fn wait(pid: libc::pid_t) -&gt; io::Result&lt;i32&gt; {
+    let mut status = 0;
+    // SAFETY: `waitpid` writes the status into the integer it is given.
+    check(unsafe { libc::waitpid(pid, &amp;mut status, 0) })?;
+    Ok(libc::WEXITSTATUS(status))
+}
+
+/// Whether the child `pid` has exited, without waiting for it.
+fn has_exited(pid: libc::pid_t) -&gt; io::Result&lt;bool&gt; {
+    let mut status = 0;
+    // SAFETY: as in `wait`; WNOHANG returns 0 at once if the child is running.
+    let result = check(unsafe { libc::waitpid(pid, &amp;mut status, libc::WNOHANG) })?;
+    Ok(result == pid)
+}
+
+/// Run `program` with its standard output on a pipe, and return what it wrote.
+fn output(program: &amp;Program) -&gt; io::Result&lt;String&gt; {
+    let (read_end, write_end) = pipe()?;
+    let child = spawn(program, None, Some(write_end.as_raw_fd()))?;
+    drop(write_end);
+
+    let mut text = String::new();
+    File::from(read_end).read_to_string(&amp;mut text)?;
+    wait(child)?;
+    Ok(text)
+}
+
+/// `ls dir | wc -l`, built the way a shell builds it. `wc` writes to this
+/// process's standard output.
+fn ls_wc(dir: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let ls = Program::new(&amp;["ls", dir.to_str().expect("UTF-8 path")]);
+    let wc = Program::new(&amp;["wc", "-l"]);
+
+    let (read_end, write_end) = pipe()?;
+    let writer = spawn(&amp;ls, None, Some(write_end.as_raw_fd()))?;
+    let reader = spawn(&amp;wc, Some(read_end.as_raw_fd()), None)?;
+    drop(read_end);
+    drop(write_end);
+
+    wait(writer)?;
+    wait(reader)?;
+    Ok(())
+}
+
+/// Start `wc -l` on a pipe, write two lines into it, and keep the write end
+/// open for `hold`. Returns whether `wc` was still running when `hold` ended.
+fn reader_waits_for_the_write_end(hold: Duration) -&gt; io::Result&lt;bool&gt; {
+    let wc = Program::new(&amp;["wc", "-l"]);
+    let (read_end, write_end) = pipe()?;
+    let reader = spawn(&amp;wc, Some(read_end.as_raw_fd()), None)?;
+    drop(read_end);
+
+    let mut writer = File::from(write_end);
+    writer.write_all(b"one\ntwo\n")?;
+    thread::sleep(hold);
+    let still_running = !has_exited(reader)?;
+
+    drop(writer);
+    wait(reader)?;
+    Ok(still_running)
+}
+
+/// Whether a child started with `exec` has descriptor `fd` open.
+fn child_has(fd: &amp;OwnedFd) -&gt; io::Result&lt;bool&gt; {
+    let listing = output(&amp;Program::new(&amp;["ls", "/dev/fd"]))?;
+    let number = fd.as_raw_fd().to_string();
+    Ok(listing
+        .split_whitespace()
+        .any(|name| name == number))
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let dir = std::env::temp_dir().join("fd_table_demo");
+    fs::create_dir_all(&amp;dir)?;
+    for name in ["a.txt", "b.txt", "c.txt"] {
+        fs::write(dir.join(name), name)?;
+    }
+    let path = dir.join("a.txt");
+
+    println!("open at start: {:?}", open_fds()?);
+    let first = File::open(&amp;path)?;
+    let second = File::open(&amp;path)?;
+    println!(
+        "opened two files: fd {} and fd {}",
+        first.as_raw_fd(),
+        second.as_raw_fd()
+    );
+    let freed = first.as_raw_fd();
+    drop(first);
+    let third = File::open(&amp;path)?;
+    println!(
+        "closed fd {freed}, opened another: fd {}\n",
+        third.as_raw_fd()
+    );
+
+    println!("ls fd_table_demo | wc -l");
+    ls_wc(&amp;dir)?;
+
+    println!("\nparent writes two lines to wc -l and holds the write end for 1 s:");
+    let still_running = reader_waits_for_the_write_end(Duration::from_secs(1))?;
+    println!("wc still running after 1 s: {still_running}\n");
+
+    let leaked = duplicate(&amp;third, false)?;
+    let kept = duplicate(&amp;third, true)?;
+    println!(
+        "fd {} without close-on-exec, open in the child: {}",
+        leaked.as_raw_fd(),
+        child_has(&amp;leaked)?
+    );
+    println!(
+        "fd {} with close-on-exec,    open in the child: {}",
+        kept.as_raw_fd(),
+        child_has(&amp;kept)?
+    );
+
+    fs::remove_dir_all(&amp;dir)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_child_writes_through_a_pipe() {
+        let text = output(&amp;Program::new(&amp;["echo", "through the pipe"])).expect("run echo");
+        assert_eq!(text, "through the pipe\n");
+    }
+
+    #[test]
+    fn close_on_exec_decides_what_a_child_inherits() {
+        let file = File::open("/dev/null").expect("open /dev/null");
+        let leaked = duplicate(&amp;file, false).expect("dup");
+        let kept = duplicate(&amp;file, true).expect("dup");
+        assert!(child_has(&amp;leaked).expect("ls"));
+        assert!(!child_has(&amp;kept).expect("ls"));
+    }
+
+    #[test]
+    fn a_reader_waits_while_any_write_end_is_open() {
+        let still_running = reader_waits_for_the_write_end(Duration::from_millis(200)).expect("wc");
+        assert!(still_running);
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin fd_table
+open at start: [0, 1, 2, 3]
+opened two files: fd 3 and fd 4
+closed fd 3, opened another: fd 3
+
+ls fd_table_demo | wc -l
+       3
+
+parent writes two lines to wc -l and holds the write end for 1 s:
+       2
+wc still running after 1 s: true
+
+fd 100 without close-on-exec, open in the child: true
+fd 101 with close-on-exec,    open in the child: false
+</code></pre>
+<h2 id="246-questions-that-come-up"><a class="header" href="#246-questions-that-come-up">24.6 Questions that come up</a></h2>
+<p><strong>“What does <code>2&gt;&amp;1</code> do?”</strong>
+It is <code>dup2(1, 2)</code> in the child before <code>exec</code>. Descriptor 2 then points at the same description as
+descriptor 1, so errors go wherever output goes, with one shared offset.</p>
+<p><strong>“Why does <code>yes | head -1</code> stop?”</strong>
+<code>head</code> exits after one line and closes the read end. The next <code>write</code> by <code>yes</code> gets <code>SIGPIPE</code>, which ends
+it. A Rust program ignores <code>SIGPIPE</code> by default, so its <code>write</code> returns a <code>BrokenPipe</code> error instead.</p>
+<p><strong>“Why is <code>fork</code> slow for a large process, and what replaces it?”</strong>
+<code>fork</code> copies the page tables, although the pages are shared copy-on-write. For a process
+with many gigabytes mapped, that copy takes milliseconds. <code>posix_spawn</code> and <code>vfork</code> start the new program
+without copying the tables, and <code>std::process::Command</code> uses them where it can.</p>
+<p><strong>“A server restarted and failed with <code>EADDRINUSE</code>. The old process is gone. What holds the port?”</strong>
+Look for a child that inherited the listening socket. <code>lsof -i :PORT</code> shows which process has it open.
+Another cause is a connection in <code>TIME_WAIT</code>, which <code>SO_REUSEADDR</code> allows a new listener to ignore.</p>
+<p><strong>“What does <code>Too many open files</code> mean?”</strong>
+The process reached <code>RLIMIT_NOFILE</code>. Check <code>/proc/PID/fd</code> on Linux to see what is open: often it is
+sockets that are never dropped, or files opened in a loop.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A descriptor is an index into the process’s table. The entry points at an open file description, which
+holds the offset and flags, and the description points at the file.</li>
+<li><code>open</code> returns the lowest free number. <code>dup2</code> points a chosen number at an existing description.</li>
+<li><code>fork</code> copies the table, and the copies share descriptions. <code>exec</code> keeps the table and closes the
+close-on-exec entries.</li>
+<li>Between <code>fork</code> and <code>exec</code>, a child of a multithreaded program may only make async-signal-safe calls.</li>
+<li>A pipe’s reader sees end-of-file only when every write end in every process is closed. A forgotten
+write end makes the reader wait forever.</li>
+<li>Rust’s standard library opens everything close-on-exec. Descriptors made through <code>libc</code> need the flag
+set by hand, in the same call when the system allows it.</li>
+</ul>
+</div>
+
+<p>Chapter 25 returns to chapter 20’s epoll loop in edge-triggered mode. There, each readiness change is reported once, and a handler that reads too little stalls.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Run <code>fd_table</code> with descriptor 0 closed: <code>cargo run --bin fd_table &lt;&amp;-</code>. Which number does the first
+<code>File::open</code> return, and why?</li>
+<li>Read a few bytes from a file, then <code>fork</code> with <code>spawn</code> running <code>cat</code> with the file’s descriptor as
+standard input. Does <code>cat</code> print the whole file or the rest of it? Explain with figure 24.2.</li>
+<li>Remove <code>drop(write_end)</code> from <code>output</code> and run the tests. Which test hangs, and which call is it
+waiting in?</li>
+<li>Extend <code>ls_wc</code> into a function that takes a list of commands and connects them all, like
+<code>ls | sort | wc -l</code>. How many pipes does it create, and how many descriptors does the parent close?</li>
+<li>Replace <code>pipe</code> with <code>pipe2</code> and <code>O_CLOEXEC</code> under <code>#[cfg(target_os = "linux")]</code>, and keep the two-call
+version for other systems.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch23-mmap.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch25-epoll-edge.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch23-mmap.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch25-epoll-edge.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

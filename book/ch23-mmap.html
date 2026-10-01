@@ -1,0 +1,1149 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Mapping files and copying less - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-0ec47a42.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch23.png" alt="Folio, the robot who is the archivist of the mapped stacks, beside a cabinet of cached pages wired to a panel of mapped addresses, and a send-file chute that feeds a cable">
+<h1 id="mapping-files-and-copying-less"><a class="header" href="#mapping-files-and-copying-less">Mapping files and copying less</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>The page cache: where a file’s bytes live in RAM, and the copy that <code>read</code> makes from it</li>
+<li><code>mmap</code>: a file’s pages placed in your address space, loaded by page faults on first touch</li>
+<li>Shared and private mappings, <code>msync</code>, and copy-on-write</li>
+<li>What a mapping cannot report as an error, and when <code>read</code> is the better tool</li>
+<li>Sending a file to a socket with <code>sendfile</code>, without passing its bytes through your process</li>
+<li>Why TLS puts the bytes back into user space</li>
+</ul>
+</div>
+
+<p>Part 7 works at the boundary between your program and the kernel. Chapter 2 read files with <code>read</code>, and
+chapter 15 explained pages and page faults. This chapter joins the two. It maps a file into memory and
+watches the page faults that load it. Then it sends a file over a socket without copying its bytes into
+the program at all.</p>
+<p>Two programs carry the chapter. <code>mmap_file</code> maps a 64-page file, counts the faults that two passes over it
+take, and writes through a shared and a private mapping. <code>zero_copy</code> sends a 256 MiB file over a loopback
+socket twice: once with a <code>read</code>/<code>write</code> loop, and once with <code>sendfile</code>.</p>
+<h2 id="231-where-a-files-bytes-live"><a class="header" href="#231-where-a-files-bytes-live">23.1 Where a file’s bytes live</a></h2>
+<p>The kernel keeps recently used file data in RAM, in the <strong>page cache</strong>. The cache is organized by file and by page. Page 0 of a file holds bytes 0 to 4,095, and page 1 holds the next 4,096. Every way of
+reading a file goes through it. A <code>read</code> of a page that is not cached makes the kernel load the page from
+disk first. A later <code>read</code> of the same page, by any process, finds it in RAM.</p>
+<p>The page cache belongs to the kernel, so a <code>read</code> cannot hand your program the cached page itself. It
+copies the requested bytes into a buffer your program owns. After <code>read(fd, &amp;mut buffer)</code> returns, the file’s
+bytes sit in RAM twice: once in the page cache, and once in <code>buffer</code>.</p>
+<p>A <strong>memory mapping</strong> removes the second copy. The system call <code>mmap</code> asks the kernel to make a range of a
+file part of your address space. The kernel reserves a range of virtual addresses and returns a pointer to
+its start. When the program reads from those addresses, the page table translates them to the page cache’s
+own frames (figure 23.1). The program reads the file’s bytes where the kernel keeps them.</p>
+<figure>
+<img src="figures/ch23-read-vs-mmap.svg" alt="The disk feeds the kernel&#39;s page cache on first access. read copies from the page cache into a Vec in the process, a second copy. A mapping in the process is a set of page table entries that point at the page cache&#39;s frames.">
+<figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into your buffer. A mapping points at the page cache's frames.</figcaption>
+</figure>
+<p><code>mmap</code> loads nothing when it returns. The page table entries for the range start empty. The first access
+to each page is a page fault, as in section 15.5. The kernel finds the file’s page in the page cache, or
+reads it from disk if it is not there. Then it fills in the page table entry and restarts the instruction
+that faulted. A fault that finds the page already cached is a <strong>minor fault</strong>, and costs microseconds. A
+fault that has to read the disk is a <strong>major fault</strong>, and costs at least a disk access.</p>
+<p>Here is the plan for 64 pages:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step</th><th>What the kernel does</th><th>Faults</th></tr>
+</thead>
+<tbody>
+<tr><td><code>mmap</code> of 64 pages</td><td>reserves 64 pages of addresses, fills no entries</td><td>0</td></tr>
+<tr><td>first read of each page</td><td>fills that page’s entry</td><td>one per page</td></tr>
+<tr><td>second read of each page</td><td>nothing: the entries are already filled</td><td>0</td></tr>
+</tbody>
+</table>
+</div>
+<p>The rest of this section builds a type for a mapping and checks the table against a real run.</p>
+<h3 id="2311-a-type-that-owns-a-mapping"><a class="header" href="#2311-a-type-that-owns-a-mapping">23.1.1 A type that owns a mapping</a></h3>
+<p>The program calls <code>mmap</code> through the <code>libc</code> crate. A mapping is a pointer and a length, and it must be
+unmapped exactly once. That is the shape of an owning Rust type with a <code>Drop</code>:</p>
+<pre><code class="language-rust">use std::{
+    fs::{self, File},
+    io,
+    os::fd::AsRawFd,
+    path::Path,
+    ptr::NonNull,
+    slice,
+};
+
+/// A file mapped into this process's address space. Unmapped when dropped.
+struct Mapping {
+    ptr: NonNull&lt;u8&gt;,
+    len: usize,
+}</code></pre>
+<p><code>NonNull&lt;u8&gt;</code> is a raw pointer that is never null. It records that <code>Mapping</code> always holds a real address.
+Creating the mapping is one call to <code>mmap</code>. The <code>libc</code> crate declares each C function inside an
+<code>unsafe extern "C"</code> block, with C’s types. <code>c_int</code> is a C <code>int</code>, <code>size_t</code> is an unsigned size, and <code>off_t</code> is a
+file offset. <code>*mut c_void</code> is a pointer to bytes of no particular type. Here is the declaration, with what
+each parameter means:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn mmap(
+        addr: *mut c_void, // where to map; null lets the kernel choose
+        len: size_t,       // how many bytes to map
+        prot: c_int,       // what is allowed: PROT_READ | PROT_WRITE
+        flags: c_int,      // MAP_SHARED or MAP_PRIVATE (section 23.2)
+        fd: c_int,         // the open file
+        offset: off_t,     // where in the file; a multiple of the page size
+    ) -&gt; *mut c_void;      // the mapping's address, or MAP_FAILED
+}</code></pre>
+<p>Every call through such a declaration is <code>unsafe</code>, because the compiler cannot check what the C code does with
+the pointers it is given. <code>new</code> makes the call and checks the result:</p>
+<pre><code class="language-rust">impl Mapping {
+    /// Map the first `len` bytes of `file` for reading and writing.
+    ///
+    /// `shared` chooses `MAP_SHARED`, whose writes reach the file, over
+    /// `MAP_PRIVATE`, whose writes stay in this process.
+    fn new(file: &amp;File, len: usize, shared: bool) -&gt; io::Result&lt;Self&gt; {
+        let flags = if shared {
+            libc::MAP_SHARED
+        } else {
+            libc::MAP_PRIVATE
+        };
+
+        // SAFETY: a null address lets the kernel choose where to place the
+        // mapping, and the descriptor is open for reading and writing. The
+        // result is checked against MAP_FAILED before it is used.
+        let address = unsafe {
+            libc::mmap(
+                std::ptr::null_mut(),
+                len,
+                libc::PROT_READ | libc::PROT_WRITE,
+                flags,
+                file.as_raw_fd(),
+                0,
+            )
+        };
+        if address == libc::MAP_FAILED {
+            return Err(io::Error::last_os_error());
+        }
+
+        let ptr = NonNull::new(address.cast::&lt;u8&gt;()).ok_or_else(io::Error::last_os_error)?;
+        Ok(Self { ptr, len })
+    }
+    // ...
+}</code></pre>
+<p>On failure <code>mmap</code> returns <code>MAP_FAILED</code>, not null, so the code checks for that value first. <code>last_os_error</code>
+reads <code>errno</code> and turns it into an <code>io::Error</code>.</p>
+<p>The program reaches the bytes through slices. <code>bytes</code> and <code>bytes_mut</code> build them from the pointer and the
+length:</p>
+<pre><code class="language-rust">impl Mapping {
+    // ...
+    fn bytes(&amp;self) -&gt; &amp;[u8] {
+        // SAFETY: the mapping is `len` bytes long and stays valid until drop.
+        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
+    }
+
+    fn bytes_mut(&amp;mut self) -&gt; &amp;mut [u8] {
+        // SAFETY: as in `bytes`, and `&amp;mut self` makes this the only borrow.
+        unsafe { slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
+    }
+    // ...
+}</code></pre>
+<p><code>bytes_mut</code> takes <code>&amp;mut self</code>, so the borrow checker allows one mutable slice at a time, as with a <code>Vec</code>.
+<code>Drop</code> gives the address range back to the kernel with <code>munmap</code>, which takes the same address and length:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn munmap(addr: *mut c_void, len: size_t) -&gt; c_int; // 0, or -1 with errno set
+}</code></pre>
+<pre><code class="language-rust">impl Drop for Mapping {
+    fn drop(&amp;mut self) {
+        // SAFETY: the range is exactly the mapping created in `new`, and no
+        // borrow of it can outlive `self`.
+        unsafe {
+            libc::munmap(self.ptr.as_ptr().cast(), self.len);
+        }
+    }
+}</code></pre>
+<p>A slice returned by <code>bytes</code> borrows <code>self</code>, so it cannot outlive the <code>Mapping</code>. Without that borrow, a slice
+could point into an unmapped range, and the next read through it would crash the process.</p>
+<h3 id="2312-counting-the-faults"><a class="header" href="#2312-counting-the-faults">23.1.2 Counting the faults</a></h3>
+<p>The kernel counts each process’s page faults. <code>getrusage</code> copies the counts into a <code>rusage</code> struct that the
+caller provides, and <code>sysconf</code> reads system constants such as the page size:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn getrusage(
+        who: c_int,          // RUSAGE_SELF: this process
+        usage: *mut rusage,  // filled in; ru_minflt counts minor faults
+    ) -&gt; c_int;              // 0, or -1 with errno set
+    fn sysconf(name: c_int) -&gt; c_long; // _SC_PAGESIZE gives the page size
+}</code></pre>
+<p>The program reads the minor-fault count before and after a pass over the mapping:</p>
+<pre><code class="language-rust">/// Minor page faults this process has taken so far: faults the kernel served
+/// from memory, without reading the disk.
+fn minor_faults() -&gt; u64 {
+    // SAFETY: `getrusage` fills the struct it is given and nothing else.
+    let usage = unsafe {
+        let mut usage = std::mem::zeroed::&lt;libc::rusage&gt;();
+        libc::getrusage(libc::RUSAGE_SELF, &amp;mut usage);
+        usage
+    };
+    u64::try_from(usage.ru_minflt).expect("fault count is not negative")
+}
+
+/// Read one byte from every page, so each page is touched once.
+fn touch_every_page(bytes: &amp;[u8], page: usize) -&gt; u64 {
+    bytes
+        .iter()
+        .step_by(page)
+        .map(|&amp;byte| u64::from(byte))
+        .sum()
+}</code></pre>
+<p><code>touch_every_page</code> reads one byte per page. <code>step_by(page)</code> skips from the first byte of one page to the
+first byte of the next. The function returns the sum of the bytes so the compiler cannot drop the reads as
+unused.</p>
+<p><code>main</code> writes a file of 64 pages, maps it shared, and runs the pass twice:</p>
+<pre><code class="language-rust">fn main() -&gt; io::Result&lt;()&gt; {
+    // ...
+    let mut shared = Mapping::new(&amp;file, len, true)?;
+
+    let before = minor_faults();
+    touch_every_page(shared.bytes(), page);
+    let first = minor_faults() - before;
+
+    let before = minor_faults();
+    touch_every_page(shared.bytes(), page);
+    let second = minor_faults() - before;
+
+    println!("first pass over the mapping:  {first} minor faults");
+    println!("second pass over the mapping: {second} minor faults\n");
+    // ...
+}</code></pre>
+<p>Animation 23.1 follows both passes, the writes of section 23.2, and the truncation of section 23.2.1.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch23-faults.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The program&#39;s thread as a robot, its page table as a grid of 64 empty entries, and the kernel&#39;s page cache holding the file&#39;s 64 pages beside the file on disk. The first read of page 0 finds the entry empty: a page fault stops the thread. The kernel finds page 0 in the page cache, a minor fault, and fills the entry. Every other page takes the same path, and the first-pass counter reaches 64. The second pass sweeps all 64 entries with no fault. Writing HELLO through the shared mapping changes the page cache&#39;s page 0, and msync carries it to the disk. A private mapping starts with no entries filled; writing world to page 0 faults, the kernel copies page 0 into a private frame, and only the copy holds world. In a last run another process truncates the file to one page; the kernel drops pages 1 to 63 and empties their entries, and the next read of page 1 ends in SIGBUS." data-chapters="[[0.0, &quot;mmap&quot;], [10.26, &quot;first pass&quot;], [48.36, &quot;second pass&quot;], [58.62, &quot;HELLO&quot;], [70.44, &quot;world&quot;], [88.92, &quot;truncated&quot;]]"><img src="figures/ch23-faults.gif" alt="The program&#39;s thread as a robot, its page table as a grid of 64 empty entries, and the kernel&#39;s page cache holding the file&#39;s 64 pages beside the file on disk. The first read of page 0 finds the entry empty: a page fault stops the thread. The kernel finds page 0 in the page cache, a minor fault, and fills the entry. Every other page takes the same path, and the first-pass counter reaches 64. The second pass sweeps all 64 entries with no fault. Writing HELLO through the shared mapping changes the page cache&#39;s page 0, and msync carries it to the disk. A private mapping starts with no entries filled; writing world to page 0 faults, the kernel copies page 0 into a private frame, and only the copy holds world. In a last run another process truncates the file to one page; the kernel drops pages 1 to 63 and empties their entries, and the next read of page 1 ends in SIGBUS."></video>
+<figcaption><b>Animation 23.1</b> The first touch of each page faults, and the kernel fills the entry from the page cache. A first write to a private mapping copies the page. A page truncated away leaves nothing to fill the entry with.</figcaption>
+</figure>
+<p>On macOS, the run matches the table:</p>
+<pre><code class="language-text">$ cargo run --bin mmap_file
+page size 4096 bytes, file 64 pages (262144 bytes)
+
+first pass over the mapping:  64 minor faults
+second pass over the mapping: 0 minor faults
+</code></pre>
+<p>The faults are minor because <code>fs::write</code> had put every page of the file in the page cache a moment
+earlier. No disk read was needed.</p>
+<p>On Linux, the same program reports <code>first pass over the mapping:  5 minor faults</code>. When a read faults on a
+file mapping, Linux also fills the entries of the neighbouring pages that are already in the page cache.
+This is <strong>fault-around</strong>, and by default it covers 64 KiB, which is 16 pages, per fault. 64 pages need at
+least 4 such faults. The second pass is 0 faults on both systems.</p>
+<h2 id="232-shared-and-private-mappings"><a class="header" href="#232-shared-and-private-mappings">23.2 Shared and private mappings</a></h2>
+<p>The flags argument decides where a write through the mapping goes (figure 23.2).</p>
+<ul>
+<li><strong><code>MAP_SHARED</code></strong>: the entry points at the page cache frame itself. A write changes the file’s cached
+page. Every process that maps or reads the file sees the change. The kernel writes the dirty page to disk
+later, during <strong>writeback</strong>.</li>
+<li><strong><code>MAP_PRIVATE</code></strong>: the entry also points at the page cache frame, but it is marked read-only. The first
+write to a page faults. The kernel copies the page into a new frame that belongs to this process and
+points the entry at the copy. This is <strong>copy-on-write</strong>. The file never sees the write.</li>
+</ul>
+<figure>
+<img src="figures/ch23-shared-private.svg" alt="A MAP_SHARED mapping writes HELLO into the page cache page, which writeback or msync carries to the file on disk. A MAP_PRIVATE mapping reads the page cache page until its first write, then writes world into a private copy that only its process sees.">
+<figcaption><b>Figure 23.2</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
+</figure>
+<p>Writeback happens on the kernel’s schedule, typically within about 30 seconds. To put the data on disk at a known point, call <code>msync</code>:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn msync(
+        addr: *mut c_void, // start of the range, as returned by mmap
+        len: size_t,       // length of the range
+        flags: c_int,      // MS_SYNC: return after the write completes
+    ) -&gt; c_int;            // 0, or -1 with errno set
+}</code></pre>
+<p>With <code>MS_SYNC</code>, it returns after the dirty pages of the range are written:</p>
+<pre><code class="language-rust">impl Mapping {
+    // ...
+    /// Write the changed pages of a shared mapping back to the file now.
+    fn sync(&amp;self) -&gt; io::Result&lt;()&gt; {
+        // SAFETY: the range is exactly the mapping created in `new`.
+        let result = unsafe { libc::msync(self.ptr.as_ptr().cast(), self.len, libc::MS_SYNC) };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
+}</code></pre>
+<p><code>main</code> writes <code>HELLO</code> through the shared mapping and syncs it. Then it maps the same file privately and
+writes <code>world</code>:</p>
+<pre><code class="language-rust">fn main() -&gt; io::Result&lt;()&gt; {
+    // ...
+    shared.bytes_mut()[..5].copy_from_slice(b"HELLO");
+    shared.sync()?;
+    drop(shared);
+    println!(
+        "after writing HELLO through MAP_SHARED, the file starts with {:?}",
+        file_prefix(&amp;path)?
+    );
+
+    let mut private = Mapping::new(&amp;file, len, false)?;
+    private.bytes_mut()[..5].copy_from_slice(b"world");
+    println!(
+        "after writing world through MAP_PRIVATE, the mapping holds {:?}",
+        String::from_utf8_lossy(&amp;private.bytes()[..5])
+    );
+    drop(private);
+    println!("and the file still starts with {:?}", file_prefix(&amp;path)?);
+    // ...
+}</code></pre>
+<p><code>file_prefix</code> reads the file with <code>fs::read</code>, the ordinary path through the page cache. It reports what the
+file holds, not what a mapping holds:</p>
+<pre><code class="language-text">after writing HELLO through MAP_SHARED, the file starts with "HELLO"
+after writing world through MAP_PRIVATE, the mapping holds "world"
+and the file still starts with "HELLO"
+</code></pre>
+<p><code>fork</code> uses the same mechanism for a whole process. The child gets a copy of the parent’s page tables with
+every writable page marked read-only. Neither process copies a page until one of them writes to it.</p>
+<h3 id="2321-what-a-mapping-cannot-tell-you"><a class="header" href="#2321-what-a-mapping-cannot-tell-you">23.2.1 What a mapping cannot tell you</a></h3>
+<p>A <code>read</code> that fails returns an error. An access through a mapping has no return value, so the kernel
+reports a failure with a signal:</p>
+<ul>
+<li>If another process truncates the file, the pages past the new end no longer exist. Touching one of them
+raises <code>SIGBUS</code>, which kills the process unless it installs a handler.</li>
+<li>If the disk returns an error while a major fault reads a page, the access also raises <code>SIGBUS</code>.</li>
+</ul>
+<p>There is also a rule that Rust’s types cannot check. A <code>&amp;[u8]</code> promises that the bytes do not change while
+the slice is alive. Through a <code>MAP_SHARED</code> mapping, another process can write the file at any moment, and
+the slice’s bytes change under it. <code>Mapping::bytes</code> is sound only while no other process writes the file.
+The <code>memmap2</code> crate makes <code>Mmap::map</code> an <code>unsafe fn</code> for this reason: the caller promises that the file
+stays unchanged.</p>
+<h3 id="2322-when-to-map-and-when-to-read"><a class="header" href="#2322-when-to-map-and-when-to-read">23.2.2 When to map, and when to read</a></h3>
+<p>A mapping saves the copy into a buffer, but it has costs of its own. Every first touch of a page is a fault,
+and each fault enters the kernel. When a mapping is removed, every CPU that may hold its translations in a TLB must drop them. The kernel interrupts those CPUs to make them do it.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Access pattern</th><th>Better tool</th><th>Reason</th></tr>
+</thead>
+<tbody>
+<tr><td>Read a file once, front to back</td><td><code>read</code> into a reused buffer</td><td>readahead keeps the page cache ahead of you, and one buffer is cheap to copy into</td></tr>
+<tr><td>Random reads over a large file, repeated</td><td><code>mmap</code></td><td>each page faults once, then reads cost what memory reads cost</td></tr>
+<tr><td>Many processes reading the same large file</td><td><code>mmap</code> (shared, read-only)</td><td>every process uses the page cache’s single copy</td></tr>
+<tr><td>Files that other processes may truncate</td><td><code>read</code></td><td>a failed <code>read</code> returns an error instead of raising <code>SIGBUS</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Databases such as LMDB map their data files for the second and third reasons. Log readers and copy tools
+read sequentially, and use <code>read</code>.</p>
+<h2 id="233-sending-a-file-to-a-socket"><a class="header" href="#233-sending-a-file-to-a-socket">23.3 Sending a file to a socket</a></h2>
+<p>A static file server sends files to sockets. The simple version reads a chunk of the file into a buffer and
+writes the buffer to the socket, until the file ends. Figure 23.3 shows what each chunk costs. A <code>read</code> copies from the page cache to the buffer. A <code>write</code> copies from the buffer to the socket’s send buffer. The program never looks at the bytes. They pass through it only because <code>read</code> and <code>write</code>
+are the calls it knows.</p>
+<p><code>sendfile</code> moves the bytes from a file to a socket inside the kernel. One call names both descriptors, an
+offset, and a count. The kernel passes the page cache’s pages to the socket, and the bytes never enter the
+process. On network cards that can gather data from several places in memory, the kernel passes references
+to the pages instead of copying them. This is <strong>zero-copy</strong>: no copy of the payload by the CPU.</p>
+<figure>
+<img src="figures/ch23-copies.svg" alt="Top: the read/write loop copies page cache to user buffer with read, user buffer to socket buffer with write, then DMA to the network card, two system calls per chunk. Bottom: sendfile passes the pages from the page cache to the socket buffer inside the kernel, then DMA to the network card, one system call.">
+<figcaption><b>Figure 23.3</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
+</figure>
+<h3 id="2331-measuring-both"><a class="header" href="#2331-measuring-both">23.3.1 Measuring both</a></h3>
+<p><code>sendfile</code> with a socket as the destination is a Linux call, so <code>zero_copy</code> puts its code in a module
+compiled only on Linux. It also needs a socket to send to. <code>connected_pair</code> opens a loopback connection
+and starts a thread that reads everything from the far end and counts it:</p>
+<pre><code class="language-rust">#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        fs::{self, File},
+        io::{self, Read, Write},
+        net::{TcpListener, TcpStream},
+        os::fd::AsRawFd,
+        thread,
+        time::{Duration, Instant},
+    };
+
+    /// What one transfer cost.
+    pub struct Transfer {
+        pub bytes: u64,
+        pub syscalls: u64,
+        pub elapsed: Duration,
+    }
+
+    /// A connected socket pair over loopback, with a thread on the far end
+    /// that reads and discards everything until the sender closes.
+    fn connected_pair() -&gt; io::Result&lt;(TcpStream, thread::JoinHandle&lt;u64&gt;)&gt; {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let address = listener.local_addr()?;
+        let sink = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let mut buffer = vec![0u8; 1 &lt;&lt; 20];
+            let mut total = 0u64;
+            loop {
+                match stream.read(&amp;mut buffer) {
+                    Ok(0) | Err(_) =&gt; return total,
+                    Ok(read) =&gt; total += read as u64,
+                }
+            }
+        });
+        Ok((TcpStream::connect(address)?, sink))
+    }
+    // ...
+}</code></pre>
+<p><code>Transfer</code> records what one run cost. The receiving thread returns its byte count through <code>join</code>, so each
+run checks that every byte arrived.</p>
+<p>The loop reads up to <code>buffer_size</code> bytes and writes what it read. It counts every system call:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// Send `file` with `read` into a buffer and `write` out of it.
+    pub fn copy_loop(path: &amp;str, buffer_size: usize) -&gt; io::Result&lt;Transfer&gt; {
+        let mut file = File::open(path)?;
+        let (mut socket, sink) = connected_pair()?;
+        let mut buffer = vec![0u8; buffer_size];
+        let mut syscalls = 0;
+
+        let start = Instant::now();
+        loop {
+            let read = file.read(&amp;mut buffer)?;
+            syscalls += 1;
+            if read == 0 {
+                break;
+            }
+            socket.write_all(&amp;buffer[..read])?;
+            syscalls += 1;
+        }
+        drop(socket);
+        let bytes = sink.join().expect("sink thread");
+        Ok(Transfer {
+            bytes,
+            syscalls,
+            elapsed: start.elapsed(),
+        })
+    }
+    // ...
+}</code></pre>
+<p><code>write_all</code> may need more than one <code>write</code> when the socket’s send buffer is full. The count adds one per
+<code>write_all</code>, so it is a lower bound.</p>
+<p>The <code>sendfile</code> version has no buffer. On Linux, <code>sendfile</code> copies from one descriptor to another inside the
+kernel:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn sendfile(
+        out_fd: c_int,       // where the bytes go: the socket
+        in_fd: c_int,        // where they come from: the file
+        offset: *mut off_t,  // where to start reading; advanced by the kernel
+        count: size_t,       // at most this many bytes
+    ) -&gt; ssize_t;            // bytes sent, or -1 with errno set
+}</code></pre>
+<p>The program calls it until the offset reaches the file’s length:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// Send `file` with `sendfile`, which moves the bytes inside the kernel.
+    pub fn send_file(path: &amp;str) -&gt; io::Result&lt;Transfer&gt; {
+        let file = File::open(path)?;
+        let length = file.metadata()?.len();
+        let (socket, sink) = connected_pair()?;
+        let mut offset: libc::off_t = 0;
+        let mut syscalls = 0;
+
+        let start = Instant::now();
+        while (offset as u64) &lt; length {
+            let remaining = (length - offset as u64) as usize;
+            // SAFETY: both descriptors are open for the whole call, and the
+            // kernel advances `offset` by the number of bytes it sent.
+            let sent = unsafe {
+                libc::sendfile(socket.as_raw_fd(), file.as_raw_fd(), &amp;mut offset, remaining)
+            };
+            syscalls += 1;
+            if sent &lt; 0 {
+                return Err(io::Error::last_os_error());
+            }
+        }
+        drop(socket);
+        let bytes = sink.join().expect("sink thread");
+        Ok(Transfer {
+            bytes,
+            syscalls,
+            elapsed: start.elapsed(),
+        })
+    }
+    // ...
+}</code></pre>
+<p>The kernel advances <code>offset</code> by the number of bytes it sent. A single call sends at most 2,147,479,552 bytes on Linux, and a signal can cut a call short. The loop handles both, although this run needs one call.</p>
+<p><code>main</code> writes a 256 MiB file and sends it once untimed, so both timed runs start with the file in the page
+cache. Run in a Linux container, in release mode:</p>
+<pre><code class="language-text">$ cargo run --release --bin zero_copy
+method                        MiB   syscalls         ms        MiB/s
+read/write, 64 KiB            256       8193      316.4          809
+sendfile                      256          1      194.3         1318
+</code></pre>
+<p>256 MiB in 64 KiB chunks is 4,096 chunks. Each takes a <code>read</code> and a <code>write</code>, and one last <code>read</code> returns 0,
+which gives 8,193 calls. <code>sendfile</code> made one. The time fell by about 40%. Both runs share the costs of loopback TCP and of the receiving thread, which still copies every byte into its own buffer. Over a real network card, the receiver is on another machine, and the sender’s saving
+is a larger share of its work.</p>
+<h3 id="2332-where-zero-copy-stops"><a class="header" href="#2332-where-zero-copy-stops">23.3.2 Where zero-copy stops</a></h3>
+<p><code>sendfile</code> works only when the bytes leave the kernel exactly as they sit in the page cache. Any
+transformation of the bytes needs a CPU to touch them:</p>
+<ul>
+<li><strong>TLS.</strong> A TLS library such as <code>rustls</code> encrypts each record in user space. The plaintext has to come into the process first. A server that sends a file over HTTPS reads it into a buffer, encrypts
+the buffer, and writes the ciphertext. Linux can move the encryption into the kernel with kernel TLS:
+the library performs the handshake, then hands the session keys to the socket. With kernel TLS on,
+<code>sendfile</code> works on a TLS connection again, and the kernel encrypts as it sends.</li>
+<li><strong>Compression.</strong> A server that compresses responses on the fly reads every byte. Storing a compressed
+copy of each file ahead of time brings <code>sendfile</code> back.</li>
+</ul>
+<h2 id="234-the-complete-programs"><a class="header" href="#234-the-complete-programs">23.4 The complete programs</a></h2>
+<p class="listing"><b>Listing 23.1</b> Shared and private mappings, and the faults that load them. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mmap_file.rs">src/bin/mmap_file.rs</a></p>
+
+<pre><code class="language-rust">//! Mapping a file into memory with `mmap`.
+//!
+//! A mapping makes a file's bytes addressable like a slice. The kernel loads a
+//! page the first time it is touched, which shows up as a page fault. The flags
+//! decide where writes go: through a `MAP_SHARED` mapping they reach the file,
+//! and through a `MAP_PRIVATE` mapping they stay in a private copy of the page.
+//!
+//! Run with: cargo run --bin mmap_file
+
+use std::{
+    fs::{self, File},
+    io,
+    os::fd::AsRawFd,
+    path::Path,
+    ptr::NonNull,
+    slice,
+};
+
+/// A file mapped into this process's address space. Unmapped when dropped.
+struct Mapping {
+    ptr: NonNull&lt;u8&gt;,
+    len: usize,
+}
+
+impl Mapping {
+    /// Map the first `len` bytes of `file` for reading and writing.
+    ///
+    /// `shared` chooses `MAP_SHARED`, whose writes reach the file, over
+    /// `MAP_PRIVATE`, whose writes stay in this process.
+    fn new(file: &amp;File, len: usize, shared: bool) -&gt; io::Result&lt;Self&gt; {
+        let flags = if shared {
+            libc::MAP_SHARED
+        } else {
+            libc::MAP_PRIVATE
+        };
+
+        // SAFETY: a null address lets the kernel choose where to place the
+        // mapping, and the descriptor is open for reading and writing. The
+        // result is checked against MAP_FAILED before it is used.
+        let address = unsafe {
+            libc::mmap(
+                std::ptr::null_mut(),
+                len,
+                libc::PROT_READ | libc::PROT_WRITE,
+                flags,
+                file.as_raw_fd(),
+                0,
+            )
+        };
+        if address == libc::MAP_FAILED {
+            return Err(io::Error::last_os_error());
+        }
+
+        let ptr = NonNull::new(address.cast::&lt;u8&gt;()).ok_or_else(io::Error::last_os_error)?;
+        Ok(Self { ptr, len })
+    }
+
+    fn bytes(&amp;self) -&gt; &amp;[u8] {
+        // SAFETY: the mapping is `len` bytes long and stays valid until drop.
+        unsafe { slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
+    }
+
+    fn bytes_mut(&amp;mut self) -&gt; &amp;mut [u8] {
+        // SAFETY: as in `bytes`, and `&amp;mut self` makes this the only borrow.
+        unsafe { slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
+    }
+
+    /// Write the changed pages of a shared mapping back to the file now.
+    fn sync(&amp;self) -&gt; io::Result&lt;()&gt; {
+        // SAFETY: the range is exactly the mapping created in `new`.
+        let result = unsafe { libc::msync(self.ptr.as_ptr().cast(), self.len, libc::MS_SYNC) };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
+}
+
+impl Drop for Mapping {
+    fn drop(&amp;mut self) {
+        // SAFETY: the range is exactly the mapping created in `new`, and no
+        // borrow of it can outlive `self`.
+        unsafe {
+            libc::munmap(self.ptr.as_ptr().cast(), self.len);
+        }
+    }
+}
+
+/// The size of one page of memory on this machine.
+fn page_size() -&gt; usize {
+    // SAFETY: `sysconf` reads a system constant and has no side effects.
+    let size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+    usize::try_from(size).expect("page size is positive")
+}
+
+/// Minor page faults this process has taken so far: faults the kernel served
+/// from memory, without reading the disk.
+fn minor_faults() -&gt; u64 {
+    // SAFETY: `getrusage` fills the struct it is given and nothing else.
+    let usage = unsafe {
+        let mut usage = std::mem::zeroed::&lt;libc::rusage&gt;();
+        libc::getrusage(libc::RUSAGE_SELF, &amp;mut usage);
+        usage
+    };
+    u64::try_from(usage.ru_minflt).expect("fault count is not negative")
+}
+
+/// Read one byte from every page, so each page is touched once.
+fn touch_every_page(bytes: &amp;[u8], page: usize) -&gt; u64 {
+    bytes
+        .iter()
+        .step_by(page)
+        .map(|&amp;byte| u64::from(byte))
+        .sum()
+}
+
+/// The first five bytes of the file at `path`, as text.
+fn file_prefix(path: &amp;Path) -&gt; io::Result&lt;String&gt; {
+    let bytes = fs::read(path)?;
+    Ok(String::from_utf8_lossy(&amp;bytes[..5]).into_owned())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    const PAGES: usize = 64;
+
+    let page = page_size();
+    let len = PAGES * page;
+    let path = std::env::temp_dir().join("mmap_file_demo.bin");
+    fs::write(&amp;path, vec![b'a'; len])?;
+    let file = File::options()
+        .read(true)
+        .write(true)
+        .open(&amp;path)?;
+
+    println!("page size {page} bytes, file {PAGES} pages ({len} bytes)\n");
+
+    let mut shared = Mapping::new(&amp;file, len, true)?;
+
+    let before = minor_faults();
+    touch_every_page(shared.bytes(), page);
+    let first = minor_faults() - before;
+
+    let before = minor_faults();
+    touch_every_page(shared.bytes(), page);
+    let second = minor_faults() - before;
+
+    println!("first pass over the mapping:  {first} minor faults");
+    println!("second pass over the mapping: {second} minor faults\n");
+
+    shared.bytes_mut()[..5].copy_from_slice(b"HELLO");
+    shared.sync()?;
+    drop(shared);
+    println!(
+        "after writing HELLO through MAP_SHARED, the file starts with {:?}",
+        file_prefix(&amp;path)?
+    );
+
+    let mut private = Mapping::new(&amp;file, len, false)?;
+    private.bytes_mut()[..5].copy_from_slice(b"world");
+    println!(
+        "after writing world through MAP_PRIVATE, the mapping holds {:?}",
+        String::from_utf8_lossy(&amp;private.bytes()[..5])
+    );
+    drop(private);
+    println!("and the file still starts with {:?}", file_prefix(&amp;path)?);
+
+    fs::remove_file(&amp;path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A scratch file of `pages` pages of `b'a'`, unique to one test.
+    fn scratch(name: &amp;str, pages: usize) -&gt; (std::path::PathBuf, File, usize) {
+        let len = pages * page_size();
+        let path = std::env::temp_dir().join(format!("mmap_file_test_{name}.bin"));
+        fs::write(&amp;path, vec![b'a'; len]).expect("write scratch file");
+        let file = File::options()
+            .read(true)
+            .write(true)
+            .open(&amp;path)
+            .expect("open scratch file");
+        (path, file, len)
+    }
+
+    #[test]
+    fn shared_writes_reach_the_file() {
+        let (path, file, len) = scratch("shared", 2);
+        let mut mapping = Mapping::new(&amp;file, len, true).expect("map");
+        mapping.bytes_mut()[..5].copy_from_slice(b"HELLO");
+        mapping.sync().expect("msync");
+        drop(mapping);
+        assert_eq!(file_prefix(&amp;path).expect("read"), "HELLO");
+        fs::remove_file(path).expect("remove");
+    }
+
+    #[test]
+    fn private_writes_stay_in_the_process() {
+        let (path, file, len) = scratch("private", 2);
+        let mut mapping = Mapping::new(&amp;file, len, false).expect("map");
+        mapping.bytes_mut()[..5].copy_from_slice(b"world");
+        assert_eq!(&amp;mapping.bytes()[..5], b"world");
+        drop(mapping);
+        assert_eq!(file_prefix(&amp;path).expect("read"), "aaaaa");
+        fs::remove_file(path).expect("remove");
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin mmap_file
+page size 4096 bytes, file 64 pages (262144 bytes)
+
+first pass over the mapping:  64 minor faults
+second pass over the mapping: 0 minor faults
+
+after writing HELLO through MAP_SHARED, the file starts with "HELLO"
+after writing world through MAP_PRIVATE, the mapping holds "world"
+and the file still starts with "HELLO"
+</code></pre>
+<p class="listing"><b>Listing 23.2</b> A file sent over a socket with a <code>read</code>/<code>write</code> loop and with <code>sendfile</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/zero_copy.rs">src/bin/zero_copy.rs</a></p>
+
+<pre><code class="language-rust">//! Sending a file over a socket two ways: a read/write loop, and `sendfile`.
+//!
+//! The loop moves every byte through a buffer in this process: the kernel
+//! copies it into the buffer on `read`, and copies it out again on `write`.
+//! `sendfile` asks the kernel to move the bytes from the file to the socket
+//! itself, so they never enter user space.
+//!
+//! Linux only. Run with: cargo run --release --bin zero_copy
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        fs::{self, File},
+        io::{self, Read, Write},
+        net::{TcpListener, TcpStream},
+        os::fd::AsRawFd,
+        thread,
+        time::{Duration, Instant},
+    };
+
+    /// What one transfer cost.
+    pub struct Transfer {
+        pub bytes: u64,
+        pub syscalls: u64,
+        pub elapsed: Duration,
+    }
+
+    /// A connected socket pair over loopback, with a thread on the far end
+    /// that reads and discards everything until the sender closes.
+    fn connected_pair() -&gt; io::Result&lt;(TcpStream, thread::JoinHandle&lt;u64&gt;)&gt; {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let address = listener.local_addr()?;
+        let sink = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let mut buffer = vec![0u8; 1 &lt;&lt; 20];
+            let mut total = 0u64;
+            loop {
+                match stream.read(&amp;mut buffer) {
+                    Ok(0) | Err(_) =&gt; return total,
+                    Ok(read) =&gt; total += read as u64,
+                }
+            }
+        });
+        Ok((TcpStream::connect(address)?, sink))
+    }
+
+    /// Send `file` with `read` into a buffer and `write` out of it.
+    pub fn copy_loop(path: &amp;str, buffer_size: usize) -&gt; io::Result&lt;Transfer&gt; {
+        let mut file = File::open(path)?;
+        let (mut socket, sink) = connected_pair()?;
+        let mut buffer = vec![0u8; buffer_size];
+        let mut syscalls = 0;
+
+        let start = Instant::now();
+        loop {
+            let read = file.read(&amp;mut buffer)?;
+            syscalls += 1;
+            if read == 0 {
+                break;
+            }
+            socket.write_all(&amp;buffer[..read])?;
+            syscalls += 1;
+        }
+        drop(socket);
+        let bytes = sink.join().expect("sink thread");
+        Ok(Transfer {
+            bytes,
+            syscalls,
+            elapsed: start.elapsed(),
+        })
+    }
+
+    /// Send `file` with `sendfile`, which moves the bytes inside the kernel.
+    pub fn send_file(path: &amp;str) -&gt; io::Result&lt;Transfer&gt; {
+        let file = File::open(path)?;
+        let length = file.metadata()?.len();
+        let (socket, sink) = connected_pair()?;
+        let mut offset: libc::off_t = 0;
+        let mut syscalls = 0;
+
+        let start = Instant::now();
+        while (offset as u64) &lt; length {
+            let remaining = (length - offset as u64) as usize;
+            // SAFETY: both descriptors are open for the whole call, and the
+            // kernel advances `offset` by the number of bytes it sent.
+            let sent = unsafe {
+                libc::sendfile(socket.as_raw_fd(), file.as_raw_fd(), &amp;mut offset, remaining)
+            };
+            syscalls += 1;
+            if sent &lt; 0 {
+                return Err(io::Error::last_os_error());
+            }
+        }
+        drop(socket);
+        let bytes = sink.join().expect("sink thread");
+        Ok(Transfer {
+            bytes,
+            syscalls,
+            elapsed: start.elapsed(),
+        })
+    }
+
+    /// Write a scratch file of `size` bytes and return its path.
+    pub fn scratch_file(size: usize) -&gt; io::Result&lt;String&gt; {
+        let path = std::env::temp_dir().join("zero_copy_demo.bin");
+        fs::write(&amp;path, vec![b'z'; size])?;
+        Ok(path.to_string_lossy().into_owned())
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn main() -&gt; std::io::Result&lt;()&gt; {
+    const SIZE: usize = 256 &lt;&lt; 20;
+
+    let path = linux::scratch_file(SIZE)?;
+    // One untimed pass, so the file is in the page cache for both runs.
+    linux::copy_loop(&amp;path, 64 &lt;&lt; 10)?;
+
+    println!(
+        "{:&lt;22} {:&gt;10} {:&gt;10} {:&gt;10} {:&gt;12}",
+        "method", "MiB", "syscalls", "ms", "MiB/s"
+    );
+    let runs = [
+        ("read/write, 64 KiB", linux::copy_loop(&amp;path, 64 &lt;&lt; 10)?),
+        ("sendfile", linux::send_file(&amp;path)?),
+    ];
+    for (name, run) in runs {
+        let mib = run.bytes as f64 / (1 &lt;&lt; 20) as f64;
+        let ms = run.elapsed.as_secs_f64() * 1000.0;
+        println!(
+            "{name:&lt;22} {mib:&gt;10.0} {:&gt;10} {ms:&gt;10.1} {:&gt;12.0}",
+            run.syscalls,
+            mib / run.elapsed.as_secs_f64()
+        );
+    }
+
+    std::fs::remove_file(&amp;path)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("zero_copy uses Linux sendfile; run it on Linux");
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::linux;
+
+    #[test]
+    fn both_methods_deliver_every_byte() {
+        let path = linux::scratch_file(3 &lt;&lt; 20).expect("scratch file");
+        assert_eq!(
+            linux::copy_loop(&amp;path, 64 &lt;&lt; 10)
+                .expect("loop")
+                .bytes,
+            3 &lt;&lt; 20
+        );
+        assert_eq!(
+            linux::send_file(&amp;path)
+                .expect("sendfile")
+                .bytes,
+            3 &lt;&lt; 20
+        );
+    }
+}</code></pre>
+<h2 id="235-questions-that-come-up"><a class="header" href="#235-questions-that-come-up">23.5 Questions that come up</a></h2>
+<p><strong>“Is a mapped file faster than <code>read</code>?”</strong>
+For repeated random access to a large file, usually. Each page faults once, and later reads cost a memory read.
+For one sequential pass, <code>read</code> with a reused buffer is as fast or faster, because it takes no faults.</p>
+<p><strong>“What happens when two processes map the same file with <code>MAP_SHARED</code>?”</strong>
+Both page tables point at the same page cache frames. A write by one is visible to the other at once,
+before any writeback. Shared memory between processes works this way.</p>
+<p><strong>“Does <code>msync</code> make a write durable?”</strong>
+<code>MS_SYNC</code> waits until the dirty pages are written to the device. Whether the device has stored them
+permanently depends on its write cache, as with <code>fsync</code>.</p>
+<p><strong>“Why does a file server stop using <code>sendfile</code> when it turns on TLS?”</strong>
+The TLS library encrypts the bytes in user space. Kernel TLS moves the encryption into
+the kernel and allows <code>sendfile</code> again.</p>
+<p><strong>“What does fault-around change?”</strong>
+It lowers the number of faults for a mapping read in order. It does not change what the program sees. It maps only neighbouring pages that are already cached, and reads nothing from disk.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>The page cache holds files’ pages in kernel memory. <code>read</code> copies from it into your buffer.</li>
+<li><code>mmap</code> maps a file’s pages into your address space. Nothing loads until the first touch of a page faults.</li>
+<li>A minor fault fills the page table entry from the page cache. A major fault reads the disk first.</li>
+<li>Writes through <code>MAP_SHARED</code> change the file’s cached page. Writes through <code>MAP_PRIVATE</code> go to a private
+copy made on the first write. <code>msync</code> writes the dirty pages of a shared mapping now.</li>
+<li>A failed access through a mapping raises <code>SIGBUS</code> instead of returning an error. A <code>&amp;[u8]</code> over a shared
+mapping is sound only while no other process writes the file.</li>
+<li><code>sendfile</code> sends a file to a socket without passing its bytes through the process. This run made one call instead of 8,193.</li>
+<li>TLS and compression need the CPU to read every byte, which brings the bytes back into user space unless
+the kernel does the work.</li>
+</ul>
+</div>
+
+<p>Chapter 24 looks at file descriptors themselves. It covers the table each process keeps, what <code>fork</code> and <code>exec</code> do to it, and how a shell joins two programs with a pipe.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Change <code>PAGES</code> to 4,096 and run <code>mmap_file</code> again. Then drop the page cache (on Linux, as root:
+<code>echo 1 &gt; /proc/sys/vm/drop_caches</code>) between writing the file and mapping it, and read <code>ru_majflt</code> as
+well as <code>ru_minflt</code>. Which faults turn major?</li>
+<li>Map the file read-only with <code>PROT_READ</code> only, and write through the slice from an <code>unsafe</code> block. Which
+signal stops the process, and which kind of fault from section 15.5 is it?</li>
+<li>In <code>copy_loop</code>, try buffer sizes of 4 KiB, 64 KiB, and 1 MiB. Explain the change in system calls and in
+time.</li>
+<li>Add a third method to <code>zero_copy</code> that maps the file and calls <code>write_all</code> on the whole mapping. Count
+its system calls and compare its time with the other two.</li>
+<li>Write a test that truncates the file to one page while a two-page <code>Mapping</code> of it is alive. Check that the first page still reads. Do not read the second page in the test. Explain why.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch22-async.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch24-fd-table.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch22-async.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch24-fd-table.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

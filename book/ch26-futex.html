@@ -1,0 +1,1026 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Futexes and memory ordering - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-0ec47a42.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch26.png" alt="Latch, the robot who is the keeper of the sleeping queue, beside a gate latch on a single brass word, with a bench of sleeping robots behind it under a lamp">
+<h1 id="futexes-and-memory-ordering"><a class="header" href="#futexes-and-memory-ordering">Futexes and memory ordering</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>The futex: a wait queue in the kernel, keyed by the address of a word in your memory</li>
+<li>A mutex with three states that enters the kernel only to sleep and to wake</li>
+<li>Why the kernel checks the word before it puts a thread to sleep</li>
+<li>Counting the system calls a mutex makes, and comparing it with <code>std::sync::Mutex</code></li>
+<li>Store buffers, and the reordering they allow even on x86</li>
+<li>Two litmus tests run a million times: store buffering, and message passing</li>
+</ul>
+</div>
+
+<p>Chapter 16 built a spin lock from one atomic flag. A thread that found the lock taken kept the CPU busy
+until the lock came free. That is a good trade for a lock held for a few nanoseconds. It is a poor one for a lock held while a thread writes a file. Such a lock has to put the waiting thread to sleep and wake it later. Only the kernel can do that.</p>
+<p>This chapter builds such a lock on the Linux <strong>futex</strong> system call, the same design <code>std::sync::Mutex</code> uses
+on Linux. Then it looks under the orderings chapter 16 used. It runs two classic litmus tests a million times each, and counts how often the hardware reorders memory operations.</p>
+<h2 id="261-sleeping-on-a-word"><a class="header" href="#261-sleeping-on-a-word">26.1 Sleeping on a word</a></h2>
+<p>A <strong>futex</strong>, a fast user-space mutex, is a wait queue in the kernel, keyed by an address. The word at that
+address lives in your program’s memory, and the kernel never interprets it. A futex has two operations:</p>
+<ul>
+<li><strong><code>futex_wait(addr, expected)</code></strong>: if the 32-bit word at <code>addr</code> still holds <code>expected</code>, put this thread to
+sleep on the queue for <code>addr</code>. If it holds anything else, return at once.</li>
+<li><strong><code>futex_wake(addr, n)</code></strong>: wake up to <code>n</code> threads sleeping on the queue for <code>addr</code>.</li>
+</ul>
+<p>The lock state stays in an atomic in user space (figure 26.1). Taking a free lock is one compare-exchange
+on that word, with no system call. Only a thread that has to wait calls <code>futex_wait</code>, and only an <code>unlock</code> that may have a sleeper to wake calls <code>futex_wake</code>.</p>
+<figure>
+<img src="figures/ch26-futex.svg" alt="In user space, thread A holds the lock and the state word holds 2, locked with waiters. Thread B&#39;s swap(2) returned 1, so B calls futex_wait(&amp;state, 2) and sleeps on the kernel&#39;s queue for that address. A unlocks with swap(0), which returns 2, so A calls futex_wake(&amp;state, 1).">
+<figcaption><b>Figure 26.1</b> The lock word lives in the program. The kernel keeps only the queue of threads asleep on its address.</figcaption>
+</figure>
+<h3 id="2611-why-the-kernel-checks-the-word"><a class="header" href="#2611-why-the-kernel-checks-the-word">26.1.1 Why the kernel checks the word</a></h3>
+<p><code>futex_wait</code> checks the word and queues the thread as one step, under a kernel lock. Without the check,
+this sequence would lose a wake-up:</p>
+<ol>
+<li>Thread B reads the lock word and sees it held. B decides to sleep.</li>
+<li>Thread A unlocks and calls <code>futex_wake</code>. No thread is on the queue yet, so the wake does nothing.</li>
+<li>B enters the queue and sleeps. Nobody will wake it.</li>
+</ol>
+<p>With the check, step 3 finds that the word no longer holds the value B saw, and <code>futex_wait</code> returns at
+once. B then tries the lock again. This is the <strong>lost wake-up</strong> problem, and it is the reason <code>Condvar</code> in
+chapter 16 takes the mutex as an argument.</p>
+<h2 id="262-a-mutex-with-three-states"><a class="header" href="#262-a-mutex-with-three-states">26.2 A mutex with three states</a></h2>
+<p>The lock word has three values (figure 26.2):</p>
+<ul>
+<li><strong>0</strong>, unlocked.</li>
+<li><strong>1</strong>, locked, and no thread is waiting.</li>
+<li><strong>2</strong>, locked, and some thread may be asleep in <code>futex_wait</code>.</li>
+</ul>
+<p>The third state exists so that <code>unlock</code> knows whether to call <code>futex_wake</code>. Unlocking from 1 costs one
+atomic instruction. Unlocking from 2 also costs a system call.</p>
+<figure>
+<img src="figures/ch26-states.svg" alt="State 0, unlocked, goes to 1, locked, by compare_exchange(0, 1) with no system call. 1 goes back to 0 by swap(0) returning 1, with no system call. A second thread moves 1 to 2 with swap(2) and then futex_wait. Unlock from 2 is swap(0) returning 2, then futex_wake. A woken thread&#39;s swap(2) returning 0 takes the lock in state 2.">
+<figcaption><b>Figure 26.2</b> The three states. The two transitions between 0 and 1 are the uncontended path, and make no system call.</figcaption>
+</figure>
+<h3 id="2621-the-system-calls"><a class="header" href="#2621-the-system-calls">26.2.1 The system calls</a></h3>
+<p><code>libc</code> has no wrapper for <code>futex</code>, so the program calls it through <code>syscall</code>, which takes a system call’s
+number and its arguments:</p>
+<pre><code class="language-rust">unsafe extern "C" {
+    fn syscall(number: c_long, ...) -&gt; c_long;
+}
+
+// The futex call, as the kernel defines its arguments:
+// syscall(SYS_futex, uaddr: *const u32, op: c_int, val: u32, timeout: *const timespec)
+//   FUTEX_WAIT: sleep if *uaddr == val, until woken or until the timeout (null: none)
+//   FUTEX_WAKE: wake up to val threads sleeping on uaddr; timeout is unused</code></pre>
+<p>The two wrappers:</p>
+<pre><code class="language-rust">#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        cell::UnsafeCell,
+        ops::{Deref, DerefMut},
+        sync::atomic::{
+            AtomicU32,
+            AtomicU64,
+            Ordering::{Acquire, Relaxed, Release},
+        },
+    };
+
+    const UNLOCKED: u32 = 0;
+    const LOCKED: u32 = 1;
+    const CONTENDED: u32 = 2;
+
+    /// Sleep while `word` holds `expected`. The kernel checks the value and
+    /// queues the thread as one step, so a wake that happens first is not lost.
+    fn futex_wait(word: &amp;AtomicU32, expected: u32) {
+        // SAFETY: `word` is a valid, aligned u32 for the whole call, and a null
+        // timeout means wait without a time limit.
+        unsafe {
+            libc::syscall(
+                libc::SYS_futex,
+                word.as_ptr(),
+                libc::FUTEX_WAIT | libc::FUTEX_PRIVATE_FLAG,
+                expected,
+                std::ptr::null::&lt;libc::timespec&gt;(),
+            );
+        }
+    }
+
+    /// Wake one thread sleeping on `word`, if there is one.
+    fn futex_wake_one(word: &amp;AtomicU32) {
+        // SAFETY: `word` is a valid, aligned u32 for the whole call.
+        unsafe {
+            libc::syscall(
+                libc::SYS_futex,
+                word.as_ptr(),
+                libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
+                1,
+            );
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>FUTEX_PRIVATE_FLAG</code> tells the kernel that only this process uses the word. The kernel can then key the queue by the virtual address alone. A word shared between processes needs the physical page, which costs more to find. <code>AtomicU32::as_ptr</code> gives the address of the atomic’s value. The return value is ignored. <code>futex_wait</code> returns early for several reasons, a signal among them, and the caller checks the word again anyway.</p>
+<h3 id="2622-lock-and-unlock"><a class="header" href="#2622-lock-and-unlock">26.2.2 <code>lock</code> and <code>unlock</code></a></h3>
+<p>The type holds the word, two counters for this chapter’s measurements, and the protected value:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// A mutual-exclusion lock that sleeps in the kernel while it waits.
+    pub struct FutexMutex&lt;T&gt; {
+        state: AtomicU32,
+        waits: AtomicU64,
+        wakes: AtomicU64,
+        value: UnsafeCell&lt;T&gt;,
+    }
+
+    // SAFETY: the lock gives one thread at a time access to `value`, so sharing
+    // the mutex is safe whenever `T` may move between threads.
+    unsafe impl&lt;T: Send&gt; Sync for FutexMutex&lt;T&gt; {}
+
+    impl&lt;T&gt; FutexMutex&lt;T&gt; {
+        pub const fn new(value: T) -&gt; Self {
+            Self {
+                state: AtomicU32::new(UNLOCKED),
+                waits: AtomicU64::new(0),
+                wakes: AtomicU64::new(0),
+                value: UnsafeCell::new(value),
+            }
+        }
+        // ...
+}</code></pre>
+<p>As with the spin lock in chapter 16, the <code>unsafe impl Sync</code> promises that the lock hands out <code>value</code> to one
+thread at a time. <code>lock</code> returns a <code>Guard</code>, which section 26.2.2 shows below: it gives access to the value,
+and unlocks when it is dropped. <code>lock</code> tries the uncontended path first:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    impl&lt;T&gt; FutexMutex&lt;T&gt; {
+        // ...
+        pub fn lock(&amp;self) -&gt; Guard&lt;'_, T&gt; {
+            if self
+                .state
+                .compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed)
+                .is_err()
+            {
+                self.lock_contended();
+            }
+            Guard { mutex: self }
+        }
+
+        /// The slow path: mark the lock contended, and sleep until it is free.
+        fn lock_contended(&amp;self) {
+            while self.state.swap(CONTENDED, Acquire) != UNLOCKED {
+                self.waits.fetch_add(1, Relaxed);
+                futex_wait(&amp;self.state, CONTENDED);
+            }
+        }
+
+        fn unlock(&amp;self) {
+            if self.state.swap(UNLOCKED, Release) == CONTENDED {
+                self.wakes.fetch_add(1, Relaxed);
+                futex_wake_one(&amp;self.state);
+            }
+        }
+        // ...
+    }
+    // ...
+}</code></pre>
+<p><code>compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed)</code> takes a free lock in one instruction. If it fails,
+<code>lock_contended</code> swaps in 2 and looks at the old value. An old value of 0 means the lock was free, and this
+thread now holds it. Any other value means the lock is held. The thread sleeps while the word is still 2,
+then tries again.</p>
+<p>A thread that takes the lock in <code>lock_contended</code> leaves the word at 2, even if no other thread waits. It
+cannot know whether others are asleep, so it assumes they are. The cost is a <code>futex_wake</code> call that may find
+nobody to wake.</p>
+<p><code>unlock</code> swaps in 0 with <code>Release</code>, which publishes the writes made under the lock, as in section 16.4.3.
+The old value says whether to wake a sleeper.</p>
+<p>The guard is the same as the spin lock’s:</p>
+<pre><code class="language-rust">mod linux {
+    // ...
+    /// Access to the value while the lock is held. Unlocks when dropped.
+    pub struct Guard&lt;'a, T&gt; {
+        mutex: &amp;'a FutexMutex&lt;T&gt;,
+    }
+
+    impl&lt;T&gt; Deref for Guard&lt;'_, T&gt; {
+        type Target = T;
+
+        fn deref(&amp;self) -&gt; &amp;T {
+            // SAFETY: the guard exists only while this thread holds the lock.
+            unsafe { &amp;*self.mutex.value.get() }
+        }
+    }
+
+    impl&lt;T&gt; DerefMut for Guard&lt;'_, T&gt; {
+        fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
+            // SAFETY: as in `deref`, and `&amp;mut self` makes this the only borrow.
+            unsafe { &amp;mut *self.mutex.value.get() }
+        }
+    }
+
+    impl&lt;T&gt; Drop for Guard&lt;'_, T&gt; {
+        fn drop(&amp;mut self) {
+            self.mutex.unlock();
+        }
+    }
+}</code></pre>
+<p>Animation 26.1 follows two threads through the three states, and then shows the lost wake-up.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch26-futex.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two thread robots, A and B, beside the lock word, with the kernel&#39;s wait queue for the word&#39;s address below. A&#39;s compare_exchange changes 0 to 1 without entering the kernel. B&#39;s compare_exchange fails; B swaps in 2, sees 1, and calls futex_wait(&amp;state, 2). The kernel checks that the word holds 2, and B sleeps on the queue. A unlocks: swap(0) returns 2, so A calls futex_wake and B wakes. B&#39;s swap(2) returns 0, so B holds the lock, with the word at 2. B&#39;s unlock returns 2 and calls futex_wake, which finds nobody. In a last run the kernel does not check the word: B sees the lock held, A unlocks and wakes an empty queue, then B joins the queue and sleeps forever." data-chapters="[[0.0, &quot;fast path&quot;], [7.14, &quot;B waits&quot;], [26.78, &quot;wake&quot;], [52.06, &quot;no check&quot;]]"><img src="figures/ch26-futex.gif" alt="Two thread robots, A and B, beside the lock word, with the kernel&#39;s wait queue for the word&#39;s address below. A&#39;s compare_exchange changes 0 to 1 without entering the kernel. B&#39;s compare_exchange fails; B swaps in 2, sees 1, and calls futex_wait(&amp;state, 2). The kernel checks that the word holds 2, and B sleeps on the queue. A unlocks: swap(0) returns 2, so A calls futex_wake and B wakes. B&#39;s swap(2) returns 0, so B holds the lock, with the word at 2. B&#39;s unlock returns 2 and calls futex_wake, which finds nobody. In a last run the kernel does not check the word: B sees the lock held, A unlocks and wakes an empty queue, then B joins the queue and sleeps forever."></video>
+<figcaption><b>Animation 26.1</b> The uncontended path stays in user space. A waiter sleeps in the kernel, and the check of the word inside <code>futex_wait</code> keeps a wake-up from being lost.</figcaption>
+</figure>
+<h3 id="2623-measured"><a class="header" href="#2623-measured">26.2.3 Measured</a></h3>
+<p><code>main</code> adds 1 to a counter a million times under each lock: with one thread, then split across two and four
+threads. It runs in a Linux container with two CPUs:</p>
+<pre><code class="language-text">$ cargo run --release --bin futex_mutex
+threads     total    waits    wakes     futex ms       std ms
+      1   1000000        0        0         30.8         25.1
+      2   1000000    23712    59752         64.4         56.2
+      4   1000000    28006    71826         71.0         56.1
+</code></pre>
+<p>With one thread, a million increments made no system calls, at about 30 ns each. With
+two threads, about 2.4% of the locks slept. There were 2.5 times as many wakes as waits. Most wakes came
+from a thread that had taken the lock in <code>lock_contended</code>, left the word at 2, and woke an empty queue.</p>
+<p><code>std::sync::Mutex</code> uses the same three states, and was faster with contention. Before it sleeps, it spins
+for up to 100 rounds, reading the word. A lock held for a few nanoseconds is often free again within those
+rounds, so the waiter avoids two system calls. The timings vary between runs by 10% or more on this
+container. In one of three runs, <code>std</code> with four threads took 214 ms. The counts of waits and wakes are the
+steadier measurement.</p>
+<h2 id="263-what-the-hardware-reorders"><a class="header" href="#263-what-the-hardware-reorders">26.3 What the hardware reorders</a></h2>
+<p>Section 16.2.3 said that <code>Relaxed</code> promises nothing about other memory, and that <code>SeqCst</code> gives one order
+all threads agree on. This section shows a reordering that real hardware performs, and the ordering that
+forbids it.</p>
+<h3 id="2631-store-buffers"><a class="header" href="#2631-store-buffers">26.3.1 Store buffers</a></h3>
+<p>A store to memory is slow for a core: the cache line may have to be fetched from another core first. So
+each core puts its stores in a <strong>store buffer</strong> and goes on running. The buffer drains to the cache in the
+background. The core’s own loads check its buffer, so a thread always sees its own stores. Other cores see a
+store only after it drains.</p>
+<p>A load that comes after a store can therefore complete before the store is visible to anyone else. Figure
+26.3 shows two cores each doing that at once. Both loads read the old value, 0, from memory, while both
+stores still sit in the buffers.</p>
+<figure>
+<img src="figures/ch26-store-buffer.svg" alt="Core 1 stores x = 1 and core 2 stores y = 1; both stores wait in their cores&#39; store buffers. Core 1 loads y and core 2 loads x from cache and memory, where x and y are still 0. Both loads read 0. The buffers drain later.">
+<figcaption><b>Figure 26.3</b> Both stores wait in store buffers while both loads read memory. Each thread's load completes before its own store is visible.</figcaption>
+</figure>
+<p>Animation 26.2 runs one round of this, then the same round with <code>SeqCst</code>.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch26-store-buffer.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two thread robots on cores 1 and 2, each with a store buffer below, and cache and memory between them holding x = 0 and y = 0. With Relaxed, thread 1&#39;s store x = 1 goes into its buffer, and thread 2&#39;s store y = 1 into its own. Thread 1 loads y from memory and reads 0; thread 2 loads x and reads 0. Only then do the buffers drain, and memory holds x = 1 and y = 1, with r1 = 0 and r2 = 0. With SeqCst, thread 1&#39;s store waits for its buffer to drain before the core continues, so x = 1 is in memory before thread 1 loads y and reads 0. Thread 2 stores y the same way and then loads x, which reads 1." data-chapters="[[0.0, &quot;Relaxed&quot;], [32.99, &quot;SeqCst&quot;]]"><img src="figures/ch26-store-buffer.gif" alt="Two thread robots on cores 1 and 2, each with a store buffer below, and cache and memory between them holding x = 0 and y = 0. With Relaxed, thread 1&#39;s store x = 1 goes into its buffer, and thread 2&#39;s store y = 1 into its own. Thread 1 loads y from memory and reads 0; thread 2 loads x and reads 0. Only then do the buffers drain, and memory holds x = 1 and y = 1, with r1 = 0 and r2 = 0. With SeqCst, thread 1&#39;s store waits for its buffer to drain before the core continues, so x = 1 is in memory before thread 1 loads y and reads 0. Thread 2 stores y the same way and then loads x, which reads 1."></video>
+<figcaption><b>Animation 26.2</b> With <code>Relaxed</code>, both loads run while both stores are still buffered. A <code>SeqCst</code> store drains the buffer first, so the later load of the other thread sees it.</figcaption>
+</figure>
+<p>x86 processors keep a strong ordering, called <strong>total store order</strong>. They never reorder two stores, or two
+loads, and this store-then-load case is the one reordering they allow. ARM processors, including Apple’s
+M-series and AWS Graviton, also reorder stores with stores and loads with loads. The compiler may reorder
+<code>Relaxed</code> operations too, on any processor.</p>
+<h3 id="2632-the-litmus-tests"><a class="header" href="#2632-the-litmus-tests">26.3.2 The litmus tests</a></h3>
+<p>A <strong>litmus test</strong> is two short threads and a question about the results. Each test here runs a million
+rounds. Every round uses fresh atomics, so no round needs a reset, and both threads meet before each round
+so their operations overlap:</p>
+<pre><code class="language-rust">use std::{
+    sync::atomic::{
+        AtomicU32,
+        AtomicUsize,
+        Ordering::{self, Acquire, Relaxed, Release, SeqCst},
+    },
+    thread,
+};
+
+const ROUNDS: usize = 1_000_000;
+
+/// A fresh, zeroed atomic for every round, so no round needs a reset.
+fn zeroed(rounds: usize) -&gt; Vec&lt;AtomicU32&gt; {
+    (0..rounds)
+        .map(|_| AtomicU32::new(0))
+        .collect()
+}
+
+/// Wait until both threads have reached `round`. Keeps the two threads on the
+/// same round, so their operations overlap in time.
+fn meet(arrived: &amp;AtomicUsize, round: usize) {
+    arrived.fetch_add(1, SeqCst);
+    while arrived.load(SeqCst) &lt; 2 * (round + 1) {
+        std::hint::spin_loop();
+    }
+}</code></pre>
+<p><code>meet</code> is a spin barrier on one counter. Each thread adds 1 and waits until both have arrived for this round.</p>
+<p><strong>Store buffering</strong> is figure 26.3 as code. The question is whether both loads can read 0:</p>
+<pre><code class="language-rust">/// Store buffering. Thread 1 stores x and loads y; thread 2 stores y and loads
+/// x. Returns the rounds in which both loads read 0.
+fn store_buffering(store: Ordering, load: Ordering) -&gt; usize {
+    let (x, y) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let (r1, r2) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let arrived = AtomicUsize::new(0);
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                x[i].store(1, store);
+                r1[i].store(y[i].load(load), Relaxed);
+            }
+        });
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                y[i].store(1, store);
+                r2[i].store(x[i].load(load), Relaxed);
+            }
+        });
+    });
+
+    (0..ROUNDS)
+        .filter(|&amp;i| r1[i].load(Relaxed) == 0 &amp;&amp; r2[i].load(Relaxed) == 0)
+        .count()
+}</code></pre>
+<p><strong>Message passing</strong> writes data, then sets a flag. The question is whether the reader can see the flag set
+and the data still 0:</p>
+<pre><code class="language-rust">/// Message passing. Thread 1 writes data, then sets a flag; thread 2 reads the
+/// flag, then the data. Returns the rounds in which thread 2 saw the flag set
+/// but the data still 0.
+fn message_passing(store: Ordering, load: Ordering) -&gt; usize {
+    let (data, flag) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let (seen_flag, seen_data) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let arrived = AtomicUsize::new(0);
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                data[i].store(42, Relaxed);
+                flag[i].store(1, store);
+            }
+        });
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                seen_flag[i].store(flag[i].load(load), Relaxed);
+                seen_data[i].store(data[i].load(Relaxed), Relaxed);
+            }
+        });
+    });
+
+    (0..ROUNDS)
+        .filter(|&amp;i| seen_flag[i].load(Relaxed) == 1 &amp;&amp; seen_data[i].load(Relaxed) == 0)
+        .count()
+}</code></pre>
+<p>Message passing is the pattern behind every lock and every queue: the flag says the data is ready. Its
+<code>Release</code> store and <code>Acquire</code> load are the pair from section 16.4.3.</p>
+<p>The run on an Intel x86 laptop:</p>
+<pre><code class="language-text">$ cargo run --release --bin litmus
+store buffering, 1000000 rounds: both loads read 0
+  Relaxed               14472
+  Release / Acquire     15019
+  SeqCst                    0
+
+message passing, 1000000 rounds: flag read as 1, data read as 0
+  Relaxed                   0
+  Release / Acquire         0
+  SeqCst                    0
+</code></pre>
+<p>The Linux container on the same machine found 6,342 and 5,045 rounds for store buffering, and the same
+zeros elsewhere. The results say three things:</p>
+<ul>
+<li><strong>Store buffering happens.</strong> About 1.5% of rounds read 0 twice with <code>Relaxed</code>. <code>Release</code> and <code>Acquire</code> did not prevent it. They order a thread’s earlier operations before a release store, and later operations after an acquire load. Neither stops a store from being passed by a later load.</li>
+<li><strong><code>SeqCst</code> forbids it.</strong> On x86, a <code>SeqCst</code> store compiles to an <code>xchg</code> instruction, which waits for the
+store buffer to drain. Every <code>SeqCst</code> operation then fits one global order, and in any such order one of
+the stores comes first, so one load sees 1.</li>
+<li><strong>Message passing did not fail, even with <code>Relaxed</code>.</strong> On x86 the hardware does not reorder the two
+stores or the two loads. The <code>Relaxed</code> version is still wrong. On ARM the same test fails in some rounds,
+and the compiler may reorder the <code>Relaxed</code> operations on any processor. A test that passes on x86 does not
+show that the orderings are right.</li>
+</ul>
+<h2 id="264-the-complete-programs"><a class="header" href="#264-the-complete-programs">26.4 The complete programs</a></h2>
+<p class="listing"><b>Listing 26.1</b> A mutex on the futex system call. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/futex_mutex.rs">src/bin/futex_mutex.rs</a></p>
+
+<pre><code class="language-rust">//! A mutex built on the futex system call.
+//!
+//! The lock is one 32-bit word with three states: 0 unlocked, 1 locked, and
+//! 2 locked with threads that may be asleep waiting for it. Taking a free lock
+//! and releasing a lock nobody waits for are single atomic instructions. Only a
+//! thread that has to wait, and an unlock that has to wake it, enter the kernel.
+//!
+//! Linux only. Run with: cargo run --release --bin futex_mutex
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::{
+        cell::UnsafeCell,
+        ops::{Deref, DerefMut},
+        sync::atomic::{
+            AtomicU32,
+            AtomicU64,
+            Ordering::{Acquire, Relaxed, Release},
+        },
+    };
+
+    const UNLOCKED: u32 = 0;
+    const LOCKED: u32 = 1;
+    const CONTENDED: u32 = 2;
+
+    /// Sleep while `word` holds `expected`. The kernel checks the value and
+    /// queues the thread as one step, so a wake that happens first is not lost.
+    fn futex_wait(word: &amp;AtomicU32, expected: u32) {
+        // SAFETY: `word` is a valid, aligned u32 for the whole call, and a null
+        // timeout means wait without a time limit.
+        unsafe {
+            libc::syscall(
+                libc::SYS_futex,
+                word.as_ptr(),
+                libc::FUTEX_WAIT | libc::FUTEX_PRIVATE_FLAG,
+                expected,
+                std::ptr::null::&lt;libc::timespec&gt;(),
+            );
+        }
+    }
+
+    /// Wake one thread sleeping on `word`, if there is one.
+    fn futex_wake_one(word: &amp;AtomicU32) {
+        // SAFETY: `word` is a valid, aligned u32 for the whole call.
+        unsafe {
+            libc::syscall(
+                libc::SYS_futex,
+                word.as_ptr(),
+                libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
+                1,
+            );
+        }
+    }
+
+    /// A mutual-exclusion lock that sleeps in the kernel while it waits.
+    pub struct FutexMutex&lt;T&gt; {
+        state: AtomicU32,
+        waits: AtomicU64,
+        wakes: AtomicU64,
+        value: UnsafeCell&lt;T&gt;,
+    }
+
+    // SAFETY: the lock gives one thread at a time access to `value`, so sharing
+    // the mutex is safe whenever `T` may move between threads.
+    unsafe impl&lt;T: Send&gt; Sync for FutexMutex&lt;T&gt; {}
+
+    impl&lt;T&gt; FutexMutex&lt;T&gt; {
+        pub const fn new(value: T) -&gt; Self {
+            Self {
+                state: AtomicU32::new(UNLOCKED),
+                waits: AtomicU64::new(0),
+                wakes: AtomicU64::new(0),
+                value: UnsafeCell::new(value),
+            }
+        }
+
+        pub fn lock(&amp;self) -&gt; Guard&lt;'_, T&gt; {
+            if self
+                .state
+                .compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed)
+                .is_err()
+            {
+                self.lock_contended();
+            }
+            Guard { mutex: self }
+        }
+
+        /// The slow path: mark the lock contended, and sleep until it is free.
+        fn lock_contended(&amp;self) {
+            while self.state.swap(CONTENDED, Acquire) != UNLOCKED {
+                self.waits.fetch_add(1, Relaxed);
+                futex_wait(&amp;self.state, CONTENDED);
+            }
+        }
+
+        fn unlock(&amp;self) {
+            if self.state.swap(UNLOCKED, Release) == CONTENDED {
+                self.wakes.fetch_add(1, Relaxed);
+                futex_wake_one(&amp;self.state);
+            }
+        }
+
+        /// The number of `futex` wait and wake calls this mutex has made.
+        pub fn syscalls(&amp;self) -&gt; (u64, u64) {
+            (self.waits.load(Relaxed), self.wakes.load(Relaxed))
+        }
+
+        pub fn into_inner(self) -&gt; T {
+            self.value.into_inner()
+        }
+    }
+
+    /// Access to the value while the lock is held. Unlocks when dropped.
+    pub struct Guard&lt;'a, T&gt; {
+        mutex: &amp;'a FutexMutex&lt;T&gt;,
+    }
+
+    impl&lt;T&gt; Deref for Guard&lt;'_, T&gt; {
+        type Target = T;
+
+        fn deref(&amp;self) -&gt; &amp;T {
+            // SAFETY: the guard exists only while this thread holds the lock.
+            unsafe { &amp;*self.mutex.value.get() }
+        }
+    }
+
+    impl&lt;T&gt; DerefMut for Guard&lt;'_, T&gt; {
+        fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
+            // SAFETY: as in `deref`, and `&amp;mut self` makes this the only borrow.
+            unsafe { &amp;mut *self.mutex.value.get() }
+        }
+    }
+
+    impl&lt;T&gt; Drop for Guard&lt;'_, T&gt; {
+        fn drop(&amp;mut self) {
+            self.mutex.unlock();
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn main() {
+    use std::{
+        sync::Mutex,
+        thread,
+        time::{Duration, Instant},
+    };
+
+    use linux::FutexMutex;
+
+    const INCREMENTS: u64 = 1_000_000;
+
+    /// Run `add` INCREMENTS times in total, split across `threads`.
+    fn timed(threads: u64, add: &amp;(dyn Fn() + Sync)) -&gt; Duration {
+        let start = Instant::now();
+        thread::scope(|scope| {
+            for _ in 0..threads {
+                scope.spawn(|| (0..INCREMENTS / threads).for_each(|_| add()));
+            }
+        });
+        start.elapsed()
+    }
+
+    // One untimed pass of each, so neither pays for a cold start in the table.
+    let warm = FutexMutex::new(0u64);
+    timed(1, &amp;|| *warm.lock() += 1);
+    let warm = Mutex::new(0u64);
+    timed(1, &amp;|| *warm.lock().unwrap() += 1);
+
+    println!(
+        "{:&gt;7} {:&gt;9} {:&gt;8} {:&gt;8} {:&gt;12} {:&gt;12}",
+        "threads", "total", "waits", "wakes", "futex ms", "std ms"
+    );
+    for threads in [1, 2, 4] {
+        let futex = FutexMutex::new(0u64);
+        let futex_time = timed(threads, &amp;|| *futex.lock() += 1);
+        let (waits, wakes) = futex.syscalls();
+
+        let std = Mutex::new(0u64);
+        let std_time = timed(threads, &amp;|| *std.lock().unwrap() += 1);
+        assert_eq!(std.into_inner().unwrap(), INCREMENTS);
+
+        println!(
+            "{threads:&gt;7} {:&gt;9} {waits:&gt;8} {wakes:&gt;8} {:&gt;12.1} {:&gt;12.1}",
+            futex.into_inner(),
+            futex_time.as_secs_f64() * 1000.0,
+            std_time.as_secs_f64() * 1000.0
+        );
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("futex_mutex uses the Linux futex system call; run it on Linux");
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use std::thread;
+
+    use super::linux::FutexMutex;
+
+    #[test]
+    fn an_uncontended_lock_makes_no_system_calls() {
+        let mutex = FutexMutex::new(0);
+        for _ in 0..1000 {
+            *mutex.lock() += 1;
+        }
+        assert_eq!(mutex.syscalls(), (0, 0));
+        assert_eq!(mutex.into_inner(), 1000);
+    }
+
+    #[test]
+    fn contended_increments_are_not_lost() {
+        let mutex = FutexMutex::new(0);
+        thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    for _ in 0..10_000 {
+                        *mutex.lock() += 1;
+                    }
+                });
+            }
+        });
+        assert_eq!(mutex.into_inner(), 80_000);
+    }
+}</code></pre>
+<p class="listing"><b>Listing 26.2</b> Store buffering and message passing, a million rounds each. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/litmus.rs">src/bin/litmus.rs</a></p>
+
+<pre><code class="language-rust">//! Memory-ordering litmus tests, run many times on real hardware.
+//!
+//! A litmus test is two short threads and a question: can this combination
+//! of results happen? Each test runs a million rounds and counts the rounds
+//! that ended with the result in question.
+//!
+//! Run with: cargo run --release --bin litmus
+
+use std::{
+    sync::atomic::{
+        AtomicU32,
+        AtomicUsize,
+        Ordering::{self, Acquire, Relaxed, Release, SeqCst},
+    },
+    thread,
+};
+
+const ROUNDS: usize = 1_000_000;
+
+/// A fresh, zeroed atomic for every round, so no round needs a reset.
+fn zeroed(rounds: usize) -&gt; Vec&lt;AtomicU32&gt; {
+    (0..rounds)
+        .map(|_| AtomicU32::new(0))
+        .collect()
+}
+
+/// Wait until both threads have reached `round`. Keeps the two threads on the
+/// same round, so their operations overlap in time.
+fn meet(arrived: &amp;AtomicUsize, round: usize) {
+    arrived.fetch_add(1, SeqCst);
+    while arrived.load(SeqCst) &lt; 2 * (round + 1) {
+        std::hint::spin_loop();
+    }
+}
+
+/// Store buffering. Thread 1 stores x and loads y; thread 2 stores y and loads
+/// x. Returns the rounds in which both loads read 0.
+fn store_buffering(store: Ordering, load: Ordering) -&gt; usize {
+    let (x, y) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let (r1, r2) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let arrived = AtomicUsize::new(0);
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                x[i].store(1, store);
+                r1[i].store(y[i].load(load), Relaxed);
+            }
+        });
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                y[i].store(1, store);
+                r2[i].store(x[i].load(load), Relaxed);
+            }
+        });
+    });
+
+    (0..ROUNDS)
+        .filter(|&amp;i| r1[i].load(Relaxed) == 0 &amp;&amp; r2[i].load(Relaxed) == 0)
+        .count()
+}
+
+/// Message passing. Thread 1 writes data, then sets a flag; thread 2 reads the
+/// flag, then the data. Returns the rounds in which thread 2 saw the flag set
+/// but the data still 0.
+fn message_passing(store: Ordering, load: Ordering) -&gt; usize {
+    let (data, flag) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let (seen_flag, seen_data) = (zeroed(ROUNDS), zeroed(ROUNDS));
+    let arrived = AtomicUsize::new(0);
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                data[i].store(42, Relaxed);
+                flag[i].store(1, store);
+            }
+        });
+        scope.spawn(|| {
+            for i in 0..ROUNDS {
+                meet(&amp;arrived, i);
+                seen_flag[i].store(flag[i].load(load), Relaxed);
+                seen_data[i].store(data[i].load(Relaxed), Relaxed);
+            }
+        });
+    });
+
+    (0..ROUNDS)
+        .filter(|&amp;i| seen_flag[i].load(Relaxed) == 1 &amp;&amp; seen_data[i].load(Relaxed) == 0)
+        .count()
+}
+
+fn main() {
+    let orderings = [
+        ("Relaxed", Relaxed, Relaxed),
+        ("Release / Acquire", Release, Acquire),
+        ("SeqCst", SeqCst, SeqCst),
+    ];
+
+    println!("store buffering, {ROUNDS} rounds: both loads read 0");
+    for (name, store, load) in orderings {
+        println!("  {name:&lt;18} {:&gt;8}", store_buffering(store, load));
+    }
+
+    println!("\nmessage passing, {ROUNDS} rounds: flag read as 1, data read as 0");
+    for (name, store, load) in orderings {
+        println!("  {name:&lt;18} {:&gt;8}", message_passing(store, load));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn seq_cst_forbids_both_loads_reading_zero() {
+        assert_eq!(store_buffering(SeqCst, SeqCst), 0);
+    }
+
+    #[test]
+    fn release_acquire_forbids_a_flag_without_its_data() {
+        assert_eq!(message_passing(Release, Acquire), 0);
+    }
+}</code></pre>
+<h2 id="265-questions-that-come-up"><a class="header" href="#265-questions-that-come-up">26.5 Questions that come up</a></h2>
+<p><strong>“Why not always spin, or always sleep?”</strong>
+Spinning wastes a CPU for as long as the wait lasts. Sleeping costs two system calls and a context switch,
+a few microseconds. A short spin followed by a sleep handles both short and long holds, which is what
+<code>std::sync::Mutex</code> does.</p>
+<p><strong>“What is priority inversion, and does a futex help?”</strong>
+A low-priority thread holds a lock that a high-priority thread waits for. Meanwhile a medium-priority thread keeps the low one off the CPU. Linux has priority-inheritance futexes, <code>FUTEX_LOCK_PI</code>, which raise the
+holder’s priority while a higher-priority thread waits.</p>
+<p><strong>“Can a futex be shared between processes?”</strong>
+Yes. Put the word in memory both processes map, such as a <code>MAP_SHARED</code> mapping from section 23.2, and leave
+out <code>FUTEX_PRIVATE_FLAG</code>. The kernel then keys the queue by the physical page.</p>
+<p><strong>“When is <code>Relaxed</code> correct?”</strong>
+When no other memory depends on the value: a statistics counter, or a unique id from <code>fetch_add</code>. Once a
+value says that other data is ready, it needs <code>Release</code> and <code>Acquire</code>.</p>
+<p><strong>“When is <code>SeqCst</code> needed?”</strong>
+When correctness depends on a single order of operations on different variables, as in store buffering.
+Dekker’s mutual-exclusion algorithm is the classic case. Most code built from locks, channels, and
+<code>Release</code>/<code>Acquire</code> pairs does not need it.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A futex is a kernel wait queue keyed by the address of a word in user memory. <code>futex_wait</code> sleeps only if
+the word still holds the expected value, which prevents a lost wake-up.</li>
+<li>A three-state mutex takes and releases an uncontended lock with one atomic instruction each. It enters the kernel only to sleep or to wake a sleeper.</li>
+<li>One thread made a million increments under the lock with no system calls. Under contention, the conservative
+state 2 made more wakes than waits.</li>
+<li><code>std::sync::Mutex</code> spins briefly before sleeping, which saved system calls in this test.</li>
+<li>A store buffer lets a later load complete before an earlier store is visible. x86 allows this one
+reordering. ARM allows more.</li>
+<li>Store buffering read 0 twice in about 1.5% of a million rounds with <code>Relaxed</code> or <code>Release</code>/<code>Acquire</code>, and
+never with <code>SeqCst</code>. Message passing never failed on x86, which does not make <code>Relaxed</code> correct there.</li>
+</ul>
+</div>
+
+<p>Chapter 27 starts Part 9, production networking. It follows a TCP connection through its close. It covers the states after <code>FIN</code>, the length of <code>TIME_WAIT</code>, and the <code>CLOSE_WAIT</code> sockets a leaking server piles up.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Add a spin to <code>lock_contended</code>: up to 100 relaxed loads of the word, stopping early when it reads 0,
+before the first <code>swap</code>. Compare the waits, wakes, and times with the table in section 26.2.3.</li>
+<li>Hold the lock for 50 microseconds inside each increment, with a busy loop, and run four threads. Compare
+the futex mutex with chapter 16’s spin lock in total time and in CPU time (<code>/usr/bin/time -v</code>).</li>
+<li>Remove the <code>expected</code> check by passing a value the word never holds, such as 7, to <code>futex_wait</code>. Explain
+why the program now burns CPU instead of sleeping.</li>
+<li>Change the message-passing test to <code>Relaxed</code> for both and build it for <code>aarch64</code> (or run it on an ARM
+machine). Count the failing rounds.</li>
+<li>Add the “load buffering” test: thread 1 loads x then stores y = 1, and thread 2 loads y then stores
+x = 1. Can both loads read 1? Run it with <code>Relaxed</code> on x86 and explain the result.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch25-epoll-edge.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch27-tcp-close.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch25-epoll-edge.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch27-tcp-close.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

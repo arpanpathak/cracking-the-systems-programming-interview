@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -460,14 +460,17 @@ because the last child pushed is the first popped.</p>
 <p>Programs often receive a graph as pairs of names, such as <code>("A", "B")</code>. A common way to handle names is to give
 each name a number the first time you see it. The algorithm then runs on numbers, with the fast index form.
 Assigning numbers to names this way is called <strong>interning</strong>.</p>
-<p class="listing"><b>Listing 12.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/graph_bfs.rs">src/bin/graph_bfs.rs</a></p>
-
+<p>The graph keeps two things: <code>ids</code>, which interns each name as a number, and <code>adj</code>, the adjacency list indexed by those numbers:</p>
 <pre><code class="language-rust">use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Default)]
-struct Connection {
-    to: String,
-}
+struct Graph {
+    ids: HashMap&lt;String, usize&gt;,
+    adj: Vec&lt;Vec&lt;usize&gt;&gt;,
+}</code></pre>
+<p class="listing"><b>Listing 12.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/graph_bfs.rs">src/bin/graph_bfs.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Default)]
 struct Graph {
@@ -603,7 +606,7 @@ ownership problems at all.</p>
 <p><code>neighbors</code> returns <code>impl Iterator&lt;Item = NodeId&gt; + '_</code>. That return type means “some iterator of node
 numbers”. The <code>+ '_</code> says the iterator borrows from <code>self</code>, so it cannot outlive the graph. <code>.copied()</code> turns
 the <code>&amp;usize</code> items of the slice iterator into <code>usize</code> values.</p>
-<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 71).</p>
+<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 74).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; Graph&lt;T&gt; {
     // ...
@@ -636,7 +639,10 @@ the <code>&amp;usize</code> items of the slice iterator into <code>usize</code> 
             }
             visited[node] = true;
             order.push(node);
-            stack.extend(self.neighbors(node).filter(|&amp;n| !visited[n]));
+            stack.extend(
+                self.neighbors(node)
+                    .filter(|&amp;n| !visited[n]),
+            );
         }
         order
     }
@@ -645,7 +651,7 @@ the <code>&amp;usize</code> items of the slice iterator into <code>usize</code> 
 <p>These are the algorithms of sections 12.3 and 12.4, written with <code>neighbors</code>. The DFS filters out visited
 neighbors before pushing them, with <code>.filter(|&amp;n| !visited[n])</code>. The filter keeps the stack smaller, but the
 check after <code>pop</code> is still needed. A node can be pushed by two different nodes before either copy is popped.</p>
-<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 73 to 91).</p>
+<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 76 to 94).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; Graph&lt;T&gt; {
     // ...
@@ -747,7 +753,10 @@ impl&lt;T&gt; Graph&lt;T&gt; {
             }
             visited[node] = true;
             order.push(node);
-            stack.extend(self.neighbors(node).filter(|&amp;n| !visited[n]));
+            stack.extend(
+                self.neighbors(node)
+                    .filter(|&amp;n| !visited[n]),
+            );
         }
         order
     }
@@ -783,7 +792,11 @@ fn main() {
     g.add_edge(b, c);
     g.add_edge(c, a); // closes the cycle
 
-    let names = |ids: Vec&lt;NodeId&gt;| -&gt; Vec&lt;&amp;str&gt; { ids.into_iter().map(|i| g.nodes[i]).collect() };
+    let names = |ids: Vec&lt;NodeId&gt;| -&gt; Vec&lt;&amp;str&gt; {
+        ids.into_iter()
+            .map(|i| g.nodes[i])
+            .collect()
+    };
 
     println!("BFS:   {:?}", names(g.bfs(a))); // ["A", "B", "C"]
     println!("DFS:   {:?}", names(g.dfs(a))); // ["A", "B", "C"]
@@ -798,6 +811,17 @@ Cycle: true
 </code></pre>
 <h3 id="1262-the-same-graph-with-a-hashmap"><a class="header" href="#1262-the-same-graph-with-a-hashmap">12.6.2 The same graph with a HashMap</a></h3>
 <p>The second version stores the graph as a map from a node to its neighbors, with no numbering step.</p>
+<p>The cycle check marks each node with a <code>State</code>: <code>Visiting</code> while its descendants are being explored, and <code>Done</code> after. The graph is a map from a node to its neighbors, generic over any <code>Copy</code> node type:</p>
+<pre><code class="language-rust">#[derive(Clone, Copy)]
+enum State {
+    Visiting,
+    Done,
+}
+
+#[derive(Default)]
+struct Graph&lt;T&gt; {
+    adj: HashMap&lt;T, Vec&lt;T&gt;&gt;,
+}</code></pre>
 <p class="listing"><b>Listing 12.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph_map.rs">src/bin/cyclic_graph_map.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -847,13 +871,17 @@ impl&lt;T: Copy + Eq + Hash&gt; Graph&lt;T&gt; {
             }
 
             state.insert(u, State::Visiting);
-            let found = g.adj[&amp;u].iter().any(|&amp;v| dfs(g, v, state));
+            let found = g.adj[&amp;u]
+                .iter()
+                .any(|&amp;v| dfs(g, v, state));
             state.insert(u, State::Done);
             found
         }
 
         let mut state = HashMap::new();
-        self.adj.keys().any(|&amp;u| dfs(self, u, &amp;mut state))
+        self.adj
+            .keys()
+            .any(|&amp;u| dfs(self, u, &amp;mut state))
     }
 }
 
@@ -1194,12 +1222,24 @@ mod tests {
         let order = topological_sort(4, &amp;edges).expect("DAG has an order");
         assert_eq!(order.len(), 4);
         assert!(
-            order.iter().position(|&amp;n| n == 0).unwrap()
-                &lt; order.iter().position(|&amp;n| n == 1).unwrap()
+            order
+                .iter()
+                .position(|&amp;n| n == 0)
+                .unwrap()
+                &lt; order
+                    .iter()
+                    .position(|&amp;n| n == 1)
+                    .unwrap()
         );
         assert!(
-            order.iter().position(|&amp;n| n == 1).unwrap()
-                &lt; order.iter().position(|&amp;n| n == 3).unwrap()
+            order
+                .iter()
+                .position(|&amp;n| n == 1)
+                .unwrap()
+                &lt; order
+                    .iter()
+                    .position(|&amp;n| n == 3)
+                    .unwrap()
         );
     }
 
@@ -1235,6 +1275,14 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 134 filtered out
 <h3 id="1282-kahns-algorithm-on-named-courses"><a class="header" href="#1282-kahns-algorithm-on-named-courses">12.8.2 Kahn’s algorithm on named courses</a></h3>
 <p>The second version takes courses with names and lists of prerequisites, the way the data might arrive from a
 file.</p>
+<p>A course has a name and a list of prerequisites, the names of the courses that must come before it:</p>
+<pre><code class="language-rust">use std::collections::{HashMap, VecDeque};
+
+#[derive(Clone)]
+struct Course {
+    name: String,
+    depends_on: Vec&lt;String&gt;,
+}</code></pre>
 <p class="listing"><b>Listing 12.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs">src/bin/dependency_resolutiom.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::{HashMap, VecDeque};
@@ -1300,8 +1348,6 @@ fn main() {
             depends_on: vec!["datastructs".into()],
         },
     ];
-
-    let coned2 = courses.clone();
 
     println!("{:?}", topo_sort(&amp;courses));
 }</code></pre>
@@ -1398,7 +1444,7 @@ is the relax check.</li>
 <p>The heap holds <code>Reverse((cost, node))</code>. <code>BinaryHeap</code> pops the largest item, and <code>Reverse</code> flips the comparison,
 so the smallest cost comes out first. Tuples compare by their first field, then by their second, so the cost
 decides and the node number breaks ties.</p>
-<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 69).</p>
+<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 73).</p>
 
 <pre><code class="language-rust">/// Shortest distances from `start_node` over a `HashMap` adjacency list.
 pub fn dijkstra&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; HashMap&lt;Node, u32&gt;
@@ -1416,7 +1462,11 @@ where
         for &amp;(neighbor, weight) in graph[&amp;current_node] {
             let new_distance = current_cost + weight;
 
-            if new_distance &lt; *distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX) {
+            if new_distance
+                &lt; *distances
+                    .get(&amp;neighbor)
+                    .unwrap_or(&amp;u32::MAX)
+            {
                 distances.insert(neighbor, new_distance);
                 min_heap.push(Reverse((new_distance, neighbor)));
             }
@@ -1450,6 +1500,14 @@ release build. With <code>u32</code> weights, a long path of large weights can o
 <p>The next three programs use a named <code>Edge</code> struct instead of a <code>(neighbor, weight)</code> tuple, and <code>u64</code> costs.
 They show three steps of the same function: it first clones node names, then borrows them, and finally handles
 missing nodes and overflow.</p>
+<p>An <code>Edge</code> holds the node it leads to and its weight. <code>AdjMap</code> is an alias for the graph: each node, with the list of edges that leave it. Both are generic over the node type:</p>
+<pre><code class="language-rust">#[derive(Debug)]
+struct Edge&lt;Node&gt; {
+    to: Node,
+    weight: u64,
+}
+
+type AdjMap&lt;Node&gt; = HashMap&lt;Node, Vec&lt;Edge&lt;Node&gt;&gt;&gt;;</code></pre>
 <p class="listing"><b>Listing 12.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra.rs">src/bin/dijkstra.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -1479,7 +1537,10 @@ where
         }
         for edge in &amp;graph[&amp;node] {
             let new_cost = cost + edge.weight;
-            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+            if dist
+                .get(&amp;edge.to)
+                .is_none_or(|&amp;d| new_cost &lt; d)
+            {
                 dist.insert(edge.to.clone(), new_cost);
                 heap.push(Reverse((new_cost, edge.to.clone())));
             }
@@ -1529,13 +1590,21 @@ has one.</p>
 </code></pre>
 <p>The first print shows the graph and is cut short here. A <code>HashMap</code> does not keep its entries in any order. The lines of both prints can come out in a different
 order on your machine.</p>
-<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 15 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
+<p class="listing"><b>Listing 12.19</b> The graph types, and borrowing nodes instead of cloning them (lines 1 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
     hash::Hash,
 };
+
+#[derive(Debug)]
+struct Edge&lt;Node&gt; {
+    to: Node,
+    weight: u64,
+}
+
+type AdjMap&lt;Node&gt; = HashMap&lt;Node, Vec&lt;Edge&lt;Node&gt;&gt;&gt;;
 
 fn dijkstra_ssmd_shortest&lt;'a, Node&gt;(
     graph: &amp;'a AdjMap&lt;Node&gt;,
@@ -1559,7 +1628,10 @@ where
             let Some(new_cost) = cost.checked_add(edge.weight) else {
                 continue;
             };
-            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+            if dist
+                .get(&amp;edge.to)
+                .is_none_or(|&amp;d| new_cost &lt; d)
+            {
                 dist.insert(&amp;edge.to, new_cost);
                 heap.push(Reverse((new_cost, &amp;edge.to)));
             }
@@ -1567,6 +1639,9 @@ where
     }
     dist
 }</code></pre>
+<p>The types are generic over <code>Node</code>, the type that names a node, such as <code>&amp;str</code> or <code>u32</code>. An <code>Edge&lt;Node&gt;</code> holds
+the node it leads to and a weight. <code>AdjMap&lt;Node&gt;</code> is an alias for the adjacency map: each node, and the list
+of edges that leave it.</p>
 <p>This version stores references to nodes, <code>&amp;'a Node</code>, in <code>dist</code> and in the heap, so <code>Node</code> does not need <code>Clone</code>.
 With <code>String</code> nodes, that saves an allocation per clone.</p>
 <p>The lifetime <code>'a</code> ties everything together. The graph and the start node are both borrowed for <code>'a</code>, and the
@@ -1617,7 +1692,10 @@ where
             let Some(new_cost) = cost.checked_add(edge.weight) else {
                 continue;
             };
-            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+            if dist
+                .get(&amp;edge.to)
+                .is_none_or(|&amp;d| new_cost &lt; d)
+            {
                 dist.insert(&amp;edge.to, new_cost);
                 heap.push(Reverse((new_cost, &amp;edge.to)));
             }
@@ -1719,7 +1797,10 @@ where
             let Some(new_cost) = cost.checked_add(edge.weight) else {
                 continue;
             }; // overflow
-            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+            if dist
+                .get(&amp;edge.to)
+                .is_none_or(|&amp;d| new_cost &lt; d)
+            {
                 dist.insert(edge.to.clone(), new_cost);
                 heap.push(Reverse((new_cost, edge.to.clone())));
             }
@@ -1838,9 +1919,16 @@ both have the same rank, either can go under the other, and the new root’s ran
 <strong>union by rank</strong>.</p>
 <p>With both tricks, <code>find</code> and <code>union</code> take nearly constant time in practice.</p>
 <h3 id="12102-kruskals-algorithm"><a class="header" href="#12102-kruskals-algorithm">12.10.2 Kruskal’s algorithm</a></h3>
-<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 51 to 65).</p>
+<p class="listing"><b>Listing 12.23</b> The edge type and Kruskal's algorithm (lines 3 to 65).</p>
 
-<pre><code class="language-rust">fn kruskals(n: usize, mut edges: Vec&lt;Edge&gt;) -&gt; Vec&lt;Edge&gt; {
+<pre><code class="language-rust">#[derive(Debug)]
+struct Edge {
+    u: usize,
+    v: usize,
+    w: u32,
+}
+
+fn kruskals(n: usize, mut edges: Vec&lt;Edge&gt;) -&gt; Vec&lt;Edge&gt; {
     // Kruskal's algorithm is greedy: it takes the cheapest edges first.
     edges.sort_by_key(|e| e.w);
 
@@ -1855,6 +1943,8 @@ both have the same rank, either can go under the other, and the new root’s ran
 
     mst
 }</code></pre>
+<p>An <code>Edge</code> joins nodes <code>u</code> and <code>v</code>, numbered from 0, with weight <code>w</code>. The graph is undirected, so the
+order of <code>u</code> and <code>v</code> does not matter.</p>
 <p><code>edges.sort_by_key(|e| e.w)</code> sorts the edges by weight. Then each edge is offered to <code>union</code>. If <code>union</code>
 returns <code>true</code>, the edge joined two groups, and it goes into the tree. The edge is moved into <code>mst</code>, not copied,
 because <code>for edge in edges</code> takes ownership of each one.</p>
@@ -1964,6 +2054,364 @@ fn main() {
 total: 8
 </code></pre>
 <p>The tree has four edges for five nodes, as expected.</p>
+<h2 id="1211-the-complete-files"><a class="header" href="#1211-the-complete-files">12.11 The complete files</a></h2>
+<p>The sections above showed these files in excerpts. Here each one is whole.</p>
+<p class="listing"><b>Listing 12.25</b> Breadth-first search, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">src/problems/graph_bfs.rs</a></p>
+
+<pre><code class="language-rust">//! Breadth-first search.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `bfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`,
+//!   so `visited` is a plain `Vec&lt;bool&gt;`. This is the version to write first.
+//! - `bfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`
+//!   from a node to a slice of `(neighbor, weight)` edges.
+
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    hash::Hash,
+};
+
+/// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
+pub type GraphAdjList&lt;'a, Node&gt; = HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;;
+
+/// BFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn bfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited[start_node] = true;
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+/// BFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn bfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited.insert(start_node);
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        // slice iter yields &amp;(Node, u32); `&amp;` destructures it
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            if visited.insert(neighbor) {
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_visits_level_by_level() {
+        assert_eq!(bfs_vec(&amp;sample_vec(), 0), vec![0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn vec_variant_skips_unreachable_nodes() {
+        let graph = vec![vec![(1, 1)], vec![], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(0, 1)]];
+        assert_eq!(bfs_vec(&amp;graph, 0), vec![0, 1]);
+    }
+
+    #[test]
+    fn map_variant_visits_level_by_level() {
+        assert_eq!(bfs(&amp;sample_map(), "A"), vec!["A", "B", "C", "D"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = bfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, bfs(&amp;sample_map(), "A"));
+    }
+}</code></pre>
+<p class="listing"><b>Listing 12.26</b> Depth-first search, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">src/problems/graph_dfs.rs</a></p>
+
+<pre><code class="language-rust">//! Iterative depth-first search with an explicit stack.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dfs_vec`: nodes are `usize` indices and the graph is `Vec&lt;Vec&lt;(usize, u32)&gt;&gt;`.
+//! - `dfs`: nodes are any `Copy + Eq + Hash` type and the graph is a `HashMap`.
+//!
+//! A node is marked visited when it is popped, not when it is pushed, so it may
+//! sit on the stack more than once. Neighbors are pushed in order, which means the
+//! last neighbor is explored first.
+
+use std::{collections::HashSet, hash::Hash};
+
+use crate::problems::graph_bfs::GraphAdjList;
+
+/// DFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn dfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if visited[current_node] {
+            continue;
+        }
+        visited[current_node] = true;
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+/// DFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn dfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if !visited.insert(current_node) {
+            continue;
+        }
+        result.push(current_node);
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_explores_the_last_neighbor_first() {
+        // Pop 0, push 1 and 2; pop 2, push 3; pop 3; pop 1.
+        assert_eq!(dfs_vec(&amp;sample_vec(), 0), vec![0, 2, 3, 1]);
+    }
+
+    #[test]
+    fn vec_variant_handles_cycles() {
+        let graph = vec![vec![(1, 1)], vec![(2, 1)], vec![(0, 1)]];
+        assert_eq!(dfs_vec(&amp;graph, 0), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn map_variant_explores_the_last_neighbor_first() {
+        assert_eq!(dfs(&amp;sample_map(), "A"), vec!["A", "C", "D", "B"]);
+    }
+
+    #[test]
+    fn both_variants_agree() {
+        let names = ["A", "B", "C", "D"];
+        let from_vec: Vec&lt;&amp;str&gt; = dfs_vec(&amp;sample_vec(), 0)
+            .into_iter()
+            .map(|index| names[index])
+            .collect();
+        assert_eq!(from_vec, dfs(&amp;sample_map(), "A"));
+    }
+}</code></pre>
+<p class="listing"><b>Listing 12.27</b> Dijkstra's algorithm, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">src/problems/graph_dijkstra.rs</a></p>
+
+<pre><code class="language-rust">//! Dijkstra's shortest paths with a binary min-heap.
+//!
+//! Two variants of the same algorithm:
+//!
+//! - `dijkstra_vec`: nodes are `usize` indices and distances are a
+//!   `Vec&lt;Option&lt;u32&gt;&gt;`, where `None` means unreachable.
+//! - `dijkstra`: nodes are any `Copy + Eq + Hash + Ord` type and distances are a
+//!   `HashMap` containing only the reachable nodes.
+//!
+//! Edge weights must be non-negative, which `u32` guarantees. `BinaryHeap` is a
+//! max-heap, so entries are wrapped in `Reverse` to pop the smallest cost first.
+//! A node can be in the heap several times; an entry whose cost is larger than the
+//! recorded distance is stale and skipped.
+
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
+use crate::problems::graph_bfs::GraphAdjList;
+
+/// Shortest distances from `start_node` over an index-based adjacency list.
+pub fn dijkstra_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;Option&lt;u32&gt;&gt; {
+    let mut distances = vec![None; graph.len()];
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    distances[start_node] = Some(0);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if distances[current_node].is_some_and(|best| current_cost &gt; best) {
+            continue;
+        }
+        for &amp;(neighbor, weight) in &amp;graph[current_node] {
+            let new_distance = current_cost + weight;
+            if distances[neighbor].is_none_or(|best| new_distance &lt; best) {
+                distances[neighbor] = Some(new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}
+
+/// Shortest distances from `start_node` over a `HashMap` adjacency list.
+pub fn dijkstra&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; HashMap&lt;Node, u32&gt;
+where
+    Node: Copy + Eq + Hash + Ord,
+{
+    let mut distances = HashMap::from([(start_node, 0)]);
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if current_cost &gt; distances[&amp;current_node] {
+            continue;
+        }
+        for &amp;(neighbor, weight) in graph[&amp;current_node] {
+            let new_distance = current_cost + weight;
+
+            if new_distance
+                &lt; *distances
+                    .get(&amp;neighbor)
+                    .unwrap_or(&amp;u32::MAX)
+            {
+                distances.insert(neighbor, new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A -&gt; B (1), A -&gt; C (4), B -&gt; C (2), B -&gt; D (5), C -&gt; D (1)
+    fn sample_vec() -&gt; Vec&lt;Vec&lt;(usize, u32)&gt;&gt; {
+        vec![
+            vec![(1, 1), (2, 4)],
+            vec![(2, 2), (3, 5)],
+            vec![(3, 1)],
+            vec![],
+        ]
+    }
+
+    fn sample_map() -&gt; HashMap&lt;&amp;'static str, &amp;'static [(&amp;'static str, u32)]&gt; {
+        HashMap::from([
+            ("A", &amp;[("B", 1), ("C", 4)][..]),
+            ("B", &amp;[("C", 2), ("D", 5)][..]),
+            ("C", &amp;[("D", 1)][..]),
+            ("D", &amp;[][..]),
+        ])
+    }
+
+    #[test]
+    fn vec_variant_finds_shorter_multi_hop_paths() {
+        // A -&gt; C directly costs 4, A -&gt; B -&gt; C costs 3; D is reached via C for 4.
+        assert_eq!(
+            dijkstra_vec(&amp;sample_vec(), 0),
+            vec![Some(0), Some(1), Some(3), Some(4)]
+        );
+    }
+
+    #[test]
+    fn vec_variant_marks_unreachable_nodes() {
+        let graph = vec![vec![(1, 7)], vec![], vec![(0, 1)]];
+        assert_eq!(dijkstra_vec(&amp;graph, 0), vec![Some(0), Some(7), None]);
+    }
+
+    #[test]
+    fn map_variant_finds_shorter_multi_hop_paths() {
+        let distances = dijkstra(&amp;sample_map(), "A");
+        assert_eq!(
+            distances,
+            HashMap::from([("A", 0), ("B", 1), ("C", 3), ("D", 4)])
+        );
+    }
+
+    #[test]
+    fn map_variant_omits_unreachable_nodes() {
+        let graph: HashMap&lt;u8, &amp;[(u8, u32)]&gt; =
+            HashMap::from([(0, &amp;[(1, 2)][..]), (1, &amp;[][..]), (2, &amp;[(0, 1)][..])]);
+        assert_eq!(dijkstra(&amp;graph, 0), HashMap::from([(0, 0), (1, 2)]));
+    }
+}</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>

@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -410,11 +410,14 @@ impl RateLimiter {
 
     pub fn try_acquire(&amp;self) -&gt; bool {
         let now = self.created_at.elapsed().as_secs();
-        let last = self.last_refilled_at.fetch_max(now, Relaxed);
+        let last = self
+            .last_refilled_at
+            .fetch_max(now, Relaxed);
         if now &gt; last {
             self.tokens
                 .fetch_add((now - last) as i64 * self.tokens_per_sec, Relaxed);
-            self.tokens.fetch_min(self.capacity, Relaxed);
+            self.tokens
+                .fetch_min(self.capacity, Relaxed);
         }
 
         if self.tokens.load(Relaxed) &lt;= 0 {
@@ -465,11 +468,14 @@ impl RateLimiter {
 
     pub fn try_acquire(&amp;self) -&gt; bool {
         let now = self.created_at.elapsed().as_secs();
-        let last = self.last_refilled_at.fetch_max(now, Relaxed);
+        let last = self
+            .last_refilled_at
+            .fetch_max(now, Relaxed);
         if now &gt; last {
             self.tokens
                 .fetch_add((now - last) as i64 * self.tokens_per_sec, Relaxed);
-            self.tokens.fetch_min(self.capacity, Relaxed);
+            self.tokens
+                .fetch_min(self.capacity, Relaxed);
         }
 
         if self.tokens.load(Relaxed) &lt;= 0 {
@@ -536,6 +542,42 @@ Trying again a moment later often works.</p>
 <li><strong>How many times.</strong> At some point, the caller should give up and report the error.</li>
 </ol>
 <h3 id="1921-which-errors-to-retry"><a class="header" href="#1921-which-errors-to-retry">19.2.1 Which errors to retry</a></h3>
+<p>The retry code works with <code>ApiError</code>, the error enum from section 7.7. Here it is again. Each variant is one
+way a call to a service can fail, and carries the data that failure needs:</p>
+<pre><code class="language-rust">/// API error modeled as an enum with associated data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApiError {
+    InvalidRequest(String),
+    Unauthorized,
+    RateLimited { retry_after: Duration },
+    NotFound { resource_id: String },
+    Server { status: u16, message: String },
+}
+
+impl ApiError {
+    pub fn is_retryable(&amp;self) -&gt; bool {
+        matches!(
+            self,
+            Self::RateLimited { .. }
+                | Self::Server {
+                    status: 500..=599,
+                    ..
+                }
+        )
+    }
+    // ...
+}</code></pre>
+<ul>
+<li><code>InvalidRequest</code> and <code>NotFound</code> describe a request that is wrong. Sending it again gives the same answer.</li>
+<li><code>Unauthorized</code> needs new credentials, not a second try.</li>
+<li><code>RateLimited</code> says the server is busy, and carries how long it asked the client to wait.</li>
+<li><code>Server</code> is a failure on the server’s side, with the HTTP status code.</li>
+</ul>
+<p>The enum’s own method, <code>is_retryable</code>, already answers the first question for each variant. <code>matches!</code> tests a
+value against a pattern and returns <code>true</code> or <code>false</code>. It returns <code>true</code> for <code>RateLimited</code>, and for <code>Server</code> with a
+status from 500 to 599.</p>
+<p>The retry code should not be tied to <code>ApiError</code>, though. It should work with any error that can answer the
+question. That is a job for a trait:</p>
 <p class="listing"><b>Listing 19.6</b> The <code>Retryable</code> trait (lines 22 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
 <pre><code class="language-rust">use std::time::Duration;
@@ -568,9 +610,8 @@ impl Retryable for ApiError {
 <p><code>Retryable</code> is a trait that an error type implements to answer the first question. <code>is_retryable</code> has no default,
 so each error type must decide. <code>retry_after</code> has a default body that returns <code>None</code>, so an error type only needs
 to implement it if the server can send a hint.</p>
-<p>The trait is implemented for <code>ApiError</code>, the error enum from section 7.7. Its <code>is_retryable</code> method returns <code>true</code>
-for a rate limit and for server errors with a status from 500 to 599. <code>retry_after</code> returns the delay carried by a
-<code>RateLimited</code> error. That delay usually comes from the HTTP header <code>Retry-After</code>, which a server sends to say when
+<p>The trait is implemented for <code>ApiError</code>. Its <code>is_retryable</code> passes the question to the enum’s own method.
+<code>retry_after</code> returns the delay carried by a <code>RateLimited</code> error. That delay usually comes from the HTTP header <code>Retry-After</code>, which a server sends to say when
 to try again.</p>
 <p>The line <code>ApiError::is_retryable(self)</code> calls the enum’s own method, not the trait’s. Both have the same name. The
 path <code>ApiError::is_retryable</code> finds the inherent method first, so the trait method does not call itself forever.</p>
@@ -992,6 +1033,12 @@ again, the server returns the recorded result and does not repeat the work (figu
 <img src="figures/idempotency.svg" alt="The first execute with key order-1 runs charge, prints charging card, and stores txn_42. The second execute with the same key skips charge and returns txn_42.">
 <figcaption><b>Figure 19.5</b> Two calls with one key. The work runs once.</figcaption>
 </figure>
+<p>The store is a <code>HashMap</code> from key to result, behind a <code>Mutex</code> so that several threads can share it:</p>
+<pre><code class="language-rust">use std::{collections::HashMap, hash::Hash, sync::Mutex};
+
+pub struct Idempotent&lt;K, V&gt; {
+    store: Mutex&lt;HashMap&lt;K, V&gt;&gt;,
+}</code></pre>
 <p class="listing"><b>Listing 19.10</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation.rs">src/bin/idempotent_operation.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::HashMap, hash::Hash, sync::Mutex};
@@ -1015,7 +1062,10 @@ where
     where
         F: FnOnce() -&gt; Result&lt;V, Box&lt;dyn std::error::Error&gt;&gt;,
     {
-        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|_| "lock poisoned")?;
         if let Some(v) = store.get(&amp;key) {
             return Ok(v.clone());
         }
@@ -1079,7 +1129,10 @@ where
     where
         F: FnOnce() -&gt; Result&lt;V, RuntimeError&gt;,
     {
-        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|_| "lock poisoned")?;
         if let Some(v) = store.get(&amp;key) {
             return Ok(v.clone());
         }

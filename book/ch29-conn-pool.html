@@ -1,0 +1,1113 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>A client connection pool - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-0ec47a42.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch29.png" alt="Dock, the robot who is the harbormaster of the connection pool, beside a rack of numbered moorings, some with boats tied up and one empty, and a tide clock">
+<h1 id="a-client-connection-pool"><a class="header" href="#a-client-connection-pool">A client connection pool</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What a new connection costs, and why a client keeps connections open between requests</li>
+<li>A pool with a hard limit on open connections, and a deadline for callers that have to wait</li>
+<li>A guard type that returns its connection when dropped, and a way to throw a broken one away</li>
+<li>Reusing the newest idle connection first, and closing connections idle for too long</li>
+<li>Connections the server closed while they sat idle, and how to detect them before reuse</li>
+<li>2,000 requests with and without a pool, measured</li>
+</ul>
+</div>
+
+<p>Chapter 27 showed that each closed connection leaves a socket in <code>TIME_WAIT</code>, and that a busy client runs
+out of ports. Chapter 28 added a TLS handshake to every new connection. Both costs come from making connections. A client avoids most of them by keeping a few connections open, and sending request after request over them. A <strong>connection pool</strong> holds those connections and lends them to the threads that
+need them.</p>
+<p>This chapter builds a pool on the standard library: a <code>Mutex</code>, a <code>Condvar</code>, and a guard type with <code>Drop</code>.
+The program, <code>conn_pool</code>, runs it against a small line server on loopback, and measures each of the pool’s
+rules.</p>
+<h2 id="291-what-a-new-connection-costs"><a class="header" href="#291-what-a-new-connection-costs">29.1 What a new connection costs</a></h2>
+<p>Each new TCP connection costs:</p>
+<ul>
+<li><strong>A round trip</strong> for the TCP handshake before the first byte, and a second one for TLS.</li>
+<li><strong>A slow start.</strong> A new connection begins with a small congestion window and grows it over several round
+trips (section 20.2). A connection that has been in use already has a large one.</li>
+<li><strong>Work on the server</strong>: an <code>accept</code>, a descriptor, and often a thread or a task.</li>
+<li><strong>A socket in <code>TIME_WAIT</code></strong> after the close, on whichever side closed first.</li>
+</ul>
+<p>On a network with a 50 ms round trip, the handshakes alone add 100 ms. On an open connection, the same request might take 5 ms.</p>
+<p>Keeping connections open has costs too. Each open connection holds a descriptor and buffers on both
+machines, and a server can hold only so many. A pool therefore keeps a bounded number of connections and
+lends them out one caller at a time. It follows four rules:</p>
+<ol>
+<li><strong>A bound.</strong> At most <code>max</code> connections are open, counting those lent out and those idle.</li>
+<li><strong>Automatic return.</strong> A borrowed connection comes back when the borrower drops it, unless the borrower
+reports it broken.</li>
+<li><strong>Newest first.</strong> The most recently returned idle connection is reused first.</li>
+<li><strong>No stale connections.</strong> A connection idle longer than <code>idle_timeout</code>, or one the server has closed, is
+closed instead of lent.</li>
+</ol>
+<p>Figure 29.1 shows the path of a call to <code>get</code> through the four rules.</p>
+<figure>
+<img src="figures/ch29-pool.svg" alt="pool.get() pops the idle stack, newest on top. If that connection is fresh and open it becomes a Pooled guard; if not it is closed as evicted or stale, and the next one is tried. When the stack is empty, if open is below max the pool reserves a slot and connects outside the lock; otherwise the caller waits on a Condvar until a return or the deadline, which gives Err(TimedOut). The guard derefs to TcpStream; dropping it puts the connection back on the idle stack, and discard() after an error closes it and frees the slot.">
+<figcaption><b>Figure 29.1</b> One call to <code>get</code>. A caller gets an idle connection, a new one, or waits for a return until its deadline.</figcaption>
+</figure>
+<h2 id="292-the-pools-state"><a class="header" href="#292-the-pools-state">29.2 The pool’s state</a></h2>
+<p><code>Config</code> holds the limits, and <code>Stats</code> counts what the pool does, so the program can print it:</p>
+<pre><code class="language-rust">use std::{
+    io::{self, BufRead, BufReader, ErrorKind, Write},
+    net::{SocketAddr, TcpListener, TcpStream},
+    ops::{Deref, DerefMut},
+    sync::{
+        Arc,
+        Condvar,
+        Mutex,
+        atomic::{AtomicUsize, Ordering::Relaxed},
+    },
+    thread,
+    time::{Duration, Instant},
+};
+
+/// The limits a pool enforces.
+#[derive(Clone, Copy)]
+struct Config {
+    /// The most connections open at once, lent out or idle.
+    max: usize,
+    /// How long `get` waits for a connection before it gives up.
+    wait_timeout: Duration,
+    /// How long a connection may sit idle before the pool closes it.
+    idle_timeout: Duration,
+    /// Whether to check that an idle connection is still open before lending it.
+    check_alive: bool,
+}
+
+/// What the pool has done, for the demonstration.
+#[derive(Default)]
+struct Stats {
+    connects: AtomicUsize,
+    reuses: AtomicUsize,
+    evicted: AtomicUsize,
+    stale: AtomicUsize,
+}</code></pre>
+<p>The pool keeps its idle connections in a <code>Vec</code> used as a stack, each with the time it was returned. <code>open</code>
+counts every connection the pool owns, idle or lent out:</p>
+<pre><code class="language-rust">struct Idle {
+    stream: TcpStream,
+    since: Instant,
+}
+
+/// The connections the pool owns: the idle ones, and a count of all open ones.
+struct State {
+    idle: Vec&lt;Idle&gt;,
+    open: usize,
+}
+
+struct Pool {
+    address: SocketAddr,
+    config: Config,
+    state: Mutex&lt;State&gt;,
+    returned: Condvar,
+    stats: Stats,
+}
+
+/// A connection lent out by the pool. Dropping it gives it back.
+struct Pooled&lt;'a&gt; {
+    pool: &amp;'a Pool,
+    stream: Option&lt;TcpStream&gt;,
+    broken: bool,
+}</code></pre>
+<p>The invariant is that <code>open</code> equals the number of idle connections plus the number lent out. Every change to
+<code>open</code> happens under the mutex, so <code>get</code> can trust it when it decides whether to connect.</p>
+<p><code>Pooled</code> is the borrowed connection. It holds a reference to its pool, so the borrow checker keeps every
+<code>Pooled</code> from outliving the pool. The stream sits in an <code>Option</code>, so <code>Drop</code> can move it out.</p>
+<h2 id="293-borrowing-a-connection"><a class="header" href="#293-borrowing-a-connection">29.3 Borrowing a connection</a></h2>
+<p><code>get</code> loops under the lock until it has a connection or runs out of time:</p>
+<pre><code class="language-rust">impl Pool {
+    fn new(address: SocketAddr, config: Config) -&gt; Self {
+        Self {
+            address,
+            config,
+            state: Mutex::new(State {
+                idle: Vec::new(),
+                open: 0,
+            }),
+            returned: Condvar::new(),
+            stats: Stats::default(),
+        }
+    }
+
+    /// Lend a connection: an idle one if there is one, a new one if the pool
+    /// is below `max`, or the next one returned, waiting up to `wait_timeout`.
+    fn get(&amp;self) -&gt; io::Result&lt;Pooled&lt;'_&gt;&gt; {
+        let deadline = Instant::now() + self.config.wait_timeout;
+        let mut state = self.state.lock().expect("pool lock");
+        loop {
+            if let Some(stream) = self.take_idle(&amp;mut state) {
+                self.stats.reuses.fetch_add(1, Relaxed);
+                return Ok(self.lend(stream));
+            }
+            if state.open &lt; self.config.max {
+                state.open += 1;
+                drop(state);
+                return self.connect();
+            }
+            let now = Instant::now();
+            if now &gt;= deadline {
+                return Err(io::Error::new(ErrorKind::TimedOut, "pool exhausted"));
+            }
+            state = self
+                .returned
+                .wait_timeout(state, deadline - now)
+                .expect("pool lock")
+                .0;
+        }
+    }
+    // ...
+}</code></pre>
+<p>Each pass tries three things in order:</p>
+<ul>
+<li><strong>An idle connection.</strong> <code>take_idle</code> returns the newest usable one, or <code>None</code>.</li>
+<li><strong>A new connection.</strong> If fewer than <code>max</code> are open, <code>get</code> counts the new one in <code>open</code> under the lock. Then it drops the lock and connects. A connect can take a whole round trip, or seconds if the server is
+slow to answer. Holding the lock that long would stop every other caller, including those returning
+connections. Counting the slot first keeps two callers from both deciding there is room for one more.</li>
+<li><strong>Wait.</strong> Otherwise the caller sleeps on the <code>Condvar</code> until a connection is returned or the deadline
+passes. <code>wait_timeout</code> releases the lock while it sleeps, as in section 16.5. It can also return early,
+so the loop checks the state again on every wake.</li>
+</ul>
+<p>A caller that cannot get a connection by its deadline gets <code>ErrorKind::TimedOut</code>. Waiting forever would
+turn an overloaded server into callers that never return. The deadline turns overload into an error the
+caller can handle, as with the bounded queues of chapter 17.</p>
+<p>If the connect fails, <code>connect</code> gives the slot back:</p>
+<pre><code class="language-rust">impl Pool {
+    // ...
+    /// Open a new connection. The slot was reserved under the lock, and the
+    /// connect runs outside it, so other callers are not held up.
+    fn connect(&amp;self) -&gt; io::Result&lt;Pooled&lt;'_&gt;&gt; {
+        match TcpStream::connect(self.address) {
+            Ok(stream) =&gt; {
+                self.stats
+                    .connects
+                    .fetch_add(1, Relaxed);
+                Ok(self.lend(stream))
+            }
+            Err(error) =&gt; {
+                self.release_slot();
+                Err(error)
+            }
+        }
+    }
+
+    fn lend(&amp;self, stream: TcpStream) -&gt; Pooled&lt;'_&gt; {
+        Pooled {
+            pool: self,
+            stream: Some(stream),
+            broken: false,
+        }
+    }
+    // ...
+}</code></pre>
+<h2 id="294-giving-it-back"><a class="header" href="#294-giving-it-back">29.4 Giving it back</a></h2>
+<p><code>Drop</code> returns the connection, so a caller cannot forget to. Early returns and <code>?</code> return it too:</p>
+<pre><code class="language-rust">impl Pool {
+    // ...
+    /// Take back a connection. A broken one is closed, and its slot is freed.
+    fn give_back(&amp;self, stream: TcpStream, broken: bool) {
+        if broken {
+            return self.release_slot();
+        }
+        let mut state = self.state.lock().expect("pool lock");
+        state.idle.push(Idle {
+            stream,
+            since: Instant::now(),
+        });
+        drop(state);
+        self.returned.notify_one();
+    }
+
+    fn release_slot(&amp;self) {
+        self.state
+            .lock()
+            .expect("pool lock")
+            .open -= 1;
+        self.returned.notify_one();
+    }
+
+    /// (open connections, idle connections)
+    fn sizes(&amp;self) -&gt; (usize, usize) {
+        let state = self.state.lock().expect("pool lock");
+        (state.open, state.idle.len())
+    }
+}</code></pre>
+<pre><code class="language-rust">impl Pooled&lt;'_&gt; {
+    /// Close this connection instead of returning it, after an error.
+    fn discard(mut self) {
+        self.broken = true;
+    }
+}
+
+impl Deref for Pooled&lt;'_&gt; {
+    type Target = TcpStream;
+
+    fn deref(&amp;self) -&gt; &amp;TcpStream {
+        self.stream
+            .as_ref()
+            .expect("stream until drop")
+    }
+}
+
+impl DerefMut for Pooled&lt;'_&gt; {
+    fn deref_mut(&amp;mut self) -&gt; &amp;mut TcpStream {
+        self.stream
+            .as_mut()
+            .expect("stream until drop")
+    }
+}
+
+impl Drop for Pooled&lt;'_&gt; {
+    fn drop(&amp;mut self) {
+        if let Some(stream) = self.stream.take() {
+            self.pool.give_back(stream, self.broken);
+        }
+    }
+}</code></pre>
+<p><code>give_back</code> pushes the connection onto the idle stack and wakes one waiting caller. <code>discard</code> marks the
+guard broken, so <code>Drop</code> closes the connection and frees its slot instead. A caller discards a connection
+after any error on it. A failed request may have left half a response in the socket. The next caller would read it as the start of its own.</p>
+<p><code>ask</code> puts the two together. It is how the program sends every pooled request:</p>
+<pre><code class="language-rust">/// Send one line, and read one line back.
+fn request(stream: &amp;mut TcpStream, line: &amp;str) -&gt; io::Result&lt;String&gt; {
+    writeln!(stream, "{line}")?;
+    let mut reply = String::new();
+    if BufReader::new(&amp;*stream).read_line(&amp;mut reply)? == 0 {
+        return Err(io::Error::new(
+            ErrorKind::UnexpectedEof,
+            "server closed the connection",
+        ));
+    }
+    Ok(reply.trim_end().to_string())
+}
+
+/// One request on a pooled connection. A connection that failed is discarded,
+/// so the pool does not lend it again.
+fn ask(pool: &amp;Pool, line: &amp;str) -&gt; io::Result&lt;String&gt; {
+    let mut connection = pool.get()?;
+    let reply = request(&amp;mut connection, line);
+    if reply.is_err() {
+        connection.discard();
+    }
+    reply
+}</code></pre>
+<h2 id="295-stale-connections"><a class="header" href="#295-stale-connections">29.5 Stale connections</a></h2>
+<p>The pool takes the newest idle connection first. Under light load, a few connections then do all the work. The rest sink to the bottom of the stack and age past <code>idle_timeout</code>. Taking the oldest first
+would keep every connection in light use, and none would ever be closed.</p>
+<p>The server also closes connections it considers idle. Most HTTP servers do it after somewhere between 5
+seconds and a few minutes. The server’s <code>FIN</code> arrives while the connection sits in the pool, and nothing
+reads it. The next caller to borrow that connection writes its request into a socket the server has closed.
+Its <code>read</code> then returns 0, or the write draws a reset.</p>
+<p><code>take_idle</code> handles both kinds of stale connection:</p>
+<pre><code class="language-rust">/// Whether the server has closed `stream`, checked without blocking: a
+/// readable socket with nothing to read has seen the server's `FIN`.
+fn is_alive(stream: &amp;TcpStream) -&gt; bool {
+    if stream.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let alive = match stream.peek(&amp;mut [0]) {
+        Err(error) =&gt; error.kind() == ErrorKind::WouldBlock,
+        Ok(_) =&gt; false,
+    };
+    stream.set_nonblocking(false).is_ok() &amp;&amp; alive
+}</code></pre>
+<pre><code class="language-rust">impl Pool {
+    // ...
+    /// The most recently returned idle connection that is fresh and open.
+    /// Connections idle too long, or closed by the server, are dropped.
+    fn take_idle(&amp;self, state: &amp;mut State) -&gt; Option&lt;TcpStream&gt; {
+        while let Some(idle) = state.idle.pop() {
+            if idle.since.elapsed() &gt; self.config.idle_timeout {
+                state.open -= 1;
+                self.stats.evicted.fetch_add(1, Relaxed);
+            } else if self.config.check_alive &amp;&amp; !is_alive(&amp;idle.stream) {
+                state.open -= 1;
+                self.stats.stale.fetch_add(1, Relaxed);
+            } else {
+                return Some(idle.stream);
+            }
+        }
+        None
+    }
+    // ...
+}</code></pre>
+<p><code>is_alive</code> peeks at the socket without blocking. On an idle connection nothing should be waiting to be
+read, so <code>WouldBlock</code> means the connection is open. A peek that returns 0 bytes has found the server’s
+<code>FIN</code>. A peek that returns data has found bytes nobody asked for. Either way, the connection is closed.</p>
+<p>The check narrows the window, and does not close it. The server can close the connection between the peek
+and the request. Two more measures cover the rest:</p>
+<ul>
+<li>Set the pool’s <code>idle_timeout</code> shorter than the server’s idle timeout, so the pool closes connections
+before the server does.</li>
+<li>Retry an idempotent request once on a new connection when a reused one fails, with the retry policy of
+chapter 19.</li>
+</ul>
+<p>Animation 29.1 follows the pool through borrowing, waiting, eviction, and a stale connection.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch29-pool.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Three caller robots on the left, the pool in the middle with two slots and an idle shelf, and the server on the right. Caller A gets a connection: the shelf is empty and open is 0 of 2, so the pool connects. A sends a request, gets a reply, and drops the guard; the connection goes onto the idle shelf with an age clock. Caller B gets it from the shelf, a reuse. A and B now hold both connections, and caller C&#39;s get finds open at 2 of 2 and sleeps on the Condvar. B drops its guard, C wakes and takes the returned connection. Later a connection on the shelf ages past idle_timeout and is closed. In a last run the server closes an idle connection, its FIN lands on the shelf unread, and a pool without the liveness check lends it: the caller writes, read returns 0, and the request fails." data-chapters="[[0.0, &quot;connect&quot;], [13.1, &quot;reuse&quot;], [19.7, &quot;limit&quot;], [39.98, &quot;eviction&quot;], [55.18, &quot;stale&quot;]]"><img src="figures/ch29-pool.gif" alt="Three caller robots on the left, the pool in the middle with two slots and an idle shelf, and the server on the right. Caller A gets a connection: the shelf is empty and open is 0 of 2, so the pool connects. A sends a request, gets a reply, and drops the guard; the connection goes onto the idle shelf with an age clock. Caller B gets it from the shelf, a reuse. A and B now hold both connections, and caller C&#39;s get finds open at 2 of 2 and sleeps on the Condvar. B drops its guard, C wakes and takes the returned connection. Later a connection on the shelf ages past idle_timeout and is closed. In a last run the server closes an idle connection, its FIN lands on the shelf unread, and a pool without the liveness check lends it: the caller writes, read returns 0, and the request fails."></video>
+<figcaption><b>Animation 29.1</b> The pool lends, takes back, makes a caller wait at its limit, and closes an idle connection. Without the liveness check, it lends a connection the server has already closed.</figcaption>
+</figure>
+<h2 id="296-measured"><a class="header" href="#296-measured">29.6 Measured</a></h2>
+<p><code>main</code> runs four scenes against the line server. The first sends 2,000 requests from eight threads, first
+with a new connection for each request, then through a pool of four:</p>
+<pre><code class="language-text">1. 2000 requests from 8 threads
+  a new connection each:   2000 connections,  169.8 ms
+  a pool of 4:                4 connections,   80.4 ms, 1996 reuses
+</code></pre>
+<p>On loopback a connect costs microseconds, and the pool still halved the time. Each request without the pool also left a socket in <code>TIME_WAIT</code>: 2,000 in 0.17 seconds. At that rate, the ephemeral ports of section 27.2.1 run out in under 3 seconds. On a real network with TLS, each of those connections would also cost two
+round trips.</p>
+<p>The other scenes check one rule each:</p>
+<pre><code class="language-text">2. The bound: 2 connections, both lent out
+  third get after 103 ms: Err(Custom { kind: TimedOut, error: "pool exhausted" })
+  after one is returned: Ok(()), sizes (open, idle) = (2, 1)
+
+3. Idle eviction: idle_timeout 100 ms
+  connects 2, evicted 1
+
+4. A server that closes idle connections after 50 ms
+  check_alive false: Err(Custom { kind: UnexpectedEof, error: "server closed the connection" }), stale discarded 0
+  check_alive true : Ok("ok second"), stale discarded 1
+</code></pre>
+<p>With both connections lent out, the third <code>get</code> waited its full 100 ms deadline and failed. Once a
+connection came back, the next <code>get</code> reused it. A connection idle for 150 ms against a 100 ms limit was
+closed, and the second request connected again. Against a server that closes idle connections after 50 ms,
+the pool without the check lent a closed connection, and the request failed. With the check, the pool found
+the server’s <code>FIN</code>, discarded the connection, and connected again.</p>
+<h2 id="297-the-complete-program"><a class="header" href="#297-the-complete-program">29.7 The complete program</a></h2>
+<p class="listing"><b>Listing 29.1</b> A bounded connection pool with automatic return, idle eviction, and a liveness check. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/conn_pool.rs">src/bin/conn_pool.rs</a></p>
+
+<pre><code class="language-rust">//! A client connection pool: at most `max` connections to one server, each
+//! lent out behind a guard that gives it back when dropped. Idle connections
+//! are reused, closed after `idle_timeout`, and checked before reuse in case
+//! the server closed them first.
+//!
+//! Run with: cargo run --release --bin conn_pool
+
+use std::{
+    io::{self, BufRead, BufReader, ErrorKind, Write},
+    net::{SocketAddr, TcpListener, TcpStream},
+    ops::{Deref, DerefMut},
+    sync::{
+        Arc,
+        Condvar,
+        Mutex,
+        atomic::{AtomicUsize, Ordering::Relaxed},
+    },
+    thread,
+    time::{Duration, Instant},
+};
+
+/// The limits a pool enforces.
+#[derive(Clone, Copy)]
+struct Config {
+    /// The most connections open at once, lent out or idle.
+    max: usize,
+    /// How long `get` waits for a connection before it gives up.
+    wait_timeout: Duration,
+    /// How long a connection may sit idle before the pool closes it.
+    idle_timeout: Duration,
+    /// Whether to check that an idle connection is still open before lending it.
+    check_alive: bool,
+}
+
+/// What the pool has done, for the demonstration.
+#[derive(Default)]
+struct Stats {
+    connects: AtomicUsize,
+    reuses: AtomicUsize,
+    evicted: AtomicUsize,
+    stale: AtomicUsize,
+}
+
+struct Idle {
+    stream: TcpStream,
+    since: Instant,
+}
+
+/// The connections the pool owns: the idle ones, and a count of all open ones.
+struct State {
+    idle: Vec&lt;Idle&gt;,
+    open: usize,
+}
+
+struct Pool {
+    address: SocketAddr,
+    config: Config,
+    state: Mutex&lt;State&gt;,
+    returned: Condvar,
+    stats: Stats,
+}
+
+/// A connection lent out by the pool. Dropping it gives it back.
+struct Pooled&lt;'a&gt; {
+    pool: &amp;'a Pool,
+    stream: Option&lt;TcpStream&gt;,
+    broken: bool,
+}
+
+/// Whether the server has closed `stream`, checked without blocking: a
+/// readable socket with nothing to read has seen the server's `FIN`.
+fn is_alive(stream: &amp;TcpStream) -&gt; bool {
+    if stream.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let alive = match stream.peek(&amp;mut [0]) {
+        Err(error) =&gt; error.kind() == ErrorKind::WouldBlock,
+        Ok(_) =&gt; false,
+    };
+    stream.set_nonblocking(false).is_ok() &amp;&amp; alive
+}
+
+impl Pool {
+    fn new(address: SocketAddr, config: Config) -&gt; Self {
+        Self {
+            address,
+            config,
+            state: Mutex::new(State {
+                idle: Vec::new(),
+                open: 0,
+            }),
+            returned: Condvar::new(),
+            stats: Stats::default(),
+        }
+    }
+
+    /// Lend a connection: an idle one if there is one, a new one if the pool
+    /// is below `max`, or the next one returned, waiting up to `wait_timeout`.
+    fn get(&amp;self) -&gt; io::Result&lt;Pooled&lt;'_&gt;&gt; {
+        let deadline = Instant::now() + self.config.wait_timeout;
+        let mut state = self.state.lock().expect("pool lock");
+        loop {
+            if let Some(stream) = self.take_idle(&amp;mut state) {
+                self.stats.reuses.fetch_add(1, Relaxed);
+                return Ok(self.lend(stream));
+            }
+            if state.open &lt; self.config.max {
+                state.open += 1;
+                drop(state);
+                return self.connect();
+            }
+            let now = Instant::now();
+            if now &gt;= deadline {
+                return Err(io::Error::new(ErrorKind::TimedOut, "pool exhausted"));
+            }
+            state = self
+                .returned
+                .wait_timeout(state, deadline - now)
+                .expect("pool lock")
+                .0;
+        }
+    }
+
+    /// The most recently returned idle connection that is fresh and open.
+    /// Connections idle too long, or closed by the server, are dropped.
+    fn take_idle(&amp;self, state: &amp;mut State) -&gt; Option&lt;TcpStream&gt; {
+        while let Some(idle) = state.idle.pop() {
+            if idle.since.elapsed() &gt; self.config.idle_timeout {
+                state.open -= 1;
+                self.stats.evicted.fetch_add(1, Relaxed);
+            } else if self.config.check_alive &amp;&amp; !is_alive(&amp;idle.stream) {
+                state.open -= 1;
+                self.stats.stale.fetch_add(1, Relaxed);
+            } else {
+                return Some(idle.stream);
+            }
+        }
+        None
+    }
+
+    /// Open a new connection. The slot was reserved under the lock, and the
+    /// connect runs outside it, so other callers are not held up.
+    fn connect(&amp;self) -&gt; io::Result&lt;Pooled&lt;'_&gt;&gt; {
+        match TcpStream::connect(self.address) {
+            Ok(stream) =&gt; {
+                self.stats
+                    .connects
+                    .fetch_add(1, Relaxed);
+                Ok(self.lend(stream))
+            }
+            Err(error) =&gt; {
+                self.release_slot();
+                Err(error)
+            }
+        }
+    }
+
+    fn lend(&amp;self, stream: TcpStream) -&gt; Pooled&lt;'_&gt; {
+        Pooled {
+            pool: self,
+            stream: Some(stream),
+            broken: false,
+        }
+    }
+
+    /// Take back a connection. A broken one is closed, and its slot is freed.
+    fn give_back(&amp;self, stream: TcpStream, broken: bool) {
+        if broken {
+            return self.release_slot();
+        }
+        let mut state = self.state.lock().expect("pool lock");
+        state.idle.push(Idle {
+            stream,
+            since: Instant::now(),
+        });
+        drop(state);
+        self.returned.notify_one();
+    }
+
+    fn release_slot(&amp;self) {
+        self.state
+            .lock()
+            .expect("pool lock")
+            .open -= 1;
+        self.returned.notify_one();
+    }
+
+    /// (open connections, idle connections)
+    fn sizes(&amp;self) -&gt; (usize, usize) {
+        let state = self.state.lock().expect("pool lock");
+        (state.open, state.idle.len())
+    }
+}
+
+impl Pooled&lt;'_&gt; {
+    /// Close this connection instead of returning it, after an error.
+    fn discard(mut self) {
+        self.broken = true;
+    }
+}
+
+impl Deref for Pooled&lt;'_&gt; {
+    type Target = TcpStream;
+
+    fn deref(&amp;self) -&gt; &amp;TcpStream {
+        self.stream
+            .as_ref()
+            .expect("stream until drop")
+    }
+}
+
+impl DerefMut for Pooled&lt;'_&gt; {
+    fn deref_mut(&amp;mut self) -&gt; &amp;mut TcpStream {
+        self.stream
+            .as_mut()
+            .expect("stream until drop")
+    }
+}
+
+impl Drop for Pooled&lt;'_&gt; {
+    fn drop(&amp;mut self) {
+        if let Some(stream) = self.stream.take() {
+            self.pool.give_back(stream, self.broken);
+        }
+    }
+}
+
+/// Send one line, and read one line back.
+fn request(stream: &amp;mut TcpStream, line: &amp;str) -&gt; io::Result&lt;String&gt; {
+    writeln!(stream, "{line}")?;
+    let mut reply = String::new();
+    if BufReader::new(&amp;*stream).read_line(&amp;mut reply)? == 0 {
+        return Err(io::Error::new(
+            ErrorKind::UnexpectedEof,
+            "server closed the connection",
+        ));
+    }
+    Ok(reply.trim_end().to_string())
+}
+
+/// One request on a pooled connection. A connection that failed is discarded,
+/// so the pool does not lend it again.
+fn ask(pool: &amp;Pool, line: &amp;str) -&gt; io::Result&lt;String&gt; {
+    let mut connection = pool.get()?;
+    let reply = request(&amp;mut connection, line);
+    if reply.is_err() {
+        connection.discard();
+    }
+    reply
+}
+
+/// A line server on loopback that closes a connection idle for `idle_close`.
+/// Returns its address and a count of the connections it has accepted.
+fn start_server(idle_close: Duration) -&gt; io::Result&lt;(SocketAddr, Arc&lt;AtomicUsize&gt;)&gt; {
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let address = listener.local_addr()?;
+    let accepted = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&amp;accepted);
+    thread::spawn(move || {
+        for stream in listener.incoming().flatten() {
+            counter.fetch_add(1, Relaxed);
+            thread::spawn(move || serve(stream, idle_close));
+        }
+    });
+    Ok((address, accepted))
+}
+
+/// Answer each line with "ok", until the client closes or stays quiet too long.
+fn serve(stream: TcpStream, idle_close: Duration) -&gt; io::Result&lt;()&gt; {
+    stream.set_read_timeout(Some(idle_close))?;
+    let mut writer = stream.try_clone()?;
+    for line in BufReader::new(stream).lines() {
+        let line = line?;
+        writeln!(writer, "ok {line}")?;
+    }
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    const REQUESTS: usize = 2_000;
+    const THREADS: usize = 8;
+    let config = Config {
+        max: 4,
+        wait_timeout: Duration::from_secs(1),
+        idle_timeout: Duration::from_secs(30),
+        check_alive: true,
+    };
+
+    println!("1. {REQUESTS} requests from {THREADS} threads");
+    let (address, accepted) = start_server(Duration::from_secs(30))?;
+    let start = Instant::now();
+    thread::scope(|scope| {
+        for _ in 0..THREADS {
+            scope.spawn(|| -&gt; io::Result&lt;()&gt; {
+                for _ in 0..REQUESTS / THREADS {
+                    request(&amp;mut TcpStream::connect(address)?, "ping")?;
+                }
+                Ok(())
+            });
+        }
+    });
+    println!(
+        "  a new connection each:  {:&gt;5} connections, {:&gt;6.1} ms",
+        accepted.load(Relaxed),
+        start.elapsed().as_secs_f64() * 1000.0
+    );
+
+    let (address, accepted) = start_server(Duration::from_secs(30))?;
+    let pool = Pool::new(address, config);
+    let start = Instant::now();
+    thread::scope(|scope| {
+        for _ in 0..THREADS {
+            scope.spawn(|| -&gt; io::Result&lt;()&gt; {
+                for _ in 0..REQUESTS / THREADS {
+                    ask(&amp;pool, "ping")?;
+                }
+                Ok(())
+            });
+        }
+    });
+    println!(
+        "  a pool of {}:            {:&gt;5} connections, {:&gt;6.1} ms, {} reuses",
+        config.max,
+        accepted.load(Relaxed),
+        start.elapsed().as_secs_f64() * 1000.0,
+        pool.stats.reuses.load(Relaxed)
+    );
+
+    println!("\n2. The bound: 2 connections, both lent out");
+    let pool = Pool::new(
+        address,
+        Config {
+            max: 2,
+            wait_timeout: Duration::from_millis(100),
+            ..config
+        },
+    );
+    let (first, second) = (pool.get()?, pool.get()?);
+    let start = Instant::now();
+    let third = pool.get().map(|_| ());
+    println!(
+        "  third get after {:.0} ms: {third:?}",
+        start.elapsed().as_secs_f64() * 1000.0
+    );
+    drop(first);
+    let fourth = pool.get().map(|_| ());
+    println!(
+        "  after one is returned: {fourth:?}, sizes (open, idle) = {:?}",
+        pool.sizes()
+    );
+    drop(second);
+
+    println!("\n3. Idle eviction: idle_timeout 100 ms");
+    let pool = Pool::new(
+        address,
+        Config {
+            idle_timeout: Duration::from_millis(100),
+            ..config
+        },
+    );
+    ask(&amp;pool, "first")?;
+    thread::sleep(Duration::from_millis(150));
+    ask(&amp;pool, "second")?;
+    println!(
+        "  connects {}, evicted {}",
+        pool.stats.connects.load(Relaxed),
+        pool.stats.evicted.load(Relaxed)
+    );
+
+    println!("\n4. A server that closes idle connections after 50 ms");
+    let (address, _) = start_server(Duration::from_millis(50))?;
+    for check_alive in [false, true] {
+        let pool = Pool::new(
+            address,
+            Config {
+                check_alive,
+                ..config
+            },
+        );
+        ask(&amp;pool, "first")?;
+        thread::sleep(Duration::from_millis(100));
+        let outcome = ask(&amp;pool, "second");
+        println!(
+            "  check_alive {check_alive:&lt;5}: {outcome:?}, stale discarded {}",
+            pool.stats.stale.load(Relaxed)
+        );
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(max: usize) -&gt; Config {
+        Config {
+            max,
+            wait_timeout: Duration::from_millis(50),
+            idle_timeout: Duration::from_secs(30),
+            check_alive: true,
+        }
+    }
+
+    #[test]
+    fn a_returned_connection_is_reused() {
+        let (address, accepted) = start_server(Duration::from_secs(5)).unwrap();
+        let pool = Pool::new(address, config(2));
+        for _ in 0..10 {
+            assert_eq!(request(&amp;mut pool.get().unwrap(), "x").unwrap(), "ok x");
+        }
+        assert_eq!(accepted.load(Relaxed), 1);
+        assert_eq!(pool.stats.reuses.load(Relaxed), 9);
+    }
+
+    #[test]
+    fn the_pool_never_exceeds_max() {
+        let (address, _) = start_server(Duration::from_secs(5)).unwrap();
+        let pool = Pool::new(address, config(1));
+        let held = pool.get().unwrap();
+        let error = pool.get().map(|_| ()).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::TimedOut);
+        drop(held);
+        assert!(pool.get().is_ok());
+    }
+
+    #[test]
+    fn a_discarded_connection_frees_its_slot() {
+        let (address, _) = start_server(Duration::from_secs(5)).unwrap();
+        let pool = Pool::new(address, config(1));
+        pool.get().unwrap().discard();
+        assert_eq!(pool.sizes(), (0, 0));
+        drop(pool.get().unwrap());
+        assert_eq!(pool.stats.connects.load(Relaxed), 2);
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --release --bin conn_pool
+1. 2000 requests from 8 threads
+  a new connection each:   2000 connections,  169.8 ms
+  a pool of 4:                4 connections,   80.4 ms, 1996 reuses
+
+2. The bound: 2 connections, both lent out
+  third get after 103 ms: Err(Custom { kind: TimedOut, error: "pool exhausted" })
+  after one is returned: Ok(()), sizes (open, idle) = (2, 1)
+
+3. Idle eviction: idle_timeout 100 ms
+  connects 2, evicted 1
+
+4. A server that closes idle connections after 50 ms
+  check_alive false: Err(Custom { kind: UnexpectedEof, error: "server closed the connection" }), stale discarded 0
+  check_alive true : Ok("ok second"), stale discarded 1
+</code></pre>
+<h2 id="298-questions-that-come-up"><a class="header" href="#298-questions-that-come-up">29.8 Questions that come up</a></h2>
+<p><strong>“How large should the pool be?”</strong>
+Large enough for the requests in flight at peak. That is the request rate times the time each request holds a connection. At 2,000 requests per second and 5 ms each, that is 10. Each client process multiplies it on the
+server, so the server’s connection limit divided by the number of clients is the upper bound.</p>
+<p><strong>“Why not one pool shared by every server address?”</strong>
+A connection is to one address. Real clients keep one pool per host and port, often with a limit per host
+and one overall.</p>
+<p><strong>“What does HTTP/2 change?”</strong>
+HTTP/2 sends many requests at once over one connection, each in its own stream. A client then needs one
+connection per server, or a few, and the pool limits streams rather than connections.</p>
+<p><strong>“What happens when the server restarts?”</strong>
+Every idle connection in the pool is closed by the server at once. The liveness check catches most of them.
+Requests already in flight fail, and the idempotent ones can be retried.</p>
+<p><strong>“Is a <code>Mutex</code> too slow for a pool?”</strong>
+The lock is held for a few pushes and pops. It is never held across a connect or a request. At hundreds of thousands
+of requests per second, a pool can split into shards with one lock each, as chapter 14 split a map.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A new connection costs a round trip, a TLS handshake, a slow start, and a socket in <code>TIME_WAIT</code> when it
+closes. A pool pays those costs once per connection, not once per request.</li>
+<li>The pool counts every open connection under one mutex, and never opens more than <code>max</code>.</li>
+<li><code>get</code> reuses an idle connection, opens a new one outside the lock, or waits on a <code>Condvar</code> until a
+deadline. Overload becomes <code>TimedOut</code>, not a caller that hangs.</li>
+<li>The guard returns its connection in <code>Drop</code>. <code>discard</code> closes a connection after an error, so no caller
+reads another’s half-finished response.</li>
+<li>Reusing the newest connection first lets the oldest ones expire under light load.</li>
+<li>A non-blocking <code>peek</code> finds a connection the server has closed. Idle timeouts shorter than the server’s,
+and one retry for idempotent requests, cover the rest.</li>
+<li>2,000 requests took 4 connections and 80 ms through the pool, against 2,000 connections and 170 ms
+without it.</li>
+</ul>
+</div>
+
+<p>Chapter 30 collects compact versions of the structures from the earlier parts. Each is the shortest program
+that still shows the structure working.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Add a <code>max_lifetime</code> to <code>Config</code>, and close a connection older than it even if it is in use often.
+Why do production pools have this limit, when the server’s address can change behind a DNS name?</li>
+<li>Give <code>get</code> a fairness guarantee: callers that started waiting first get connections first. What does
+<code>Condvar::notify_one</code> promise about order, and what structure would you add?</li>
+<li>Make <code>ask</code> retry once on a new connection when a reused connection fails, but only if the request is
+marked idempotent.</li>
+<li>Run scene 1 with <code>max</code> set to 1, 2, 8, and 16, and plot the time. Where does the curve flatten, and why?</li>
+<li>Wrap the pool’s connections in TLS from chapter 28, and measure scene 1 again with and without the pool.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch28-tls.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch30-drills.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch28-tls.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch30-drills.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

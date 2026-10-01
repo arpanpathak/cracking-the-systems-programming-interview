@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-159882ee.js"></script>
+        <script src="toc-0ec47a42.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -303,7 +303,8 @@ struct is public, but its field is not.</li>
 <li><code>pub const MIN: u32 = 1;</code> and <code>MAX</code> are <strong>associated constants</strong>, constants that belong to the type. You
 refer to them as <code>GpuCount::MIN</code>, or <code>Self::MIN</code> inside the <code>impl</code>.</li>
 <li><code>new</code> is the gate. <code>(Self::MIN..=Self::MAX)</code> is the range 1 to 64, including both ends, and <code>.contains(&amp;value)</code>
-checks the value. If it is in range, <code>new</code> returns <code>Ok(Self(value))</code>. If not, it returns an error.</li>
+checks the value. If it is in range, <code>new</code> returns <code>Ok(Self(value))</code>. If not, it returns
+<code>Err(GpuCountError(value))</code>, an error that carries the rejected value. Section 7.3 shows that type.</li>
 <li><code>get</code> returns the number inside. It takes <code>self</code> by value, which is fine because <code>GpuCount</code> is <code>Copy</code>.</li>
 </ul>
 <p>The long <code>#[derive(...)]</code> line gives <code>GpuCount</code> the same abilities as the <code>u32</code> inside it. You can print it,
@@ -398,14 +399,59 @@ has no fields, because it needs none.</p>
 <img src="figures/enum-layout.svg" alt="Four rows of 32 bytes: List uses none, Get and Delete use 24 bytes for a String, Create uses 24 bytes for a String and 4 for the count">
 <figcaption><b>Figure 7.2</b> A <code>Command</code> is 32 bytes. Rust also records which variant a value is. Here it stores that in bit patterns the <code>String</code> never uses, so no extra byte is needed.</figcaption>
 </figure>
-<h3 id="752-parsing-a-line-of-text"><a class="header" href="#752-parsing-a-line-of-text">7.5.2 Parsing a line of text</a></h3>
-<p class="listing"><b>Listing 7.6</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 115).</p>
+<h3 id="752-the-parsers-errors-and-helper"><a class="header" href="#752-the-parsers-errors-and-helper">7.5.2 The parser’s errors and helper</a></h3>
+<p>Before the parser, here is what it returns when a line is wrong. Each way a line can be malformed gets its own error variant, so the caller learns exactly what failed.</p>
+<p class="listing"><b>Listing 7.6</b> <code>CommandError</code> and <code>argument</code> (lines 119 to 148).</p>
+
+<pre><code class="language-rust">/// A typed parse failure, so callers can distinguish the cases.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandError {
+    Empty,
+    UnknownVerb(String),
+    MissingArgument(&amp;'static str),
+    InvalidGpuCount(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Empty =&gt; write!(formatter, "empty command"),
+            Self::UnknownVerb(verb) =&gt; write!(formatter, "unknown verb {verb:?}"),
+            Self::MissingArgument(name) =&gt; write!(formatter, "missing argument: {name}"),
+            Self::InvalidGpuCount(raw) =&gt; write!(formatter, "invalid gpu count: {raw:?}"),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+fn argument&lt;'a&gt;(
+    parts: &amp;mut impl Iterator&lt;Item = &amp;'a str&gt;,
+    name: &amp;'static str,
+) -&gt; Result&lt;&amp;'a str, CommandError&gt; {
+    parts
+        .next()
+        .ok_or(CommandError::MissingArgument(name))
+}</code></pre>
+<p><code>CommandError</code> lists every way parsing can fail, and its <code>Display</code> writes a message for each. Because the
+errors are enum variants, a caller can <code>match</code> on them and react differently to each. A CLI could print usage
+help for <code>MissingArgument</code> and the allowed range for <code>InvalidGpuCount</code>. With a plain <code>String</code> error, the
+caller would have to read the message text to tell the cases apart.</p>
+<p><code>argument</code> takes the next word from the iterator, or fails with the argument’s name. Look at its first
+parameter, <code>&amp;mut impl Iterator&lt;Item = &amp;'a str&gt;</code>. It borrows the caller’s iterator mutably, so that each call
+consumes one more word. The lifetime <code>'a</code>, which you met in chapter 4, says the returned <code>&amp;str</code> points into
+the original line. So no text is copied until <code>parse</code> decides to keep it with <code>to_string()</code>.</p>
+<h3 id="753-parsing-a-line-of-text"><a class="header" href="#753-parsing-a-line-of-text">7.5.3 Parsing a line of text</a></h3>
+<p>Parsing turns one line of text into a <code>Command</code>, or into an error that says what was wrong with the line.</p>
+<p class="listing"><b>Listing 7.7</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 117).</p>
 
 <pre><code class="language-rust">impl Command {
     /// Parse one command line.
     pub fn parse(line: &amp;str) -&gt; Result&lt;Self, CommandError&gt; {
         let mut parts = line.split_whitespace();
-        let verb = parts.next().ok_or(CommandError::Empty)?;
+        let verb = parts
+            .next()
+            .ok_or(CommandError::Empty)?;
 
         match verb {
             "list" =&gt; Ok(Self::List),
@@ -465,50 +511,9 @@ because <code>"many"</code> is not a number. The line <code>create triton 0</cod
 <code>InvalidGpuCount</code>, carrying the text the user typed. The user then sees their own input in the message.</p>
 <p><code>verb</code> goes the other way, from a command to its name. The patterns <code>Self::Get { .. }</code> match a variant and
 ignore its fields.</p>
-<h3 id="753-the-parsers-errors-and-helper"><a class="header" href="#753-the-parsers-errors-and-helper">7.5.3 The parser’s errors and helper</a></h3>
-<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 117 to 146).</p>
-
-<pre><code class="language-rust">/// A typed parse failure, so callers can distinguish the cases.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CommandError {
-    Empty,
-    UnknownVerb(String),
-    MissingArgument(&amp;'static str),
-    InvalidGpuCount(String),
-}
-
-impl fmt::Display for CommandError {
-    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
-        match self {
-            Self::Empty =&gt; write!(formatter, "empty command"),
-            Self::UnknownVerb(verb) =&gt; write!(formatter, "unknown verb {verb:?}"),
-            Self::MissingArgument(name) =&gt; write!(formatter, "missing argument: {name}"),
-            Self::InvalidGpuCount(raw) =&gt; write!(formatter, "invalid gpu count: {raw:?}"),
-        }
-    }
-}
-
-impl std::error::Error for CommandError {}
-
-fn argument&lt;'a&gt;(
-    parts: &amp;mut impl Iterator&lt;Item = &amp;'a str&gt;,
-    name: &amp;'static str,
-) -&gt; Result&lt;&amp;'a str, CommandError&gt; {
-    parts
-        .next()
-        .ok_or(CommandError::MissingArgument(name))
-}</code></pre>
-<p><code>CommandError</code> lists every way parsing can fail, and its <code>Display</code> writes a message for each. Because the
-errors are enum variants, a caller can <code>match</code> on them and react differently to each. A CLI could print usage
-help for <code>MissingArgument</code> and the allowed range for <code>InvalidGpuCount</code>. With a plain <code>String</code> error, the
-caller would have to read the message text to tell the cases apart.</p>
-<p><code>argument</code> takes the next word from the iterator, or fails with the argument’s name. Look at its first
-parameter, <code>&amp;mut impl Iterator&lt;Item = &amp;'a str&gt;</code>. It borrows the caller’s iterator mutably, so that each call
-consumes one more word. The lifetime <code>'a</code>, which you met in chapter 4, says the returned <code>&amp;str</code> points into
-the original line. So no text is copied until <code>parse</code> decides to keep it with <code>to_string()</code>.</p>
 <h3 id="754-adding-up-without-an-index"><a class="header" href="#754-adding-up-without-an-index">7.5.4 Adding up without an index</a></h3>
 <p>The file has one more small function:</p>
-<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 148 to 155).</p>
+<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 150 to 157).</p>
 
 <pre><code class="language-rust">/// Count and sum in one pass, without managing an index.
 pub fn summarize(values: &amp;[i32]) -&gt; (usize, i64) {
@@ -606,7 +611,9 @@ impl Command {
     /// Parse one command line.
     pub fn parse(line: &amp;str) -&gt; Result&lt;Self, CommandError&gt; {
         let mut parts = line.split_whitespace();
-        let verb = parts.next().ok_or(CommandError::Empty)?;
+        let verb = parts
+            .next()
+            .ok_or(CommandError::Empty)?;
 
         match verb {
             "list" =&gt; Ok(Self::List),
@@ -1043,7 +1050,7 @@ mod tests {
                 .can_transition_to(WorkloadState::Running)
                 .is_err()
         );
-        assert!(WorkloadState::Terminating.is_terminal() == false);
+        assert!(!WorkloadState::Terminating.is_terminal());
         assert!(WorkloadState::Terminated.is_terminal());
     }
 
