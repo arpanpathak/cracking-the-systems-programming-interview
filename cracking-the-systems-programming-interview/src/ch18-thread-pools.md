@@ -62,10 +62,45 @@ Version 1 writes the pool of figure 18.1 directly. `new` starts the workers, `ex
 closes the channel and waits for every worker. Each worker locks the shared receiver to take a job. How long it
 keeps that lock decides whether the workers run at the same time.
 
-A `Job` is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the job channel and the handles of its workers:
+A `Job` is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the
+job channel and the handles of its workers:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/thread_pool.rs:6:11}}
+{{#include ../../rust-interview-lab/src/bin/thread_pool.rs:1:11}}
+```
+
+`new` builds the parts of figure 18.1 and starts the workers:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/thread_pool.rs:13:30}}
+    // ...
+}
+```
+
+`mpsc::channel::<Job>()` creates the channel. The receiver goes into `Arc::new(Mutex::new(...))`, so every worker
+can share it and only one at a time can use it. For each worker, `Arc::clone(&receiver)` makes another handle to
+the same mutex, and `thread::spawn(move || ...)` starts a thread that owns that handle. The `move` closure is the
+worker's whole life: take a job, run it, and repeat until `recv` fails. `collect()` gathers the `JoinHandle`s
+that `spawn` returned into the `workers` vector.
+
+Submitting a job and shutting down are two short methods:
+
+```rust
+impl ThreadPool {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/thread_pool.rs:32:41}}
+}
+```
+
+`execute` sends the boxed job into the channel. It does not wait for a worker: the job sits in the channel until
+a worker takes it. `join` takes `self` by value, so the pool cannot be used after it. `drop(self.sender)` closes
+the channel. Each worker finishes the jobs still queued, gets `Err` from `recv`, and ends. `w.join()` waits for
+each worker thread to finish.
+
+`main` queues 10,000 jobs that each print a line, then joins:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/thread_pool.rs:44:51}}
 ```
 
 <p class="listing"><b>Listing 18.1</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs">src/bin/thread_pool.rs</a></p>
@@ -73,10 +108,6 @@ A `Job` is a boxed closure that runs once and can move to another thread. The po
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_pool.rs}}
 ```
-
-`new` creates the channel and starts `size` workers. Each gets its own clone of the `Arc` around the receiver.
-`execute` sends a boxed job. `join` takes `self` by value, drops the sender to close the channel, and waits for
-every worker. `main` queues 10,000 jobs that each print a line.
 
 The program prints 10,000 lines and looks correct. It has one bug, in the worker loop:
 
@@ -100,6 +131,14 @@ loop and once with the loop of version 2. Figure 18.2 shows the result.
 
 With `while let`, the four jobs ran one after another and took 814 ms. With the lock released before the job, they
 ran at the same time and took 205 ms. The first pool had four threads but used one at a time.
+
+Animation 18.1 replays both runs. Watch the lock. In version 2 it is free again before each job starts. In version 1
+it stays with the worker that is running.
+
+<figure class="anim">
+<video class="motion" src="figures/ch18-pool-lock.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A channel holding four jobs, a receiver with a padlock, and four worker robots. In version 2, worker 1 locks the receiver, takes job 1, and the lock is free again at once; workers 2, 3, and 4 do the same, and all four jobs run together, finishing at 205 ms. In version 1, worker 1 takes job 1 and keeps the lock while it runs; workers 2, 3, and 4 sleep waiting for the lock, and the jobs run one after another, finishing at 814 ms." data-chapters="[[0.0, &quot;version 2&quot;], [27.48, &quot;version 1&quot;]]"><img src="figures/ch18-pool-lock.gif" alt="A channel holding four jobs, a receiver with a padlock, and four worker robots. In version 2, worker 1 locks the receiver, takes job 1, and the lock is free again at once; workers 2, 3, and 4 do the same, and all four jobs run together, finishing at 205 ms. In version 1, worker 1 takes job 1 and keeps the lock while it runs; workers 2, 3, and 4 sleep waiting for the lock, and the jobs run one after another, finishing at 814 ms."></video>
+<figcaption><b>Animation 18.1</b> The same four 200 ms jobs. Released before the job, the lock lets all four run at once. Held through the job, it makes the workers take turns.</figcaption>
+</figure>
 
 The same bug has a second effect. If a job panics, the panic happens while the guard is alive, so it poisons the
 mutex. When I piped this program's output into `head`, which closes the pipe after five lines, `println!` panicked
@@ -210,6 +249,14 @@ Version 4 catches the panic (figure 18.3).
 <figure>
 <img src="figures/pool-catch-unwind.svg" alt="A worker takes a job and runs it inside catch_unwind. Ok increments completed; Err, a caught panic, increments panicked. The worker continues.">
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
+</figure>
+
+Animation 18.2 shows the difference over many jobs. Version 4 counts the panic and keeps every worker.
+Version 3 loses one worker per panic, until no one is left to run the queue.
+
+<figure class="anim">
+<video class="motion" src="figures/ch18-pool-panic.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2's job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker's thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs." data-chapters="[[0.0, &quot;version 4&quot;], [14.04, &quot;version 3&quot;]]"><img src="figures/ch18-pool-panic.gif" alt="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2's job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker's thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs."></video>
+<figcaption><b>Animation 18.2</b> With <code>catch_unwind</code>, a panic costs one job. Without it, each panic costs a worker, and the pool fails silently once all are gone.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 18.8</b> The types and the worker loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
@@ -374,6 +421,13 @@ The comments marked `changed` and `new` show the two additions.
 blocks while the channel is full. This is the backpressure of section 17.1, built into the standard library's channel. A caller that queues
 jobs faster than the workers run them has to wait.
 
+Figure 18.4 shows both additions: a queue that can fill up, and a private channel per job for its result.
+
+<figure>
+<img src="figures/ch18-backpressure.svg" alt="The caller's submit sends a job and a result Sender into sync_channel(queue_size); when the queue is full, submit blocks. Two workers take jobs from it. A worker sends the job's value into a per-job channel, whose Receiver was returned to the caller at once; the caller calls recv when it needs the value.">
+<figcaption><b>Figure 18.4</b> A bounded queue slows the caller down when the workers fall behind. Each job carries its own channel back to the caller.</figcaption>
+</figure>
+
 `submit` returns a result. It creates a new channel for each job, and the job sends its return value into it. The
 caller gets the `Receiver` back at once, and calls `recv()` when it needs the value. A value that will be ready
 later is often called a **future**, and chapter 22 builds on that idea.
@@ -454,34 +508,88 @@ The last pool is a single function. `map_order` applies a function to every inpu
 the results in the same order as the inputs.
 
 The difficulty is that jobs finish in any order. The fix is to tag each input with its position, and use the tag
-to put each result back in place (figure 18.4).
+to put each result back in place (figure 18.5).
 
 <figure>
 <img src="figures/pool-ordered.svg" alt="Inputs are sent as index and value pairs. Results arrive out of order as index and result pairs. Each result is stored at its index in a Vec of Options.">
-<figcaption><b>Figure 18.4</b> The index travels with the job, and puts the result back in its slot.</figcaption>
+<figcaption><b>Figure 18.5</b> The index travels with the job, and puts the result back in its slot.</figcaption>
 </figure>
+
+The function's signature and its two channels come first:
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/worker_pool.rs:8:26}}
+    // ...
+}
+```
+
+`T` is the input type, `R` the result type, and `F` the function applied to each input. Inputs and results
+cross threads, so both must be `Send`. `mapper` is shared by all workers, so it goes in an `Arc`, and it must be
+`Sync` as well as `Send`. It has type `F: Fn(T) -> R`, not `FnOnce`, because each worker calls it many times.
+
+Jobs go out as `(usize, T)` pairs, and results come back as `(usize, R)` pairs. The `usize` is the input's
+position, the tag of figure 18.5.
+
+Each worker gets its own handle to the mapper, the job receiver, and the result sender:
+
+```rust
+pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -> R + Send + Sync + 'static,
+{
+    // ...
+{{#include ../../rust-interview-lab/src/problems/worker_pool.rs:28:50}}
+    // ...
+}
+```
+
+The worker takes the job inside a block: `let job = { let guard = ...; guard.recv() };`. The guard is dropped
+at the end of the block, so the lock is released before `mapper` runs. This is the third way in this chapter to
+write the fix from section 18.3. If the result channel is closed, the caller has gone, and the worker stops.
+
+The caller sends every job, then gives up its own senders:
+
+```rust
+pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -> R + Send + Sync + 'static,
+{
+    // ...
+{{#include ../../rust-interview-lab/src/problems/worker_pool.rs:52:62}}
+    // ...
+}
+```
+
+`enumerate()` attaches each input's position. Dropping `job_tx` closes the job channel, so the workers stop when
+the queue is empty. Dropping the caller's `result_tx` leaves only the workers' clones. `result_rx.iter()` then
+ends when the last worker exits and drops its clone.
+
+Last, the results are put back in input order:
+
+```rust
+pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -> R + Send + Sync + 'static,
+{
+    // ...
+{{#include ../../rust-interview-lab/src/problems/worker_pool.rs:64:85}}
+}
+```
+
+Each result is stored at its index in `ordered`, a `Vec<Option<R>>`, which grows as needed with `resize_with`.
+At the end, every slot must hold `Some`, and the options are unwrapped into the final `Vec<R>`.
 
 <p class="listing"><b>Listing 18.15</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs">src/problems/worker_pool.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/worker_pool.rs}}
 ```
-
-The function uses two channels. Jobs go out as `(usize, T)` pairs, and results come back as `(usize, R)` pairs.
-
-`mapper` is shared by all workers, so it goes in an `Arc`, and it must be `Sync` as well as `Send`. It has type
-`F: Fn(T) -> R`, not `FnOnce`, because each worker calls it many times.
-
-The worker loop takes the job inside a block: `let job = { let guard = ...; guard.recv() };`. The guard is dropped
-at the end of the block, so the lock is released before `mapper` runs. This is the third way in this chapter to
-write the same fix.
-
-After sending every job, the function drops its own `job_tx` so that the workers stop when the queue is empty. It
-also drops its own `result_tx`. Only the workers' clones remain, and `result_rx.iter()` ends when the last worker
-exits and drops its clone.
-
-Each result is stored at its index in `ordered`, a `Vec<Option<R>>`, which grows as needed with `resize_with`. At
-the end, every slot must hold `Some`, and the options are unwrapped into the final `Vec<R>`.
 
 ```text
 $ cargo test --lib problems::worker_pool

@@ -1,0 +1,14 @@
+digraph backpressure {
+  rankdir=LR; nodesep=0.35; ranksep=0.55;
+  caller [label="caller\nsubmit(job)" fillcolor="#fdf6e8"];
+  queue [label="sync_channel(queue_size)\nfull: submit blocks" fillcolor="#e6ecf6"];
+  w1 [label="worker" fillcolor="#e3f1ea"];
+  w2 [label="worker" fillcolor="#e3f1ea"];
+  result [label="per-job channel\nfor the result"];
+  rx [label="Receiver<R>\nkept by the caller" fillcolor="#fdf6e8"];
+  caller -> queue [label=" job + result Sender"];
+  queue -> w1; queue -> w2;
+  w1 -> result [label=" send(value)"];
+  result -> rx;
+  caller -> rx [label=" returned at once;\n recv() when needed" style=dashed];
+}

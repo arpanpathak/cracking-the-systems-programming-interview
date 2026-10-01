@@ -104,6 +104,21 @@ Newest entry last. One line per finished step: date, item, commit.
 
 - 2026-10-01 ch19 section 19.4 single flight: concept, figure 19.6, excerpts, measured (1 execution for 8 callers; 103 ms vs 417 ms one-lock), panic case, animation ch19-single-flight, listing 19.12; exercise 4 replaced
 
+## Phase 3: depth pass (requested 2026-10-01)
+
+Each chapter below gets: intuition before code (the problem in plain words, a worked example by hand), more
+block diagrams, at least one motion animation per core mechanism (with a failing case), and any whole-file
+listing broken into explained excerpts. Order is by need, measured (words, figures, animations, dumps).
+
+- [x] ch18 thread pools: version 1 and map_order in excerpts; animations pool-lock (205 vs 814 ms) and pool-panic; figure 18.4 bounded queue + result channel. The three short pools in 18.6 remain whole listings with type intros.
+- [ ] ch15 memory, caches, OS (0 animations)
+- [ ] ch10 merge k (0 animations)
+- [ ] ch08 pointers (0 animations)
+- [ ] ch04 iterators (0 animations)
+- [ ] ch07 types, ch01 bindings, ch02 files (0 animations)
+- [ ] ch23-ch29: more diagrams (1-3 each)
+- [ ] whole-file dumps: ch03, ch09, ch12, ch13, ch16, ch17
+
 ## Future work (draft for the next agent session)
 
 Read the rules at the top of this file first. No new chapters unless asked: the book is ch01 to ch29 plus
