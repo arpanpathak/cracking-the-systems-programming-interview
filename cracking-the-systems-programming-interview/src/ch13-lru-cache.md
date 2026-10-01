@@ -236,6 +236,14 @@ Every `get` and `put` ends by moving one node to the front of the list. The meth
 <figcaption><b>Figure 13.4</b> Moving C to the front. Only the links around C and at the head change.</figcaption>
 </figure>
 
+Animation 13.3 runs `touch` on a list of four entries. The `Vec` sits underneath and never moves. Only the
+links above it change. Watch the arrows: when C is lifted out, A's `next` swings over to D.
+
+<figure class="anim">
+<video class="motion" src="figures/ch13-lru-touch.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four nodes B, A, C, D in a chain, next links above and prev links below, a lookup table on the left, and the Vec slots underneath. get(C) looks up slot 2, lifts C out of the chain, points A's next at D and D's prev at A, slides the rest right, and sets C down at the front with C.next = B, B.prev = C, and head = C. get(D) on the tail moves the tail marker back to A. In a last run without the line None => self.tail = prev, the tail marker stays on D after D moves to the front, so the next eviction would remove the entry just read." data-chapters="[[0.0, &quot;middle&quot;], [30.02, &quot;tail&quot;], [51.52, &quot;tail left behind&quot;]]"><img src="figures/ch13-lru-touch.gif" alt="Four nodes B, A, C, D in a chain, next links above and prev links below, a lookup table on the left, and the Vec slots underneath. get(C) looks up slot 2, lifts C out of the chain, points A's next at D and D's prev at A, slides the rest right, and sets C down at the front with C.next = B, B.prev = C, and head = C. get(D) on the tail moves the tail marker back to A. In a last run without the line None => self.tail = prev, the tail marker stays on D after D moves to the front, so the next eviction would remove the entry just read."></video>
+<figcaption><b>Animation 13.3</b> <code>touch</code>: detach the node, close the gap, push it at the head. Without the tail update, the tail marker travels to the front with its node.</figcaption>
+</figure>
+
 <p class="listing"><b>Listing 13.5</b> <code>new</code> and <code>touch</code> (lines 51 to 101).</p>
 
 ```rust
@@ -292,12 +300,12 @@ tail slot receives the new key and value, and `touch` moves it to the front.
 step. The old key is then removed from `lookup_table`. The new key was moved into the node, so the map receives a
 clone of it.
 
-Animation 13.3 follows the arena through three puts, a `get` that touches the tail, and a `put` that reuses
-the tail's slot. The last run leaves out the `remove` of the old key.
+Animation 13.4 plays the three cases in order. It fills the cache, updates an entry, and then evicts the tail
+by reusing its slot. The last run leaves out the `remove` of the old key.
 
 <figure class="anim">
-<video class="motion" src="figures/ch13-lru-arena.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A lookup table from key to slot, and a Vec of three slots, each showing its key, value, prev, and next, with head and tail marked below. put A, B, and C fill slots 0, 1, and 2; the list from the head is C, B, A. get A detaches slot 0: it had no next, so the tail moves to B; then it is pushed to the front, with next 2, and slot 2's prev becomes 0, and the head is 0. put D with the cache full reuses the tail, slot 1: B's key is replaced by D, B is removed from the lookup table and D added, and slot 1 moves to the front: D, A, C. In a last run the remove is skipped, the table still maps B to slot 1, and get B returns 40, D's value." data-chapters="[[0.0, &quot;fill&quot;], [10.38, &quot;touch&quot;], [25.86, &quot;reuse&quot;], [39.9, &quot;no remove&quot;]]"><img src="figures/ch13-lru-arena.gif" alt="A lookup table from key to slot, and a Vec of three slots, each showing its key, value, prev, and next, with head and tail marked below. put A, B, and C fill slots 0, 1, and 2; the list from the head is C, B, A. get A detaches slot 0: it had no next, so the tail moves to B; then it is pushed to the front, with next 2, and slot 2's prev becomes 0, and the head is 0. put D with the cache full reuses the tail, slot 1: B's key is replaced by D, B is removed from the lookup table and D added, and slot 1 moves to the front: D, A, C. In a last run the remove is skipped, the table still maps B to slot 1, and get B returns 40, D's value."></video>
-<figcaption><b>Animation 13.3</b> <code>touch</code> rewrites a handful of indices. A reused slot must also leave the lookup table under its old key, or a stale key finds another key's value.</figcaption>
+<video class="motion" src="figures/ch13-lru-put.mp4" autoplay loop muted playsinline preload="metadata" aria-label="An empty cache of capacity 4. put A, B, C, D each push a node into the next free Vec slot, record it in the lookup table, and rise to the front of the chain: D, C, B, A. put(B, 21) finds B, changes its value in place, and moves it to the front. put(E, 50) with the cache full marks the tail A, reuses slot 0 for E, removes A from the table, adds E, and moves it to the front. In a last run without the remove, put(F, 60) reuses C's slot 2, the table still maps C to 2, and get(C) returns 60, F's value." data-chapters="[[0.0, &quot;room&quot;], [34.74, &quot;update&quot;], [52.47, &quot;evict&quot;], [70.88, &quot;no remove&quot;]]"><img src="figures/ch13-lru-put.gif" alt="An empty cache of capacity 4. put A, B, C, D each push a node into the next free Vec slot, record it in the lookup table, and rise to the front of the chain: D, C, B, A. put(B, 21) finds B, changes its value in place, and moves it to the front. put(E, 50) with the cache full marks the tail A, reuses slot 0 for E, removes A from the table, adds E, and moves it to the front. In a last run without the remove, put(F, 60) reuses C's slot 2, the table still maps C to 2, and get(C) returns 60, F's value."></video>
+<figcaption><b>Animation 13.4</b> <code>put</code>: update in place, push into a free slot, or reuse the tail's slot. A reused slot must leave the table under its old key, or a stale key finds another key's value.</figcaption>
 </figure>
 
 The file `src/bin/lru_cache_arena.rs` has the same cache with a `main` function:

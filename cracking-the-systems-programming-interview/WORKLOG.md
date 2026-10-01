@@ -155,13 +155,15 @@ A chapter meets the bar when it has:
 - **(a) intuition before code.** A plain-language model, an everyday analogy, or a cost table that says why
   the structure exists. ch13's 13.1.1 is the template: what a hit saves, a hand trace, the fail case.
 - **(b) one animation per core operation.** Robots or the structure itself move, with a fail case. A whole
-  topic does not count as one operation.
+  topic does not count as one operation. The structure must move on screen. A node lifts out of the chain,
+  the neighbours' arrows swing to each other, the node travels to its new place, and head and tail markers
+  follow. Numbers changing inside fixed boxes do not count: the user rejected that as "static boxes".
 - **(c) excerpts first, then the complete file at the end.** No mid-chapter dump over about 40 lines.
 
 The numbers below were measured on 2026-10-01: prose words, animations, and whole-file includes
 mid-chapter. Re-measure with the script in the log before starting.
 
-Priority order: ch09, ch17, ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
+Priority order: ch17, ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
 
 | Ch | Animations | Gap against the bar | Suggested work |
 |---|---|---|---|
@@ -173,11 +175,11 @@ Priority order: ch09, ch17, ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
 | 06 DP | coin-change, subsets | Fine. Job scheduling has no motion | Optional: a deadline-slots animation |
 | 07 types | parse-trace | (c) adt_idioms at 236 lines and state_machine shown whole | Excerpt them. A state-machine animation in which an invalid transition does not compile (the typestate fail case) |
 | 08 pointers | rc-refcell, weak-parent | (c) smart_pointers at 165 lines | Excerpt it. A `Box` on the heap against the stack size, as a small figure |
-| **09 linked lists** | reverse only (borrowed from ch04) | (b) no motion for push and pop, the four node layouts, recursive drop overflowing the stack, or the doubly linked list; (c) 11 whole files, ll.rs at 295 | Three animations: (1) push and pop with `Option::take`, where the fail case moves out of a borrow; (2) recursive `Drop` growing the call stack until it overflows, against the iterative drop; (3) the doubly linked list with `Rc`/`Weak` prev and next, splicing a node. Then excerpt and move the files to the end |
+| 09 linked lists | reverse, list-replace, list-drop, list-doubly | Done 2026-10-01: treasure-hunt intuition, push/pop with `replace` (fail: E0507), drop as a growing stack (fail: overflow at 262,144 frames) against the loop, strong counts in the doubly list (fail: strong prev leaks); excerpts first, complete files in 9.9 | Reference for list-shaped chapters |
 | **10 merge-k** | merge-two, merge-rounds | (c) 10 whole files, about 5 code blocks in a row; the heap version has no motion | A heap-of-heads animation (pop the smallest, push its next); excerpts; collapse near-duplicate variants into a comparison table |
 | 11 trees | bst, trie | (c) binary_tree at 147 lines and test_tree; no traversal motion | An in-order, pre-order, and post-order traversal robot with a visit stack; a delete-with-two-children case |
 | 12 graphs | 6 | (c) about 11 whole files mid-chapter | Excerpts only |
-| 13 LRU | shelf, stamps, arena (new) | Done to the bar | Reference for the others |
+| 13 LRU | shelf, stamps, touch, put | Done 2026-10-01. The first arena animation changed numbers inside fixed boxes and was rejected as static. touch and put now lift the node out, re-route the arrows, and carry it to the front over a fixed Vec row | Reference: operations must move on screen |
 | **14 sharding** | ring | (a) about 300 words before code; (b) no motion for lock contention on one map against N shards, or for remapping when a node joins | A "one lock, many robots queueing" against "16 shard locks" animation with throughput counters; a ring animation adding a node, where only one arc moves, against `hash % N` moving almost all keys as the fail case |
 | 15 memory/OS | mem-hierarchy, false-sharing | The bump allocator and scheduler are static | A bump-pointer animation (alloc, alloc, reset); a round-robin scheduler animation |
 | 16 threads/locks | spin-lock, deadlock | The condvar semaphore and poisoning are static | A semaphore with permits as tokens, sleeping and waking robots (`notify_one`); a poisoning sequence |

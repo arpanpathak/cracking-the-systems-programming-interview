@@ -1,6 +1,6 @@
 """The LRU cache chapter animations (ch13-lru-cache.md), drawn with `motion`.
 
-    python3 tools/animations.py lru-shelf lru-stamps lru-arena
+    python3 tools/animations.py lru-shelf lru-stamps lru-touch lru-put
 """
 
 from anim_kernel import lines_containing
@@ -260,173 +260,412 @@ def lru_stamps():
     return tl, draw, 512
 
 
-# ------------------------------------------------- 13.3: the arena
+# ------------------------------------------------- 13.3: the list moves
 
-TOUCH = lines_containing("src/problems/lru_cache_easy.rs",
+LOOKUP = "let i = *self.lookup_table.get(key)?;"
+TOUCH = lines_containing("src/problems/lru_cache_easy.rs", LOOKUP,
                          "Some(p) => self.nodes[p].next = next,",
+                         "None => self.head = next,",
+                         "Some(n) => self.nodes[n].prev = prev,",
                          "None => self.tail = prev,",
                          "self.nodes[i].next = self.head;",
-                         "self.head = Some(i);",
-                         "let old_key = std::mem::replace(&mut self.nodes[i].key, key);",
-                         "self.lookup_table.remove(&old_key);")
-SLOTS_X = [150, 330, 510]
-SLOT_TOP = 160
+                         "self.nodes[h].prev = Some(i);",
+                         "self.head = Some(i);")
+PUT = lines_containing("src/problems/lru_cache_easy.rs",
+                       "if let Some(&i) = self.lookup_table.get(&key) {",
+                       "self.nodes[i].value = value;",
+                       "if self.nodes.len() < self.cap {",
+                       "self.nodes.push(Node {",
+                       "self.lookup_table.insert(key, i);",
+                       "if let Some(i) = self.tail {",
+                       "let old_key = std::mem::replace(&mut self.nodes[i].key, key);",
+                       "self.lookup_table.remove(&old_key);",
+                       "self.touch(i);")
+KEYS = "ABCDEF"
+COLS = [250, 380, 510, 640]
+ROW, LIFT, SLOT_Y = 186, 112, 268
+HALF_W, HALF_H = 38, 24
 
 
-def lru_arena():
-    tl = Timeline(caption="", kind="step", code=-1.0, strike=-1.0, nodes="", table="",
-                  head=-1, tail=-1, hot=-1, answer="", answer_bad=0.0)
+class ListScene:
+    """An arena LRU list, simulated, with every change sent to a timeline.
 
-    nodes = []           # [key, value, prev, next]
-    table = {}
-    state = {"head": None, "tail": None}
+    Each key has a position (x, y) and an opacity, so a node can be lifted out of
+    the chain, carried to the front, and set back down. The links are drawn from
+    the nodes' current positions, so an arrow follows the node it points at.
+    """
 
-    def show(hot=-1):
-        tl.set(nodes=";".join("%s,%s,%s,%s" % tuple("-" if v is None else v for v in n)
-                              for n in nodes),
-               table=" ".join("%s:%d" % kv for kv in table.items()),
-               head=-1 if state["head"] is None else state["head"],
-               tail=-1 if state["tail"] is None else state["tail"], hot=hot)
+    def __init__(self, code_lines):
+        init = {"caption": "", "kind": "step", "code": -1.0, "strike": -1.0, "call": "",
+                "links": "", "head": "", "tail": "", "slots": "", "table": "", "vals": "",
+                "hot": "", "doom": "", "look": "", "glow": "", "loose": "", "answer": "",
+                "gone": ""}
+        for k in KEYS:
+            init.update({"x" + k: float(COLS[0]), "y" + k: float(ROW), "a" + k: 0.0})
+        self.tl = Timeline(**init)
+        self.code_lines = code_lines
+        self.next, self.prev, self.slot, self.table, self.val = {}, {}, {}, {}, {}
+        self.head = self.tail = None
 
-    def touch(i, slow=False):
-        prev, nxt = nodes[i][2], nodes[i][3]
-        linked = prev is not None or nxt is not None or state["head"] == i or state["tail"] == i
+    # ---- the model, written out to the timeline
+    def order(self):
+        out, k = [], self.head
+        while k is not None and k not in out:
+            out.append(k)
+            k = self.next.get(k)
+        return out
+
+    def sync(self, **extra):
+        links = ["n%s:%s" % kv for kv in self.next.items() if kv[1]]
+        links += ["p%s:%s" % kv for kv in self.prev.items() if kv[1]]
+        self.tl.set(links=" ".join(links), head=self.head or "", tail=self.tail or "",
+                    slots=" ".join("%s:%d" % kv for kv in self.slot.items()),
+                    table=" ".join("%s:%d" % kv for kv in self.table.items()),
+                    vals=" ".join("%s:%s" % kv for kv in self.val.items()), **extra)
+
+    def place(self, keys, dur, start=0):
+        self.tl.to(dur, in_out, **{"x" + k: float(COLS[start + n]) for n, k in enumerate(keys)})
+
+    def reset(self, order, values, slots):
+        self.next, self.prev, self.val, self.slot = {}, {}, dict(values), dict(slots)
+        self.table = dict(slots)
+        for a, b in zip(order, order[1:]):
+            self.next[a], self.prev[b] = b, a
+        self.head, self.tail = (order[0], order[-1]) if order else (None, None)
+        moves = {}
+        for k in KEYS:
+            moves.update({"a" + k: 1.0 if k in order else 0.0, "y" + k: float(ROW)})
+        for n, k in enumerate(order):
+            moves["x" + k] = float(COLS[n])
+        self.tl.set(**moves)
+        self.sync(hot="", doom="", look="", glow="", loose="", answer="", gone="", code=-1.0)
+
+    # ---- touch, step by step, as the code does it
+    def touch(self, k, k_slow=1.0, line=None, skip_tail=False):
+        tl = self.tl
+        at = (lambda n: line if line is not None else float(n))
+        prev, nxt = self.prev.get(k), self.next.get(k)
+        linked = prev or nxt or self.head == k or self.tail == k
         if linked:
-            tl.set(code=0.0)
-            if prev is not None:
-                nodes[prev][3] = nxt
+            tl.to(0.5 * k_slow, in_out, **{"y" + k: float(LIFT)})
+            self.sync(loose=k)
+            tl.wait(0.2 * k_slow)
+            if prev:
+                self.next[prev] = nxt
+                self.sync(code=at(1), glow="n" + prev, loose=k)
             else:
-                state["head"] = nxt
-            if nxt is not None:
-                nodes[nxt][2] = prev
+                self.head = nxt
+                self.sync(code=at(2), glow="head", loose=k)
+            tl.wait(0.9 * k_slow)
+            if nxt:
+                self.prev[nxt] = prev
+                self.sync(code=at(3), glow="p" + nxt, loose=k)
+            elif not skip_tail:
+                self.tail = prev
+                self.sync(code=at(4), glow="tail", loose=k)
             else:
-                state["tail"] = prev
-            show(i)
-            tl.set(code=1.0)
-            tl.wait(0.9 if slow else 0.4)
-        nodes[i][2] = None
-        nodes[i][3] = state["head"]
-        if state["head"] is not None:
-            nodes[state["head"]][2] = i
-        tl.set(code=2.0)
-        state["head"] = i
-        if state["tail"] is None:
-            state["tail"] = i
-        show(i)
-        tl.set(code=3.0)
-        tl.wait(0.9 if slow else 0.4)
+                self.sync(code=at(4), glow="", loose=k)
+            tl.wait(0.9 * k_slow)
+            rest = [x for x in self.order() if x != k]
+            self.place(rest, 0.6 * k_slow, start=1)
+        else:
+            rest = self.order()
+            tl.to(0.5 * k_slow, in_out, **{"y" + k: float(LIFT)})
+            self.place(rest, 0.6 * k_slow, start=1)
+        tl.to(0.8 * k_slow, in_out, **{"x" + k: float(COLS[0])})
+        self.prev[k] = None
+        self.next[k] = self.head
+        self.sync(code=at(5), glow="n" + k, loose="")
+        tl.wait(0.7 * k_slow)
+        if self.head:
+            self.prev[self.head] = k
+            self.sync(code=at(6), glow="p" + self.head)
+            tl.wait(0.6 * k_slow)
+        self.head = k
+        if self.tail is None:
+            self.tail = k
+        tl.to(0.4 * k_slow, in_out, **{"y" + k: float(ROW)})
+        self.sync(code=at(7), glow="head")
+        tl.wait(0.6 * k_slow)
+        self.sync(glow="", hot="")
 
-    def put(key, value, slow=False, drop_remove=False):
-        if len(nodes) < 3:
-            nodes.append([key, value, None, None])
-            table[key] = len(nodes) - 1
-            show(len(nodes) - 1)
-            tl.wait(0.4)
-            touch(len(nodes) - 1, slow)
-            return
-        i = state["tail"]
-        old = nodes[i][0]
-        tl.set(code=4.0)
-        nodes[i][0], nodes[i][1] = key, value
-        show(i)
-        tl.wait(0.8 if slow else 0.4)
-        if not drop_remove:
-            tl.set(code=5.0)
-            del table[old]
-        table[key] = i
-        show(i)
-        tl.wait(0.8 if slow else 0.4)
-        touch(i, slow)
+    # ---- drawing
+    def draw_scene(self, p, s, title, sub, code_title, code_y, cap_y, rail_y, total):
+        t = s.t
+        title_block(p, title, sub)
+        if s.call:
+            p.text(W - 26, 34, s.call, 15, BRASS, 700, "end", mono=True)
+        pos = {k: (s["x" + k], s["y" + k]) for k in KEYS if s["a" + k] > 0.01}
+        alpha = {k: s["a" + k] for k in KEYS}
+        slots = dict(kv.split(":") for kv in s.slots.split())
+        table = dict(kv.split(":") for kv in s.table.split())
+        vals = dict(kv.split(":") for kv in s.vals.split())
+        # the Vec: slots never move
+        p.text(26, SLOT_Y + 18, "nodes: Vec", 11, MUTED, 600)
+        owner = {int(v): k for k, v in slots.items() if k in pos}
+        for i, x in enumerate(COLS):
+            k = owner.get(i)
+            p.rect(x - 42, SLOT_Y, 84, 28, STAGE if k else PAPER, LINE, 6, 1.1,
+                   dash=None if k else "4 4")
+            p.text(x, SLOT_Y + 19, "[%d] %s" % (i, k or ""), 11.5, INK if k else FAINT, 700,
+                   "middle", mono=True)
+            if k and k in (s.hot, s.doom, s.look):
+                edge = RUST if k == s.doom else BRASS
+                p.rect(x - 42, SLOT_Y, 84, 28, "none", edge, 6, 2.0)
+        # the lookup table
+        p.text(26, 92, "lookup_table", 11, MUTED, 600)
+        for n, (k, i) in enumerate(table.items()):
+            y = 114 + n * 25
+            stale = k not in vals or slots.get(k) != i
+            looked = s.look == k
+            color = RUST if (stale and s.answer) else (BRASS if looked else TEAL)
+            fill = RUST_LT if (stale and s.answer) else (BRASS_LT if looked else TEAL_LT)
+            chip(p, 26, y, "%s -> %s" % (k, i), color, fill, 11.5, anchor="start")
+            if looked and int(i) < len(COLS):
+                sx, by = COLS[int(i)], SLOT_Y + 40
+                p.path("M 104 %.1f L 180 %.1f L %.1f %.1f L %.1f %.1f" % (y, by, sx, by, sx,
+                                                                      SLOT_Y + 29),
+                       "none", BRASS, 1.6, dash="5 4")
+        # links, drawn from where the nodes are now
+        for item in s.links.split():
+            kind, rest = item[0], item[1:]
+            a, b = rest.split(":")
+            if a not in pos or b not in pos:
+                continue
+            glow = s.glow == kind + a
+            faint = s.loose == a
+            color = BRASS if glow else (TEAL if kind == "n" else FAINT)
+            curve(p, pos[a], pos[b], kind == "n", color, 2.6 if glow else 1.8,
+                  0.3 if faint else 1.0)
+        # nodes
+        for k, (x, y) in pos.items():
+            hot = s.hot == k
+            doom = s.doom == k
+            fill = RUST_LT if doom else (BRASS_LT if hot else PAPER)
+            edge = RUST if doom else (BRASS if hot else INK)
+            p.rect(x - HALF_W, y - HALF_H, 2 * HALF_W, 2 * HALF_H, fill, edge, 8, 1.7,
+                   opacity=alpha[k], shadow="lift" if y < ROW - 4 else None)
+            p.text(x, y + 2, "%s = %s" % (k, vals.get(k, "")), 14, INK, 700, "middle",
+                   mono=True, opacity=alpha[k])
+            if k in slots:
+                p.text(x, y + 17, "slot %s" % slots[k], 9.5, MUTED, 600, "middle", mono=True,
+                       opacity=alpha[k])
+        if s.gone:
+            chip(p, 700, 114, "%s removed" % s.gone, RUST, RUST_LT, 11.5)
+        for name, key, dy, color, glow in (("head", s.head, -HALF_H - 14, TEAL, "head"),
+                                           ("tail", s.tail, HALF_H + 17, RUST, "tail")):
+            if key in pos:
+                x, y = pos[key]
+                bright = s.glow == glow
+                p.text(x, y + dy, name, 12.5 if bright else 11.5, BRASS if bright else color,
+                       700, "middle", mono=True)
+        p.text(COLS[0] - 46, ROW - 50, "most recent", 10, MUTED, 600, "end")
+        p.text(COLS[-1] + 46, ROW - 50, "least recent", 10, MUTED, 600)
+        if s.answer:
+            chip(p, 640, 112, s.answer, RUST, RUST_LT, 12)
+        code_panel(p, 26, code_y, W - 52, code_title, self.code_lines, s.code, size=10.4,
+                   lead=14.6, strike=int(s.strike) if s.strike >= 0 else None,
+                   tint=RUST if s.strike >= 0 or s.kind == "fail" else TEAL,
+                   reveal=s.timeline.reached("code", t))
+        caption(p, self.tl, t, cap_y)
+        progress(p, self.tl, t, total, rail_y)
 
-    tl.chapter("fill")
-    tl.say("Capacity 3. Each put pushes a node into the Vec and links it at the head. The links "
-           "are indices into the Vec.")
-    show()
-    tl.wait(0.4)
-    put("A", 10)
-    put("B", 20)
-    put("C", 30)
-    tl.say("The list, by next links from the head, is C, B, A. A, at the tail, is next to go.",
-           "insight")
-    tl.wait(1.0)
 
-    tl.chapter("touch")
-    tl.say("get(A) touches slot 0. First detach: A has no next, so it was the tail, and the tail "
-           "moves to its prev, B.")
-    touch(0, slow=True)
-    tl.say("Then push to the front: A.next is the old head C, C.prev is 0, and the head is 0.")
-    tl.wait(1.0)
+def curve(p, a, b, forward, color, width, opacity):
+    """A next link (above, forward) or a prev link (below) between two nodes."""
+    (ax, ay), (bx, by) = a, b
+    side = 1 if bx >= ax else -1
+    dy = -9 if forward else 9
+    x0, y0 = ax + side * HALF_W, ay + dy
+    x1, y1 = bx - side * HALF_W, by + dy
+    cx = (x0 + x1) / 2
+    cy = (min(y0, y1) - 26) if forward else (max(y0, y1) + 26)
+    with p.group(opacity=opacity):
+        p.path("M %.1f %.1f Q %.1f %.1f %.1f %.1f" % (x0, y0, cx, cy, x1, y1), "none", color,
+               width)
+        dx, ddy = x1 - cx, y1 - cy
+        n = max(1e-6, (dx * dx + ddy * ddy) ** 0.5)
+        ux, uy = dx / n, ddy / n
+        p.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f Z" % (
+            x1, y1, x1 - 9 * ux - 4.5 * uy, y1 - 9 * uy + 4.5 * ux,
+            x1 - 9 * ux + 4.5 * uy, y1 - 9 * uy - 4.5 * ux), color, "none")
 
-    tl.chapter("reuse")
-    tl.say("put(D, 40) with the cache full. The tail is slot 1, B. Its slot is reused: no "
-           "allocation, no free.")
-    put("D", 40, slow=True)
-    tl.say("B's key is removed from the map, D's is added, and slot 1 moves to the front.",
-           "insight")
-    tl.wait(1.0)
 
-    tl.chapter("no remove")
-    tl.say("Run it again without the line lookup_table.remove(&old_key).", "fail")
-    nodes.clear()
-    table.clear()
-    state.update(head=None, tail=None)
-    tl.set(strike=5.0, answer="")
-    show()
-    put("A", 10)
-    put("B", 20)
-    put("C", 30)
-    touch(0)
-    put("D", 40, drop_remove=True)
-    tl.say("The map still says B is in slot 1. Slot 1 now holds D.", "fail")
-    tl.wait(1.0)
-    tl.say("get(B) finds slot 1 and returns 40, D's value, for the key B: a wrong answer, "
-           "with no error.", "fail")
-    tl.set(hot=1, answer="get(B) = Some(40)")
-    tl.to(0.4, answer_bad=1.0)
+def lru_touch():
+    sc = ListScene(TOUCH)
+    tl = sc.tl
+    slots = {"A": 0, "B": 1, "C": 2, "D": 3}
+    values = {"A": 10, "B": 20, "C": 30, "D": 40}
+
+    def lookup(k, note):
+        tl.set(call="get(%s)" % k)
+        tl.say(note)
+        sc.sync(look=k, code=0.0)
+        tl.wait(1.0)
+        sc.sync(look="", hot=k)
+        tl.wait(0.4)
+
+    tl.chapter("middle")
+    sc.reset(list("BACD"), values, slots)
+    tl.say("Four entries, most recent on the left. Next links run above, prev links below. The "
+           "Vec under them never moves.")
+    tl.wait(1.4)
+    lookup("C", "get(C). The table says C lives in slot 2. That is a hit, so C must move to the "
+                "front.")
+    tl.say("Detach: lift C out. Its neighbours are A on the left and D on the right.")
+    sc.touch("C", k_slow=1.6)
+    tl.say("A now points past the gap to D, and C sits at the front. Four links changed, and no "
+           "node was copied.", "insight")
     tl.wait(1.6)
 
-    def draw(p, s, total):
-        t = s.t
-        title_block(p, "Version 2: a linked list inside a Vec",
-                    "Links are indices. touch detaches a node and pushes it at the head.")
-        rows = [r.split(",") for r in s.nodes.split(";") if r]
-        p.text(26, 96, "lookup_table", 11, MUTED, 600)
-        for k, kv in enumerate(s.table.split()):
-            key, slot = kv.split(":")
-            chip(p, 130 + k * 92, 92, "%s -> %s" % (key, slot), TEAL, TEAL_LT, 12)
-        p.text(26, SLOT_TOP - 14, "nodes: Vec<Node>", 11, MUTED, 600)
-        for i, x in enumerate(SLOTS_X):
-            hot = int(s.hot) == i
-            p.rect(x - 78, SLOT_TOP, 156, 92, BRASS_LT if hot else PAPER, BRASS if hot else LINE,
-                   8, 1.6 if hot else 1.2)
-            p.text(x - 70, SLOT_TOP + 16, "slot %d" % i, 10.5, MUTED, 700)
-            if i < len(rows):
-                key, value, prev, nxt = rows[i]
-                p.text(x, SLOT_TOP + 42, "%s = %s" % (key, value), 18, INK, 700, "middle",
-                       mono=True)
-                p.text(x, SLOT_TOP + 70, "prev %s  next %s" % (prev, nxt), 12, INK, 600,
-                       "middle", mono=True)
-            for name, idx, dy, color in (("head", s.head, 110, TEAL), ("tail", s.tail, 128, RUST)):
-                if int(idx) == i:
-                    p.text(x, SLOT_TOP + dy, name, 12, color, 700, "middle", mono=True)
-        # the list, read by following next from the head
-        order, seen, cur = [], set(), int(s.head)
-        while 0 <= cur < len(rows) and cur not in seen:
-            seen.add(cur)
-            order.append(rows[cur][0])
-            nxt = rows[cur][3]
-            cur = int(nxt) if nxt != "-" else -1
-        p.text(26, 306, "the list, head to tail:  " + "  ->  ".join(order), 12.5, INK, 700,
-               mono=True)
-        if s.answer:
-            chip(p, 640, 302, s.answer, RUST, RUST_LT, 12, opacity=clamp(s.answer_bad))
-        code_panel(p, 26, 322, W - 52, "touch and put", TOUCH, s.code, size=10.4, lead=15.5,
-                   strike=int(s.strike) if s.strike >= 0 else None,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 470)
-        progress(p, tl, t, total, 556)
+    tl.chapter("tail")
+    lookup("D", "get(D). D is the tail: it has no next.")
+    tl.say("A's next becomes None, and with no next on D's side, the tail moves back to A.")
+    sc.touch("D", k_slow=1.3)
+    tl.say("D is the most recent now, and A, at the tail, is the next to be evicted.", "insight")
+    tl.wait(1.4)
 
-    return tl, draw, 590
+    tl.chapter("tail left behind")
+    sc.reset(list("CBAD"), values, slots)
+    tl.set(strike=4.0, call="")
+    tl.say("Run get(D) again without None => self.tail = prev.", "fail")
+    tl.wait(1.2)
+    lookup("D", "get(D) finds slot 3 and lifts D out of the chain.")
+    sc.touch("D", k_slow=1.0, skip_tail=True)
+    tl.say("tail still names D, which is now at the front. A, the real least recent, has no "
+           "marker.", "fail")
+    sc.sync(doom="D")
+    tl.wait(1.4)
+    tl.say("The next put evicts the tail: D, the entry read a moment ago. No panic, only a "
+           "wrong eviction.", "fail")
+    tl.wait(2.0)
+
+    def draw(p, s, total):
+        sc.draw_scene(p, s, "touch: detach, then push to the front",
+                      "get(key) finds the slot, lifts the node out, and puts it at the head.",
+                      "lookup, then touch", 316, 480, 566, total)
+
+    return tl, draw, 600
+
+
+def lru_put():
+    sc = ListScene(PUT)
+    tl = sc.tl
+
+    def put_new(k, v, slow, notes=()):
+        i = len(sc.slot)
+        tl.set(call="put(%s, %d)" % (k, v))
+        if notes:
+            tl.say(notes[0])
+        sc.sync(code=0.0)
+        tl.wait(0.4 * slow)
+        sc.sync(code=2.0)
+        tl.wait(0.4 * slow)
+        sc.val[k] = v
+        sc.slot[k] = i
+        tl.set(**{"x" + k: float(COLS[i]), "y" + k: float(SLOT_Y - 40), "a" + k: 0.0})
+        sc.sync(code=3.0, hot=k)
+        tl.to(0.4 * slow, **{"a" + k: 1.0})
+        tl.wait(0.4 * slow)
+        sc.table[k] = i
+        sc.sync(code=4.0, look=k)
+        tl.wait(0.6 * slow)
+        if len(notes) > 1:
+            tl.say(notes[1])
+        sc.sync(look="", code=8.0)
+        sc.touch(k, k_slow=0.6 * slow, line=8.0)
+
+    tl.chapter("room")
+    sc.reset([], {}, {})
+    tl.say("Capacity 4, empty. A new key with room left gets the next free slot in the Vec.")
+    tl.wait(0.8)
+    put_new("A", 10, 1.6, ("put(A, 10). Not in the table, and there is room.",
+                           "push puts the node in slot 0, the table records A -> 0, and touch "
+                           "makes it the head and the tail."))
+    put_new("B", 20, 0.8)
+    put_new("C", 30, 0.8)
+    put_new("D", 40, 1.0, ("put(D, 40) takes slot 3, the last free one.",))
+    tl.say("The chain reads D, C, B, A by recency. The Vec reads A, B, C, D by arrival.",
+           "insight")
+    tl.wait(1.6)
+
+    tl.chapter("update")
+    tl.set(call="put(B, 21)")
+    tl.say("put(B, 21). B is in the table, so this is an update: same slot, new value.")
+    sc.sync(code=0.0, look="B")
+    tl.wait(1.0)
+    sc.val["B"] = 21
+    sc.sync(code=1.0, look="", hot="B")
+    tl.wait(1.0)
+    tl.say("Then touch moves B to the front, as get would.")
+    sc.sync(code=8.0)
+    sc.touch("B", k_slow=0.9, line=8.0)
+    tl.wait(0.6)
+
+    def evict(k, v, slow, skip_remove=False, notes=()):
+        tl.set(call="put(%s, %d)" % (k, v))
+        tl.say(notes[0], *notes[1:2])
+        sc.sync(code=0.0)
+        tl.wait(0.4 * slow)
+        sc.sync(code=2.0)
+        tl.wait(0.4 * slow)
+        old = sc.tail
+        i = sc.slot[old]
+        sc.sync(code=5.0, doom=old)
+        tl.wait(1.0 * slow)
+        # the slot takes the new key: same node, same position
+        for name in ("next", "prev"):
+            links = getattr(sc, name)
+            for a, b in list(links.items()):
+                if a == old:
+                    links[k] = links.pop(a)
+                if b == old:
+                    links[a] = k
+        sc.head = k if sc.head == old else sc.head
+        sc.tail = k if sc.tail == old else sc.tail
+        del sc.val[old], sc.slot[old]
+        sc.val[k], sc.slot[k] = v, i
+        x = COLS[sc.order().index(k)]
+        tl.set(**{"x" + k: float(x), "y" + k: float(ROW), "a" + k: 1.0, "a" + old: 0.0})
+        sc.sync(code=6.0, doom=k)
+        tl.wait(1.0 * slow)
+        if not skip_remove:
+            del sc.table[old]
+            sc.sync(code=7.0, gone=old)
+            tl.wait(0.9 * slow)
+        sc.table[k] = i
+        sc.sync(code=8.0, look=k, doom="", gone="")
+        tl.wait(0.7 * slow)
+        sc.sync(look="", code=8.0)
+        sc.touch(k, k_slow=0.7 * slow, line=8.0)
+
+    tl.chapter("evict")
+    evict("E", 50, 1.4, notes=("put(E, 50) with all four slots taken. The tail, A, is the least "
+                               "recently used.",))
+    tl.say("Slot 0 now holds E. Nothing was freed and nothing was allocated.", "insight")
+    tl.wait(1.6)
+
+    tl.chapter("no remove")
+    tl.set(strike=7.0)
+    tl.say("Now leave out self.lookup_table.remove(&old_key).", "fail")
+    tl.wait(1.0)
+    evict("F", 60, 0.9, skip_remove=True,
+          notes=("put(F, 60) evicts the tail, C, from slot 2.", "fail"))
+    tl.set(call="get(C)")
+    tl.say("The table still has C -> 2. get(C) follows it to slot 2, which now holds F.", "fail")
+    sc.sync(look="C", code=-1.0)
+    tl.wait(1.2)
+    sc.sync(answer="get(C) = Some(60)")
+    tl.say("get(C) returns 60, F's value. The cache answers for a key it evicted, with no "
+           "error.", "fail")
+    tl.wait(2.2)
+
+    def draw(p, s, total):
+        sc.draw_scene(p, s, "put: update, insert, or reuse the tail",
+                      "Three cases. Each one ends with touch.",
+                      "put", 316, 490, 576, total)
+
+    return tl, draw, 610
 
 
 def build_lru_shelf(only=None):
@@ -439,13 +678,19 @@ def build_lru_stamps(only=None):
     return render("ch13-lru-stamps.gif", tl, draw, height, only=only)
 
 
-def build_lru_arena(only=None):
-    tl, draw, height = lru_arena()
-    return render("ch13-lru-arena.gif", tl, draw, height, only=only)
+def build_lru_touch(only=None):
+    tl, draw, height = lru_touch()
+    return render("ch13-lru-touch.gif", tl, draw, height, only=only)
+
+
+def build_lru_put(only=None):
+    tl, draw, height = lru_put()
+    return render("ch13-lru-put.gif", tl, draw, height, only=only)
 
 
 BUILDERS = {
     "lru-shelf": build_lru_shelf,
     "lru-stamps": build_lru_stamps,
-    "lru-arena": build_lru_arena,
+    "lru-touch": build_lru_touch,
+    "lru-put": build_lru_put,
 }
