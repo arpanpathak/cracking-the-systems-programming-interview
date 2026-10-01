@@ -66,7 +66,7 @@ then 8 and 9 as they are added, drills last.
   - [x] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
   - [x] TLS and mTLS with rustls
   - [x] client connection pool (bounded, RAII return, idle eviction)
-- [ ] ch19: single-flight idempotency as a section
+- [ ] ch19: single-flight idempotency as a section (deferred; see Future work)
 
 ## Log
 
@@ -93,3 +93,39 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch28 TLS and mutual TLS: certificates and trust, TLS 1.3 handshake table, records on the wire, failures, mTLS, costs; figure 28.1, animation ch28-tls, plate SEAL
 - 2026-10-01 lab: conn_pool.rs (2000 requests: 2000 conns 170 ms vs pool of 4 80 ms; TimedOut at the bound; idle eviction; check_alive catches server-closed connections)
 - 2026-10-01 ch29 A client connection pool: connection costs, four rules, get/give_back/Drop guard, LIFO and stale connections, measured; figure 29.1, animation ch29-pool, plate DOCK. Part 9 complete.
+- 2026-10-01 new chapters stopped at ch29 by request; the round moves to enriching existing chapters
+- 2026-10-01 motion engine: code panels show code from the first frame, two lines ahead of the highlight, and fade new lines in (`Timeline.reached`, `code_panel`)
+- 2026-10-01 lab: clippy-clean book sources (crate allows only `new_without_default`, `needless_range_loop`); scratch code removed from the recursion listing; chain_width 40
+- 2026-10-01 ch03, ch12, ch13: every excerpted file ends the chapter in full
+- 2026-10-01 types before use: ch07 (sections reordered), ch10-12, ch16, ch18, ch19 (`ApiError` shown again), ch26; type excerpts before whole-file listings in ch06, ch10-12, ch15, ch18, ch19
+- 2026-10-01 ch22: both HTTP clients built in explained excerpts
+- 2026-10-01 ch20, ch23-27: C declarations with parameter comments before first use
+- 2026-10-01 all 46 animations re-rendered with the new code reveal
+
+## Future work (draft for the next agent session)
+
+Read the rules at the top of this file first. No new chapters unless asked: the book is ch01 to ch29 plus
+drills (ch30). The work now is enrichment.
+
+1. **ch19 single flight.** `rust-interview-lab/src/bin/single_flight.rs` is written and tested (scenes:
+   8 callers one key -> 1 execution, 4 keys in parallel, failure not stored, panic clears the claim). Add it as
+   section 19.4 after idempotency keys: concept (thundering herd on a cache miss, why 19.3's single lock
+   serializes all keys), a slot-state diagram (none -> InProgress -> Done; Err/panic -> none), excerpts
+   (`Slot`, `SingleFlight`, `Claim` + `Drop`, `execute`), output, an animation (callers waiting on one key;
+   fail case: a claim without Drop strands waiters after a panic), and replace exercise 4, which asks for this.
+2. **Whole-file listings shown first.** These still appear whole before any excerpt; each needs the
+   concept, then excerpts, then the full file: ch03 three_sum (87 lines), valid_parentheses, min_stack,
+   binary_search; ch05 top_k_frequent; ch09 the four list variants; ch10 pairs/heap/chrush_lee; ch11
+   test_tree, trie; ch12 graph_bfs, cyclic_graph_map, graph_topology (81), dependency_resolutiom, dijkstra,
+   dijkstra_bruce_lee; ch15 false_sharing, os_scheduler; ch16 concurrency_amdahl, concurrency_deadlock (73);
+   ch17 mpmc_bounded_buffer (83); ch18 thread_pool, the three short pools, worker_pool (107); ch19
+   idempotent_operation(_with_error_progagation); ch22 async_demo. Find them with the script in the log of
+   this round: a full `{{#include}}` that is a file's first appearance in its chapter, over 40 lines.
+3. **Audit tools.** Turn the two audits used this round into `tools/lint_code_intro.py`: (a) an excerpt
+   that uses a type defined in the lab whose definition the chapter has not shown yet; (b) the whole-file
+   rule above. Run both with `lint_prose.py` before every commit.
+4. **Signatures.** ch15's `getpid` via FFI and any other `extern` call outside ch20-27 should get the same
+   declaration-with-comments block.
+5. **Backlog** from `../knowledge_gaps.md` that passed the scope test but was not built: see that file.
+6. Republish gh-pages after each batch (`mdbook build`, copy `book/` to the gh-pages worktree) and cut a
+   release when a batch of chapters is finished.
