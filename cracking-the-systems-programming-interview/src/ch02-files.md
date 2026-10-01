@@ -420,8 +420,7 @@ The program's settings live in one struct, with a default value for each setting
 
 ### 2.8.2 Parsing
 
-Parsing walks the arguments one at a time and fills in the options. It returns an error for an unknown argument, for a flag with no value after it, and for a count that is not
-a number.
+Parsing walks the arguments one at a time and fills in the options. An unknown argument is an error. So is a flag with no value after it, and a count that is not a number.
 
 <p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 43).</p>
 
