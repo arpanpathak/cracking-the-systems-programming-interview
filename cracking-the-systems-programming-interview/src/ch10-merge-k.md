@@ -74,6 +74,9 @@ In each round, the list at position `i` absorbs the list at `i + interval`. The 
 
 ## 10.3 First version: `split_at_mut` and a dummy head
 
+The first version implements pairwise rounds with a growing `interval`, as in figure 10.3. Its merge builds the
+output after a placeholder node, called a dummy head, so that the first real node needs no special case.
+
 <p class="listing"><b>Listing 10.1</b> The interval loop (lines 17 to 34). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
 
 ```rust
@@ -143,6 +146,9 @@ $ cargo run --bin merge_k_sorted_lists_divide
 
 ### 10.4.1 Take the right list out first
 
+This version moves the right-hand list out of the vector before the call. With only one list still inside the
+vector, the merge needs only one mutable borrow of it.
+
 <p class="listing"><b>Listing 10.4</b> The loop and the merge (lines 19 to 55). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
 
 ```rust
@@ -170,6 +176,9 @@ loop body always takes from `left`.
 ```
 
 ### 10.4.2 Merge owned lists, with no dummy node
+
+This version moves both lists out of the vector and passes them by value, so nothing is borrowed during the
+merge. It also drops the dummy node and tracks the empty slot where the next node belongs.
 
 <p class="listing"><b>Listing 10.6</b> The loop and the merge (lines 8 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
 
@@ -206,6 +215,9 @@ back off into `left`. One node has moved to the output.
 consuming it.
 
 ### 10.4.3 The shortest form, with `Option::insert`
+
+This version keeps the owned merge and brings back the dummy head. One standard-library method attaches a node and
+moves the tail onto it in a single step.
 
 <p class="listing"><b>Listing 10.8</b> The merge and the loop (lines 8 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
 
@@ -252,6 +264,9 @@ Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape
 
 ### 10.5.1 An enum with its own `take`
 
+The node can also be an enum, as in chapter 9. A list is either `Empty`, or a `Node` with a value and the rest of
+the list. This version gives that enum a `take` method so the merge reads like the `Option` versions.
+
 <p class="listing"><b>Listing 10.10</b> The node type (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs">src/bin/merge_k_sorted_lists_enum.rs</a></p>
 
 ```rust
@@ -290,6 +305,9 @@ holding a new `Empty`. So this version allocates once for every node it outputs.
 ```
 
 ### 10.5.2 An enum with standard traits and a recursive merge
+
+This version uses the same enum shape but derives `Default`, so the standard `std::mem::take` works on it. Its
+two-list merge is recursive.
 
 <p class="listing"><b>Listing 10.13</b> The type and its conversions (lines 1 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
 
@@ -339,15 +357,16 @@ Node(
 
 ## 10.6 A queue of lists
 
+This version does pairwise rounds with a queue instead of intervals. A `VecDeque` is a double-ended queue:
+you can push and pop at both ends in O(1). `merge_k_lists` puts all the lists in the queue. Then it pops two from the front and pushes their merge on
+the back, until one list is left.
+
 <p class="listing"><b>Listing 10.16</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs">src/bin/merge_k_sorted_lists_pairs.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs}}
 ```
 
-This version does pairwise rounds with a queue instead of intervals. A `VecDeque` is a double-ended queue:
-you can push and pop at both ends in O(1). `merge_k_lists` puts all the lists in the queue. Then it pops two from the front and pushes their merge on
-the back, until one list is left.
 
 Because merged lists go to the back, every original list is merged once before any merged list is merged again.
 So the rounds are the same as in figure 10.2, and the cost is O(N log k).
@@ -363,15 +382,16 @@ $ cargo run --bin merge_k_sorted_lists_pairs
 
 ## 10.7 A heap of list heads
 
+This is the third strategy from figure 10.2. The heap does not hold nodes. It holds pairs of `(front value, list
+number)`, wrapped in `Reverse` to make it a min-heap, as in chapter 5. Storing the list number instead of the
+node keeps the nodes in their lists, and avoids needing an ordering on nodes.
+
 <p class="listing"><b>Listing 10.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs">src/bin/merge_k_sorted_lists_heap.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs}}
 ```
 
-This is the third strategy from figure 10.2. The heap does not hold nodes. It holds pairs of `(front value, list
-number)`, wrapped in `Reverse` to make it a min-heap, as in chapter 5. Storing the list number instead of the
-node keeps the nodes in their lists, and avoids needing an ordering on nodes.
 
 Each pass of the loop:
 

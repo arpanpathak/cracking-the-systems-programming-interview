@@ -39,7 +39,7 @@ sections.
       concept section and diagram before their listings
 - [x] ch16 threads and locks
 - [x] ch18 thread pools
-- [ ] ch10 merge k lists
+- [x] ch10 merge k lists
 - [ ] ch14 sharding
 - [ ] ch02 files
 - [ ] ch07 types
@@ -73,3 +73,4 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch20: each section opens with the concept (addresses and private ranges, ACKs/RTT/window, the socket lifecycle, non-blocking + epoll lists), code in excerpts, complete programs in 20.5; new figures 20.3 and 20.4; real net_ipv4 output
 - 2026-10-01 ch16: new 16.1.1 (what a thread is: shared memory, per-thread stack, scheduler, context switch) with figure 16.1; figures renumbered. The rest of ch16 already led with concepts.
 - 2026-10-01 ch18: lead-ins before the version 1 listing and the three short pools; 18.1 already explained the parts
+- 2026-10-01 ch10: lead-ins before eight code versions; 10.6 and 10.7 explain the strategy before the listing. 10.1-10.2 already taught the merge and the strategies.
