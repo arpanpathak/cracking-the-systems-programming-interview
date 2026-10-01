@@ -86,7 +86,7 @@ def mmap_faults():
         tl.to(0.3, fill_a=0.0)
 
     tl.chapter("mmap")
-    tl.say("fs::write has just written the file, so all 64 of its pages are in the page cache.")
+    tl.say("fs::write wrote the file a moment ago, so all 64 of its pages are in the page cache.")
     tl.wait(1.0)
     tl.say("Mapping::new calls mmap. The kernel reserves 64 pages of addresses, and fills none "
            "of the 64 page table entries.")

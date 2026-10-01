@@ -70,8 +70,8 @@ def http_framing():
     tl.chapter("the head")
     tl.say("A request arrives as bytes. Every line of the head ends with \\r\\n.")
     tl.wait(1.0)
-    tl.say("The parser slides a four-byte window until it sees \\r\\n\\r\\n: a blank line. That "
-           "is where the head ends.")
+    tl.say("The parser slides a four-byte window until it sees \\r\\n\\r\\n: a blank line. The "
+           "head ends there.")
     find_head("length", True)
     tl.say("The first line gives the method, the target, and the version. Each other line is a "
            "header.")

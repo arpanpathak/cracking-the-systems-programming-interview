@@ -152,12 +152,12 @@ drills (ch30). The work now is enrichment.
 The standard is the ch13 rework, done in response to "it feels like static boxes, shallow, and too much code".
 A chapter meets the bar when it has:
 
-- **(a) intuition before code.** A plain-language model, an everyday analogy, or a cost table that says why
-  the structure exists. ch13's 13.1.1 is the template: what a hit saves, a hand trace, the fail case.
+- **(a) intuition before code.** Start with a plain-language model, an everyday analogy, or a cost table. It
+  says why the structure exists. ch13's 13.1.1 is the template: what a hit saves, a hand trace, the fail case.
 - **(b) one animation per core operation.** Robots or the structure itself move, with a fail case. A whole
   topic does not count as one operation. The structure must move on screen. A node lifts out of the chain,
-  the neighbours' arrows swing to each other, the node travels to its new place, and head and tail markers
-  follow. Numbers changing inside fixed boxes do not count: the user rejected that as "static boxes".
+  and the neighbours' arrows swing to each other. The node travels to its new place, and the head and tail
+  markers follow. Numbers changing inside fixed boxes do not count: the user rejected that as "static boxes".
 - **(c) excerpts first, then the complete file at the end.** No mid-chapter dump over about 40 lines.
 
 The numbers below were measured on 2026-10-01: prose words, animations, and whole-file includes
@@ -218,9 +218,9 @@ hand-typed panels in `anim_async`, `anim_http`, and `anim_sockets` paraphrased t
   with real indentation, and title it as a variant, such as "a version that advances after every node".
 
 **Unhappy paths.** These animations had no failure chapter. All twelve now have one, built as listed, with a
-struck line in the real panel. Two deviate from the plan: ch12-dijkstra shows an unreachable node, because the
-lazy-deletion loop re-processes a node after a negative edge rather than returning a wrong answer. ch16-spin-lock
-shows a leaked guard (`mem::forget`) instead of a Relaxed unlock:
+struck line in the real panel. Two deviate from the plan. ch12-dijkstra shows an unreachable node: the
+lazy-deletion loop re-processes a node after a negative edge, so it does not return a wrong answer. ch16-spin-lock
+shows a leaked guard (`mem::forget`) in place of a Relaxed release:
 
 | Animation | Unhappy path to add |
 |---|---|
@@ -237,6 +237,6 @@ shows a leaked guard (`mem::forget`) instead of a Relaxed unlock:
 | ch19-token-bucket | no cap on refill: a long idle period allows a burst far above the rate |
 | ch26-store-buffer | already a failure demo; mark its Relaxed outcome as `fail` for consistency |
 
-**One animation per snippet.** The user expects a short animation after each code block that introduces
-behaviour, not one per section. ch09 now has eight: build, reverse, remove, replace, layouts, drop, doubly, and
+**One animation per snippet.** Each code block that introduces behaviour gets a short animation after it. One
+animation per section is not enough. ch09 now has eight: build, reverse, remove, replace, layouts, drop, doubly, and
 pop_back. Apply the same rule to the chapters in the depth table above.

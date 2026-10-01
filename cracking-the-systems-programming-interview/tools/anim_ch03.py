@@ -66,7 +66,7 @@ def two_sum():
              need="", hot="", miss="", done="", code=-1.0, swapped=True),
         dict(say="The insert runs first and stores 2 -> 0.", kind="fail", entries=[(2, 0)],
              code=float(get)),
-        dict(say="Then the lookup asks for 4 - 2 = 2, and finds the 2 it has just stored.",
+        dict(say="Then the lookup asks for 4 - 2 = 2, and finds the 2 stored one step earlier.",
              kind="fail", need="2", hot="2", code=float(get + 1)),
         dict(say="The result pairs index 0 with itself. Looking up first, as the listing does, "
              "prevents it.", kind="fail", done="0,0", hold=2.4),
@@ -416,7 +416,7 @@ def merge_intervals():
         defaults["row%d" % k] = float(k)
     steps = [dict(chapter="sort", say="The input ranges arrive unsorted: [8,10] [1,3] [15,18] [2,6].")]
     st = dict(say="sort_unstable_by_key orders them by start. A range can now overlap only the "
-              "range just before it.", code=float(sort), sorted_a=1.0, dur=1.4)
+              "range before it.", code=float(sort), sorted_a=1.0, dur=1.4)
     for rank, k in enumerate(order):
         st["row%d" % k] = float(rank)
     steps.append(st)

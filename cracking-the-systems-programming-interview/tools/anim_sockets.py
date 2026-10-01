@@ -324,7 +324,7 @@ def bdp():
     phase(16, "window 16")
     say("Now the window equals the bandwidth-delay product: 16 packets.")
     tl.wait(3.8)
-    say("The first ACK returns just as the 16th packet leaves, so the sender never stops.")
+    say("The first ACK returns as the 16th packet leaves, so the sender never stops.")
     tl.wait(3.0)
     say("The link is always busy, and the throughput is four times higher on the same link.",
         "insight")
