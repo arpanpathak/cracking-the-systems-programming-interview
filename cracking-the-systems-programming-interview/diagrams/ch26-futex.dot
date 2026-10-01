@@ -1,0 +1,15 @@
+digraph futex {
+  rankdir=LR; nodesep=0.35; ranksep=0.6;
+  subgraph cluster_user { label="user space: the mutex in your memory"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    a [label="thread A\nholds the lock" fillcolor="#e3f1ea"];
+    word [label="state: AtomicU32\n2 = locked, waiters" fillcolor="#fdf6e8"];
+    b [label="thread B\nwants the lock"];
+  }
+  subgraph cluster_kernel { label="kernel: wait queues keyed by address"; labelloc="b"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    queue [label="queue for &state\nB (asleep)" fillcolor="#e8eaf5"];
+  }
+  b -> word [label=" swap(2) returns 1"];
+  b -> queue [label=" futex_wait(&state, 2)"];
+  a -> word [label=" unlock: swap(0)\n returns 2" dir=back];
+  a -> queue [label=" futex_wake(&state, 1)" style=dashed];
+}

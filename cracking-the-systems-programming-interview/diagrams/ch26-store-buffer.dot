@@ -1,0 +1,16 @@
+digraph storebuffer {
+  rankdir=TB; nodesep=0.6; ranksep=0.45;
+  c1 [label="core 1\nx.store(1)\nr1 = y.load()" fillcolor="#e6ecf6"];
+  c2 [label="core 2\ny.store(1)\nr2 = x.load()" fillcolor="#e6ecf6"];
+  b1 [label="store buffer\nx = 1 (waiting)" fillcolor="#fdf6e8"];
+  b2 [label="store buffer\ny = 1 (waiting)" fillcolor="#fdf6e8"];
+  mem [label="cache and memory\nx = 0, y = 0"];
+  { rank=same; c1; c2; }
+  { rank=same; b1; b2; }
+  c1 -> b1 [label=" store"];
+  c2 -> b2 [label=" store"];
+  b1 -> mem [label=" drains later" style=dashed];
+  b2 -> mem [label=" drains later" style=dashed];
+  c1 -> mem [label="load y: 0" constraint=false];
+  c2 -> mem [label="load x: 0" constraint=false];
+}

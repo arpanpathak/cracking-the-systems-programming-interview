@@ -1,0 +1,11 @@
+digraph states {
+  rankdir=LR; nodesep=0.5; ranksep=1.0;
+  u [label="0\nunlocked" fillcolor="#e3f1ea"];
+  l [label="1\nlocked"];
+  c [label="2\nlocked, may\nhave waiters" fillcolor="#fdf6e8"];
+  u -> l [label="lock: compare_exchange(0, 1)\nno system call"];
+  l -> u [label="unlock: swap(0) returns 1\nno system call"];
+  l -> c [label="a second thread: swap(2)\nthen futex_wait"];
+  c -> u [label="unlock: swap(0) returns 2\nthen futex_wake"];
+  u -> c [label="a woken thread: swap(2) returns 0\nit holds the lock" style=dashed];
+}

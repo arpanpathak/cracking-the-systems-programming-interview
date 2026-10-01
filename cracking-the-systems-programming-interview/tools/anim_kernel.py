@@ -696,10 +696,329 @@ def build_edge(only=None):
     return render("ch25-edge.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 26.2: the futex mutex
+
+FUTEX_CODE = lines_at("src/bin/futex_mutex.rs", [80, 83, 90, 92, 97, 99])
+A_X, B_X, F_DESK = 110, 710, 214
+WORD = (410, 104)
+KERNEL = (250, 168, 320, 78)
+MEANING = {0: "unlocked", 1: "locked", 2: "locked, may have waiters"}
+
+
+def futex():
+    tl = Timeline(caption="", kind="step", code=-1.0, strike=-1.0, word=0, a_owns=0.0,
+                  b_owns=0.0, a_awake=1.0, b_awake=1.0, queued=0.0, waits=0.0, wakes=0.0,
+                  op_u=0.0, op_a=0.0, op_label="", op_from="a", op_to="word", op_color="teal",
+                  checked=0.0, check_text="", nobody=0.0, clock="", flash=0.0)
+
+    def op(label, src, dst, color="teal", dur=0.9):
+        tl.set(op_label=label, op_from=src, op_to=dst, op_color=color, op_u=0.0)
+        tl.to(0.15, op_a=1.0)
+        tl.to(dur, in_out, op_u=1.0)
+        tl.to(0.12, op_a=0.0)
+
+    def word(value):
+        tl.set(word=value)
+        tl.set(flash=0.0)
+        tl.to(0.3, flash=1.0)
+        tl.to(0.3, flash=0.0)
+
+    tl.chapter("fast path")
+    tl.say("A calls lock. compare_exchange changes the word from 0 to 1. No system call.")
+    tl.set(code=0.0)
+    op("compare_exchange(0, 1)", "a", "word")
+    word(1)
+    tl.to(0.4, back, a_owns=1.0)
+    tl.say("Taking a free lock is one atomic instruction. The kernel is not involved.", "insight")
+    tl.wait(1.0)
+
+    tl.chapter("B waits")
+    tl.say("B calls lock. Its compare_exchange fails, because the word is 1.")
+    op("compare_exchange(0, 1)", "b", "word", "rust")
+    tl.to(0.3, code=1.0)
+    tl.say("lock_contended swaps in 2 and gets back 1. The lock is held, and the word now says a "
+           "thread may be waiting.")
+    tl.to(0.3, code=2.0)
+    op("swap(2) returns 1", "b", "word")
+    word(2)
+    tl.wait(0.6)
+    tl.say("B calls futex_wait(&state, 2). The kernel checks that the word still holds 2, then "
+           "queues B.")
+    tl.to(0.3, code=3.0)
+    op("futex_wait(&state, 2)", "b", "kernel", "night")
+    tl.set(check_text="word == 2: sleep")
+    tl.to(0.4, checked=1.0, waits=1.0)
+    tl.to(0.6, b_awake=0.0, queued=1.0)
+    tl.to(0.3, checked=0.0)
+    tl.wait(0.8)
+
+    tl.chapter("wake")
+    tl.say("A unlocks. swap(0) returns 2, so a thread may be asleep, and A calls futex_wake.")
+    tl.to(0.3, code=4.0)
+    op("swap(0) returns 2", "a", "word")
+    word(0)
+    tl.to(0.3, a_owns=0.0, code=5.0)
+    op("futex_wake(&state, 1)", "a", "kernel", "night")
+    tl.to(0.3, wakes=1.0)
+    tl.say("The kernel wakes B. futex_wait returns, and B's loop swaps in 2 again.")
+    tl.to(0.6, back, b_awake=1.0, queued=0.0)
+    tl.to(0.3, code=2.0)
+    op("swap(2) returns 0", "b", "word")
+    word(2)
+    tl.to(0.4, back, b_owns=1.0)
+    tl.say("The swap returned 0, so B holds the lock. The word stays 2: B cannot tell whether "
+           "other threads sleep.", "insight")
+    tl.wait(1.2)
+    tl.say("B unlocks. swap(0) returns 2, so B calls futex_wake, and the queue is empty. That is "
+           "an extra wake.")
+    tl.to(0.3, code=4.0)
+    op("swap(0) returns 2", "b", "word")
+    word(0)
+    tl.to(0.3, b_owns=0.0, code=5.0)
+    op("futex_wake(&state, 1)", "b", "kernel", "night")
+    tl.to(0.3, wakes=2.0, nobody=1.0)
+    tl.wait(1.2)
+    tl.to(0.3, nobody=0.0)
+
+    tl.chapter("no check")
+    tl.say("Now suppose futex_wait did not check the word. A holds the lock again.", "fail")
+    tl.set(code=-1.0, waits=0.0, wakes=0.0)
+    word(1)
+    tl.to(0.4, a_owns=1.0)
+    tl.say("B reads the word, sees 1, and decides to sleep. It has not reached the queue yet.",
+           "fail")
+    op("load: 1", "word", "b", "rust")
+    tl.wait(0.8)
+    tl.say("A unlocks and calls futex_wake. The queue is empty, so the wake does nothing.",
+           "fail")
+    op("swap(0)", "a", "word")
+    word(0)
+    tl.to(0.3, a_owns=0.0)
+    op("futex_wake", "a", "kernel", "night")
+    tl.to(0.3, nobody=1.0)
+    tl.wait(0.8)
+    tl.to(0.3, nobody=0.0)
+    tl.say("Then B joins the queue and sleeps. The lock is free, and nobody will wake B.", "fail")
+    op("sleep", "b", "kernel", "night")
+    tl.to(0.6, b_awake=0.0, queued=1.0)
+    for label in ("1 s", "1 min", "forever"):
+        tl.set(clock=label)
+        tl.wait(0.9)
+    tl.say("The real futex_wait sees the word is 0, not the value B expected, and returns at once.",
+           "fail")
+    tl.wait(1.6)
+
+    def spot(name):
+        kx, ky, kw, kh = KERNEL
+        return {"a": (A_X + 40, F_DESK - 110), "b": (B_X - 40, F_DESK - 110),
+                "word": (WORD[0], WORD[1] + 10), "kernel": (kx + kw / 2, ky + kh / 2)}[name]
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "A mutex on a futex",
+                    "One word in user space. The kernel is entered only to sleep and to wake.")
+        scoreboard(p, [("waits", int(round(s.waits)), NIGHT), ("wakes", int(round(s.wakes)), NIGHT)])
+
+        for name, x, body, awake, owns in (("A", A_X, TEAL, s.a_awake, s.a_owns),
+                                           ("B", B_X, NIGHT, s.b_awake, s.b_owns)):
+            robot(p, x, F_DESK, body, awake, awake, "thread " + name, None, look=0.0)
+            if owns > 0.01:
+                chip(p, x, F_DESK + 50, "holds the lock", TEAL, TEAL_LT, 10.5, opacity=clamp(owns))
+        zzz(p, B_X + 44, F_DESK - 108, t, 1 - s.b_awake)
+        if s.clock:
+            p.text(B_X, F_DESK + 52, s.clock, 12, RUST, 700, "middle", mono=True)
+
+        # the lock word
+        wx, wy = WORD
+        p.text(wx, wy - 22, "state: AtomicU32 (user memory)", 11, MUTED, 600, "middle")
+        glow = mix(BRASS_LT, BRASS, 0.5 * clamp(s.flash))
+        p.rect(wx - 34, wy - 12, 68, 44, glow, INK, 8, 1.6)
+        p.text(wx, wy + 20, str(s.word), 26, INK, 700, "middle", mono=True)
+        p.text(wx, wy + 48, MEANING[s.word], 11, MUTED, 600, "middle")
+
+        # the kernel's queue for the word's address
+        kx, ky, kw, kh = KERNEL
+        p.rect(kx, ky, kw, kh, STAGE, FAINT, 10, 1.2, dash="5 4")
+        p.text(kx + 10, ky + kh - 8, "kernel: queue for &state", 10.5, MUTED, 600)
+        if s.queued > 0.01:
+            chip(p, kx + 60, ky + 28, "B asleep", NIGHT, NIGHT_LT, 11, opacity=clamp(s.queued))
+        if s.checked > 0.01:
+            p.text(kx + kw - 12, ky + 32, s.check_text, 11, TEAL, 700, "end", mono=True,
+                   opacity=clamp(s.checked))
+        if s.nobody > 0.01:
+            p.text(kx + kw - 12, ky + 32, "queue empty: woke nobody", 11, RUST, 700, "end",
+                   opacity=clamp(s.nobody))
+
+        if s.op_a > 0.01:
+            a, b = spot(s.op_from), spot(s.op_to)
+            x, y = bezier(a, ((a[0] + b[0]) / 2, min(a[1], b[1]) - 30), b, s.op_u)
+            color, fill = {"teal": (TEAL, TEAL_LT), "rust": (RUST, RUST_LT),
+                           "night": (NIGHT, NIGHT_LT)}[s.op_color]
+            pill(p, x, y, s.op_label, color, fill, 10.5, opacity=s.op_a, shadow=None)
+
+        code_panel(p, 26, 290, W - 52, "lock, lock_contended, unlock", FUTEX_CODE, s.code,
+                   size=10.4, lead=16.0, reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, 436)
+        progress(p, tl, t, total, 522)
+
+    return tl, draw, 556
+
+
+def build_futex(only=None):
+    tl, draw, height = futex()
+    return render("ch26-futex.gif", tl, draw, height, only=only)
+
+
+# ------------------------------------------------- 26.3: store buffers
+
+def lines_containing(path, *texts):
+    """The lines of a lab source file that contain each text, without indentation."""
+    source = (LAB / path).read_text(encoding="utf-8").splitlines()
+    return [next(line.strip() for line in source if text in line) for text in texts]
+
+
+THREAD_1 = lines_containing("src/bin/litmus.rs", "x[i].store(1, store);", "r1[i].store(y[i].load")
+THREAD_2 = lines_containing("src/bin/litmus.rs", "y[i].store(1, store);", "r2[i].store(x[i].load")
+CORES = {1: 150, 2: 670}
+S_DESK = 226
+MEMORY = (410, 322)
+
+
+def store_buffer():
+    tl = Timeline(caption="", kind="step", c1=-1.0, c2=-1.0, buf1="", buf2="", mem_x=0, mem_y=0,
+                  r1="", r2="", fly_u=0.0, fly_a=0.0, fly_from="c1", fly_to="buf1",
+                  fly_label="", mode="Relaxed", stall=0.0, both=0.0)
+
+    def fly(label, src, dst, dur=0.8):
+        tl.set(fly_label=label, fly_from=src, fly_to=dst, fly_u=0.0)
+        tl.to(0.12, fly_a=1.0)
+        tl.to(dur, in_out, fly_u=1.0)
+        tl.to(0.1, fly_a=0.0)
+
+    tl.chapter("Relaxed")
+    tl.say("Both threads start one round with Relaxed. Memory holds x = 0 and y = 0.")
+    tl.wait(0.6)
+    tl.say("Thread 1 stores x = 1. The store goes into core 1's store buffer, and the core moves on.")
+    tl.set(c1=0.0)
+    fly("x = 1", "c1", "buf1")
+    tl.set(buf1="x = 1")
+    tl.say("Thread 2 does the same with y = 1, at the same moment, on core 2.")
+    tl.set(c2=0.0)
+    fly("y = 1", "c2", "buf2")
+    tl.set(buf2="y = 1")
+    tl.say("Thread 1 loads y. Its own buffer holds no y, so the load reads memory: 0.")
+    tl.set(c1=1.0)
+    fly("y?", "c1", "mem")
+    fly("0", "mem", "c1", 0.6)
+    tl.set(r1="r1 = 0")
+    tl.say("Thread 2 loads x from memory, and also reads 0.")
+    tl.set(c2=1.0)
+    fly("x?", "c2", "mem")
+    fly("0", "mem", "c2", 0.6)
+    tl.set(r2="r2 = 0")
+    tl.say("The buffers drain only now. Both loads read 0, though both stores came first in "
+           "program order.", "insight")
+    fly("x = 1", "buf1", "mem", 0.6)
+    tl.set(buf1="", mem_x=1)
+    fly("y = 1", "buf2", "mem", 0.6)
+    tl.set(buf2="", mem_y=1)
+    tl.to(0.4, both=1.0)
+    tl.wait(1.6)
+
+    tl.chapter("SeqCst")
+    tl.say("Now SeqCst. On x86 the store is an xchg instruction, which waits for the buffer to "
+           "drain.")
+    tl.to(0.4, both=0.0)
+    tl.set(mode="SeqCst", c1=-1.0, c2=-1.0, r1="", r2="", mem_x=0, mem_y=0)
+    tl.wait(0.6)
+    tl.set(c1=0.0)
+    fly("x = 1", "c1", "buf1", 0.6)
+    tl.set(buf1="x = 1")
+    tl.to(0.3, stall=1.0)
+    fly("x = 1", "buf1", "mem", 0.7)
+    tl.set(buf1="", mem_x=1)
+    tl.to(0.3, stall=0.0)
+    tl.say("Thread 1 continues only after x = 1 is in memory. Then it loads y and reads 0.")
+    tl.set(c1=1.0)
+    fly("y?", "c1", "mem", 0.6)
+    fly("0", "mem", "c1", 0.5)
+    tl.set(r1="r1 = 0")
+    tl.say("Thread 2 stores y = 1 the same way, then loads x. x = 1 is already in memory.")
+    tl.set(c2=0.0)
+    fly("y = 1", "c2", "buf2", 0.6)
+    tl.set(buf2="y = 1")
+    fly("y = 1", "buf2", "mem", 0.7)
+    tl.set(buf2="", mem_y=1)
+    tl.set(c2=1.0)
+    fly("x?", "c2", "mem", 0.6)
+    fly("1", "mem", "c2", 0.5)
+    tl.set(r2="r2 = 1")
+    tl.say("Whichever store reaches memory first, the other thread's load sees it. Both 0 cannot "
+           "happen.", "insight")
+    tl.wait(1.6)
+
+    def spot(name):
+        mx, my = MEMORY
+        return {"c1": (CORES[1], S_DESK - 60), "c2": (CORES[2], S_DESK - 60),
+                "buf1": (CORES[1], S_DESK + 44), "buf2": (CORES[2], S_DESK + 44),
+                "mem": (mx, my)}[name]
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "Store buffering",
+                    "A core's store waits in its buffer. Its next load does not wait for it.")
+        chip(p, W - 26 - 70, 34, s.mode, INK, STAGE, 12, anchor="start")
+        for n, body in ((1, TEAL), (2, NIGHT)):
+            x = CORES[n]
+            robot(p, x, S_DESK - 20, body, 1.0, 1.0, None)
+            p.text(x, S_DESK + 4, "thread %d, core %d" % (n, n), 12, INK, 600, "middle")
+            buf = getattr(s, "buf%d" % n)
+            p.rect(x - 64, S_DESK + 26, 128, 36, BRASS_LT if buf else STAGE, BRASS if buf else LINE,
+                   6, 1.3)
+            p.text(x, S_DESK + 20, "store buffer", 10, MUTED, 600, "middle")
+            if buf:
+                p.text(x, S_DESK + 49, buf, 12, INK, 700, "middle", mono=True)
+            result = getattr(s, "r%d" % n)
+            if result:
+                chip(p, x + (110 if n == 1 else -110), S_DESK - 70, result,
+                     RUST if result.endswith("0") and s.both > 0.5 else TEAL,
+                     RUST_LT if result.endswith("0") and s.both > 0.5 else TEAL_LT, 12)
+        if s.stall > 0.01:
+            p.text(CORES[1], S_DESK + 80, "core waits for the drain", 10.5, NIGHT, 700, "middle",
+                   opacity=clamp(s.stall))
+
+        mx, my = MEMORY
+        p.rect(mx - 110, my - 26, 220, 52, PAPER, INK, 8, 1.5)
+        p.text(mx, my - 34, "cache and memory", 10.5, MUTED, 600, "middle")
+        p.text(mx, my + 6, "x = %d    y = %d" % (s.mem_x, s.mem_y), 15, INK, 700, "middle",
+               mono=True)
+
+        if s.fly_a > 0.01:
+            a, b = spot(s.fly_from), spot(s.fly_to)
+            x, y = bezier(a, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 20), b, s.fly_u)
+            pill(p, x, y, s.fly_label, BRASS, BRASS_LT, 10.5, opacity=s.fly_a, shadow=None)
+
+        half = (W - 52 - 10) / 2
+        code_panel(p, 26, 372, half, "thread 1", THREAD_1, s.c1, size=10.2, lead=16.0)
+        code_panel(p, 36 + half, 372, half, "thread 2", THREAD_2, s.c2, size=10.2, lead=16.0,
+                   tint=NIGHT)
+        caption(p, tl, t, 456)
+        progress(p, tl, t, total, 542)
+
+    return tl, draw, 576
+
+
+def build_store_buffer(only=None):
+    tl, draw, height = store_buffer()
+    return render("ch26-store-buffer.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
     "pipeline": build_pipeline,
     "edge": build_edge,
+    "futex": build_futex,
+    "store-buffer": build_store_buffer,
 }
 
 if __name__ == "__main__":

@@ -60,8 +60,8 @@ then 8 and 9 as they are added, drills last.
         `ls | wc -l`)
   - [x] edge-triggered epoll (EPOLLET, drain to EAGAIN, the stall when reading
         once; EPOLLONESHOT, EPOLLEXCLUSIVE)
-- [ ] Part 8, under the locks
-  - [ ] futex mutex and memory-ordering litmus tests
+- [x] Part 8, under the locks
+  - [x] futex mutex and memory-ordering litmus tests
 - [ ] Part 9, production networking
   - [ ] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
   - [ ] TLS and mTLS with rustls
@@ -85,3 +85,5 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch24 File descriptors, fork, and pipes: three-level table, fork/exec, async-signal-safety, pipe rules, the five shell steps, close-on-exec; figures 24.1-24.3, animation ch24-pipe, plate RELAY
 - 2026-10-01 lab: epoll_edge.rs (Docker: LT read-once 3 events, ET read-once 1 event 5904 left, ET drain 1 event; ONESHOT 1/0/1; EXCLUSIVE 4 vs 1 woken)
 - 2026-10-01 ch25 Edge-triggered epoll: levels vs edges, ready list, the stall, EPOLLOUT under ET, drain caps, ONESHOT, EXCLUSIVE, SO_REUSEPORT; figures 25.1-25.2, animation ch25-edge, plate TRIP. Part 7 complete.
+- 2026-10-01 lab: futex_mutex.rs (Docker, 2 CPUs: 0 syscalls uncontended; wakes > waits from the conservative state 2; std faster with its spin) and litmus.rs (SB ~1.5% Relaxed and Rel/Acq on x86 Mac, 0 SeqCst; MP 0 on x86)
+- 2026-10-01 ch26 Futexes and memory ordering: futex wait/wake, lost wake-up, three-state mutex, measured syscalls, store buffers, TSO vs ARM, litmus tests; figures 26.1-26.3, animations ch26-futex and ch26-store-buffer, plate LATCH; Part 8 added to SUMMARY

@@ -663,6 +663,27 @@ def machine_signal(x, y):
     return out
 
 
+def machine_latch(x, y):
+    """A gate latch on a single brass word, and a bench of sleeping robots under a lamp."""
+    out = rect(x, y - 20, 22, 190, STEEL, rx=3) + rect(x + 150, y - 20, 22, 190, STEEL, rx=3)
+    for k in range(5):
+        out += rect(x + 30 + 24 * k, y - 10, 12, 170, "url(#steel)", rx=2)
+    out += rect(x + 10, y + 50, 152, 16, INK, rx=3)
+    out += rect(x + 54, y + 30, 64, 56, "url(#brass)", rx=6)
+    out += text(x + 86, y + 68, "2", 30, INK, anchor="middle", family="Menlo, monospace")
+    out += rect(x + 230, y + 120, 200, 14, "#6b4a2b", rx=3)
+    out += line(x + 245, y + 134, x + 245, y + 165, INK, 4) + line(x + 415, y + 134, x + 415, y + 165, INK, 4)
+    for k in range(3):
+        cx = x + 270 + 62 * k
+        out += rect(cx - 18, y + 66, 36, 54, STEEL_LIGHT, rx=8)
+        out += rect(cx - 16, y + 30, 32, 30, STEEL_PALE, rx=8)
+        out += line(cx - 9, y + 46, cx - 3, y + 46, INK, 2.5) + line(cx + 3, y + 46, cx + 9, y + 46, INK, 2.5)
+        out += text(cx + 22, y + 22 - 6 * k, "z", 16, TEAL)
+    out += line(x + 330, y - 30, x + 330, y - 4, INK, 3)
+    out += '<path d="M %.1f %.1f l 22 22 l -44 0 z" fill="%s" stroke="%s" stroke-width="2.5"/>' % (x + 330, y - 8, BRASS, INK)
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -723,6 +744,7 @@ CHAPTERS = [
     (23, machine_mmap, dict(head="tall", eyes="round", antenna="twin", held="clipboard", accent=TEAL), "FOLIO", "archivist of the mapped stacks"),
     (24, machine_switchboard, dict(head="box", eyes="round", antenna="dish", held="wrench", accent=BRASS), "RELAY", "switchboard operator of the descriptor table"),
     (25, machine_signal, dict(head="dome", eyes="visor", antenna="bolt", held="flag", accent=RUST), "TRIP", "signalman of the ready list"),
+    (26, machine_latch, dict(head="tall", eyes="mono", antenna="hat", held="wrench", accent=TEAL), "LATCH", "keeper of the sleeping queue"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 

@@ -50,7 +50,11 @@
 - [File descriptors, fork, and pipes](ch24-fd-table.md)
 - [Edge-triggered epoll](ch25-epoll-edge.md)
 
-# Part 8: Compact implementations
+# Part 8: Under the locks
+
+- [Futexes and memory ordering](ch26-futex.md)
+
+# Part 9: Compact implementations
 
 - [Compact implementations](ch30-drills.md)
 
