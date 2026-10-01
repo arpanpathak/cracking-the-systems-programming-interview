@@ -165,7 +165,7 @@ A chapter meets the bar when it has:
 The numbers below were measured on 2026-10-01: prose words, animations, and whole-file includes
 mid-chapter. Re-measure with the script in the log before starting.
 
-Priority order: ch17, ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
+Priority order: ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
 
 | Ch | Animations | Gap against the bar | Suggested work |
 |---|---|---|---|
@@ -185,7 +185,7 @@ Priority order: ch17, ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
 | **14 sharding** | ring | (a) about 300 words before code; (b) no motion for lock contention on one map against N shards, or for remapping when a node joins | A "one lock, many robots queueing" against "16 shard locks" animation with throughput counters; a ring animation adding a node, where only one arc moves, against `hash % N` moving almost all keys as the fail case |
 | 15 memory/OS | mem-hierarchy, false-sharing | The bump allocator and scheduler are static | A bump-pointer animation (alloc, alloc, reset); a round-robin scheduler animation |
 | 16 threads/locks | spin-lock, deadlock | The condvar semaphore and poisoning are static | A semaphore with permits as tokens, sleeping and waking robots (`notify_one`); a poisoning sequence |
-| **17 queues** | bounded-buffer | (b) no motion for close/shutdown or the lock-free ring buffer; (c) 7 whole files (mpmc at 83) | (1) Close: producers stop, consumers drain and then see `None`; the fail case is consumers blocked forever without close. (2) The ring buffer: head and tail indices with Acquire/Release, wrapping. Excerpts |
+| 17 queues | bounded-buffer, queue-wait, queue-close, ring-spsc | Done 2026-10-01: animations for waiting on a Condvar (fail: no notify_one), closing (fail: no notify_all hangs shutdown), and the SPSC ring (fail: tail published before the slot is written); main excerpts in place, complete files in 17.8 | Reference for concurrency chapters |
 | 18 pools | pool-lock, pool-panic | Backpressure and result channels are figures only | An animation of the bounded queue filling with the caller blocked, and per-job reply channels |
 | 19 reliability | token-bucket, single-flight | Retry with backoff and jitter is static | A retry timeline: attempts on a time axis with exponential gaps and jitter, against a thundering herd of synchronized retries as the fail case |
 | 20 sockets | bdp, handshake, epoll | Fine | None |

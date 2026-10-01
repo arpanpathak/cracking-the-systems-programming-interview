@@ -74,10 +74,18 @@ let mut q = self.not_empty.wait_while(q, |q| q.is_empty()).ok()?;
 true, and checks again after each wakeup. It returns the guard when the queue is not empty. The `.ok()?` turns a
 poisoned lock into `None`.
 
-<p class="listing"><b>Listing 17.2</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+Animation 17.1 follows one item from a producer to a consumer that is asleep in `wait_while`. Then it takes out
+`notify_one`.
+
+<figure class="anim">
+<video class="motion" src="figures/ch17-queue-wait.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A producer robot, a consumer robot, the queue between them, and a badge showing which thread holds the lock. The consumer calls pop on an empty queue, takes the lock, and wait_while puts it to sleep with the lock released. The producer takes the lock, pushes 7, and calls notify_one, which rings the consumer awake. The consumer wakes holding the lock, checks again, and pops 7. Last, with notify_one struck out, the producer pushes 8 and returns, and the consumer sleeps forever beside a full queue." data-chapters="[[0.0, &quot;empty&quot;], [8.7, &quot;push&quot;], [31.62, &quot;no notify&quot;]]"><img src="figures/ch17-queue-wait.gif" alt="A producer robot, a consumer robot, the queue between them, and a badge showing which thread holds the lock. The consumer calls pop on an empty queue, takes the lock, and wait_while puts it to sleep with the lock released. The producer takes the lock, pushes 7, and calls notify_one, which rings the consumer awake. The consumer wakes holding the lock, checks again, and pops 7. Last, with notify_one struck out, the producer pushes 8 and returns, and the consumer sleeps forever beside a full queue."></video>
+<figcaption><b>Animation 17.1</b> <code>wait_while</code> sleeps with the lock released and checks again when woken. Without <code>notify_one</code>, the item waits in the queue and the consumer never wakes.</figcaption>
+</figure>
+
+<p class="listing"><b>Listing 17.2</b> <code>main</code> (lines 31 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs}}
+{{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs:31:56}}
 ```
 
 `main` shares the queue through an `Arc`. Each thread is created inside a block that makes its own clone of the
@@ -162,7 +170,7 @@ The comments in `push` explain each decision. Figure 17.3 puts the steps of a bl
 
 <figure class="anim">
 <video class="motion" src="figures/ch17-bounded-buffer.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A producer, a consumer, and a buffer with three slots. The producer pushes 1, 2, and 3. push(4) finds the buffer full and waits on not_full. The consumer pops 1 and calls notify_one, the producer wakes, checks again, and pushes 4. The consumer then drains the buffer. Last, a second producer takes the freed slot first; with if in place of while, the woken producer pushes a fourth item into three slots." data-chapters="[[0.0, &quot;fill&quot;], [10.9, &quot;full&quot;], [27.92, &quot;drain&quot;], [38.22, &quot;if, not while&quot;]]"><img src="figures/ch17-bounded-buffer.gif" alt="A producer, a consumer, and a buffer with three slots. The producer pushes 1, 2, and 3. push(4) finds the buffer full and waits on not_full. The consumer pops 1 and calls notify_one, the producer wakes, checks again, and pushes 4. The consumer then drains the buffer. Last, a second producer takes the freed slot first; with if in place of while, the woken producer pushes a fourth item into three slots."></video>
-<figcaption><b>Animation 17.1</b> The producer sleeps while the buffer is full and wakes when a pop makes room. A fast producer cannot get more than three items ahead of the consumer.</figcaption>
+<figcaption><b>Animation 17.2</b> The producer sleeps while the buffer is full and wakes when a pop makes room. A fast producer cannot get more than three items ahead of the consumer.</figcaption>
 </figure>
 
 The line `guard = self.not_full.wait(guard).unwrap();` looks odd at first. `wait` takes the guard by value,
@@ -186,10 +194,10 @@ impl<T> BoundedQueue<T> {
 one producer through `not_full`. The `unwrap()` on `pop_front()` cannot fail. The loop ended because the queue was not empty, and the
 thread has held the lock since that check.
 
-<p class="listing"><b>Listing 17.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.6</b> <code>main</code> (lines 105 to 150). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:105:150}}
 ```
 
 `main` starts two producers and two consumers on a queue with room for 3 items. Producers sleep 30 ms after each
@@ -265,11 +273,7 @@ impl<T> BoundedQueue<T> {
 Each `lock()` and `wait()` call ends in `.map_poison()?`. The logic is the same as listing 17.4, and each method
 now returns a `Result`.
 
-<p class="listing"><b>Listing 17.9</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs}}
-```
+The complete program is listing 17.19 at the end of the chapter.
 
 The threads in `main` handle an error by printing it with `dbg!` and leaving their loop with `break`.
 
@@ -299,7 +303,7 @@ The third version returns a general error type:
 `Box<dyn Error + Send + Sync>` can hold any error type. `+ Send + Sync` is needed because the error travels
 between threads: each thread returns a `Result`, and `join` hands it to the main thread.
 
-<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.9</b> <code>push</code> (lines 29 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 ```rust
 impl<T> BoundedQueue<T> {
@@ -314,10 +318,10 @@ borrows the mutex. A `Box<dyn Error>` must not borrow anything local, so the poi
 `to_string()` turns it into a `String`, which owns its text. Then `?` converts the `String` into the boxed error,
 through a `From` implementation in the standard library.
 
-<p class="listing"><b>Listing 17.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.10</b> <code>main</code> (lines 72 to 111). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:72:111}}
 ```
 
 `main` builds the threads with two iterator chains, `producers` and `consumers`. These are lazy: no thread starts
@@ -415,11 +419,7 @@ consumers pop 20 each:
 
 `PER_CONSUMER` is computed from the other constants, so every pushed item is popped and every thread finishes.
 
-<p class="listing"><b>Listing 17.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs}}
-```
+The complete program is listing 17.21 at the end of the chapter.
 
 `let buffer = &buffer;` replaces the buffer with a reference to it. Each `move` closure then copies the reference
 into its thread. The scope guarantees that the buffer outlives all the threads.
@@ -454,7 +454,7 @@ The library version adds a way to **close** the queue (figure 17.5).
 <figcaption><b>Figure 17.5</b> What each operation does after <code>close</code>.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 17.13</b> The state (lines 16 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.11</b> The state (lines 16 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:11:14}}
@@ -465,7 +465,7 @@ The library version adds a way to **close** the queue (figure 17.5).
 The mutex now protects a small struct: the items, the capacity, and a `closed` flag. The flag must be inside the
 mutex, because threads check it together with the items.
 
-<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 94).</p>
+<p class="listing"><b>Listing 17.12</b> <code>push</code> and <code>pop</code> (lines 47 to 94).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
@@ -484,7 +484,7 @@ is not lost, and the caller decides what to do with it.
 items already in it. Only a closed queue that is empty returns `None`. A consumer can therefore loop with
 `while let Some(item) = queue.pop()`, and the loop ends after the last item.
 
-<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 109 to 122).</p>
+<p class="listing"><b>Listing 17.13</b> <code>close</code> (lines 109 to 122).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
@@ -498,11 +498,15 @@ impl<T> BoundedQueue<T> {
 thread sees `closed` in its loop and returns. Calling `close` twice does no harm. An operation that gives the same
 result when repeated is called **idempotent**.
 
-<p class="listing"><b>Listing 17.16</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+Animation 17.3 closes a full queue while a producer waits in `push`. Then it closes a queue without waking
+anyone.
 
-```rust
-{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs}}
-```
+<figure class="anim">
+<video class="motion" src="figures/ch17-queue-close.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs." data-chapters="[[0.0, &quot;full&quot;], [8.22, &quot;close&quot;], [25.62, &quot;drain&quot;], [36.18, &quot;no notify_all&quot;]]"><img src="figures/ch17-queue-close.gif" alt="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs."></video>
+<figcaption><b>Animation 17.3</b> <code>close</code> sets the flag and wakes every waiter. <code>push</code> hands its item back, and <code>pop</code> drains the queue before it returns <code>None</code>. A close that wakes nobody hangs the shutdown.</figcaption>
+</figure>
+
+The complete file, with its tests, is listing 17.22 at the end of the chapter.
 
 The tests check the four promises:
 
@@ -554,7 +558,7 @@ written before it.
 
 ### 17.7.2 The type
 
-<p class="listing"><b>Listing 17.17</b> The ring (lines 25 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.14</b> The ring (lines 25 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:19:23}}
@@ -575,7 +579,7 @@ Three new pieces of Rust appear here:
 
 ### 17.7.3 Push and pop
 
-<p class="listing"><b>Listing 17.18</b> <code>push</code> and <code>pop</code> (lines 71 to 107).</p>
+<p class="listing"><b>Listing 17.15</b> <code>push</code> and <code>pop</code> (lines 71 to 107).</p>
 
 ```rust
 impl<T, const N: usize> SpscRing<T, N> {
@@ -597,7 +601,15 @@ slot with `MaybeUninit::write`, and publishes it by storing `tail + 1` with `Rel
 The counters use `wrapping_add` and `wrapping_sub`. After 2 to the power 64 operations a counter would wrap around
 to 0, and wrapping arithmetic keeps `tail - head` correct across that point.
 
-<p class="listing"><b>Listing 17.19</b> <code>Drop</code> (lines 116 to 121).</p>
+Animation 17.4 runs the ring with 8 slots. The producer pushes and the consumer pops, the counters grow past 8,
+and the ring fills. The last part stores `tail` before writing the slot.
+
+<figure class="anim">
+<video class="motion" src="figures/ch17-ring-spsc.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A producer robot, a consumer robot, and eight slots between them, with tail and head labels showing each counter and its value % 8. push loads tail and head, checks for room, writes the value into slot tail % 8, and then stores tail + 1 with Release. pop loads tail with Acquire, reads slot head % 8, and stores head + 1. The counters keep growing past 8 and wrap through the slots. When tail - head reaches 8 the ring is full, and push returns Err with the value. Last, a push that stores tail before writing the slot lets the consumer read slot 0 while it is still empty." data-chapters="[[0.0, &quot;push&quot;], [18.98, &quot;pop&quot;], [26.37, &quot;wrap&quot;], [41.68, &quot;full&quot;], [59.71, &quot;publish first&quot;]]"><img src="figures/ch17-ring-spsc.gif" alt="A producer robot, a consumer robot, and eight slots between them, with tail and head labels showing each counter and its value % 8. push loads tail and head, checks for room, writes the value into slot tail % 8, and then stores tail + 1 with Release. pop loads tail with Acquire, reads slot head % 8, and stores head + 1. The counters keep growing past 8 and wrap through the slots. When tail - head reaches 8 the ring is full, and push returns Err with the value. Last, a push that stores tail before writing the slot lets the consumer read slot 0 while it is still empty."></video>
+<figcaption><b>Animation 17.4</b> The producer writes the slot, then publishes <code>tail</code>; the consumer reads <code>tail</code>, then the slot. Publishing first lets the consumer read a slot that was never written.</figcaption>
+</figure>
+
+<p class="listing"><b>Listing 17.16</b> <code>Drop</code> (lines 116 to 121).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:116:121}}
@@ -616,11 +628,7 @@ into a `Producer` handle and a `Consumer` handle that cannot be cloned. Exercise
 
 </div>
 
-<p class="listing"><b>Listing 17.20</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs}}
-```
+The complete file, with its tests, is listing 17.23 at the end of the chapter.
 
 The concurrent test sends 50,000 values through a ring of 256 slots. When the ring is full, the producer calls
 `thread::yield_now()` and tries again. When it is empty, the consumer does the same. The producer ends with a
@@ -635,6 +643,52 @@ test problems::ring_buffer::tests::dropped_ring_drops_queued_items ... ok
 test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_order ... ok
 
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
+```
+
+## 17.8 The complete files
+
+Each file below is shown whole, in the order the chapter used it.
+
+<p class="listing"><b>Listing 17.17</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs}}
+```
+
+<p class="listing"><b>Listing 17.18</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs}}
+```
+
+<p class="listing"><b>Listing 17.19</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs}}
+```
+
+<p class="listing"><b>Listing 17.20</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs}}
+```
+
+<p class="listing"><b>Listing 17.21</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs}}
+```
+
+<p class="listing"><b>Listing 17.22</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs}}
+```
+
+<p class="listing"><b>Listing 17.23</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/ring_buffer.rs}}
 ```
 
 <div class="summary" markdown="1">
