@@ -3,18 +3,21 @@
     python3 tools/animations.py parse-trace
 """
 
-from anim_kernel import lines_containing
+from motion_kit import Panel, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
-PARSE = lines_containing("src/problems/adt_idioms.rs",
-                         "let mut parts = line.split_whitespace();",
-                         ".ok_or(CommandError::Empty)?;",
-                         "let name = argument(&mut parts, \"name\")?.to_string();",
-                         "let raw = argument(&mut parts, \"gpu count\")?;",
-                         ".map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;",
-                         "let gpus = GpuCount::new(value)",
-                         "Ok(Self::Create { name, gpus })")
+PARSE = Panel("src/problems/adt_idioms.rs",
+              [("let mut parts = line.split_whitespace();", ".ok_or(CommandError::Empty)?;"),
+               ("match verb {", None),
+               ("\"create\" => {", ("other => Err(CommandError::UnknownVerb", 1))],
+              ["let mut parts = line.split_whitespace();",
+               ".ok_or(CommandError::Empty)?;",
+               "let name = argument(&mut parts, \"name\")?.to_string();",
+               "let raw = argument(&mut parts, \"gpu count\")?;",
+               (".map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;", 0),
+               "let gpus = GpuCount::new(value)",
+               "Ok(Self::Create { name, gpus })"])
 STAGE_X = [120, 270, 420, 570, 720]
 STAGE_NAMES = ["split", "verb", "name", "parse u32", "GpuCount::new"]
 LANE = 186
@@ -117,13 +120,13 @@ def parse_trace():
             chip(p, W / 2, LANE + 88, s.result, TEAL if ok else RUST, TEAL_LT if ok else RUST_LT,
                  12)
 
-        code_panel(p, 26, 300, W - 52, "Command::parse", PARSE, s.code, size=10.4, lead=15.5,
-                   tint=RUST if int(s.failed) >= 0 else TEAL,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 452)
-        progress(p, tl, t, total, 538)
+        PARSE.draw(p, 26, 300, W - 52, "Command::parse", s, t, size=10.2, lead=13.6,
+                   tint=RUST if int(s.failed) >= 0 else TEAL)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 572
+    CAP, RAIL, height = layout(300, len(PARSE), 13.6)
+    return tl, draw, height
 
 
 def build_parse_trace(only=None):

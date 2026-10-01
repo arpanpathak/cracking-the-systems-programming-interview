@@ -203,3 +203,40 @@ Process for each chapter, as done for ch13:
 4. Move whole files into "The complete files". Renumber captions sequentially. Fix references by hand.
    Run `excerpts.py check`, `lint_prose.py`, and `lint_figures.py`.
 5. Build, commit (no attribution lines), push, and republish gh-pages.
+
+## Code panels and unhappy paths (audit, 2026-10-01)
+
+**Code panels.** Every animation's code panel now comes from `motion_kit.Panel` or `Panels`. Both read
+contiguous ranges of the lab file with their indentation, and mark any gap with `// ...` at the right depth.
+`lines_containing` and `lines_at` stripped indentation and showed `None =>` arms without their `match`. The
+hand-typed panels in `anim_async`, `anim_http`, and `anim_sockets` paraphrased the code. All of these are gone.
+
+- New panels must use `Panel(path, ranges, focus)`. The timeline keeps counting 0, 1, 2 through `focus`,
+  and `Panel.at` maps those steps onto real lines.
+- A panel group that walks several functions uses `Panels`. It shows the function holding the current line.
+- A counterfactual variant, the code with a bug put in, is the one allowed hand-written panel. Write it in full
+  with real indentation, and title it as a variant, such as "a version that advances after every node".
+
+**Unhappy paths.** These animations had no failure chapter. All twelve now have one, built as listed, with a
+struck line in the real panel. Two deviate from the plan: ch12-dijkstra shows an unreachable node, because the
+lazy-deletion loop re-processes a node after a negative edge rather than returning a wrong answer. ch16-spin-lock
+shows a leaked guard (`mem::forget`) instead of a Relaxed unlock:
+
+| Animation | Unhappy path to add |
+|---|---|
+| ch03-three-sum | no skip of duplicate values: the same triplet is reported twice |
+| ch03-kmp-search | a pattern that is absent: the scan reaches the end, and no restart is wasted |
+| ch03-kmp-lps | resetting `len` to 0 on a mismatch instead of `lps[len - 1]`: a shorter border is missed |
+| ch05-top-k | keeping every count in a max-heap: O(n log n) and n entries, against k in the min-heap |
+| ch12-dfs | no visited set on a graph with a cycle: the walk revisits nodes |
+| ch12-dijkstra | a negative edge: a settled node gets a shorter path later, and the answer is wrong |
+| ch12-islands | not marking land as visited: one island is counted from each of its cells |
+| ch12-kruskal | no union-find check: an edge inside one component closes a cycle |
+| ch16-spin-lock | `Relaxed` on unlock: the next holder can read stale data (drawn as the missing pair) |
+| ch17-bounded-buffer | `if` instead of `while` around `wait`: a woken consumer pops from an empty queue |
+| ch19-token-bucket | no cap on refill: a long idle period allows a burst far above the rate |
+| ch26-store-buffer | already a failure demo; mark its Relaxed outcome as `fail` for consistency |
+
+**One animation per snippet.** The user expects a short animation after each code block that introduces
+behaviour, not one per section. ch09 now has eight: build, reverse, remove, replace, layouts, drop, doubly, and
+pop_back. Apply the same rule to the chapters in the depth table above.

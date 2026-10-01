@@ -3,17 +3,22 @@
     python3 tools/animations.py mem-hierarchy false-sharing
 """
 
-from anim_kernel import lines_containing
+from motion_kit import Panel, Panels, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
-LOOPS = lines_containing("src/bin/cs_locality.rs", "let sum = data.iter().sum();",
-                         "index = (index + STRIDE) % data.len();",
-                         "sum = sum.wrapping_add(data[index]);")
-SHARING = lines_containing("src/bin/false_sharing.rs", "same.a.fetch_add(1, Ordering::Relaxed);",
-                           "same.b.fetch_add(1, Ordering::Relaxed);",
-                           "p0.0.fetch_add(1, Ordering::Relaxed);",
-                           "p1.0.fetch_add(1, Ordering::Relaxed);")
+LOOPS = Panel("src/bin/cs_locality.rs",
+              [("fn sequential_sum(data: &[u64])", "}"), ("fn strided_sum(data: &[u64])", "}")],
+              ["let sum = data.iter().sum();", "index = (index + STRIDE) % data.len();",
+               "sum = sum.wrapping_add(data[index]);"])
+SHARING = Panels("src/bin/false_sharing.rs",
+                 [[(("thread::scope(|s| {", 0), "}")], [(("thread::scope(|s| {", 1), "}")]],
+                 ["two threads, one struct: same.a and same.b",
+                  "two threads, padded: p0 and p1"],
+                 ["same.a.fetch_add(1, Ordering::Relaxed);",
+                  "same.b.fetch_add(1, Ordering::Relaxed);",
+                  "p0.0.fetch_add(1, Ordering::Relaxed);",
+                  "p1.0.fetch_add(1, Ordering::Relaxed);"])
 
 # ------------------------------------------------- 15.1: the memory hierarchy
 
@@ -128,13 +133,13 @@ def mem_hierarchy():
             x, y = bezier(a, ((a[0] + b[0]) / 2, LEVEL_Y + LEVEL_H + 50), b, s.line_u)
             pill(p, x, y, "64-byte line", BRASS, BRASS_LT, 10, opacity=s.line_a, shadow=None)
 
-        code_panel(p, 26, 300, W - 52, "sequential_sum and strided_sum", LOOPS, s.code, size=11.0,
-                   lead=17.0, tint=RUST if s.mode == "scatter" else TEAL,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 404)
-        progress(p, tl, t, total, 490)
+        LOOPS.draw(p, 26, 300, W - 52, "sequential_sum and strided_sum", s, t, size=10.6,
+                   lead=14.0, tint=RUST if s.mode == "scatter" else TEAL)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 524
+    CAP, RAIL, height = layout(300, len(LOOPS), 14.0)
+    return tl, draw, height
 
 
 # ------------------------------------------------- 15.4: false sharing
@@ -223,13 +228,13 @@ def false_sharing():
             x, y = bezier(a, ((a[0] + b[0]) / 2, F_DESK + 30), b, s.move_u)
             pill(p, x, y, "line a,b", RUST, RUST_LT, 10.5, opacity=s.move_a, shadow=None)
 
-        code_panel(p, 26, 340, W - 52, "the two threads' loops", SHARING, s.code, size=11.0,
-                   lead=17.0, tint=TEAL if s.mode == "padded" else RUST,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 464)
-        progress(p, tl, t, total, 550)
+        SHARING.draw(p, 26, 340, W - 52, s, t, size=10.6, lead=14.0,
+                     tint=TEAL if s.mode == "padded" else RUST)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 584
+    CAP, RAIL, height = layout(340, len(SHARING), 14.0)
+    return tl, draw, height
 
 
 def build_mem_hierarchy(only=None):

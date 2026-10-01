@@ -19,10 +19,11 @@ for k in ADJ:
 
 
 def furniture(p, tl, t, total, title, sub, code_title, code, line, cap_y, rail_y, code_y,
-              tint=TEAL, size=11.0, lead=15.6):
+              tint=TEAL, size=11.0, lead=15.6, strike=-1.0):
     title_block(p, title, sub)
-    code_panel(p, 26, code_y, W - 52, code_title, code, line, size=size, lead=lead, tint=tint,
-               reveal=tl.reached("code", t))
+    code_panel(p, 26, code_y, W - 52, code_title, code, line, size=size, lead=lead,
+               tint=RUST if strike >= 0 else tint, reveal=tl.reached("code", t),
+               strike=int(strike) if strike >= 0 else None)
     caption(p, tl, t, cap_y)
     progress(p, tl, t, total, rail_y)
 
@@ -156,7 +157,22 @@ def dfs():
     steps.append(dict(say="The order is %s. The newest entry goes first, so the walk runs deep before it "
                       "goes wide." % ", ".join(map(str, order)), at=-1, hot=[], kind="insight", code=-1.0,
                       hold=1.6))
-    tl = play(steps, dict(stack=[], order=[], at=-1, hot=[], code=-1.0))
+    check = line_of(code, "if visited[current_node]")
+    steps.append(dict(chapter="no visited check", say="Now run it without the visited check. Every pop is "
+                      "recorded, and every neighbor is pushed again.", kind="fail", stack=[0], order=[],
+                      at=-1, hot=[], strike=float(check), code=float(line_of(code, "let mut stack"))))
+    stack, order = [0], []
+    for n in range(9):
+        cur = stack.pop()
+        order.append(cur)
+        stack.extend(ADJ[cur])
+        steps.append(dict(say="pop returns %d. It is recorded again%s, and %s are pushed." % (
+            cur, "" if order.count(cur) > 1 else " for the first time", ", ".join(map(str, ADJ[cur]))),
+            kind="fail", at=cur, stack=list(stack)[-9:], order=list(order)[-9:], code=float(push),
+            hot=[[min(cur, x), max(cur, x)] for x in ADJ[cur]], dur=0.4, hold=0.1 if n > 1 else 0.6))
+    steps.append(dict(say="Each node pushes its neighbor back. The stack never empties, and the loop never "
+                      "ends.", kind="fail", hot=[], code=-1.0, hold=2.2))
+    tl = play(steps, dict(stack=[], order=[], at=-1, hot=[], code=-1.0, strike=-1.0))
 
     def draw(p, s, total):
         t = s.t
@@ -165,7 +181,7 @@ def dfs():
         lane(p, 440, 316, "result", s.order, TEAL)
         furniture(p, tl, t, total, "Depth-first search with a stack",
                   "The same loop as BFS, with a stack in place of the queue.",
-                  "dfs_vec", code, s.code, cap_y, rail_y, CODE_Y)
+                  "dfs_vec", code, s.code, cap_y, rail_y, CODE_Y, strike=s.strike)
 
     CODE_Y = 372
     cap_y, rail_y, height = layout(CODE_Y, len(code))
@@ -209,8 +225,22 @@ def islands():
                                   % (r, c), scan="%d %d" % (r, c), hold=0.1))
     steps.append(dict(say="The scan is done. Each fill marked one whole island, so count is %d." % count,
                       scan="", kind="insight", code=-1.0, hold=1.6))
+    test = line_of(code, "!visited.contains")
+    steps.append(dict(chapter="no visited check", say="Now drop && !visited.contains(&(r, c)) from the scan's "
+                      "test.", kind="fail", strike=float(test), count=0, owner={}, scan="", code=-1.0))
+    bad = 0
+    for r in range(n):
+        for c in range(n):
+            if grid[r][c] == 1:
+                bad += 1
+                steps.append(dict(say="(%d, %d) is land, so count becomes %d, visited or not." % (r, c, bad),
+                                  kind="fail", scan="%d %d" % (r, c), count=bad, code=float(found),
+                                  dur=0.4, hold=0.2))
+    steps.append(dict(say="count is %d, not 2. Every land cell started its own island, because the scan "
+                      "never asked whether a fill had reached it." % bad, kind="fail", scan="", code=-1.0,
+                      hold=2.2))
     steps = [{a: b for a, b in st.items() if b is not None} for st in steps]
-    tl = play(steps, dict(scan="", count=0, owner={}, code=-1.0))
+    tl = play(steps, dict(scan="", count=0, owner={}, code=-1.0, strike=-1.0))
 
     def draw(p, s, total):
         t = s.t
@@ -229,10 +259,11 @@ def islands():
         if s.scan:
             r, c = map(int, s.scan.split())
             p.rect(x0 + c * size - 2, y0 + r * size - 2, size + 4, size + 4, "none", RUST, 10, 2.6)
-        p.text(x0 + n * size + 30, y0 + 30, "count = %d" % s.count, 18, INK, 700, mono=True)
+        p.text(x0 + n * size + 30, y0 + 30, "count = %d" % s.count, 18,
+               RUST if s.strike >= 0 else INK, 700, mono=True)
         furniture(p, tl, t, total, "Counting islands: scan, then flood fill",
                   "Each unvisited land cell starts a new island; the fill marks the rest of it.",
-                  "count_islands (the scan)", code, s.code, cap_y, rail_y, CODE_Y)
+                  "count_islands (the scan)", code, s.code, cap_y, rail_y, CODE_Y, strike=s.strike)
 
     CODE_Y = 356
     cap_y, rail_y, height = layout(CODE_Y, len(code))
@@ -383,7 +414,11 @@ def dijkstra():
                                   hot=[min(cur, nb), max(cur, nb)], code=float(relax), hold=0.2))
     steps.append(dict(say="Every node is settled: A 0, B 3, C 1, D 4. B's first entry, (4, B), was stale and "
                       "skipped.", at=-1, hot=[], kind="insight", code=-1.0, hold=1.6))
-    tl = play(steps, dict(dist={}, heap=[], at=-1, settled=[], hot=[], code=-1.0))
+    steps.append(dict(chapter="unreachable", say="Now add a node E with no edges. No relaxation ever reaches it, "
+                      "so nothing pushes E.", kind="fail", lone=1.0, code=float(pop), hold=1.0))
+    steps.append(dict(say="The heap empties, and distances[E] is still None. The caller must handle None: no "
+                      "path, not distance 0.", kind="fail", heap=[], code=-1.0, hold=2.2))
+    tl = play(steps, dict(dist={}, heap=[], at=-1, settled=[], hot=[], code=-1.0, lone=0.0))
 
     def draw(p, s, total):
         t = s.t
@@ -391,6 +426,9 @@ def dijkstra():
         draw_graph(p, DIJK_POS, [(a, b, w) for a, b, w in DIJK_EDGES], set(int(x) for x in s.settled), set(),
                    s.at, hot_edges=hot, labels=N, dist=s.dist)
         lane(p, 26, 334, "min_heap (smallest first)", s.heap, hot_first=True)
+        if s.lone > 0.01:
+            node(p, 740, 300, "E", RUST_LT, RUST, r=22, size=16)
+            p.text(740, 264, "dist None", 11.5, RUST, 700, "middle", mono=True)
         furniture(p, tl, t, total, "Dijkstra: settle the closest node, then relax its edges",
                   "Weights are non-negative, so the smallest cost in the heap is final.",
                   "dijkstra_vec", code, s.code, cap_y, rail_y, CODE_Y, size=10.6, lead=15.0)
@@ -443,8 +481,20 @@ def kruskal():
                               skipped=[list(k) for k in skipped], code=float(union)))
     steps.append(dict(say="Four edges join five nodes, with total weight %d." % total, cur=[], kind="insight",
                       code=-1.0, hold=1.6))
+    steps.append(dict(chapter="no check", say="Now keep every edge without asking union-find. Same sorted "
+                      "order.", kind="fail", strike=float(union), kept=[], skipped=[], total=0, cur=[],
+                      group={str(k): 0 for k in KR_POS}, code=-1.0))
+    all_kept, bad_total = [], 0
+    for a, b, w in order:
+        all_kept.append([min(a, b), max(a, b)])
+        bad_total += w
+        steps.append(dict(say="%d-%d (%d) is kept." % (a, b, w), kind="fail", cur=[min(a, b), max(a, b)],
+                          kept=[list(k) for k in all_kept], total=bad_total, code=float(keep), dur=0.4,
+                          hold=0.2))
+    steps.append(dict(say="Six edges for five nodes, total %d instead of %d. 1-2-3 and 0-1-2 are cycles, so "
+                      "this is not a tree." % (bad_total, total), kind="fail", cur=[], code=-1.0, hold=2.2))
     steps = [{x: y for x, y in st.items() if y is not None} for st in steps]
-    tl = play(steps, dict(cur=[], kept=[], skipped=[], group={}, total=0, code=-1.0))
+    tl = play(steps, dict(cur=[], kept=[], skipped=[], group={}, total=0, code=-1.0, strike=-1.0))
 
     def draw(p, s, total_):
         t = s.t
@@ -472,7 +522,7 @@ def kruskal():
         p.text(W - 40, 134, "same colour = same set", 11.5, MUTED, 600, "end")
         furniture(p, tl, t, total_, "Kruskal: cheapest edges first, skipping cycles",
                   "Union-find tells whether an edge joins two separate pieces.",
-                  "kruskals", code, s.code, cap_y, rail_y, CODE_Y)
+                  "kruskals", code, s.code, cap_y, rail_y, CODE_Y, strike=s.strike)
 
     CODE_Y = 330
     cap_y, rail_y, height = layout(CODE_Y, len(code))

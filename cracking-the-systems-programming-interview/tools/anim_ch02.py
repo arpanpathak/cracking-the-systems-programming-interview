@@ -3,13 +3,15 @@
     python3 tools/animations.py bufreader
 """
 
-from anim_kernel import lines_containing
+from motion_kit import Panel, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
-CODE = lines_containing("src/bin/readfile_line_by_line.rs", "let reader = BufReader::new(file);",
-                        "for (i, line) in reader.lines().enumerate() {", "let line = line?;",
-                        "println!(\"{}: {}\", i + 1, line);")
+CODE = Panel("src/bin/readfile_line_by_line.rs",
+             [("let reader = BufReader::new(file);", ("println!", 1))],
+             ["let reader = BufReader::new(file);",
+              "for (i, line) in reader.lines().enumerate() {", "let line = line?;",
+              "println!(\"{}: {}\", i + 1, line);"])
 FILE = "a=1\nb=2\nc=3\n"
 LINES = ["a=1", "b=2", "c=3"]
 BOUNDARY = 300
@@ -109,13 +111,13 @@ def bufreader():
             x = lerp(KERNEL_X - 80, PROG_X + 120, s.back_u)
             pill(p, x, 250, s.back_label, BRASS, BRASS_LT, 10, opacity=s.back_a, shadow=None)
 
-        code_panel(p, 26, 322, W - 52, "readfile_line_by_line", CODE, s.code, size=11.0, lead=16.5,
-                   tint=TEAL if s.mode == "buffered" else RUST,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 452)
-        progress(p, tl, t, total, 538)
+        CODE.draw(p, 26, 322, W - 52, "readfile_line_by_line", s, t, size=11.0, lead=16.0,
+                  tint=TEAL if s.mode == "buffered" else RUST)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 572
+    CAP, RAIL, height = layout(322, len(CODE), 16.0)
+    return tl, draw, height
 
 
 def build_bufreader(only=None):

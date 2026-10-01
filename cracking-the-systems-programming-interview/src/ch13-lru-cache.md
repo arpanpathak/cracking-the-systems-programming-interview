@@ -490,7 +490,7 @@ has no `self`. It names both the type and the trait.
 {{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs}}
 ```
 
-The list half of this file was explained in section 9.7. Run only the cache half with the `cache` argument, and
+The list half of this file was explained in section 9.8. Run only the cache half with the `cache` argument, and
 always with `--release`. A debug build is not optimized, and its times do not show how the code performs.
 
 ```text

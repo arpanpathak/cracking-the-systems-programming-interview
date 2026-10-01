@@ -8,6 +8,7 @@ import pathlib
 
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
+from motion_kit import Panel, Panels, layout, nth_after
 
 LAB = pathlib.Path(__file__).resolve().parent.parent.parent / "rust-interview-lab"
 
@@ -35,7 +36,19 @@ ROBOT_X, DESK = 92, 222
 COPY = (356, 196)       # the private copy's frame
 DISK = (736, 150)
 
-MAIN = lines_at("src/bin/mmap_file.rs", [138, 141, 145, 151, 152, 159, 160])
+MAIN = Panel("src/bin/mmap_file.rs",
+             [("let mut shared = Mapping::new(&file, len, true)?;",
+               "let second = minor_faults() - before;"),
+              ("shared.bytes_mut()[..5].copy_from_slice(b\"HELLO\");", "drop(shared);"),
+              ("let mut private = Mapping::new(&file, len, false)?;",
+               "private.bytes_mut()[..5]")],
+             ["let mut shared = Mapping::new(&file, len, true)?;",
+              ("touch_every_page(shared.bytes(), page);", 0),
+              ("touch_every_page(shared.bytes(), page);", 1),
+              "shared.bytes_mut()[..5].copy_from_slice(b\"HELLO\");",
+              "shared.sync()?;",
+              "let mut private = Mapping::new(&file, len, false)?;",
+              "private.bytes_mut()[..5]"])
 
 
 def cell_xy(origin, i):
@@ -285,12 +298,12 @@ def mmap_faults():
             x, y = bezier(a, ((a[0] + b[0]) / 2, COPY[1] + 70), b, s.copy_u)
             pill(p, x, y, "copy page 0", BRASS, BRASS_LT, 10.5, opacity=s.copy_fly)
 
-        code_panel(p, 26, 282, W - 52, "main", MAIN, s.code, size=10.6, lead=16.0,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 448)
-        progress(p, tl, t, total, 534)
+        MAIN.draw(p, 26, 282, W - 52, "main", s, t, size=10.4, lead=14.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 566
+    CAP, RAIL, height = layout(282, len(MAIN), 14.0)
+    return tl, draw, height
 
 
 def build_mmap_faults(only=None):
@@ -300,7 +313,15 @@ def build_mmap_faults(only=None):
 
 # ------------------------------------------------- 24.3: a pipeline, by hand
 
-PIPE_CODE = lines_at("src/bin/fd_table.rs", range(158, 166))
+PIPE_CODE = Panel("src/bin/fd_table.rs",
+                  [(("let (read_end, write_end) = pipe()?;",
+                     nth_after("src/bin/fd_table.rs", "let (read_end, write_end) = pipe()?;",
+                               "fn ls_wc(")), "wait(reader)?;")],
+                  ["let (read_end, write_end) = pipe()?;",
+                   "let writer = spawn(&ls, None, Some(write_end.as_raw_fd()))?;",
+                   "let reader = spawn(&wc, Some(read_end.as_raw_fd()), None)?;",
+                   "drop(read_end);", "drop(write_end);", "wait(writer)?;", "wait(writer)?;",
+                   "wait(reader)?;"])
 ROW_H = 18
 PROCS = {"parent": (88, 156), "ls": (350, 418), "wc": (600, 668)}   # robot x, table x
 PDESK = 196
@@ -494,13 +515,13 @@ def pipeline():
         if s.printed > 0.01:
             chip(p, PROCS["wc"][1] + 48, 218, "stdout: 3", TEAL, TEAL_LT, 11, opacity=clamp(s.printed))
 
-        code_panel(p, 26, 322, W - 52, "ls_wc", PIPE_CODE, s.code, size=10.6, lead=16.0,
-                   strike=int(s.strike) if s.strike >= 0 else None,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 502)
-        progress(p, tl, t, total, 588)
+        PIPE_CODE.draw(p, 26, 322, W - 52, "ls_wc", s, t, strike=s.strike, size=10.6,
+                       lead=16.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 622
+    CAP, RAIL, height = layout(322, len(PIPE_CODE), 16.0)
+    return tl, draw, height
 
 
 def build_pipeline(only=None):
@@ -698,7 +719,17 @@ def build_edge(only=None):
 
 # ------------------------------------------------- 26.2: the futex mutex
 
-FUTEX_CODE = lines_at("src/bin/futex_mutex.rs", [80, 83, 90, 92, 97, 99])
+FUTEX_CODE = Panels("src/bin/futex_mutex.rs",
+                    [[("pub fn lock(&self) -> Guard<'_, T> {", "}")],
+                     [("fn lock_contended(&self) {", "}")],
+                     [("fn unlock(&self) {", "}")]],
+                    ["lock", "lock_contended", "unlock"],
+                    [".compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed)",
+                     "self.lock_contended();",
+                     "while self.state.swap(CONTENDED, Acquire) != UNLOCKED {",
+                     "futex_wait(&self.state, CONTENDED);",
+                     "if self.state.swap(UNLOCKED, Release) == CONTENDED {",
+                     "futex_wake_one(&self.state);"])
 A_X, B_X, F_DESK = 110, 710, 214
 WORD = (410, 104)
 KERNEL = (250, 168, 320, 78)
@@ -856,12 +887,12 @@ def futex():
                            "night": (NIGHT, NIGHT_LT)}[s.op_color]
             pill(p, x, y, s.op_label, color, fill, 10.5, opacity=s.op_a, shadow=None)
 
-        code_panel(p, 26, 290, W - 52, "lock, lock_contended, unlock", FUTEX_CODE, s.code,
-                   size=10.4, lead=16.0, reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 436)
-        progress(p, tl, t, total, 522)
+        FUTEX_CODE.draw(p, 26, 290, W - 52, s, t, size=10.4, lead=15.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 556
+    CAP, RAIL, height = layout(290, len(FUTEX_CODE), 15.0)
+    return tl, draw, height
 
 
 def build_futex(only=None):
@@ -877,8 +908,10 @@ def lines_containing(path, *texts):
     return [next(line.strip() for line in source if text in line) for text in texts]
 
 
-THREAD_1 = lines_containing("src/bin/litmus.rs", "x[i].store(1, store);", "r1[i].store(y[i].load")
-THREAD_2 = lines_containing("src/bin/litmus.rs", "y[i].store(1, store);", "r2[i].store(x[i].load")
+THREAD_1 = Panel("src/bin/litmus.rs", [(("scope.spawn(|| {", 0), "}")],
+                 ["x[i].store(1, store);", "r1[i].store(y[i].load"])
+THREAD_2 = Panel("src/bin/litmus.rs", [(("scope.spawn(|| {", 1), "}")],
+                 ["y[i].store(1, store);", "r2[i].store(x[i].load"])
 CORES = {1: 150, 2: 670}
 S_DESK = 226
 MEMORY = (410, 322)
@@ -911,13 +944,13 @@ def store_buffer():
     fly("y?", "c1", "mem")
     fly("0", "mem", "c1", 0.6)
     tl.set(r1="r1 = 0")
-    tl.say("Thread 2 loads x from memory, and also reads 0.")
+    tl.say("Thread 2 loads x from memory, and also reads 0.", "fail")
     tl.set(c2=1.0)
     fly("x?", "c2", "mem")
     fly("0", "mem", "c2", 0.6)
     tl.set(r2="r2 = 0")
     tl.say("The buffers drain only now. Both loads read 0, though both stores came first in "
-           "program order.", "insight")
+           "program order.", "fail")
     fly("x = 1", "buf1", "mem", 0.6)
     tl.set(buf1="", mem_x=1)
     fly("y = 1", "buf2", "mem", 0.6)
@@ -999,13 +1032,15 @@ def store_buffer():
             pill(p, x, y, s.fly_label, BRASS, BRASS_LT, 10.5, opacity=s.fly_a, shadow=None)
 
         half = (W - 52 - 10) / 2
-        code_panel(p, 26, 372, half, "thread 1", THREAD_1, s.c1, size=10.2, lead=16.0)
-        code_panel(p, 36 + half, 372, half, "thread 2", THREAD_2, s.c2, size=10.2, lead=16.0,
-                   tint=NIGHT)
-        caption(p, tl, t, 456)
-        progress(p, tl, t, total, 542)
+        THREAD_1.draw(p, 26, 372, half, "thread 1", s, t, track="c1", reveal=False, size=10.0,
+                      lead=14.0)
+        THREAD_2.draw(p, 36 + half, 372, half, "thread 2", s, t, track="c2", reveal=False,
+                      size=10.0, lead=14.0, tint=NIGHT)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 576
+    CAP, RAIL, height = layout(372, len(THREAD_1), 14.0)
+    return tl, draw, height
 
 
 def build_store_buffer(only=None):
@@ -1015,10 +1050,13 @@ def build_store_buffer(only=None):
 
 # ------------------------------------------------- 27.1: a close, and a leak
 
-CLOSE_CODE = lines_containing("src/bin/tcp_close.rs", "client.shutdown(Shutdown::Write)?;",
-                              "server.read_to_end(&mut request)?;", "server.write_all(b\"reply\")?;",
-                              "    drop(server);", "client.read_to_string(&mut reply)?;",
-                              "    drop(client);", "kept.push(server);")
+CLOSE_CODE = Panel("src/bin/tcp_close.rs",
+                   [("client.shutdown(Shutdown::Write)?;", "drop(client);"),
+                    ("for _ in 0..clients {", "}")],
+                   ["client.shutdown(Shutdown::Write)?;", "server.read_to_end(&mut request)?;",
+                    "server.write_all(b\"reply\")?;", "drop(server);",
+                    "client.read_to_string(&mut reply)?;", ("drop(client);", 0),
+                    "kept.push(server);"], separate=True)
 CL_X, SV_X, C_DESK = 130, 690, 206
 WIRE_Y, WIRE_A, WIRE_B = 124, 196, 624
 STATE_COLORS = {"ESTABLISHED": TEAL, "CLOSE_WAIT": RUST, "TIME_WAIT": BRASS}
@@ -1135,12 +1173,12 @@ def tcp_close():
                 p.text(290, y, "%d  client FIN_WAIT2   server CLOSE_WAIT" % (k + 1), 10.5,
                        RUST, 600, mono=True)
 
-        code_panel(p, 26, 296, W - 52, "tcp_close", CLOSE_CODE, s.code, size=10.4, lead=15.5,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 456)
-        progress(p, tl, t, total, 542)
+        CLOSE_CODE.draw(p, 26, 296, W - 52, "tcp_close", s, t, size=10.2, lead=13.6)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 576
+    CAP, RAIL, height = layout(296, len(CLOSE_CODE), 13.6)
+    return tl, draw, height
 
 
 def build_tcp_close(only=None):
@@ -1150,12 +1188,20 @@ def build_tcp_close(only=None):
 
 # ------------------------------------------------- 28.2: the TLS 1.3 handshake
 
-TLS_CODE = lines_containing("src/bin/tls_mtls.rs", "let name = ServerName::try_from",
-                            "let mut tls = StreamOwned::new(ClientConnection::new",
-                            "tls.write_all(b\"hello over tls\")?;",
-                            "tls.read_to_string(&mut reply)?;",
-                            ".with_client_cert_verifier(verifier.clone())",
-                            ".with_client_auth_cert(vec![pki.client.cert.clone()]")
+TLS_CODE = Panel("src/bin/tls_mtls.rs",
+                 [("let name = ServerName::try_from", "tls.read_to_string(&mut reply)?;"),
+                  ("let mutual = || -> Result<ServerConfig, Error> {", "};"),
+                  (("let client = ClientConfig::builder_with_provider(provider())",
+                    nth_after("src/bin/tls_mtls.rs",
+                              "let client = ClientConfig::builder_with_provider(provider())",
+                              "Mutual TLS, client with the billing certificate")),
+                   ".with_client_auth_cert(")],
+                 ["let name = ServerName::try_from",
+                  "let mut tls = StreamOwned::new(ClientConnection::new",
+                  "tls.write_all(b\"hello over tls\")?;",
+                  "tls.read_to_string(&mut reply)?;",
+                  ".with_client_cert_verifier(verifier.clone())",
+                  ".with_client_auth_cert(vec![pki.client.cert.clone()]"])
 T_CL, T_SV, T_DESK = 130, 690, 200
 T_WIRE, T_A, T_B = 116, 196, 624
 
@@ -1297,12 +1343,12 @@ def tls():
             if s.msg_locked:
                 padlock(p, x - w / 2 - 12, T_WIRE - 2, color, s.msg_a)
 
-        code_panel(p, 26, 290, W - 52, "tls_mtls", TLS_CODE, s.code, size=10.0, lead=15.5,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 436)
-        progress(p, tl, t, total, 522)
+        TLS_CODE.draw(p, 26, 290, W - 52, "tls_mtls", s, t, size=9.8, lead=13.6)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 556
+    CAP, RAIL, height = layout(290, len(TLS_CODE), 13.6)
+    return tl, draw, height
 
 
 def build_tls(only=None):
@@ -1312,15 +1358,19 @@ def build_tls(only=None):
 
 # ------------------------------------------------- 29.5: a pool, lending and taking back
 
-POOL_CODE = lines_containing("src/bin/conn_pool.rs",
-                             "if let Some(stream) = self.take_idle(&mut state) {",
-                             "if state.open < self.config.max {",
-                             "return self.connect();",
-                             ".wait_timeout(state, deadline - now)",
-                             "state.idle.push(Idle {",
-                             "self.returned.notify_one();",
-                             "if idle.since.elapsed() > self.config.idle_timeout {",
-                             "} else if self.config.check_alive && !is_alive(&idle.stream) {")
+POOL_CODE = Panels("src/bin/conn_pool.rs",
+                   [[("fn get(&self) -> io::Result<Pooled<'_>> {", "}")],
+                    [("fn give_back(&self, stream: TcpStream, broken: bool) {", "}")],
+                    [("fn take_idle(&self, state: &mut State) -> Option<TcpStream> {", "}")]],
+                   ["get", "give_back", "take_idle"],
+                   ["if let Some(stream) = self.take_idle(&mut state) {",
+                    "if state.open < self.config.max {",
+                    "return self.connect();",
+                    ".wait_timeout(state, deadline - now)",
+                    "state.idle.push(Idle {",
+                    "self.returned.notify_one();",
+                    "if idle.since.elapsed() > self.config.idle_timeout {",
+                    "} else if self.config.check_alive && !is_alive(&idle.stream) {"])
 CALLERS = {"A": 140, "B": 226, "C": 312}     # desk y of each caller
 CALLER_X = 74
 P_SERVER_X, P_SERVER_DESK = 730, 230
@@ -1487,13 +1537,12 @@ def pool_anim():
             chip(p, CALLER_X + 112, CALLERS["A"] + 4, "read = 0: UnexpectedEof", RUST, RUST_LT,
                  10.5, opacity=clamp(s.error))
 
-        code_panel(p, 26, 336, W - 52, "get, give_back, take_idle", POOL_CODE, s.code, size=10.0,
-                   lead=15.0, strike=int(s.strike) if s.strike >= 0 else None,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 504)
-        progress(p, tl, t, total, 590)
+        POOL_CODE.draw(p, 26, 336, W - 52, s, t, strike=s.strike, size=10.0, lead=14.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 624
+    CAP, RAIL, height = layout(336, len(POOL_CODE), 14.0)
+    return tl, draw, height
 
 
 def build_pool(only=None):
@@ -1503,15 +1552,20 @@ def build_pool(only=None):
 
 # ------------------------------------------------- 19.4: single flight
 
-SF_CODE = lines_containing("src/bin/single_flight.rs",
-                           "Some(Slot::Done(value)) => return Ok(value.clone()),",
-                           ".wait(slots)",
-                           "None => break,",
-                           "slots.insert(key.clone(), Slot::InProgress);",
-                           "let value = work()?;",
-                           ".insert(key, Slot::Done(value.clone()));",
-                           "self.finished.notify_all();",
-                           "self.flight.lock().remove(&key);")
+SF_CODE = Panels("src/bin/single_flight.rs",
+                 [[("let mut slots = self.lock();", "drop(slots);")],
+                  [("let mut claim = Claim {", "Ok(value)")],
+                  [("impl<K: Eq + Hash, V> Drop for Claim<'_, K, V> {", "}")]],
+                 ["execute: wait for the key, or claim it", "execute: run the work, publish it",
+                  "the claim's Drop"],
+                 ["Some(Slot::Done(value)) => return Ok(value.clone()),",
+                  ".wait(slots)",
+                  "None => break,",
+                  "slots.insert(key.clone(), Slot::InProgress);",
+                  "let value = work()?;",
+                  ".insert(key, Slot::Done(value.clone()));",
+                  "self.finished.notify_all();",
+                  "self.flight.lock().remove(&key);"])
 SF_CALLERS = {"A": 140, "B": 226, "C": 312}
 SF_X = 74
 SERVICE_X, SERVICE_DESK = 730, 230
@@ -1636,13 +1690,12 @@ def single_flight():
             pill(p, lerp(a[0], b[0], s.call_u), lerp(a[1], b[1], s.call_u), s.call_label, BRASS,
                  BRASS_LT, 10.5, opacity=s.call_a, shadow=None)
 
-        code_panel(p, 26, 336, W - 52, "execute, and the claim's Drop", SF_CODE, s.code,
-                   size=10.0, lead=15.0, strike=int(s.strike) if s.strike >= 0 else None,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 504)
-        progress(p, tl, t, total, 590)
+        SF_CODE.draw(p, 26, 336, W - 52, s, t, strike=s.strike, size=10.0, lead=14.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 624
+    CAP, RAIL, height = layout(336, len(SF_CODE), 14.0)
+    return tl, draw, height
 
 
 def build_single_flight(only=None):

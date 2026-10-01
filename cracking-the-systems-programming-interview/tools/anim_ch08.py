@@ -3,19 +3,20 @@
     python3 tools/animations.py rc-refcell weak-parent
 """
 
-from anim_kernel import lines_containing
+from motion_kit import Panel, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
-RC_CODE = lines_containing("src/problems/smart_pointers.rs",
-                           "let counter = Rc::new(RefCell::new(0));",
-                           "let alias = Rc::clone(&counter);",
-                           "*alias.borrow_mut() += 1;", "*counter.borrow_mut() += 10;",
-                           "*counter.borrow()")
-WEAK_CODE = lines_containing("src/problems/smart_pointers.rs", "let root = TreeNode::root(1);",
-                             "let child = TreeNode::child_of(&root, 2);",
-                             "assert_eq!(child.parent_value(), Some(1));", "drop(root);",
-                             "assert_eq!(child.parent_value(), None);")
+RC_CODE = Panel("src/problems/smart_pointers.rs",
+                [("fn shared_counter_with_rc_refcell", "}")],
+                ["let counter = Rc::new(RefCell::new(0));", "let alias = Rc::clone(&counter);",
+                 "*alias.borrow_mut() += 1;", "*counter.borrow_mut() += 10;",
+                 "*counter.borrow()"])
+WEAK_CODE = Panel("src/problems/smart_pointers.rs",
+                  [("fn weak_parent_link_does_not_keep_the_parent_alive", "}")],
+                  ["let root = TreeNode::root(1);", "let child = TreeNode::child_of(&root, 2);",
+                   "assert_eq!(child.parent_value(), Some(1));", "drop(root);",
+                   "assert_eq!(child.parent_value(), None);"])
 
 STACK_X = 60
 HEAP = (470, 96, 250, 150)
@@ -130,12 +131,13 @@ def rc_refcell():
             chip(p, hx + hw / 2, hy + hh + 26, "panic: already borrowed", RUST, RUST_LT, 11,
                  opacity=clamp(s.panic))
 
-        code_panel(p, 26, 290, W - 52, "shared_counter_with_rc_refcell", RC_CODE, s.code,
-                   size=11.0, lead=16.5, reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 418)
-        progress(p, tl, t, total, 504)
+        RC_CODE.draw(p, 26, 290, W - 52, "shared_counter_with_rc_refcell", s, t, size=11.0,
+                     lead=15.5)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 538
+    CAP, RAIL, height = layout(290, len(RC_CODE), 15.5)
+    return tl, draw, height
 
 
 # ---------------------------------------------------------- 8.5: Weak
@@ -235,12 +237,14 @@ def weak_parent():
             chip(p, 595, 296, "leaked" + (", " + s.clock if s.clock else ""), RUST, RUST_LT, 11,
                  opacity=clamp(s.leaked))
 
-        code_panel(p, 26, 318, W - 52, "the test weak_parent_link_does_not_keep_the_parent_alive",
-                   WEAK_CODE, s.code, size=11.0, lead=16.5, reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 446)
-        progress(p, tl, t, total, 532)
+        WEAK_CODE.draw(p, 26, 318, W - 52,
+                       "the test weak_parent_link_does_not_keep_the_parent_alive", s, t,
+                       size=11.0, lead=15.5)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 566
+    CAP, RAIL, height = layout(318, len(WEAK_CODE), 15.5)
+    return tl, draw, height
 
 
 def build_rc_refcell(only=None):

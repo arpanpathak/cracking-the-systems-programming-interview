@@ -3,7 +3,7 @@
     python3 tools/animations.py lru-shelf lru-stamps lru-touch lru-put
 """
 
-from anim_kernel import lines_containing
+from motion_kit import LAB, Panel, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
@@ -153,11 +153,11 @@ def lru_shelf():
 
 # ------------------------------------------------- 13.2: stamped events
 
-EVICT = lines_containing("src/problems/lru_cache.rs",
-                         "while self.map.len() > self.capacity {",
-                         "let Some((key, generation)) = self.recency.pop_front() else {",
-                         "Some((_, current)) if *current == generation => {",
-                         "self.map.remove(&key);", "_ => {}")
+EVICT = Panel("src/problems/lru_cache.rs", [("while self.map.len() > self.capacity {", "}")],
+              ["while self.map.len() > self.capacity {",
+               "let Some((key, generation)) = self.recency.pop_front() else {",
+               "Some((_, current)) if *current == generation => {",
+               "self.map.remove(&key);", "_ => {}"])
 
 
 def lru_stamps():
@@ -252,35 +252,52 @@ def lru_stamps():
                  12)
             if s.stale > 0.01:
                 p.text(600, 152, "stale: skip", 11, RUST, 700, "middle", opacity=clamp(s.stale))
-        code_panel(p, 26, 262, W - 52, "evict_if_needed", EVICT, s.code, size=10.6, lead=16.0,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 392)
-        progress(p, tl, t, total, 478)
+        EVICT.draw(p, 26, 262, W - 52, "evict_if_needed", s, t, size=10.6, lead=15.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 512
+    CAP, RAIL, height = layout(262, len(EVICT), 15.0)
+    return tl, draw, height
 
 
 # ------------------------------------------------- 13.3: the list moves
 
-LOOKUP = "let i = *self.lookup_table.get(key)?;"
-TOUCH = lines_containing("src/problems/lru_cache_easy.rs", LOOKUP,
-                         "Some(p) => self.nodes[p].next = next,",
-                         "None => self.head = next,",
-                         "Some(n) => self.nodes[n].prev = prev,",
-                         "None => self.tail = prev,",
-                         "self.nodes[i].next = self.head;",
-                         "self.nodes[h].prev = Some(i);",
-                         "self.head = Some(i);")
-PUT = lines_containing("src/problems/lru_cache_easy.rs",
-                       "if let Some(&i) = self.lookup_table.get(&key) {",
-                       "self.nodes[i].value = value;",
-                       "if self.nodes.len() < self.cap {",
-                       "self.nodes.push(Node {",
-                       "self.lookup_table.insert(key, i);",
-                       "if let Some(i) = self.tail {",
-                       "let old_key = std::mem::replace(&mut self.nodes[i].key, key);",
-                       "self.lookup_table.remove(&old_key);",
-                       "self.touch(i);")
+TOUCH = Panel("src/problems/lru_cache_easy.rs",
+              [("let i = *self.lookup_table.get(key)?;", None),
+               ("if linked {", "self.head = Some(i);")],
+              ["let i = *self.lookup_table.get(key)?;",
+               "Some(p) => self.nodes[p].next = next,",
+               "None => self.head = next,",
+               "Some(n) => self.nodes[n].prev = prev,",
+               "None => self.tail = prev,",
+               "self.nodes[i].next = self.head;",
+               "self.nodes[h].prev = Some(i);",
+               "self.head = Some(i);"])
+def _nth_after(path, text, anchor):
+    """Which occurrence of `text` is the first one after `anchor` in a lab file."""
+    src = (LAB / path).read_text().split("\n")
+    start = next(i for i, l in enumerate(src) if anchor in l)
+    return sum(1 for l in src[:start] if text in l)
+
+
+PUT = Panel("src/problems/lru_cache_easy.rs",
+            [("if let Some(&i) = self.lookup_table.get(&key) {", "}"),
+             ("if self.nodes.len() < self.cap {", "self.nodes.push(Node {"),
+             (("});", _nth_after("src/problems/lru_cache_easy.rs", "});",
+                                 "self.nodes.push(Node {")), ("return;", 1)),
+             ("if let Some(i) = self.tail {", "}")],
+            ["if let Some(&i) = self.lookup_table.get(&key) {",
+             "self.nodes[i].value = value;",
+             "if self.nodes.len() < self.cap {",
+             "self.nodes.push(Node {",
+             "self.lookup_table.insert(key, i);",
+             "if let Some(i) = self.tail {",
+             "let old_key = std::mem::replace(&mut self.nodes[i].key, key);",
+             "self.lookup_table.remove(&old_key);",
+             ("self.touch(i);", 0),
+             ("self.touch(i);", 1),
+             ("self.touch(i);", 2),
+             ".insert(self.nodes[i].key.clone(), i);"])
 KEYS = "ABCDEF"
 COLS = [250, 380, 510, 640]
 ROW, LIFT, SLOT_Y = 186, 112, 268
@@ -295,7 +312,7 @@ class ListScene:
     the nodes' current positions, so an arrow follows the node it points at.
     """
 
-    def __init__(self, code_lines):
+    def __init__(self, panel):
         init = {"caption": "", "kind": "step", "code": -1.0, "strike": -1.0, "call": "",
                 "links": "", "head": "", "tail": "", "slots": "", "table": "", "vals": "",
                 "hot": "", "doom": "", "look": "", "glow": "", "loose": "", "answer": "",
@@ -303,7 +320,7 @@ class ListScene:
         for k in KEYS:
             init.update({"x" + k: float(COLS[0]), "y" + k: float(ROW), "a" + k: 0.0})
         self.tl = Timeline(**init)
-        self.code_lines = code_lines
+        self.panel = panel
         self.next, self.prev, self.slot, self.table, self.val = {}, {}, {}, {}, {}
         self.head = self.tail = None
 
@@ -463,10 +480,8 @@ class ListScene:
         p.text(COLS[-1] + 46, ROW - 50, "least recent", 10, MUTED, 600)
         if s.answer:
             chip(p, 640, 112, s.answer, RUST, RUST_LT, 12)
-        code_panel(p, 26, code_y, W - 52, code_title, self.code_lines, s.code, size=10.4,
-                   lead=14.6, strike=int(s.strike) if s.strike >= 0 else None,
-                   tint=RUST if s.strike >= 0 or s.kind == "fail" else TEAL,
-                   reveal=s.timeline.reached("code", t))
+        self.panel.draw(p, 26, code_y, W - 52, code_title, s, t, strike=s.strike, size=10.2,
+                        lead=13.4, tint=RUST if s.strike >= 0 or s.kind == "fail" else TEAL)
         caption(p, self.tl, t, cap_y)
         progress(p, self.tl, t, total, rail_y)
 
@@ -543,9 +558,10 @@ def lru_touch():
     def draw(p, s, total):
         sc.draw_scene(p, s, "touch: detach, then push to the front",
                       "get(key) finds the slot, lifts the node out, and puts it at the head.",
-                      "lookup, then touch", 316, 480, 566, total)
+                      "get, then touch", 316, CAP, RAIL, total)
 
-    return tl, draw, 600
+    CAP, RAIL, height = layout(316, len(TOUCH), 13.4)
+    return tl, draw, height
 
 
 def lru_put():
@@ -572,8 +588,8 @@ def lru_put():
         tl.wait(0.6 * slow)
         if len(notes) > 1:
             tl.say(notes[1])
-        sc.sync(look="", code=8.0)
-        sc.touch(k, k_slow=0.6 * slow, line=8.0)
+        sc.sync(look="", code=9.0)
+        sc.touch(k, k_slow=0.6 * slow, line=9.0)
 
     tl.chapter("room")
     sc.reset([], {}, {})
@@ -634,10 +650,10 @@ def lru_put():
             sc.sync(code=7.0, gone=old)
             tl.wait(0.9 * slow)
         sc.table[k] = i
-        sc.sync(code=8.0, look=k, doom="", gone="")
+        sc.sync(code=11.0, look=k, doom="", gone="")
         tl.wait(0.7 * slow)
-        sc.sync(look="", code=8.0)
-        sc.touch(k, k_slow=0.7 * slow, line=8.0)
+        sc.sync(look="", code=10.0)
+        sc.touch(k, k_slow=0.7 * slow, line=10.0)
 
     tl.chapter("evict")
     evict("E", 50, 1.4, notes=("put(E, 50) with all four slots taken. The tail, A, is the least "
@@ -663,9 +679,10 @@ def lru_put():
     def draw(p, s, total):
         sc.draw_scene(p, s, "put: update, insert, or reuse the tail",
                       "Three cases. Each one ends with touch.",
-                      "put", 316, 490, 576, total)
+                      "put", 316, CAP, RAIL, total)
 
-    return tl, draw, 610
+    CAP, RAIL, height = layout(316, len(PUT), 13.4)
+    return tl, draw, height
 
 
 def build_lru_shelf(only=None):

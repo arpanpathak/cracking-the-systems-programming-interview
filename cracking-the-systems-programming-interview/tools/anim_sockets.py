@@ -7,6 +7,7 @@ import math
 
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
+from motion_kit import Panel, layout, nth_after
 
 
 # ------------------------------------------- 20.3: a connection, end to end
@@ -17,16 +18,16 @@ WIRE_Y = 152
 WIRE_A, WIRE_B = 232, 588          # where segments leave and arrive
 MSG = "hello echo"
 
-CLIENT = ["let mut client = TcpStream::connect(address)?;",
-          "client.write_all(b\"hello echo\")?;",
-          "client.shutdown(Shutdown::Write)?;",
-          "client.read_to_end(&mut echoed)?;"]
-SERVER = ["let (stream, _) = listener.accept()?;",
-          "loop {",
-          "    let read = stream.read(&mut buffer)?;",
-          "    if read == 0 { return Ok(()); }",
-          "    stream.write_all(&buffer[..read])?;",
-          "}"]
+CLIENT = Panel("src/bin/tcp_echo_server.rs",
+               [("let mut client = TcpStream::connect(address).expect(\"connect\");",
+                 ".expect(\"read echo\");")],
+               ["let mut client = TcpStream::connect(address)", ".write_all(b\"hello echo\")",
+                ".shutdown(Shutdown::Write)", ".read_to_end(&mut echoed)"])
+SERVER = Panel("src/bin/tcp_echo_server.rs",
+               [("let (stream, _) = listener", ".expect(\"accept one connection\");"),
+                (("loop {", nth_after("src/bin/tcp_echo_server.rs", "loop {", "fn handle_connection(")), "}")],
+               ["let (stream, _) = listener", "loop {", "let read = stream.read(&mut buffer)?;",
+                "if read == 0 {", "stream.write_all(&buffer[..read])?;"], separate=True)
 
 SEG_COLORS = {"SYN": TEAL, "SYN+ACK": TEAL, "ACK": TEAL, "data": BRASS, "FIN": RUST,
               "FIN+ACK": RUST}
@@ -262,16 +263,15 @@ def tcp_handshake():
                 chip(p, (WIRE_A + WIRE_B) / 2, WIRE_Y - 40, "both blocked: " + (s.clock or ""),
                      RUST, RUST_LT, 13)
 
-        code_panel(p, 26, 372, 390, "client (the test)", CLIENT, s.cl_code, size=10.6,
-                   lead=16.5, strike=2 if s.bug > 0.5 else None, tint="#3b7dd8",
-                   reveal=s.timeline.reached('cl_code', t))
-        code_panel(p, 428, 372, 366, "server: accept, then handle_connection", SERVER, s.sv_code,
-                   size=10.6, lead=16.5,
-                   reveal=s.timeline.reached('sv_code', t))
-        caption(p, tl, t, 504)
-        progress(p, tl, t, total, 592)
+        CLIENT.draw(p, 26, 372, 390, "client (the test)", s, t, track="cl_code",
+                    strike=2.0 if s.bug > 0.5 else None, size=10.2, lead=13.6, tint="#3b7dd8")
+        SERVER.draw(p, 428, 372, 366, "server: accept, then handle_connection", s, t,
+                    track="sv_code", size=10.2, lead=13.6)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 626
+    CAP, RAIL, height = layout(372, max(len(CLIENT), len(SERVER)), 13.6)
+    return tl, draw, height
 
 
 # ------------------------------------ 20.2: the bandwidth-delay product
@@ -419,18 +419,17 @@ LIGHT_X = 520
 OUT_X, OUT_W = 598, 150
 OUT_CAP = 12.0                        # KB the out bar can show
 
-_LOOP = [
-    ("loop {", ""),
-    ("    let n = epoll_wait(epfd, &mut events, 64, 100);", "sleep until something is ready"),
-    ("    for event in &events[..n] {", ""),
-    ("        if fd == listen_fd { accept_ready(..) }", "accept4 until EAGAIN"),
-    ("        if readable { read_into(fd, ..) }", "read until EAGAIN, then flush"),
-    ("        if writable { flush(fd, ..) }", "write until EAGAIN"),
-    ("        update_interest(epfd, fd, ..)", "EPOLLOUT only while out is pending"),
-    ("    }", ""),
-    ("}", ""),
-]
-EVENT_LOOP = [code.ljust(53) + ("// " + note if note else "") for code, note in _LOOP]
+EVENT_LOOP = Panel("src/bin/epoll_echo.rs",
+                   [("while !shutdown.load(Ordering::Relaxed) {", None),
+                    ("let ready = unsafe {", "};"),
+                    ("for event in &events[..ready as usize] {",
+                     ("update_interest(epfd, fd, &mut connections)?;", 3))],
+                   ["while !shutdown.load(Ordering::Relaxed) {", "libc::epoll_wait(",
+                    "for event in &events[..ready as usize] {",
+                    "accept_ready(epfd, listen_fd, &mut connections)?;",
+                    "if readable && !read_into(fd, &mut connections)? {",
+                    "flush(fd, &mut connections)?;",
+                    "update_interest(epfd, fd, &mut connections)?;"])
 
 
 def socket_row(p, fd, s, alpha=1.0):
@@ -651,12 +650,12 @@ def epoll():
         if s.events:
             p.text(84, 322, "[" + s.events + "]", 11.5, TEAL, 700, mono=True)
 
-        code_panel(p, 26, 336, W - 52, "event_loop", EVENT_LOOP, s.code, size=10.2, lead=15.2,
-                   reveal=s.timeline.reached('code', t))
-        caption(p, tl, t, 522)
-        progress(p, tl, t, total, 608)
+        EVENT_LOOP.draw(p, 26, 336, W - 52, "event_loop", s, t, size=10.0, lead=12.6)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 642
+    CAP, RAIL, height = layout(336, len(EVENT_LOOP), 12.6)
+    return tl, draw, height
 
 
 def build_tcp_handshake(only=None):

@@ -3,7 +3,7 @@
     python3 tools/animations.py list-replace list-drop list-doubly
 """
 
-from anim_kernel import lines_containing
+from motion_kit import Panel, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
@@ -26,16 +26,23 @@ def link_arrow(p, x0, y0, x1, y1, color, width=2.0, opacity=1.0, bend=0.0, dash=
 
 # ------------------------------------------------- 9.4: push and pop with replace
 
-PUSH_POP = lines_containing("src/bin/singly_linked_list.rs",
-                            "let old = std::mem::replace(self, List::Empty);",
-                            "*self = List::Node {",
-                            "next: Link::new(old),",
-                            "match std::mem::replace(self, List::Empty) {",
-                            "List::Node { value, next } => {",
-                            "*self = *next;",
-                            "Some(value)")
-MOVE_OUT = ["let old = *self;",
-            "*self = List::Node { value, next: Link::new(old) };"]
+PUSH_POP = Panel("src/bin/singly_linked_list.rs",
+                 [("pub fn push_front(&mut self, value: T) {", "}"),
+                  ("pub fn pop_front(&mut self) -> Option<T> {", "}")],
+                 ["let old = std::mem::replace(self, List::Empty);",
+                  "*self = List::Node {",
+                  "next: Link::new(old),",
+                  "match std::mem::replace(self, List::Empty) {",
+                  "List::Node { value, next } => {",
+                  "*self = *next;",
+                  "Some(value)"])
+MOVE_OUT = ["pub fn push_front(&mut self, value: T) {",
+            "    let old = *self;",
+            "    *self = List::Node {",
+            "        value,",
+            "        next: Link::new(old),",
+            "    };",
+            "}"]
 X0, STEP = 250, 92
 ROW_A, ROW_B = 162, 262
 NODE_W, NODE_H = 64, 44
@@ -180,23 +187,27 @@ def list_replace():
             pill(p, x, y, "value " + s.out_v, BRASS, BRASS_LT, 11, opacity=s.out_a, shadow=None)
         robot(p, CALLER[0], CALLER[1], NIGHT, 1.0, 1.0, "caller",
               "got " + (s.popped or "nothing"))
-        lines = MOVE_OUT if s.mode == "fail" else PUSH_POP
-        code_panel(p, 26, 300, W - 52, "push_front and pop_front" if s.mode == "ok"
-                   else "push_front without replace", lines, s.code, size=10.8, lead=15.5,
-                   tint=RUST if s.mode == "fail" else TEAL,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 464)
-        progress(p, tl, t, total, 550)
+        if s.mode == "fail":
+            code_panel(p, 26, 300, W - 52, "push_front without replace", MOVE_OUT,
+                       1.0 + s.code, size=10.6, lead=14.0, tint=RUST)
+        else:
+            PUSH_POP.draw(p, 26, 300, W - 52, "push_front and pop_front", s, t, size=10.6,
+                          lead=14.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 584
+    CAP, RAIL, height = layout(300, len(PUSH_POP), 14.0)
+    return tl, draw, height
 
 
 # ------------------------------------------------- 9.6: dropping a long list
 
-LOOP_DROP = lines_containing("benchmarking_examples/lists/boxed_drop.rs",
-                             "let mut current = self.head.take();",
-                             "while let Some(mut node) = current {",
-                             "current = node.next.take();") + ["}"]
+LOOP_DROP = Panel("benchmarking_examples/lists/boxed_drop.rs",
+                  [("impl<T> Drop for LinkedList<T> {", "}")],
+                  ["let mut current = self.head.take();",
+                   "while let Some(mut node) = current {",
+                   "current = node.next.take();",
+                   ("}", 0)])
 GLUE = ["drop(list):        drop its field head",
         "drop(Box<Node>):   drop the Node inside, then free the box",
         "drop(Node):        drop value, then drop next",
@@ -350,30 +361,46 @@ def list_drop():
         if loop:
             p.text(TOWER_X + TOWER_W / 2, TOWER_BASE + 18, "freed %s" % format(int(s.count), ","),
                    11.5, TEAL, 700, "middle", mono=True)
-        lines = LOOP_DROP if loop else GLUE
-        code_panel(p, 26, 316, W - 52, "impl Drop for LinkedList" if loop
-                   else "the drop the compiler generates (as steps)", lines, s.code, size=10.8,
-                   lead=16.0, tint=TEAL if loop else RUST, reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 432)
-        progress(p, tl, t, total, 518)
+        if loop:
+            LOOP_DROP.draw(p, 26, 316, W - 52, "impl Drop for LinkedList", s, t, size=10.8,
+                           lead=15.0)
+        else:
+            code_panel(p, 26, 316, W - 52, "the drop the compiler generates (as steps)", GLUE,
+                       s.code, size=10.8, lead=15.0, tint=RUST,
+                       reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 552
+    CAP, RAIL, height = layout(316, max(len(LOOP_DROP), len(GLUE)), 15.0)
+    return tl, draw, height
 
 
 # ------------------------------------------------- 9.8: the doubly linked list
 
-DOUBLY = lines_containing("src/bin/ll.rs",
-                          "old_head.borrow_mut().prev = Some(Rc::downgrade(&new_node));",
-                          "new_node.borrow_mut().next = Some(old_head);",
-                          "self.tail = Some(new_node.clone());",
-                          "self.head = Some(new_node);",
-                          "prev: self.tail.as_ref().map(Rc::downgrade),",
-                          "old_tail.borrow_mut().next = Some(new_node.clone());",
-                          "self.head.take().map(|old_head| {",
-                          "let next = old_head.borrow_mut().next.take();",
-                          "next_node.borrow_mut().prev = None;",
-                          "self.head = Some(next_node);",
-                          "let node = Rc::try_unwrap(old_head)")
+DOUBLY_FOCUS = ["old_head.borrow_mut().prev = Some(Rc::downgrade(&new_node));",
+                "new_node.borrow_mut().next = Some(old_head);",
+                "self.tail = Some(new_node.clone());",
+                ("self.head = Some(new_node);", 0),
+                "prev: self.tail.as_ref().map(Rc::downgrade),",
+                "old_tail.borrow_mut().next = Some(new_node.clone());",
+                "self.head.take().map(|old_head| {",
+                "let next = old_head.borrow_mut().next.take();",
+                "next_node.borrow_mut().prev = None;",
+                "self.head = Some(next_node);",
+                "let node = Rc::try_unwrap(old_head)",
+                "prev: OptWeakNodeRef<T>,",
+                "self.tail = Some(new_node);"]
+DOUBLY = {
+    "front": Panel("src/bin/ll.rs", [("pub fn push_front(&mut self, data: T) {", "}")],
+                   DOUBLY_FOCUS),
+    "back": Panel("src/bin/ll.rs", [("pub fn push_back(&mut self, data: T) {", "}")],
+                  DOUBLY_FOCUS),
+    "pop": Panel("src/bin/ll.rs", [("pub fn pop_front(&mut self) -> Option<T> {", "}")],
+                 DOUBLY_FOCUS),
+    "node": Panel("src/bin/ll.rs", [("struct Node<T> {", "}")], DOUBLY_FOCUS),
+}
+DOUBLY_TITLE = {"front": "push_front", "back": "push_back", "pop": "pop_front",
+                "node": "struct Node, with prev made strong"}
 DCOLS = [200, 330, 460, 590]
 DROW = 182
 VALUES = ["10", "20", "30", "40"]
@@ -382,7 +409,8 @@ VALUES = ["10", "20", "30", "40"]
 def list_doubly():
     init = {"caption": "", "kind": "step", "code": -1.0, "mode": "weak", "nexts": "",
             "prevs": "", "head": "", "tail": "", "local": "", "glow": "", "out_v": "",
-            "out_u": 0.0, "out_a": 0.0, "popped": "", "leak": 0.0, "dropped": 0.0, "call": ""}
+            "out_u": 0.0, "out_a": 0.0, "popped": "", "leak": 0.0, "dropped": 0.0, "call": "",
+            "fn": "front"}
     for v in VALUES:
         init.update({"x" + v: float(DCOLS[0]), "y" + v: float(DROW), "a" + v: 0.0})
     tl = Timeline(**init)
@@ -432,7 +460,7 @@ def list_doubly():
     tl.wait(1.0)
 
     for v in ("30", "40"):
-        tl.set(call="push_back(%s)" % v)
+        tl.set(call="push_back(%s)" % v, fn="back")
         if v == "30":
             tl.say("push_back mirrors it. The new node's prev is a weak link to the old tail.")
         old = st["tail"]
@@ -446,7 +474,7 @@ def list_doubly():
         sync(code=5.0, glow="n" + old)
         tl.wait(0.9 if v == "30" else 0.5)
         st["tail"] = v
-        sync(code=5.0, glow="tail")
+        sync(code=12.0, glow="tail")
         tl.wait(0.6)
     tl.say("Every node has one strong owner on its left: head, or the node before it. The tail "
            "has a second, tail.", "insight")
@@ -454,7 +482,7 @@ def list_doubly():
     tl.wait(2.0)
 
     tl.chapter("pop_front")
-    tl.set(call="pop_front()")
+    tl.set(call="pop_front()", fn="pop", code=-1.0)
     tl.say("pop_front must move 20's value out. Rc::try_unwrap gives up the node only if this is "
            "the last strong handle.")
     tl.wait(1.4)
@@ -485,7 +513,7 @@ def list_doubly():
     tl.wait(1.4)
 
     tl.chapter("strong prev")
-    tl.set(mode="strong", call="drop(list)", code=-1.0, popped="")
+    tl.set(mode="strong", call="drop(list)", code=11.0, popped="", fn="node")
     st.update(head="20", tail="40")
     st["order"] = ["20", "10", "30", "40"]
     st["next"] = {"20": "10", "10": "30", "30": "40"}
@@ -573,13 +601,13 @@ def list_doubly():
             y = lerp(DROW, 150, s.out_u)
             pill(p, x, y, "value " + s.out_v, BRASS, BRASS_LT, 11, opacity=s.out_a, shadow=None)
         robot(p, 744, 238, NIGHT, 1.0, 1.0, "caller", "got " + (s.popped or "nothing"))
-        code_panel(p, 26, 290, W - 52, "ll.rs: push and pop_front", DOUBLY, s.code, size=10.2,
-                   lead=14.4, tint=RUST if strong_prev else TEAL,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 496)
-        progress(p, tl, t, total, 582)
+        DOUBLY[s.fn].draw(p, 26, 290, W - 52, DOUBLY_TITLE[s.fn], s, t, reveal=False,
+                          size=10.0, lead=13.4, tint=RUST if strong_prev else TEAL)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 616
+    CAP, RAIL, height = layout(290, max(len(x) for x in DOUBLY.values()), 13.4)
+    return tl, draw, height
 
 
 def build_list_replace(only=None):

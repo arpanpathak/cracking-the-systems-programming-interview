@@ -12,10 +12,11 @@ from motion_kit import (NAVY, cells, edge, heap_positions, kv_panel, layout, lin
 
 
 def furniture(p, tl, t, total, title, sub, code_title, code, line, cap_y, rail_y, code_y,
-              lead=15.6, tint=TEAL):
+              lead=15.6, tint=TEAL, strike=-1.0):
     title_block(p, title, sub)
-    code_panel(p, 26, code_y, W - 52, code_title, code, line, size=11.0, lead=lead, tint=tint,
-               reveal=tl.reached("code", t))
+    code_panel(p, 26, code_y, W - 52, code_title, code, line, size=11.0, lead=lead,
+               tint=RUST if strike >= 0 else tint, reveal=tl.reached("code", t),
+               strike=int(strike) if strike >= 0 else None)
     caption(p, tl, t, cap_y)
     progress(p, tl, t, total, rail_y)
 
@@ -181,8 +182,23 @@ def top_k():
         cur += 1
     steps.append(dict(say="The heap keeps the two most frequent words, the and and. It never held more than "
                       "k + 1 entries.", kind="insight", visit=-1.0, code=-1.0, hold=1.6))
+    steps.append(dict(chapter="no pop", say="Now leave out the pop when the heap grows past k.", kind="fail",
+                      strike=float(over), heap=[], visit=-1.0, dropped="", code=-1.0))
+    heap = []
+    for n, (word, c) in enumerate(counts):
+        heap.append((c, word))
+        heap.sort()
+        steps.append(dict(say="Push (%d, %s). Nothing is popped." % (c, word), kind="fail",
+                          heap=[list(x) for x in heap], visit=float(n), code=float(push), dur=0.4,
+                          hold=0.2))
+    steps.append(dict(say="The heap holds every word: n entries, not k. Its top is the least frequent word.",
+                      kind="fail", visit=-1.0, code=-1.0, hold=1.0))
+    steps.append(dict(say="Taking k entries from the top gives cat and dog, the two least frequent words. "
+                      "The answer is reversed, and the memory is O(n).", kind="fail", taken=2.0,
+                      hold=2.4))
     steps = [{a: b for a, b in st.items() if b is not None} for st in steps]
-    tl = play(steps, dict(entries=[], heap=[], visit=-1.0, code=-1.0, dropped=""))
+    tl = play(steps, dict(entries=[], heap=[], visit=-1.0, code=-1.0, dropped="", strike=-1.0,
+                          taken=0.0))
 
     def draw(p, s, total):
         t = s.t
@@ -190,10 +206,12 @@ def top_k():
                  hot=counts[int(s.visit)][0] if s.visit >= 0 else None, rows=4)
         p.text(330, 108, "min_heap (top first)", 12, MUTED, 600)
         for i, (c, w) in enumerate(s.heap):
-            y = 122 + i * 46
+            y = 122 + i * 40
             top = i == 0
-            p.rect(330, y, 230, 38, BRASS_LT if top else PAPER, BRASS if top else NAVY, 8, 1.6)
-            p.text(345, y + 25, "Rev((%d, \"%s\"))" % (c, w), 14, INK, 700, mono=True)
+            taken = i < round(s.taken)
+            p.rect(330, y, 230, 34, RUST_LT if taken else (BRASS_LT if top else PAPER),
+                   RUST if taken else (BRASS if top else NAVY), 8, 1.6)
+            p.text(345, y + 23, "Rev((%d, \"%s\"))" % (c, w), 14, INK, 700, mono=True)
             if top:
                 p.text(570, y + 24, "← top", 11.5, BRASS, 700)
         if s.dropped:
@@ -201,7 +219,8 @@ def top_k():
         p.text(650, 108, "k = %d" % k, 15, INK, 700, mono=True)
         furniture(p, tl, t, total, "Top k with a min-heap of size k",
                   "Each count is pushed. When the heap holds k + 1 entries, the smallest is popped.",
-                  "top_k_frequent (the heap loop)", code, s.code, cap_y, rail_y, CODE_Y)
+                  "top_k_frequent (the heap loop)", code, s.code, cap_y, rail_y, CODE_Y,
+                  strike=s.strike)
 
     CODE_Y = 300
     cap_y, rail_y, height = layout(CODE_Y, len(code))

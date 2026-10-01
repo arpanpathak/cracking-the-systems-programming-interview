@@ -12,10 +12,11 @@ from motion_kit import NAVY, layout, line_of, play, source
 
 
 def furniture(p, tl, t, total, title, sub, code_title, code, line, cap_y, rail_y, code_y,
-              tint=TEAL, size=11.0, lead=15.6):
+              tint=TEAL, size=11.0, lead=15.6, strike=-1.0):
     title_block(p, title, sub)
-    code_panel(p, 26, code_y, W - 52, code_title, code, line, size=size, lead=lead, tint=tint,
-               reveal=tl.reached("code", t))
+    code_panel(p, 26, code_y, W - 52, code_title, code, line, size=size, lead=lead,
+               tint=RUST if strike >= 0 else tint, reveal=tl.reached("code", t),
+               strike=int(strike) if strike >= 0 else None)
     caption(p, tl, t, cap_y)
     progress(p, tl, t, total, rail_y)
 
@@ -184,8 +185,15 @@ def spin_lock():
              dict(say="B's load sees false. Its next compare_exchange_weak succeeds, with Acquire ordering.",
                   locked=1.0, b_state="holds the lock", spin=0.0, msg="B", code=float(ret)),
              dict(say="The Release store and the Acquire exchange pair up, so B sees every write A made while it "
-                  "held the lock.", kind="insight", code=-1.0, hold=1.8)]
-    tl = play(steps, dict(locked=0.0, a_state="", b_state="", code=-1.0, msg="", spin=0.0))
+                  "held the lock.", kind="insight", code=-1.0, hold=1.8),
+             dict(chapter="never released", say="Now A leaks its guard with std::mem::forget. The guard's Drop "
+                  "never runs, so unlock never runs.", kind="fail", locked=1.0, a_state="guard forgotten",
+                  b_state="calls lock", msg="A", code=0.0),
+             dict(say="B's exchange fails, and B spins on the load. locked stays true.", kind="fail",
+                  b_state="spinning", spin=1.0, cpu=1.0, code=float(spin), hold=1.2),
+             dict(say="Nothing will ever store false. B spins forever, and keeps one core at 100%.",
+                  kind="fail", hold=2.2)]
+    tl = play(steps, dict(locked=0.0, a_state="", b_state="", code=-1.0, msg="", spin=0.0, cpu=0.0))
 
     def draw(p, s, total):
         t = s.t
@@ -196,6 +204,8 @@ def spin_lock():
             with p.group(opacity=s.spin, rotate=ang, cx=690, cy=110):
                 p.path("M 690 92 A 18 18 0 1 1 672 110", "none", RUST, 3)
             p.text(690, 82, "spinning", 11, RUST, 700, "middle", opacity=s.spin)
+        if s.cpu > 0.01:
+            chip(p, 560, 110, "B: CPU 100%, forever", RUST, RUST_LT, 12, opacity=min(1.0, s.cpu))
         lockv = s.locked > 0.5
         p.rect(330, 150, 160, 90, RUST_LT if lockv else TEAL_LT, RUST if lockv else TEAL, 12, 2)
         p.text(410, 178, "locked: AtomicBool", 11.5, MUTED, 600, "middle")
@@ -294,8 +304,21 @@ def bounded_buffer():
         buf_ = [x for x in [2, 3, 4] if x > v]
         steps.append(dict(chapter="drain" if v == 2 else None, say="The consumer pops %d." % v, buf=buf_,
                           c_item=str(v), code=float(pop), dur=0.5, hold=0.2))
+    while_line = line_of(code, "while guard.len()")
+    steps += [dict(chapter="if, not while", say="Full again: 5, 6, 7. The producer waits to push 8.",
+                   buf=[5, 6, 7], p_wait=1.0, want="8", c_item="", code=float(wait_full)),
+              dict(say="The consumer pops 5 and notifies. Before the producer wakes, a second producer pushes "
+                   "9 into the free slot.", buf=[6, 7, 9], c_item="5", other=1.0, code=-1.0, hold=0.8),
+              dict(say="With while, the woken producer checks len again, finds the buffer full, and sleeps.",
+                   kind="insight", other=0.0, code=float(while_line), hold=1.0),
+              dict(say="With if in place of while, it does not check again. It pushes 8: four items in three "
+                   "slots.", kind="fail", strike=float(while_line), p_wait=0.0, want="", buf=[6, 7, 9, 8],
+                   code=float(push), hold=1.0),
+              dict(say="The capacity no longer holds, and a spurious wakeup can do the same with no second "
+                   "producer at all.", kind="fail", hold=2.0)]
     steps = [{a: b for a, b in st.items() if b is not None} for st in steps]
-    tl = play(steps, dict(buf=[], p_wait=0.0, want="", c_item="", code=-1.0))
+    tl = play(steps, dict(buf=[], p_wait=0.0, want="", c_item="", code=-1.0, strike=-1.0,
+                          other=0.0))
 
     def draw(p, s, total):
         t = s.t
@@ -307,16 +330,24 @@ def bounded_buffer():
         for k in range(3):
             p.rect(x0 + k * 90, 150, 80, 80, "#f6f8fa", LINE, 10, 1.4, dash="5 5")
         for k, v in enumerate(s.buf):
-            p.rect(x0 + k * 90 + 6, 156, 68, 68, BRASS_LT, BRASS, 9, 1.8, shadow="shadow")
+            over = k >= 3
+            p.rect(x0 + k * 90 + 6, 156, 68, 68, RUST_LT if over else BRASS_LT, RUST if over else BRASS,
+                   9, 1.8, shadow="shadow")
             p.text(x0 + k * 90 + 40, 199, str(v), 24, INK, 700, "middle", mono=True)
+            if over:
+                p.text(x0 + k * 90 + 40, 246, "no slot", 11, RUST, 700, "middle")
+        if s.other > 0.01:
+            pill(p, 420, 112, "producer 2: push(9)", NAVY, "#e6ecf6", 11, opacity=min(1.0, s.other),
+                 shadow=None)
         p.text(x0, 256, "front: pop_front", 11, MUTED, 600)
         p.text(x0 + 260, 256, "back: push_back", 11, MUTED, 600, "end")
-        full = len(s.buf) == 3
+        full = len(s.buf) >= 3
         p.text(x0 + 130, 136, "len %d of 3%s" % (len(s.buf), ", full" if full else ""), 13,
                RUST if full else INK, 700, "middle", mono=True)
         furniture(p, tl, t, total, "A bounded buffer: the producer waits when it is full",
                   "Two condition variables put each side to sleep until the other side makes room or work.",
-                  "push and pop", code, s.code, cap_y, rail_y, CODE_Y, size=10.6, lead=15.0)
+                  "push and pop", code, s.code, cap_y, rail_y, CODE_Y, size=10.6, lead=15.0,
+                  strike=s.strike)
 
     CODE_Y = 318
     cap_y, rail_y, height = layout(CODE_Y, len(code), 15.0)
@@ -344,8 +375,14 @@ def token_bucket():
                    "is read.", tokens=1.0, code=float(refill)),
               dict(say="That token is taken, and the call returns true.", tokens=0.0, result="true", code=float(take)),
               dict(say="A burst of up to 5 calls passes at once; after that, calls pass at 1 per second.",
-                   kind="insight", code=-1.0, result="", hold=1.6)]
-    tl = play(steps, dict(tokens=5.0, clock=0.0, result="", code=-1.0))
+                   kind="insight", code=-1.0, result="", hold=1.6),
+              dict(chapter="no cap", say="Now leave out .min(self.capacity), and let the limiter sit idle for an "
+                   "hour.", kind="fail", strike=float(refill), clock=3600.0, result="", code=-1.0, dur=1.6),
+              dict(say="The next call computes elapsed = 3,600 s and adds 3,600 tokens. Nothing stops at 5.",
+                   kind="fail", tokens=3600.0, code=float(refill), dur=1.4),
+              dict(say="The next 3,600 calls all pass at once: a burst 720 times the capacity. The limit is "
+                   "gone.", kind="fail", result="true", hold=2.2)]
+    tl = play(steps, dict(tokens=5.0, clock=0.0, result="", code=-1.0, strike=-1.0))
 
     def draw(p, s, total):
         t = s.t
@@ -360,15 +397,21 @@ def token_bucket():
                 with p.group(opacity=full):
                     p.circle(bx + 110, y, 15, BRASS, "#9a7426", 2)
                     p.text(bx + 110, y + 5, "T", 12, PAPER, 700, "middle")
-        p.text(bx + 110, by + 210, "tokens = %.0f" % round(n), 16, INK, 700, "middle", mono=True)
-        p.text(620, 150, "clock: t = %.0f s" % round(s.clock), 15, INK, 700, mono=True)
+        if n > 5.5:
+            for k in range(4):
+                p.circle(bx + 70 + k * 27, by - 12 - (k % 2) * 16, 13, RUST, "#9a7426", 2)
+            p.text(bx + 110, by + 234, "+%s over capacity" % format(int(n - 5), ","), 12.5, RUST, 700,
+                   "middle", mono=True)
+        p.text(bx + 110, by + 210, "tokens = %s" % format(int(round(n)), ","), 16,
+               RUST if n > 5.5 else INK, 700, "middle", mono=True)
+        p.text(620, 150, "clock: t = %s s" % format(int(round(s.clock)), ","), 15, INK, 700, mono=True)
         if s.result:
             ok = s.result == "true"
             pill(p, 680, 210, "try_acquire -> %s" % s.result, TEAL if ok else RUST, TEAL_LT if ok else RUST_LT, 13,
                  shadow=None)
         furniture(p, tl, t, total, "A token bucket refills from the clock",
                   "Each call adds the tokens the elapsed time has earned, then tries to take one.",
-                  "try_acquire", code, s.code, cap_y, rail_y, CODE_Y)
+                  "try_acquire", code, s.code, cap_y, rail_y, CODE_Y, strike=s.strike)
 
     CODE_Y = 360
     cap_y, rail_y, height = layout(CODE_Y, len(code))

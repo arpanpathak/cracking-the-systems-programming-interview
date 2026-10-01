@@ -14,10 +14,11 @@ from motion_kit import (NAVY, cells, fact, kv_panel, layout, line_of, play, poin
 
 
 def frame_furniture(p, tl, t, total, title, sub, code_title, code, line, caption_y, rail_y,
-                    code_y, code_size=11.0, lead=16.0, tint=TEAL):
+                    code_y, code_size=11.0, lead=16.0, tint=TEAL, strike=-1.0):
     title_block(p, title, sub)
     code_panel(p, 26, code_y, W - 52, code_title, code, line, size=code_size, lead=lead,
-               tint=tint, reveal=tl.reached("code", t))
+               tint=RUST if strike >= 0 else tint, reveal=tl.reached("code", t),
+               strike=int(strike) if strike >= 0 else None)
     caption(p, tl, t, caption_y)
     progress(p, tl, t, total, rail_y)
 
@@ -252,12 +253,23 @@ def three_sum():
                                   left=float(left), right=float(right), sum=""))
     steps.append(dict(say="Two triples, found with one inward walk for each fixed number: O(n^2).",
                       kind="insight", i_a=0.0, l_a=0.0, r_a=0.0, sum="", code=-1.0, hold=2.0))
+    dup_test = line_of(code, "numbers[i] == numbers[i - 1]")
+    steps.append(dict(chapter="no skip", say="Now take out the check that skips a repeated first number. "
+                      "i = 2 holds the second -1.", kind="fail", strike=float(dup_test), i=2.0, i_a=1.0,
+                      left=3.0, right=5.0, l_a=1.0, r_a=1.0, sum="", code=float(init)))
+    steps.append(dict(say="-1 + 0 + 2 = 1 is too large, so right moves left.", kind="fail",
+                      sum="-1 + 0 + 2 = 1", right=4.0, code=float(more)))
+    steps.append(dict(say="-1 + 0 + 1 = 0 matches, so the triple is recorded again.", kind="fail",
+                      sum="-1 + 0 + 1 = 0", results=list(results) + ["(-1, 0, 1)"], code=float(push)))
+    steps.append(dict(say="(-1, 0, 1) appears twice. The two -1s are different indices, but the triple is "
+                      "the same, so the answer is wrong.", kind="fail", i_a=0.0, l_a=0.0, r_a=0.0,
+                      sum="", code=-1.0, hold=2.2))
     steps = [{k: v for k, v in st.items() if v is not None} for st in steps]
     for st in steps:
         if st.get("chapter") == "skip":
             st.pop("chapter")
     tl = play(steps, dict(code=-1.0, i=0.0, i_a=0.0, left=1.0, right=5.0, l_a=0.0, r_a=0.0, sum="",
-                          results=[]))
+                          results=[], strike=-1.0))
 
     def draw(p, s, total):
         t = s.t
@@ -282,13 +294,15 @@ def three_sum():
                 opacity=s.r_a)
         if s.sum:
             p.text(W / 2, 92, s.sum, 17, INK, 700, "middle", mono=True)
-        p.text(W - 40, 300, "results", 12, MUTED, 600, "end")
+        p.text(W - 40, 236, "results", 12, MUTED, 600, "end")
         for k, r in enumerate(s.results):
-            p.text(W - 40, 324 + k * 22, r, 15, TEAL, 700, "end", mono=True)
+            again = r in s.results[:k]
+            p.text(W - 40, 260 + k * 22, r + ("  again" if again else ""), 15,
+                   RUST if again else TEAL, 700, "end", mono=True)
         frame_furniture(p, tl, t, total, "Three Sum: fix one number, close two pointers",
                         "The array is sorted, so the sum says which pointer to move.",
                         "three_sum (the search loop)", code, s.code, cap_y, rail_y, CODE_Y,
-                        code_size=10.6, lead=15.0)
+                        code_size=10.6, lead=15.0, strike=s.strike)
 
     CODE_Y = 364
     cap_y, rail_y, height = layout(CODE_Y, len(code), 15.0)
@@ -761,10 +775,13 @@ def kmp_lps_table(needle):
     return lps
 
 
+HAYS = {"found": "aabaaabaaac", "absent": "aabaaabaab"}
+
+
 def kmp_search():
-    hay, needle = "aabaaabaaac", "aabaaac"
+    hay, needle = HAYS["found"], "aabaaac"
     lps = kmp_lps_table(needle)
-    code = source("src/bin/kmp_pattern_matching.rs", "while right < haystack.len()", "return (right - left)")
+    code = source("src/bin/kmp_pattern_matching.rs", "while right < haystack.len()", "-1")
     same = line_of(code, "if haystack[right] == needle[left]")
     back_l = line_of(code, "left = lps[left - 1]")
     skip = line_of(code, "right += 1;", 1)
@@ -801,15 +818,40 @@ def kmp_search():
                               code=float(skip)))
             right += 1
         if left == len(needle):
-            steps.append(dict(chapter="found", say="All %d characters match. The needle starts at right - left = %d."
+            steps.append(dict(say="All %d characters match. The needle starts at right - left = %d."
                               % (len(needle), right - left), found=1.0, code=float(done), kind="insight",
                               hold=1.8))
             break
+    absent = HAYS["absent"]
+    steps.append(dict(chapter="absent", say="Now a haystack that does not contain the needle: \"%s\"."
+                      % absent, kind="fail", data="absent", right=0.0, left=0.0, cmp="", found=0.0,
+                      code=-1.0, hold=0.6))
+    left = right = 0
+    while right < len(absent):
+        if absent[right] == needle[left]:
+            left += 1
+            right += 1
+            steps.append(dict(say="%d needle characters match." % left, kind="fail", right=float(right),
+                              left=float(left), cmp="", code=float(same), dur=0.35, hold=0.0))
+        elif left > 0:
+            new = lps[left - 1]
+            steps.append(dict(say="Mismatch: left falls back to lps[%d] = %d." % (left - 1, new),
+                              kind="fail", left=float(new), cmp="bad", code=float(back_l), dur=0.5))
+            left = new
+        else:
+            right += 1
+            steps.append(dict(say="Mismatch at the needle's start: right advances.", kind="fail",
+                              right=float(right), cmp="", code=float(skip), dur=0.35, hold=0.0))
+    steps.append(dict(say="right reaches the end with %d characters matched, so the loop ends and returns -1. "
+                      "Each haystack character was read once." % left, kind="fail", cmp="",
+                      code=float(len(code) - 1), hold=2.2))
     steps = [{k: v for k, v in x.items() if v is not None} for x in steps]
-    tl = play(steps, dict(code=-1.0, right=0.0, left=0.0, cmp="", found=0.0, lps_hot=-1.0))
+    tl = play(steps, dict(code=-1.0, right=0.0, left=0.0, cmp="", found=0.0, lps_hot=-1.0,
+                          data="found"))
 
     def draw(p, s, total):
         t = s.t
+        hay = HAYS[s.data]
         cell, gap = 50, 6
         xs = row_xs(len(hay), cell, gap)
         step = xs[1] - xs[0]
@@ -829,7 +871,8 @@ def kmp_search():
         p.text(xs[0] - 34, top + 32, "haystack", 12, MUTED, 600, "end")
         pointer(p, xs[0] + s.right * step, top, "right", BRASS, "above")
         ny = top + 96
-        nx = [xs[0] + (offset + k) * step for k in range(len(needle))]
+        shown = [k for k in range(len(needle)) if offset + k < len(hay) - 0.01]
+        nx = [xs[0] + (offset + k) * step for k in shown]
         nf, ne = [], []
         for k in range(len(needle)):
             if s.found > 0.5 or k < s.left - 0.01:
@@ -838,7 +881,8 @@ def kmp_search():
                 nf.append(TEAL_LT if s.cmp == "ok" else RUST_LT); ne.append(TEAL if s.cmp == "ok" else RUST)
             else:
                 nf.append(PAPER); ne.append(LINE)
-        below = cells(p, nx, ny, list(needle), cell=cell, fills=nf, edges=ne, size=20)
+        below = cells(p, nx, ny, [needle[k] for k in shown], cell=cell, fills=[nf[k] for k in shown],
+                      edges=[ne[k] for k in shown], size=20)
         p.text(nx[0] - 34, ny + 32, "needle", 12, MUTED, 600, "end")
         pointer(p, xs[0] + (offset + s.left) * step, below, "left", NAVY, "below")
         ly = below + 64
@@ -899,7 +943,37 @@ def kmp_lps():
     steps.append(dict(say="The table is 0 1 0 1 2 2 0. The search uses it without ever re-reading the "
                       "haystack.", right=float(len(needle)), kind="insight", code=-1.0, hold=1.8,
                       known=float(len(needle))))
-    tl = play(steps, dict(code=-1.0, right=1.0, left=0.0, cmp="", lps=[0] * len(needle), known=1.0))
+    good = list(lps)
+    steps.append(dict(chapter="reset to 0", say="Now replace left = lps[left - 1] with left = 0: on a "
+                      "mismatch, forget everything matched.", kind="fail", strike=float(back_l),
+                      lps=[0] * len(needle), known=1.0, right=1.0, left=0.0, cmp="", code=-1.0))
+    bad = [0] * len(needle)
+    left, right = 0, 1
+    while right < len(needle):
+        if needle[right] == needle[left]:
+            left += 1
+            bad[right] = left
+            right += 1
+            steps.append(dict(say="Match: lps[%d] = %d." % (right - 1, left), kind="fail", lps=list(bad),
+                              known=float(right), right=float(right), left=float(left), cmp="",
+                              code=float(write), dur=0.4, hold=0.1))
+        elif left > 0:
+            steps.append(dict(say="needle[%d] = '%s' differs from needle[%d] = '%s'. left drops to 0." % (
+                right, needle[right], left, needle[left]), kind="fail", right=float(right),
+                left=0.0, cmp="bad", code=float(same)))
+            left = 0
+        else:
+            right += 1
+            steps.append(dict(say="No match at the start: lps[%d] stays 0." % (right - 1), kind="fail",
+                              right=float(right), cmp="", known=float(right), code=float(skip), dur=0.4,
+                              hold=0.1))
+    wrong = [k for k in range(len(needle)) if bad[k] != good[k]]
+    steps.append(dict(say="lps[%d] is %d, but \"%s\" starts and ends with \"%s\": the right value is %d. "
+                      "The fallback to a shorter border was skipped." % (
+                          wrong[0], bad[wrong[0]], needle[:wrong[0] + 1], needle[:good[wrong[0]]],
+                          good[wrong[0]]), kind="fail", wrong=float(wrong[0]), code=-1.0, hold=2.4))
+    tl = play(steps, dict(code=-1.0, right=1.0, left=0.0, cmp="", lps=[0] * len(needle), known=1.0,
+                          strike=-1.0, wrong=-1.0))
 
     def draw(p, s, total):
         t = s.t
@@ -923,10 +997,12 @@ def kmp_lps():
         p.text(xs[0] - 44, ly + 24, "lps", 12, MUTED, 600, "end")
         vals = [str(v) if k < s.known - 0.01 else "" for k, v in enumerate(s.lps)]
         cells(p, xs, ly, vals, cell=40, size=16, index=False,
-              fills=["#f6f8fa" if v else PAPER for v in vals], edges=[LINE] * len(vals))
+              fills=[RUST_LT if abs(k - s.wrong) < 0.5 else ("#f6f8fa" if v else PAPER)
+                     for k, v in enumerate(vals)],
+              edges=[RUST if abs(k - s.wrong) < 0.5 else LINE for k in range(len(vals))])
         frame_furniture(p, tl, t, total, "Building the lps table",
                         "The needle is compared with itself, with the same three branches as the search.",
-                        "build_lps", code, s.code, cap_y, rail_y, CODE_Y)
+                        "build_lps", code, s.code, cap_y, rail_y, CODE_Y, strike=s.strike)
 
     CODE_Y = 362
     cap_y, rail_y, height = layout(CODE_Y, len(code))

@@ -3,24 +3,24 @@
     python3 tools/animations.py merge-two merge-rounds
 """
 
-from anim_kernel import lines_containing
+from motion_kit import Panel, layout
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
-MERGE_TWO = lines_containing(
-    "src/bin/merge_k_sorted_list_zero_copy.rs",
-    "while let (Some(left_head), Some(right_head)) = (&left, &right) {",
-    "let smaller = if left_head.val <= right_head.val {",
-    "let mut node = smaller.take().unwrap();",
-    "*smaller = node.next.take();",
-    "tail = tail.next.insert(node);",
-    "tail.next = if left.is_some() { left } else { right };",
-    "dummy.next")
-MERGE_K = lines_containing(
-    "src/bin/merge_k_sorted_list_zero_copy.rs",
-    "while gap < list_count {", "let left = lists[index].take();",
-    "let right = lists[index + gap].take();", "lists[index] = merge_two(left, right);",
-    "index += gap * 2;", "gap *= 2;")
+MERGE_TWO = Panel("src/bin/merge_k_sorted_list_zero_copy.rs",
+                  [("let mut dummy = Box::new(Node { val: 0, next: None });", "dummy.next")],
+                  ["while let (Some(left_head), Some(right_head)) = (&left, &right) {",
+                   "let smaller = if left_head.val <= right_head.val {",
+                   "let mut node = smaller.take().unwrap();",
+                   "*smaller = node.next.take();",
+                   "tail = tail.next.insert(node);",
+                   "tail.next = if left.is_some() { left } else { right };",
+                   "dummy.next"])
+MERGE_K = Panel("src/bin/merge_k_sorted_list_zero_copy.rs",
+                [("while gap < list_count {", "}")],
+                ["while gap < list_count {", "let left = lists[index].take();",
+                 "let right = lists[index + gap].take();", "lists[index] = merge_two(left, right);",
+                 "index += gap * 2;", "gap *= 2;"])
 
 # ------------------------------------------------- 10.1: merging two lists
 
@@ -138,13 +138,13 @@ def merge_two():
             p.rect(x - 22, yy - 16, 44, 32, BRASS_LT, BRASS, 6, 1.6, opacity=s.fly_a)
             p.text(x, yy + 5, s.fly_val, 13, INK, 700, "middle", mono=True, opacity=s.fly_a)
 
-        code_panel(p, 26, 316, W - 52, "merge_two", MERGE_TWO, s.code, size=10.4, lead=15.5,
-                   strike=int(s.strike) if s.strike >= 0 else None,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 470)
-        progress(p, tl, t, total, 556)
+        MERGE_TWO.draw(p, 26, 316, W - 52, "merge_two", s, t, strike=s.strike, size=10.4,
+                       lead=14.0)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 590
+    CAP, RAIL, height = layout(316, len(MERGE_TWO), 14.0)
+    return tl, draw, height
 
 
 # ------------------------------------------------- 10.2: rounds versus one at a time
@@ -230,13 +230,13 @@ def merge_rounds():
             x, y = bezier(a, ((a[0] + b[0]) / 2, 74), b, s.arc_u)
             pill(p, x, y, "merge", BRASS, BRASS_LT, 10, opacity=s.arc_a, shadow=None)
 
-        code_panel(p, 26, 290, W - 52, "merge_k: pairwise rounds", MERGE_K, s.code, size=10.6,
-                   lead=15.5, tint=TEAL, opacity=1.0 if s.mode == "pairwise" else 0.4,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 424)
-        progress(p, tl, t, total, 510)
+        MERGE_K.draw(p, 26, 290, W - 52, "merge_k: pairwise rounds", s, t, size=10.6,
+                     lead=14.5, tint=TEAL, opacity=1.0 if s.mode == "pairwise" else 0.4)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 544
+    CAP, RAIL, height = layout(290, len(MERGE_K), 14.5)
+    return tl, draw, height
 
 
 def build_merge_two(only=None):

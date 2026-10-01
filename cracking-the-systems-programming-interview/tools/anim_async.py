@@ -7,6 +7,7 @@ import math
 
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
+from motion_kit import Panel, layout, nth_after
 
 
 # ---------------------------------------------------- 22.3: poll, park, wake
@@ -17,25 +18,18 @@ CARD = (296, 112, 228, 158)          # x, y, w, h of the future
 SLOT = (CARD[0] + 167, CARD[1] + 116)  # centre of the waker slot
 CODE_Y = 350
 
-BLOCK_ON = ["loop {",
-            "  match fut.poll(&mut cx) {",
-            "    Ready(v) => return v,",
-            "    Pending => thread::park(),",
-            "  }",
-            "}"]
-DELAY_POLL = ["let mut g = self.state.lock();",
-              "if g.ready {",
-              "  return Poll::Ready(());",
-              "}",
-              "g.waker = Some(cx.waker().clone());",
-              "Poll::Pending"]
-TIMER = ["thread::sleep(duration);",
-         "g.ready = true;",
-         "let w = g.waker.take();",
-         "// the lock is released here",
-         "if let Some(w) = w {",
-         "  w.wake();",
-         "}"]
+BLOCK_ON = Panel("src/problems/async_mini.rs", [(("loop {", 0), "}")],
+                 ["loop {", "match future.as_mut().poll(&mut context) {",
+                  "Poll::Ready(value) => return value,", "Poll::Pending => thread::park(),"])
+DELAY_POLL = Panel("src/problems/async_mini.rs",
+                   [(("let mut guard = self",
+                      nth_after("src/problems/async_mini.rs", "let mut guard = self", "impl Future for Delay")),
+                     ("Poll::Pending", 1))],
+                   ["let mut guard = self", "if guard.ready {", "Poll::Ready(())", "} else {",
+                    "guard.waker = Some(context.waker().clone());", "Poll::Pending"])
+TIMER = Panel("src/problems/async_mini.rs", [("thread::sleep(duration);", ("waker.wake();", 1))],
+              ["thread::sleep(duration);", "guard.ready = true;", "guard.waker.take()", "};",
+               "if let Some(waker) = waker {", "waker.wake();"])
 
 
 def poll_wake():
@@ -305,19 +299,20 @@ def poll_wake():
                 chip(p, EX_X, DESK_Y - 150, "parked forever", RUST, RUST_LT, 12.5)
 
         # ---- the code
-        code_panel(p, 26, CODE_Y, 232, "executor: block_on", BLOCK_ON, s.ex_code, tint=TEAL,
-                   reveal=s.timeline.reached('ex_code', t))
-        code_panel(p, 270, CODE_Y, 282, "future: Delay::poll", DELAY_POLL, s.dl_code,
-                   size=10.6, strike=4 if s.bug > 0.5 else None, tint=RUST if s.bug > 0.5 else TEAL,
-                   reveal=s.timeline.reached('dl_code', t))
-        code_panel(p, 564, CODE_Y, 230, "timer thread", TIMER, s.tm_code, size=10.8,
-                   lead=15.6, tint=BRASS,
-                   reveal=s.timeline.reached('tm_code', t))
+        top = BLOCK_ON.draw(p, 26, CODE_Y, 372, "executor: block_on", s, t, track="ex_code",
+                            size=10.0, lead=13.4, tint=TEAL)
+        DELAY_POLL.draw(p, 26, CODE_Y + top + 8, 372, "future: Delay::poll", s, t,
+                        track="dl_code", strike=4.0 if s.bug > 0.5 else None, size=10.0,
+                        lead=13.4, tint=RUST if s.bug > 0.5 else TEAL)
+        TIMER.draw(p, 410, CODE_Y, 384, "timer thread", s, t, track="tm_code", size=10.0,
+                   lead=13.4, tint=BRASS)
 
-        caption(p, tl, t, 520)
-        progress(p, tl, t, total, 606)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 640
+    left = BLOCK_ON.height(13.4) + 8 + DELAY_POLL.height(13.4)
+    CAP, RAIL, height = layout(CODE_Y, (max(left, TIMER.height(13.4)) - 38) / 13.4, 13.4)
+    return tl, draw, height
 
 
 # ------------------------------------------------ 22.5: waking is scheduling
@@ -331,19 +326,17 @@ TRAY = [150, 214, 278]        # completed tickets, top to bottom in finishing or
 LOST = (262, 324)             # where a task with no wake ends up
 TICKET_W, TICKET_H = 92, 100
 
-RUN = ["loop {",
-       "  let Some(task) = queue.pop_front() else { return };",
-       "  let waker = Waker::from(task.clone());",
-       "  let mut cx = Context::from_waker(&waker);",
-       "  if task.future.poll(&mut cx).is_ready() {",
-       "    task.completed = true;",
-       "  }",
-       "}"]
-WAKE = ["impl Wake for Task {",
-        "  fn wake_by_ref(self: &Arc<Self>) {",
-        "    self.queue.push_back(self.clone());",
-        "  }",
-        "}"]
+RUN = Panel("src/problems/async_mini.rs", [("pub fn run(&self) {", "}")],
+            ["loop {", "let Some(task) = self", "let waker = Waker::from(Arc::clone(&task));",
+             "let mut context = Context::from_waker(&waker);", ".poll(&mut context)",
+             ".store(true, Ordering::Release);"])
+WAKE = Panel("src/problems/async_mini.rs",
+             [("impl Wake for Task {", None),
+              (("fn wake_by_ref(self: &Arc<Self>) {",
+                nth_after("src/problems/async_mini.rs", "fn wake_by_ref(self: &Arc<Self>) {", "impl Wake for Task {")),
+               ("}", 1))],
+             ["impl Wake for Task {", "fn wake_by_ref(self: &Arc<Self>) {",
+              ".push_back(Arc::clone(self));"])
 
 
 def ticket(p, x, y, n, left, total, scale=1.0, opacity=1.0, stamp=0.0, ring=None,
@@ -591,15 +584,15 @@ def task_queue():
                    1.0, s["stamp%d" % n], s.timeline.age("ring%d" % n, t), s["lost%d" % n],
                    broken=(n == 1 and s.bug > 0.5))
 
-        code_panel(p, 26, 366, 432, "MiniExecutor::run", RUN, s.run_code, size=10.5, lead=15.2,
-                   reveal=s.timeline.reached('run_code', t))
-        code_panel(p, 470, 366, 324, "a task is its own waker", WAKE, s.wake_code,
-                   size=10.5, lead=15.2, tint=BRASS,
-                   reveal=s.timeline.reached('wake_code', t))
-        caption(p, tl, t, 532)
-        progress(p, tl, t, total, 618)
+        RUN.draw(p, 26, 366, 432, "MiniExecutor::run", s, t, track="run_code", size=10.0,
+                 lead=12.6)
+        WAKE.draw(p, 470, 366, 324, "a task is its own waker", s, t, track="wake_code",
+                  size=10.0, lead=12.6, tint=BRASS)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 652
+    CAP, RAIL, height = layout(366, max(len(RUN), len(WAKE)), 12.6)
+    return tl, draw, height
 
 
 # --------------------------------------- 22.6: what an async block compiles to

@@ -64,6 +64,180 @@ def line_of(lines: list[str], text: str, nth: int = 0) -> int:
     return hits[nth]
 
 
+class Panel:
+    """Real code for a code panel, as the chapter shows it.
+
+    `ranges` is a list of (first, last) pairs in one lab file, read as in
+    `source`: `last` is a text, a (text, extra lines) pair, "}" for the end of
+    the block opened on `first`, or None for one line. `first` may be a (text, nth) pair. Indentation is
+    kept, so every arm sits inside its `match` and every line inside its block.
+    Between two ranges the panel shows `// ...` at the indentation of the code
+    that follows, so a reader can see that lines were left out.
+
+    `separate=True` is for ranges taken from different functions: each range
+    keeps its own indentation instead of sharing the file's.
+
+    `focus` lists the texts that a timeline's code index counts through: index
+    k means the panel line holding `focus[k]`. `at(c)` turns such an index into
+    a panel line, so a builder can keep numbering its steps 0, 1, 2.
+    """
+
+    def __init__(self, path, ranges, focus=(), comments=False, separate=False):
+        src = (LAB / path).read_text().split("\n")
+        segments, spans = [], []
+        for first, last in ranges:
+            text, nth = first if isinstance(first, tuple) else (first, 0)
+            a = [i for i, l in enumerate(src) if text in l][nth]
+            if last is None:
+                b = a
+            elif last == "}":
+                depth, b = 0, a
+                for i in range(a, len(src)):
+                    body = re.sub(r'"(\\.|[^"\\])*"', '""', re.sub(r"//.*", "", src[i]))
+                    depth += body.count("{") - body.count("}")
+                    if depth <= 0 and "{" in "".join(src[a:i + 1]):
+                        b = i
+                        break
+            else:
+                text, extra = last if isinstance(last, tuple) else (last, 0)
+                b = next(i for i in range(a, len(src)) if text in src[i]) + extra
+            keep = [l for l in src[a:b + 1]
+                    if l.strip() and (comments or not l.strip().startswith("//"))]
+            segments.append(keep)
+            spans.append((a, b))
+        if separate:
+            # ranges from different functions: each keeps its own structure
+            segments = [[l[min(len(x) - len(x.lstrip()) for x in seg):] for l in seg]
+                        for seg in segments]
+        pad = min(len(l) - len(l.lstrip()) for seg in segments for l in seg)
+        self.lines = []
+        for k, seg in enumerate(segments):
+            between = src[spans[k - 1][1] + 1:spans[k][0]] if k else []
+            skipped = any(l.strip() and not l.strip().startswith("//") for l in between)
+            if k and (skipped or spans[k][0] < spans[k - 1][1]):
+                before, after = segments[k - 1][-1], seg[0]
+                indent = len(after) - len(after.lstrip()) - pad
+                if before.rstrip().endswith("{"):
+                    indent = len(before) - len(before.lstrip()) - pad + 4
+                self.lines.append(" " * indent + "// ...")
+            self.lines += [l[pad:] for l in seg]
+        self.marks = [self._mark(f) for f in focus]
+
+    def _mark(self, text):
+        """A focus line, or None when this panel does not hold it, so several
+        panels can share one numbering and each shows only its own lines."""
+        try:
+            return self.find(text)
+        except IndexError:
+            return None
+
+    def find(self, text, nth=0):
+        """The panel line holding `text` (or its `nth` occurrence)."""
+        if isinstance(text, tuple):
+            text, nth = text
+        return [i for i, l in enumerate(self.lines) if text in l][nth]
+
+    def at(self, c):
+        """A timeline code index (into `focus`) as a panel line; negative stays."""
+        if c is None or c < 0 or not self.marks:
+            return c
+        lo = min(int(c), len(self.marks) - 1)
+        hi = min(lo + 1, len(self.marks) - 1)
+        a, b = self.marks[lo], self.marks[hi]
+        if a is None:
+            return -1.0
+        if b is None or b < a:
+            return float(a)
+        return a + (b - a) * (c - int(c))
+
+    def __len__(self):
+        return len(self.lines)
+
+    def reached(self, s, t, track="code", per_line=0.12, longest=0.6):
+        """How far down this panel the highlight has been, in panel lines.
+
+        Like `Timeline.reached`, but measured after mapping, because a builder's
+        step order need not follow the order of the lines in the file."""
+        segments = [(start, self.at(b)) for start, _e, _a, b, _ease in s.timeline.segments[track]
+                    if isinstance(b, (int, float)) and b >= 0]
+        first = self.at(s.timeline.initial[track])
+        upcoming = [b for _s, b in segments if b is not None and b >= 0]
+        best = first if first is not None and first >= 0 else (upcoming[0] if upcoming else 0)
+        for start, b in segments:
+            if start > t:
+                break
+            if b is None or b <= best:
+                continue
+            ramp = min(longest, per_line * (b - best))
+            u = 1.0 if ramp <= 0 else min(1.0, max(0.0, (t - start) / ramp))
+            best += (b - best) * u
+        return best
+
+    def height(self, lead):
+        return 30 + len(self.lines) * lead + 8
+
+    def draw(self, p, x, y, w, title, s, t, track="code", strike=None, reveal=True, **kw):
+        """`code_panel` with the timeline's indices mapped onto these lines.
+
+        Pass `reveal=False` for a panel that is one of several taking turns: it
+        is shown whole when its turn comes."""
+        from motion import code_panel
+        mark = None if strike is None or strike < 0 else int(round(self.at(strike)))
+        shown = self.reached(s, t, track) if reveal else None
+        return code_panel(p, x, y, w, title, self.lines, self.at(s[track]), strike=mark,
+                          reveal=shown, **kw)
+
+
+def nth_after(path, text, anchor):
+    """Which occurrence of `text` in a lab file is the first one after `anchor`,
+    for a `Panel` range whose first line is not unique in the file."""
+    src = (LAB / path).read_text().split("\n")
+    start = next(i for i, l in enumerate(src) if anchor in l)
+    return sum(1 for l in src[:start] if text in l)
+
+
+class Panels:
+    """Several real-code panels from one file that take turns.
+
+    Each group of ranges is one panel, typically one function. All panels share
+    one `focus` numbering, so a timeline's code index names a line in exactly
+    one of them. The panel shown is the one holding the latest line the
+    timeline has highlighted, so it stays put between steps.
+    """
+
+    def __init__(self, path, groups, titles, focus):
+        self.panels = [Panel(path, ranges, focus) for ranges in groups]
+        self.titles = titles
+        # one box size for the whole group, so the frame does not jump
+        tallest = max(len(p.lines) for p in self.panels)
+        for panel in self.panels:
+            panel.lines += [""] * (tallest - len(panel.lines))
+
+    def pick(self, s, t, track="code"):
+        latest = None
+        for start, _end, _a, b, _ease in s.timeline.segments[track]:
+            if start > t:
+                break
+            if isinstance(b, (int, float)) and b >= 0:
+                latest = b
+        if latest is None:
+            first = s.timeline.initial[track]
+            latest = first if isinstance(first, (int, float)) and first >= 0 else 0
+        k = min(int(round(latest)), len(self.panels[0].marks) - 1)
+        for n, panel in enumerate(self.panels):
+            if panel.marks[k] is not None:
+                return n
+        return 0
+
+    def __len__(self):
+        return max(len(p) for p in self.panels)
+
+    def draw(self, p, x, y, w, s, t, track="code", **kw):
+        n = self.pick(s, t, track)
+        return self.panels[n].draw(p, x, y, w, self.titles[n], s, t, track=track,
+                                   reveal=False, **kw)
+
+
 # ------------------------------------------------------------------ layout
 
 

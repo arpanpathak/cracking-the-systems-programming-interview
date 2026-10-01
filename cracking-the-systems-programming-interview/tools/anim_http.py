@@ -7,6 +7,7 @@ import math
 
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
+from motion_kit import Panel, layout, nth_after
 
 
 # ----------------------------------------------- 21.1: where a request ends
@@ -25,14 +26,16 @@ REQUESTS = {
 CRLF = {"length": 4, "chunked": 8, "both": 10}
 HEAD_END = {"length": 3, "chunked": 3, "both": 4}
 
-PARSE_BODY = [
-    "if !transfer_encoding.is_empty() && !content_length.is_empty() {",
-    "    return Err(ParseError::AmbiguousBodyLength);",
-    "}",
-    "if !transfer_encoding.is_empty() { return decode_chunked(..); }",
-    "if content_length.is_empty() { return Ok(Vec::new()); }",
-    "// otherwise: exactly Content-Length bytes",
-]
+PARSE_BODY = Panel("src/problems/http_request.rs",
+                   [("if !transfer_encoding.is_empty() && !content_length.is_empty() {", "}"),
+                    ("if !transfer_encoding.is_empty() {", None),
+                    ("return decode_chunked(", ("}", 1)),
+                    ("if content_length.is_empty() {", "}"),
+                    ("let end = body_start + first;", "Ok(input[body_start..end].to_vec())")],
+                   ["if !transfer_encoding.is_empty() && !content_length.is_empty() {",
+                    "return Err(ParseError::AmbiguousBodyLength);", ("}", 0),
+                    "return decode_chunked(", "if content_length.is_empty() {",
+                    "let end = body_start + first;"])
 
 
 def line_y(i):
@@ -252,13 +255,13 @@ def http_framing():
                 p.text(x + w / 2, y + h - 20, "Connection: close", 11.5, RUST, 600, "middle",
                        mono=True)
 
-        code_panel(p, 26, 354, W - 52, "parse_body decides", PARSE_BODY, s.code, size=10.8,
-                   lead=15.5, tint=RUST if s.req == "both" else TEAL,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 494)
-        progress(p, tl, t, total, 580)
+        PARSE_BODY.draw(p, 26, 354, W - 52, "parse_body decides", s, t, size=10.4, lead=13.6,
+                        tint=RUST if s.req == "both" else TEAL)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 614
+    CAP, RAIL, height = layout(354, len(PARSE_BODY), 13.6)
+    return tl, draw, height
 
 
 # ------------------------------------------------ 21.2: the keep-alive loop
@@ -267,15 +270,11 @@ CL_X, SV_X, DESK = 96, 724, 226
 WIRE_A, WIRE_B, WIRE_Y = 176, 646, 150
 BUF = (250, 196, 320, 44)
 
-LOOP = [
-    "loop {",
-    "    match parse_request(&buffer, limits) {",
-    "        Ok(request) => { route, write the response; clear or close }",
-    "        Err(ParseError::Incomplete) => { read more into buffer }",
-    "        Err(error) => { write 400, then close }",
-    "    }",
-    "}",
-]
+LOOP = Panel("src/bin/http_server.rs",
+             [(("loop {", nth_after("src/bin/http_server.rs", "loop {",
+                                    "let mut chunk = [0u8; 4096];")), "}")],
+             ["loop {", "match parse_request(&buffer, limits) {", "Ok(request) => {",
+              "Err(ParseError::Incomplete) => {", "Err(error) => {"])
 
 
 def keep_alive():
@@ -408,12 +407,12 @@ def keep_alive():
                 p.text(rx - 80, ry + 5, s.route_in, 11, MUTED, 600, "end", mono=True)
                 p.text(rx + 80, ry + 5, "→ " + s.route_out, 11, TEAL, 700, mono=True)
 
-        code_panel(p, 26, 318, W - 52, "handle_connection", LOOP, s.code, size=10.8, lead=15.5,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 480)
-        progress(p, tl, t, total, 566)
+        LOOP.draw(p, 26, 318, W - 52, "handle_connection", s, t, size=10.2, lead=12.8)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 600
+    CAP, RAIL, height = layout(318, len(LOOP), 12.8)
+    return tl, draw, height
 
 
 def build_http_framing(only=None):

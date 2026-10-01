@@ -41,7 +41,7 @@ pub use problems::{
     dp::coin_change,
     graph_topology::topological_sort,
     http_request::{Method, Request, parse_request},
-    linked_list::{ListNode, reverse_list},
+    linked_list::{ListNode, remove_all, reverse_list},
     lru_cache::LruCache,
     merge_intervals::merge_intervals,
     min_stack::MinStack,

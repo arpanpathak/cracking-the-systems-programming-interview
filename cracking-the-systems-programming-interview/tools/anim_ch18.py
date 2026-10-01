@@ -3,19 +3,24 @@
     python3 tools/animations.py pool-lock pool-panic
 """
 
-from anim_kernel import lines_containing, padlock
+from anim_kernel import padlock
+from motion_kit import Panel, layout, nth_after
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
-V1_LOOP = lines_containing("src/bin/thread_pool.rs",
-                           "while let Ok(job) = rx.lock().unwrap().recv() {", "job();")
-V2_LOOP = lines_containing("src/problems/thread_pool_v2.rs",
-                           "let job = receiver.lock().unwrap().recv();", "Ok(job) => job(),")
-V3_LOOP = lines_containing("src/problems/thread_pool_v3.rs", "let job = guard.recv();",
-                           "Ok(job) => job(),")
-V4_LOOP = lines_containing("src/problems/thread_pool_v4.rs", "let job = guard.recv();",
-                           "match panic::catch_unwind(AssertUnwindSafe(job)) {",
-                           "Ok(()) => counters", "Err(_) => counters")
+V1_LOOP = Panel("src/bin/thread_pool.rs", [("thread::spawn(move || {", "}")],
+                ["while let Ok(job) = rx.lock().unwrap().recv() {", "job();"])
+V2_LOOP = Panel("src/problems/thread_pool_v2.rs",
+                [(("thread::spawn(move || {",
+                   nth_after("src/problems/thread_pool_v2.rs", "thread::spawn(move || {",
+                             "let receiver = Arc::clone")), "}")],
+                ["let job = receiver.lock().unwrap().recv();", "Ok(job) => job(),"])
+V3_LOOP = Panel("src/problems/thread_pool_v3.rs", [("fn worker_loop(", "}")],
+                ["let job = guard.recv();", "Ok(job) => job(),"])
+V4_LOOP = Panel("src/problems/thread_pool_v4.rs", [("fn worker_loop(", "}")],
+                ["let job = guard.recv();",
+                 "match panic::catch_unwind(AssertUnwindSafe(job)) {",
+                 "Ok(()) => counters", "Err(_) => counters"])
 
 WORKERS = [470, 560, 650, 740]
 DESK = 214
@@ -132,15 +137,15 @@ def pool_lock():
             pill(p, x, y, "job %d" % (int(s.fly_to) + 1), BRASS, BRASS_LT, 10, opacity=s.fly_a,
                  shadow=None)
 
-        lines = V1_LOOP if s.variant == "v1" else V2_LOOP
+        panel = V1_LOOP if s.variant == "v1" else V2_LOOP
         title = "version 1 worker loop" if s.variant == "v1" else "version 2 worker loop"
-        code_panel(p, 26, 300, W - 52, title, lines, s.code, size=11.0, lead=17.0,
-                   tint=RUST if s.variant == "v1" else TEAL,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 376)
-        progress(p, tl, t, total, 462)
+        panel.draw(p, 26, 300, W - 52, title, s, t, reveal=False, size=10.8, lead=15.0,
+                   tint=RUST if s.variant == "v1" else TEAL)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 496
+    CAP, RAIL, height = layout(300, max(len(V1_LOOP), len(V2_LOOP)), 15.0)
+    return tl, draw, height
 
 
 # ---------------------------------------------------------- 18.5: a panicking job
@@ -222,15 +227,15 @@ def pool_panic():
                 chip(p, WORKERS[k], DESK - 86, "panic!" if busy else "job",
                      RUST if busy else BRASS, RUST_LT if busy else BRASS_LT, 10)
 
-        lines = V4_LOOP if s.variant == "v4" else V3_LOOP
+        panel = V4_LOOP if s.variant == "v4" else V3_LOOP
         title = "version 4 worker loop" if s.variant == "v4" else "version 3 worker loop"
-        code_panel(p, 26, 300, W - 52, title, lines, s.code, size=11.0, lead=17.0,
-                   tint=TEAL if s.variant == "v4" else RUST,
-                   reveal=s.timeline.reached("code", t))
-        caption(p, tl, t, 410)
-        progress(p, tl, t, total, 496)
+        panel.draw(p, 26, 300, W - 52, title, s, t, reveal=False, size=10.8, lead=14.0,
+                   tint=TEAL if s.variant == "v4" else RUST)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
 
-    return tl, draw, 530
+    CAP, RAIL, height = layout(300, max(len(V3_LOOP), len(V4_LOOP)), 14.0)
+    return tl, draw, height
 
 
 def build_pool_lock(only=None):
