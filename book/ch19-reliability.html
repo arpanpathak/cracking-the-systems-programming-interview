@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2f1eb0b1.js";
+            window.path_to_searchindex_js = "searchindex-b88a4e7c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -188,6 +188,7 @@
 <li>Retrying failed calls with exponential backoff, jitter, and the server’s <code>Retry-After</code></li>
 <li>Deciding which errors to retry, with a trait</li>
 <li>Making a repeated request safe with an idempotency key</li>
+<li>Single flight: concurrent calls with one key share one execution, and other keys run in parallel</li>
 </ul>
 </div>
 
@@ -1159,8 +1160,475 @@ charging card...
 </code></pre>
 <p>Holding the lock while <code>f()</code> runs makes the store correct. Two calls with the same key cannot both find it
 missing and both run the work. It is also the store’s limit. Every call waits for the one lock, even calls with
-different keys, so one slow operation delays all others. A production store locks per key instead. It records “in progress” for a key and releases the lock while the work runs. Later callers with that key
-wait for the result. A real service also keeps the results in a database, so they survive a restart.</p>
+different keys, so one slow operation delays all others. Section 19.4 removes that limit. A real service also keeps the results in a database, so they survive a
+restart.</p>
+<h2 id="194-one-execution-per-key-single-flight"><a class="header" href="#194-one-execution-per-key-single-flight">19.4 One execution per key: single flight</a></h2>
+<p>The store in section 19.3 has two problems under load.</p>
+<ul>
+<li><strong>It serializes every key.</strong> It holds one lock while the work runs. A slow charge for <code>order-1</code> makes a
+call for <code>order-2</code> wait, although the two have nothing in common.</li>
+<li><strong>It cannot be split naively.</strong> Suppose the lock is released during the work. Two callers with the same key
+can then both find it missing, and both charge the card.</li>
+</ul>
+<p>The same shape appears in caches. When a popular entry expires, hundreds of requests can miss at once, and
+each recomputes the value or queries the database. That burst is a <strong>cache stampede</strong>, a thundering herd
+aimed at one key.</p>
+<p>The fix is to record, for each key, that work is <strong>in progress</strong>. The first caller for a key marks it,
+releases the lock, and runs the work. A caller that finds the mark waits for the result instead of starting
+its own. Callers with other keys never wait. This is called <strong>single flight</strong>: at most one execution per key
+is in the air at a time.</p>
+<p>Each key moves through three states (figure 19.6). A success stores the value for every later caller. A
+failure, or a panic, removes the mark, so the next caller can try again.</p>
+<figure>
+<img src="figures/ch19-single-flight.svg" alt="A key with no entry moves to InProgress when the first caller marks it, unlocks, and runs the work; later callers wait on the Condvar. Ok stores the value as Done, and notify_all wakes the waiters, who each get a clone. On Err or a panic, the Claim removes the mark and notify_all wakes the waiters, and the key has no entry again.">
+<figcaption><b>Figure 19.6</b> The states of one key. Only the first caller runs the work. A failure returns the key to no entry, so a retry runs it again.</figcaption>
+</figure>
+<h3 id="1941-the-state"><a class="header" href="#1941-the-state">19.4.1 The state</a></h3>
+<p>Each key maps to a <code>Slot</code>, and all the slots share one map behind one mutex. A <code>Condvar</code> wakes the waiters
+when any slot changes:</p>
+<pre><code class="language-rust">use std::{
+    collections::HashMap,
+    hash::Hash,
+    panic::{self, AssertUnwindSafe},
+    sync::{
+        Barrier,
+        Condvar,
+        Mutex,
+        MutexGuard,
+        atomic::{AtomicUsize, Ordering::Relaxed},
+    },
+    thread,
+    time::{Duration, Instant},
+};
+
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+/// The state of one key.
+enum Slot&lt;V&gt; {
+    InProgress,
+    Done(V),
+}
+
+/// Results by key, with at most one execution in flight per key.
+pub struct SingleFlight&lt;K, V&gt; {
+    slots: Mutex&lt;HashMap&lt;K, Slot&lt;V&gt;&gt;&gt;,
+    finished: Condvar,
+}</code></pre>
+<p>The mutex is held only to read or change the map, never while the work runs. So one lock is enough for every
+key. <code>notify_all</code> wakes every waiter, for any key. Each one checks its own key and goes back to sleep if
+nothing it cares about changed. That costs a few spurious wakeups, and keeps the code to one <code>Condvar</code>.</p>
+<h3 id="1942-the-claim"><a class="header" href="#1942-the-claim">19.4.2 The claim</a></h3>
+<p>The caller that runs the work holds a <strong>claim</strong> on its key. If the work fails or panics, someone has to remove
+the <code>InProgress</code> mark, or the waiters sleep forever. <code>Drop</code> is the place that runs in both cases:</p>
+<pre><code class="language-rust">/// The claim of the caller that is running the work for `key`. If it is
+/// dropped while it still holds the key, after an error or a panic, it clears
+/// the `InProgress` mark and wakes the waiters, so one of them can run the work.
+struct Claim&lt;'a, K: Eq + Hash, V&gt; {
+    flight: &amp;'a SingleFlight&lt;K, V&gt;,
+    key: Option&lt;K&gt;,
+}
+
+impl&lt;K: Eq + Hash, V&gt; Drop for Claim&lt;'_, K, V&gt; {
+    fn drop(&amp;mut self) {
+        if let Some(key) = self.key.take() {
+            self.flight.lock().remove(&amp;key);
+            self.flight.finished.notify_all();
+        }
+    }
+}
+
+impl&lt;K: Eq + Hash, V&gt; SingleFlight&lt;K, V&gt; {
+    /// The map, even if a thread panicked while holding the lock: every
+    /// update leaves the map consistent, so its contents are still valid.
+    fn lock(&amp;self) -&gt; MutexGuard&lt;'_, HashMap&lt;K, Slot&lt;V&gt;&gt;&gt; {
+        self.slots
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}</code></pre>
+<p><code>key</code> is an <code>Option</code>. The success path takes the key out of the claim before the claim is dropped, so <code>Drop</code>
+does nothing. On an error or a panic, the key is still inside, and <code>Drop</code> removes the mark and wakes the
+waiters.</p>
+<p><code>lock</code> recovers a poisoned mutex with <code>into_inner</code>, as in section 16.6. The map is consistent after every
+update, because each update is one <code>insert</code> or one <code>remove</code>, so the data is safe to keep using.</p>
+<h3 id="1943-execute"><a class="header" href="#1943-execute">19.4.3 <code>execute</code></a></h3>
+<p><code>execute</code> loops while the key is in progress, then claims it, runs the work outside the lock, and stores the
+result:</p>
+<pre><code class="language-rust">impl&lt;K, V&gt; SingleFlight&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new() -&gt; Self {
+        Self {
+            slots: Mutex::new(HashMap::new()),
+            finished: Condvar::new(),
+        }
+    }
+
+    /// Return the stored result for `key`, wait for the execution in flight,
+    /// or run `work` if neither exists.
+    pub fn execute&lt;F&gt;(&amp;self, key: K, work: F) -&gt; Result&lt;V, Error&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;V, Error&gt;,
+    {
+        let mut slots = self.lock();
+        loop {
+            match slots.get(&amp;key) {
+                Some(Slot::Done(value)) =&gt; return Ok(value.clone()),
+                Some(Slot::InProgress) =&gt; {
+                    slots = self
+                        .finished
+                        .wait(slots)
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                }
+                None =&gt; break,
+            }
+        }
+        slots.insert(key.clone(), Slot::InProgress);
+        drop(slots);
+
+        let mut claim = Claim {
+            flight: self,
+            key: Some(key),
+        };
+        let value = work()?;
+
+        let key = claim
+            .key
+            .take()
+            .expect("claim holds its key");
+        self.lock()
+            .insert(key, Slot::Done(value.clone()));
+        self.finished.notify_all();
+        Ok(value)
+    }
+}</code></pre>
+<p>The <code>loop</code> handles all three states:</p>
+<ul>
+<li><code>Done(value)</code>: return a clone. This is the idempotency of section 19.3.</li>
+<li><code>InProgress</code>: wait on the <code>Condvar</code>. <code>wait</code> releases the lock while it sleeps, and takes it back on wakeup.
+The loop then checks the key again, because the wakeup may be for another key, or spurious.</li>
+<li>No entry: leave the loop and claim the key.</li>
+</ul>
+<p>After the claim, <code>drop(slots)</code> releases the lock, and <code>work()</code> runs with no lock held. If <code>work</code> returns an
+error, <code>?</code> returns it, and the claim’s <code>Drop</code> removes the mark. If <code>work</code> succeeds, the code takes the key out
+of the claim, stores <code>Done</code>, and wakes the waiters.</p>
+<h3 id="1944-measured"><a class="header" href="#1944-measured">19.4.4 Measured</a></h3>
+<p><code>main</code> starts its callers together with a <code>Barrier</code>, so they really overlap, and times them:</p>
+<pre><code class="language-rust">/// Run `call` on `threads` threads that start together. Returns the results
+/// and the time from the start to the last return.
+fn together&lt;T: Send&gt;(threads: usize, call: impl Fn(usize) -&gt; T + Sync) -&gt; (Vec&lt;T&gt;, Duration) {
+    let start_line = Barrier::new(threads);
+    let start = Instant::now();
+    let results = thread::scope(|scope| {
+        let handles: Vec&lt;_&gt; = (0..threads)
+            .map(|i| {
+                let (start_line, call) = (&amp;start_line, &amp;call);
+                scope.spawn(move || {
+                    start_line.wait();
+                    call(i)
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("caller thread"))
+            .collect()
+    });
+    (results, start.elapsed())
+}</code></pre>
+<p>The work is a fake charge that sleeps for 100 ms and counts how many times it ran. The second scene also runs
+the four keys through a store like section 19.3’s: one lock, held while the work runs.</p>
+<pre><code class="language-text">1. Eight concurrent calls with one key
+  executions 1, all got txn-order-1: true, 103 ms
+
+2. Four concurrent calls with four keys
+  single flight:                 executions 4, 103 ms
+  one lock held during the work: executions 4, 417 ms
+
+3. A failure is not stored
+  first: Err("card declined"), retry: Ok("txn-order-5"), executions 1
+</code></pre>
+<p>Eight callers with one key caused one charge, and all eight got its result in 103 ms. Four keys ran in
+parallel in 103 ms. The one-lock store ran them one after another, in 417 ms. A declined charge was not
+stored, so the retry ran the work, and that run succeeded.</p>
+<p>The fourth scene makes the work panic while a second caller waits for the same key:</p>
+<pre><code class="language-text">4. The work panics while another caller waits
+
+thread '&lt;unnamed&gt;' panicked at src/bin/single_flight.rs:209:21:
+payment provider crashed
+  caller 0: Err("panicked")
+  caller 1: Ok(Ok("txn-order-6"))
+</code></pre>
+<p>The <code>panicked at</code> lines are the default panic message, written to standard error. Caller 0’s panic dropped
+its claim, and <code>Drop</code> removed the mark and woke caller 1. Caller 1 found no entry, claimed the key, and ran
+the work itself. Without the claim’s <code>Drop</code>, the mark would stay <code>InProgress</code>, and caller 1 would wait
+forever. Animation 19.2 shows both runs.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch19-single-flight.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim&#39;s Drop, A&#39;s work panics, the mark stays InProgress, and B and C sleep while a clock runs." data-chapters="[[0.0, &quot;claim&quot;], [13.67, &quot;done&quot;], [26.82, &quot;panic, no Drop&quot;]]"><img src="figures/ch19-single-flight.gif" alt="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim&#39;s Drop, A&#39;s work panics, the mark stays InProgress, and B and C sleep while a clock runs."></video>
+<figcaption><b>Animation 19.2</b> One key, three callers, one execution. When the claim's <code>Drop</code> is missing, a panic leaves the mark in place and the waiters sleep forever.</figcaption>
+</figure>
+<p>A production version adds two things. Waiters need a deadline, <code>wait_timeout</code>, so a hung charge cannot hold
+them forever. And the results need an expiry, or a store that only grows becomes a memory leak.</p>
+<p class="listing"><b>Listing 19.12</b> Single flight: one execution per key in flight. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/single_flight.rs">src/bin/single_flight.rs</a></p>
+
+<pre><code class="language-rust">//! Single flight: concurrent calls with the same key share one execution.
+//!
+//! The first caller marks the key in progress and runs the work without
+//! holding the lock. Later callers with that key wait for its result, while
+//! calls with other keys run in parallel. A result is kept, so a retry after
+//! success gets the stored result. A failure is not kept, so a retry runs the
+//! work again. A panic in the work clears the mark, so waiters are not stranded.
+//!
+//! Run with: cargo run --bin single_flight
+
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    panic::{self, AssertUnwindSafe},
+    sync::{
+        Barrier,
+        Condvar,
+        Mutex,
+        MutexGuard,
+        atomic::{AtomicUsize, Ordering::Relaxed},
+    },
+    thread,
+    time::{Duration, Instant},
+};
+
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+/// The state of one key.
+enum Slot&lt;V&gt; {
+    InProgress,
+    Done(V),
+}
+
+/// Results by key, with at most one execution in flight per key.
+pub struct SingleFlight&lt;K, V&gt; {
+    slots: Mutex&lt;HashMap&lt;K, Slot&lt;V&gt;&gt;&gt;,
+    finished: Condvar,
+}
+
+/// The claim of the caller that is running the work for `key`. If it is
+/// dropped while it still holds the key, after an error or a panic, it clears
+/// the `InProgress` mark and wakes the waiters, so one of them can run the work.
+struct Claim&lt;'a, K: Eq + Hash, V&gt; {
+    flight: &amp;'a SingleFlight&lt;K, V&gt;,
+    key: Option&lt;K&gt;,
+}
+
+impl&lt;K: Eq + Hash, V&gt; Drop for Claim&lt;'_, K, V&gt; {
+    fn drop(&amp;mut self) {
+        if let Some(key) = self.key.take() {
+            self.flight.lock().remove(&amp;key);
+            self.flight.finished.notify_all();
+        }
+    }
+}
+
+impl&lt;K: Eq + Hash, V&gt; SingleFlight&lt;K, V&gt; {
+    /// The map, even if a thread panicked while holding the lock: every
+    /// update leaves the map consistent, so its contents are still valid.
+    fn lock(&amp;self) -&gt; MutexGuard&lt;'_, HashMap&lt;K, Slot&lt;V&gt;&gt;&gt; {
+        self.slots
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+impl&lt;K, V&gt; SingleFlight&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new() -&gt; Self {
+        Self {
+            slots: Mutex::new(HashMap::new()),
+            finished: Condvar::new(),
+        }
+    }
+
+    /// Return the stored result for `key`, wait for the execution in flight,
+    /// or run `work` if neither exists.
+    pub fn execute&lt;F&gt;(&amp;self, key: K, work: F) -&gt; Result&lt;V, Error&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;V, Error&gt;,
+    {
+        let mut slots = self.lock();
+        loop {
+            match slots.get(&amp;key) {
+                Some(Slot::Done(value)) =&gt; return Ok(value.clone()),
+                Some(Slot::InProgress) =&gt; {
+                    slots = self
+                        .finished
+                        .wait(slots)
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                }
+                None =&gt; break,
+            }
+        }
+        slots.insert(key.clone(), Slot::InProgress);
+        drop(slots);
+
+        let mut claim = Claim {
+            flight: self,
+            key: Some(key),
+        };
+        let value = work()?;
+
+        let key = claim
+            .key
+            .take()
+            .expect("claim holds its key");
+        self.lock()
+            .insert(key, Slot::Done(value.clone()));
+        self.finished.notify_all();
+        Ok(value)
+    }
+}
+
+/// Run `call` on `threads` threads that start together. Returns the results
+/// and the time from the start to the last return.
+fn together&lt;T: Send&gt;(threads: usize, call: impl Fn(usize) -&gt; T + Sync) -&gt; (Vec&lt;T&gt;, Duration) {
+    let start_line = Barrier::new(threads);
+    let start = Instant::now();
+    let results = thread::scope(|scope| {
+        let handles: Vec&lt;_&gt; = (0..threads)
+            .map(|i| {
+                let (start_line, call) = (&amp;start_line, &amp;call);
+                scope.spawn(move || {
+                    start_line.wait();
+                    call(i)
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("caller thread"))
+            .collect()
+    });
+    (results, start.elapsed())
+}
+
+fn main() -&gt; Result&lt;(), Error&gt; {
+    let charges = AtomicUsize::new(0);
+    let charge = |order: &amp;str| -&gt; Result&lt;String, Error&gt; {
+        charges.fetch_add(1, Relaxed);
+        thread::sleep(Duration::from_millis(100));
+        Ok(format!("txn-{order}"))
+    };
+
+    println!("1. Eight concurrent calls with one key");
+    let flight = SingleFlight::new();
+    let (results, elapsed) = together(8, |_| flight.execute("order-1", || charge("order-1")));
+    let agreed = results
+        .iter()
+        .all(|result| matches!(result, Ok(txn) if txn == "txn-order-1"));
+    println!(
+        "  executions {}, all got txn-order-1: {agreed}, {:.0} ms",
+        charges.swap(0, Relaxed),
+        elapsed.as_secs_f64() * 1000.0
+    );
+
+    println!("\n2. Four concurrent calls with four keys");
+    let orders = ["order-1", "order-2", "order-3", "order-4"];
+    let flight = SingleFlight::new();
+    let (_, elapsed) = together(4, |i| flight.execute(orders[i], || charge(orders[i])));
+    println!(
+        "  single flight:                 executions {}, {:.0} ms",
+        charges.swap(0, Relaxed),
+        elapsed.as_secs_f64() * 1000.0
+    );
+
+    // The store of section 19.3: one lock, held while the work runs.
+    let one_lock: Mutex&lt;HashMap&lt;&amp;str, String&gt;&gt; = Mutex::new(HashMap::new());
+    let (_, elapsed) = together(4, |i| -&gt; Result&lt;String, Error&gt; {
+        let mut store = one_lock
+            .lock()
+            .map_err(|_| "lock poisoned")?;
+        if let Some(txn) = store.get(orders[i]) {
+            return Ok(txn.clone());
+        }
+        let txn = charge(orders[i])?;
+        store.insert(orders[i], txn.clone());
+        Ok(txn)
+    });
+    println!(
+        "  one lock held during the work: executions {}, {:.0} ms",
+        charges.swap(0, Relaxed),
+        elapsed.as_secs_f64() * 1000.0
+    );
+
+    println!("\n3. A failure is not stored");
+    let flight = SingleFlight::new();
+    let declined = flight.execute("order-5", || Err("card declined".into()));
+    let retried = flight.execute("order-5", || charge("order-5"));
+    println!(
+        "  first: {declined:?}, retry: {retried:?}, executions {}",
+        charges.swap(0, Relaxed)
+    );
+
+    println!("\n4. The work panics while another caller waits");
+    let flight = SingleFlight::new();
+    let (results, _) = together(2, |i| {
+        if i == 1 {
+            thread::sleep(Duration::from_millis(20));
+        }
+        panic::catch_unwind(AssertUnwindSafe(|| {
+            flight.execute("order-6", || {
+                if i == 0 {
+                    thread::sleep(Duration::from_millis(50));
+                    panic!("payment provider crashed");
+                }
+                charge("order-6")
+            })
+        }))
+        .map_err(|_| "panicked")
+    });
+    for (i, result) in results.iter().enumerate() {
+        println!("  caller {i}: {result:?}");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn concurrent_calls_with_one_key_run_once() {
+        let runs = AtomicUsize::new(0);
+        let flight = SingleFlight::new();
+        let (results, _) = together(8, |_| {
+            flight.execute("k", || {
+                runs.fetch_add(1, Relaxed);
+                thread::sleep(Duration::from_millis(30));
+                Ok(7)
+            })
+        });
+        assert_eq!(runs.load(Relaxed), 1);
+        assert!(
+            results
+                .iter()
+                .all(|result| matches!(result, Ok(7)))
+        );
+    }
+
+    #[test]
+    fn a_failure_lets_the_next_call_run() {
+        let flight = SingleFlight::new();
+        assert!(
+            flight
+                .execute("k", || Err("no".into()))
+                .is_err()
+        );
+        assert_eq!(flight.execute("k", || Ok(1)).unwrap(), 1);
+        assert_eq!(flight.execute("k", || Ok(2)).unwrap(), 1);
+    }
+}</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1175,6 +1643,9 @@ hint.</li>
 <li>Passing randomness in as a closure makes the retry logic testable.</li>
 <li>An idempotency key makes a retried request safe: the server stores the result under the key and returns it for
 every repeat.</li>
+<li>Single flight marks a key in progress and runs its work outside the lock. Eight callers with one key caused one
+execution, and four keys took 103 ms, against 417 ms behind one lock. A claim with <code>Drop</code> clears the mark after
+an error or a panic.</li>
 </ul>
 </div>
 
@@ -1186,8 +1657,8 @@ Rewrite the test without <code>thread::sleep</code>.</li>
 <li>Rewrite the atomic limiter’s <code>try_acquire</code> with a <code>compare_exchange</code> loop that refills, checks, and takes a
 token in one atomic step. Run the 8-thread test from section 19.1.3 on it.</li>
 <li>Add a <code>max_elapsed: Duration</code> to <code>RetryPolicy</code>, and make <code>retry</code> stop when the total time spent would pass it.</li>
-<li>Change <code>Idempotent</code> so that <code>execute</code> does not hold the lock while <code>f</code> runs. Two calls with the same key
-must still run <code>f</code> only once. Hint: store an enum with <code>InProgress</code> and <code>Done(V)</code> states, and a <code>Condvar</code>.</li>
+<li>Add a deadline to <code>SingleFlight::execute</code>: a caller that waits longer than a given <code>Duration</code> for a key
+in progress returns an error. Use <code>Condvar::wait_timeout</code>, and keep the remaining time across spurious wakeups.</li>
 </ol>
 
                     </main>
