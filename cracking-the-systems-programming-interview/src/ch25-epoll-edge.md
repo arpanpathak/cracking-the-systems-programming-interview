@@ -160,6 +160,11 @@ It keeps the sockets it stopped early on a list of its own, and returns to them 
 events. Tokio's tasks do the same with a budget: after a fixed amount of work, a task yields even if its
 socket still has data.
 
+<figure>
+<img src="figures/ch25-fair-drain.svg" alt="epoll_wait returns ready sockets. The handler reads up to a cap, for example 64 KiB. If the socket reports EAGAIN, it is drained. If the cap is reached with more data, the socket goes on a still-readable list. The loop serves the other ready sockets, then the still-readable list, then calls epoll_wait again.">
+<figcaption><b>Figure 25.2</b> A capped drain. A busy socket waits its turn on a list of its own, instead of holding the loop.</figcaption>
+</figure>
+
 ## 25.3 Several threads on one epoll: `EPOLLONESHOT`
 
 A server can run several threads that all call `epoll_wait` on one epoll instance. In edge-triggered mode,
@@ -199,11 +204,11 @@ connection costs 64 wakeups and 63 wasted system calls. This is the **thundering
 
 **`EPOLLEXCLUSIVE`**, added in Linux 4.5, marks an instance's interest in the listener as exclusive. When a
 connection arrives, the kernel wakes one of the exclusive waiters, or a few, instead of all of them
-(figure 25.2). The flag is allowed only with `EPOLL_CTL_ADD`.
+(figure 25.3). The flag is allowed only with `EPOLL_CTL_ADD`.
 
 <figure>
 <img src="figures/ch25-herd.svg" alt="Left: with EPOLLIN, one connection on the listener wakes threads 1 to 4. Right: with EPOLLIN and EPOLLEXCLUSIVE, the same connection wakes thread 1, and threads 2 to 4 keep sleeping.">
-<figcaption><b>Figure 25.2</b> One connection and four waiting threads, with and without <code>EPOLLEXCLUSIVE</code>.</figcaption>
+<figcaption><b>Figure 25.3</b> One connection and four waiting threads, with and without <code>EPOLLEXCLUSIVE</code>.</figcaption>
 </figure>
 
 `woken_by_one_connection` starts the threads, waits until each has registered the listener, connects one

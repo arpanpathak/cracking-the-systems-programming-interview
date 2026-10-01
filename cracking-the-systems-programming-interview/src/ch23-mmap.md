@@ -44,6 +44,14 @@ own frames (figure 23.1). The program reads the file's bytes where the kernel ke
 <figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into your buffer. A mapping points at the page cache's frames.</figcaption>
 </figure>
 
+Figure 23.2 places the mapping in the process. It is one more region of the address space, beside the heap and
+the stack. Its page table entries point at frames the kernel already holds for the file.
+
+<figure>
+<img src="figures/ch23-address-space.svg" alt="A process's virtual address space from top to bottom: the stack, an unmapped gap, the file mapping from mmap of 64 pages, another gap, the heap with Vec, String, and Box, and the program code. The mapping is translated by the page table, one entry per page, filled on first touch, which points at page cache frames holding the file's pages, loaded from and written back to the file on disk.">
+<figcaption><b>Figure 23.2</b> A mapping is a region of virtual addresses. Its page table entries point into the page cache.</figcaption>
+</figure>
+
 `mmap` loads nothing when it returns. The page table entries for the range start empty. The first access
 to each page is a page fault, as in section 15.5. The kernel finds the file's page in the page cache, or
 reads it from disk if it is not there. Then it fills in the page table entry and restarts the instruction
@@ -190,7 +198,7 @@ least 4 such faults. The second pass is 0 faults on both systems.
 
 ## 23.2 Shared and private mappings
 
-The flags argument decides where a write through the mapping goes (figure 23.2).
+The flags argument decides where a write through the mapping goes (figure 23.3).
 
 - **`MAP_SHARED`**: the entry points at the page cache frame itself. A write changes the file's cached
   page. Every process that maps or reads the file sees the change. The kernel writes the dirty page to disk
@@ -201,7 +209,7 @@ The flags argument decides where a write through the mapping goes (figure 23.2).
 
 <figure>
 <img src="figures/ch23-shared-private.svg" alt="A MAP_SHARED mapping writes HELLO into the page cache page, which writeback or msync carries to the file on disk. A MAP_PRIVATE mapping reads the page cache page until its first write, then writes world into a private copy that only its process sees.">
-<figcaption><b>Figure 23.2</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
+<figcaption><b>Figure 23.3</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
 </figure>
 
 Writeback happens on the kernel's schedule, typically within about 30 seconds. To put the data on disk at a known point, call `msync`:
@@ -281,7 +289,7 @@ read sequentially, and use `read`.
 ## 23.3 Sending a file to a socket
 
 A static file server sends files to sockets. The simple version reads a chunk of the file into a buffer and
-writes the buffer to the socket, until the file ends. Figure 23.3 shows what each chunk costs. A `read` copies from the page cache to the buffer. A `write` copies from the buffer to the socket's send buffer. The program never looks at the bytes. They pass through it only because `read` and `write`
+writes the buffer to the socket, until the file ends. Figure 23.4 shows what each chunk costs. A `read` copies from the page cache to the buffer. A `write` copies from the buffer to the socket's send buffer. The program never looks at the bytes. They pass through it only because `read` and `write`
 are the calls it knows.
 
 `sendfile` moves the bytes from a file to a socket inside the kernel. One call names both descriptors, an
@@ -291,7 +299,7 @@ to the pages instead of copying them. This is **zero-copy**: no copy of the payl
 
 <figure>
 <img src="figures/ch23-copies.svg" alt="Top: the read/write loop copies page cache to user buffer with read, user buffer to socket buffer with write, then DMA to the network card, two system calls per chunk. Bottom: sendfile passes the pages from the page cache to the socket buffer inside the kernel, then DMA to the network card, one system call.">
-<figcaption><b>Figure 23.3</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
+<figcaption><b>Figure 23.4</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
 </figure>
 
 ### 23.3.1 Measuring both

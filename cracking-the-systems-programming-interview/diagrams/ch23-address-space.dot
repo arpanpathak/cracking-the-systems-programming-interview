@@ -1,0 +1,19 @@
+digraph addrspace {
+  rankdir=LR; nodesep=0.3; ranksep=0.8;
+  space [shape=plaintext style="" label=<
+    <table border="1" cellborder="1" cellspacing="0" cellpadding="6" color="#1d2733">
+      <tr><td bgcolor="#e6ecf6"><b>virtual address space</b> (one process)</td></tr>
+      <tr><td bgcolor="#eef3f7">stack, grows down</td></tr>
+      <tr><td bgcolor="#fbfcfd">unmapped</td></tr>
+      <tr><td port="map" bgcolor="#e3f1ea">file mapping from mmap: 64 pages</td></tr>
+      <tr><td bgcolor="#fbfcfd">unmapped</td></tr>
+      <tr><td bgcolor="#eef3f7">heap: Vec, String, Box</td></tr>
+      <tr><td bgcolor="#eef3f7">program code and statics</td></tr>
+    </table>>];
+  pt [label="page table\none entry per page,\nfilled on first touch"];
+  cache [label="page cache frames\nthe file's pages in RAM" fillcolor="#e6ecf6"];
+  disk [label="file on disk" shape=cylinder];
+  space:map -> pt [label=" translated by"];
+  pt -> cache [label=" points at"];
+  cache -> disk [label=" loaded from,\n written back to" dir=both];
+}

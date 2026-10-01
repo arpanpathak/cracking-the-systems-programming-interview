@@ -1,0 +1,14 @@
+digraph fairdrain {
+  rankdir=LR; nodesep=0.3; ranksep=0.5;
+  wait [label="epoll_wait" fillcolor="#e6ecf6"];
+  read [label="read up to the cap\n(for example 64 KiB)" fillcolor="#e3f1ea"];
+  eagain [label="EAGAIN:\nsocket drained"];
+  capped [label="cap reached:\nput the socket on\nthe still-readable list" fillcolor="#fdf6e8"];
+  others [label="serve the other\nready sockets"];
+  again [label="then serve the\nstill-readable list"];
+  wait -> read;
+  read -> eagain [label=" empty"];
+  read -> capped [label=" more data"];
+  eagain -> others; capped -> others;
+  others -> again -> wait;
+}
