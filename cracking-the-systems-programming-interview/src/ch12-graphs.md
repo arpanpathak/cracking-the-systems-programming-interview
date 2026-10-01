@@ -231,6 +231,12 @@ Programs often receive a graph as pairs of names, such as `("A", "B")`. A common
 each name a number the first time you see it. The algorithm then runs on numbers, with the fast index form.
 Assigning numbers to names this way is called **interning**.
 
+The graph keeps two things: `ids`, which interns each name as a number, and `adj`, the adjacency list indexed by those numbers:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/graph_bfs.rs:1:7}}
+```
+
 <p class="listing"><b>Listing 12.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/graph_bfs.rs">src/bin/graph_bfs.rs</a></p>
 
 ```rust
@@ -361,6 +367,12 @@ Cycle: true
 ### 12.6.2 The same graph with a HashMap
 
 The second version stores the graph as a map from a node to its neighbors, with no numbering step.
+
+The cycle check marks each node with a `State`: `Visiting` while its descendants are being explored, and `Done` after. The graph is a map from a node to its neighbors, generic over any `Copy` node type:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph_map.rs:6:15}}
+```
 
 <p class="listing"><b>Listing 12.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph_map.rs">src/bin/cyclic_graph_map.rs</a></p>
 
@@ -520,6 +532,12 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 134 filtered out
 The second version takes courses with names and lists of prerequisites, the way the data might arrive from a
 file.
 
+A course has a name and a list of prerequisites, the names of the courses that must come before it:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/dependency_resolutiom.rs:1:7}}
+```
+
 <p class="listing"><b>Listing 12.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs">src/bin/dependency_resolutiom.rs</a></p>
 
 ```rust
@@ -655,6 +673,12 @@ release build. With `u32` weights, a long path of large weights can overflow. Li
 The next three programs use a named `Edge` struct instead of a `(neighbor, weight)` tuple, and `u64` costs.
 They show three steps of the same function: it first clones node names, then borrows them, and finally handles
 missing nodes and overflow.
+
+An `Edge` holds the node it leads to and its weight. `AdjMap` is an alias for the graph: each node, with the list of edges that leave it. Both are generic over the node type:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/dijkstra.rs:7:13}}
+```
 
 <p class="listing"><b>Listing 12.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra.rs">src/bin/dijkstra.rs</a></p>
 

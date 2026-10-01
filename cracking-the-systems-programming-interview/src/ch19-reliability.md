@@ -359,6 +359,12 @@ again, the server returns the recorded result and does not repeat the work (figu
 <figcaption><b>Figure 19.5</b> Two calls with one key. The work runs once.</figcaption>
 </figure>
 
+The store is a `HashMap` from key to result, behind a `Mutex` so that several threads can share it:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/idempotent_operation.rs:1:5}}
+```
+
 <p class="listing"><b>Listing 19.10</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation.rs">src/bin/idempotent_operation.rs</a></p>
 
 ```rust

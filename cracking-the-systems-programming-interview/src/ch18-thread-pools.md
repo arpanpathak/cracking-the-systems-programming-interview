@@ -62,6 +62,12 @@ Version 1 writes the pool of figure 18.1 directly. `new` starts the workers, `ex
 closes the channel and waits for every worker. Each worker locks the shared receiver to take a job. How long it
 keeps that lock decides whether the workers run at the same time.
 
+A `Job` is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the job channel and the handles of its workers:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/thread_pool.rs:6:11}}
+```
+
 <p class="listing"><b>Listing 18.1</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs">src/bin/thread_pool.rs</a></p>
 
 ```rust
@@ -309,6 +315,12 @@ Three more pools take the lessons of versions 2 and 3 in a more compact form, an
 This pool shuts itself down when it goes out of scope. Its `Drop` closes the channel and joins the workers, so
 the caller never calls a shutdown method.
 
+The sender is wrapped in an `Option`, as in version 3, so `Drop` can close the channel by setting it to `None`:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/thread_pool_bruce_lee.rs:6:11}}
+```
+
 <p class="listing"><b>Listing 18.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_bruce_lee.rs">src/bin/thread_pool_bruce_lee.rs</a></p>
 
 ```rust
@@ -343,6 +355,12 @@ inside `Drop`. The later versions use `let _ = worker.join();` instead.
 
 This pool adds two features. The queue has a fixed size, so a caller that submits jobs faster than the workers
 run them has to wait. And each job's return value comes back to the caller.
+
+The sender is now a `SyncSender`, the sending end of a channel with a fixed capacity:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs:6:11}}
+```
 
 <p class="listing"><b>Listing 18.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs">src/bin/thread_pool_with_back_pressure.rs</a></p>
 
@@ -379,6 +397,12 @@ in any order.
 
 In this pool, several threads submit jobs at the same time, each through its own clone of the `Sender`. The
 worker loop also handles a poisoned lock and a closed channel separately.
+
+`SharedLockedChannel` names the type every worker shares: one receiver, behind a `Mutex`, in an `Arc`. The pool holds a bounded sender in an `Option`, and the worker handles:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs:10:16}}
+```
 
 <p class="listing"><b>Listing 18.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs">src/bin/mpmc_thread_pool_engine.rs</a></p>
 

@@ -389,6 +389,12 @@ order they arrived. You put the root in the queue. Then, repeatedly, you take th
 and add its children at the back. Because children join at the back, every node of one level leaves the queue
 before any node of the next.
 
+A node owns its value and a `Vec` of child nodes. The children are stored inside the vector itself, not behind pointers, so a node can have any number of them:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/test_tree.rs:1:6}}
+```
+
 <p class="listing"><b>Listing 11.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/test_tree.rs">src/bin/test_tree.rs</a></p>
 
 ```rust
@@ -569,6 +575,12 @@ autocompletion.
 <figcaption><b>Animation 11.2</b> <code>insert</code> creates a node only when the character has no child yet, so words with a common start share nodes. <code>"ca"</code> is a prefix but not a word, and <code>"cab"</code> stops at a missing child.</figcaption>
 </figure>
 
+
+A trie is one root node. Each node maps a character to the child node for that character, and `terminal` marks a node where a stored word ends:
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/trie.rs:8:16}}
+```
 
 <p class="listing"><b>Listing 11.21</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs">src/problems/trie.rs</a></p>
 

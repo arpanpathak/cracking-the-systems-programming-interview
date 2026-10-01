@@ -368,6 +368,12 @@ This version does pairwise rounds with a queue instead of intervals. A `VecDeque
 you can push and pop at both ends in O(1). `merge_k_lists` puts all the lists in the queue. Then it pops two from the front and pushes their merge on
 the back, until one list is left.
 
+This file declares its own copy of the node type, with `Link` as the alias for a whole list:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs:1:8}}
+```
+
 <p class="listing"><b>Listing 10.16</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs">src/bin/merge_k_sorted_lists_pairs.rs</a></p>
 
 ```rust
@@ -468,6 +474,12 @@ $ cargo run --bin merrgemerge_k_sorted_recursion
 ```
 
 The last version keeps only the slice-based recursion:
+
+Its node holds an `i32` named `val`, and `List` is the alias for a whole list:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs:1:9}}
+```
 
 <p class="listing"><b>Listing 10.22</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs">src/bin/mergek_sortes_list_chrush_lee.rs</a></p>
 

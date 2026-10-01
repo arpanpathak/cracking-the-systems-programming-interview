@@ -309,6 +309,12 @@ after it, `partition_point` returns the length of that prefix.
 
 ### 6.4.2 The code
 
+A job is a small `Copy` struct: when it starts, when it ends, and what it pays.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/job_scheduling_with_profit_and_deadline.rs:1:6}}
+```
+
 <p class="listing"><b>Listing 6.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/job_scheduling_with_profit_and_deadline.rs">src/bin/job_scheduling_with_profit_and_deadline.rs</a></p>
 
 ```rust

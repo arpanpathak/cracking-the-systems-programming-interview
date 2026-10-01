@@ -316,6 +316,12 @@ Adding 56 bytes of padding to each counter made the same work ten times faster.
 The second program makes the sharing certain instead of likely. `SameLine` holds both counters and is aligned to
 64, so both are guaranteed to be in one line.
 
+`#[repr(align(64))]` makes every value of the type start at an address that is a multiple of 64. That is the size of a cache line. `SameLine` puts two counters in one line on purpose. `Padded` gives one counter a whole line:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/false_sharing.rs:9:18}}
+```
+
 <p class="listing"><b>Listing 15.8</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/false_sharing.rs">src/bin/false_sharing.rs</a></p>
 
 ```rust
