@@ -294,6 +294,14 @@ return before the cache is read. Figure 1.5 shows the cache after `memoized(6)`.
 With the cache, each value from 2 to `n` is computed once, so the time grows in proportion to `n`. The
 cache uses memory in proportion to `n`, and the recursion still uses `n` stack frames.
 
+Animation 1.1 runs `memoized(5)` and `recursive(5)` side by side in time. The tree on the left gains a node per
+call, and the stack on the right holds only the calls that are still waiting.
+
+<figure class="anim">
+<video class="motion" src="figures/ch01-fib-calls.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A call tree grows on the left and a stack of frames on the right. memoized(5) calls go(5), go(4), go(3), go(2), and go(1); the stack holds five frames. go(1) and go(0) return base values, and go(2) stores 1 in the cache. As the calls return, the cache fills with 1, 2, 3, 5 for slots 2 to 5. When go(4) calls go(2) and go(5) calls go(3), the cache already holds the answer, and they return without further calls: 9 calls in all. Then recursive(5) makes the same tree without a cache: recursive(2) and recursive(3) run again in full, shaded as repeats, for 15 calls." data-chapters="[[0.0, &quot;with a cache&quot;], [25.62, &quot;no cache&quot;]]"><img src="figures/ch01-fib-calls.gif" alt="A call tree grows on the left and a stack of frames on the right. memoized(5) calls go(5), go(4), go(3), go(2), and go(1); the stack holds five frames. go(1) and go(0) return base values, and go(2) stores 1 in the cache. As the calls return, the cache fills with 1, 2, 3, 5 for slots 2 to 5. When go(4) calls go(2) and go(5) calls go(3), the cache already holds the answer, and they return without further calls: 9 calls in all. Then recursive(5) makes the same tree without a cache: recursive(2) and recursive(3) run again in full, shaded as repeats, for 15 calls."></video>
+<figcaption><b>Animation 1.1</b> The stack is only as deep as the chain of waiting calls. With the cache, each value is computed once; without it, whole subtrees repeat.</figcaption>
+</figure>
+
 ## 1.8 Timing the three versions
 
 To compare the versions, the program measures how long each call takes.

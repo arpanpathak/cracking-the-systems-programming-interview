@@ -104,6 +104,14 @@ Adapters are **lazy**. `iter().filter(...).map(...)` only builds a description o
 until something asks for items, as `collect` or a `for` loop does. Then each item goes through every stage
 before the next item starts. No temporary vector is created between stages.
 
+Animation 4.1 runs `functional_numbers_drill` from listing 4.1 on `[10, 15, 20, 25, 30]`. The requests go
+backward, from `collect` toward the slice, and the items come forward one at a time.
+
+<figure class="anim">
+<video class="motion" src="figures/ch04-lazy-chain.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused." data-chapters="[[0.0, &quot;pull&quot;], [12.46, &quot;one at a time&quot;], [32.64, &quot;no collect&quot;]]"><img src="figures/ch04-lazy-chain.gif" alt="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused."></video>
+<figcaption><b>Animation 4.1</b> <code>collect</code> pulls items through the chain one at a time. Without a consumer, no item is ever asked for, and the chain does nothing.</figcaption>
+</figure>
+
 <div class="callout warning" markdown="1">
 
 **WARNING:** Because adapters are lazy, a chain that ends without `collect`, a `for` loop, or another method

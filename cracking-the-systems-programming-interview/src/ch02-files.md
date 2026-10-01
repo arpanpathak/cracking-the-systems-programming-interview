@@ -168,6 +168,14 @@ through the file, so each line is a `Result`. `let line = line?;` replaces the `
 inside it, using the shadowing you saw in section 1.2. `enumerate()` pairs each line with its index,
 starting at 0, which is why the program prints `i + 1`.
 
+Animation 2.1 runs this loop on a 12-byte file of three lines, and counts the `read` system calls. Then it runs
+the same lines through a reader with no buffer.
+
+<figure class="anim">
+<video class="motion" src="figures/ch02-bufreader.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes." data-chapters="[[0.0, &quot;BufReader&quot;], [32.22, &quot;no buffer&quot;]]"><img src="figures/ch02-bufreader.gif" alt="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes."></video>
+<figcaption><b>Animation 2.1</b> <code>BufReader</code> makes one large read and serves the lines from memory: 2 calls. Reading one byte at a time costs a system call per byte: 13 calls.</figcaption>
+</figure>
+
 ### 2.4.3 Reusing one buffer, and skipping bad lines
 
 `lines()` allocates a new `String` for every line. For a very large file, you can read every line into the

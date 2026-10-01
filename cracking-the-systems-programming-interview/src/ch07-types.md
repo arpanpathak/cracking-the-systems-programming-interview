@@ -249,6 +249,13 @@ Now try some bad inputs. An empty line fails at step 2, because there is no firs
 `None` into `Err(CommandError::Empty)`, and `?` returns it. The line `create triton many` fails at step 6,
 because `"many"` is not a number. The line `create triton 0` passes step 6 and fails at step 7.
 
+Animation 7.1 runs the good line and the three bad ones through the stages of the table.
+
+<figure class="anim">
+<video class="motion" src="figures/ch07-parse-trace.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Five stages in a row: split, verb, name, parse u32, and GpuCount::new. The line create triton 4 is split into three words; the verb is create, the name triton, the count parses as 4, and GpuCount::new accepts it, so parse returns Ok of a Create command. An empty line fails at the verb with Err of Empty. create triton many fails at parse u32 with InvalidGpuCount of many. create triton 0 parses as 0 and fails at GpuCount::new, because 0 is outside 1 to 64, with InvalidGpuCount of 0." data-chapters="[[0.0, &quot;valid&quot;], [21.42, &quot;empty&quot;], [29.82, &quot;not a number&quot;], [38.82, &quot;out of range&quot;]]"><img src="figures/ch07-parse-trace.gif" alt="Five stages in a row: split, verb, name, parse u32, and GpuCount::new. The line create triton 4 is split into three words; the verb is create, the name triton, the count parses as 4, and GpuCount::new accepts it, so parse returns Ok of a Create command. An empty line fails at the verb with Err of Empty. create triton many fails at parse u32 with InvalidGpuCount of many. create triton 0 parses as 0 and fails at GpuCount::new, because 0 is outside 1 to 64, with InvalidGpuCount of 0."></video>
+<figcaption><b>Animation 7.1</b> Each <code>?</code> either passes a value to the next stage or returns a typed error. A count of 0 gets past parsing and stops at the type's gate.</figcaption>
+</figure>
+
 Steps 6 and 7 can fail for different reasons, but both failures are reported the same way.
 `.map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))` replaces whatever error came back with
 `InvalidGpuCount`, carrying the text the user typed. The user then sees their own input in the message.

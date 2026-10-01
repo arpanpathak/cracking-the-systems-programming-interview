@@ -114,10 +114,10 @@ listing broken into explained excerpts. Order is by need, measured (words, figur
 - [x] ch15 memory, caches, OS: animations mem-hierarchy and false-sharing
 - [x] ch10 merge k: animations merge-two (with a no-attach failure) and merge-rounds (72 vs 105 moves)
 - [x] ch08 pointers: animations rc-refcell (with a double-borrow panic) and weak-parent (with an Rc cycle leak)
-- [ ] ch04 iterators (0 animations)
-- [ ] ch07 types, ch01 bindings, ch02 files (0 animations)
-- [ ] ch23-ch29: more diagrams (done: ch27 ports, ch28 record, ch29 stale; still thin: ch23, ch25, ch26)
-- [ ] whole-file dumps: ch03, ch09, ch12, ch13, ch16, ch17
+- [x] ch04 iterators: animation lazy-chain
+- [x] ch07 parse-trace, ch01 fib-calls, ch02 bufreader animations
+- [x] ch23-ch29: more diagrams (ch23 address space, ch25 fair drain, ch27 ports, ch28 record, ch29 stale)
+- [ ] whole-file dumps: done ch03 three_sum, ch12 graph_topology, ch16 deadlock, ch17 mpmc, ch18 worker_pool, ch22 clients; smaller ones remain (see Future work 2)
 
 ## Future work (draft for the next agent session)
 
