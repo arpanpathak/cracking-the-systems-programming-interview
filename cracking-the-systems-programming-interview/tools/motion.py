@@ -206,13 +206,29 @@ class Timeline:
         when, previous = self._said
         return max(self.now, when + self.reading_time(previous))
 
-    def reached(self, name, t):
-        """The highest value `name` has taken at or before `t`: how far a code
-        panel's highlight has got, so the lines below it can stay hidden."""
-        best = self.initial[name]
-        for start, _end, _a, b, _ease in self.segments[name]:
-            if start <= t and isinstance(b, (int, float)):
-                best = max(best, b)
+    def reached(self, name, t, per_line=0.12, longest=0.6):
+        """How far a code panel's highlight has got by `t`, so the lines below
+        it can stay hidden until the animation reaches them.
+
+        The lines up to the first highlighted line are shown from the first
+        frame, so a panel never opens empty. When the highlight jumps ahead,
+        the new lines cascade in over at most `longest` seconds instead of
+        appearing all at once. The result is fractional during a cascade, and
+        `code_panel` fades a line in as the value passes it.
+        """
+        steps = [(start, b) for start, _end, _a, b, _ease in self.segments[name]
+                 if isinstance(b, (int, float))]
+        initial = self.initial[name]
+        upcoming = [b for _start, b in steps if b >= 0]
+        best = initial if initial >= 0 or not upcoming else upcoming[0]
+        for start, b in steps:
+            if start > t:
+                break
+            if b <= best:
+                continue
+            ramp = min(longest, per_line * (b - best))
+            u = 1.0 if ramp <= 0 else clamp((t - start) / ramp)
+            best += (b - best) * u
         return best
 
     def chapter(self, label=""):
@@ -506,12 +522,13 @@ def bezier(p0, p1, p2, u):
 
 
 def code_panel(p, x, y, w, title, lines, active, size=11.2, lead=17.5, strike=None,
-               tint=TEAL, opacity=1.0, reveal=None):
+               tint=TEAL, opacity=1.0, reveal=None, lookahead=2):
     """A few lines of code with a highlight bar on the line that is running.
 
     `active` is a float, so the bar can slide between lines; a negative value
     hides it. `strike` crosses out a line, for the variant with a line removed.
-    `reveal` is the last line the reader has been shown: lines below it are
+    `reveal` is how far the highlight has got (see `Timeline.reached`). That
+    line and the `lookahead` lines after it are shown; lines further down are
     drawn as faint bars, so the panel keeps its shape without asking the reader
     to take in code the animation has not reached yet.
     """
@@ -526,17 +543,20 @@ def code_panel(p, x, y, w, title, lines, active, size=11.2, lead=17.5, strike=No
         for i, row in enumerate(lines):
             near = active >= 0 and abs(active - i) < 0.5
             ty = y + 28 + i * lead + lead * 0.7
-            if reveal is not None and i > reveal + 0.01 and not near:
+            shown = 1.0 if reveal is None or near else clamp(reveal + lookahead - i + 1)
+            if shown < 0.99:
                 body = row.strip()
-                if body and body.strip("{}();,") :
+                if body and body.strip("{}();,"):
                     indent = text_width(row[:len(row) - len(row.lstrip())], size, True)
                     p.rect(x + 16 + indent, ty - size * 0.62, text_width(body, size, True),
-                           size * 0.7, "#eef2f5", "none", 3)
+                           size * 0.7, "#eef2f5", "none", 3, opacity=1 - shown)
+            if shown <= 0.01:
                 continue
             color = INK if near else MUTED
             if strike is not None and i == strike:
                 color = RUST
-            p.text(x + 16, ty, row, size, color, 600 if near else 400, mono=True)
+            p.text(x + 16, ty, row, size, color, 600 if near else 400, mono=True,
+                   opacity=shown)
             if strike is not None and i == strike:
                 p.line(x + 14, ty - size * 0.33, x + 16 + text_width(row, size, True) + 2,
                        ty - size * 0.33, RUST, 1.6)

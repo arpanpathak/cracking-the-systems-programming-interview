@@ -21,8 +21,11 @@ gives that reader time and control by default.
   on screen for 0.36 s per word, and at least 2.6 s. After the new caption appears, nothing
   moves for `lead` seconds. Every scripted duration is multiplied by `pace` (1.2). Set
   captions only with `tl.say`.
-- A code panel shows a line only after the highlight has reached it. Lines below that
-  point are drawn as grey bars. Pass `reveal=s.timeline.reached(track, t)`.
+- A code panel shows the lines up to the highlight, and the two lines after it, from the
+  first frame on. Lines further down are drawn as grey bars, and fade in as the highlight
+  reaches them, a few tenths of a second per jump. Pass
+  `reveal=s.timeline.reached(track, t)`. Never leave a panel empty while the first
+  caption is read.
 - `render` writes an MP4 and a JSON step list next to each GIF. `tools/anim_markup.py`
   replaces the chapter's `<img>` with a `<video>` that keeps the GIF as a fallback.
   `theme/anim.js` adds a play button, speeds of 0.5x, 0.75x, and 1x, a button for each
