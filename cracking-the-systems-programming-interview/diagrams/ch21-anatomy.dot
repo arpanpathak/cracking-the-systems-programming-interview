@@ -1,0 +1,17 @@
+digraph anatomy {
+  rankdir=LR; nodesep=0.1;
+  node [shape=plaintext style="" fontname="Menlo" fontsize=11];
+  req [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="7" color="#1d2733">
+      <tr><td align="left" bgcolor="#fdf6e8">POST /v1/gpu-workloads HTTP/1.1<font color="#d9622b">\r\n</font></td>
+          <td align="left" border="0"><font face="Helvetica">request line: method, target, version</font></td></tr>
+      <tr><td align="left" bgcolor="#eef3f7">Host: 127.0.0.1:18080<font color="#d9622b">\r\n</font></td>
+          <td align="left" border="0" rowspan="3"><font face="Helvetica">headers: one name: value per line</font></td></tr>
+      <tr><td align="left" bgcolor="#eef3f7">Content-Type: application/json<font color="#d9622b">\r\n</font></td></tr>
+      <tr><td align="left" bgcolor="#eef3f7">Content-Length: 14<font color="#d9622b">\r\n</font></td></tr>
+      <tr><td align="left" bgcolor="#ffffff"><font color="#d9622b">\r\n</font></td>
+          <td align="left" border="0"><font face="Helvetica">blank line: the head ends here</font></td></tr>
+      <tr><td align="left" bgcolor="#e3f1ea">{"gpuCount":1}</td>
+          <td align="left" border="0"><font face="Helvetica">body: exactly Content-Length bytes</font></td></tr>
+    </table>>];
+}

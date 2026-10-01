@@ -6,6 +6,7 @@
 
 This chapter covers
 
+- What a request and a response look like on the wire, and how a server finds where a request ends
 - Parsing an HTTP/1.1 request from bytes: request line, headers, and body framing
 - Why `Content-Length` plus `Transfer-Encoding` must be rejected, and what request smuggling is
 - Decoding chunked bodies, enforcing size limits, and reporting "incomplete" as a normal result
@@ -19,11 +20,85 @@ headers. The security bugs in real servers come from disagreeing about where one
 begins. The parser in this chapter is built around that boundary. The server on top of it keeps protocol
 handling separate from routing, so each can be tested alone.
 
-## 21.1 The parser
+## 21.1 Requests and responses on the wire
 
-The parser is one file, `src/problems/http_request.rs`. Listing 21.1 in section 21.3 is the whole file.
+HTTP/1.1 runs over one TCP connection, the byte stream from chapter 20. The client writes a request into the
+connection. The server reads it, works out an answer, and writes a response back on the same connection.
 
-### 21.1.1 Types first
+A request is a few lines of text, then an optional body. Every line ends with two bytes, a carriage return
+and a line feed, written `\r\n` in Rust strings and called CRLF. Figure 21.1 shows a request that creates a
+GPU workload, byte for byte.
+
+<figure>
+<img src="figures/ch21-anatomy.svg" alt="A POST request laid out line by line. The request line POST /v1/gpu-workloads HTTP/1.1, three header lines Host, Content-Type, and Content-Length 14, an empty line, and the 14-byte body {&quot;gpuCount&quot;:1}. Every line ends with a CRLF.">
+<figcaption><b>Figure 21.1</b> One request. The head is text lines ending in CRLF, and an empty line separates it from the body.</figcaption>
+</figure>
+
+The first line is the **request line**. It has three parts separated by spaces:
+
+- The **method** says what the client wants done. `GET` reads, `POST` creates, and `DELETE` removes.
+- The **target** names the thing to act on, here the path `/v1/gpu-workloads`.
+- The **version** is `HTTP/1.1`.
+
+Each following line is a **header**: a name, a colon, and a value. `Host` names the server the client meant.
+`Content-Type` says what kind of data the body holds. `Content-Length` says how many bytes the body has, here
+14.
+
+An empty line ends the **head**. The **body** follows it, and it is exactly `Content-Length` bytes long:
+`{"gpuCount":1}` is 14 bytes.
+
+A response has the same shape. Its first line is a **status line**: the version, a three-digit status code,
+and a short reason phrase. Codes from 200 to 299 mean success, 400 to 499 mean the client sent something
+wrong, and 500 to 599 mean the server failed.
+
+```text
+HTTP/1.1 201 Created
+Content-Length: 49
+Content-Type: application/json
+Connection: keep-alive
+
+{"id":"wl-a100-2","gpuCount":1,"state":"Pending"}
+```
+
+### 21.1.1 Where one request ends
+
+TCP delivers bytes, not messages. As chapter 20 showed, one `read` can return part of a request, exactly one
+request, or one request and the start of the next. The bytes carry no marker that says "a request starts
+here". The server has to find the end of each request from the bytes themselves:
+
+1. The head ends at the first empty line, the four bytes `\r\n\r\n`.
+2. The head then says how long the body is. `Content-Length` gives a byte count. Section 21.2.4 covers the
+   other way, a body sent in sized pieces.
+
+The next request depends on it too. HTTP/1.1 keeps a connection open after a response, so the client can
+send another request without a new TCP handshake. This is called **keep-alive**. The server
+can read the second request only if it knows exactly where the first one stopped.
+
+### 21.1.2 The parts of the server
+
+Figure 21.2 shows the pieces of the server in this chapter and the order in which a request passes through
+them.
+
+<figure>
+<img src="figures/ch21-server.svg" alt="A flow from left to right: client, read into buffer, parse_request, route, build_response, client. A dashed arrow labelled Incomplete: read more goes from parse_request back to read into buffer. The arrow from parse_request to route is labelled Ok(request), and the arrow from route to build_response is labelled status, body.">
+<figcaption><b>Figure 21.2</b> One request through the server. The parser sends the server back to read more until a whole request has arrived.</figcaption>
+</figure>
+
+- The server reads bytes from the connection and appends them to a buffer.
+- `parse_request` looks at the whole buffer. If the request is not complete yet, it says `Incomplete`, and
+  the server reads more. If it is complete, it returns a `Request` value.
+- `route` decides the answer from the `Request`: a status code and a body. It never sees bytes or sockets.
+- `build_response` turns the answer into the bytes of a response, which the server writes back.
+
+The parser, the read loop, and the response bytes are the protocol. `route` is the application. Keeping
+them apart means each can be tested without the other: the parser with byte strings, and `route` with
+`Request` values.
+
+## 21.2 The parser
+
+The parser is one file, `src/problems/http_request.rs`. Listing 21.1 in section 21.4 is the whole file.
+
+### 21.2.1 Types first
 
 The file opens with its vocabulary. `Method` is an enum with a `parse` that returns `None` for an unknown
 token, and two predicates from RFC 9110:
@@ -60,9 +135,9 @@ keep-alive`. The `has` closure splits the header on commas because `Connection` 
 ```
 
 `Incomplete` is not a failure: it means "read more bytes and try again", and the server's loop in section
-21.2 depends on it. `PayloadTooLarge` maps to status 413, `MissingHost` and `Malformed` to 400.
+21.3 depends on it. `PayloadTooLarge` maps to status 413, `MissingHost` and `Malformed` to 400.
 
-### 21.1.2 The head of the request
+### 21.2.2 The head of the request
 
 `parse_request` works on `&[u8]`, not `&str`, because an HTTP body is arbitrary bytes and only the head is
 text. It first looks for the blank line that ends the head, `\r\n\r\n`, with `windows(4).position(...)`:
@@ -75,12 +150,12 @@ text. It first looks for the blank line that ends the head, `\r\n\r\n`, with `wi
 
 If the blank line is missing, the request is `Incomplete`. The exception is a buffer already larger than
 `max_header_bytes`: then the client is sending an endless header and gets `PayloadTooLarge`. That check
-stops a slow client from holding memory with a header that never ends. Figure 21.1 shows the order of the
+stops a slow client from holding memory with a header that never ends. Figure 21.3 shows the order of the
 remaining checks.
 
 <figure>
 <img src="figures/ch21-framing.svg" alt="Flowchart: find the end of the head, parse the request line, parse headers, require exactly one Host for HTTP/1.1, then choose body framing: both headers is an error, Transfer-Encoding decodes chunked, Content-Length takes that many bytes, neither means no body">
-<figcaption><b>Figure 21.1</b> The order of checks in <code>parse_request</code> and <code>parse_body</code>.</figcaption>
+<figcaption><b>Figure 21.3</b> The order of checks in <code>parse_request</code> and <code>parse_body</code>.</figcaption>
 </figure>
 
 The request line must be exactly three space-separated parts: a known method, a non-empty target, and
@@ -118,7 +193,7 @@ pub fn parse_request(input: &[u8], limits: Limits) -> Result<Request, ParseError
 }
 ```
 
-### 21.1.3 Body framing and request smuggling
+### 21.2.3 Body framing and request smuggling
 
 `parse_body` decides how long the body is. A request with both `Content-Length` and `Transfer-Encoding` is
 rejected as `AmbiguousBodyLength`:
@@ -129,7 +204,7 @@ rejected as `AmbiguousBodyLength`:
 }
 ```
 
-The reason is request smuggling (figure 21.2). A front-end proxy may frame a request by `Content-Length`,
+The reason is request smuggling (figure 21.4). A front-end proxy may frame a request by `Content-Length`,
 while the back-end server frames the same bytes by `Transfer-Encoding: chunked`. The two then disagree
 about where the request ends. The attacker places a second request in the part the back-end treats as
 "after the body". The back-end runs it as though it arrived on its own, past whatever checks the proxy
@@ -137,7 +212,7 @@ applied. Refusing ambiguous framing outright, and closing the connection, remove
 
 <figure>
 <img src="figures/ch21-smuggling.svg" alt="One message with both Content-Length and Transfer-Encoding; the proxy reads one request, the back-end ends the POST at the zero chunk and reads GET /admin as a new request; the parser rejects the message instead">
-<figcaption><b>Figure 21.2</b> A CL.TE desynchronization. The parser answers such a request with 400 and closes the connection.</figcaption>
+<figcaption><b>Figure 21.4</b> A CL.TE desynchronization. The parser answers such a request with 400 and closes the connection.</figcaption>
 </figure>
 
 <figure class="anim">
@@ -179,7 +254,7 @@ fn parse_body(
 }
 ```
 
-### 21.1.4 Chunked bodies
+### 21.2.4 Chunked bodies
 
 `decode_chunked` walks a cursor through `size-in-hex CRLF data CRLF` records until a size of 0. Chunk
 extensions after a `;` are ignored, as the RFC permits.
@@ -232,11 +307,11 @@ a chunk size near `usize::MAX` overflows that addition. `from_str_radix` parses 
 start of a second, pipelined request in the same buffer. The server below accepts that limitation, and its
 module comment says so.
 
-## 21.2 A small REST server
+## 21.3 A small REST server
 
-The server is `src/bin/http_server.rs`. Listing 21.2 in section 21.3 is the whole file.
+The server is `src/bin/http_server.rs`. Listing 21.2 in section 21.4 is the whole file.
 
-### 21.2.1 Routing as a pure function
+### 21.3.1 Routing as a pure function
 
 `route(&Request) -> (u16, &'static str, Vec<u8>)` decides the status, content type, and body without
 touching a socket:
@@ -277,13 +352,13 @@ header that tells the client what the server will do:
 {{#include ../../rust-interview-lab/src/bin/http_server.rs:100:116}}
 ```
 
-### 21.2.2 The connection loop
+### 21.3.2 The connection loop
 
-`handle_connection` accumulates bytes in `buffer` and asks the parser what it has (figure 21.3).
+`handle_connection` accumulates bytes in `buffer` and asks the parser what it has (figure 21.5).
 
 <figure>
 <img src="figures/ch21-connection.svg" alt="State loop: parse; on Ok route and respond, then clear the buffer and loop if keep-alive or close; on Incomplete read more and parse again; on other errors send 400 and close">
-<figcaption><b>Figure 21.3</b> The keep-alive loop in <code>handle_connection</code>.</figcaption>
+<figcaption><b>Figure 21.5</b> The keep-alive loop in <code>handle_connection</code>.</figcaption>
 </figure>
 
 On `Ok`, it routes, writes the response, and either closes or clears the buffer for the next request:
@@ -344,7 +419,7 @@ Connection: close
 Content-Length and Transfer-Encoding are mutually exclusive
 ```
 
-### 21.2.3 Reading the server against the RFC
+### 21.3.3 Reading the server against the RFC
 
 The same session shows three places where the server departs from RFC 9110. None of them is hard to fix,
 and finding them is good practice.
@@ -379,7 +454,7 @@ id containing `"` produces invalid JSON; a real server serializes with `serde_js
 after each request discards any pipelined bytes that arrived with it, which the module comment
 acknowledges.
 
-## 21.3 The complete programs
+## 21.4 The complete programs
 
 <p class="listing"><b>Listing 21.1</b> An HTTP/1.1 request parser with framing checks and limits. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs">src/problems/http_request.rs</a></p>
 
@@ -393,7 +468,7 @@ acknowledges.
 {{#include ../../rust-interview-lab/src/bin/http_server.rs}}
 ```
 
-## 21.4 Questions that come up
+## 21.5 Questions that come up
 
 **"How does a server know where an HTTP/1.1 request body ends?"**
 `Transfer-Encoding: chunked` means read chunks until a zero-size chunk. Else `Content-Length` gives the

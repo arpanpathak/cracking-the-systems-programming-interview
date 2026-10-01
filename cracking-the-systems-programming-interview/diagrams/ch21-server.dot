@@ -1,0 +1,15 @@
+digraph server {
+  rankdir=LR; nodesep=0.25; ranksep=0.32;
+  c1 [label="client" fillcolor="#e6ecf6"];
+  read [label="read into\nbuffer"];
+  parse [label="parse_request" fillcolor="#fdf6e8"];
+  route [label="route" fillcolor="#e3f1ea"];
+  build [label="build_response"];
+  c2 [label="client" fillcolor="#e6ecf6"];
+  c1 -> read [label="request\nbytes"];
+  read -> parse;
+  parse -> route [label="Ok(request)"];
+  route -> build [label="status,\nbody"];
+  build -> c2 [label="response\nbytes"];
+  parse -> read [label="Incomplete:\nread more" style=dashed constraint=false];
+}
