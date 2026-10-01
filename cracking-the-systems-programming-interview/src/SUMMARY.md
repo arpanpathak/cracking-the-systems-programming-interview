@@ -48,6 +48,7 @@
 
 - [Mapping files and copying less](ch23-mmap.md)
 - [File descriptors, fork, and pipes](ch24-fd-table.md)
+- [Edge-triggered epoll](ch25-epoll-edge.md)
 
 # Part 8: Compact implementations
 

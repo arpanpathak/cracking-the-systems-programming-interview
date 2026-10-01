@@ -1,0 +1,11 @@
+digraph readylist {
+  rankdir=LR; nodesep=0.35; ranksep=0.45;
+  data [label="bytes arrive\non the socket" fillcolor="#fdf6e8"];
+  callback [label="epoll's callback\nadds the fd"];
+  ready [label="ready list" fillcolor="#e6ecf6"];
+  wait [label="epoll_wait\nreports the fd" fillcolor="#e3f1ea"];
+  gone [label="edge-triggered:\noff the list until\nthe next arrival" fillcolor="#fbe3d6"];
+  data -> callback -> ready -> wait;
+  wait -> gone [label=" ET"];
+  wait -> ready [label="level-triggered: put back,\nand checked again\nat the next epoll_wait" style=dashed constraint=false];
+}

@@ -644,6 +644,25 @@ def machine_switchboard(x, y):
     return out
 
 
+def machine_signal(x, y):
+    """A railway signal whose arm drops once as a train of bytes crosses a trip wire."""
+    out = rect(x + 20, y - 40, 14, 210, STEEL, rx=3)
+    out += rect(x - 10, y + 160, 74, 14, INK, rx=3)
+    out += '<g transform="rotate(35 %.1f %.1f)">' % (x + 27, y - 20)
+    out += rect(x + 27, y - 32, 120, 24, RUST, rx=4) + rect(x + 120, y - 32, 10, 24, CREAM, rx=0)
+    out += "</g>"
+    out += circle(x + 27, y - 20, 9, BRASS)
+    out += line(x + 60, y + 150, x + 440, y + 150, INK, 4)
+    for k in range(4):
+        cx = x + 170 + 62 * k
+        out += rect(cx, y + 96, 54, 40, CREAM if k else BRASS, rx=5)
+        out += text(cx + 27, y + 122, "0x%X" % (10 + k), 14, INK, anchor="middle", family="Menlo, monospace")
+        out += circle(cx + 12, y + 142, 7, INK) + circle(cx + 42, y + 142, 7, INK)
+    out += line(x + 120, y + 130, x + 120, y + 160, TEAL, 3) + circle(x + 120, y + 128, 5, TEAL)
+    out += text(x + 120, y + 112, "EPOLLET", 15, TEAL, anchor="middle", spacing=1)
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -703,6 +722,7 @@ CHAPTERS = [
     (22, machine_async, dict(head="tall", eyes="screen", antenna="spring", held="oilcan", accent=RUST), "FLYWHEEL", "polls every future, sleeps when none are ready"),
     (23, machine_mmap, dict(head="tall", eyes="round", antenna="twin", held="clipboard", accent=TEAL), "FOLIO", "archivist of the mapped stacks"),
     (24, machine_switchboard, dict(head="box", eyes="round", antenna="dish", held="wrench", accent=BRASS), "RELAY", "switchboard operator of the descriptor table"),
+    (25, machine_signal, dict(head="dome", eyes="visor", antenna="bolt", held="flag", accent=RUST), "TRIP", "signalman of the ready list"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 

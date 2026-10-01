@@ -1,0 +1,15 @@
+digraph herd {
+  rankdir=TB; nodesep=0.25; ranksep=0.45;
+  subgraph cluster_all { label="EPOLLIN: one connection wakes every waiter"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    l1 [label="listener\n1 connection" fillcolor="#fdf6e8"];
+    a1 [label="thread 1\nwakes" fillcolor="#e3f1ea"]; a2 [label="thread 2\nwakes" fillcolor="#e3f1ea"];
+    a3 [label="thread 3\nwakes" fillcolor="#e3f1ea"]; a4 [label="thread 4\nwakes" fillcolor="#e3f1ea"];
+    l1 -> a1; l1 -> a2; l1 -> a3; l1 -> a4;
+  }
+  subgraph cluster_one { label="EPOLLIN | EPOLLEXCLUSIVE: one waiter wakes"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    l2 [label="listener\n1 connection" fillcolor="#fdf6e8"];
+    b1 [label="thread 1\nwakes" fillcolor="#e3f1ea"]; b2 [label="thread 2\nsleeps"];
+    b3 [label="thread 3\nsleeps"]; b4 [label="thread 4\nsleeps"];
+    l2 -> b1; l2 -> b2 [style=invis]; l2 -> b3 [style=invis]; l2 -> b4 [style=invis];
+  }
+}

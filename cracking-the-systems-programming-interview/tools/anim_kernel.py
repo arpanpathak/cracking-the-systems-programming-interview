@@ -18,6 +18,13 @@ def lines_at(path, numbers):
     return [source[n - 1].strip() for n in numbers]
 
 
+def block_at(path, first, last):
+    """Lines `first` to `last` of a lab source file, with their common indentation removed."""
+    source = (LAB / path).read_text(encoding="utf-8").splitlines()[first - 1:last]
+    indent = min(len(line) - len(line.lstrip()) for line in source if line.strip())
+    return [line[indent:] for line in source]
+
+
 # ------------------------------------------------- 23.1: faults on first touch
 
 PAGES = 64
@@ -501,9 +508,198 @@ def build_pipeline(only=None):
     return render("ch24-pipe.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 25.2: levels and edges
+
+EDGE_RUN = block_at("src/bin/epoll_edge.rs", 112, 116)
+READ_ONCE = block_at("src/bin/epoll_edge.rs", 79, 82)
+DRAIN = block_at("src/bin/epoll_edge.rs", 88, 95)
+TANK = (330, 92, 70, 150)        # x, y, w, h of the receive buffer
+READY = (520, 104, 190, 54)      # the ready list
+LOOP_X, LOOP_DESK = 104, 222
+TOTAL = 10_000
+
+
+def edge():
+    tl = Timeline(caption="", kind="step", mode="", handler="once", run_code=-1.0, h_code=-1.0,
+                  buffer=0.0, listed=0.0, events=0.0, awake=0.0, ev_u=0.0, ev_a=0.0,
+                  rd_u=0.0, rd_a=0.0, rd_label="", back_u=0.0, back_a=0.0, eagain=0.0,
+                  checked=0.0, stuck=0.0, clock="", arrive=0.0)
+
+    def arrive():
+        tl.to(0.3, arrive=1.0)
+        tl.to(1.0, in_out, buffer=float(TOTAL))
+        tl.to(0.3, arrive=0.0)
+        tl.to(0.5, back, listed=1.0)
+
+    def event(n, k=1.0):
+        tl.set(ev_u=0.0, run_code=1.0)
+        tl.to(0.15, ev_a=1.0, listed=0.0)
+        tl.to(0.7 * k, in_out, ev_u=1.0)
+        tl.to(0.1, ev_a=0.0)
+        tl.to(0.3 * k, back, awake=1.0, events=float(n), run_code=2.0)
+
+    def read(amount, line, k=1.0):
+        tl.set(rd_u=0.0, rd_label="read %d" % amount, h_code=float(line))
+        tl.to(0.15, rd_a=1.0)
+        tl.also(0.7 * k, in_out, buffer=max(0.0, tl._at("buffer", tl.now) - amount))
+        tl.to(0.7 * k, in_out, rd_u=1.0)
+        tl.to(0.1, rd_a=0.0)
+
+    def put_back(k=1.0):
+        tl.set(back_u=0.0)
+        tl.to(0.15, back_a=1.0)
+        tl.to(0.6 * k, in_out, back_u=1.0)
+        tl.to(0.1, back_a=0.0, listed=1.0, awake=0.0, run_code=1.0, h_code=-1.0)
+
+    def reset(mode, handler):
+        tl.to(0.5, buffer=0.0, events=0.0, listed=0.0, awake=0.0, eagain=0.0, checked=0.0)
+        tl.set(mode=mode, handler=handler, run_code=1.0, h_code=-1.0)
+
+    tl.chapter("level-triggered")
+    tl.set(mode="level-triggered, read once", handler="once", run_code=1.0)
+    tl.say("The loop sleeps in epoll_wait. The socket is registered without EPOLLET: "
+           "level-triggered.")
+    tl.wait(0.6)
+    tl.say("10,000 bytes arrive. epoll's callback puts the socket on the ready list.")
+    arrive()
+    tl.say("epoll_wait returns the socket, and the handler reads once: 4,096 bytes.")
+    event(1)
+    read(4096, 2)
+    tl.say("Level-triggered: the kernel puts the socket back on the ready list. 5,904 bytes "
+           "are still there.")
+    put_back()
+    tl.wait(0.6)
+    tl.say("So the next epoll_wait reports it again. Two more events read the rest.")
+    event(2, 0.6)
+    read(4096, 2, 0.6)
+    put_back(0.6)
+    event(3, 0.6)
+    read(1808, 2, 0.6)
+    put_back(0.6)
+    tl.say("The next epoll_wait checks the socket, finds it empty, and drops it from the list.")
+    tl.to(0.4, checked=1.0)
+    tl.to(0.5, listed=0.0)
+    tl.to(0.3, checked=0.0)
+    tl.say("Three events, and every byte read.", "insight")
+    tl.wait(1.2)
+
+    tl.chapter("edge, drained")
+    tl.say("Now edge-triggered, with EPOLLET. The handler reads until EAGAIN.")
+    reset("edge-triggered, read until EAGAIN", "drain")
+    tl.wait(0.4)
+    arrive()
+    tl.say("One event. The handler's loop reads 4,096, then 4,096, then 1,808.")
+    event(1)
+    read(4096, 3)
+    read(4096, 3, 0.7)
+    read(1808, 3, 0.7)
+    tl.say("The next read returns EAGAIN: the buffer is empty, and the handler returns.")
+    tl.set(h_code=4.0)
+    tl.to(0.4, back, eagain=1.0)
+    tl.wait(0.8)
+    tl.to(0.3, eagain=0.0, awake=0.0, run_code=1.0, h_code=-1.0)
+    tl.say("Edge-triggered: the socket is not put back. Nothing is left to report.", "insight")
+    tl.wait(1.2)
+
+    tl.chapter("edge, read once")
+    tl.say("Last, edge-triggered with the handler that reads once.", "fail")
+    reset("edge-triggered, read once", "once")
+    tl.wait(0.4)
+    arrive()
+    event(1)
+    read(4096, 2)
+    tl.say("The handler returns with 5,904 bytes still in the buffer. The socket is not put back.",
+           "fail")
+    tl.to(0.4, awake=0.0, run_code=1.0, h_code=-1.0)
+    tl.to(0.4, stuck=1.0)
+    for label in ("20 ms", "60 ms", "100 ms: no event"):
+        tl.set(clock=label)
+        tl.wait(0.8)
+    tl.say("Only new bytes would make an edge. A peer waiting for a reply sends none: a stall.",
+           "fail")
+    tl.wait(1.6)
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "Levels and edges",
+                    "Level-triggered reports a socket while it has data. Edge-triggered reports "
+                    "each arrival once.")
+        scoreboard(p, [("events", int(round(s.events)), TEAL)], y=34)
+        if s.mode:
+            chip(p, READY[0], 200, s.mode, INK, STAGE, 11.5, anchor="start")
+
+        robot(p, LOOP_X, LOOP_DESK, TEAL, s.awake, s.awake, "event loop", "one thread",
+              look=0.9)
+        zzz(p, LOOP_X + 44, LOOP_DESK - 108, t, 1 - s.awake)
+
+        # the receive buffer, as a tank
+        x, y, w, h = TANK
+        p.text(x + w / 2, y - 8, "receive buffer", 11, MUTED, 600, "middle")
+        p.rect(x, y, w, h, PAPER, INK, 8, 1.6)
+        level = h * clamp(s.buffer / TOTAL)
+        if level > 0.5:
+            p.rect(x + 3, y + h - level, w - 6, level - 3, BRASS_LT if s.stuck < 0.5 else RUST_LT,
+                   BRASS if s.stuck < 0.5 else RUST, 6, 1.2)
+        p.text(x + w / 2, y + h + 20, "%d bytes" % int(round(s.buffer)), 12, INK, 700, "middle",
+               mono=True)
+        if s.arrive > 0.01:
+            pill(p, x + w + 70, y + 20, "10,000 bytes", BRASS, BRASS_LT, 10.5,
+                 opacity=s.arrive, shadow=None)
+        if s.stuck > 0.01:
+            focus(p, x, y, w, h, s.stuck, RUST)
+            if s.clock:
+                p.text(x + w / 2, y + h + 38, s.clock, 11.5, RUST, 700, "middle", mono=True)
+
+        # the ready list
+        rx, ry, rw, rh = READY
+        p.text(rx, ry - 8, "ready list", 11, MUTED, 600)
+        p.rect(rx, ry, rw, rh, STAGE, LINE, 8, 1.2)
+        if s.listed > 0.01:
+            chip(p, rx + 50, ry + rh / 2, "socket", TEAL, TEAL_LT, 11.5, opacity=clamp(s.listed))
+        if s.checked > 0.01:
+            p.text(rx + rw - 8, ry + rh / 2 + 4, "empty: drop", 10.5, MUTED, 700, "end",
+                   opacity=clamp(s.checked))
+
+        # in flight
+        if s.ev_a > 0.01:
+            a = (rx + 50, ry + rh / 2)
+            b = (LOOP_X + 30, LOOP_DESK - 120)
+            px, py = bezier(a, ((a[0] + b[0]) / 2, 70), b, s.ev_u)
+            pill(p, px, py, "event", TEAL, PAPER, 10.5, opacity=s.ev_a)
+        if s.rd_a > 0.01:
+            a = (x + w / 2, y + h - 20)
+            b = (LOOP_X + 40, LOOP_DESK - 40)
+            px, py = bezier(a, ((a[0] + b[0]) / 2, y + h + 30), b, s.rd_u)
+            pill(p, px, py, s.rd_label, BRASS, BRASS_LT, 10.5, opacity=s.rd_a, shadow=None)
+        if s.back_a > 0.01:
+            a = (LOOP_X + 30, LOOP_DESK - 120)
+            b = (rx + 50, ry + rh / 2)
+            px, py = bezier(a, ((a[0] + b[0]) / 2, ry + rh + 60), b, s.back_u)
+            pill(p, px, py, "put back", TEAL, TEAL_LT, 10.5, opacity=s.back_a, shadow=None)
+        if s.eagain > 0.01:
+            pill(p, x + w / 2, y - 30, "EAGAIN", RUST, RUST_LT, 10.5, opacity=clamp(s.eagain),
+                 shadow=None)
+
+        code_panel(p, 26, 286, 250, "run", EDGE_RUN, s.run_code, size=9.0, lead=15.0,
+                   reveal=s.timeline.reached("run_code", t))
+        body = READ_ONCE if s.handler == "once" else DRAIN
+        title = "read_once" if s.handler == "once" else "read_until_eagain"
+        code_panel(p, 286, 286, W - 26 - 286, title, body, s.h_code, size=9.0, lead=15.0)
+        caption(p, tl, t, 456)
+        progress(p, tl, t, total, 542)
+
+    return tl, draw, 576
+
+
+def build_edge(only=None):
+    tl, draw, height = edge()
+    return render("ch25-edge.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
     "pipeline": build_pipeline,
+    "edge": build_edge,
 }
 
 if __name__ == "__main__":
