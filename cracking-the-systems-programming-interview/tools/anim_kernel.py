@@ -1501,6 +1501,155 @@ def build_pool(only=None):
     return render("ch29-pool.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 19.4: single flight
+
+SF_CODE = lines_containing("src/bin/single_flight.rs",
+                           "Some(Slot::Done(value)) => return Ok(value.clone()),",
+                           ".wait(slots)",
+                           "None => break,",
+                           "slots.insert(key.clone(), Slot::InProgress);",
+                           "let value = work()?;",
+                           ".insert(key, Slot::Done(value.clone()));",
+                           "self.finished.notify_all();",
+                           "self.flight.lock().remove(&key);")
+SF_CALLERS = {"A": 140, "B": 226, "C": 312}
+SF_X = 74
+SERVICE_X, SERVICE_DESK = 730, 230
+SLOT = (430, 150)
+
+
+def single_flight():
+    tl = Timeline(caption="", kind="step", code=-1.0, strike=-1.0, slot="no entry",
+                  executions=0.0, asleep="", got="", call_u=0.0, call_a=0.0, call_label="",
+                  call_back=0, panic=0.0, clock="", look_u=0.0, look_a=0.0, look_from="A")
+
+    def look(caller, dur=0.6):
+        tl.set(look_from=caller, look_u=0.0)
+        tl.to(0.12, look_a=1.0)
+        tl.to(dur, in_out, look_u=1.0)
+        tl.to(0.1, look_a=0.0)
+
+    def call(label, back=0, dur=1.0):
+        tl.set(call_label=label, call_back=back, call_u=0.0)
+        tl.to(0.12, call_a=1.0)
+        tl.to(dur, in_out, call_u=1.0)
+        tl.to(0.1, call_a=0.0)
+
+    def start(fail):
+        tl.say("A calls execute for order-1. The map has no entry for it, so the loop breaks out.",
+               "fail" if fail else "step")
+        tl.set(code=2.0)
+        look("A")
+        tl.say("A marks order-1 InProgress, releases the lock, and runs the work.",
+               "fail" if fail else "step")
+        tl.to(0.3, code=3.0)
+        tl.set(slot="InProgress")
+        tl.to(0.3, code=4.0)
+        call("charge order-1")
+        tl.to(0.3, executions=1.0)
+        tl.say("B and C call execute for order-1. They find InProgress, and wait on the Condvar.",
+               "fail" if fail else "step")
+        tl.set(code=1.0)
+        look("B", 0.5)
+        tl.set(asleep="B")
+        look("C", 0.5)
+        tl.set(asleep="BC")
+        tl.wait(0.8)
+
+    tl.chapter("claim")
+    start(False)
+
+    tl.chapter("done")
+    tl.say("The charge returns txn-order-1. A stores Done, and notify_all wakes every waiter.")
+    call("txn-order-1", back=1)
+    tl.to(0.3, code=5.0)
+    tl.set(slot="Done(txn-order-1)")
+    tl.to(0.3, code=6.0)
+    tl.set(asleep="")
+    tl.say("B and C check order-1 again, find Done, and each return a clone.")
+    tl.to(0.3, code=0.0)
+    tl.set(got="ABC")
+    tl.say("Three callers, one charge. The other keys never waited for this one.", "insight")
+    tl.wait(1.2)
+
+    tl.chapter("panic, no Drop")
+    tl.say("Now remove the claim's Drop, and let the work panic.", "fail")
+    tl.set(slot="no entry", executions=0.0, got="", strike=7.0, code=-1.0)
+    tl.wait(0.4)
+    start(True)
+    tl.say("The payment provider crashes, and A's work panics. Nothing removes the mark.", "fail")
+    tl.to(0.4, back, panic=1.0)
+    tl.wait(0.6)
+    tl.say("order-1 stays InProgress. B and C wait for a result that will never come.", "fail")
+    for label in ("1 s", "1 min", "forever"):
+        tl.set(clock=label)
+        tl.wait(0.9)
+    tl.say("With Drop, the claim removes the mark and wakes them, and B runs the work itself.",
+           "fail")
+    tl.wait(1.6)
+
+    def spot(name):
+        if name in SF_CALLERS:
+            return (SF_X + 60, SF_CALLERS[name] - 40)
+        return (SLOT[0], SLOT[1])
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "Single flight",
+                    "Callers with one key share one execution. The lock is never held during the work.")
+        scoreboard(p, [("executions", int(round(s.executions)), BRASS)])
+
+        for name, desk in SF_CALLERS.items():
+            asleep = name in s.asleep
+            failed = name == "A" and s.panic > 0.5
+            with p.group(scale=0.55, cx=SF_X, cy=desk):
+                robot(p, SF_X, desk, RUST if failed else TEAL, 0.0 if asleep else 1.0,
+                      0.0 if asleep else 1.0, None)
+            p.text(SF_X - 44, desk - 24, name, 14, INK, 700, "middle")
+            if asleep:
+                p.text(SF_X + 50, desk - 40, "waiting", 10.5, NIGHT, 700)
+                if s.clock:
+                    p.text(SF_X + 50, desk - 24, s.clock, 10.5, RUST, 700, mono=True)
+            if name in s.got:
+                chip(p, SF_X + 104, desk - 34, "txn-order-1", TEAL, TEAL_LT, 10.5)
+            if failed:
+                chip(p, SF_X + 92, desk - 34, "panic", RUST, RUST_LT, 10.5, opacity=clamp(s.panic))
+
+        sx, sy = SLOT
+        p.rect(sx - 120, sy - 56, 240, 112, STAGE, LINE, 10, 1.2)
+        p.text(sx - 108, sy - 36, "slots: Mutex<HashMap<K, Slot<V>>>", 10.5, MUTED, 600, mono=True)
+        color = {"no entry": FAINT, "InProgress": BRASS}.get(s.slot, TEAL)
+        fill = {"no entry": STAGE, "InProgress": BRASS_LT}.get(s.slot, TEAL_LT)
+        p.text(sx - 100, sy + 6, "order-1", 13, INK, 700, mono=True)
+        chip(p, sx + 50, sy + 2, s.slot, color, fill, 11)
+
+        robot(p, SERVICE_X, SERVICE_DESK, NIGHT, 1.0, 1.0, "payment", "100 ms")
+
+        if s.look_a > 0.01:
+            a, b = spot(s.look_from), spot("slot")
+            pill(p, lerp(a[0], b[0] - 110, s.look_u), lerp(a[1], b[1], s.look_u), "lookup",
+                 TEAL, PAPER, 10, opacity=s.look_a, shadow=None)
+        if s.call_a > 0.01:
+            a, b = (SF_X + 70, SF_CALLERS["A"] - 40), (SERVICE_X - 50, SERVICE_DESK - 60)
+            if s.call_back:
+                a, b = b, a
+            pill(p, lerp(a[0], b[0], s.call_u), lerp(a[1], b[1], s.call_u), s.call_label, BRASS,
+                 BRASS_LT, 10.5, opacity=s.call_a, shadow=None)
+
+        code_panel(p, 26, 336, W - 52, "execute, and the claim's Drop", SF_CODE, s.code,
+                   size=10.0, lead=15.0, strike=int(s.strike) if s.strike >= 0 else None,
+                   reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, 504)
+        progress(p, tl, t, total, 590)
+
+    return tl, draw, 624
+
+
+def build_single_flight(only=None):
+    tl, draw, height = single_flight()
+    return render("ch19-single-flight.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
     "pipeline": build_pipeline,
@@ -1510,6 +1659,7 @@ BUILDERS = {
     "tcp-close": build_tcp_close,
     "tls": build_tls,
     "pool": build_pool,
+    "single-flight": build_single_flight,
 }
 
 if __name__ == "__main__":

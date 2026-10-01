@@ -11,6 +11,7 @@ This chapter covers
 - Retrying failed calls with exponential backoff, jitter, and the server's `Retry-After`
 - Deciding which errors to retry, with a trait
 - Making a repeated request safe with an idempotency key
+- Single flight: concurrent calls with one key share one execution, and other keys run in parallel
 
 </div>
 
@@ -405,8 +406,140 @@ charging card...
 
 Holding the lock while `f()` runs makes the store correct. Two calls with the same key cannot both find it
 missing and both run the work. It is also the store's limit. Every call waits for the one lock, even calls with
-different keys, so one slow operation delays all others. A production store locks per key instead. It records "in progress" for a key and releases the lock while the work runs. Later callers with that key
-wait for the result. A real service also keeps the results in a database, so they survive a restart.
+different keys, so one slow operation delays all others. Section 19.4 removes that limit. A real service also keeps the results in a database, so they survive a
+restart.
+
+## 19.4 One execution per key: single flight
+
+The store in section 19.3 has two problems under load.
+
+- **It serializes every key.** It holds one lock while the work runs. A slow charge for `order-1` makes a
+  call for `order-2` wait, although the two have nothing in common.
+- **It cannot be split naively.** Suppose the lock is released during the work. Two callers with the same key
+  can then both find it missing, and both charge the card.
+
+The same shape appears in caches. When a popular entry expires, hundreds of requests can miss at once, and
+each recomputes the value or queries the database. That burst is a **cache stampede**, a thundering herd
+aimed at one key.
+
+The fix is to record, for each key, that work is **in progress**. The first caller for a key marks it,
+releases the lock, and runs the work. A caller that finds the mark waits for the result instead of starting
+its own. Callers with other keys never wait. This is called **single flight**: at most one execution per key
+is in the air at a time.
+
+Each key moves through three states (figure 19.6). A success stores the value for every later caller. A
+failure, or a panic, removes the mark, so the next caller can try again.
+
+<figure>
+<img src="figures/ch19-single-flight.svg" alt="A key with no entry moves to InProgress when the first caller marks it, unlocks, and runs the work; later callers wait on the Condvar. Ok stores the value as Done, and notify_all wakes the waiters, who each get a clone. On Err or a panic, the Claim removes the mark and notify_all wakes the waiters, and the key has no entry again.">
+<figcaption><b>Figure 19.6</b> The states of one key. Only the first caller runs the work. A failure returns the key to no entry, so a retry runs it again.</figcaption>
+</figure>
+
+### 19.4.1 The state
+
+Each key maps to a `Slot`, and all the slots share one map behind one mutex. A `Condvar` wakes the waiters
+when any slot changes:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/single_flight.rs:11:38}}
+```
+
+The mutex is held only to read or change the map, never while the work runs. So one lock is enough for every
+key. `notify_all` wakes every waiter, for any key. Each one checks its own key and goes back to sleep if
+nothing it cares about changed. That costs a few spurious wakeups, and keeps the code to one `Condvar`.
+
+### 19.4.2 The claim
+
+The caller that runs the work holds a **claim** on its key. If the work fails or panics, someone has to remove
+the `InProgress` mark, or the waiters sleep forever. `Drop` is the place that runs in both cases:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/single_flight.rs:40:65}}
+```
+
+`key` is an `Option`. The success path takes the key out of the claim before the claim is dropped, so `Drop`
+does nothing. On an error or a panic, the key is still inside, and `Drop` removes the mark and wakes the
+waiters.
+
+`lock` recovers a poisoned mutex with `into_inner`, as in section 16.6. The map is consistent after every
+update, because each update is one `insert` or one `remove`, so the data is safe to keep using.
+
+### 19.4.3 `execute`
+
+`execute` loops while the key is in progress, then claims it, runs the work outside the lock, and stores the
+result:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/single_flight.rs:67:116}}
+```
+
+The `loop` handles all three states:
+
+- `Done(value)`: return a clone. This is the idempotency of section 19.3.
+- `InProgress`: wait on the `Condvar`. `wait` releases the lock while it sleeps, and takes it back on wakeup.
+  The loop then checks the key again, because the wakeup may be for another key, or spurious.
+- No entry: leave the loop and claim the key.
+
+After the claim, `drop(slots)` releases the lock, and `work()` runs with no lock held. If `work` returns an
+error, `?` returns it, and the claim's `Drop` removes the mark. If `work` succeeds, the code takes the key out
+of the claim, stores `Done`, and wakes the waiters.
+
+### 19.4.4 Measured
+
+`main` starts its callers together with a `Barrier`, so they really overlap, and times them:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/single_flight.rs:118:139}}
+```
+
+The work is a fake charge that sleeps for 100 ms and counts how many times it ran. The second scene also runs
+the four keys through a store like section 19.3's: one lock, held while the work runs.
+
+```text
+1. Eight concurrent calls with one key
+  executions 1, all got txn-order-1: true, 103 ms
+
+2. Four concurrent calls with four keys
+  single flight:                 executions 4, 103 ms
+  one lock held during the work: executions 4, 417 ms
+
+3. A failure is not stored
+  first: Err("card declined"), retry: Ok("txn-order-5"), executions 1
+```
+
+Eight callers with one key caused one charge, and all eight got its result in 103 ms. Four keys ran in
+parallel in 103 ms. The one-lock store ran them one after another, in 417 ms. A declined charge was not
+stored, so the retry ran the work, and that run succeeded.
+
+The fourth scene makes the work panic while a second caller waits for the same key:
+
+```text
+4. The work panics while another caller waits
+
+thread '<unnamed>' panicked at src/bin/single_flight.rs:209:21:
+payment provider crashed
+  caller 0: Err("panicked")
+  caller 1: Ok(Ok("txn-order-6"))
+```
+
+The `panicked at` lines are the default panic message, written to standard error. Caller 0's panic dropped
+its claim, and `Drop` removed the mark and woke caller 1. Caller 1 found no entry, claimed the key, and ran
+the work itself. Without the claim's `Drop`, the mark would stay `InProgress`, and caller 1 would wait
+forever. Animation 19.2 shows both runs.
+
+<figure class="anim">
+<video class="motion" src="figures/ch19-single-flight.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim's Drop, A's work panics, the mark stays InProgress, and B and C sleep while a clock runs." data-chapters="[[0.0, &quot;claim&quot;], [13.67, &quot;done&quot;], [26.82, &quot;panic, no Drop&quot;]]"><img src="figures/ch19-single-flight.gif" alt="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim's Drop, A's work panics, the mark stays InProgress, and B and C sleep while a clock runs."></video>
+<figcaption><b>Animation 19.2</b> One key, three callers, one execution. When the claim's <code>Drop</code> is missing, a panic leaves the mark in place and the waiters sleep forever.</figcaption>
+</figure>
+
+A production version adds two things. Waiters need a deadline, `wait_timeout`, so a hung charge cannot hold
+them forever. And the results need an expiry, or a store that only grows becomes a memory leak.
+
+<p class="listing"><b>Listing 19.12</b> Single flight: one execution per key in flight. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/single_flight.rs">src/bin/single_flight.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/single_flight.rs}}
+```
 
 <div class="summary" markdown="1">
 
@@ -423,6 +556,9 @@ wait for the result. A real service also keeps the results in a database, so the
 - Passing randomness in as a closure makes the retry logic testable.
 - An idempotency key makes a retried request safe: the server stores the result under the key and returns it for
   every repeat.
+- Single flight marks a key in progress and runs its work outside the lock. Eight callers with one key caused one
+  execution, and four keys took 103 ms, against 417 ms behind one lock. A claim with `Drop` clears the mark after
+  an error or a panic.
 
 </div>
 
@@ -435,5 +571,5 @@ Chapter 20 moves down to the network itself: IP addresses, sockets, and a server
 2. Rewrite the atomic limiter's `try_acquire` with a `compare_exchange` loop that refills, checks, and takes a
    token in one atomic step. Run the 8-thread test from section 19.1.3 on it.
 3. Add a `max_elapsed: Duration` to `RetryPolicy`, and make `retry` stop when the total time spent would pass it.
-4. Change `Idempotent` so that `execute` does not hold the lock while `f` runs. Two calls with the same key
-must still run `f` only once. Hint: store an enum with `InProgress` and `Done(V)` states, and a `Condvar`.
+4. Add a deadline to `SingleFlight::execute`: a caller that waits longer than a given `Duration` for a key
+   in progress returns an error. Use `Condvar::wait_timeout`, and keep the remaining time across spurious wakeups.

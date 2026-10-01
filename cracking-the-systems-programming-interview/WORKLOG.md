@@ -66,7 +66,7 @@ then 8 and 9 as they are added, drills last.
   - [x] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
   - [x] TLS and mTLS with rustls
   - [x] client connection pool (bounded, RAII return, idle eviction)
-- [ ] ch19: single-flight idempotency as a section (deferred; see Future work)
+- [x] ch19: single-flight idempotency as a section
 
 ## Log
 
@@ -102,12 +102,14 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch20, ch23-27: C declarations with parameter comments before first use
 - 2026-10-01 all 46 animations re-rendered with the new code reveal
 
+- 2026-10-01 ch19 section 19.4 single flight: concept, figure 19.6, excerpts, measured (1 execution for 8 callers; 103 ms vs 417 ms one-lock), panic case, animation ch19-single-flight, listing 19.12; exercise 4 replaced
+
 ## Future work (draft for the next agent session)
 
 Read the rules at the top of this file first. No new chapters unless asked: the book is ch01 to ch29 plus
 drills (ch30). The work now is enrichment.
 
-1. **ch19 single flight.** `rust-interview-lab/src/bin/single_flight.rs` is written and tested (scenes:
+1. **ch19 single flight.** Done as section 19.4. `rust-interview-lab/src/bin/single_flight.rs` is written and tested (scenes:
    8 callers one key -> 1 execution, 4 keys in parallel, failure not stored, panic clears the claim). Add it as
    section 19.4 after idempotency keys: concept (thundering herd on a cache miss, why 19.3's single lock
    serializes all keys), a slot-state diagram (none -> InProgress -> Done; Err/panic -> none), excerpts

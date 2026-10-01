@@ -1,0 +1,9 @@
+digraph singleflight {
+  rankdir=LR; nodesep=0.4; ranksep=0.9;
+  none [label="no entry" fillcolor="#eef3f7"];
+  progress [label="InProgress\nlater callers wait\non the Condvar" fillcolor="#fdf6e8"];
+  done [label="Done(value)\nevery caller gets\na clone" fillcolor="#e3f1ea"];
+  none -> progress [label="first caller: mark,\nunlock, run the work"];
+  progress -> done [label="Ok: store the value,\nnotify_all"];
+  progress -> none [label="Err or panic: the Claim\nremoves the mark, notify_all" style=dashed];
+}
