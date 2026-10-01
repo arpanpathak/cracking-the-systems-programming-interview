@@ -146,3 +146,58 @@ drills (ch30). The work now is enrichment.
 5. **Backlog** from `../knowledge_gaps.md` that passed the scope test but was not built: see that file.
 6. Republish gh-pages after each batch (`mdbook build`, copy `book/` to the gh-pages worktree) and cut a
    release when a batch of chapters is finished.
+
+## Chapter depth assessment (for the next agent session)
+
+The standard is the ch13 rework, done in response to "it feels like static boxes, shallow, and too much code".
+A chapter meets the bar when it has:
+
+- **(a) intuition before code.** A plain-language model, an everyday analogy, or a cost table that says why
+  the structure exists. ch13's 13.1.1 is the template: what a hit saves, a hand trace, the fail case.
+- **(b) one animation per core operation.** Robots or the structure itself move, with a fail case. A whole
+  topic does not count as one operation.
+- **(c) excerpts first, then the complete file at the end.** No mid-chapter dump over about 40 lines.
+
+The numbers below were measured on 2026-10-01: prose words, animations, and whole-file includes
+mid-chapter. Re-measure with the script in the log before starting.
+
+Priority order: ch09, ch17, ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
+
+| Ch | Animations | Gap against the bar | Suggested work |
+|---|---|---|---|
+| 01 bindings | fib-calls | (b) ownership moves and shadowing are static | A move-versus-copy robot hand-off: `let b = a` for `String` against `i32`, and the use-after-move compile error as the fail case |
+| 02 files | bufreader | (c) 11 whole files mid-chapter (path_buff, read_write_file, copy/rename/delete, list_directory, recursive walk, pagination, command_line_args at 120 lines) | Excerpt each to the calls that matter, then move the files to a "2.9 The complete files". Optional animation: the recursive walk as a stack of directories |
+| 03 collections | 10 | (c) about 10 whole files; three_sum and the others were noted earlier | Excerpts only; motion is already rich |
+| 04 iterators | lazy-chain | (a) about 260 words before code; (b) no motion for `collect`, `fold`, or `zip` | An adapter-pipeline robot line with `fold` accumulating; the fail case is a chain with no consumer that does nothing |
+| 05 heaps | heap-sift, top-k | (c) median_finder at 138 lines | A two-heaps animation for the median: balance and rebalance |
+| 06 DP | coin-change, subsets | Fine. Job scheduling has no motion | Optional: a deadline-slots animation |
+| 07 types | parse-trace | (c) adt_idioms at 236 lines and state_machine shown whole | Excerpt them. A state-machine animation in which an invalid transition does not compile (the typestate fail case) |
+| 08 pointers | rc-refcell, weak-parent | (c) smart_pointers at 165 lines | Excerpt it. A `Box` on the heap against the stack size, as a small figure |
+| **09 linked lists** | reverse only (borrowed from ch04) | (b) no motion for push and pop, the four node layouts, recursive drop overflowing the stack, or the doubly linked list; (c) 11 whole files, ll.rs at 295 | Three animations: (1) push and pop with `Option::take`, where the fail case moves out of a borrow; (2) recursive `Drop` growing the call stack until it overflows, against the iterative drop; (3) the doubly linked list with `Rc`/`Weak` prev and next, splicing a node. Then excerpt and move the files to the end |
+| **10 merge-k** | merge-two, merge-rounds | (c) 10 whole files, about 5 code blocks in a row; the heap version has no motion | A heap-of-heads animation (pop the smallest, push its next); excerpts; collapse near-duplicate variants into a comparison table |
+| 11 trees | bst, trie | (c) binary_tree at 147 lines and test_tree; no traversal motion | An in-order, pre-order, and post-order traversal robot with a visit stack; a delete-with-two-children case |
+| 12 graphs | 6 | (c) about 11 whole files mid-chapter | Excerpts only |
+| 13 LRU | shelf, stamps, arena (new) | Done to the bar | Reference for the others |
+| **14 sharding** | ring | (a) about 300 words before code; (b) no motion for lock contention on one map against N shards, or for remapping when a node joins | A "one lock, many robots queueing" against "16 shard locks" animation with throughput counters; a ring animation adding a node, where only one arc moves, against `hash % N` moving almost all keys as the fail case |
+| 15 memory/OS | mem-hierarchy, false-sharing | The bump allocator and scheduler are static | A bump-pointer animation (alloc, alloc, reset); a round-robin scheduler animation |
+| 16 threads/locks | spin-lock, deadlock | The condvar semaphore and poisoning are static | A semaphore with permits as tokens, sleeping and waking robots (`notify_one`); a poisoning sequence |
+| **17 queues** | bounded-buffer | (b) no motion for close/shutdown or the lock-free ring buffer; (c) 7 whole files (mpmc at 83) | (1) Close: producers stop, consumers drain and then see `None`; the fail case is consumers blocked forever without close. (2) The ring buffer: head and tail indices with Acquire/Release, wrapping. Excerpts |
+| 18 pools | pool-lock, pool-panic | Backpressure and result channels are figures only | An animation of the bounded queue filling with the caller blocked, and per-job reply channels |
+| 19 reliability | token-bucket, single-flight | Retry with backoff and jitter is static | A retry timeline: attempts on a time axis with exponential gaps and jitter, against a thundering herd of synchronized retries as the fail case |
+| 20 sockets | bdp, handshake, epoll | Fine | None |
+| 21 http | framing, keep-alive | (a) about 3,300 words; parsing limits are static | Optional: a header-size-limit animation (slowloris as the fail case) |
+| 22 async | 4 | Fine | None |
+| 23 to 29 (Linux) | 1 to 2 each | Excerpted already. Each has one animation. ch24 (dup2 and fork table), ch27 (TIME_WAIT), and ch29 (pool checkout and health check) would gain from a second | ch24: dup2 redirect with the fd table before and after; ch27: TIME_WAIT on the side that closes first; ch29: a stale connection discarded on checkout |
+| 30 drills | none | A 522-line whole file at the top by design; stale references fixed 2026-10-01 | Optional: the lazy spawn/join animation (serial against parallel timelines), since 30.3 is the chapter's one surprise |
+
+Process for each chapter, as done for ch13:
+
+1. Read the chapter and the lab code. Write the intuition section first: an analogy, a cost table, and a
+   hand-traced example.
+2. Write `tools/anim_chNN.py` with the `motion` API: robots plus the structure, `code_panel` with
+   `lines_containing`, and a fail-case chapter. Register it in `animations.py`.
+3. Preview frames with `render(..., only=)`. Render in the background with the absolute script path. Run
+   `anim_markup.py`.
+4. Move whole files into "The complete files". Renumber captions sequentially. Fix references by hand.
+   Run `excerpts.py check`, `lint_prose.py`, and `lint_figures.py`.
+5. Build, commit (no attribution lines), push, and republish gh-pages.

@@ -43,13 +43,55 @@ Figure 13.1 follows five calls on a cache with room for two entries.
 <figcaption><b>Figure 13.1</b> The recency order after each call. The entry at the right end is evicted next.</figcaption>
 </figure>
 
-<figure class="anim">
-<video class="motion" src="figures/ch13-lru.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A cache with two slots, the most recent on the left. put(A, 1) and put(B, 2) fill it. get(A) moves A to the most recent end. put(C, 3) evicts B, the least recent entry, and leaves C and A. A second run without get(A) evicts A instead." data-chapters="[[0.0, &quot;with get(A)&quot;], [33.48, &quot;without get(A)&quot;]]"><img src="figures/ch13-lru.gif" alt="A cache with two slots, the most recent on the left. put(A, 1) and put(B, 2) fill it. get(A) moves A to the most recent end. put(C, 3) evicts B, the least recent entry, and leaves C and A. A second run without get(A) evicts A instead."></video>
-<figcaption><b>Animation 13.1</b> The four calls from figure 13.1. The <code>get(A)</code> decides which entry <code>put(C, 3)</code> evicts: with it, B goes; without it, A goes.</figcaption>
-</figure>
-
 The third call changes the outcome. Without `get(A)`, A would be the least recent entry, and `put(C, 3)` would
 evict A. Because `get(A)` counted as a use, B is evicted instead.
+
+### 13.1.1 What a cache saves
+
+A cache pays off when a hit is much cheaper than the work it replaces. Suppose a lookup in the cache takes
+100 ns, and a miss means a database query that takes 1 ms, ten thousand times longer. The average cost of a
+request is then set almost entirely by the misses:
+
+| Hit rate | Average cost of a request |
+|---|---|
+| 0% | 1 ms |
+| 50% | about 500 µs |
+| 90% | about 100 µs |
+| 99% | about 10 µs |
+
+Going from 90% to 99% makes the average ten times smaller. The hit rate depends on what stays in the cache,
+and the eviction policy decides that.
+
+Here is a longer trace. The cache holds three entries, and eight requests arrive: A, B, A, C, A, D, A, B. A
+request for a cached key is a hit; any other request is a miss, which fetches the value and stores it. The
+table follows the LRU rule, and a simpler rule for comparison. **FIFO**, first in, first out, evicts the entry
+that arrived earliest, and ignores use. The order is shown most recent first.
+
+| Request | LRU: entries after | LRU | FIFO: entries after | FIFO |
+|---|---|---|---|---|
+| A | A | miss | A | miss |
+| B | B A | miss | B A | miss |
+| A | A B | hit | B A | hit |
+| C | C A B | miss | C B A | miss |
+| A | A C B | hit | C B A | hit |
+| D | D A C | miss, evicts B | D C B | miss, evicts A |
+| A | A D C | hit | A D C | miss, evicts B |
+| B | B A D | miss, evicts C | B A D | miss, evicts C |
+
+LRU scores 3 hits, and FIFO 2. A is used most, and LRU never evicts it: every use moves it back to the front.
+FIFO evicts A at the sixth request because A arrived first, and the very next request misses on A.
+
+Animation 13.1 plays the same trace, with a robot for the cache and one for the slow store behind it.
+
+<figure class="anim">
+<video class="motion" src="figures/ch13-lru-shelf.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A cache robot with a shelf of three slots, most recent on the left, and a backing store robot on the right, with the eight requests A, B, A, C, A, D, A, B above. Each miss sends a fetch to the backing store, which takes time, and the value lands in the front slot. Each hit takes the value from the shelf and moves it to the front. At the sixth request the shelf is full, and B, at the back, slides into the evicted tray. The run ends with 3 hits and 5 misses, and A never left the shelf. In a second run with FIFO, hits do not move anything; D evicts A, which arrived first, and the next request for A misses: 2 hits and 6 misses." data-chapters="[[0.0, &quot;LRU&quot;], [36.29, &quot;FIFO&quot;]]"><img src="figures/ch13-lru-shelf.gif" alt="A cache robot with a shelf of three slots, most recent on the left, and a backing store robot on the right, with the eight requests A, B, A, C, A, D, A, B above. Each miss sends a fetch to the backing store, which takes time, and the value lands in the front slot. Each hit takes the value from the shelf and moves it to the front. At the sixth request the shelf is full, and B, at the back, slides into the evicted tray. The run ends with 3 hits and 5 misses, and A never left the shelf. In a second run with FIFO, hits do not move anything; D evicts A, which arrived first, and the next request for A misses: 2 hits and 6 misses."></video>
+<figcaption><b>Animation 13.1</b> The trace above. Under LRU, each use moves an entry to the front, so the hot key stays. Under FIFO, the hot key is evicted because it arrived first.</figcaption>
+</figure>
+
+LRU works when the recent past predicts the near future, which holds for most workloads. One pattern breaks it:
+a scan that reads many keys once each. Every key in the scan becomes the most recent, and the scan pushes out
+the entries that were in steady use. Databases defend against this with variants that admit a key fully only
+on its second use.
 
 A cache needs to answer two questions fast:
 
@@ -133,6 +175,13 @@ Each event is pushed once and popped at most once. So the total work over many c
 number of calls, and each call costs O(1) on average. A cost measured this way, averaged over a sequence of
 calls, is called **amortized**.
 
+Animation 13.2 runs the four calls of figure 13.2 with a capacity of 2, then a run of hits.
+
+<figure class="anim">
+<video class="motion" src="figures/ch13-lru-stamps.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A map from key to latest stamp and a queue of (key, stamp) events, with a generation counter. put a, put b, get a, and put c add events (a, 1), (b, 2), (a, 3), and (c, 4); the map holds a: 3, b: 2, c: 4. With three keys and capacity 2, eviction pops (a, 1), finds that a's stamp is 3, and skips it as stale; it pops (b, 2), which matches, and removes b. In a second run, eight hits on a and c add eight events, and the queue reaches 10 events while the map holds 2 keys." data-chapters="[[0.0, &quot;stamps&quot;], [16.86, &quot;evict&quot;], [34.74, &quot;all hits&quot;]]"><img src="figures/ch13-lru-stamps.gif" alt="A map from key to latest stamp and a queue of (key, stamp) events, with a generation counter. put a, put b, get a, and put c add events (a, 1), (b, 2), (a, 3), and (c, 4); the map holds a: 3, b: 2, c: 4. With three keys and capacity 2, eviction pops (a, 1), finds that a's stamp is 3, and skips it as stale; it pops (b, 2), which matches, and removes b. In a second run, eight hits on a and c add eight events, and the queue reaches 10 events while the map holds 2 keys."></video>
+<figcaption><b>Animation 13.2</b> Eviction skips stale events until it finds a current one. Without evictions, nothing removes events, and the queue grows with every hit.</figcaption>
+</figure>
+
 <div class="callout warning" markdown="1">
 
 **WARNING:** The queue gets one new event per call, but loses events only during eviction. A workload of mostly
@@ -140,15 +189,6 @@ hits evicts rarely, so the queue can grow far longer than the capacity. The memo
 calls, not on the number of cached entries. Exercise 1 asks you to fix it.
 
 </div>
-
-<p class="listing"><b>Listing 13.4</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/problems/lru_cache.rs}}
-```
-
-The tests cover the cases of figure 13.1. They check plain eviction, a `get` that saves an entry, and a
-`put` to an existing key, which also counts as a use.
 
 ## 13.3 Version 2: a linked list inside a `Vec`
 
@@ -171,7 +211,7 @@ An index is a plain `usize`. The borrow checker does not track it, so a node can
 nodes with no `Rc` and no `RefCell`. The cost is that the compiler cannot catch a wrong index. The code must keep
 the links correct by itself.
 
-<p class="listing"><b>Listing 13.5</b> The node and the cache (lines 20 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
+<p class="listing"><b>Listing 13.4</b> The node and the cache (lines 20 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:20:45}}
@@ -196,7 +236,7 @@ Every `get` and `put` ends by moving one node to the front of the list. The meth
 <figcaption><b>Figure 13.4</b> Moving C to the front. Only the links around C and at the head change.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 13.6</b> <code>new</code> and <code>touch</code> (lines 51 to 101).</p>
+<p class="listing"><b>Listing 13.5</b> <code>new</code> and <code>touch</code> (lines 51 to 101).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
@@ -223,7 +263,7 @@ empty, the node is also the tail.
 
 ### 13.3.2 `get` and `put`
 
-<p class="listing"><b>Listing 13.7</b> <code>get</code> and <code>put</code> (lines 103 to 147).</p>
+<p class="listing"><b>Listing 13.6</b> <code>get</code> and <code>put</code> (lines 103 to 147).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
@@ -252,9 +292,17 @@ tail slot receives the new key and value, and `touch` moves it to the front.
 step. The old key is then removed from `lookup_table`. The new key was moved into the node, so the map receives a
 clone of it.
 
+Animation 13.3 follows the arena through three puts, a `get` that touches the tail, and a `put` that reuses
+the tail's slot. The last run leaves out the `remove` of the old key.
+
+<figure class="anim">
+<video class="motion" src="figures/ch13-lru-arena.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A lookup table from key to slot, and a Vec of three slots, each showing its key, value, prev, and next, with head and tail marked below. put A, B, and C fill slots 0, 1, and 2; the list from the head is C, B, A. get A detaches slot 0: it had no next, so the tail moves to B; then it is pushed to the front, with next 2, and slot 2's prev becomes 0, and the head is 0. put D with the cache full reuses the tail, slot 1: B's key is replaced by D, B is removed from the lookup table and D added, and slot 1 moves to the front: D, A, C. In a last run the remove is skipped, the table still maps B to slot 1, and get B returns 40, D's value." data-chapters="[[0.0, &quot;fill&quot;], [10.38, &quot;touch&quot;], [25.86, &quot;reuse&quot;], [39.9, &quot;no remove&quot;]]"><img src="figures/ch13-lru-arena.gif" alt="A lookup table from key to slot, and a Vec of three slots, each showing its key, value, prev, and next, with head and tail marked below. put A, B, and C fill slots 0, 1, and 2; the list from the head is C, B, A. get A detaches slot 0: it had no next, so the tail moves to B; then it is pushed to the front, with next 2, and slot 2's prev becomes 0, and the head is 0. put D with the cache full reuses the tail, slot 1: B's key is replaced by D, B is removed from the lookup table and D added, and slot 1 moves to the front: D, A, C. In a last run the remove is skipped, the table still maps B to slot 1, and get B returns 40, D's value."></video>
+<figcaption><b>Animation 13.3</b> <code>touch</code> rewrites a handful of indices. A reused slot must also leave the lookup table under its old key, or a stale key finds another key's value.</figcaption>
+</figure>
+
 The file `src/bin/lru_cache_arena.rs` has the same cache with a `main` function:
 
-<p class="listing"><b>Listing 13.8</b> The <code>main</code> function (lines 150 to 165). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
+<p class="listing"><b>Listing 13.7</b> The <code>main</code> function (lines 150 to 165). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/lru_cache_arena.rs:20:20}}
@@ -271,15 +319,6 @@ get C = Some(30)
 get A = Some(99)
 ```
 
-The complete library file follows, with its tests. One test uses a capacity of 1, where the single node is the head and the tail at once. Another checks that
-capacity 0 panics.
-
-<p class="listing"><b>Listing 13.9</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs}}
-```
-
 ## 13.4 Version 3: one operation per method
 
 `touch` in version 2 does two jobs, and must first work out which situation it is in. Version 3 splits it into
@@ -288,7 +327,7 @@ function is called. The compiler cannot check these preconditions, so the doc co
 
 This version also fixes the key and value types to `i32`. `i32` is `Copy`, so the code never clones a key.
 
-<p class="listing"><b>Listing 13.10</b> The link operations (lines 63 to 94). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
+<p class="listing"><b>Listing 13.8</b> The link operations (lines 63 to 94). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs:20:20}}
@@ -308,12 +347,6 @@ impl LruCache {
 Each method now does one thing, with no `linked` check. `put` calls `push_front` for a new node and
 `promote_to_front` for an existing one, so each call satisfies its precondition.
 
-<p class="listing"><b>Listing 13.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs}}
-```
-
 ```text
 $ cargo run --bin lru_cache_modular
 get 1 = Some(10)
@@ -330,7 +363,7 @@ measure. This section builds both caches behind one trait, and runs the same req
 
 ### 13.5.1 One trait, two caches
 
-<p class="listing"><b>Listing 13.12</b> The trait. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">benchmarking_examples/cache/mod.rs</a></p>
+<p class="listing"><b>Listing 13.9</b> The trait. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">benchmarking_examples/cache/mod.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/cache/mod.rs}}
@@ -343,18 +376,21 @@ called on the type, and gives each cache a name for the output.
 `V: Copy` lets `get` return the value itself, `Option<V>`, instead of a reference. The benchmark stores `u64`
 values, which are `Copy`.
 
-<p class="listing"><b>Listing 13.13</b> The arena cache behind the trait. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/arena.rs">benchmarking_examples/cache/arena.rs</a></p>
+The arena cache is version 2, split into two `impl` blocks. `touch` stays in an ordinary `impl`, because it is
+not part of the trait. The trait methods go in `impl<K, V> Cache<K, V> for LruCache<K, V>`, and their bodies are
+the `get` and `put` of section 13.3.2:
+
+<p class="listing"><b>Listing 13.10</b> The arena cache's trait methods (lines 91 to 154). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/arena.rs">benchmarking_examples/cache/arena.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/benchmarking_examples/cache/arena.rs}}
+{{#include ../../rust-interview-lab/benchmarking_examples/cache/arena.rs:91:154}}
 ```
 
-This is version 2, split into two `impl` blocks. `touch` stays in an ordinary `impl`, because it is not part of
-the trait. The trait methods go in `impl<K, V> Cache<K, V> for LruCache<K, V>`.
+Listing 13.20, at the end of the chapter, has the whole file.
 
 ### 13.5.2 The `Rc<RefCell<_>>` list
 
-<p class="listing"><b>Listing 13.14</b> The node and the cache (lines 10 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
+<p class="listing"><b>Listing 13.11</b> The node and the cache (lines 10 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:10:33}}
@@ -364,13 +400,13 @@ This is the doubly linked list of chapter 9. A node is `Rc<RefCell<Node>>`: `Rc`
 and `RefCell` so it can be changed through those shared handles. `next` is a strong link, and `prev` is a `Weak`
 link, so two neighbors do not keep each other alive forever. The map holds one more `Rc` to every node.
 
-<p class="listing"><b>Listing 13.15</b> <code>detach</code> and <code>push_front</code> (lines 35 to 69).</p>
+<p class="listing"><b>Listing 13.12</b> <code>detach</code> and <code>push_front</code> (lines 35 to 69).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:35:69}}
 ```
 
-The logic matches listing 13.10, with pointers instead of indices. The difference is in the ceremony around
+The logic matches listing 13.8, with pointers instead of indices. The difference is in the ceremony around
 each step:
 
 - `detach` reads the node's links inside a small block. `node.borrow()` returns a guard that holds a shared
@@ -379,7 +415,7 @@ each step:
 - `prev.upgrade()` turns the `Weak` link into an `Rc`, if the node still exists.
 - Each `.clone()` of an `Rc` or a `Weak` increases a reference count, and each drop decreases one.
 
-<p class="listing"><b>Listing 13.16</b> The trait methods and <code>Drop</code> (lines 71 to 139).</p>
+<p class="listing"><b>Listing 13.13</b> The trait methods and <code>Drop</code> (lines 71 to 139).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:71:139}}
@@ -405,7 +441,7 @@ flag, for 56 bytes. The memory sizes are close. What differs is the number of al
 
 ### 13.5.3 The benchmark
 
-<p class="listing"><b>Listing 13.17</b> The request stream and the timed loop (lines 52 to 106). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+<p class="listing"><b>Listing 13.14</b> The request stream and the timed loop (lines 52 to 106). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:12:20}}
@@ -424,7 +460,7 @@ always produces the same sequence. A generator of this kind is called a **linear
 Each request calls `get`. On a miss, it calls `put`, the way a program fills a cache after it computes a missing
 value. `black_box` tells the compiler to treat the value as used, so the optimizer cannot remove the work.
 
-<p class="listing"><b>Listing 13.18</b> Running and checking both caches (lines 108 to 158).</p>
+<p class="listing"><b>Listing 13.15</b> Running and checking both caches (lines 108 to 158).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:108:158}}
@@ -440,7 +476,7 @@ cache would have a bug, and its time would mean nothing.
 `<ArenaCache<u64, u64> as Cache<u64, u64>>::variant()` is the fully qualified way to call a trait function that
 has no `self`. It names both the type and the trait.
 
-<p class="listing"><b>Listing 13.19</b> The complete benchmark program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+<p class="listing"><b>Listing 13.16</b> The complete benchmark program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs}}
@@ -489,6 +525,31 @@ separate them.
 ## 13.6 The complete files
 
 The sections above showed these files in excerpts. Here each one is whole.
+
+<p class="listing"><b>Listing 13.17</b> Version 1, stamped events, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/lru_cache.rs}}
+```
+
+The tests cover the cases of figure 13.1. They check plain eviction, a `get` that saves an entry, and a
+`put` to an existing key, which also counts as a use.
+
+<p class="listing"><b>Listing 13.18</b> Version 2, the arena, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs}}
+```
+
+The tests include a capacity of 1, where the single node is the head and the tail at once. Another test
+checks that a capacity of 0 panics.
+
+<p class="listing"><b>Listing 13.19</b> Version 3, one operation per method. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs}}
+```
+
 
 <p class="listing"><b>Listing 13.20</b> The arena LRU cache. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
 

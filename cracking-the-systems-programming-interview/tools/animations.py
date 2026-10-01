@@ -24,6 +24,7 @@ import anim_ch06
 import anim_ch09
 import anim_ch11
 import anim_ch12
+import anim_ch13
 import anim_ch13_19
 import anim_ch07
 import anim_ch08
@@ -36,7 +37,7 @@ import anim_sockets
 from motion import OUT
 
 MOTION = {}
-for module in (anim_ch01, anim_ch02, anim_ch03, anim_ch04, anim_ch07, anim_ch05, anim_ch06, anim_ch09, anim_ch11, anim_ch12, anim_ch13_19, anim_ch08, anim_ch10, anim_ch15, anim_ch18,
+for module in (anim_ch01, anim_ch02, anim_ch03, anim_ch04, anim_ch07, anim_ch05, anim_ch06, anim_ch09, anim_ch11, anim_ch12, anim_ch13, anim_ch13_19, anim_ch08, anim_ch10, anim_ch15, anim_ch18,
                anim_sockets, anim_http, anim_async, anim_kernel):
     MOTION.update(module.BUILDERS)
 

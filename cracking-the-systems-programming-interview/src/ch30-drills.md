@@ -35,16 +35,16 @@ full form.
 
 | Drill | Lines | Full version |
 |---|---|---|
-| `count_parallel`: `Arc<Mutex<usize>>` counter | 18 | chapter 1 (`total_with_arc_mutex`), chapter 12 |
-| `parallel_sum`: scoped threads | 12 | chapter 12, `threads::parallel_sum` |
-| `SpinLock` and `SpinGuard` | 45 | chapter 12, listing 12.4 |
-| `Semaphore` | 36 | chapter 12, listing 12.5 |
-| `BlockingQueue` with `close` | 62 | chapter 13, listing 13.6 |
-| `ThreadPool` with `Drop` | 45 | chapter 14, listing 14.5 |
-| `retry` with backoff | 21 | chapter 15, listing 15.4 |
-| `HashRing` | 33 | chapter 10, listing 10.2 |
+| `count_parallel`: `Arc<Mutex<usize>>` counter | 18 | chapter 8 (`total_with_arc_mutex`, listing 8.7), chapter 16 |
+| `parallel_sum`: scoped threads | 12 | chapter 16, `threads::parallel_sum`, listing 16.5 |
+| `SpinLock` and `SpinGuard` | 45 | chapter 16, listing 16.12 |
+| `Semaphore` | 36 | chapter 16, listing 16.15 |
+| `BlockingQueue` with `close` | 62 | chapter 17, listing 17.16 |
+| `ThreadPool` with `Drop` | 45 | chapter 18, listing 18.7 |
+| `retry` with backoff | 21 | chapter 19, listing 19.9 |
+| `HashRing` | 33 | chapter 14, listing 14.9 |
 | `parse_request_head` | 29 | chapter 21, listing 21.1 |
-| `Port` newtype and `Route` enum | 32 | chapter 1, listing 1.3; chapter 21, `route` |
+| `Port` newtype and `Route` enum | 32 | chapter 7 (the `GpuCount` newtype, listing 7.2); chapter 21, `route` |
 
 ## 30.2 What the short forms leave out
 
@@ -53,18 +53,18 @@ because the follow-up question is usually aimed at exactly that.
 
 **The spin lock uses `swap`.** `while self.locked.swap(true, Acquire) { spin_loop() }` is a
 test-and-set lock: every waiting thread writes the lock's cache line on every iteration. The reference
-version in chapter 12 uses `compare_exchange_weak` and spins on a *load*, so waiters share the line
+version in chapter 16 uses `compare_exchange_weak` and spins on a *load*, so waiters share the line
 read-only until it is released. Both are correct; the reference scales better under contention. The
 drill also omits the `SAFETY` comments, which in a real review you would add back.
 
 **The semaphore has no guard.** `acquire` and `release` are separate calls, so a caller that panics
-between them leaks a permit. The reference returns a RAII guard. In exchange, the drill's `acquire`
-really does hold the permit it takes, which section 12.4 found the reference's `acquire` does not.
+between them leaks a permit. The reference in section 16.5 returns a `SemaphoreGuard` whose `Drop` gives the
+permit back.
 
 **The thread pool receives in a let-else.** `let Ok(job) = receiver.lock().expect(..).recv() else { return; };`
 is a `let` statement, so the `MutexGuard` temporary is dropped at its end, before `job()` runs. The
 pool is fully parallel, which a timing confirms: four 200 ms jobs on four workers take 205 ms. The same
-receive written as `while let` would serialize the pool (chapter 14, figure 14.2), so this is the form
+receive written as `while let` would serialize the pool (chapter 18, figure 18.2), so this is the form
 to memorize.
 
 **The hash ring wraps with `%`.** `partition_point(..) % self.points.len()` maps an index one past the
@@ -83,7 +83,7 @@ reads left to right as the rule. `Route::parse` matches the two fixed paths and 
 
 ## 30.3 The drill that is slower than it looks
 
-`parallel_sum` changed behaviour in the short form. Compare it with the reference in chapter 12:
+`parallel_sum` changed behaviour in the short form. Compare it with the reference in chapter 16:
 
 ```rust
 // drills.rs
@@ -111,7 +111,7 @@ lazy spawn/join chain, four 200 ms workers: 809.402756ms (sum 4)
 collect first, then join:              203.482125ms (sum 4)
 ```
 
-The fix is one `collect()` between the two `map`s. Chapter 14 drew the same lesson from the
+The fix is one `collect()` between the two `map`s. Chapter 18 drew the same lesson from the
 thread pool. A concurrency test that checks only the answer cannot tell parallel from serial. Put a
 barrier in it, as `thread_pool_v2`'s `jobs_run_at_the_same_time` does, or time it.
 

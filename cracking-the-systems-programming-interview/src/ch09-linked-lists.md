@@ -352,7 +352,7 @@ the caches of chapter 13, and is listed there. This is the part that measures th
 {{#include ../../rust-interview-lab/benchmarking_examples/benchmark.rs:160:236}}
 ```
 
-The whole file is listing 13.19. Chapter 13 adds the cache benchmarks to it, and shows it complete there.
+The whole file is listing 13.16. Chapter 13 adds the cache benchmarks to it, and shows it complete there.
 
 `run_list::<L: SinglyList<u64>>` is **generic** over the list type `L`. The compiler generates a separate copy of the function for each list type. So each list is measured with
 its own code.

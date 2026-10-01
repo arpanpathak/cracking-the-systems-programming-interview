@@ -387,7 +387,6 @@ def build(name, fn, extra=()):
 
 
 BUILDERS = {
-    "lru": build("ch13-lru.gif", lru, (NAVY,)),
     "ring": build("ch14-ring.gif", ring, (NAVY, "#e6ecf6", "#7a5fb0", "#eae4f6")),
     "spin-lock": build("ch16-spin-lock.gif", spin_lock, ("#3b7dd8",)),
     "deadlock": build("ch16-deadlock.gif", deadlock, ("#3b7dd8", NAVY)),
