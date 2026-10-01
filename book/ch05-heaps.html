@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8dad9d43.js";
+            window.path_to_searchindex_js = "searchindex-7f144713.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -364,7 +364,7 @@ frequent words survive (figure 5.4).</p>
 </figure>
 <p>The program first turns the text into words, then counts them, then runs the bounded heap.</p>
 <figure class="anim">
-<video class="motion" src="figures/ch05-top-k.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)." data-chapters="[[0.0, &quot;count&quot;], [8.16, &quot;heap&quot;]]"><img src="figures/ch05-top-k.gif" alt="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)."></video>
+<video class="motion" src="figures/ch05-top-k.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the). Last, without the pop, the heap keeps all four words, and taking two from its top gives cat and dog, the least frequent." data-chapters="[[0.0, &quot;count&quot;], [8.16, &quot;heap&quot;], [52.48, &quot;no pop&quot;]]"><img src="figures/ch05-top-k.gif" alt="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the). Last, without the pop, the heap keeps all four words, and taking two from its top gives cat and dog, the least frequent."></video>
 <figcaption><b>Animation 5.2</b> The bounded heap from listing 5.2 with k = 2. The top of the heap is the least frequent word kept, and it is popped whenever the heap holds k + 1 entries.</figcaption>
 </figure>
 <p class="listing"><b>Listing 5.2</b> The function (lines 1 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>

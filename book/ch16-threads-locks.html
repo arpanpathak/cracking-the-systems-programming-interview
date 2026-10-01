@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8dad9d43.js";
+            window.path_to_searchindex_js = "searchindex-7f144713.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -1006,7 +1006,7 @@ That includes its changes to the value.</li>
 before unlocking is then visible to B after locking. With <code>Relaxed</code> in both places, B could take the lock and
 still read an old copy of the value.</p>
 <figure class="anim">
-<video class="motion" src="figures/ch16-spin-lock.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Thread A and thread B on either side of the atomic word locked. A&#39;s compare_exchange_weak changes false to true and A holds the lock. B&#39;s exchange fails, and B spins on a relaxed load. A&#39;s unlock stores false with Release; B&#39;s next exchange succeeds with Acquire." data-chapters="[[0.0, &quot;A locks&quot;], [5.0, &quot;B spins&quot;], [15.68, &quot;handoff&quot;]]"><img src="figures/ch16-spin-lock.gif" alt="Thread A and thread B on either side of the atomic word locked. A&#39;s compare_exchange_weak changes false to true and A holds the lock. B&#39;s exchange fails, and B spins on a relaxed load. A&#39;s unlock stores false with Release; B&#39;s next exchange succeeds with Acquire."></video>
+<video class="motion" src="figures/ch16-spin-lock.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Thread A and thread B on either side of the atomic word locked. A&#39;s compare_exchange_weak changes false to true and A holds the lock. B&#39;s exchange fails, and B spins on a relaxed load. A&#39;s unlock stores false with Release; B&#39;s next exchange succeeds with Acquire. Last, A leaks its guard with mem::forget, unlock never runs, and B spins forever at 100% CPU." data-chapters="[[0.0, &quot;A locks&quot;], [5.0, &quot;B spins&quot;], [15.68, &quot;handoff&quot;], [29.6, &quot;never released&quot;]]"><img src="figures/ch16-spin-lock.gif" alt="Thread A and thread B on either side of the atomic word locked. A&#39;s compare_exchange_weak changes false to true and A holds the lock. B&#39;s exchange fails, and B spins on a relaxed load. A&#39;s unlock stores false with Release; B&#39;s next exchange succeeds with Acquire. Last, A leaks its guard with mem::forget, unlock never runs, and B spins forever at 100% CPU."></video>
 <figcaption><b>Animation 16.1</b> <code>lock</code> from listing 16.10. B stays on the CPU while it spins. The Release store in <code>unlock</code> pairs with B's Acquire exchange.</figcaption>
 </figure>
 <p>The second ordering argument to <code>compare_exchange</code>, <code>Relaxed</code>, applies when the exchange fails. A failed attempt

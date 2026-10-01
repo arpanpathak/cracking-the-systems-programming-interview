@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8dad9d43.js";
+            window.path_to_searchindex_js = "searchindex-7f144713.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -209,7 +209,7 @@ requests at 0.99 s and 5 more at 1.01 s: 10 requests in 20 ms. A <strong>token b
 <p>Picture a bucket that holds up to 5 tokens. Every request takes one token out. If the bucket is empty, the request
 is refused. Tokens flow back in at a steady rate, say 1 per second, until the bucket is full again (figure 19.1).</p>
 <figure class="anim">
-<video class="motion" src="figures/ch19-token-bucket.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it." data-chapters="[[0.0, &quot;spend&quot;], [28.5, &quot;refuse&quot;], [34.8, &quot;refill&quot;]]"><img src="figures/ch19-token-bucket.gif" alt="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it."></video>
+<video class="motion" src="figures/ch19-token-bucket.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it. Last, without the cap on the refill, an hour idle adds 3,600 tokens and lets 3,600 calls through at once." data-chapters="[[0.0, &quot;spend&quot;], [28.5, &quot;refuse&quot;], [34.8, &quot;refill&quot;], [56.28, &quot;no cap&quot;]]"><img src="figures/ch19-token-bucket.gif" alt="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it. Last, without the cap on the refill, an hour idle adds 3,600 tokens and lets 3,600 calls through at once."></video>
 <figcaption><b>Animation 19.1</b> <code>try_acquire</code> adds the tokens earned since the last call, then takes one if it can. Nothing runs between calls.</figcaption>
 </figure>
 <figure>
