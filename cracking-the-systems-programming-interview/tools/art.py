@@ -684,6 +684,27 @@ def machine_latch(x, y):
     return out
 
 
+def machine_poles(x, y):
+    """Two telegraph poles whose wire is being lowered, with a sixty-second hourglass on it."""
+    out = ""
+    for px in (x + 20, x + 400):
+        out += rect(px, y - 40, 14, 210, "#6b4a2b", rx=2)
+        out += rect(px - 26, y - 30, 66, 10, "#6b4a2b", rx=2)
+        out += circle(px - 18, y - 34, 5, CREAM) + circle(px + 32, y - 34, 5, CREAM)
+    out += '<path d="M %.1f %.1f Q %.1f %.1f %.1f %.1f" fill="none" stroke="%s" stroke-width="3"/>' % (
+        x + 2, y - 34, x + 210, y + 40, x + 382, y - 34, INK)
+    out += '<path d="M %.1f %.1f Q %.1f %.1f %.1f %.1f" fill="none" stroke="%s" stroke-width="3" stroke-dasharray="8 6"/>' % (
+        x + 52, y - 34, x + 210, y + 110, x + 432, y - 34, RUST)
+    hx, hy = x + 210, y + 78
+    out += line(hx, y + 40, hx, hy - 4, INK, 2)
+    out += rect(hx - 26, hy - 4, 52, 8, "#6b4a2b", rx=2) + rect(hx - 26, hy + 76, 52, 8, "#6b4a2b", rx=2)
+    out += '<path d="M %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f Z" fill="%s" stroke="%s" stroke-width="2.5"/>' % (
+        hx - 20, hy + 4, hx + 20, hy + 4, hx - 20, hy + 76, hx + 20, hy + 76, CREAM, INK)
+    out += '<path d="M %.1f %.1f L %.1f %.1f L %.1f %.1f Z" fill="%s"/>' % (hx - 14, hy + 72, hx + 14, hy + 72, hx, hy + 50, BRASS)
+    out += text(hx + 44, hy + 46, "60 s", 18, INK, family="Menlo, monospace")
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -745,6 +766,7 @@ CHAPTERS = [
     (24, machine_switchboard, dict(head="box", eyes="round", antenna="dish", held="wrench", accent=BRASS), "RELAY", "switchboard operator of the descriptor table"),
     (25, machine_signal, dict(head="dome", eyes="visor", antenna="bolt", held="flag", accent=RUST), "TRIP", "signalman of the ready list"),
     (26, machine_latch, dict(head="tall", eyes="mono", antenna="hat", held="wrench", accent=TEAL), "LATCH", "keeper of the sleeping queue"),
+    (27, machine_poles, dict(head="box", eyes="goggles", antenna="spring", held="clipboard", accent=BRASS), "TAPER", "closer of the line"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 

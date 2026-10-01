@@ -1,0 +1,28 @@
+digraph closeseq {
+  rankdir=TB; nodesep=2.2; ranksep=0.35; newrank=true;
+  node [width=1.9];
+  ch [label="client\n(closes first)" shape=plaintext style=""];
+  sh [label="server" shape=plaintext style=""];
+  c0 [label="ESTABLISHED" fillcolor="#e3f1ea"];
+  c1 [label="FIN_WAIT1"];
+  c2 [label="FIN_WAIT2"];
+  c3 [label="TIME_WAIT\n60 s on Linux" fillcolor="#fdf6e8"];
+  c4 [label="CLOSED"];
+  s0 [label="ESTABLISHED" fillcolor="#e3f1ea"];
+  s1 [label="CLOSE_WAIT\nuntil the app closes" fillcolor="#fbe3d6"];
+  s2 [label="LAST_ACK"];
+  s3 [label="CLOSED"];
+  sp [style=invis label="" width=0.1];
+  { rank=same; ch; sh; }
+  { rank=same; c0; s0; }
+  { rank=same; c1; sp; }
+  { rank=same; c2; s1; }
+  { rank=same; c3; s2; }
+  { rank=same; c4; s3; }
+  ch -> c0 -> c1 -> c2 -> c3 -> c4 [style=dashed arrowhead=none color="#9aa8b6"];
+  sh -> s0 -> sp -> s1 -> s2 -> s3 [style=dashed arrowhead=none color="#9aa8b6"];
+  c1 -> s1 [label="FIN" color="#d9622b" fontcolor="#d9622b" constraint=false];
+  s1 -> c2 [label="ACK" constraint=false];
+  s2 -> c3 [label="FIN" color="#d9622b" fontcolor="#d9622b" constraint=false];
+  c3 -> s3 [label="ACK" constraint=false];
+}

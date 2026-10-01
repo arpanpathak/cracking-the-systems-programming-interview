@@ -1013,12 +1013,148 @@ def build_store_buffer(only=None):
     return render("ch26-store-buffer.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 27.1: a close, and a leak
+
+CLOSE_CODE = lines_containing("src/bin/tcp_close.rs", "client.shutdown(Shutdown::Write)?;",
+                              "server.read_to_end(&mut request)?;", "server.write_all(b\"reply\")?;",
+                              "    drop(server);", "client.read_to_string(&mut reply)?;",
+                              "    drop(client);", "kept.push(server);")
+CL_X, SV_X, C_DESK = 130, 690, 206
+WIRE_Y, WIRE_A, WIRE_B = 124, 196, 624
+STATE_COLORS = {"ESTABLISHED": TEAL, "CLOSE_WAIT": RUST, "TIME_WAIT": BRASS}
+
+
+def tcp_close():
+    tl = Timeline(caption="", kind="step", code=-1.0, cstate="ESTABLISHED", sstate="ESTABLISHED",
+                  seg_u=0.0, seg_a=0.0, seg_label="", seg_dir=1, seg_color="rust",
+                  clock="", conns=0.0, fds=0.0, leak=0.0, server_awake=1.0, client_a=1.0,
+                  sgone=0.0)
+
+    def segment(label, direction, color="rust", dur=1.1):
+        tl.set(seg_label=label, seg_dir=direction, seg_color=color, seg_u=0.0)
+        tl.to(0.15, seg_a=1.0)
+        tl.to(dur, in_out, seg_u=1.0)
+        tl.to(0.12, seg_a=0.0)
+
+    tl.chapter("FIN")
+    tl.say("A connection carries bytes both ways. Both sides start in ESTABLISHED.")
+    tl.wait(0.6)
+    tl.say("The client calls shutdown(Write). Its kernel sends FIN: no more bytes from the client.")
+    tl.set(code=0.0)
+    segment("FIN", 1)
+    tl.set(cstate="FIN_WAIT1")
+    tl.say("The server's kernel acknowledges the FIN, and the server side enters CLOSE_WAIT.")
+    tl.set(sstate="CLOSE_WAIT")
+    segment("ACK", -1, "teal", 0.9)
+    tl.set(cstate="FIN_WAIT2")
+    tl.say("The client waits in FIN_WAIT2 for the server's FIN. The server waits for its own "
+           "program to close.", "insight")
+    tl.wait(1.0)
+
+    tl.chapter("reply")
+    tl.say("The server's read_to_end returns: read gave 0. It writes a reply. That direction is "
+           "still open.")
+    tl.to(0.3, code=1.0)
+    tl.to(0.3, code=2.0)
+    segment("reply", -1, "brass", 1.0)
+    tl.wait(0.4)
+
+    tl.chapter("second FIN")
+    tl.say("The server drops its socket. Its kernel sends FIN, and the server side enters "
+           "LAST_ACK.")
+    tl.to(0.3, code=3.0)
+    tl.set(sstate="LAST_ACK")
+    segment("FIN", -1)
+    tl.say("The client acknowledges and enters TIME_WAIT. With that ACK, the server side is gone.")
+    tl.set(cstate="TIME_WAIT")
+    segment("ACK", 1, "teal", 0.9)
+    tl.to(0.4, sgone=1.0)
+    tl.set(sstate="gone")
+    tl.say("The client reads the reply and drops its socket. TIME_WAIT stays: it belongs to the "
+           "kernel.")
+    tl.to(0.3, code=4.0)
+    tl.to(0.3, code=5.0)
+    tl.to(0.5, client_a=0.35)
+    for label in ("1 s", "30 s", "60 s: forgotten"):
+        tl.set(clock=label)
+        tl.wait(0.9)
+    tl.set(cstate="gone")
+    tl.wait(0.8)
+
+    tl.chapter("leak")
+    tl.say("Now a server that keeps every accepted socket in a Vec and never drops one.", "fail")
+    tl.to(0.5, client_a=1.0, sgone=0.0)
+    tl.set(cstate="ESTABLISHED", sstate="ESTABLISHED", clock="", code=6.0)
+    for k in range(1, 6):
+        if k == 1:
+            tl.say("A client connects, then closes. Its FIN arrives, and the server side enters "
+                   "CLOSE_WAIT.", "fail")
+        segment("FIN", 1, "rust", 0.9 if k == 1 else 0.5)
+        tl.set(cstate="FIN_WAIT2", sstate="CLOSE_WAIT")
+        tl.to(0.4, conns=float(k), fds=float(k))
+        if k == 1:
+            tl.say("The server never closes it. Each new client leaves one more connection "
+                   "halfway closed.", "fail")
+    tl.say("Every CLOSE_WAIT holds a descriptor. The count only grows, until accept fails with "
+           "EMFILE.", "fail")
+    tl.to(1.8, linear, fds=1024.0)
+    tl.wait(1.6)
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "Closing a TCP connection",
+                    "Each direction closes with its own FIN. The kernel keeps states after the "
+                    "program moves on.")
+        if s.fds > 0.01:
+            scoreboard(p, [("server fds", "%d / 1024" % int(round(s.fds)), RUST)])
+
+        p.line(WIRE_A, WIRE_Y, WIRE_B, WIRE_Y, LINE, 3)
+        p.text((WIRE_A + WIRE_B) / 2, WIRE_Y - 12, "loopback", 10.5, MUTED, 600, "middle")
+        with p.group(opacity=s.client_a):
+            robot(p, CL_X, C_DESK, TEAL, 1.0, 1.0, "client", None)
+        robot(p, SV_X, C_DESK, NIGHT, s.server_awake, s.server_awake, "server", None)
+        for x, state in ((CL_X, s.cstate), (SV_X, s.sstate)):
+            if state == "gone":
+                p.text(x, C_DESK + 56, "gone", 12, FAINT, 700, "middle", mono=True)
+                continue
+            color = STATE_COLORS.get(state, INK)
+            chip(p, x, C_DESK + 52, state, color, mix(color, PAPER, 0.88), 12)
+        if s.clock:
+            p.text(CL_X, C_DESK + 80, s.clock, 11.5, BRASS, 700, "middle", mono=True)
+
+        if s.seg_a > 0.01:
+            a, b = (WIRE_A, WIRE_B) if s.seg_dir > 0 else (WIRE_B, WIRE_A)
+            color, fill = {"rust": (RUST, RUST_LT), "teal": (TEAL, TEAL_LT),
+                           "brass": (BRASS, BRASS_LT)}[s.seg_color]
+            pill(p, lerp(a, b, s.seg_u), WIRE_Y, s.seg_label, color, fill, 11, opacity=s.seg_a)
+
+        if s.conns > 0.01:
+            p.text(290, 166, "connections the server keeps", 10.5, MUTED, 600)
+            for k in range(int(round(s.conns))):
+                y = 184 + 15 * k
+                p.text(290, y, "%d  client FIN_WAIT2   server CLOSE_WAIT" % (k + 1), 10.5,
+                       RUST, 600, mono=True)
+
+        code_panel(p, 26, 296, W - 52, "tcp_close", CLOSE_CODE, s.code, size=10.4, lead=15.5,
+                   reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, 456)
+        progress(p, tl, t, total, 542)
+
+    return tl, draw, 576
+
+
+def build_tcp_close(only=None):
+    tl, draw, height = tcp_close()
+    return render("ch27-close.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
     "pipeline": build_pipeline,
     "edge": build_edge,
     "futex": build_futex,
     "store-buffer": build_store_buffer,
+    "tcp-close": build_tcp_close,
 }
 
 if __name__ == "__main__":

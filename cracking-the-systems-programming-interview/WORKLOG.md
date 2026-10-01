@@ -63,7 +63,7 @@ then 8 and 9 as they are added, drills last.
 - [x] Part 8, under the locks
   - [x] futex mutex and memory-ordering litmus tests
 - [ ] Part 9, production networking
-  - [ ] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
+  - [x] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
   - [ ] TLS and mTLS with rustls
   - [ ] client connection pool (bounded, RAII return, idle eviction)
 - [ ] ch19: single-flight idempotency as a section
@@ -87,3 +87,5 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch25 Edge-triggered epoll: levels vs edges, ready list, the stall, EPOLLOUT under ET, drain caps, ONESHOT, EXCLUSIVE, SO_REUSEPORT; figures 25.1-25.2, animation ch25-edge, plate TRIP. Part 7 complete.
 - 2026-10-01 lab: futex_mutex.rs (Docker, 2 CPUs: 0 syscalls uncontended; wakes > waits from the conservative state 2; std faster with its spin) and litmus.rs (SB ~1.5% Relaxed and Rel/Acq on x86 Mac, 0 SeqCst; MP 0 on x86)
 - 2026-10-01 ch26 Futexes and memory ordering: futex wait/wake, lost wake-up, three-state mutex, measured syscalls, store buffers, TSO vs ARM, litmus tests; figures 26.1-26.3, animations ch26-futex and ch26-store-buffer, plate LATCH; Part 8 added to SUMMARY
+- 2026-10-01 lab: tcp_close.rs (Docker: states from /proc/net/tcp; FIN_WAIT2/CLOSE_WAIT, TIME_WAIT on the active closer, 5 CLOSE_WAIT leak, EADDRINUSE without SO_REUSEADDR, ECONNRESET on unread data)
+- 2026-10-01 ch27 Closing TCP connections: four-segment close, state table, TIME_WAIT purpose and port cost, SO_REUSEADDR, CLOSE_WAIT leaks, RST and lingering close; figure 27.1, animation ch27-close, plate TAPER; Part 9 started in SUMMARY

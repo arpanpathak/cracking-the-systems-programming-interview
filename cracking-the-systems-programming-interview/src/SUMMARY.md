@@ -54,7 +54,11 @@
 
 - [Futexes and memory ordering](ch26-futex.md)
 
-# Part 9: Compact implementations
+# Part 9: Production networking
+
+- [Closing TCP connections](ch27-tcp-close.md)
+
+# Part 10: Compact implementations
 
 - [Compact implementations](ch30-drills.md)
 
