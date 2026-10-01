@@ -62,10 +62,10 @@ then 8 and 9 as they are added, drills last.
         once; EPOLLONESHOT, EPOLLEXCLUSIVE)
 - [x] Part 8, under the locks
   - [x] futex mutex and memory-ordering litmus tests
-- [ ] Part 9, production networking
+- [x] Part 9, production networking
   - [x] TCP teardown: states, TIME_WAIT, CLOSE_WAIT leak, half-close
   - [x] TLS and mTLS with rustls
-  - [ ] client connection pool (bounded, RAII return, idle eviction)
+  - [x] client connection pool (bounded, RAII return, idle eviction)
 - [ ] ch19: single-flight idempotency as a section
 
 ## Log
@@ -91,3 +91,5 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch27 Closing TCP connections: four-segment close, state table, TIME_WAIT purpose and port cost, SO_REUSEADDR, CLOSE_WAIT leaks, RST and lingering close; figure 27.1, animation ch27-close, plate TAPER; Part 9 started in SUMMARY
 - 2026-10-01 lab: Cargo.toml gains rustls 0.23 (ring) and rcgen 0.13; tls_mtls.rs (macOS: TLS 1.3 records 231/1/69/31, name and CA failures, mTLS CertificateRequired vs 481-byte flight)
 - 2026-10-01 ch28 TLS and mutual TLS: certificates and trust, TLS 1.3 handshake table, records on the wire, failures, mTLS, costs; figure 28.1, animation ch28-tls, plate SEAL
+- 2026-10-01 lab: conn_pool.rs (2000 requests: 2000 conns 170 ms vs pool of 4 80 ms; TimedOut at the bound; idle eviction; check_alive catches server-closed connections)
+- 2026-10-01 ch29 A client connection pool: connection costs, four rules, get/give_back/Drop guard, LIFO and stale connections, measured; figure 29.1, animation ch29-pool, plate DOCK. Part 9 complete.

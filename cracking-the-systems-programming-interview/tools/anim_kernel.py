@@ -1310,6 +1310,197 @@ def build_tls(only=None):
     return render("ch28-tls.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 29.5: a pool, lending and taking back
+
+POOL_CODE = lines_containing("src/bin/conn_pool.rs",
+                             "if let Some(stream) = self.take_idle(&mut state) {",
+                             "if state.open < self.config.max {",
+                             "return self.connect();",
+                             ".wait_timeout(state, deadline - now)",
+                             "state.idle.push(Idle {",
+                             "self.returned.notify_one();",
+                             "if idle.since.elapsed() > self.config.idle_timeout {",
+                             "} else if self.config.check_alive && !is_alive(&idle.stream) {")
+CALLERS = {"A": 140, "B": 226, "C": 312}     # desk y of each caller
+CALLER_X = 74
+P_SERVER_X, P_SERVER_DESK = 730, 230
+SHELF = {1: (360, 276), 2: (470, 276)}
+
+
+def held(caller):
+    return (CALLER_X + 112, CALLERS[caller] - 34)
+
+
+def pool_anim():
+    away = (420, 150)
+    tl = Timeline(caption="", kind="step", code=-1.0, c1=away, c2=away, c1_a=0.0, c2_a=0.0,
+                  age1=0.0, age2=0.0, idle1=0.0, idle2=0.0, fin1=0.0, open=0.0, sleeping="",
+                  req_u=0.0, req_a=0.0, req_from=1, req_label="", error=0.0, strike=-1.0)
+
+    def move(n, where, dur=0.9):
+        tl.to(dur, in_out, **{"c%d" % n: where})
+
+    def ask(n, k=1.0):
+        tl.set(req_from=n, req_label="request", req_u=0.0)
+        tl.to(0.12, req_a=1.0)
+        tl.to(0.7 * k, in_out, req_u=1.0)
+        tl.set(req_label="reply")
+        tl.to(0.7 * k, in_out, req_u=0.0)
+        tl.to(0.1, req_a=0.0)
+
+    def shelve(n, k=1.0):
+        tl.set(code=4.0)
+        move(n, SHELF[n], 0.8 * k)
+        tl.set(**{"idle%d" % n: 1.0, "age%d" % n: 0.0})
+        tl.set(code=5.0)
+
+    tl.chapter("connect")
+    tl.say("Caller A calls get. The idle stack is empty, and 0 of 2 connections are open.")
+    tl.set(code=0.0)
+    tl.wait(0.4)
+    tl.to(0.3, code=1.0)
+    tl.say("So the pool counts a new slot, and connects outside the lock.")
+    tl.to(0.3, code=2.0)
+    tl.set(c1=(560, 150))
+    tl.to(0.4, c1_a=1.0, open=1.0)
+    move(1, held("A"))
+    ask(1)
+    tl.say("A drops the guard. Drop puts the connection on the idle stack and wakes one waiter.")
+    shelve(1)
+    tl.wait(0.6)
+
+    tl.chapter("reuse")
+    tl.say("B calls get. take_idle pops the connection A returned: a reuse, with no handshake.")
+    tl.set(code=0.0)
+    tl.set(idle1=0.0)
+    move(1, held("B"))
+    ask(1, 0.7)
+
+    tl.chapter("limit")
+    tl.say("A calls get again while B still holds connection 1. The pool opens a second one.")
+    tl.to(0.3, code=1.0)
+    tl.to(0.3, code=2.0)
+    tl.set(c2=(560, 150))
+    tl.to(0.4, c2_a=1.0, open=2.0)
+    move(2, held("A"))
+    tl.say("C calls get. Nothing is idle, and 2 of 2 are open, so C waits on the Condvar.")
+    tl.to(0.3, code=3.0)
+    tl.to(0.5, sleeping="C")
+    tl.wait(1.0)
+    tl.say("B drops its guard. notify_one wakes C, which takes the returned connection.")
+    shelve(1, 0.8)
+    tl.set(sleeping="", idle1=0.0, code=0.0)
+    move(1, held("C"), 0.8)
+    ask(1, 0.6)
+    tl.say("Two connections served three callers. The third waited instead of opening more.",
+           "insight")
+    tl.wait(1.0)
+
+    tl.chapter("eviction")
+    tl.say("A returns connection 2, then C returns connection 1. Both sit on the idle stack.")
+    shelve(2, 0.7)
+    shelve(1, 0.7)
+    tl.say("Time passes. Connection 2 has been idle longer, past idle_timeout.")
+    tl.to(2.0, linear, age2=1.0, age1=0.6)
+    tl.say("The next get pops connection 1, the newest, and closes connection 2 when it reaches it.")
+    tl.set(code=0.0)
+    tl.set(idle1=0.0)
+    move(1, held("A"), 0.7)
+    tl.to(0.3, code=6.0)
+    tl.to(0.6, c2_a=0.0, idle2=0.0, open=1.0)
+    tl.set(age1=0.0)
+    shelve(1, 0.7)
+    tl.wait(0.4)
+
+    tl.chapter("stale")
+    tl.say("Now a pool without check_alive. The server closes idle connection 1, and its FIN "
+           "arrives unread.", "fail")
+    tl.set(strike=7.0, code=7.0)
+    tl.to(0.9, fin1=1.0)
+    tl.say("A calls get, and take_idle lends connection 1 as it is.", "fail")
+    tl.set(code=0.0, idle1=0.0)
+    move(1, held("A"), 0.7)
+    tl.say("A writes its request. The read returns 0: the server is gone. The request fails.",
+           "fail")
+    tl.set(req_from=1, req_label="request", req_u=0.0)
+    tl.to(0.12, req_a=1.0)
+    tl.to(0.7, in_out, req_u=1.0)
+    tl.to(0.1, req_a=0.0)
+    tl.to(0.4, back, error=1.0)
+    tl.wait(1.2)
+    tl.say("With check_alive, the peek sees the FIN first. The pool closes it and connects again.",
+           "fail")
+    tl.wait(1.4)
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "A connection pool, max 2",
+                    "Callers borrow, the guard gives back, and waiting is bounded.")
+        scoreboard(p, [("open", "%d / 2" % int(round(s.open)), TEAL)])
+
+        for name, desk in CALLERS.items():
+            asleep = s.sleeping == name
+            with p.group(scale=0.55, cx=CALLER_X, cy=desk):
+                robot(p, CALLER_X, desk, TEAL if name != "C" else BRASS, 0.0 if asleep else 1.0,
+                      0.0 if asleep else 1.0, None)
+            p.text(CALLER_X - 44, desk - 24, name, 14, INK, 700, "middle")
+            if asleep:
+                p.text(CALLER_X + 50, desk - 40, "waiting", 10.5, NIGHT, 700)
+
+        # the pool
+        p.rect(300, 80, 290, 236, STAGE, LINE, 10, 1.2)
+        p.text(312, 98, "pool", 11, MUTED, 600)
+        p.text(578, 256, "idle stack", 10.5, MUTED, 600, "end")
+        p.line(312, 296, 578, 296, FAINT, 1.4)
+
+        robot(p, P_SERVER_X, P_SERVER_DESK, NIGHT, 1.0, 1.0, "server", None)
+        for n in (1, 2):
+            alpha = getattr(s, "c%d_a" % n)
+            if alpha <= 0.01:
+                continue
+            x, y = getattr(s, "c%d" % n)
+            stale = n == 1 and s.fin1 > 0.5
+            with p.group(opacity=alpha):
+                p.line(x + 40, y, P_SERVER_X - 52, P_SERVER_DESK - 60, RUST if stale else LINE,
+                       1.6, dash="4 4" if stale else None)
+                chip(p, x, y, "conn %d" % n, RUST if stale else TEAL,
+                     RUST_LT if stale else TEAL_LT, 11)
+                if getattr(s, "idle%d" % n) > 0.5:
+                    age = getattr(s, "age%d" % n)
+                    p.rect(x - 30, y + 16, 60, 5, "#e6ebf0", "none", 2)
+                    p.rect(x - 30, y + 16, 60 * clamp(age), 5, RUST if age >= 1 else BRASS,
+                           "none", 2)
+                if stale:
+                    p.text(x, y - 16, "FIN unread", 10, RUST, 700, "middle")
+        if s.fin1 > 0.01 and s.fin1 < 0.99:
+            a = (P_SERVER_X - 52, P_SERVER_DESK - 60)
+            b = SHELF[1]
+            pill(p, lerp(a[0], b[0], s.fin1), lerp(a[1], b[1], s.fin1), "FIN", RUST, RUST_LT, 10,
+                 shadow=None)
+
+        if s.req_a > 0.01:
+            a = getattr(s, "c%d" % int(s.req_from))
+            b = (P_SERVER_X - 52, P_SERVER_DESK - 60)
+            pill(p, lerp(a[0], b[0], s.req_u), lerp(a[1], b[1], s.req_u), s.req_label, BRASS,
+                 BRASS_LT, 10, opacity=s.req_a, shadow=None)
+        if s.error > 0.01:
+            chip(p, CALLER_X + 112, CALLERS["A"] + 4, "read = 0: UnexpectedEof", RUST, RUST_LT,
+                 10.5, opacity=clamp(s.error))
+
+        code_panel(p, 26, 336, W - 52, "get, give_back, take_idle", POOL_CODE, s.code, size=10.0,
+                   lead=15.0, strike=int(s.strike) if s.strike >= 0 else None,
+                   reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, 504)
+        progress(p, tl, t, total, 590)
+
+    return tl, draw, 624
+
+
+def build_pool(only=None):
+    tl, draw, height = pool_anim()
+    return render("ch29-pool.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
     "pipeline": build_pipeline,
@@ -1318,6 +1509,7 @@ BUILDERS = {
     "store-buffer": build_store_buffer,
     "tcp-close": build_tcp_close,
     "tls": build_tls,
+    "pool": build_pool,
 }
 
 if __name__ == "__main__":

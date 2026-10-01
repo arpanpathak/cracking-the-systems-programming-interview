@@ -722,6 +722,24 @@ def machine_seal(x, y):
     return out
 
 
+def machine_dock(x, y):
+    """A rack of numbered moorings, some with boats tied up and one empty, and a tide clock."""
+    out = rect(x, y + 130, 330, 14, "#6b4a2b", rx=3)
+    out += '<path d="M %.1f %.1f q 20 -8 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0" fill="none" stroke="%s" stroke-width="3"/>' % (x, y + 160, TEAL)
+    for k in range(4):
+        px = x + 30 + 80 * k
+        out += rect(px, y + 40, 14, 100, "#6b4a2b", rx=2)
+        out += text(px + 7, y + 30, str(k + 1), 18, INK, anchor="middle", family="Menlo, monospace")
+        if k != 2:
+            out += '<path d="M %.1f %.1f l 60 0 l -10 22 l -40 0 z" fill="%s" stroke="%s" stroke-width="2.5"/>' % (
+                px - 18, y + 98, CREAM if k else BRASS, INK)
+            out += line(px + 7, y + 70, px + 7, y + 98, INK, 2)
+    out += circle(x + 400, y + 60, 50, CREAM) + circle(x + 400, y + 60, 5, INK)
+    out += line(x + 400, y + 60, x + 400, y + 22, RUST, 4) + line(x + 400, y + 60, x + 428, y + 70, INK, 3)
+    out += text(x + 400, y + 134, "IDLE 30 S", 13, INK, anchor="middle", spacing=1)
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -785,6 +803,7 @@ CHAPTERS = [
     (26, machine_latch, dict(head="tall", eyes="mono", antenna="hat", held="wrench", accent=TEAL), "LATCH", "keeper of the sleeping queue"),
     (27, machine_poles, dict(head="box", eyes="goggles", antenna="spring", held="clipboard", accent=BRASS), "TAPER", "closer of the line"),
     (28, machine_seal, dict(head="dome", eyes="goggles", antenna="twin", held="magnifier", accent=TEAL), "SEAL", "notary of the certificate desk"),
+    (29, machine_dock, dict(head="tv", eyes="round", antenna="hat", held="flag", accent=TEAL), "DOCK", "harbormaster of the connection pool"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 

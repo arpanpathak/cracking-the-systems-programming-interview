@@ -1,0 +1,27 @@
+digraph pool {
+  rankdir=LR; nodesep=0.3; ranksep=0.5;
+  get [label="pool.get()" fillcolor="#e6ecf6"];
+  idle [label="idle stack\nnewest on top" fillcolor="#e3f1ea"];
+  fresh [label="fresh and open?" shape=box];
+  drop1 [label="close it:\nevicted or stale" fillcolor="#fbe3d6"];
+  room [label="open < max?"];
+  connect [label="reserve a slot,\nconnect outside\nthe lock"];
+  wait [label="wait on Condvar\nuntil a return\nor the deadline" fillcolor="#e8eaf5"];
+  err [label="Err(TimedOut)" fillcolor="#fbe3d6"];
+  guard [label="Pooled guard\nderefs to TcpStream" fillcolor="#fdf6e8"];
+  back [label="drop: back on\nthe idle stack"];
+  discard [label="discard():\nclose, free the slot" fillcolor="#fbe3d6"];
+  get -> idle [label=" pop"];
+  idle -> fresh;
+  fresh -> guard [label=" yes"];
+  fresh -> drop1 [label=" no"];
+  drop1 -> idle [label=" try the next" style=dashed constraint=false];
+  idle -> room [label=" empty"];
+  room -> connect [label=" yes"];
+  connect -> guard;
+  room -> wait [label=" no"];
+  wait -> get [label=" woken" style=dashed constraint=false];
+  wait -> err [label=" deadline"];
+  guard -> back [label=" ok"];
+  guard -> discard [label=" after an error"];
+}
