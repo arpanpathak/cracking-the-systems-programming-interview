@@ -1,0 +1,24 @@
+digraph tables {
+  rankdir=LR; nodesep=0.25; ranksep=0.55;
+  table [shape=plaintext style="" label=<
+    <table border="1" cellborder="1" cellspacing="0" cellpadding="5" color="#1d2733" bgcolor="#fbfcfd">
+      <tr><td colspan="2" bgcolor="#e6ecf6"><b>descriptor table</b><br/>(one per process)</td></tr>
+      <tr><td>0</td><td port="f0">stdin</td></tr>
+      <tr><td>1</td><td port="f1">stdout</td></tr>
+      <tr><td>2</td><td port="f2">stderr</td></tr>
+      <tr><td>3</td><td port="f3">a.txt</td></tr>
+      <tr><td>4</td><td port="f4">a.txt</td></tr>
+      <tr><td>100</td><td port="f100">dup of 4</td></tr>
+    </table>>];
+  subgraph cluster_k { label="kernel, shared by all processes"; labelloc="b"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    tty [label="open file description\nthe terminal, read/write"];
+    d1 [label="open file description\noffset 0, read-only" fillcolor="#e3f1ea"];
+    d2 [label="open file description\noffset 5, read-only" fillcolor="#fdf6e8"];
+    inode [label="a.txt on disk\n(inode)" shape=cylinder];
+  }
+  table:f0 -> tty; table:f1 -> tty; table:f2 -> tty;
+  table:f3 -> d1;
+  table:f4 -> d2;
+  table:f100 -> d2;
+  d1 -> inode; d2 -> inode;
+}

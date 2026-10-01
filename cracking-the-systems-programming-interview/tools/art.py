@@ -626,6 +626,24 @@ def machine_mmap(x, y):
     return out
 
 
+def machine_switchboard(x, y):
+    """A switchboard of numbered jacks, with patch cords running to a pipe."""
+    out = rect(x, y - 30, 230, 190, "#6b4a2b", rx=6)
+    out += rect(x + 12, y - 18, 206, 166, "#3b2a1a", rx=4)
+    for i in range(6):
+        cx, cy = x + 40 + (i % 3) * 75, y + 20 + (i // 3) * 80
+        out += circle(cx, cy, 14, STEEL_PALE) + circle(cx, cy, 6, INK)
+        out += text(cx, cy + 36, str(i), 18, CREAM, anchor="middle", family="Menlo, monospace")
+    out += rect(x + 300, y + 60, 130, 40, STEEL_LIGHT, rx=20)
+    out += rect(x + 300, y + 60, 26, 40, BRASS, rx=8) + rect(x + 404, y + 60, 26, 40, TEAL, rx=8)
+    out += text(x + 365, y + 50, "PIPE", 15, INK, anchor="middle", spacing=1)
+    out += '<path d="M %.1f %.1f C %.1f %.1f %.1f %.1f %.1f %.1f" fill="none" stroke="%s" stroke-width="5"/>' % (
+        x + 115, y + 20, x + 200, y - 60, x + 260, y + 40, x + 300, y + 80, BRASS)
+    out += '<path d="M %.1f %.1f C %.1f %.1f %.1f %.1f %.1f %.1f" fill="none" stroke="%s" stroke-width="5"/>' % (
+        x + 40, y + 20, x + 30, y - 90, x + 520, y - 70, x + 430, y + 80, TEAL)
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -684,6 +702,7 @@ CHAPTERS = [
     (21, machine_http, dict(head="dome", eyes="mono", antenna="bolt", held="clipboard", accent=BRASS), "COURIER", "reads every header before opening the parcel"),
     (22, machine_async, dict(head="tall", eyes="screen", antenna="spring", held="oilcan", accent=RUST), "FLYWHEEL", "polls every future, sleeps when none are ready"),
     (23, machine_mmap, dict(head="tall", eyes="round", antenna="twin", held="clipboard", accent=TEAL), "FOLIO", "archivist of the mapped stacks"),
+    (24, machine_switchboard, dict(head="box", eyes="round", antenna="dish", held="wrench", accent=BRASS), "RELAY", "switchboard operator of the descriptor table"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 

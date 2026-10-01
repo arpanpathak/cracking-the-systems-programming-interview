@@ -56,7 +56,7 @@ then 8 and 9 as they are added, drills last.
 - [ ] Part 7, the kernel boundary
   - [x] mmap and zero-copy (MAP_SHARED vs MAP_PRIVATE, first-touch faults,
         msync; sendfile vs read/write; TLS forces bytes back to user space)
-  - [ ] the fd table, fork/exec, and pipes (dup2, FD_CLOEXEC, a leaked fd,
+  - [x] the fd table, fork/exec, and pipes (dup2, FD_CLOEXEC, a leaked fd,
         `ls | wc -l`)
   - [ ] edge-triggered epoll (EPOLLET, drain to EAGAIN, the stall when reading
         once; EPOLLONESHOT, EPOLLEXCLUSIVE)
@@ -81,3 +81,5 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch14, ch02, ch07, ch09: a lead-in sentence before every code-first subsection (19 in all); explanations after the code were already there
 - 2026-10-01 lab: mmap_file.rs (macOS 64 first-pass faults; Linux 5, fault-around) and zero_copy.rs (Docker: read/write 8193 calls 809 MiB/s, sendfile 1 call 1318 MiB/s); commit 3b52d0b
 - 2026-10-01 ch23 Mapping files and copying less: page cache, mmap faults, shared/private, SIGBUS, sendfile, TLS; figures 23.1-23.3, animation ch23-faults (anim_kernel.py), plate FOLIO; drills renamed to ch30, Part 7 added to SUMMARY
+- 2026-10-01 lab: fd_table.rs (lowest free fd, ls | wc -l via pipe/fork/dup2/execvp, held write end, F_DUPFD vs F_DUPFD_CLOEXEC); macOS and Docker output match except wc padding
+- 2026-10-01 ch24 File descriptors, fork, and pipes: three-level table, fork/exec, async-signal-safety, pipe rules, the five shell steps, close-on-exec; figures 24.1-24.3, animation ch24-pipe, plate RELAY

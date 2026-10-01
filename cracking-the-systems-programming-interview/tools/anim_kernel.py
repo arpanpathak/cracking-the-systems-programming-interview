@@ -291,8 +291,219 @@ def build_mmap_faults(only=None):
     return render("ch23-faults.gif", tl, draw, height, only=only)
 
 
+# ------------------------------------------------- 24.3: a pipeline, by hand
+
+PIPE_CODE = lines_at("src/bin/fd_table.rs", range(158, 166))
+ROW_H = 18
+PROCS = {"parent": (88, 156), "ls": (350, 418), "wc": (600, 668)}   # robot x, table x
+PDESK = 196
+PIPE_Y = 266
+PIPE_X0, PIPE_X1 = 360, 740
+NAMES = ["a.txt", "b.txt", "c.txt"]
+
+
+def fd_table(p, x, rows, opacity=1.0):
+    """Descriptors 0 to 4 and what each points at."""
+    colors = {"tty": MUTED, "read end": TEAL, "write end": BRASS, "closed": FAINT}
+    with p.group(opacity=opacity):
+        p.text(x, 80, "fd table", 10.5, MUTED, 600)
+        for i, label in enumerate(rows.split("|")):
+            y = 88 + i * ROW_H
+            p.rect(x, y, 96, ROW_H - 2, PAPER if label != "closed" else STAGE, LINE, 3, 1.0)
+            p.text(x + 8, y + 12, str(i), 10.5, INK, 700, mono=True)
+            color = colors.get(label, INK)
+            p.text(x + 24, y + 12, label, 10.5, color, 700 if label in ("read end", "write end")
+                   else 400, mono=True)
+
+
+def pipeline():
+    start = "tty|tty|tty|-|-"
+    tl = Timeline(caption="", kind="step", code=-1.0, strike=-1.0,
+                  parent=start, ls="tty|tty|tty|read end|write end",
+                  wc="tty|tty|tty|read end|write end", ls_a=0.0, wc_a=0.0,
+                  writers=0.0, pipe_a=0.0, fill=0.0, fly_u=0.0, fly_a=0.0, fly_label="",
+                  ls_awake=1.0, ls_gone=0.0, wc_awake=1.0, wc_count=0.0, eof=0.0,
+                  printed=0.0, clock="", focus_row=-1.0, focus_who="parent")
+
+    def mark(who, row):
+        tl.set(focus_who=who, focus_row=float(row))
+
+    def run(keep_write_end):
+        def chapter(label):
+            if not keep_write_end:
+                tl.chapter(label)
+
+        chapter("fork ls")
+        tl.set(code=0.0)
+        tl.say("pipe creates the two ends in the parent's table: fd 3 is the read end, and fd 4 "
+               "the write end.")
+        mark("parent", 3)
+        tl.to(0.6, pipe_a=1.0, writers=1.0)
+        tl.set(parent="tty|tty|tty|read end|write end")
+        tl.wait(1.2)
+
+        tl.to(0.3, code=1.0)
+        tl.say("fork copies the parent's table into the ls child. Two processes now hold the "
+               "write end.")
+        mark("ls", 4)
+        tl.to(0.8, back, ls_a=1.0, writers=2.0)
+        tl.wait(0.8)
+        tl.say("In the child, dup2 points fd 1 at the write end. That is a third write end.")
+        mark("ls", 1)
+        tl.set(ls="tty|write end|tty|read end|write end")
+        tl.to(0.5, writers=3.0)
+        tl.wait(0.8)
+        tl.say("exec starts ls. fds 3 and 4 are close-on-exec, so exec closes them. fd 1 stays.")
+        tl.set(ls="tty|write end|tty|closed|closed")
+        tl.to(0.5, writers=2.0)
+        tl.wait(1.0)
+
+        chapter("fork wc")
+        tl.to(0.3, code=2.0)
+        tl.say("The same for wc: fork, dup2 the read end onto fd 0, and exec closes 3 and 4.")
+        mark("wc", 0)
+        tl.to(0.8, back, wc_a=1.0, writers=3.0)
+        tl.set(wc="read end|tty|tty|read end|write end")
+        tl.wait(0.6)
+        tl.set(wc="read end|tty|tty|closed|closed")
+        tl.to(0.5, writers=2.0)
+        tl.wait(1.0)
+
+        chapter("close")
+        tl.to(0.3, code=3.0)
+        tl.say("The parent drops its read end. It will never read from this pipe.")
+        mark("parent", 3)
+        tl.set(parent="tty|tty|tty|closed|write end")
+        tl.wait(1.2)
+        if keep_write_end:
+            tl.say("drop(write_end) is gone, so the parent still holds fd 4. Two write ends stay "
+                   "open.", "fail")
+            mark("parent", 4)
+            tl.wait(1.4)
+        else:
+            tl.to(0.3, code=4.0)
+            tl.say("The parent drops its write end. Now ls's fd 1 is the only write end.")
+            mark("parent", 4)
+            tl.set(parent="tty|tty|tty|closed|closed")
+            tl.to(0.5, writers=1.0)
+            tl.wait(1.2)
+
+        chapter("data")
+        tl.to(0.3, code=6.0)
+        tl.set(focus_row=-1.0)
+        tl.say("ls writes three names into the pipe, and wc reads them.")
+        for k, name in enumerate(NAMES):
+            tl.set(fly_label=name, fly_u=0.0)
+            tl.to(0.15, fly_a=1.0)
+            tl.to(0.7 if k == 0 else 0.45, in_out, fly_u=1.0)
+            tl.to(0.1, fly_a=0.0)
+            tl.to(0.2, fill=float(k + 1))
+        tl.to(0.6, fill=0.0, wc_count=3.0)
+        tl.say("The pipe is empty, so wc's next read waits. It cannot tell yet whether more is "
+               "coming.")
+        tl.to(0.5, wc_awake=0.0)
+        tl.wait(1.0)
+        tl.say("ls finishes and exits. Its fd 1 closes with it.")
+        mark("ls", 1)
+        tl.to(0.6, ls_awake=0.0, ls_gone=1.0)
+        tl.set(ls="closed|closed|closed|closed|closed")
+        tl.set(focus_row=-1.0)
+        if keep_write_end:
+            tl.to(0.4, writers=1.0)
+            tl.say("The parent's fd 4 is still a write end. wc's read never returns 0.", "fail")
+            mark("parent", 4)
+            for label in ("1 s", "10 s", "1 min", "forever"):
+                tl.set(clock=label)
+                tl.wait(0.9)
+            tl.say("Nothing uses the CPU and nothing reports an error. The pipeline hangs.",
+                   "fail")
+            tl.wait(1.6)
+        else:
+            tl.to(0.4, writers=0.0)
+            tl.say("No write end is left, so wc's read returns 0: end-of-file. wc prints 3.",
+                   "insight")
+            tl.to(0.4, back, wc_awake=1.0, eof=1.0)
+            tl.to(0.5, printed=1.0)
+            tl.to(0.3, code=7.0)
+            tl.wait(1.6)
+
+    run(keep_write_end=False)
+    tl.chapter("write end kept")
+    tl.say("Now run it again with drop(write_end) removed.", "fail")
+    tl.to(0.6, ls_a=0.0, wc_a=0.0, pipe_a=0.0, printed=0.0, eof=0.0, wc_count=0.0,
+          writers=0.0)
+    tl.set(parent=start, ls="tty|tty|tty|read end|write end",
+           wc="tty|tty|tty|read end|write end", ls_awake=1.0, ls_gone=0.0, wc_awake=1.0,
+           strike=4.0, code=-1.0)
+    tl.wait(0.6)
+    run(keep_write_end=True)
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "ls | wc -l, built by hand",
+                    "The reader sees end-of-file when the last write end closes, in any process.")
+        scoreboard(p, [("write ends open", int(round(s.writers)), BRASS)])
+
+        robot(p, PROCS["parent"][0], PDESK, TEAL, 1.0, 1.0, "parent", "fd_table")
+        fd_table(p, PROCS["parent"][1], s.parent)
+        for who, alpha, awake in (("ls", s.ls_a, s.ls_awake), ("wc", s.wc_a, s.wc_awake)):
+            if alpha > 0.01:
+                with p.group(opacity=clamp(alpha)):
+                    gone = who == "ls" and s.ls_gone > 0.5
+                    robot(p, PROCS[who][0], PDESK, FAINT if gone else NIGHT, awake, awake, who,
+                          "exited" if gone else "child")
+                    fd_table(p, PROCS[who][1], getattr(s, who))
+        if s.focus_row >= 0:
+            x = PROCS[s.focus_who][1]
+            y = 88 + s.focus_row * ROW_H
+            focus(p, x, y, 96, ROW_H - 2, 1.0, pad=3)
+        if s.wc_awake < 0.5 and s.wc_a > 0.5:
+            zzz(p, PROCS["wc"][0] + 44, PDESK - 108, t, 1 - s.wc_awake)
+            p.text(PROCS["wc"][1] + 48, 214, "read waits", 11, NIGHT, 700, "middle")
+        if s.clock:
+            p.text(PROCS["wc"][1] + 48, 232, s.clock, 12, RUST, 700, "middle", mono=True)
+
+        # the pipe
+        if s.pipe_a > 0.01:
+            with p.group(opacity=clamp(s.pipe_a)):
+                p.rect(PIPE_X0, PIPE_Y, PIPE_X1 - PIPE_X0, 26, "#e6ecf6", INK, 13, 1.4)
+                p.text(PIPE_X0 - 8, PIPE_Y + 17, "write end", 10.5, BRASS, 700, "end")
+                p.text(PIPE_X1 + 8, PIPE_Y + 17, "read", 10.5, TEAL, 700)
+                p.text((PIPE_X0 + PIPE_X1) / 2, PIPE_Y + 42, "pipe buffer (kernel)", 10.5, MUTED,
+                       600, "middle")
+                for k in range(int(math.floor(s.fill + 1e-6))):
+                    chip(p, PIPE_X1 - 60 - 76 * k, PIPE_Y + 13, NAMES[k], BRASS, BRASS_LT, 10)
+        if s.fly_a > 0.01:
+            a = (PROCS["ls"][0] + 30, PDESK - 20)
+            b = (PIPE_X1 - 60 - 76 * int(s.fill), PIPE_Y + 13)
+            x, y = bezier(a, (a[0] + 80, PIPE_Y - 40), b, s.fly_u)
+            pill(p, x, y, s.fly_label, BRASS, BRASS_LT, 10, opacity=s.fly_a, shadow=None)
+        if s.wc_count > 0.01 and s.wc_a > 0.5:
+            p.text(PROCS["wc"][1] + 48, 196, "lines: %d" % int(round(s.wc_count)), 11, INK, 700,
+                   "middle", mono=True)
+        if s.eof > 0.01:
+            pill(p, PIPE_X1 - 30, PIPE_Y - 22, "read = 0", TEAL, TEAL_LT, 10.5,
+                 opacity=clamp(s.eof), shadow=None)
+        if s.printed > 0.01:
+            chip(p, PROCS["wc"][1] + 48, 218, "stdout: 3", TEAL, TEAL_LT, 11, opacity=clamp(s.printed))
+
+        code_panel(p, 26, 322, W - 52, "ls_wc", PIPE_CODE, s.code, size=10.6, lead=16.0,
+                   strike=int(s.strike) if s.strike >= 0 else None,
+                   reveal=s.timeline.reached("code", t))
+        caption(p, tl, t, 502)
+        progress(p, tl, t, total, 588)
+
+    return tl, draw, 622
+
+
+def build_pipeline(only=None):
+    tl, draw, height = pipeline()
+    return render("ch24-pipe.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "mmap-faults": build_mmap_faults,
+    "pipeline": build_pipeline,
 }
 
 if __name__ == "__main__":

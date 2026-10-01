@@ -47,6 +47,7 @@
 # Part 7: The kernel boundary
 
 - [Mapping files and copying less](ch23-mmap.md)
+- [File descriptors, fork, and pipes](ch24-fd-table.md)
 
 # Part 8: Compact implementations
 

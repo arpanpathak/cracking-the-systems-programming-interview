@@ -1,0 +1,16 @@
+digraph pipeline {
+  rankdir=TB; nodesep=0.45; ranksep=0.5;
+  ls [label="ls\nfd 1 = write end" fillcolor="#e3f1ea"];
+  subgraph cluster_k { label="kernel"; labelloc="b"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    pipe [label="pipe buffer\n(64 KiB on Linux)" fillcolor="#e6ecf6"];
+  }
+  wc [label="wc -l\nfd 0 = read end" fillcolor="#fdf6e8"];
+  out [label="terminal"];
+  shell [label="parent\ncloses both ends,\nthen waits"];
+  { rank=same; ls; pipe; wc; out; }
+  ls -> pipe [label=" write"];
+  pipe -> wc [label=" read"];
+  wc -> out [label=" fd 1"];
+  shell -> ls [label=" fork, dup2, exec" style=dashed];
+  shell -> wc [label=" fork, dup2, exec" style=dashed];
+}

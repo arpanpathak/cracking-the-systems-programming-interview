@@ -1,0 +1,30 @@
+digraph forkexec {
+  rankdir=TB; nodesep=0.5; ranksep=0.5;
+  parent [shape=plaintext style="" label=<
+    <table border="1" cellborder="1" cellspacing="0" cellpadding="5" color="#1d2733" bgcolor="#fbfcfd">
+      <tr><td colspan="2" bgcolor="#e6ecf6"><b>parent</b></td></tr>
+      <tr><td>1</td><td port="p1">stdout</td></tr>
+      <tr><td>100</td><td port="p100">a.txt</td></tr>
+      <tr><td>101</td><td port="p101">a.txt, close-on-exec</td></tr>
+    </table>>];
+  child [shape=plaintext style="" label=<
+    <table border="1" cellborder="1" cellspacing="0" cellpadding="5" color="#1d2733" bgcolor="#fbfcfd">
+      <tr><td colspan="2" bgcolor="#e3f1ea"><b>child after fork</b></td></tr>
+      <tr><td>1</td><td port="c1">stdout</td></tr>
+      <tr><td>100</td><td port="c100">a.txt</td></tr>
+      <tr><td>101</td><td port="c101">a.txt, close-on-exec</td></tr>
+    </table>>];
+  execd [shape=plaintext style="" label=<
+    <table border="1" cellborder="1" cellspacing="0" cellpadding="5" color="#1d2733" bgcolor="#fbfcfd">
+      <tr><td colspan="2" bgcolor="#fdf6e8"><b>child after exec</b></td></tr>
+      <tr><td>1</td><td>stdout</td></tr>
+      <tr><td>100</td><td>a.txt</td></tr>
+      <tr><td>101</td><td><font color="#d9622b">closed</font></td></tr>
+    </table>>];
+  desc [label="open file\ndescription\n(shared offset)"];
+  parent:p100 -> desc;
+  child:c100 -> desc;
+  { rank=same; parent; child; execd; }
+  parent -> child [label="fork copies\nthe table" style=dashed];
+  child -> execd [label="exec keeps it,\nminus close-on-exec" style=dashed];
+}
