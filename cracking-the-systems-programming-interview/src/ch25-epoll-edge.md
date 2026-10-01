@@ -55,6 +55,32 @@ more, and both sides wait forever. This is the stall. Edge-triggered mode needs 
 
 ## 25.2 Three handlers, measured
 
+Epoll is three system calls. `epoll_event` is the record that carries a descriptor's flags in and its
+events out:
+
+```rust
+struct epoll_event {
+    events: u32, // EPOLLIN, EPOLLOUT, EPOLLET, ... combined with |
+    u64: u64,    // data the caller chooses; the program stores the fd
+}
+
+unsafe extern "C" {
+    fn epoll_create1(flags: c_int) -> c_int; // a new instance's fd; EPOLL_CLOEXEC
+    fn epoll_ctl(
+        epfd: c_int,                // the instance
+        op: c_int,                  // EPOLL_CTL_ADD, EPOLL_CTL_MOD, or EPOLL_CTL_DEL
+        fd: c_int,                  // the descriptor to watch
+        event: *mut epoll_event,    // its flags
+    ) -> c_int;                     // 0, or -1 with errno set
+    fn epoll_wait(
+        epfd: c_int,
+        events: *mut epoll_event,   // an array the kernel fills
+        maxevents: c_int,           // its length
+        timeout: c_int,             // milliseconds; -1 waits forever
+    ) -> c_int;                     // how many entries were filled, or -1
+}
+```
+
 The program wraps the epoll instance in a type that closes it when dropped:
 
 ```rust

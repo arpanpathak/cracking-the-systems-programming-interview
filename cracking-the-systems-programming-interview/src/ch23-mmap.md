@@ -70,22 +70,32 @@ unmapped exactly once. That is the shape of an owning Rust type with a `Drop`:
 ```
 
 `NonNull<u8>` is a raw pointer that is never null. It records that `Mapping` always holds a real address.
-Creating the mapping is one `unsafe` call:
+Creating the mapping is one call to `mmap`. The `libc` crate declares each C function inside an
+`unsafe extern "C"` block, with C's types. `c_int` is a C `int`, `size_t` is an unsigned size, and `off_t` is a
+file offset. `*mut c_void` is a pointer to bytes of no particular type. Here is the declaration, with what
+each parameter means:
+
+```rust
+unsafe extern "C" {
+    fn mmap(
+        addr: *mut c_void, // where to map; null lets the kernel choose
+        len: size_t,       // how many bytes to map
+        prot: c_int,       // what is allowed: PROT_READ | PROT_WRITE
+        flags: c_int,      // MAP_SHARED or MAP_PRIVATE (section 23.2)
+        fd: c_int,         // the open file
+        offset: off_t,     // where in the file; a multiple of the page size
+    ) -> *mut c_void;      // the mapping's address, or MAP_FAILED
+}
+```
+
+Every call through such a declaration is `unsafe`, because the compiler cannot check what the C code does with
+the pointers it is given. `new` makes the call and checks the result:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mmap_file.rs:25:56}}
     // ...
 }
 ```
-
-The six arguments to `mmap` are:
-
-- the address to map at: null lets the kernel choose;
-- the length in bytes;
-- the protection: `PROT_READ | PROT_WRITE` allows both reads and writes;
-- the flags: `MAP_SHARED` or `MAP_PRIVATE`, the subject of section 23.2;
-- the file descriptor;
-- the offset in the file, which must be a multiple of the page size.
 
 On failure `mmap` returns `MAP_FAILED`, not null, so the code checks for that value first. `last_os_error`
 reads `errno` and turns it into an `io::Error`.
@@ -102,7 +112,14 @@ impl Mapping {
 ```
 
 `bytes_mut` takes `&mut self`, so the borrow checker allows one mutable slice at a time, as with a `Vec`.
-`Drop` gives the address range back to the kernel:
+`Drop` gives the address range back to the kernel with `munmap`, which takes the same address and length:
+
+```rust
+unsafe extern "C" {
+    fn munmap(addr: *mut c_void, len: size_t) -> c_int; // 0, or -1 with errno set
+}
+```
+
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mmap_file.rs:80:88}}
@@ -113,8 +130,20 @@ could point into an unmapped range, and the next read through it would crash the
 
 ### 23.1.2 Counting the faults
 
-The kernel counts each process's page faults. `getrusage` reports them, and `ru_minflt` is the count of
-minor faults. The program reads the count before and after a pass over the mapping:
+The kernel counts each process's page faults. `getrusage` copies the counts into a `rusage` struct that the
+caller provides, and `sysconf` reads system constants such as the page size:
+
+```rust
+unsafe extern "C" {
+    fn getrusage(
+        who: c_int,          // RUSAGE_SELF: this process
+        usage: *mut rusage,  // filled in; ru_minflt counts minor faults
+    ) -> c_int;              // 0, or -1 with errno set
+    fn sysconf(name: c_int) -> c_long; // _SC_PAGESIZE gives the page size
+}
+```
+
+The program reads the minor-fault count before and after a pass over the mapping:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mmap_file.rs:97:116}}
@@ -175,7 +204,19 @@ The flags argument decides where a write through the mapping goes (figure 23.2).
 <figcaption><b>Figure 23.2</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
 </figure>
 
-Writeback happens on the kernel's schedule, typically within about 30 seconds. To put the data on disk at a known point, call `msync` with `MS_SYNC`. It returns after the dirty pages of the range are written:
+Writeback happens on the kernel's schedule, typically within about 30 seconds. To put the data on disk at a known point, call `msync`:
+
+```rust
+unsafe extern "C" {
+    fn msync(
+        addr: *mut c_void, // start of the range, as returned by mmap
+        len: size_t,       // length of the range
+        flags: c_int,      // MS_SYNC: return after the write completes
+    ) -> c_int;            // 0, or -1 with errno set
+}
+```
+
+With `MS_SYNC`, it returns after the dirty pages of the range are written:
 
 ```rust
 impl Mapping {
@@ -281,7 +322,21 @@ mod linux {
 `write_all` may need more than one `write` when the socket's send buffer is full. The count adds one per
 `write_all`, so it is a lower bound.
 
-The `sendfile` version has no buffer. It calls `sendfile` until the offset reaches the file's length:
+The `sendfile` version has no buffer. On Linux, `sendfile` copies from one descriptor to another inside the
+kernel:
+
+```rust
+unsafe extern "C" {
+    fn sendfile(
+        out_fd: c_int,       // where the bytes go: the socket
+        in_fd: c_int,        // where they come from: the file
+        offset: *mut off_t,  // where to start reading; advanced by the kernel
+        count: size_t,       // at most this many bytes
+    ) -> ssize_t;            // bytes sent, or -1 with errno set
+}
+```
+
+The program calls it until the offset reaches the file's length:
 
 ```rust
 mod linux {

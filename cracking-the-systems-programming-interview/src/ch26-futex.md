@@ -69,7 +69,21 @@ atomic instruction. Unlocking from 2 also costs a system call.
 
 ### 26.2.1 The system calls
 
-`libc` has no wrapper for `futex`, so the program calls it with `syscall` and the call's number:
+`libc` has no wrapper for `futex`, so the program calls it through `syscall`, which takes a system call's
+number and its arguments:
+
+```rust
+unsafe extern "C" {
+    fn syscall(number: c_long, ...) -> c_long;
+}
+
+// The futex call, as the kernel defines its arguments:
+// syscall(SYS_futex, uaddr: *const u32, op: c_int, val: u32, timeout: *const timespec)
+//   FUTEX_WAIT: sleep if *uaddr == val, until woken or until the timeout (null: none)
+//   FUTEX_WAKE: wake up to val threads sleeping on uaddr; timeout is unused
+```
+
+The two wrappers:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/futex_mutex.rs:10:53}}

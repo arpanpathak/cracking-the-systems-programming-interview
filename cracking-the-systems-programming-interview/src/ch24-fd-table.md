@@ -124,6 +124,19 @@ The program describes the command to run as C strings:
 `execvp` takes an array of pointers to C strings, ending with a null pointer. `argv` builds that array. The
 pointers point into the `CString`s, so the array is valid only while the `Program` is alive.
 
+`spawn` uses three calls:
+
+```rust
+unsafe extern "C" {
+    fn fork() -> pid_t;                      // child's id in the parent, 0 in the child, -1 on error
+    fn dup2(src: c_int, dst: c_int) -> c_int; // make dst refer to src's open file
+    fn execvp(
+        file: *const c_char,                  // program name, searched in PATH
+        argv: *const *const c_char,           // arguments, ending with a null pointer
+    ) -> c_int;                               // returns only on failure
+}
+```
+
 `spawn` forks, and in the child arranges descriptors 0 and 1 and runs the program:
 
 ```rust
@@ -137,6 +150,17 @@ report as "command not found". The child must not return from `spawn`: it would 
 parent's code.
 
 The parent waits for children with `waitpid`:
+
+```rust
+unsafe extern "C" {
+    fn waitpid(
+        pid: pid_t,          // the child to wait for
+        status: *mut c_int,  // filled in; WEXITSTATUS(status) is the exit code
+        options: c_int,      // 0 to wait, WNOHANG to return at once
+    ) -> pid_t;              // the child's id, 0 if WNOHANG and still running, or -1
+}
+```
+
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/fd_table.rs:124:138}}
@@ -177,7 +201,18 @@ that last write end closes, and `wc` reads end-of-file, prints its count, and ex
 
 ### 24.3.1 Building the pipeline
 
-`pipe` creates the two ends as `OwnedFd`s, which close themselves when dropped. It marks both close-on-exec:
+The C functions take and return plain descriptor numbers:
+
+```rust
+unsafe extern "C" {
+    fn pipe(fds: *mut c_int) -> c_int;            // fills [read end, write end]; 0 or -1
+    fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int; // F_SETFD sets flags; F_DUPFD copies
+}
+```
+
+`pipe` writes two numbers into an array of two. `fcntl` takes a command and, for most commands, one more
+argument; the `...` means the number of arguments varies, as with C's `printf`. The program wraps the ends in
+`OwnedFd`s, which close themselves when dropped, and marks both close-on-exec:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/fd_table.rs:29:56}}

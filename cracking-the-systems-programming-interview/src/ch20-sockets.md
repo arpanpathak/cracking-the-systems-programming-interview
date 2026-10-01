@@ -269,7 +269,43 @@ program compiles everywhere and runs where epoll exists.
 
 ### 20.4.1 Setting up the listener by hand
 
-`bind_listener` is what `TcpListener::bind` does inside, spelled out:
+`bind_listener` is what `TcpListener::bind` does inside, spelled out. It calls C functions through the
+`libc` crate. The crate declares them inside an `unsafe extern "C"` block, with C's types. `c_int` is a C
+`int`, and `socklen_t` is the size of an address in bytes. These are the five it uses, with what each parameter means:
+
+```rust
+unsafe extern "C" {
+    fn socket(domain: c_int, ty: c_int, protocol: c_int) -> c_int; // AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0
+    fn setsockopt(
+        fd: c_int,
+        level: c_int,          // SOL_SOCKET
+        name: c_int,           // SO_REUSEADDR
+        value: *const c_void,  // points at the option's value
+        len: socklen_t,        // the value's size in bytes
+    ) -> c_int;
+    fn bind(fd: c_int, addr: *const sockaddr, len: socklen_t) -> c_int; // give the socket an address
+    fn listen(fd: c_int, backlog: c_int) -> c_int; // backlog: how many connections may wait for accept
+    fn getsockname(fd: c_int, addr: *mut sockaddr, len: *mut socklen_t) -> c_int; // read back the address
+}
+```
+
+Each returns 0, or a new descriptor for `socket`, and -1 on failure with the reason in `errno`. `sockaddr` is
+a generic address type. An IPv4 address is a `sockaddr_in`, passed as a pointer to `sockaddr` together with its
+size. The epoll calls the loop uses later are declared the same way:
+
+```rust
+unsafe extern "C" {
+    fn epoll_create1(flags: c_int) -> c_int; // a new epoll instance's fd
+    fn epoll_ctl(epfd: c_int, op: c_int, fd: c_int, event: *mut epoll_event) -> c_int; // add, modify, remove
+    fn epoll_wait(epfd: c_int, events: *mut epoll_event, maxevents: c_int, timeout: c_int) -> c_int;
+}
+```
+
+An `epoll_event` has two fields: `events`, the flags such as `EPOLLIN`, and `u64`, a number the program chooses.
+This program stores the fd there, so each event says which socket it is about. `epoll_wait` fills an array of
+them and returns how many it filled.
+
+The function:
 
 ```rust
 mod linux {

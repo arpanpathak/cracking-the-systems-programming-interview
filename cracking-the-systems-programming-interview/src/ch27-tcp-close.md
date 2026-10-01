@@ -149,6 +149,23 @@ its new listening socket asks for a port that those entries still use. By defaul
 sets it on Unix, so the program uses raw calls to bind both ways:
 
 ```rust
+unsafe extern "C" {
+    fn socket(domain: c_int, ty: c_int, protocol: c_int) -> c_int; // AF_INET, SOCK_STREAM, 0
+    fn setsockopt(
+        fd: c_int,
+        level: c_int,          // SOL_SOCKET
+        name: c_int,           // SO_REUSEADDR
+        value: *const c_void,  // points at the option's value, a c_int here
+        len: socklen_t,        // its size in bytes
+    ) -> c_int;
+    fn bind(fd: c_int, addr: *const sockaddr, len: socklen_t) -> c_int;
+}
+```
+
+`sockaddr` is a generic address type. An IPv4 address is a `sockaddr_in`, passed as a pointer to `sockaddr`
+with its own size:
+
+```rust
 mod linux {
     // ...
 {{#include ../../rust-interview-lab/src/bin/tcp_close.rs:100:141}}
