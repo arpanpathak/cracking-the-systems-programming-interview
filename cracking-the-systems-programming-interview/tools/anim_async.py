@@ -144,7 +144,7 @@ def poll_wake():
     reply("Ready(())", TEAL)
     tl.to(0.35, ex_code=2.0, done=1.0)
     tl.to(0.5, cpu=0.0, ex_code=-1.0, dl_code=-1.0)
-    say("Two polls and one wake. While the timer ran, the executor used no CPU at all.",
+    say("The run took two polls and one wake. The executor used no CPU while the timer ran.",
         "insight")
     tl.wait(4.0)
 
@@ -152,7 +152,7 @@ def poll_wake():
     tl.chapter("no waker")
     tl.to(0.8, done=0.0, ready=0.0, sw=0.0, bug=1.0, polls=0, wakes=0,
           ex_awake=1.0, ex_lit=1.0, tm_code=0.0)
-    say("Now delete one line: poll no longer stores the waker. Watch the same run.", "fail")
+    say("Now delete one line, so poll no longer stores the waker.", "fail")
     tl.wait(2.8)
     sleep_from = tl.now
     say("poll reads ready = false and returns Pending. The waker is never stored.", "fail")
@@ -178,7 +178,7 @@ def poll_wake():
     tl.to(0.5, back, missing=1.0, slot_focus=1.0)
     tl.wait(1.6)
     tl.to(0.3, tm_code=-1.0, tm_awake=0.0, tm_lit=0.0, slot_focus=0.0)
-    say("The executor sleeps forever. No panic, no error, no CPU use. The task is lost.",
+    say("The executor stays parked forever, and the program reports no error.",
         "fail")
     tl.to(0.5, verdict=1.0)
     for label in ("1 s", "10 s", "1 min", "1 hour", "forever"):
@@ -478,7 +478,7 @@ def task_queue():
     n = pop(0.8)
     poll(n, 0.8)
     requeue(n, 0.8)
-    say("Each yield gave every other task one turn. That is round-robin scheduling.",
+    say("Each yield gives every other task one turn before this task runs again.",
         "insight")
     tl.wait(3.2)
 
@@ -513,7 +513,7 @@ def task_queue():
     state["polls"] = 0
     queue[:] = [1, 2, 3]
     finished.clear()
-    say("Now break task 1: its future returns Pending without calling wake. Same run.",
+    say("Now break task 1: its future returns Pending without calling wake.",
         "fail")
     tl.wait(2.8)
     n = pop(0.9)
@@ -533,8 +533,7 @@ def task_queue():
         else:
             complete(n, 0.3)
     tl.to(0.4, run_code=1.0, empty=1.0, verdict=1.0)
-    say("run() returns with task 1 unfinished. No panic and no error: it just never ran "
-        "again.", "fail")
+    say("run() returns with task 1 unfinished, and nothing reports an error.", "fail")
     tl.wait(4.5)
 
     def draw(p, s, total):
@@ -667,7 +666,7 @@ def await_state():
 
     # poll 2
     tl.chapter("poll 2")
-    say("Poll 2 does not start over. It jumps straight to the bookmark.")
+    say("Poll 2 resumes at the bookmark, not at the top of the block.")
     poll_in(2)
     tl.to(0.5, line=1.0)
     tl.wait(0.4)
@@ -732,8 +731,7 @@ def await_state():
     poll_in(5)
     tl.to(0.4, back, fail=1.0)
     tl.wait(1.6)
-    say("That is why MiniExecutor marks a task completed on Ready, and never polls it "
-        "again.", "fail")
+    say("MiniExecutor marks a task completed on Ready, so it never polls that task again.", "fail")
     tl.wait(3.4)
 
     def draw(p, s, total):
@@ -959,8 +957,7 @@ def pin_move():
     tl.wait(0.6)
     tl.to(0.8, garbage=1.0)
     tl.wait(1.2)
-    say("The next poll reads through r and gets whatever lives at 0x1000 now. Pin exists "
-        "to rule this out.", "fail")
+    say("The next poll reads through r and gets whatever lives at 0x1000 now. Pin prevents this move.", "fail")
     show_code("fut.poll(cx)  // reads *r")
     tl.to(0.5, back, read_bad=1.0)
     tl.wait(3.0)

@@ -77,8 +77,7 @@ def http_framing():
     tl.wait(0.6)
 
     tl.chapter("Content-Length")
-    tl.say("Now the body. This head says Content-Length: 5, so the body is the next 5 bytes, "
-           "counted exactly.")
+    tl.say("This head says Content-Length: 5, so the body is the next 5 bytes.")
     tl.to(0.4, hot_cl=1.0, code=5.0)
     tl.to(2.0, linear, ruler=5.0)
     tl.say("Whatever follows those 5 bytes belongs to the next request.", "insight")
@@ -354,8 +353,7 @@ def keep_alive():
            "closes.", "fail")
     respond("400 Bad Request  close", 1.2)
     tl.to(0.6, closed=1.0, sv_awake=0.0)
-    tl.say("Reading more, then parsing the whole buffer again, is the loop. A framing error is "
-           "the one way out.", "insight")
+    tl.say("The loop reads and parses until a request is complete. A framing error ends the connection.", "insight")
     tl.wait(1.0)
 
     def draw(p, s, total):

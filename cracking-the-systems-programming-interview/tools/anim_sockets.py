@@ -116,8 +116,7 @@ def tcp_handshake():
     tl.to(1.0, in_out, queue_u=1.0)
     tl.also(0.6, back, sv_awake=1.0)
     tl.to(0.3, queue_a=0.0)
-    say("The kernel did the whole handshake. accept only hands over a connection that is "
-        "already established.", "insight")
+    say("accept returns only connections whose handshake the kernel has completed.", "insight")
     tl.wait(3.2)
 
     # ---- the echo
@@ -163,8 +162,7 @@ def tcp_handshake():
     flash_read("read -> 0")
     tl.to(0.4, sv_code=3.0)
     tl.wait(1.4)
-    say("Dropping the stream sends the server's own FIN. The server has nothing more to say "
-        "either.")
+    say("Dropping the stream sends the server's own FIN.")
     tl.to(0.3, read_a=0.0)
     tl.set(sv_state="LAST-ACK")
     tl.to(0.4, sv_code=-1.0, sv_awake=0.0)
@@ -175,8 +173,7 @@ def tcp_handshake():
     tl.to(0.5, back, cl_awake=1.0, echoed_a=1.0, cl_recv=0.0)
     send("ACK", "ack 5012", 1, dur=1.2)
     tl.set(sv_state="CLOSED")
-    say("Each direction closes on its own. FIN means no more bytes from this side, not stop "
-        "reading.", "insight")
+    say("Each direction closes separately. FIN means this side sends no more bytes; it can still read.", "insight")
     tl.wait(3.4)
 
     # ---- the hang: no shutdown
@@ -318,7 +315,7 @@ def bdp():
     tl.wait(1.6)
     say("It sends 4 back to back. Then the window is full, and it must stop.")
     tl.wait(2.4)
-    say("Nothing new can leave until an ACK returns. Most of the link carries nothing.")
+    say("Nothing new can leave until an ACK returns, so most of the link is idle.")
     tl.wait(3.4)
     say("Each ACK frees one slot, and one more packet leaves. 4 packets per round trip: the "
         "link is busy a quarter of the time.", "insight")
@@ -329,7 +326,7 @@ def bdp():
     tl.wait(3.8)
     say("The first ACK returns just as the 16th packet leaves, so the sender never stops.")
     tl.wait(3.0)
-    say("The link is always busy. Same link, same latency, four times the throughput.",
+    say("The link is always busy, and the throughput is four times higher on the same link.",
         "insight")
     tl.wait(5.0)
 
@@ -546,8 +543,7 @@ def epoll():
     hand_over(6, "fd 6 IN")
     tl.set(events="fd 5 IN, fd 6 IN")
     tl.to(0.6, back, awake=1.0, code=4.0, focus=5.0)
-    say("fd 5: read until EAGAIN puts 1 KB in out, and flush writes all of it. Nothing is "
-        "left over.")
+    say("fd 5: read until EAGAIN puts 1 KB in out, and flush writes all of it.")
     tl.to(0.5, out5=1.0, light5=0.0)
     tl.wait(0.5)
     tl.to(0.6, out5=0.0)
@@ -566,7 +562,7 @@ def epoll():
     tl.wait(1.4)
     tl.to(0.5, code=1.0, focus=0.0, events="")
     tl.to(0.6, awake=0.0)
-    say("A slow client costs a buffer, not the thread. The loop never waits on one socket.",
+    say("The slow client costs memory in its out buffer. The thread keeps serving the other sockets.",
         "insight")
     tl.wait(3.4)
 
@@ -606,7 +602,7 @@ def epoll():
     for label in ("1 s", "10 s", "1 min"):
         tl.set(clock=label)
         tl.wait(0.9)
-    say("That is why every socket here is non-blocking, and why EAGAIN is not an error.",
+    say("On a non-blocking socket, write returns EAGAIN instead, and the loop moves on.",
         "fail")
     tl.wait(3.4)
 
