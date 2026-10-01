@@ -18,6 +18,11 @@ reqwest = { version = "0.13", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
+# TLS for the production networking chapters: rustls on the ring crypto provider,
+# and rcgen to make the certificates at startup, so no key files are committed.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+rcgen = "0.13"
+
 
 # The benchmarking examples live outside src/bin so everything the benchmark
 # measures sits in one directory. The structures themselves are library modules
