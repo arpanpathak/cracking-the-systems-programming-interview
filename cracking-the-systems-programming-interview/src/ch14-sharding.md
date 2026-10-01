@@ -56,6 +56,7 @@ where
     K: Hash + Eq,
 {
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:31:43}}
+    // ...
 }
 ```
 
@@ -93,7 +94,9 @@ impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:45:50}}
+    // ...
 }
 ```
 
@@ -116,7 +119,9 @@ impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:52:82}}
+    // ...
 }
 ```
 
@@ -170,7 +175,9 @@ impl<K, V> ShardedCache<K, V>
 where
     K: Hash + Eq,
 {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:98:116}}
+    // ...
 }
 ```
 
@@ -276,6 +283,7 @@ the keys, where `hash % N` moved 75%.
 
 impl ConsistentHash {
 {{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:27:61}}
+    // ...
 }
 ```
 
@@ -320,7 +328,9 @@ fixed, documented algorithm.
 
 ```rust
 impl ConsistentHash {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:63:76}}
+    // ...
 }
 ```
 

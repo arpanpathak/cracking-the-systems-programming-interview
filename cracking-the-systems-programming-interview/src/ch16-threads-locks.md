@@ -326,6 +326,7 @@ cores doing nothing useful. `std::sync::Mutex` instead asks the operating system
 
 impl<T> SpinLock<T> {
 {{#include ../../rust-interview-lab/src/problems/spin_lock.rs:44:50}}
+    // ...
 }
 ```
 
@@ -351,6 +352,7 @@ lock when it is dropped.
 
 ```rust
 impl<T> SpinLock<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/spin_lock.rs:52:86}}
 }
 ```
@@ -480,6 +482,7 @@ sometimes wake up with no notification at all, which is called a **spurious wake
 
 impl Semaphore {
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:26:53}}
+    // ...
 }
 ```
 
@@ -493,6 +496,7 @@ The permit is returned by a guard, the same RAII pattern as in section 16.4.
 
 ```rust
 impl Semaphore {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:55:108}}
 }
 

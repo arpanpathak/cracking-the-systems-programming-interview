@@ -136,6 +136,7 @@ thread for each change. Two condition variables wake the right kind of thread di
 
 impl<T> BoundedQueue<T> {
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:29:40}}
+    // ...
 }
 ```
 
@@ -146,7 +147,9 @@ A capacity of 0 is rejected, because nothing could ever be pushed.
 
 ```rust
 impl<T> BoundedQueue<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:42:76}}
+    // ...
 }
 ```
 
@@ -174,6 +177,7 @@ program would be correct either way.
 
 ```rust
 impl<T> BoundedQueue<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs:78:102}}
 }
 ```
@@ -253,6 +257,7 @@ method, which replaces the `PoisonError` with `QueuePoisonedError`.
 
 ```rust
 impl<T> BoundedQueue<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:51:71}}
 }
 ```
@@ -298,7 +303,9 @@ between threads: each thread returns a `Result`, and `join` hands it to the main
 
 ```rust
 impl<T> BoundedQueue<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:29:43}}
+    // ...
 }
 ```
 
@@ -426,7 +433,9 @@ mutex, because threads check it together with the items.
 
 ```rust
 impl<T> BoundedQueue<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:47:88}}
+    // ...
 }
 ```
 
@@ -443,7 +452,9 @@ items already in it. Only a closed queue that is empty returns `None`. A consume
 
 ```rust
 impl<T> BoundedQueue<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:100:110}}
+    // ...
 }
 ```
 
@@ -532,6 +543,7 @@ Three new pieces of Rust appear here:
 
 ```rust
 impl<T, const N: usize> SpscRing<T, N> {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/ring_buffer.rs:71:107}}
 }
 ```

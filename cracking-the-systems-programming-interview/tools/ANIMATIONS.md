@@ -14,6 +14,24 @@ Nothing moved, so the eye had nothing to follow. The author rejected them. Every
 being converted to the motion style below, one chapter at a time, and the author reviews
 each chapter before the next one starts.
 
+## 1a. The reader
+
+Write every animation for a reader who has ADHD, is neurodivergent, or is new to the
+idea. That reader needs three things, and the engine gives them by default:
+
+- **Time to read before watching.** `tl.say(text)` waits until the previous caption has
+  been on screen for its reading time (0.36 s a word, at least 2.6 s), shows the new
+  caption, and pauses `lead` seconds before anything moves. All motion runs at `pace`
+  (1.2x slower than scripted). Always narrate with `tl.say`, never by setting `caption`.
+- **One new thing at a time.** Code panels reveal their lines as the highlight reaches
+  them (`reveal=s.timeline.reached(track, t)`); lines not reached yet are faint bars. Do
+  not show a whole function before the animation needs it.
+- **Control.** In the HTML book each animation is an MP4 with the GIF as fallback.
+  `theme/anim.js` adds pause, 0.5x / 0.75x / 1x, a button for every chapter of the
+  timeline, and "pause after each step". Readers whose system asks for reduced motion get
+  a paused video and a play button. `tools/anim_markup.py` (run by `make animations`)
+  swaps each chapter's `<img>` for the `<video>` and refreshes its step list.
+
 ## 2. What a good animation here looks like
 
 - **Things travel.** A message is an object that moves from the actor that sends it to the
@@ -62,8 +80,9 @@ Chapter 22 (`tools/anim_async.py`) is the reference implementation of all of thi
   `progress`, `bezier` (for arcs).
 - `render(name, tl, draw, height)`: samples at 20 fps, merges identical frames into longer
   holds, rasterises the distinct frames with `rsvg-convert` in parallel, builds one palette
-  for the whole GIF, and writes `src/figures/<name>`. The last 0.6 s cross-fades into the
-  first frame so the loop does not jump.
+  for the whole GIF, and writes `src/figures/<name>`, plus `<stem>.mp4` (same frames,
+  H.264) and `<stem>.json` (duration and chapter times for the step buttons). The last
+  0.6 s cross-fades into the first frame so the loop does not jump.
 - Builders register in the module's `BUILDERS`, and `animations.py` merges them into
   `MOTION`. `make animations` runs them. `lint_animations.py` checks only the old slide
   builders, so motion builders are kept out of `animations.BUILDERS`.
@@ -75,6 +94,7 @@ Workflow:
 MOTION_PREVIEW=/some/scratch/dir python3 tools/anim_async.py frames poll-wake 0 5.5 13
 # render one GIF (about 3 to 5 minutes each)
 python3 tools/animations.py poll-wake
+python3 tools/anim_markup.py          # point the chapter at the new video and steps
 ```
 
 Print the timeline length and chapter times with `tl.now` and `tl.chapters` before
@@ -109,8 +129,9 @@ arcs, flying objects crossing the title, captions wrapping onto a third line.
 
 | Chapter | Animations | State |
 |---|---|---|
-| 22 async | poll-wake, task-queue, await, pin | motion |
 | 20 sockets | tcp-handshake, bdp, epoll | motion |
+| 21 http | http-framing, keep-alive | motion |
+| 22 async | poll-wake, task-queue, await, pin | motion |
 | all others | see `grep -o 'figures/[a-z0-9-]*\.gif' src/*.md` | old slides, to convert |
 
 Update this table when a chapter is converted.

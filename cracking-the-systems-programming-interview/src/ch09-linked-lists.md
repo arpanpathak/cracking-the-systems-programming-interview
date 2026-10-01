@@ -160,6 +160,7 @@ a list of numbers or of strings. `type Link<T> = Box<List<T>>;` gives the boxed 
 ```rust
 impl<T> List<T> {
 {{#include ../../rust-interview-lab/src/bin/singly_linked_list.rs:16:29}}
+    // ...
 }
 ```
 
@@ -170,6 +171,7 @@ Each call waits for the next, so a list of n nodes uses n stack frames. Section 
 
 ```rust
 impl<T> List<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/singly_linked_list.rs:31:49}}
 }
 ```
@@ -437,6 +439,7 @@ names it once, `OptNodeRef<T>`, with a `type` alias. The list keeps a `head`, a 
 ```rust
 impl<T> LinkedList<T> {
 {{#include ../../rust-interview-lab/src/bin/ll.rs:28:69}}
+    // ...
 }
 ```
 
@@ -455,7 +458,9 @@ overlap.
 
 ```rust
 impl<T> LinkedList<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/ll.rs:71:93}}
+    // ...
 }
 ```
 
@@ -469,7 +474,9 @@ tail is looked at without being moved. `map(Rc::downgrade)` turns that reference
 
 ```rust
 impl<T> LinkedList<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/ll.rs:95:125}}
+    // ...
 }
 ```
 
@@ -492,7 +499,9 @@ whose `unwrap` needs no `Debug`.
 
 ```rust
 impl<T> LinkedList<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/ll.rs:127:157}}
+    // ...
 }
 ```
 
@@ -505,6 +514,7 @@ previous node is gone, then clears that node's `next`.
 
 ```rust
 impl<T> LinkedList<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/ll.rs:159:180}}
 }
 ```

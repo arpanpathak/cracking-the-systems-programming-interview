@@ -79,6 +79,7 @@ In each round, the list at position `i` absorbs the list at `i + interval`. The 
 ```rust
 impl MergeKSorted {
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:17:34}}
+    // ...
 }
 ```
 
@@ -105,6 +106,7 @@ The merge of two lists uses a **dummy head** and a **tail pointer** (figure 10.4
 
 ```rust
 impl MergeKSorted {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:36:57}}
 }
 ```
@@ -263,6 +265,7 @@ Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape
 
 ```rust
 impl MergeKSorted {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs:38:76}}
 }
 ```

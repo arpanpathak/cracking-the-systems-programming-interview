@@ -100,7 +100,9 @@ skipped bytes are called **padding**. Figure 15.2 shows two allocations and the 
 
 ```rust
 impl BumpArena {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:27:42}}
+    // ...
 }
 
 {{#include ../../rust-interview-lab/src/problems/bump_allocator.rs:65:70}}

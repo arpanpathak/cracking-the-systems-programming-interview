@@ -13,8 +13,8 @@ with a cycle. An algorithm that is only ever shown succeeding is an algorithm th
 reader cannot debug.
 
 This module holds the five animations that belong to the opening chapters. The
-rest live in `anim_problems`, `anim_structures`, `anim_systems`, `anim_sockets`,
-and `anim_async`.
+rest live in `anim_problems`, `anim_structures`, `anim_systems`, and the motion
+modules `anim_sockets`, `anim_http`, and `anim_async`.
 
     python3 tools/animations.py            # every animation
     python3 tools/animations.py window     # one of them
@@ -23,6 +23,7 @@ and `anim_async`.
 import sys
 
 import anim_async
+import anim_http
 import anim_problems
 import anim_sockets
 import anim_structures
@@ -437,6 +438,7 @@ BUILDERS.update(anim_systems.BUILDERS)
 # BUILDERS because `lint_animations.py` checks slide frames, and these have none.
 MOTION = dict(anim_async.BUILDERS)
 MOTION.update(anim_sockets.BUILDERS)
+MOTION.update(anim_http.BUILDERS)
 
 
 def main(argv):

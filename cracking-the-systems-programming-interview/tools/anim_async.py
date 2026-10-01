@@ -53,7 +53,7 @@ def poll_wake():
     )
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     def poll_trip(bell_rides=True):
         """The executor sends poll(cx), carrying the waker, across to the future."""
@@ -305,11 +305,14 @@ def poll_wake():
                 chip(p, EX_X, DESK_Y - 150, "parked forever", RUST, RUST_LT, 12.5)
 
         # ---- the code
-        code_panel(p, 26, CODE_Y, 232, "executor: block_on", BLOCK_ON, s.ex_code, tint=TEAL)
+        code_panel(p, 26, CODE_Y, 232, "executor: block_on", BLOCK_ON, s.ex_code, tint=TEAL,
+                   reveal=s.timeline.reached('ex_code', t))
         code_panel(p, 270, CODE_Y, 282, "future: Delay::poll", DELAY_POLL, s.dl_code,
-                   size=10.6, strike=4 if s.bug > 0.5 else None, tint=RUST if s.bug > 0.5 else TEAL)
+                   size=10.6, strike=4 if s.bug > 0.5 else None, tint=RUST if s.bug > 0.5 else TEAL,
+                   reveal=s.timeline.reached('dl_code', t))
         code_panel(p, 564, CODE_Y, 230, "timer thread", TIMER, s.tm_code, size=10.8,
-                   lead=15.6, tint=BRASS)
+                   lead=15.6, tint=BRASS,
+                   reveal=s.timeline.reached('tm_code', t))
 
         caption(p, tl, t, 520)
         progress(p, tl, t, total, 606)
@@ -395,7 +398,7 @@ def task_queue():
     tl = Timeline(**init)
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     queue = [1, 2, 3]
     finished = []
@@ -589,9 +592,11 @@ def task_queue():
                    1.0, s["stamp%d" % n], s.timeline.age("ring%d" % n, t), s["lost%d" % n],
                    broken=(n == 1 and s.bug > 0.5))
 
-        code_panel(p, 26, 366, 432, "MiniExecutor::run", RUN, s.run_code, size=10.5, lead=15.2)
+        code_panel(p, 26, 366, 432, "MiniExecutor::run", RUN, s.run_code, size=10.5, lead=15.2,
+                   reveal=s.timeline.reached('run_code', t))
         code_panel(p, 470, 366, 324, "a task is its own waker", WAKE, s.wake_code,
-                   size=10.5, lead=15.2, tint=BRASS)
+                   size=10.5, lead=15.2, tint=BRASS,
+                   reveal=s.timeline.reached('wake_code', t))
         caption(p, tl, t, 532)
         progress(p, tl, t, total, 618)
 
@@ -624,7 +629,7 @@ def await_state():
                   res_label="Pending", res_color=RUST, loop_a=0.0, fail=0.0)
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     def poll_in(n):
         tl.set(poll_n=n, poll_u=0.0)
@@ -929,7 +934,7 @@ def pin_move():
                   code_a=0.0, unpin=0.0, ux=0.0)
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     def show_code(text):
         tl.to(0.2, code_a=0.0)

@@ -66,6 +66,7 @@ directly, because its size would have no end. A `Box` is one pointer, so a node 
 ```rust
 impl Tree {
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:19:35}}
+    // ...
 }
 ```
 
@@ -99,7 +100,9 @@ when a node is visited relative to its children (figure 11.2).
 
 ```rust
 impl Tree {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:37:53}}
+    // ...
 }
 ```
 
@@ -110,6 +113,7 @@ once and passing it down avoids building a new vector at every node.
 
 ```rust
 impl Tree {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:55:86}}
 }
 ```
@@ -167,6 +171,7 @@ removal code uses.
 ```rust
 impl<T: Ord> BST<T> {
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:17:47}}
+    // ...
 }
 ```
 
@@ -198,7 +203,9 @@ Removing a value is the hardest operation, because the tree must keep its orderi
 
 ```rust
 impl<T: Ord> BST<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:49:90}}
+    // ...
 }
 ```
 
@@ -229,7 +236,9 @@ visiting subtrees that cannot contain an answer.
 
 ```rust
 impl<T: Ord> BST<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:92:114}}
+    // ...
 }
 ```
 
@@ -297,7 +306,9 @@ The second implementation writes removal and range queries differently.
 {{#include ../../rust-interview-lab/src/bin/bst_easy.rs:1:4}}
 
 impl<T: Ord> BST<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bst_easy.rs:49:84}}
+    // ...
 }
 ```
 
@@ -325,7 +336,9 @@ a queue that always returns the smallest value.
 
 ```rust
 impl<T: Ord> BST<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/bst_easy.rs:86:102}}
+    // ...
 }
 ```
 
@@ -476,7 +489,9 @@ tree: read a value and a count, then read that many subtrees.
 {{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:1:1}}
 
 impl<T> TreeNode<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:30:47}}
+    // ...
 }
 ```
 
@@ -491,7 +506,9 @@ a tree whose values can become strings gets a `serialize` method.
 
 ```rust
 impl<T> TreeNode<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:49:63}}
+    // ...
 }
 ```
 

@@ -63,6 +63,7 @@ adds them before it checks.
 
 impl TokenBucket {
 {{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:19:30}}
+    // ...
 }
 ```
 
@@ -77,6 +78,7 @@ time, which can jump when the system clock is corrected.
 
 ```rust
 impl TokenBucket {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/rate_limiter.rs:32:49}}
 }
 ```

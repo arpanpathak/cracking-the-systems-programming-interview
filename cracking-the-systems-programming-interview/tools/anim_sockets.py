@@ -71,7 +71,7 @@ def tcp_handshake():
                   echoed_a=0.0, bug=0.0, verdict=0.0, clock="")
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     def send(flag, detail, direction, payload="", dur=1.5):
         tl.set(seg_u=0.0, seg_flag=flag, seg_detail=detail, seg_dir=direction,
@@ -266,9 +266,11 @@ def tcp_handshake():
                      RUST, RUST_LT, 13)
 
         code_panel(p, 26, 372, 390, "client (the test)", CLIENT, s.cl_code, size=10.6,
-                   lead=16.5, strike=2 if s.bug > 0.5 else None, tint="#3b7dd8")
+                   lead=16.5, strike=2 if s.bug > 0.5 else None, tint="#3b7dd8",
+                   reveal=s.timeline.reached('cl_code', t))
         code_panel(p, 428, 372, 366, "server: accept, then handle_connection", SERVER, s.sv_code,
-                   size=10.6, lead=16.5)
+                   size=10.6, lead=16.5,
+                   reveal=s.timeline.reached('sv_code', t))
         caption(p, tl, t, 504)
         progress(p, tl, t, total, 592)
 
@@ -301,7 +303,7 @@ def bdp():
     tl = Timeline(caption="", kind="step", window=4, t0=0.0, pipe_a=1.0, numbers=0.0)
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     def phase(window, label):
         tl.to(0.4, pipe_a=0.0)
@@ -489,7 +491,7 @@ def epoll():
                   stuck=0.0, clock="", ignored=0.0)
 
     def say(text, kind="step"):
-        tl.set(caption=text, kind=kind)
+        tl.say(text, kind)
 
     def arrive(fd, label, dur=0.9):
         tl.set(arr_fd=fd, arr_label=label, arr_u=0.0)
@@ -653,7 +655,8 @@ def epoll():
         if s.events:
             p.text(84, 322, "[" + s.events + "]", 11.5, TEAL, 700, mono=True)
 
-        code_panel(p, 26, 336, W - 52, "event_loop", EVENT_LOOP, s.code, size=10.2, lead=15.2)
+        code_panel(p, 26, 336, W - 52, "event_loop", EVENT_LOOP, s.code, size=10.2, lead=15.2,
+                   reveal=s.timeline.reached('code', t))
         caption(p, tl, t, 522)
         progress(p, tl, t, total, 608)
 

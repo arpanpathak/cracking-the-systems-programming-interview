@@ -293,6 +293,7 @@ explored, and cannot close a loop.
 
 impl<T> Graph<T> {
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:18:37}}
+    // ...
 }
 ```
 
@@ -312,7 +313,9 @@ the `&usize` items of the slice iterator into `usize` values.
 
 ```rust
 impl<T> Graph<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:39:71}}
+    // ...
 }
 ```
 
@@ -324,6 +327,7 @@ check after `pop` is still needed. A node can be pushed by two different nodes b
 
 ```rust
 impl<T> Graph<T> {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:73:91}}
 }
 ```

@@ -137,3 +137,54 @@ figure.anim figcaption b {
 .callout.note { border-left-color: var(--book-brass); }
 .callout > p:first-child strong:first-child { font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif; letter-spacing: 0.06em; }
 .summary { border-top: 3px solid var(--book-navy); margin-top: 2em; }
+
+/* The motion animations are videos, with controls a reader can use to take
+   them at their own pace: pause, a slower speed, a jump to any step, and a
+   mode that stops at the end of each step. */
+figure.anim video.motion {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border: 2px solid var(--book-pale);
+    border-radius: 6px;
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.motion-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 0.9em;
+    margin: 0.5em 0 0.2em 0;
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.8em;
+    text-align: left;
+}
+
+.motion-group { display: inline-flex; flex-wrap: wrap; gap: 0.3em; }
+
+.motion-bar button {
+    font: inherit;
+    padding: 0.25em 0.7em;
+    border: 1px solid #c9d4de;
+    border-radius: 999px;
+    background: #f6f8fa;
+    color: #1d2733;
+    cursor: pointer;
+}
+
+.motion-bar button:hover { border-color: #2f7f86; }
+.motion-bar button:focus-visible { outline: 2px solid #c89b3c; outline-offset: 2px; }
+
+.motion-bar button[aria-pressed="true"],
+.motion-bar button[aria-current="step"] {
+    background: #e3f1ea;
+    border-color: #2f7f86;
+    color: #1d4f54;
+    font-weight: 600;
+}
+
+.motion-bar .motion-play { min-width: 6.5em; font-weight: 600; }
+.motion-stepwise { color: #5b6b7c; cursor: pointer; }

@@ -284,6 +284,7 @@ top of `low`. With an even count, it is the average of the two tops.
 
 impl MedianFinder {
 {{#include ../../rust-interview-lab/src/bin/median_finder.rs:10:26}}
+    // ...
 }
 ```
 
@@ -311,6 +312,7 @@ Each move is one heap operation, so adding a number is O(log n).
 
 ```rust
 impl MedianFinder {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/median_finder.rs:28:37}}
 }
 ```

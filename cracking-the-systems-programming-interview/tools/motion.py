@@ -20,9 +20,11 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import math
 import os
 import pathlib
+import shutil
 import subprocess
 import tempfile
 from concurrent.futures import ProcessPoolExecutor
@@ -120,14 +122,27 @@ class Timeline:
     changes values at the cursor. `event` records a moment, and `age` tells a
     drawing how long ago it happened, which is how one-shot effects like a
     ringing bell or a flash are drawn.
+
+    Pacing is built in, for readers who need time to read before they watch.
+    `say` holds the previous caption until it has been on screen long enough to
+    read slowly, shows the new one, and waits a beat before anything moves.
+    Every scripted duration is also stretched by `pace`.
     """
+
+    pace = 1.2           # motion runs this much slower than it is scripted
+    lead = 0.9           # seconds a new caption is on screen before anything moves
+    read_rate = 0.36     # seconds of reading per word: about 165 words a minute
+    min_read = 2.6       # no caption is on screen for less than this
 
     def __init__(self, **initial):
         self.initial = dict(initial)
-        self.segments: dict[str, list] = {k: [] for k in initial}
+        self.initial.setdefault("caption", "")
+        self.initial.setdefault("kind", "step")
+        self.segments: dict[str, list] = {k: [] for k in self.initial}
         self.events: dict[str, list] = {}
         self.chapters: list[tuple[float, str]] = []
         self.now = 0.0
+        self._said = None
 
     def _at(self, name, t):
         value = self.initial[name]
@@ -154,21 +169,51 @@ class Timeline:
         return self
 
     def to(self, dur, ease=in_out, **values):
+        dur *= self.pace
         self._tween(self.now, dur, ease, values)
         self.now += dur
         return self
 
     def also(self, dur, ease=in_out, delay=0.0, **values):
-        self._tween(self.now + delay, dur, ease, values)
+        self._tween(self.now + delay * self.pace, dur * self.pace, ease, values)
         return self
 
     def wait(self, dur):
-        self.now += dur
+        self.now += dur * self.pace
         return self
 
     def event(self, name, delay=0.0):
-        self.events.setdefault(name, []).append(self.now + delay)
+        self.events.setdefault(name, []).append(self.now + delay * self.pace)
         return self
+
+    def reading_time(self, text):
+        return max(self.min_read, self.read_rate * len(str(text).split()))
+
+    def say(self, text, kind="step"):
+        """Change the narration, but only once the last line has been read."""
+        if self._said is not None:
+            when, previous = self._said
+            self.now = max(self.now, when + self.reading_time(previous))
+        self.set(caption=text, kind=kind)
+        self._said = (self.now, text)
+        self.now += self.lead
+        return self
+
+    def end(self):
+        """When the script is over, including time to read the last caption."""
+        if self._said is None:
+            return self.now
+        when, previous = self._said
+        return max(self.now, when + self.reading_time(previous))
+
+    def reached(self, name, t):
+        """The highest value `name` has taken at or before `t`: how far a code
+        panel's highlight has got, so the lines below it can stay hidden."""
+        best = self.initial[name]
+        for start, _end, _a, b, _ease in self.segments[name]:
+            if start <= t and isinstance(b, (int, float)):
+                best = max(best, b)
+        return best
 
     def chapter(self, label=""):
         self.chapters.append((self.now, label))
@@ -461,11 +506,14 @@ def bezier(p0, p1, p2, u):
 
 
 def code_panel(p, x, y, w, title, lines, active, size=11.2, lead=17.5, strike=None,
-               tint=TEAL, opacity=1.0):
+               tint=TEAL, opacity=1.0, reveal=None):
     """A few lines of code with a highlight bar on the line that is running.
 
     `active` is a float, so the bar can slide between lines; a negative value
     hides it. `strike` crosses out a line, for the variant with a line removed.
+    `reveal` is the last line the reader has been shown: lines below it are
+    drawn as faint bars, so the panel keeps its shape without asking the reader
+    to take in code the animation has not reached yet.
     """
     h = 30 + len(lines) * lead + 8
     with p.group(opacity=opacity):
@@ -478,6 +526,13 @@ def code_panel(p, x, y, w, title, lines, active, size=11.2, lead=17.5, strike=No
         for i, row in enumerate(lines):
             near = active >= 0 and abs(active - i) < 0.5
             ty = y + 28 + i * lead + lead * 0.7
+            if reveal is not None and i > reveal + 0.01 and not near:
+                body = row.strip()
+                if body:
+                    indent = text_width(row[:len(row) - len(row.lstrip())], size, True)
+                    p.rect(x + 16 + indent, ty - size * 0.62, text_width(body, size, True),
+                           size * 0.7, "#eef2f5", "none", 3)
+                continue
             color = INK if near else MUTED
             if strike is not None and i == strike:
                 color = RUST
@@ -517,7 +572,7 @@ def caption(p, tl, t, y, name="caption", kind="kind", width=W - 52, size=16.0, l
     """
     text = tl._at(name, t)
     started, old = tl.changed(name, t)
-    # The first caption is shown at once: frame 0 is the still the PDF prints.
+    # The first caption is shown at once, so the loop opens on a sentence.
     u = 1.0 if started <= 0.0 else clamp((t - started) / 0.3)
     k = tl._at(kind, t)
     fill, edge = {"insight": (BRASS_LT, BRASS), "fail": (RUST_LT, RUST)}.get(k, (STAGE, LINE))
@@ -572,7 +627,8 @@ def progress(p, tl, t, total, y):
 # ------------------------------------------------------------------ render
 
 def _raster(job):
-    svg, width, height, palette_bytes = job
+    svg, width, height, palette_bytes = job[:4]
+    keep = job[4] if len(job) > 4 else None
     from PIL import Image
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -583,6 +639,8 @@ def _raster(job):
         subprocess.run(["rsvg-convert", "-w", str(width), "-h", str(height), "-o", dst, src],
                        check=True)
         im = Image.open(dst).convert("RGB")
+    if keep:
+        im.save(keep, "PNG")
     if palette_bytes is None:
         buf = io.BytesIO()
         im.save(buf, "PNG")
@@ -619,7 +677,7 @@ def render(name, tl, draw, height, tail=1.8, fade=0.6, fps=FPS, scale=SCALE, onl
     """
     from PIL import Image
 
-    total = tl.now + tail
+    total = tl.end() + tail
     width, px_h = int(round(W * scale)), int(round(height * scale))
 
     def frame(t):
@@ -680,8 +738,11 @@ def render(name, tl, draw, height, tail=1.8, fade=0.6, fps=FPS, scale=SCALE, onl
                            dither=Image.Dither.NONE).getpalette()[:3 * (255 - len(exact))]
     palette = [v for c in exact for v in hex_rgb(c)] + grown
 
+    stills = tempfile.mkdtemp(prefix="motion-")
     with ProcessPoolExecutor() as pool:
-        raw = list(pool.map(_raster, [(s, width, px_h, palette) for s in svgs], chunksize=4))
+        raw = list(pool.map(_raster, [(s, width, px_h, palette,
+                                        os.path.join(stills, "f%05d.png" % i))
+                                       for i, s in enumerate(svgs)], chunksize=4))
     images = []
     for size, data in raw:
         im = Image.frombytes("P", size, data)
@@ -692,6 +753,32 @@ def render(name, tl, draw, height, tail=1.8, fade=0.6, fps=FPS, scale=SCALE, onl
     OUT.mkdir(parents=True, exist_ok=True)
     images[0].save(OUT / name, save_all=True, append_images=images[1:], duration=waits,
                    loop=0, optimize=True, disposal=1)
-    print("  %s: %d frames, %.1f s, %.1f MB" % (name, len(images), total,
-                                               (OUT / name).stat().st_size / 1e6))
+    video = OUT / name.replace(".gif", ".mp4")
+    _video(stills, waits, video)
+    shutil.rmtree(stills, ignore_errors=True)
+    (OUT / name.replace(".gif", ".json")).write_text(json.dumps({
+        "duration": round(total, 2),
+        "chapters": [[round(when, 2), label] for when, label in tl.chapters],
+    }) + "\n")
+    print("  %s: %d frames, %.1f s, gif %.1f MB, mp4 %.1f MB" % (
+        name, len(images), total, (OUT / name).stat().st_size / 1e6, video.stat().st_size / 1e6))
     return OUT / name
+
+
+def _video(stills, waits, path):
+    """The same frames as an MP4, which a reader can pause, scrub, and slow down.
+
+    The frames are held for the same times as in the GIF, through ffmpeg's
+    concat demuxer, and resampled to a constant 20 frames a second.
+    """
+    listing = os.path.join(stills, "frames.txt")
+    names = sorted(f for f in os.listdir(stills) if f.endswith(".png"))
+    with open(listing, "w") as fh:
+        for f, ms in zip(names, waits):
+            fh.write("file '%s'\nduration %.3f\n" % (os.path.join(stills, f), ms / 1000.0))
+        fh.write("file '%s'\n" % os.path.join(stills, names[-1]))
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                    "-i", listing, "-vf",
+                    "fps=%d,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p" % FPS,
+                    "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-tune", "animation",
+                    "-movflags", "+faststart", str(path)], check=True)

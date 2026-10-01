@@ -148,6 +148,7 @@ can use `?` and `Box<dyn Error>` with it.
 
 ```rust
 impl ThreadPool {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:63:82}}
 }
 
@@ -218,6 +219,7 @@ Each outcome increments one of two atomic counters, `completed` or `panicked`.
 ```rust
 impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:73:105}}
+    // ...
 }
 ```
 
@@ -233,6 +235,7 @@ running.
 
 ```rust
 impl ThreadPool {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:119:135}}
 }
 

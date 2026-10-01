@@ -99,7 +99,9 @@ where
     K: Eq + Hash + Clone,
     V: Clone,
 {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/lru_cache.rs:49:70}}
+    // ...
 }
 ```
 
@@ -118,6 +120,7 @@ where
     K: Eq + Hash + Clone,
     V: Clone,
 {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/lru_cache.rs:72:86}}
 }
 ```
@@ -201,6 +204,7 @@ where
     K: Hash + Eq + Clone,
 {
 {{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:51:101}}
+    // ...
 }
 ```
 
@@ -226,6 +230,7 @@ impl<K, V> LruCache<K, V>
 where
     K: Hash + Eq + Clone,
 {
+    // ...
 {{#include ../../rust-interview-lab/src/problems/lru_cache_easy.rs:103:147}}
 }
 ```
@@ -289,7 +294,9 @@ This version also fixes the key and value types to `i32`. `i32` is `Copy`, so th
 {{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs:20:20}}
 
 impl LruCache {
+    // ...
 {{#include ../../rust-interview-lab/src/bin/lru_cache_modular.rs:63:94}}
+    // ...
 }
 ```
 

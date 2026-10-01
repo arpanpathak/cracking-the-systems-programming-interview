@@ -31,6 +31,7 @@ diagram-figures:
 ## The animated GIFs, written by tools/animations.py
 animations:
 	$(PYTHON) tools/animations.py
+	$(PYTHON) tools/anim_markup.py
 
 ## Check every figure for a label that overflows or collides
 lint-figures:

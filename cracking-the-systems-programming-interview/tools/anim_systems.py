@@ -1,9 +1,9 @@
 """Animations for the concurrency and network chapters.
 
 These picture the runtime behaviour the chapters describe: an atomic exchange, a
-lock order that deadlocks, a bounded buffer that blocks a producer, and HTTP
-body framing. The sockets and async chapters are drawn frame by frame instead,
-in `anim_sockets` and `anim_async`.
+lock order that deadlocks, and a bounded buffer that blocks a producer. The
+sockets, HTTP, and async chapters are drawn frame by frame instead, in
+`anim_sockets`, `anim_http`, and `anim_async`.
 
 Each frame names the state of every actor and shows the one thing that changed,
 so a reader can follow a race between two threads the way they would follow a
@@ -310,71 +310,9 @@ def token_bucket():
             holds(len(steps), longer=(4, 5)))
 
 
-# ---------------------------------------------------- HTTP framing (21.1)
-
-def http_framing():
-    """How the headers decide where the body ends."""
-    steps = [
-        ("cl", "POST /v1/jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\nhello",
-         "body 5 bytes", TEAL,
-         "The head ends at the first blank line. Content-Length says the body is exactly 5 bytes: hello."),
-        ("cl", "POST /v1/jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\nhelloGET /x HTTP/1.1...",
-         "body 5 bytes", TEAL,
-         "The parser takes 5 body bytes, so the next request starts exactly there and nothing is left over."),
-        ("chunked", "POST /v1/jobs HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n",
-         "size CRLF data CRLF", TEAL,
-         "There is no Content-Length. Each chunk is a hex size, CRLF, the data, CRLF, and a size of 0 ends the body."),
-        ("both", "POST /v1/jobs HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\nhello",
-         "two rules, one message", RUST,
-         "Both headers are present. A proxy might frame by Content-Length while the back end frames by chunked."),
-        ("reject", "400 Bad Request\r\nConnection: close",
-         "refused", RUST,
-         "The parser refuses the request and closes the connection, so the two readings can never disagree."),
-    ]
-
-    def make(step, height=None, rows=0, index=0):
-        kind, text, verdict, vcolor, line = step
-        last = step is steps[-1]
-        danger = kind in ("both",)
-        f = Frame(
-            "HTTP/1.1 body framing: the headers decide where the message ends",
-            sub="When two rules disagree, one request can be read as two. The parser refuses that.",
-            diagram=250,
-            legend=[("one reading", TEAL), ("two readings", RUST)],
-            step=line,
-            note="The boundary of a message is a decision the headers make, not something the bytes carry.",
-            pairs=[("framing", {"cl": "Content-Length", "chunked": "chunked", "both": "ambiguous",
-                                "reject": "rejected"}[kind], RUST if danger or kind == "reject" else TEAL)],
-            insight=("The parser takes exactly the five body bytes, so the next request starts "
-                     "there and nothing is left over.") if index == 1 else None,
-            fails=("Both a length and a chunked rule are present, so two readers can disagree "
-                   "about where the body ends. The parser rejects the request.") if last else None,
-            at=(index, len(steps)),
-            height=height, insight_rows=rows,
-        )
-        t = f.top
-        lines = len(text.split("\r\n"))
-        y = t + 30 + lines * 24 + 14
-        f.rect(PAD - 4, t + 6, CONTENT + 8, lines * 24 + 22,
-               PINK if kind == "reject" else PALE,
-               RUST if kind == "reject" else BORDER, 6, width=1.4)
-        for i, chunk in enumerate(text.split("\r\n")):
-            f.text(PAD, t + 30 + i * 24, chunk, T_NOTE, INK, mono=True)
-        f.cell(PAD, y, 340, 40, verdict, PINK if danger or kind == "reject" else GREEN,
-               RUST if danger or kind == "reject" else TEAL, size=T_MARK + 1, mono=False,
-               color=RUST if danger or kind == "reject" else INK)
-        if danger:
-            f.text(PAD + 360, y + 26, "a proxy and a server can disagree here", T_MARK, RUST)
-        return f
-
-    publish("ch21-http-framing.gif", frames(make, steps),
-            holds(len(steps), longer=(1, len(steps) - 1)))
-
-
 BUILDERS = {
     "spin-lock": spin_lock,
     "deadlock": deadlock,
     "bounded-buffer": bounded_buffer,
     "token-bucket": token_bucket,
-    "http-framing": http_framing,
 }

@@ -75,7 +75,26 @@ This paragraph shows the target sentence length and tone.
 > old one. This is why a reference into a vector cannot be held across a `push`. The compiler rejects
 > such code because the push may move every element.
 
-## 7. Animations
+## 7. Code in the chapters
+
+Build intuition before code, and show code in small pieces.
+
+- Before each excerpt, say in one plain sentence what the code is for. Then show only the
+  lines that do that one thing, then explain them. A new concept never arrives as a whole
+  file.
+- The complete file appears once, at the end of the chapter, in "The complete programs".
+- Excerpts are line-ranged includes. Run `python3 tools/excerpts.py wrap` after adding one:
+  it wraps an excerpt that starts inside a block with its enclosing `impl` or `fn` header,
+  marks skipped code with `// ...`, and closes the braces. Run
+  `python3 tools/excerpts.py remap` after changing or formatting any source in
+  `rust-interview-lab`: it moves every range and caption to where the code now is.
+  `python3 tools/excerpts.py check` must report no problems.
+- The first excerpt from a file in a chapter opens with that file's `use` block, so the
+  reader sees where every type comes from.
+- The sources are formatted with `cargo +nightly fmt` (see `rust-interview-lab/rustfmt.toml`):
+  nested `use std::{...}` groups, and method chains broken one call per line.
+
+## 8. Animations
 
 Read `tools/ANIMATIONS.md` before adding or changing an animation. Animations are smooth
 motion built with `tools/motion.py`, not keyframe slides, and they target the HTML edition.
