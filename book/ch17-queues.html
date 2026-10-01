@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f144713.js";
+            window.path_to_searchindex_js = "searchindex-662f4151.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -256,39 +256,15 @@ lock is poisoned, so in that case the item is silently lost. Section 17.4 shows 
 <p><code>wait_while</code> contains the <code>while</code> loop that section 16.5 wrote by hand. It checks the condition, waits if it is
 true, and checks again after each wakeup. It returns the guard when the queue is not empty. The <code>.ok()?</code> turns a
 poisoned lock into <code>None</code>.</p>
-<p class="listing"><b>Listing 17.2</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+<p>Animation 17.1 follows one item from a producer to a consumer that is asleep in <code>wait_while</code>. Then it takes out
+<code>notify_one</code>.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch17-queue-wait.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A producer robot, a consumer robot, the queue between them, and a badge showing which thread holds the lock. The consumer calls pop on an empty queue, takes the lock, and wait_while puts it to sleep with the lock released. The producer takes the lock, pushes 7, and calls notify_one, which rings the consumer awake. The consumer wakes holding the lock, checks again, and pops 7. Last, with notify_one struck out, the producer pushes 8 and returns, and the consumer sleeps forever beside a full queue." data-chapters="[[0.0, &quot;empty&quot;], [8.7, &quot;push&quot;], [31.62, &quot;no notify&quot;]]"><img src="figures/ch17-queue-wait.gif" alt="A producer robot, a consumer robot, the queue between them, and a badge showing which thread holds the lock. The consumer calls pop on an empty queue, takes the lock, and wait_while puts it to sleep with the lock released. The producer takes the lock, pushes 7, and calls notify_one, which rings the consumer awake. The consumer wakes holding the lock, checks again, and pops 7. Last, with notify_one struck out, the producer pushes 8 and returns, and the consumer sleeps forever beside a full queue."></video>
+<figcaption><b>Animation 17.1</b> <code>wait_while</code> sleeps with the lock released and checks again when woken. Without <code>notify_one</code>, the item waits in the queue and the consumer never wakes.</figcaption>
+</figure>
+<p class="listing"><b>Listing 17.2</b> <code>main</code> (lines 31 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
-<pre><code class="language-rust">use std::{
-    collections::VecDeque,
-    sync::{Arc, Condvar, Mutex},
-    thread,
-};
-
-#[derive(Default)]
-struct SyncQueue {
-    items: Mutex&lt;VecDeque&lt;i32&gt;&gt;,
-    not_empty: Condvar,
-}
-
-impl SyncQueue {
-    fn push(&amp;self, item: i32) {
-        if let Ok(mut q) = self.items.lock() {
-            q.push_back(item);
-            self.not_empty.notify_one();
-        }
-    }
-
-    fn pop(&amp;self) -&gt; Option&lt;i32&gt; {
-        let q = self.items.lock().ok()?;
-        let mut q = self
-            .not_empty
-            .wait_while(q, |q| q.is_empty())
-            .ok()?;
-        q.pop_front()
-    }
-}
-
-fn main() {
+<pre><code class="language-rust">fn main() {
     let q = Arc::new(SyncQueue::default());
 
     // producer
@@ -431,7 +407,7 @@ A capacity of 0 is rejected, because nothing could ever be pushed.</p>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch17-bounded-buffer.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A producer, a consumer, and a buffer with three slots. The producer pushes 1, 2, and 3. push(4) finds the buffer full and waits on not_full. The consumer pops 1 and calls notify_one, the producer wakes, checks again, and pushes 4. The consumer then drains the buffer. Last, a second producer takes the freed slot first; with if in place of while, the woken producer pushes a fourth item into three slots." data-chapters="[[0.0, &quot;fill&quot;], [10.9, &quot;full&quot;], [27.92, &quot;drain&quot;], [38.22, &quot;if, not while&quot;]]"><img src="figures/ch17-bounded-buffer.gif" alt="A producer, a consumer, and a buffer with three slots. The producer pushes 1, 2, and 3. push(4) finds the buffer full and waits on not_full. The consumer pops 1 and calls notify_one, the producer wakes, checks again, and pushes 4. The consumer then drains the buffer. Last, a second producer takes the freed slot first; with if in place of while, the woken producer pushes a fourth item into three slots."></video>
-<figcaption><b>Animation 17.1</b> The producer sleeps while the buffer is full and wakes when a pop makes room. A fast producer cannot get more than three items ahead of the consumer.</figcaption>
+<figcaption><b>Animation 17.2</b> The producer sleeps while the buffer is full and wakes when a pop makes room. A fast producer cannot get more than three items ahead of the consumer.</figcaption>
 </figure>
 <p>The line <code>guard = self.not_full.wait(guard).unwrap();</code> looks odd at first. <code>wait</code> takes the guard by value,
 because it must release the mutex. When the thread wakes, <code>wait</code> locks the mutex again and returns a new guard. The
@@ -472,113 +448,9 @@ program would be correct either way.</p>
 <p><code>pop</code> mirrors <code>push</code>. It waits on <code>not_empty</code> while the queue is empty, removes the front item, unlocks, and wakes
 one producer through <code>not_full</code>. The <code>unwrap()</code> on <code>pop_front()</code> cannot fail. The loop ended because the queue was not empty, and the
 thread has held the lock since that check.</p>
-<p class="listing"><b>Listing 17.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.6</b> <code>main</code> (lines 105 to 150). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
-<pre><code class="language-rust">use std::{
-    collections::VecDeque,
-    sync::{Arc, Condvar, Mutex},
-    thread,
-    time::Duration,
-};
-
-// A thread-safe bounded buffer (a "shelf" that holds at most `capacity` items).
-//
-// Three fields do all the work:
-//   - `inner`     : the actual VecDeque, wrapped in a Mutex so only one thread
-//                   touches it at a time.
-//   - `not_empty` : waiting room for CONSUMERS. A consumer sleeps here when the
-//                   shelf is empty. Producers ring this bell after pushing.
-//   - `not_full`  : waiting room for PRODUCERS. A producer sleeps here when the
-//                   shelf is full. Consumers ring this bell after popping.
-//
-// Two separate condvars so we always wake the RIGHT kind of thread.
-// One shared condvar would cause livelock: consumers waking consumers,
-// producers waking producers, everyone re-checking and going back to sleep.
-struct BoundedQueue&lt;T&gt; {
-    inner: Mutex&lt;VecDeque&lt;T&gt;&gt;,
-    capacity: usize,
-    not_empty: Condvar,
-    not_full: Condvar,
-}
-
-impl&lt;T&gt; BoundedQueue&lt;T&gt; {
-    fn new(capacity: usize) -&gt; Self {
-        // Capacity 0 makes no sense: no producer could ever push,
-        // and every pop would block forever.
-        assert!(capacity &gt; 0, "capacity must be &gt; 0");
-
-        Self {
-            inner: Mutex::new(VecDeque::with_capacity(capacity)),
-            capacity,
-            not_empty: Condvar::new(),
-            not_full: Condvar::new(),
-        }
-    }
-
-    fn push(&amp;self, item: T) {
-        // Acquire the shelf lock. `guard` is our exclusive handle to the deque.
-        let mut guard = self.inner.lock().unwrap();
-
-        // Wait while the shelf is full.
-        //
-        // Why `while` and not `if`:
-        //   1. Condvars are allowed to wake up for no reason (spurious wakeup).
-        //   2. Even on a real wakeup, another producer may have raced us and
-        //      taken the free slot before we reacquired the lock.
-        // So we must re-check the condition every time we wake.
-        //
-        // Why `guard = ...wait(guard)`:
-        //   `wait` consumes the guard (it releases the lock on our behalf),
-        //   puts us to sleep, then re-locks and hands us a NEW guard.
-        //   The reassignment just means "here's my fresh key to the shelf."
-        //   The VecDeque inside is the same one — we're not replacing the queue.
-        while guard.len() == self.capacity {
-            guard = self.not_full.wait(guard).unwrap();
-        }
-
-        // We have room. Add the item to the back of the deque.
-        guard.push_back(item);
-
-        // Release the lock BEFORE ringing the bell.
-        // This is an optimization, not a correctness requirement.
-        // If we notify while still holding the lock, the thread we wake will
-        // immediately block on `lock()` until we release it — a wasted wakeup.
-        drop(guard);
-
-        // Ring the "not empty" bell: one consumer can now make progress.
-        // `notify_one` (not `notify_all`) because exactly ONE item was added,
-        // so only ONE consumer can succeed. Waking all of them = stampede.
-        self.not_empty.notify_one();
-    }
-
-    fn pop(&amp;self) -&gt; T {
-        // Acquire the shelf lock.
-        let mut guard = self.inner.lock().unwrap();
-
-        // Wait while the shelf is empty.
-        // Same `while` reasoning as push: spurious wakeups + races with other
-        // consumers who may have grabbed the item before we reacquired the lock.
-        while guard.is_empty() {
-            guard = self.not_empty.wait(guard).unwrap();
-        }
-
-        // Safe to unwrap: the `while` loop guarantees the deque is non-empty,
-        // and we hold the lock so nobody can change that between the check
-        // and this line.
-        let item = guard.pop_front().unwrap();
-
-        // Release before notifying (same optimization as in push).
-        drop(guard);
-
-        // Ring the "not full" bell: one producer can now make progress.
-        // Exactly one slot opened, so wake exactly one producer.
-        self.not_full.notify_one();
-
-        item
-    }
-}
-
-fn main() {
+<pre><code class="language-rust">fn main() {
     // Small capacity (3) so that with two slow consumers you can actually
     // SEE producers block: the queue fills up and push() sleeps in `not_full`.
     let queue = Arc::new(BoundedQueue::new(3));
@@ -731,7 +603,756 @@ method, which replaces the <code>PoisonError</code> with <code>QueuePoisonedErro
 }</code></pre>
 <p>Each <code>lock()</code> and <code>wait()</code> call ends in <code>.map_poison()?</code>. The logic is the same as listing 17.4, and each method
 now returns a <code>Result</code>.</p>
-<p class="listing"><b>Listing 17.9</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+<p>The complete program is listing 17.19 at the end of the chapter.</p>
+<p>The threads in <code>main</code> handle an error by printing it with <code>dbg!</code> and leaving their loop with <code>break</code>.</p>
+<p>The second test poisons the queue on purpose. It spawns a thread that locks the inner mutex and panics while
+holding it. A test in the same file can reach the private <code>inner</code> field. After that, both <code>push</code> and <code>pop</code> must
+return <code>Err(QueuePoisonedError)</code>.</p>
+<pre><code class="language-text">$ cargo test --bin bounded_buffer_with_error_handling
+running 2 tests
+test tests::test_zero_capacity_panics - should panic ... ok
+test tests::test_queue_poisoning_on_thread_panic ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+</code></pre>
+<h3 id="1742-a-boxed-error"><a class="header" href="#1742-a-boxed-error">17.4.2 A boxed error</a></h3>
+<p>The third version returns a general error type:</p>
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    error::Error,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+    time::Duration,
+};
+
+type RuntimeError = Box&lt;dyn Error + Send + Sync&gt;;</code></pre>
+<p><code>Box&lt;dyn Error + Send + Sync&gt;</code> can hold any error type. <code>+ Send + Sync</code> is needed because the error travels
+between threads: each thread returns a <code>Result</code>, and <code>join</code> hands it to the main thread.</p>
+<p class="listing"><b>Listing 17.9</b> <code>push</code> (lines 29 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+
+<pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    // ...
+    fn push(&amp;self, item: T) -&gt; Result&lt;(), RuntimeError&gt; {
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| e.to_string())?;
+
+        while guard.len() == self.capacity {
+            guard = self
+                .not_full
+                .wait(guard)
+                .map_err(|e| e.to_string())?;
+        }
+
+        guard.push_back(item);
+        drop(guard);
+        self.not_empty.notify_one();
+        Ok(())
+    }
+    // ...
+}</code></pre>
+<p>Why <code>.map_err(|e| e.to_string())</code> instead of <code>?</code> directly? A <code>PoisonError</code> contains the guard, and the guard
+borrows the mutex. A <code>Box&lt;dyn Error&gt;</code> must not borrow anything local, so the poison error cannot go into one.
+<code>to_string()</code> turns it into a <code>String</code>, which owns its text. Then <code>?</code> converts the <code>String</code> into the boxed error,
+through a <code>From</code> implementation in the standard library.</p>
+<p class="listing"><b>Listing 17.10</b> <code>main</code> (lines 72 to 111). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+
+<pre><code class="language-rust">fn main() -&gt; Result&lt;(), RuntimeError&gt; {
+    let queue = Arc::new(BoundedQueue::new(3));
+
+    let producers = (0..2).map(|p| {
+        let q = Arc::clone(&amp;queue);
+        thread::spawn(move || -&gt; Result&lt;(), RuntimeError&gt; {
+            for i in 0..5 {
+                let item = format!("p{}:item{}", p, i);
+                println!("  [producer {}] pushing {}", p, item);
+                q.push(item)?;
+                thread::sleep(Duration::from_millis(30));
+            }
+            Ok(())
+        })
+    });
+
+    let consumers = (0..2).map(|c| {
+        let q = Arc::clone(&amp;queue);
+        thread::spawn(move || -&gt; Result&lt;(), RuntimeError&gt; {
+            for _ in 0..5 {
+                let item = q.pop()?;
+                println!("[consumer {}] got {}", c, item);
+                thread::sleep(Duration::from_millis(60));
+            }
+            Ok(())
+        })
+    });
+
+    let handles: Vec&lt;_&gt; = producers.chain(consumers).collect();
+
+    for h in handles {
+        match h.join() {
+            Ok(r) =&gt; println!("Thread joined : {:#?}", r),
+            Err(e) =&gt; eprintln!("Error occured : {:#?}", e),
+        }
+    }
+
+    println!("done");
+    Ok(())
+}</code></pre>
+<p><code>main</code> builds the threads with two iterator chains, <code>producers</code> and <code>consumers</code>. These are lazy: no thread starts
+until something consumes them. <code>producers.chain(consumers).collect()</code> starts all four threads while building the
+<code>Vec</code>, and only then does the loop join them.</p>
+<p>Each thread’s closure is written <code>move || -&gt; Result&lt;(), RuntimeError&gt; { ... }</code>, with its return type, so the <code>?</code>
+inside it knows what error type to convert to. <code>join()</code> returns <code>Ok(r)</code>, where <code>r</code> is the thread’s own <code>Result</code>.</p>
+<pre><code class="language-text">$ cargo run --bin bounded_buffer_error_propagation
+  [producer 1] pushing p1:item0
+  [producer 0] pushing p0:item0
+[consumer 1] got p1:item0
+[consumer 0] got p0:item0
+  [producer 0] pushing p0:item1
+  [producer 1] pushing p1:item1
+[consumer 1] got p0:item1
+[consumer 0] got p1:item1
+  [producer 0] pushing p0:item2
+  [producer 1] pushing p1:item2
+  [producer 0] pushing p0:item3
+  [producer 1] pushing p1:item3
+[consumer 0] got p1:item2
+[consumer 1] got p0:item2
+  [producer 0] pushing p0:item4
+  [producer 1] pushing p1:item4
+Thread joined : Ok(
+    (),
+)
+[consumer 0] got p1:item3
+[consumer 1] got p0:item3
+Thread joined : Ok(
+    (),
+)
+[consumer 1] got p0:item4
+[consumer 0] got p1:item4
+Thread joined : Ok(
+    (),
+)
+Thread joined : Ok(
+    (),
+)
+done
+</code></pre>
+<p>The join messages appear between the consumer lines, because <code>main</code> joins the producers first, while the
+consumers are still running.</p>
+<h2 id="175-many-producers-and-consumers-with-wait_while"><a class="header" href="#175-many-producers-and-consumers-with-wait_while">17.5 Many producers and consumers with <code>wait_while</code></a></h2>
+<p>The next version is the bounded buffer written more compactly, with <code>wait_while</code> for both waits. Its <code>main</code> uses
+scoped threads, so no <code>Arc</code> is needed.</p>
+<p>The type is the same as in section 17.3. It holds a <code>VecDeque</code> behind a <code>Mutex</code>, a capacity, and one <code>Condvar</code>
+for each thing a thread can wait for:</p>
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    sync::{Condvar, Mutex},
+    thread,
+};
+
+pub struct BoundedBuffer&lt;T&gt; {
+    queue: Mutex&lt;VecDeque&lt;T&gt;&gt;,
+    capacity: usize,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    pub fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+
+        Self {
+            queue: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>push</code> waits while the queue is full. <code>wait_while</code> takes the guard and a condition, and loops for you. It sleeps
+while the condition is true, and returns the guard once it is false. The <code>while</code> loop of section 17.3 is inside
+it, so a spurious wakeup is handled the same way.</p>
+<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    // ...
+    /// Blocks while the buffer is full.
+    pub fn push(&amp;self, item: T) {
+        let cap = self.capacity;
+
+        let mut queue = self.queue.lock().unwrap();
+        queue = self
+            .not_full
+            .wait_while(queue, |q| q.len() &gt;= cap)
+            .unwrap();
+
+        queue.push_back(item);
+        drop(queue);
+
+        self.not_empty.notify_one();
+    }
+    // ...
+}</code></pre>
+<p><code>push</code> reads <code>self.capacity</code> into a local <code>cap</code> before the closure <code>|q| q.len() &gt;= cap</code>. The closure then
+captures a <code>usize</code> instead of borrowing <code>self</code>. After pushing, <code>drop(queue)</code> releases the lock before
+<code>notify_one</code>, so the woken consumer does not wake only to wait for the lock.</p>
+<p><code>pop</code> is the mirror image: it waits while the queue is empty, takes the front item, and wakes one producer.</p>
+<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
+    // ...
+    /// Blocks while the buffer is empty.
+    pub fn pop(&amp;self) -&gt; T {
+        let mut queue = self.queue.lock().unwrap();
+        queue = self
+            .not_empty
+            .wait_while(queue, |q| q.is_empty())
+            .unwrap();
+
+        let item = queue.pop_front().unwrap();
+        self.not_full.notify_one();
+        item
+    }
+}</code></pre>
+<p><strong>MPMC</strong> stands for multiple producers, multiple consumers. In <code>main</code>, four producers push 10 items each, and two
+consumers pop 20 each:</p>
+<pre><code class="language-rust">fn main() {
+    let buffer = BoundedBuffer::&lt;(usize, usize)&gt;::new(8);
+    let buffer = &amp;buffer;
+
+    const PRODUCERS: usize = 4;
+    const CONSUMERS: usize = 2;
+    const PER_PRODUCER: usize = 10;
+    const PER_CONSUMER: usize = PRODUCERS * PER_PRODUCER / CONSUMERS;
+
+    thread::scope(|s| {
+        for p in 0..PRODUCERS {
+            s.spawn(move || {
+                for i in 0..PER_PRODUCER {
+                    buffer.push((p, i));
+                }
+            });
+        }
+
+        for c in 0..CONSUMERS {
+            s.spawn(move || {
+                for _ in 0..PER_CONSUMER {
+                    let item = buffer.pop();
+                    println!("consumer {c}: {item:?}");
+                }
+            });
+        }
+    });
+}</code></pre>
+<p><code>PER_CONSUMER</code> is computed from the other constants, so every pushed item is popped and every thread finishes.</p>
+<p>The complete program is listing 17.21 at the end of the chapter.</p>
+<p><code>let buffer = &amp;buffer;</code> replaces the buffer with a reference to it. Each <code>move</code> closure then copies the reference
+into its thread. The scope guarantees that the buffer outlives all the threads.</p>
+<pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer
+consumer 1: (3, 0)
+consumer 1: (2, 0)
+consumer 0: (1, 0)
+consumer 0: (3, 2)
+consumer 0: (3, 3)
+...
+consumer 0: (3, 8)
+consumer 0: (0, 9)
+consumer 0: (2, 9)
+</code></pre>
+<p>The full output has 40 lines. Each item is a <code>(producer, index)</code> pair. Across the whole output, each producer’s
+indexes appear in increasing order, but the producers are mixed together. Which consumer prints an item depends
+on which one the operating system happened to wake.</p>
+<h2 id="176-closing-a-queue"><a class="header" href="#176-closing-a-queue">17.6 Closing a queue</a></h2>
+<p>Every version so far has one problem. A consumer loop needs to know when to stop. The demos stop after a fixed
+count, but a real consumer does not know how many items will come. It calls <code>pop</code> in a loop, and when the
+producers finish, <code>pop</code> waits forever.</p>
+<p>The library version adds a way to <strong>close</strong> the queue (figure 17.5).</p>
+<figure>
+<img src="figures/queue-close.svg" alt="close sets closed and notifies all waiters on both condvars. push after close returns Err with the item. pop with items left returns Some. pop on an empty closed queue returns None.">
+<figcaption><b>Figure 17.5</b> What each operation does after <code>close</code>.</figcaption>
+</figure>
+<p class="listing"><b>Listing 17.11</b> The state (lines 16 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    sync::{Condvar, Mutex},
+};
+
+struct State&lt;T&gt; {
+    items: VecDeque&lt;T&gt;,
+    capacity: usize,
+    closed: bool,
+}
+
+/// A bounded MPMC queue. Share it behind `Arc`; all methods take `&amp;self`.
+pub struct BoundedQueue&lt;T&gt; {
+    state: Mutex&lt;State&lt;T&gt;&gt;,
+    not_empty: Condvar,
+    not_full: Condvar,
+}</code></pre>
+<p>The mutex now protects a small struct: the items, the capacity, and a <code>closed</code> flag. The flag must be inside the
+mutex, because threads check it together with the items.</p>
+<p class="listing"><b>Listing 17.12</b> <code>push</code> and <code>pop</code> (lines 47 to 94).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    // ...
+    /// Push an item, blocking while the queue is full.
+    ///
+    /// Returns `Err(item)` if the queue is closed, so the caller keeps ownership
+    /// instead of losing the value.
+    pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
+        loop {
+            if state.closed {
+                return Err(item);
+            }
+            if state.items.len() &lt; state.capacity {
+                state.items.push_back(item);
+                self.not_empty.notify_one();
+                return Ok(());
+            }
+            state = self
+                .not_full
+                .wait(state)
+                .expect("queue mutex poisoned");
+        }
+    }
+
+    /// Pop an item, blocking while the queue is empty.
+    ///
+    /// Returns `None` once the queue is closed and drained, which is how a
+    /// consumer loop terminates cleanly.
+    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
+        loop {
+            if let Some(item) = state.items.pop_front() {
+                self.not_full.notify_one();
+                return Some(item);
+            }
+            if state.closed {
+                return None;
+            }
+            state = self
+                .not_empty
+                .wait(state)
+                .expect("queue mutex poisoned");
+        }
+    }
+    // ...
+}</code></pre>
+<p>Both methods use a <code>loop</code> that checks every condition after each wakeup.</p>
+<p><code>push</code> returns <code>Result&lt;(), T&gt;</code>. If the queue is closed, it returns <code>Err(item)</code>, handing the item back. The value
+is not lost, and the caller decides what to do with it.</p>
+<p><code>pop</code> returns <code>Option&lt;T&gt;</code>. It checks for an item before it checks <code>closed</code>, so a closed queue still gives up the
+items already in it. Only a closed queue that is empty returns <code>None</code>. A consumer can therefore loop with
+<code>while let Some(item) = queue.pop()</code>, and the loop ends after the last item.</p>
+<p class="listing"><b>Listing 17.13</b> <code>close</code> (lines 109 to 122).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    // ...
+    /// Close the queue.
+    ///
+    /// Pending and future `pop` calls return `None` after the queue drains, and
+    /// future `push` calls fail. Idempotent.
+    pub fn close(&amp;self) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
+        state.closed = true;
+        drop(state);
+        self.not_empty.notify_all();
+        self.not_full.notify_all();
+    }
+    // ...
+}</code></pre>
+<p><code>close</code> sets the flag and wakes every waiting thread on both condition variables with <code>notify_all</code>. Each woken
+thread sees <code>closed</code> in its loop and returns. Calling <code>close</code> twice does no harm. An operation that gives the same
+result when repeated is called <strong>idempotent</strong>.</p>
+<p>Animation 17.3 closes a full queue while a producer waits in <code>push</code>. Then it closes a queue without waking
+anyone.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch17-queue-close.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs." data-chapters="[[0.0, &quot;full&quot;], [8.22, &quot;close&quot;], [25.62, &quot;drain&quot;], [36.18, &quot;no notify_all&quot;]]"><img src="figures/ch17-queue-close.gif" alt="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs."></video>
+<figcaption><b>Animation 17.3</b> <code>close</code> sets the flag and wakes every waiter. <code>push</code> hands its item back, and <code>pop</code> drains the queue before it returns <code>None</code>. A close that wakes nobody hangs the shutdown.</figcaption>
+</figure>
+<p>The complete file, with its tests, is listing 17.22 at the end of the chapter.</p>
+<p>The tests check the four promises:</p>
+<ul>
+<li><code>preserves_order_across_threads</code> pushes 0 to 999 from one thread and pops them on another. They must arrive
+in order, and the consumer’s <code>while let</code> loop must end after <code>close</code>.</li>
+<li><code>never_exceeds_capacity</code> records the largest length seen, with a slow consumer. It must never pass 4.</li>
+<li><code>close_wakes_a_blocked_consumer</code> starts a consumer on an empty queue, waits 20 ms so it is asleep, and closes
+the queue. The consumer must return <code>None</code> instead of sleeping forever.</li>
+<li><code>push_after_close_returns_the_item</code> checks that <code>push</code> hands the item back.</li>
+</ul>
+<pre><code class="language-text">$ cargo test --lib problems::bounded_queue
+running 4 tests
+test problems::bounded_queue::tests::push_after_close_returns_the_item ... ok
+test problems::bounded_queue::tests::preserves_order_across_threads ... ok
+test problems::bounded_queue::tests::never_exceeds_capacity ... ok
+test problems::bounded_queue::tests::close_wakes_a_blocked_consumer ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
+</code></pre>
+<h2 id="177-a-ring-buffer-without-a-lock"><a class="header" href="#177-a-ring-buffer-without-a-lock">17.7 A ring buffer without a lock</a></h2>
+<p>Every queue so far takes a lock for each operation. With exactly one producer thread and one consumer thread,
+the lock can go. This case is called <strong>SPSC</strong>, for single producer, single consumer.</p>
+<h3 id="1771-the-idea"><a class="header" href="#1771-the-idea">17.7.1 The idea</a></h3>
+<p>A <strong>ring buffer</strong> is a fixed array used in a circle (figure 17.6). Two counters track it:</p>
+<ul>
+<li><code>head</code> counts the items taken so far. The consumer reads the next item at <code>head % N</code>.</li>
+<li><code>tail</code> counts the items added so far. The producer writes the next item at <code>tail % N</code>.</li>
+</ul>
+<p>The number of items in the ring is <code>tail - head</code>. The ring is empty when the two are equal, and full when the
+difference is N.</p>
+<figure>
+<img src="figures/spsc-ring.svg" alt="A ring of eight slots. Slots 3, 4, and 5 hold items. head is 11, pointing at slot 3. tail is 14, pointing at slot 6. Notes explain the formulas for length, full, and empty.">
+<figcaption><b>Figure 17.6</b> A ring with 8 slots holding 3 items. The counters keep growing, and <code>% 8</code> maps them to slots.</figcaption>
+</figure>
+<p>No lock is needed because each counter has one writer. Only the producer changes <code>tail</code>, and only the consumer
+changes <code>head</code>. Each side only reads the other’s counter.</p>
+<p>The ordering of each store makes the handoff safe. The producer writes the item into its slot first, and then
+stores the new <code>tail</code> with <code>Release</code>. The consumer loads <code>tail</code> with <code>Acquire</code> before it reads the slot. This is
+the release and acquire pairing from section 16.4. If the consumer sees the new <code>tail</code>, it also sees the item
+written before it.</p>
+<h3 id="1772-the-type"><a class="header" href="#1772-the-type">17.7.2 The type</a></h3>
+<p class="listing"><b>Listing 17.14</b> The ring (lines 25 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cell::UnsafeCell,
+    mem::MaybeUninit,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
+/// Ring buffer with capacity `N` (the maximum number of queued items).
+pub struct SpscRing&lt;T, const N: usize&gt; {
+    slots: [UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;; N],
+    /// Next index to read. Written only by the consumer.
+    head: AtomicUsize,
+    /// Next index to write. Written only by the producer.
+    tail: AtomicUsize,
+}
+
+// SAFETY: at most one thread mutates `head` and one mutates `tail`. A slot is
+// initialized before `tail` is published with a release store, and the consumer
+// performs an acquire load of `tail` before reading that slot, so there is no
+// data race and no read of uninitialized memory under the SPSC discipline.
+unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}</code></pre>
+<p>Three new pieces of Rust appear here:</p>
+<ul>
+<li><code>const N: usize</code> is a <strong>const generic</strong>: a type parameter that is a number instead of a type. <code>SpscRing&lt;u64, 256&gt;</code> is a ring of 256 slots, and the array has that length at compile time.</li>
+<li><code>MaybeUninit&lt;T&gt;</code> is memory that may or may not hold a valid <code>T</code>. An empty slot holds no value, and Rust does not
+allow a variable of type <code>T</code> to hold garbage. <code>MaybeUninit</code> makes the uninitialized state explicit. Reading it
+as a <code>T</code> is <code>unsafe</code>, because the code must know that the slot holds a value.</li>
+<li><code>UnsafeCell</code> lets the producer write a slot through <code>&amp;self</code>, as in the spin lock of section 16.4.</li>
+</ul>
+<p><code>new</code> builds the array with <code>std::array::from_fn</code>, which calls a closure once per index.</p>
+<h3 id="1773-push-and-pop"><a class="header" href="#1773-push-and-pop">17.7.3 Push and pop</a></h3>
+<p class="listing"><b>Listing 17.15</b> <code>push</code> and <code>pop</code> (lines 71 to 107).</p>
+
+<pre><code class="language-rust">impl&lt;T, const N: usize&gt; SpscRing&lt;T, N&gt; {
+    // ...
+    /// Enqueue a value, returning `Err(value)` when the ring is full.
+    pub fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
+        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.head.load(Ordering::Acquire);
+        if tail.wrapping_sub(head) &gt;= N {
+            return Err(value);
+        }
+
+        let index = tail % N;
+        // SAFETY: the slot at `index` is free because the ring is not full, and
+        // only the producer writes it.
+        unsafe { (*self.slots[index].get()).write(value) };
+
+        // Publish the slot to the consumer.
+        self.tail
+            .store(tail.wrapping_add(1), Ordering::Release);
+        Ok(())
+    }
+
+    /// Dequeue a value, or `None` when the ring is empty.
+    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Acquire);
+        if head == tail {
+            return None;
+        }
+
+        let index = head % N;
+        // SAFETY: `head != tail`, so the producer has published this slot and
+        // only the consumer reads it.
+        let value = unsafe { (*self.slots[index].get()).assume_init_read() };
+
+        // Publish the freed slot to the producer.
+        self.head
+            .store(head.wrapping_add(1), Ordering::Release);
+        Some(value)
+    }
+}</code></pre>
+<p><code>push</code> loads its own counter, <code>tail</code>, with <code>Relaxed</code>, because only this thread writes it. It loads the other
+side’s counter, <code>head</code>, with <code>Acquire</code>. That load pairs with the consumer’s <code>Release</code> store of <code>head</code>, so the
+consumer has finished reading a slot before the producer writes it again.</p>
+<p>If the ring is full, <code>push</code> returns <code>Err(value)</code>, handing the value back. Otherwise it writes the value into the
+slot with <code>MaybeUninit::write</code>, and publishes it by storing <code>tail + 1</code> with <code>Release</code>.</p>
+<p><code>pop</code> is the mirror image. It loads <code>tail</code> with <code>Acquire</code>, reads the value out of the slot with
+<code>assume_init_read</code>, and publishes the free slot by storing <code>head + 1</code> with <code>Release</code>.</p>
+<p>The counters use <code>wrapping_add</code> and <code>wrapping_sub</code>. After 2 to the power 64 operations a counter would wrap around
+to 0, and wrapping arithmetic keeps <code>tail - head</code> correct across that point.</p>
+<p>Animation 17.4 runs the ring with 8 slots. The producer pushes and the consumer pops, the counters grow past 8,
+and the ring fills. The last part stores <code>tail</code> before writing the slot.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch17-ring-spsc.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A producer robot, a consumer robot, and eight slots between them, with tail and head labels showing each counter and its value % 8. push loads tail and head, checks for room, writes the value into slot tail % 8, and then stores tail + 1 with Release. pop loads tail with Acquire, reads slot head % 8, and stores head + 1. The counters keep growing past 8 and wrap through the slots. When tail - head reaches 8 the ring is full, and push returns Err with the value. Last, a push that stores tail before writing the slot lets the consumer read slot 0 while it is still empty." data-chapters="[[0.0, &quot;push&quot;], [18.98, &quot;pop&quot;], [26.37, &quot;wrap&quot;], [41.68, &quot;full&quot;], [59.71, &quot;publish first&quot;]]"><img src="figures/ch17-ring-spsc.gif" alt="A producer robot, a consumer robot, and eight slots between them, with tail and head labels showing each counter and its value % 8. push loads tail and head, checks for room, writes the value into slot tail % 8, and then stores tail + 1 with Release. pop loads tail with Acquire, reads slot head % 8, and stores head + 1. The counters keep growing past 8 and wrap through the slots. When tail - head reaches 8 the ring is full, and push returns Err with the value. Last, a push that stores tail before writing the slot lets the consumer read slot 0 while it is still empty."></video>
+<figcaption><b>Animation 17.4</b> The producer writes the slot, then publishes <code>tail</code>; the consumer reads <code>tail</code>, then the slot. Publishing first lets the consumer read a slot that was never written.</figcaption>
+</figure>
+<p class="listing"><b>Listing 17.16</b> <code>Drop</code> (lines 116 to 121).</p>
+
+<pre><code class="language-rust">impl&lt;T, const N: usize&gt; Drop for SpscRing&lt;T, N&gt; {
+    fn drop(&amp;mut self) {
+        // Drop any items that were never popped.
+        while self.pop().is_some() {}
+    }
+}</code></pre>
+<p><code>MaybeUninit</code> never drops its contents, because it cannot know whether a value is there. So when the ring is
+dropped, its <code>Drop</code> pops every remaining item. Each popped value is a normal <code>T</code>, and it is dropped at the end of
+the loop body. The test <code>dropped_ring_drops_queued_items</code> counts those drops.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> The safety of <code>SpscRing</code> depends on a rule the compiler does not check: one thread calls <code>push</code>, and
+one thread calls <code>pop</code>. Both methods take <code>&amp;self</code>, and the type is <code>Sync</code>. So safe code can share the ring with two
+producer threads, and both can write the same slot at once. That is a data race. A sound design splits the ring
+into a <code>Producer</code> handle and a <code>Consumer</code> handle that cannot be cloned. Exercise 5 asks you to build it.</p>
+</div>
+
+<p>The complete file, with its tests, is listing 17.23 at the end of the chapter.</p>
+<p>The concurrent test sends 50,000 values through a ring of 256 slots. When the ring is full, the producer calls
+<code>thread::yield_now()</code> and tries again. When it is empty, the consumer does the same. The producer ends with a
+sentinel value, <code>u64::MAX</code>, which tells the consumer to stop. The consumer must receive every value, in order.</p>
+<pre><code class="language-text">$ cargo test --lib problems::ring_buffer
+running 4 tests
+test problems::ring_buffer::tests::is_fifo_within_capacity ... ok
+test problems::ring_buffer::tests::full_ring_returns_the_value ... ok
+test problems::ring_buffer::tests::dropped_ring_drops_queued_items ... ok
+test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
+</code></pre>
+<h2 id="178-the-complete-files"><a class="header" href="#178-the-complete-files">17.8 The complete files</a></h2>
+<p>Each file below is shown whole, in the order the chapter used it.</p>
+<p class="listing"><b>Listing 17.17</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+};
+
+#[derive(Default)]
+struct SyncQueue {
+    items: Mutex&lt;VecDeque&lt;i32&gt;&gt;,
+    not_empty: Condvar,
+}
+
+impl SyncQueue {
+    fn push(&amp;self, item: i32) {
+        if let Ok(mut q) = self.items.lock() {
+            q.push_back(item);
+            self.not_empty.notify_one();
+        }
+    }
+
+    fn pop(&amp;self) -&gt; Option&lt;i32&gt; {
+        let q = self.items.lock().ok()?;
+        let mut q = self
+            .not_empty
+            .wait_while(q, |q| q.is_empty())
+            .ok()?;
+        q.pop_front()
+    }
+}
+
+fn main() {
+    let q = Arc::new(SyncQueue::default());
+
+    // producer
+    let producer = {
+        let q = Arc::clone(&amp;q);
+        thread::spawn(move || {
+            for i in 0..5 {
+                q.push(i);
+                println!("Producer pushed {i}");
+            }
+        })
+    };
+
+    let consumer = {
+        let q = Arc::clone(&amp;q);
+        thread::spawn(move || {
+            for _ in 0..5 {
+                println!("Cosnumer popped: {:?}", q.pop());
+            }
+        })
+    };
+
+    producer.join().unwrap();
+    consumer.join().unwrap();
+}</code></pre>
+<p class="listing"><b>Listing 17.18</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+    time::Duration,
+};
+
+// A thread-safe bounded buffer (a "shelf" that holds at most `capacity` items).
+//
+// Three fields do all the work:
+//   - `inner`     : the actual VecDeque, wrapped in a Mutex so only one thread
+//                   touches it at a time.
+//   - `not_empty` : waiting room for CONSUMERS. A consumer sleeps here when the
+//                   shelf is empty. Producers ring this bell after pushing.
+//   - `not_full`  : waiting room for PRODUCERS. A producer sleeps here when the
+//                   shelf is full. Consumers ring this bell after popping.
+//
+// Two separate condvars so we always wake the RIGHT kind of thread.
+// One shared condvar would cause livelock: consumers waking consumers,
+// producers waking producers, everyone re-checking and going back to sleep.
+struct BoundedQueue&lt;T&gt; {
+    inner: Mutex&lt;VecDeque&lt;T&gt;&gt;,
+    capacity: usize,
+    not_empty: Condvar,
+    not_full: Condvar,
+}
+
+impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        // Capacity 0 makes no sense: no producer could ever push,
+        // and every pop would block forever.
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+
+        Self {
+            inner: Mutex::new(VecDeque::with_capacity(capacity)),
+            capacity,
+            not_empty: Condvar::new(),
+            not_full: Condvar::new(),
+        }
+    }
+
+    fn push(&amp;self, item: T) {
+        // Acquire the shelf lock. `guard` is our exclusive handle to the deque.
+        let mut guard = self.inner.lock().unwrap();
+
+        // Wait while the shelf is full.
+        //
+        // Why `while` and not `if`:
+        //   1. Condvars are allowed to wake up for no reason (spurious wakeup).
+        //   2. Even on a real wakeup, another producer may have raced us and
+        //      taken the free slot before we reacquired the lock.
+        // So we must re-check the condition every time we wake.
+        //
+        // Why `guard = ...wait(guard)`:
+        //   `wait` consumes the guard (it releases the lock on our behalf),
+        //   puts us to sleep, then re-locks and hands us a NEW guard.
+        //   The reassignment just means "here's my fresh key to the shelf."
+        //   The VecDeque inside is the same one — we're not replacing the queue.
+        while guard.len() == self.capacity {
+            guard = self.not_full.wait(guard).unwrap();
+        }
+
+        // We have room. Add the item to the back of the deque.
+        guard.push_back(item);
+
+        // Release the lock BEFORE ringing the bell.
+        // This is an optimization, not a correctness requirement.
+        // If we notify while still holding the lock, the thread we wake will
+        // immediately block on `lock()` until we release it — a wasted wakeup.
+        drop(guard);
+
+        // Ring the "not empty" bell: one consumer can now make progress.
+        // `notify_one` (not `notify_all`) because exactly ONE item was added,
+        // so only ONE consumer can succeed. Waking all of them = stampede.
+        self.not_empty.notify_one();
+    }
+
+    fn pop(&amp;self) -&gt; T {
+        // Acquire the shelf lock.
+        let mut guard = self.inner.lock().unwrap();
+
+        // Wait while the shelf is empty.
+        // Same `while` reasoning as push: spurious wakeups + races with other
+        // consumers who may have grabbed the item before we reacquired the lock.
+        while guard.is_empty() {
+            guard = self.not_empty.wait(guard).unwrap();
+        }
+
+        // Safe to unwrap: the `while` loop guarantees the deque is non-empty,
+        // and we hold the lock so nobody can change that between the check
+        // and this line.
+        let item = guard.pop_front().unwrap();
+
+        // Release before notifying (same optimization as in push).
+        drop(guard);
+
+        // Ring the "not full" bell: one producer can now make progress.
+        // Exactly one slot opened, so wake exactly one producer.
+        self.not_full.notify_one();
+
+        item
+    }
+}
+
+fn main() {
+    // Small capacity (3) so that with two slow consumers you can actually
+    // SEE producers block: the queue fills up and push() sleeps in `not_full`.
+    let queue = Arc::new(BoundedQueue::new(3));
+
+    let mut handles = vec![];
+
+    // ---- Producers ----
+    // Two producers, each pushes 5 items. `Arc::clone` bumps the refcount so
+    // each thread shares the same queue; ownership of the clone moves in.
+    for p in 0..2 {
+        let q = Arc::clone(&amp;queue);
+        handles.push(thread::spawn(move || {
+            for i in 0..5 {
+                let item = format!("p{}:item{}", p, i);
+                println!("  [producer {}] pushing {}", p, item);
+                q.push(item);
+                // Slow down so we don't blast through the whole buffer instantly.
+                thread::sleep(Duration::from_millis(30));
+            }
+        }));
+    }
+
+    // ---- Consumers ----
+    // Two consumers, each pops 5 items. Consumers are SLOWER than producers
+    // here (60ms vs 30ms), so the queue fills up and you'll see producers
+    // stall on `not_full.wait(...)`.
+    for c in 0..2 {
+        let q = Arc::clone(&amp;queue);
+        handles.push(thread::spawn(move || {
+            for _ in 0..5 {
+                let item = q.pop();
+                println!("[consumer {}] got {}", c, item);
+                thread::sleep(Duration::from_millis(60));
+            }
+        }));
+    }
+
+    // Join everything. If our synchronization is wrong, this is where you'd
+    // hang (a thread sleeping forever) or panic (unwrap on empty / on a
+    // poisoned mutex after another thread panicked while holding it).
+    for h in handles {
+        h.join().unwrap();
+    }
+    println!("done");
+}</code></pre>
+<p class="listing"><b>Listing 17.19</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -918,59 +1539,7 @@ mod tests {
         }
     }
 }</code></pre>
-<p>The threads in <code>main</code> handle an error by printing it with <code>dbg!</code> and leaving their loop with <code>break</code>.</p>
-<p>The second test poisons the queue on purpose. It spawns a thread that locks the inner mutex and panics while
-holding it. A test in the same file can reach the private <code>inner</code> field. After that, both <code>push</code> and <code>pop</code> must
-return <code>Err(QueuePoisonedError)</code>.</p>
-<pre><code class="language-text">$ cargo test --bin bounded_buffer_with_error_handling
-running 2 tests
-test tests::test_zero_capacity_panics - should panic ... ok
-test tests::test_queue_poisoning_on_thread_panic ... ok
-
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
-</code></pre>
-<h3 id="1742-a-boxed-error"><a class="header" href="#1742-a-boxed-error">17.4.2 A boxed error</a></h3>
-<p>The third version returns a general error type:</p>
-<pre><code class="language-rust">use std::{
-    collections::VecDeque,
-    error::Error,
-    sync::{Arc, Condvar, Mutex},
-    thread,
-    time::Duration,
-};
-
-type RuntimeError = Box&lt;dyn Error + Send + Sync&gt;;</code></pre>
-<p><code>Box&lt;dyn Error + Send + Sync&gt;</code> can hold any error type. <code>+ Send + Sync</code> is needed because the error travels
-between threads: each thread returns a <code>Result</code>, and <code>join</code> hands it to the main thread.</p>
-<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
-
-<pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
-    // ...
-    fn push(&amp;self, item: T) -&gt; Result&lt;(), RuntimeError&gt; {
-        let mut guard = self
-            .inner
-            .lock()
-            .map_err(|e| e.to_string())?;
-
-        while guard.len() == self.capacity {
-            guard = self
-                .not_full
-                .wait(guard)
-                .map_err(|e| e.to_string())?;
-        }
-
-        guard.push_back(item);
-        drop(guard);
-        self.not_empty.notify_one();
-        Ok(())
-    }
-    // ...
-}</code></pre>
-<p>Why <code>.map_err(|e| e.to_string())</code> instead of <code>?</code> directly? A <code>PoisonError</code> contains the guard, and the guard
-borrows the mutex. A <code>Box&lt;dyn Error&gt;</code> must not borrow anything local, so the poison error cannot go into one.
-<code>to_string()</code> turns it into a <code>String</code>, which owns its text. Then <code>?</code> converts the <code>String</code> into the boxed error,
-through a <code>From</code> implementation in the standard library.</p>
-<p class="listing"><b>Listing 17.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.20</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1083,152 +1652,7 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
     println!("done");
     Ok(())
 }</code></pre>
-<p><code>main</code> builds the threads with two iterator chains, <code>producers</code> and <code>consumers</code>. These are lazy: no thread starts
-until something consumes them. <code>producers.chain(consumers).collect()</code> starts all four threads while building the
-<code>Vec</code>, and only then does the loop join them.</p>
-<p>Each thread’s closure is written <code>move || -&gt; Result&lt;(), RuntimeError&gt; { ... }</code>, with its return type, so the <code>?</code>
-inside it knows what error type to convert to. <code>join()</code> returns <code>Ok(r)</code>, where <code>r</code> is the thread’s own <code>Result</code>.</p>
-<pre><code class="language-text">$ cargo run --bin bounded_buffer_error_propagation
-  [producer 1] pushing p1:item0
-  [producer 0] pushing p0:item0
-[consumer 1] got p1:item0
-[consumer 0] got p0:item0
-  [producer 0] pushing p0:item1
-  [producer 1] pushing p1:item1
-[consumer 1] got p0:item1
-[consumer 0] got p1:item1
-  [producer 0] pushing p0:item2
-  [producer 1] pushing p1:item2
-  [producer 0] pushing p0:item3
-  [producer 1] pushing p1:item3
-[consumer 0] got p1:item2
-[consumer 1] got p0:item2
-  [producer 0] pushing p0:item4
-  [producer 1] pushing p1:item4
-Thread joined : Ok(
-    (),
-)
-[consumer 0] got p1:item3
-[consumer 1] got p0:item3
-Thread joined : Ok(
-    (),
-)
-[consumer 1] got p0:item4
-[consumer 0] got p1:item4
-Thread joined : Ok(
-    (),
-)
-Thread joined : Ok(
-    (),
-)
-done
-</code></pre>
-<p>The join messages appear between the consumer lines, because <code>main</code> joins the producers first, while the
-consumers are still running.</p>
-<h2 id="175-many-producers-and-consumers-with-wait_while"><a class="header" href="#175-many-producers-and-consumers-with-wait_while">17.5 Many producers and consumers with <code>wait_while</code></a></h2>
-<p>The next version is the bounded buffer written more compactly, with <code>wait_while</code> for both waits. Its <code>main</code> uses
-scoped threads, so no <code>Arc</code> is needed.</p>
-<p>The type is the same as in section 17.3. It holds a <code>VecDeque</code> behind a <code>Mutex</code>, a capacity, and one <code>Condvar</code>
-for each thing a thread can wait for:</p>
-<pre><code class="language-rust">use std::{
-    collections::VecDeque,
-    sync::{Condvar, Mutex},
-    thread,
-};
-
-pub struct BoundedBuffer&lt;T&gt; {
-    queue: Mutex&lt;VecDeque&lt;T&gt;&gt;,
-    capacity: usize,
-    not_empty: Condvar,
-    not_full: Condvar,
-}
-
-impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
-    pub fn new(capacity: usize) -&gt; Self {
-        assert!(capacity &gt; 0, "capacity must be &gt; 0");
-
-        Self {
-            queue: Mutex::new(VecDeque::with_capacity(capacity)),
-            capacity,
-            not_empty: Condvar::new(),
-            not_full: Condvar::new(),
-        }
-    }
-    // ...
-}</code></pre>
-<p><code>push</code> waits while the queue is full. <code>wait_while</code> takes the guard and a condition, and loops for you. It sleeps
-while the condition is true, and returns the guard once it is false. The <code>while</code> loop of section 17.3 is inside
-it, so a spurious wakeup is handled the same way.</p>
-<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
-    // ...
-    /// Blocks while the buffer is full.
-    pub fn push(&amp;self, item: T) {
-        let cap = self.capacity;
-
-        let mut queue = self.queue.lock().unwrap();
-        queue = self
-            .not_full
-            .wait_while(queue, |q| q.len() &gt;= cap)
-            .unwrap();
-
-        queue.push_back(item);
-        drop(queue);
-
-        self.not_empty.notify_one();
-    }
-    // ...
-}</code></pre>
-<p><code>push</code> reads <code>self.capacity</code> into a local <code>cap</code> before the closure <code>|q| q.len() &gt;= cap</code>. The closure then
-captures a <code>usize</code> instead of borrowing <code>self</code>. After pushing, <code>drop(queue)</code> releases the lock before
-<code>notify_one</code>, so the woken consumer does not wake only to wait for the lock.</p>
-<p><code>pop</code> is the mirror image: it waits while the queue is empty, takes the front item, and wakes one producer.</p>
-<pre><code class="language-rust">impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
-    // ...
-    /// Blocks while the buffer is empty.
-    pub fn pop(&amp;self) -&gt; T {
-        let mut queue = self.queue.lock().unwrap();
-        queue = self
-            .not_empty
-            .wait_while(queue, |q| q.is_empty())
-            .unwrap();
-
-        let item = queue.pop_front().unwrap();
-        self.not_full.notify_one();
-        item
-    }
-}</code></pre>
-<p><strong>MPMC</strong> stands for multiple producers, multiple consumers. In <code>main</code>, four producers push 10 items each, and two
-consumers pop 20 each:</p>
-<pre><code class="language-rust">fn main() {
-    let buffer = BoundedBuffer::&lt;(usize, usize)&gt;::new(8);
-    let buffer = &amp;buffer;
-
-    const PRODUCERS: usize = 4;
-    const CONSUMERS: usize = 2;
-    const PER_PRODUCER: usize = 10;
-    const PER_CONSUMER: usize = PRODUCERS * PER_PRODUCER / CONSUMERS;
-
-    thread::scope(|s| {
-        for p in 0..PRODUCERS {
-            s.spawn(move || {
-                for i in 0..PER_PRODUCER {
-                    buffer.push((p, i));
-                }
-            });
-        }
-
-        for c in 0..CONSUMERS {
-            s.spawn(move || {
-                for _ in 0..PER_CONSUMER {
-                    let item = buffer.pop();
-                    println!("consumer {c}: {item:?}");
-                }
-            });
-        }
-    });
-}</code></pre>
-<p><code>PER_CONSUMER</code> is computed from the other constants, so every pushed item is popped and every thread finishes.</p>
-<p class="listing"><b>Listing 17.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.21</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1313,136 +1737,7 @@ fn main() {
         }
     });
 }</code></pre>
-<p><code>let buffer = &amp;buffer;</code> replaces the buffer with a reference to it. Each <code>move</code> closure then copies the reference
-into its thread. The scope guarantees that the buffer outlives all the threads.</p>
-<pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer
-consumer 1: (3, 0)
-consumer 1: (2, 0)
-consumer 0: (1, 0)
-consumer 0: (3, 2)
-consumer 0: (3, 3)
-...
-consumer 0: (3, 8)
-consumer 0: (0, 9)
-consumer 0: (2, 9)
-</code></pre>
-<p>The full output has 40 lines. Each item is a <code>(producer, index)</code> pair. Across the whole output, each producer’s
-indexes appear in increasing order, but the producers are mixed together. Which consumer prints an item depends
-on which one the operating system happened to wake.</p>
-<h2 id="176-closing-a-queue"><a class="header" href="#176-closing-a-queue">17.6 Closing a queue</a></h2>
-<p>Every version so far has one problem. A consumer loop needs to know when to stop. The demos stop after a fixed
-count, but a real consumer does not know how many items will come. It calls <code>pop</code> in a loop, and when the
-producers finish, <code>pop</code> waits forever.</p>
-<p>The library version adds a way to <strong>close</strong> the queue (figure 17.5).</p>
-<figure>
-<img src="figures/queue-close.svg" alt="close sets closed and notifies all waiters on both condvars. push after close returns Err with the item. pop with items left returns Some. pop on an empty closed queue returns None.">
-<figcaption><b>Figure 17.5</b> What each operation does after <code>close</code>.</figcaption>
-</figure>
-<p class="listing"><b>Listing 17.13</b> The state (lines 16 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
-
-<pre><code class="language-rust">use std::{
-    collections::VecDeque,
-    sync::{Condvar, Mutex},
-};
-
-struct State&lt;T&gt; {
-    items: VecDeque&lt;T&gt;,
-    capacity: usize,
-    closed: bool,
-}
-
-/// A bounded MPMC queue. Share it behind `Arc`; all methods take `&amp;self`.
-pub struct BoundedQueue&lt;T&gt; {
-    state: Mutex&lt;State&lt;T&gt;&gt;,
-    not_empty: Condvar,
-    not_full: Condvar,
-}</code></pre>
-<p>The mutex now protects a small struct: the items, the capacity, and a <code>closed</code> flag. The flag must be inside the
-mutex, because threads check it together with the items.</p>
-<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 94).</p>
-
-<pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
-    // ...
-    /// Push an item, blocking while the queue is full.
-    ///
-    /// Returns `Err(item)` if the queue is closed, so the caller keeps ownership
-    /// instead of losing the value.
-    pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
-        let mut state = self
-            .state
-            .lock()
-            .expect("queue mutex poisoned");
-        loop {
-            if state.closed {
-                return Err(item);
-            }
-            if state.items.len() &lt; state.capacity {
-                state.items.push_back(item);
-                self.not_empty.notify_one();
-                return Ok(());
-            }
-            state = self
-                .not_full
-                .wait(state)
-                .expect("queue mutex poisoned");
-        }
-    }
-
-    /// Pop an item, blocking while the queue is empty.
-    ///
-    /// Returns `None` once the queue is closed and drained, which is how a
-    /// consumer loop terminates cleanly.
-    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
-        let mut state = self
-            .state
-            .lock()
-            .expect("queue mutex poisoned");
-        loop {
-            if let Some(item) = state.items.pop_front() {
-                self.not_full.notify_one();
-                return Some(item);
-            }
-            if state.closed {
-                return None;
-            }
-            state = self
-                .not_empty
-                .wait(state)
-                .expect("queue mutex poisoned");
-        }
-    }
-    // ...
-}</code></pre>
-<p>Both methods use a <code>loop</code> that checks every condition after each wakeup.</p>
-<p><code>push</code> returns <code>Result&lt;(), T&gt;</code>. If the queue is closed, it returns <code>Err(item)</code>, handing the item back. The value
-is not lost, and the caller decides what to do with it.</p>
-<p><code>pop</code> returns <code>Option&lt;T&gt;</code>. It checks for an item before it checks <code>closed</code>, so a closed queue still gives up the
-items already in it. Only a closed queue that is empty returns <code>None</code>. A consumer can therefore loop with
-<code>while let Some(item) = queue.pop()</code>, and the loop ends after the last item.</p>
-<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 109 to 122).</p>
-
-<pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
-    // ...
-    /// Close the queue.
-    ///
-    /// Pending and future `pop` calls return `None` after the queue drains, and
-    /// future `push` calls fail. Idempotent.
-    pub fn close(&amp;self) {
-        let mut state = self
-            .state
-            .lock()
-            .expect("queue mutex poisoned");
-        state.closed = true;
-        drop(state);
-        self.not_empty.notify_all();
-        self.not_full.notify_all();
-    }
-    // ...
-}</code></pre>
-<p><code>close</code> sets the flag and wakes every waiting thread on both condition variables with <code>notify_all</code>. Each woken
-thread sees <code>closed</code> in its loop and returns. Calling <code>close</code> twice does no harm. An operation that gives the same
-result when repeated is called <strong>idempotent</strong>.</p>
-<p class="listing"><b>Listing 17.16</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.22</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 <pre><code class="language-rust">//! Bounded blocking queue with backpressure.
 //!
@@ -1694,148 +1989,7 @@ mod tests {
         );
     }
 }</code></pre>
-<p>The tests check the four promises:</p>
-<ul>
-<li><code>preserves_order_across_threads</code> pushes 0 to 999 from one thread and pops them on another. They must arrive
-in order, and the consumer’s <code>while let</code> loop must end after <code>close</code>.</li>
-<li><code>never_exceeds_capacity</code> records the largest length seen, with a slow consumer. It must never pass 4.</li>
-<li><code>close_wakes_a_blocked_consumer</code> starts a consumer on an empty queue, waits 20 ms so it is asleep, and closes
-the queue. The consumer must return <code>None</code> instead of sleeping forever.</li>
-<li><code>push_after_close_returns_the_item</code> checks that <code>push</code> hands the item back.</li>
-</ul>
-<pre><code class="language-text">$ cargo test --lib problems::bounded_queue
-running 4 tests
-test problems::bounded_queue::tests::push_after_close_returns_the_item ... ok
-test problems::bounded_queue::tests::preserves_order_across_threads ... ok
-test problems::bounded_queue::tests::never_exceeds_capacity ... ok
-test problems::bounded_queue::tests::close_wakes_a_blocked_consumer ... ok
-
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
-</code></pre>
-<h2 id="177-a-ring-buffer-without-a-lock"><a class="header" href="#177-a-ring-buffer-without-a-lock">17.7 A ring buffer without a lock</a></h2>
-<p>Every queue so far takes a lock for each operation. With exactly one producer thread and one consumer thread,
-the lock can go. This case is called <strong>SPSC</strong>, for single producer, single consumer.</p>
-<h3 id="1771-the-idea"><a class="header" href="#1771-the-idea">17.7.1 The idea</a></h3>
-<p>A <strong>ring buffer</strong> is a fixed array used in a circle (figure 17.6). Two counters track it:</p>
-<ul>
-<li><code>head</code> counts the items taken so far. The consumer reads the next item at <code>head % N</code>.</li>
-<li><code>tail</code> counts the items added so far. The producer writes the next item at <code>tail % N</code>.</li>
-</ul>
-<p>The number of items in the ring is <code>tail - head</code>. The ring is empty when the two are equal, and full when the
-difference is N.</p>
-<figure>
-<img src="figures/spsc-ring.svg" alt="A ring of eight slots. Slots 3, 4, and 5 hold items. head is 11, pointing at slot 3. tail is 14, pointing at slot 6. Notes explain the formulas for length, full, and empty.">
-<figcaption><b>Figure 17.6</b> A ring with 8 slots holding 3 items. The counters keep growing, and <code>% 8</code> maps them to slots.</figcaption>
-</figure>
-<p>No lock is needed because each counter has one writer. Only the producer changes <code>tail</code>, and only the consumer
-changes <code>head</code>. Each side only reads the other’s counter.</p>
-<p>The ordering of each store makes the handoff safe. The producer writes the item into its slot first, and then
-stores the new <code>tail</code> with <code>Release</code>. The consumer loads <code>tail</code> with <code>Acquire</code> before it reads the slot. This is
-the release and acquire pairing from section 16.4. If the consumer sees the new <code>tail</code>, it also sees the item
-written before it.</p>
-<h3 id="1772-the-type"><a class="header" href="#1772-the-type">17.7.2 The type</a></h3>
-<p class="listing"><b>Listing 17.17</b> The ring (lines 25 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
-
-<pre><code class="language-rust">use std::{
-    cell::UnsafeCell,
-    mem::MaybeUninit,
-    sync::atomic::{AtomicUsize, Ordering},
-};
-
-/// Ring buffer with capacity `N` (the maximum number of queued items).
-pub struct SpscRing&lt;T, const N: usize&gt; {
-    slots: [UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;; N],
-    /// Next index to read. Written only by the consumer.
-    head: AtomicUsize,
-    /// Next index to write. Written only by the producer.
-    tail: AtomicUsize,
-}
-
-// SAFETY: at most one thread mutates `head` and one mutates `tail`. A slot is
-// initialized before `tail` is published with a release store, and the consumer
-// performs an acquire load of `tail` before reading that slot, so there is no
-// data race and no read of uninitialized memory under the SPSC discipline.
-unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}</code></pre>
-<p>Three new pieces of Rust appear here:</p>
-<ul>
-<li><code>const N: usize</code> is a <strong>const generic</strong>: a type parameter that is a number instead of a type. <code>SpscRing&lt;u64, 256&gt;</code> is a ring of 256 slots, and the array has that length at compile time.</li>
-<li><code>MaybeUninit&lt;T&gt;</code> is memory that may or may not hold a valid <code>T</code>. An empty slot holds no value, and Rust does not
-allow a variable of type <code>T</code> to hold garbage. <code>MaybeUninit</code> makes the uninitialized state explicit. Reading it
-as a <code>T</code> is <code>unsafe</code>, because the code must know that the slot holds a value.</li>
-<li><code>UnsafeCell</code> lets the producer write a slot through <code>&amp;self</code>, as in the spin lock of section 16.4.</li>
-</ul>
-<p><code>new</code> builds the array with <code>std::array::from_fn</code>, which calls a closure once per index.</p>
-<h3 id="1773-push-and-pop"><a class="header" href="#1773-push-and-pop">17.7.3 Push and pop</a></h3>
-<p class="listing"><b>Listing 17.18</b> <code>push</code> and <code>pop</code> (lines 71 to 107).</p>
-
-<pre><code class="language-rust">impl&lt;T, const N: usize&gt; SpscRing&lt;T, N&gt; {
-    // ...
-    /// Enqueue a value, returning `Err(value)` when the ring is full.
-    pub fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
-        let tail = self.tail.load(Ordering::Relaxed);
-        let head = self.head.load(Ordering::Acquire);
-        if tail.wrapping_sub(head) &gt;= N {
-            return Err(value);
-        }
-
-        let index = tail % N;
-        // SAFETY: the slot at `index` is free because the ring is not full, and
-        // only the producer writes it.
-        unsafe { (*self.slots[index].get()).write(value) };
-
-        // Publish the slot to the consumer.
-        self.tail
-            .store(tail.wrapping_add(1), Ordering::Release);
-        Ok(())
-    }
-
-    /// Dequeue a value, or `None` when the ring is empty.
-    pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
-        let head = self.head.load(Ordering::Relaxed);
-        let tail = self.tail.load(Ordering::Acquire);
-        if head == tail {
-            return None;
-        }
-
-        let index = head % N;
-        // SAFETY: `head != tail`, so the producer has published this slot and
-        // only the consumer reads it.
-        let value = unsafe { (*self.slots[index].get()).assume_init_read() };
-
-        // Publish the freed slot to the producer.
-        self.head
-            .store(head.wrapping_add(1), Ordering::Release);
-        Some(value)
-    }
-}</code></pre>
-<p><code>push</code> loads its own counter, <code>tail</code>, with <code>Relaxed</code>, because only this thread writes it. It loads the other
-side’s counter, <code>head</code>, with <code>Acquire</code>. That load pairs with the consumer’s <code>Release</code> store of <code>head</code>, so the
-consumer has finished reading a slot before the producer writes it again.</p>
-<p>If the ring is full, <code>push</code> returns <code>Err(value)</code>, handing the value back. Otherwise it writes the value into the
-slot with <code>MaybeUninit::write</code>, and publishes it by storing <code>tail + 1</code> with <code>Release</code>.</p>
-<p><code>pop</code> is the mirror image. It loads <code>tail</code> with <code>Acquire</code>, reads the value out of the slot with
-<code>assume_init_read</code>, and publishes the free slot by storing <code>head + 1</code> with <code>Release</code>.</p>
-<p>The counters use <code>wrapping_add</code> and <code>wrapping_sub</code>. After 2 to the power 64 operations a counter would wrap around
-to 0, and wrapping arithmetic keeps <code>tail - head</code> correct across that point.</p>
-<p class="listing"><b>Listing 17.19</b> <code>Drop</code> (lines 116 to 121).</p>
-
-<pre><code class="language-rust">impl&lt;T, const N: usize&gt; Drop for SpscRing&lt;T, N&gt; {
-    fn drop(&amp;mut self) {
-        // Drop any items that were never popped.
-        while self.pop().is_some() {}
-    }
-}</code></pre>
-<p><code>MaybeUninit</code> never drops its contents, because it cannot know whether a value is there. So when the ring is
-dropped, its <code>Drop</code> pops every remaining item. Each popped value is a normal <code>T</code>, and it is dropped at the end of
-the loop body. The test <code>dropped_ring_drops_queued_items</code> counts those drops.</p>
-<div class="callout warning" markdown="1">
-<p><strong>WARNING:</strong> The safety of <code>SpscRing</code> depends on a rule the compiler does not check: one thread calls <code>push</code>, and
-one thread calls <code>pop</code>. Both methods take <code>&amp;self</code>, and the type is <code>Sync</code>. So safe code can share the ring with two
-producer threads, and both can write the same slot at once. That is a data race. A sound design splits the ring
-into a <code>Producer</code> handle and a <code>Consumer</code> handle that cannot be cloned. Exercise 5 asks you to build it.</p>
-</div>
-
-<p class="listing"><b>Listing 17.20</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.23</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 <pre><code class="language-rust">//! Lock-free single-producer / single-consumer (SPSC) ring buffer.
 //!
@@ -2077,18 +2231,6 @@ mod tests {
         assert_eq!(dropped.load(Ordering::SeqCst), 3);
     }
 }</code></pre>
-<p>The concurrent test sends 50,000 values through a ring of 256 slots. When the ring is full, the producer calls
-<code>thread::yield_now()</code> and tries again. When it is empty, the consumer does the same. The producer ends with a
-sentinel value, <code>u64::MAX</code>, which tells the consumer to stop. The consumer must receive every value, in order.</p>
-<pre><code class="language-text">$ cargo test --lib problems::ring_buffer
-running 4 tests
-test problems::ring_buffer::tests::is_fifo_within_capacity ... ok
-test problems::ring_buffer::tests::full_ring_returns_the_value ... ok
-test problems::ring_buffer::tests::dropped_ring_drops_queued_items ... ok
-test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_order ... ok
-
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
-</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
