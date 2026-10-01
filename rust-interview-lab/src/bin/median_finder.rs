@@ -88,7 +88,10 @@ mod tests {
     #[test]
     fn three_values_are_ordered() {
         let mut finder = MedianFinder::new();
-        for (value, median) in [1, 2, 3].into_iter().zip([1.0, 1.5, 2.0]) {
+        for (value, median) in [1, 2, 3]
+            .into_iter()
+            .zip([1.0, 1.5, 2.0])
+        {
             finder.add_num(value);
             assert_eq!(finder.find_median(), Some(median));
         }
@@ -123,7 +126,13 @@ mod tests {
 
         for value in SAMPLE {
             finder.add_num(value);
-            assert!(finder.low.len().abs_diff(finder.high.len()) <= 1);
+            assert!(
+                finder
+                    .low
+                    .len()
+                    .abs_diff(finder.high.len())
+                    <= 1
+            );
         }
     }
 }

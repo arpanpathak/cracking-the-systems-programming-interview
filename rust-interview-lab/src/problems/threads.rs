@@ -86,7 +86,9 @@ impl AtomicCounter {
 
     /// Increment and return the new value.
     pub fn increment(&self) -> usize {
-        self.value.fetch_add(1, Ordering::Relaxed) + 1
+        self.value
+            .fetch_add(1, Ordering::Relaxed)
+            + 1
     }
 
     pub fn get(&self) -> usize {
@@ -131,7 +133,10 @@ mod tests {
     #[test]
     fn parallel_sum_matches_the_sequential_sum() {
         let values: Vec<i32> = (1..=10_000).collect();
-        let expected: i64 = values.iter().map(|value| i64::from(*value)).sum();
+        let expected: i64 = values
+            .iter()
+            .map(|value| i64::from(*value))
+            .sum();
         assert_eq!(parallel_sum(&values), expected);
     }
 

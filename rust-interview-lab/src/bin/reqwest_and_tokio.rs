@@ -30,7 +30,9 @@ struct Api {
 impl Api {
     fn new(cfg: Config) -> Result<Self, Error> {
         Ok(Self {
-            http: Client::builder().timeout(cfg.timeout).build()?,
+            http: Client::builder()
+                .timeout(cfg.timeout)
+                .build()?,
             cache: Mutex::new(HashMap::new()),
             cfg,
         })

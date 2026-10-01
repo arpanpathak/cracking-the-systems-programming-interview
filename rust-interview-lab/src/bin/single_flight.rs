@@ -104,8 +104,12 @@ where
         };
         let value = work()?;
 
-        let key = claim.key.take().expect("claim holds its key");
-        self.lock().insert(key, Slot::Done(value.clone()));
+        let key = claim
+            .key
+            .take()
+            .expect("claim holds its key");
+        self.lock()
+            .insert(key, Slot::Done(value.clone()));
         self.finished.notify_all();
         Ok(value)
     }
@@ -222,7 +226,11 @@ mod tests {
     #[test]
     fn a_failure_lets_the_next_call_run() {
         let flight = SingleFlight::new();
-        assert!(flight.execute("k", || Err("no".into())).is_err());
+        assert!(
+            flight
+                .execute("k", || Err("no".into()))
+                .is_err()
+        );
         assert_eq!(flight.execute("k", || Ok(1)).unwrap(), 1);
         assert_eq!(flight.execute("k", || Ok(2)).unwrap(), 1);
     }

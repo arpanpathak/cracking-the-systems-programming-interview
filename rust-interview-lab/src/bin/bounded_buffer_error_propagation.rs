@@ -27,7 +27,10 @@ impl<T> BoundedQueue<T> {
     }
 
     fn push(&self, item: T) -> Result<(), RuntimeError> {
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| e.to_string())?;
 
         while guard.len() == self.capacity {
             guard = self
@@ -43,7 +46,10 @@ impl<T> BoundedQueue<T> {
     }
 
     fn pop(&self) -> Result<T, RuntimeError> {
-        let mut guard = self.inner.lock().map_err(|e| e.to_string())?;
+        let mut guard = self
+            .inner
+            .lock()
+            .map_err(|e| e.to_string())?;
 
         while guard.is_empty() {
             guard = self

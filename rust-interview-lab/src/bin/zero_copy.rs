@@ -155,6 +155,11 @@ mod tests {
                 .bytes,
             3 << 20
         );
-        assert_eq!(linux::send_file(&path).expect("sendfile").bytes, 3 << 20);
+        assert_eq!(
+            linux::send_file(&path)
+                .expect("sendfile")
+                .bytes,
+            3 << 20
+        );
     }
 }

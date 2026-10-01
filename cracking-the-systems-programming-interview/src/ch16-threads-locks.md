@@ -126,10 +126,10 @@ as section 16.2 shows. `RefCell` is `Send` but not `Sync`: its borrow flag is no
 `thread::spawn` and `scope.spawn` require their closures to be `Send`. A closure that captures an `Rc` is
 therefore rejected at compile time.
 
-<p class="listing"><b>Listing 16.2</b> A compile-time check (lines 119 to 123).</p>
+<p class="listing"><b>Listing 16.2</b> A compile-time check (lines 121 to 125).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:119:123}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:121:125}}
 ```
 
 `assert_send_sync` has an empty body. Calling `assert_send_sync::<AtomicCounter>()` compiles only if
@@ -156,10 +156,10 @@ see or change the value in between. `AtomicUsize::fetch_add(1, ordering)` adds 1
 
 ### 16.2.2 A counter without a lock
 
-<p class="listing"><b>Listing 16.3</b> <code>AtomicCounter</code> and <code>scoped_increment</code> (lines 71 to 108).</p>
+<p class="listing"><b>Listing 16.3</b> <code>AtomicCounter</code> and <code>scoped_increment</code> (lines 71 to 110).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:71:108}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:71:110}}
 ```
 
 `increment` takes `&self`, not `&mut self`. An atomic can be changed through a shared reference, the same way a
@@ -189,10 +189,10 @@ ordering argument limits that reordering around the atomic operation.
 
 ### 16.2.4 Initializing a value once
 
-<p class="listing"><b>Listing 16.4</b> <code>OnceLock</code> (lines 110 to 117).</p>
+<p class="listing"><b>Listing 16.4</b> <code>OnceLock</code> (lines 112 to 119).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/threads.rs:110:117}}
+{{#include ../../rust-interview-lab/src/problems/threads.rs:112:119}}
 ```
 
 A `static` is a single value shared by the whole program. `OnceLock` holds a value that starts empty and is set at
@@ -370,12 +370,12 @@ lock when it is dropped.
 
 ### 16.4.2 Taking and releasing the lock
 
-<p class="listing"><b>Listing 16.10</b> <code>lock</code>, <code>try_lock</code>, and <code>unlock</code> (lines 52 to 86).</p>
+<p class="listing"><b>Listing 16.10</b> <code>lock</code>, <code>try_lock</code>, and <code>unlock</code> (lines 52 to 87).</p>
 
 ```rust
 impl<T> SpinLock<T> {
     // ...
-{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:52:86}}
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:52:87}}
 }
 ```
 
@@ -422,10 +422,10 @@ does not take the lock, so it needs no ordering.
 
 ### 16.4.4 The guard
 
-<p class="listing"><b>Listing 16.11</b> The guard's traits (lines 95 to 115).</p>
+<p class="listing"><b>Listing 16.11</b> The guard's traits (lines 96 to 116).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:95:115}}
+{{#include ../../rust-interview-lab/src/problems/spin_lock.rs:96:116}}
 ```
 
 The guard implements three traits:

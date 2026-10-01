@@ -368,14 +368,20 @@ mod tests {
         });
 
         let mut client = TcpStream::connect(("127.0.0.1", port)).expect("connect");
-        client.write_all(b"epoll echo").expect("write");
+        client
+            .write_all(b"epoll echo")
+            .expect("write");
         let mut echoed = [0u8; 10];
-        client.read_exact(&mut echoed).expect("read echo");
+        client
+            .read_exact(&mut echoed)
+            .expect("read echo");
         assert_eq!(&echoed, b"epoll echo");
 
         shutdown.store(true, Ordering::Relaxed);
         drop(client);
-        let result = server.join().expect("server thread panicked");
+        let result = server
+            .join()
+            .expect("server thread panicked");
         assert!(result.is_ok(), "event loop returned {result:?}");
     }
 }

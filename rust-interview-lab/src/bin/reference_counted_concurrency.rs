@@ -39,5 +39,7 @@ fn main() {
         },
     ];
 
-    users.iter().map(|user| user.name.clone());
+    users
+        .iter()
+        .map(|user| user.name.clone());
 }

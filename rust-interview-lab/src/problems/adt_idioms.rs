@@ -80,7 +80,9 @@ impl Command {
     /// Parse one command line.
     pub fn parse(line: &str) -> Result<Self, CommandError> {
         let mut parts = line.split_whitespace();
-        let verb = parts.next().ok_or(CommandError::Empty)?;
+        let verb = parts
+            .next()
+            .ok_or(CommandError::Empty)?;
 
         match verb {
             "list" => Ok(Self::List),

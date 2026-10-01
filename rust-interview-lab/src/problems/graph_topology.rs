@@ -44,12 +44,24 @@ mod tests {
         let order = topological_sort(4, &edges).expect("DAG has an order");
         assert_eq!(order.len(), 4);
         assert!(
-            order.iter().position(|&n| n == 0).unwrap()
-                < order.iter().position(|&n| n == 1).unwrap()
+            order
+                .iter()
+                .position(|&n| n == 0)
+                .unwrap()
+                < order
+                    .iter()
+                    .position(|&n| n == 1)
+                    .unwrap()
         );
         assert!(
-            order.iter().position(|&n| n == 1).unwrap()
-                < order.iter().position(|&n| n == 3).unwrap()
+            order
+                .iter()
+                .position(|&n| n == 1)
+                .unwrap()
+                < order
+                    .iter()
+                    .position(|&n| n == 3)
+                    .unwrap()
         );
     }
 

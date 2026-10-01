@@ -198,7 +198,7 @@ rounds. Every round uses fresh atomics, so no round needs a reset, and both thre
 so their operations overlap:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/litmus.rs:9:32}}
+{{#include ../../rust-interview-lab/src/bin/litmus.rs:9:34}}
 ```
 
 `meet` is a spin barrier on one counter. Each thread adds 1 and waits until both have arrived for this round.
@@ -206,14 +206,14 @@ so their operations overlap:
 **Store buffering** is figure 26.3 as code. The question is whether both loads can read 0:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/litmus.rs:34:61}}
+{{#include ../../rust-interview-lab/src/bin/litmus.rs:36:63}}
 ```
 
 **Message passing** writes data, then sets a flag. The question is whether the reader can see the flag set
 and the data still 0:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/litmus.rs:63:91}}
+{{#include ../../rust-interview-lab/src/bin/litmus.rs:65:93}}
 ```
 
 Message passing is the pattern behind every lock and every queue: the flag says the data is ready. Its

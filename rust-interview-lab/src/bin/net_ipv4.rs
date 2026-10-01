@@ -14,7 +14,10 @@ fn parse(input: &str) -> Option<[u8; 4]> {
         parts.next()??,
         parts.next()??,
     ];
-    parts.next().is_none().then_some(address)
+    parts
+        .next()
+        .is_none()
+        .then_some(address)
 }
 
 /// `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16` are not routable on the

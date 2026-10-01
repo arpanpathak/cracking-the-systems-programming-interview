@@ -65,7 +65,10 @@ impl<T> Graph<T> {
             }
             visited[node] = true;
             order.push(node);
-            stack.extend(self.neighbors(node).filter(|&n| !visited[n]));
+            stack.extend(
+                self.neighbors(node)
+                    .filter(|&n| !visited[n]),
+            );
         }
         order
     }
@@ -101,7 +104,11 @@ fn main() {
     g.add_edge(b, c);
     g.add_edge(c, a); // closes the cycle
 
-    let names = |ids: Vec<NodeId>| -> Vec<&str> { ids.into_iter().map(|i| g.nodes[i]).collect() };
+    let names = |ids: Vec<NodeId>| -> Vec<&str> {
+        ids.into_iter()
+            .map(|i| g.nodes[i])
+            .collect()
+    };
 
     println!("BFS:   {:?}", names(g.bfs(a))); // ["A", "B", "C"]
     println!("DFS:   {:?}", names(g.dfs(a))); // ["A", "B", "C"]

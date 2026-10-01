@@ -76,16 +76,22 @@ mod tests {
     #[test]
     fn echoes_bytes_until_the_client_closes() {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind ephemeral port");
-        let address = listener.local_addr().expect("local address");
+        let address = listener
+            .local_addr()
+            .expect("local address");
 
         // Accept exactly one connection, echo it, then return so the test can join.
         let server = thread::spawn(move || {
-            let (stream, _) = listener.accept().expect("accept one connection");
+            let (stream, _) = listener
+                .accept()
+                .expect("accept one connection");
             handle_connection(stream).expect("echo");
         });
 
         let mut client = TcpStream::connect(address).expect("connect");
-        client.write_all(b"hello echo").expect("write");
+        client
+            .write_all(b"hello echo")
+            .expect("write");
         client
             .shutdown(Shutdown::Write)
             .expect("half close");
@@ -95,7 +101,9 @@ mod tests {
             .read_to_end(&mut echoed)
             .expect("read echo");
 
-        server.join().expect("server thread panicked");
+        server
+            .join()
+            .expect("server thread panicked");
         assert_eq!(echoed, b"hello echo");
     }
 }

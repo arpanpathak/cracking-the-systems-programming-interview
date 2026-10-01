@@ -57,7 +57,7 @@ from network order.
 `parse` splits the text on dots and parses each part as a `u8`:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/net_ipv4.rs:6:18}}
+{{#include ../../rust-interview-lab/src/bin/net_ipv4.rs:6:21}}
 ```
 
 `parse` is four `parts.next()??` expressions and a check that nothing is left over. The iterator yields
@@ -69,7 +69,7 @@ part.
 `is_private` is the table above, written as one pattern:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/net_ipv4.rs:20:24}}
+{{#include ../../rust-interview-lab/src/bin/net_ipv4.rs:23:27}}
 ```
 
 `[10, ..]` matches any address starting with 10. `[172, 16..=31, ..]` uses a range pattern for the second
@@ -79,7 +79,7 @@ replace.
 The conversions are one standard-library call each:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/net_ipv4.rs:26:33}}
+{{#include ../../rust-interview-lab/src/bin/net_ipv4.rs:29:36}}
 ```
 
 `u32::from_be_bytes` reads the four octets as a big-endian number on any machine, whatever its native order.

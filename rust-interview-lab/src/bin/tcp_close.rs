@@ -266,7 +266,12 @@ mod tests {
     #[test]
     fn a_server_that_never_closes_holds_close_wait() {
         let (port, _kept) = leaky_server(3).expect("server");
-        assert_eq!(census(port).expect("census").get("CLOSE_WAIT"), Some(&3));
+        assert_eq!(
+            census(port)
+                .expect("census")
+                .get("CLOSE_WAIT"),
+            Some(&3)
+        );
     }
 
     #[test]

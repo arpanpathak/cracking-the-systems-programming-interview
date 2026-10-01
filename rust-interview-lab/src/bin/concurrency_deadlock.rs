@@ -6,7 +6,11 @@
 
 /// Iterative-friendly depth-first search over a small adjacency list.
 fn has_deadlock(waits_for: &[(usize, usize)]) -> bool {
-    let Some(highest) = waits_for.iter().flat_map(|(a, b)| [*a, *b]).max() else {
+    let Some(highest) = waits_for
+        .iter()
+        .flat_map(|(a, b)| [*a, *b])
+        .max()
+    else {
         return false;
     };
 

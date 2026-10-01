@@ -204,10 +204,10 @@ In memory, every `Command` takes the same space, enough for its largest variant,
 
 Parsing turns one line of text into a `Command`, or into an error that says what was wrong with the line.
 
-<p class="listing"><b>Listing 7.6</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 115).</p>
+<p class="listing"><b>Listing 7.6</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 117).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:79:115}}
+{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:79:117}}
 ```
 
 `parse` returns `Result<Self, CommandError>`: a command, or the reason the line could not be parsed. Trace
@@ -239,10 +239,10 @@ ignore its fields.
 
 Each way a line can be malformed gets its own error variant, so the caller learns exactly what failed.
 
-<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 117 to 146).</p>
+<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 119 to 148).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:117:146}}
+{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:119:148}}
 ```
 
 `CommandError` lists every way parsing can fail, and its `Display` writes a message for each. Because the
@@ -259,10 +259,10 @@ the original line. So no text is copied until `parse` decides to keep it with `t
 
 The file has one more small function:
 
-<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 148 to 155).</p>
+<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 150 to 157).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:148:155}}
+{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:150:157}}
 ```
 
 `fold` walks the slice once and carries a value along. Here the value is a pair, `(count, sum)`, starting at

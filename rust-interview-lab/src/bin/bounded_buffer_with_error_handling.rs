@@ -62,7 +62,10 @@ impl<T> BoundedQueue<T> {
     fn pop(&self) -> Result<T, QueuePoisonedError> {
         let mut guard = self.inner.lock().map_poison()?;
         while guard.is_empty() {
-            guard = self.not_empty.wait(guard).map_poison()?;
+            guard = self
+                .not_empty
+                .wait(guard)
+                .map_poison()?;
         }
         let item = guard.pop_front().unwrap();
         drop(guard);

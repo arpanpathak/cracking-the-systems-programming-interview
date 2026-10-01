@@ -184,10 +184,10 @@ The program first turns the text into words, then counts them, then runs the bou
 </figure>
 
 
-<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 39). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
+<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 41). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/top_k_frequent_words.rs:1:39}}
+{{#include ../../rust-interview-lab/src/bin/top_k_frequent_words.rs:1:41}}
 ```
 
 **Turning text into words.** The chain splits on whitespace. Then it trims characters that are not letters

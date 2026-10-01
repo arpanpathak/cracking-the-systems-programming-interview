@@ -42,7 +42,9 @@ impl Padded {
 
 /// Scoped threads borrow the vector directly, so there is no `Arc` and no clone.
 fn run_unpadded() -> Duration {
-    let counters: Vec<Unpadded> = (0..THREADS).map(|_| Unpadded::new()).collect();
+    let counters: Vec<Unpadded> = (0..THREADS)
+        .map(|_| Unpadded::new())
+        .collect();
     let start = Instant::now();
     thread::scope(|scope| {
         for counter in &counters {
@@ -57,7 +59,9 @@ fn run_unpadded() -> Duration {
 }
 
 fn run_padded() -> Duration {
-    let counters: Vec<Padded> = (0..THREADS).map(|_| Padded::new()).collect();
+    let counters: Vec<Padded> = (0..THREADS)
+        .map(|_| Padded::new())
+        .collect();
     let start = Instant::now();
     thread::scope(|scope| {
         for counter in &counters {

@@ -17,7 +17,9 @@ fn top_k_frequent(sentence: &str, k: usize) -> Vec<(String, u32)> {
     // Build the frequency map...
     let mut frequencies = HashMap::<&str, u32>::new();
     for word in &words {
-        *frequencies.entry(word.as_str()).or_default() += 1;
+        *frequencies
+            .entry(word.as_str())
+            .or_default() += 1;
     }
 
     // Keep a min heap of size k. Reverse flips the max heap, so the least

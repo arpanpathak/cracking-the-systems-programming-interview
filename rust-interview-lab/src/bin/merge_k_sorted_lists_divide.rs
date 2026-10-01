@@ -112,7 +112,9 @@ mod tests {
 
     #[test]
     fn handles_an_odd_number_of_lists() {
-        let lists: Vec<_> = (0..5).map(|i| from_slice(&[i, i + 10])).collect();
+        let lists: Vec<_> = (0..5)
+            .map(|i| from_slice(&[i, i + 10]))
+            .collect();
         let merged = MergeKSorted::merge_k_lists(lists);
         assert_eq!(to_vec(&merged), vec![0, 1, 2, 3, 4, 10, 11, 12, 13, 14]);
     }

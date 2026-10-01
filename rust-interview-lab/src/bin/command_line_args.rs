@@ -26,10 +26,14 @@ fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, String>
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
             "--name" => {
-                options.name = arguments.next().ok_or("--name needs a value")?;
+                options.name = arguments
+                    .next()
+                    .ok_or("--name needs a value")?;
             }
             "--count" => {
-                let value = arguments.next().ok_or("--count needs a value")?;
+                let value = arguments
+                    .next()
+                    .ok_or("--count needs a value")?;
                 options.count = value
                     .parse()
                     .map_err(|_| format!("--count needs a number, got {value:?}"))?;
@@ -68,7 +72,11 @@ mod tests {
     use super::*;
 
     fn parse_args(arguments: &[&str]) -> Result<Options, String> {
-        parse(arguments.iter().map(|value| value.to_string()))
+        parse(
+            arguments
+                .iter()
+                .map(|value| value.to_string()),
+        )
     }
 
     #[test]
@@ -85,7 +93,11 @@ mod tests {
 
     #[test]
     fn verbose_is_a_flag() {
-        assert!(parse_args(&["--verbose"]).unwrap().verbose);
+        assert!(
+            parse_args(&["--verbose"])
+                .unwrap()
+                .verbose
+        );
         assert!(!parse_args(&[]).unwrap().verbose);
     }
 

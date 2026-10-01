@@ -62,7 +62,8 @@ where
             .map
             .insert(key.clone(), (value, self.generation))
             .is_none();
-        self.recency.push_back((key, self.generation));
+        self.recency
+            .push_back((key, self.generation));
 
         if is_new {
             self.evict_if_needed();

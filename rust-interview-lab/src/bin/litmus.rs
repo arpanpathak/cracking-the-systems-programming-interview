@@ -19,7 +19,9 @@ const ROUNDS: usize = 1_000_000;
 
 /// A fresh, zeroed atomic for every round, so no round needs a reset.
 fn zeroed(rounds: usize) -> Vec<AtomicU32> {
-    (0..rounds).map(|_| AtomicU32::new(0)).collect()
+    (0..rounds)
+        .map(|_| AtomicU32::new(0))
+        .collect()
 }
 
 /// Wait until both threads have reached `round`. Keeps the two threads on the

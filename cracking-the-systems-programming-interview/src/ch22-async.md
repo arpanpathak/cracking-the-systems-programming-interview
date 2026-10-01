@@ -125,18 +125,18 @@ One line asks for the next poll: `context.waker().wake_by_ref()`. It runs, then 
 
 Its state is a `ready` flag and an optional stored `Waker`, shared with a background thread through `Arc<Mutex<_>>`.
 
-<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 135). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 137). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:99:135}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:99:137}}
 ```
 
 `poll` checks `ready`. While it is false, `poll` stores a clone of the current waker and returns `Pending`.
 
-<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 137 to 149). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 139 to 154). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:137:149}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:139:154}}
 ```
 
 The background thread sleeps, sets `ready`, takes the waker out of the state, releases the lock, and calls `wake()`. Figure 22.3 shows the exchange.
@@ -158,30 +158,30 @@ You can now write both shapes: a future that re-arms itself, and a future that k
 
 A `Task` holds its future, a handle to the executor's queue, and a `completed` flag. It also implements `Wake`. Waking a task pushes an `Arc` of the task back on the queue.
 
-<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 151 to 172). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 156 to 177). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:151:172}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:156:177}}
 ```
 
 `spawn` wraps a future in a task and enqueues it.
 
-<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 179 to 203). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 184 to 208). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:179:203}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:184:208}}
     // ...
 }
 ```
 
 `run` pops tasks one at a time, builds a waker from the task itself, and polls the future. A `Ready` result marks the task completed, so a late wake is skipped by the `completed` check.
 
-<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 205 to 232). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 210 to 245). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 ```rust
 impl MiniExecutor {
     // ...
-{{#include ../../rust-interview-lab/src/problems/async_mini.rs:205:232}}
+{{#include ../../rust-interview-lab/src/problems/async_mini.rs:210:245}}
 }
 ```
 

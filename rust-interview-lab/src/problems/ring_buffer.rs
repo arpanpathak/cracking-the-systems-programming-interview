@@ -200,8 +200,12 @@ mod tests {
             })
         };
 
-        producer.join().expect("producer panicked");
-        let received = consumer.join().expect("consumer panicked");
+        producer
+            .join()
+            .expect("producer panicked");
+        let received = consumer
+            .join()
+            .expect("consumer panicked");
 
         assert_eq!(received, (0..ITEMS).collect::<Vec<_>>());
     }
@@ -218,9 +222,18 @@ mod tests {
         let dropped = Arc::new(AtomicUsize::new(0));
         {
             let ring = SpscRing::<Tracker, 4>::new();
-            assert!(ring.push(Tracker(Arc::clone(&dropped))).is_ok());
-            assert!(ring.push(Tracker(Arc::clone(&dropped))).is_ok());
-            assert!(ring.push(Tracker(Arc::clone(&dropped))).is_ok());
+            assert!(
+                ring.push(Tracker(Arc::clone(&dropped)))
+                    .is_ok()
+            );
+            assert!(
+                ring.push(Tracker(Arc::clone(&dropped)))
+                    .is_ok()
+            );
+            assert!(
+                ring.push(Tracker(Arc::clone(&dropped)))
+                    .is_ok()
+            );
         }
         assert_eq!(dropped.load(Ordering::SeqCst), 3);
     }

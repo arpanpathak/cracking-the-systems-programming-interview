@@ -120,8 +120,14 @@ impl ThreadPool {
     pub fn shutdown(mut self) -> Report {
         self.close_and_join();
         Report {
-            completed: self.counters.completed.load(Ordering::Relaxed),
-            panicked: self.counters.panicked.load(Ordering::Relaxed),
+            completed: self
+                .counters
+                .completed
+                .load(Ordering::Relaxed),
+            panicked: self
+                .counters
+                .panicked
+                .load(Ordering::Relaxed),
         }
     }
 
@@ -152,8 +158,12 @@ fn worker_loop(receiver: &Mutex<mpsc::Receiver<Job>>, counters: &Counters) {
         // `AssertUnwindSafe` is sound here: the job owns everything it touches,
         // and a panicking job's partial state is never observed by this loop.
         match panic::catch_unwind(AssertUnwindSafe(job)) {
-            Ok(()) => counters.completed.fetch_add(1, Ordering::Relaxed),
-            Err(_) => counters.panicked.fetch_add(1, Ordering::Relaxed),
+            Ok(()) => counters
+                .completed
+                .fetch_add(1, Ordering::Relaxed),
+            Err(_) => counters
+                .panicked
+                .fetch_add(1, Ordering::Relaxed),
         };
     }
 }
@@ -207,7 +217,9 @@ mod tests {
         let pool = ThreadPool::new(1).unwrap();
         let (name_tx, name_rx) = channel();
         pool.execute(move || {
-            let name = thread::current().name().map(str::to_string);
+            let name = thread::current()
+                .name()
+                .map(str::to_string);
             name_tx.send(name).unwrap();
         })
         .unwrap();
@@ -222,7 +234,11 @@ mod tests {
     #[test]
     fn spawn_errors_expose_their_source() {
         let error = PoolError::Spawn(io::Error::other("no threads left"));
-        assert!(error.to_string().contains("no threads left"));
+        assert!(
+            error
+                .to_string()
+                .contains("no threads left")
+        );
         assert!(error.source().is_some());
         assert!(PoolError::ShutDown.source().is_none());
     }

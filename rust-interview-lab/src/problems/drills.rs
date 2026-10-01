@@ -78,7 +78,10 @@ impl<T> SpinLock<T> {
     }
 
     pub fn lock(&self) -> SpinGuard<'_, T> {
-        while self.locked.swap(true, Ordering::Acquire) {
+        while self
+            .locked
+            .swap(true, Ordering::Acquire)
+        {
             std::hint::spin_loop();
         }
         SpinGuard { lock: self }
@@ -91,7 +94,9 @@ pub struct SpinGuard<'a, T> {
 
 impl<T> Drop for SpinGuard<'_, T> {
     fn drop(&mut self) {
-        self.lock.locked.store(false, Ordering::Release);
+        self.lock
+            .locked
+            .store(false, Ordering::Release);
     }
 }
 
@@ -126,7 +131,10 @@ impl Semaphore {
     pub fn acquire(&self) {
         let mut permits = self.permits.lock().expect("poisoned");
         while *permits == 0 {
-            permits = self.released.wait(permits).expect("poisoned");
+            permits = self
+                .released
+                .wait(permits)
+                .expect("poisoned");
         }
         *permits -= 1;
     }
@@ -185,7 +193,10 @@ impl<T> BlockingQueue<T> {
                 self.not_empty.notify_one();
                 return Ok(());
             }
-            inner = self.not_full.wait(inner).expect("poisoned");
+            inner = self
+                .not_full
+                .wait(inner)
+                .expect("poisoned");
         }
     }
 
@@ -199,7 +210,10 @@ impl<T> BlockingQueue<T> {
             if inner.closed {
                 return None;
             }
-            inner = self.not_empty.wait(inner).expect("poisoned");
+            inner = self
+                .not_empty
+                .wait(inner)
+                .expect("poisoned");
         }
     }
 
@@ -228,7 +242,11 @@ impl ThreadPool {
                 let receiver = Arc::clone(&receiver);
                 thread::spawn(move || {
                     loop {
-                        let Ok(job) = receiver.lock().expect("poisoned").recv() else {
+                        let Ok(job) = receiver
+                            .lock()
+                            .expect("poisoned")
+                            .recv()
+                        else {
                             return;
                         };
                         job();

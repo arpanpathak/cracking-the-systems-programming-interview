@@ -103,7 +103,7 @@ If the connect fails, `connect` gives the slot back:
 ```rust
 impl Pool {
     // ...
-{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:141:162}}
+{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:141:164}}
     // ...
 }
 ```
@@ -115,12 +115,12 @@ impl Pool {
 ```rust
 impl Pool {
     // ...
-{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:164:187}}
+{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:166:192}}
 }
 ```
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:190:217}}
+{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:195:226}}
 ```
 
 `give_back` pushes the connection onto the idle stack and wakes one waiting caller. `discard` marks the
@@ -130,7 +130,7 @@ after any error on it. A failed request may have left half a response in the soc
 `ask` puts the two together. It is how the program sends every pooled request:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:219:241}}
+{{#include ../../rust-interview-lab/src/bin/conn_pool.rs:228:250}}
 ```
 
 ## 29.5 Stale connections

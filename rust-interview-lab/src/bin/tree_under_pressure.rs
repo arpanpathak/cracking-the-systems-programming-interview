@@ -11,7 +11,10 @@ fn level_order<T>(root: &TreeNode<T>) -> Vec<Vec<&T>> {
     let mut level = vec![root];
     while !level.is_empty() {
         result.push(level.iter().map(|n| &n.value).collect());
-        level = level.iter().flat_map(|n| &n.children).collect();
+        level = level
+            .iter()
+            .flat_map(|n| &n.children)
+            .collect();
     }
     result
 }

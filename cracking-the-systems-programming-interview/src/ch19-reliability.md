@@ -125,7 +125,7 @@ Every call to the locked bucket takes the mutex. Under heavy load, threads wait 
 {{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:7:14}}
 
 impl RateLimiter {
-{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:17:40}}
+{{#include ../../rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs:17:43}}
 }
 ```
 

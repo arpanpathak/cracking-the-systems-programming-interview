@@ -96,7 +96,12 @@ where
     pub fn len(&self) -> usize {
         self.shards
             .iter()
-            .map(|shard| shard.lock().expect("shard mutex poisoned").len())
+            .map(|shard| {
+                shard
+                    .lock()
+                    .expect("shard mutex poisoned")
+                    .len()
+            })
             .sum()
     }
 
@@ -174,7 +179,12 @@ mod tests {
         let smallest = cache
             .shards
             .iter()
-            .map(|shard| shard.lock().expect("shard mutex poisoned").len())
+            .map(|shard| {
+                shard
+                    .lock()
+                    .expect("shard mutex poisoned")
+                    .len()
+            })
             .min()
             .expect("at least one shard");
         assert!(smallest > 0, "at least one shard was empty");

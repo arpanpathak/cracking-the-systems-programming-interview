@@ -428,10 +428,10 @@ $ cargo run --bin test_tree
 A common variation returns the values grouped by level, as a list of lists. The first list holds the
 root's value, the second the values of its children, and so on. The file solves it twice.
 
-<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
+<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 20). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:1:17}}
+{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:1:20}}
 ```
 
 `level_order` keeps one whole level in `level`, a `Vec` of references to nodes. Each pass of the loop does two
@@ -439,10 +439,10 @@ things. It adds the values of this level to the result. Then it builds the next 
 all the nodes in this level: `level.iter().flat_map(|n| &n.children).collect()`. `flat_map` turns each node into
 its children and joins all those children into one sequence. The loop ends when a level has no nodes.
 
-<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 19 to 37).</p>
+<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 22 to 40).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:19:37}}
+{{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:22:40}}
 ```
 
 `level_order_readable` uses one queue, as `bfs` did. The trick is `queue.len()` at the start of each round. At

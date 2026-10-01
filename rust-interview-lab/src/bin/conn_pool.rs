@@ -143,7 +143,9 @@ impl Pool {
     fn connect(&self) -> io::Result<Pooled<'_>> {
         match TcpStream::connect(self.address) {
             Ok(stream) => {
-                self.stats.connects.fetch_add(1, Relaxed);
+                self.stats
+                    .connects
+                    .fetch_add(1, Relaxed);
                 Ok(self.lend(stream))
             }
             Err(error) => {
@@ -176,7 +178,10 @@ impl Pool {
     }
 
     fn release_slot(&self) {
-        self.state.lock().expect("pool lock").open -= 1;
+        self.state
+            .lock()
+            .expect("pool lock")
+            .open -= 1;
         self.returned.notify_one();
     }
 
@@ -198,13 +203,17 @@ impl Deref for Pooled<'_> {
     type Target = TcpStream;
 
     fn deref(&self) -> &TcpStream {
-        self.stream.as_ref().expect("stream until drop")
+        self.stream
+            .as_ref()
+            .expect("stream until drop")
     }
 }
 
 impl DerefMut for Pooled<'_> {
     fn deref_mut(&mut self) -> &mut TcpStream {
-        self.stream.as_mut().expect("stream until drop")
+        self.stream
+            .as_mut()
+            .expect("stream until drop")
     }
 }
 

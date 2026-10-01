@@ -59,7 +59,11 @@ where
         for &(neighbor, weight) in graph[&current_node] {
             let new_distance = current_cost + weight;
 
-            if new_distance < *distances.get(&neighbor).unwrap_or(&u32::MAX) {
+            if new_distance
+                < *distances
+                    .get(&neighbor)
+                    .unwrap_or(&u32::MAX)
+            {
                 distances.insert(neighbor, new_distance);
                 min_heap.push(Reverse((new_distance, neighbor)));
             }

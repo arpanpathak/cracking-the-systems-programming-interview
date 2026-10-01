@@ -309,12 +309,12 @@ ownership problems at all.
 numbers". The `+ '_` says the iterator borrows from `self`, so it cannot outlive the graph. `.copied()` turns
 the `&usize` items of the slice iterator into `usize` values.
 
-<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 71).</p>
+<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 74).</p>
 
 ```rust
 impl<T> Graph<T> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:39:71}}
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:39:74}}
     // ...
 }
 ```
@@ -323,12 +323,12 @@ These are the algorithms of sections 12.3 and 12.4, written with `neighbors`. Th
 neighbors before pushing them, with `.filter(|&n| !visited[n])`. The filter keeps the stack smaller, but the
 check after `pop` is still needed. A node can be pushed by two different nodes before either copy is popped.
 
-<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 73 to 91).</p>
+<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 76 to 94).</p>
 
 ```rust
 impl<T> Graph<T> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:73:91}}
+{{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs:76:94}}
 }
 ```
 
@@ -615,10 +615,10 @@ The heap holds `Reverse((cost, node))`. `BinaryHeap` pops the largest item, and 
 so the smallest cost comes out first. Tuples compare by their first field, then by their second, so the cost
 decides and the node number breaks ties.
 
-<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 69).</p>
+<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 73).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:46:69}}
+{{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:46:73}}
 ```
 
 In this version, `distances` is a `HashMap` that contains only nodes that have been reached. `Node` also needs
@@ -690,12 +690,12 @@ $ cargo run --bin dijkstra
 The first print shows the graph and is cut short here. A `HashMap` does not keep its entries in any order. The lines of both prints can come out in a different
 order on your machine.
 
-<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 15 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
+<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 15 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:1:5}}
 
-{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:15:44}}
+{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:15:47}}
 ```
 
 This version stores references to nodes, `&'a Node`, in `dist` and in the heap, so `Node` does not need `Clone`.

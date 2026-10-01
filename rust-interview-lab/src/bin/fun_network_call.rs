@@ -40,7 +40,10 @@ impl IdemCache {
     where
         F: FnOnce() -> Result<String, RuntimeError>,
     {
-        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        let mut store = self
+            .store
+            .lock()
+            .map_err(|_| "lock poisoned")?;
         if let Some(v) = store.get(key) {
             return Ok(v.clone());
         }

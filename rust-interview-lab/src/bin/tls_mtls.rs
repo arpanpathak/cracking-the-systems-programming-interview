@@ -184,7 +184,12 @@ fn connect(listener: &TcpListener, config: ClientConfig, name: &str) -> Result<S
     tls.read_to_string(&mut reply)?;
 
     Ok(Session {
-        version: format!("{:?}", tls.conn.protocol_version().ok_or("no version")?),
+        version: format!(
+            "{:?}",
+            tls.conn
+                .protocol_version()
+                .ok_or("no version")?
+        ),
         suite: format!(
             "{:?}",
             tls.conn

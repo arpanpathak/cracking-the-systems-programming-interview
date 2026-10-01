@@ -121,7 +121,9 @@ impl Delay {
         thread::spawn(move || {
             thread::sleep(duration);
             let waker = {
-                let mut guard = thread_state.lock().expect("delay mutex poisoned");
+                let mut guard = thread_state
+                    .lock()
+                    .expect("delay mutex poisoned");
                 guard.ready = true;
                 guard.waker.take()
             };
@@ -138,7 +140,10 @@ impl Future for Delay {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<()> {
-        let mut guard = self.state.lock().expect("delay mutex poisoned");
+        let mut guard = self
+            .state
+            .lock()
+            .expect("delay mutex poisoned");
         if guard.ready {
             Poll::Ready(())
         } else {
@@ -224,9 +229,17 @@ impl MiniExecutor {
 
             let waker = Waker::from(Arc::clone(&task));
             let mut context = Context::from_waker(&waker);
-            let mut future = task.future.lock().expect("task mutex poisoned");
-            if future.as_mut().poll(&mut context).is_ready() {
-                task.completed.store(true, Ordering::Release);
+            let mut future = task
+                .future
+                .lock()
+                .expect("task mutex poisoned");
+            if future
+                .as_mut()
+                .poll(&mut context)
+                .is_ready()
+            {
+                task.completed
+                    .store(true, Ordering::Release);
             }
         }
     }

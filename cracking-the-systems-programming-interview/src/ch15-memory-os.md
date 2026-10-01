@@ -281,10 +281,10 @@ fills the line.
 `Unpadded` is 8 bytes, so a `Vec` of four of them fits in 32 bytes, inside one or two cache lines. `Padded` is 64
 bytes, and each one gets a line.
 
-<p class="listing"><b>Listing 15.6</b> The timed run (lines 43 to 57).</p>
+<p class="listing"><b>Listing 15.6</b> The timed run (lines 43 to 59).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:43:57}}
+{{#include ../../rust-interview-lab/src/bin/concurrency_false_sharing.rs:43:59}}
 ```
 
 The loop `for counter in &counters` gives each thread a reference to its own counter. `move ||` moves that

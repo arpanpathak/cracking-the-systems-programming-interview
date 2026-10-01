@@ -253,12 +253,12 @@ any type, including the standard library's `Result`. A trait used this way is ca
 `impl<T> PoisonMap<T> for Result<T, PoisonError<T>>` gives every `Result<T, PoisonError<T>>` a `map_poison`
 method, which replaces the `PoisonError` with `QueuePoisonedError`.
 
-<p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 51 to 71).</p>
+<p class="listing"><b>Listing 17.8</b> <code>push</code> and <code>pop</code> (lines 51 to 74).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:51:71}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs:51:74}}
 }
 ```
 
@@ -299,12 +299,12 @@ The third version returns a general error type:
 `Box<dyn Error + Send + Sync>` can hold any error type. `+ Send + Sync` is needed because the error travels
 between threads: each thread returns a `Result`, and `join` hands it to the main thread.
 
-<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.10</b> <code>push</code> (lines 29 to 46). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 ```rust
 impl<T> BoundedQueue<T> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:29:43}}
+{{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs:29:46}}
     // ...
 }
 ```
@@ -429,12 +429,12 @@ The library version adds a way to **close** the queue (figure 17.5).
 The mutex now protects a small struct: the items, the capacity, and a `closed` flag. The flag must be inside the
 mutex, because threads check it together with the items.
 
-<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 88).</p>
+<p class="listing"><b>Listing 17.14</b> <code>push</code> and <code>pop</code> (lines 47 to 94).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
     // ...
-{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:47:88}}
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:47:94}}
     // ...
 }
 ```
@@ -448,12 +448,12 @@ is not lost, and the caller decides what to do with it.
 items already in it. Only a closed queue that is empty returns `None`. A consumer can therefore loop with
 `while let Some(item) = queue.pop()`, and the loop ends after the last item.
 
-<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 100 to 110).</p>
+<p class="listing"><b>Listing 17.15</b> <code>close</code> (lines 109 to 122).</p>
 
 ```rust
 impl<T> BoundedQueue<T> {
     // ...
-{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:100:110}}
+{{#include ../../rust-interview-lab/src/problems/bounded_queue.rs:109:122}}
     // ...
 }
 ```

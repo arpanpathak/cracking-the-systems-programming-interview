@@ -91,7 +91,7 @@ current event. That key is the least recently used one.
 The key must be `Clone`, because a copy of it goes into the queue with every event. The value must be `Clone`,
 because `get` returns a copy of it.
 
-<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 49 to 70).</p>
+<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 49 to 71).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
@@ -100,7 +100,7 @@ where
     V: Clone,
 {
     // ...
-{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:49:70}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:49:71}}
     // ...
 }
 ```
@@ -112,7 +112,7 @@ generation, records an event, and stores the value again with the new stamp.
 was already present, or `None` if it was new. Only a new key can make the map too large, so only a new key
 triggers eviction.
 
-<p class="listing"><b>Listing 13.3</b> Eviction (lines 72 to 86).</p>
+<p class="listing"><b>Listing 13.3</b> Eviction (lines 73 to 87).</p>
 
 ```rust
 impl<K, V> LruCache<K, V>
@@ -121,7 +121,7 @@ where
     V: Clone,
 {
     // ...
-{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:72:86}}
+{{#include ../../rust-interview-lab/src/problems/lru_cache.rs:73:87}}
 }
 ```
 

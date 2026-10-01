@@ -82,7 +82,8 @@ impl<T> SpinLock<T> {
     }
 
     fn unlock(&self) {
-        self.locked.store(false, Ordering::Release);
+        self.locked
+            .store(false, Ordering::Release);
     }
 }
 

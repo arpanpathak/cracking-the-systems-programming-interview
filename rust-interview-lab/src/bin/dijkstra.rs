@@ -25,7 +25,10 @@ where
         }
         for edge in &graph[&node] {
             let new_cost = cost + edge.weight;
-            if dist.get(&edge.to).is_none_or(|&d| new_cost < d) {
+            if dist
+                .get(&edge.to)
+                .is_none_or(|&d| new_cost < d)
+            {
                 dist.insert(edge.to.clone(), new_cost);
                 heap.push(Reverse((new_cost, edge.to.clone())));
             }

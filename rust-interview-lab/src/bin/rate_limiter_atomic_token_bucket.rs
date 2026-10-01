@@ -26,11 +26,14 @@ impl RateLimiter {
 
     pub fn try_acquire(&self) -> bool {
         let now = self.created_at.elapsed().as_secs();
-        let last = self.last_refilled_at.fetch_max(now, Relaxed);
+        let last = self
+            .last_refilled_at
+            .fetch_max(now, Relaxed);
         if now > last {
             self.tokens
                 .fetch_add((now - last) as i64 * self.tokens_per_sec, Relaxed);
-            self.tokens.fetch_min(self.capacity, Relaxed);
+            self.tokens
+                .fetch_min(self.capacity, Relaxed);
         }
 
         if self.tokens.load(Relaxed) <= 0 {

@@ -411,8 +411,16 @@ mod tests {
     #[test]
     fn http_1_0_needs_keep_alive_opt_in() {
         let raw = b"GET / HTTP/1.0\r\n\r\n";
-        assert!(!parse(raw).expect("valid").should_keep_alive());
+        assert!(
+            !parse(raw)
+                .expect("valid")
+                .should_keep_alive()
+        );
         let raw = b"GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
-        assert!(parse(raw).expect("valid").should_keep_alive());
+        assert!(
+            parse(raw)
+                .expect("valid")
+                .should_keep_alive()
+        );
     }
 }

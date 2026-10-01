@@ -49,7 +49,10 @@ impl<T> BoundedQueue<T> {
     /// Returns `Err(item)` if the queue is closed, so the caller keeps ownership
     /// instead of losing the value.
     pub fn push(&self, item: T) -> Result<(), T> {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         loop {
             if state.closed {
                 return Err(item);
@@ -71,7 +74,10 @@ impl<T> BoundedQueue<T> {
     /// Returns `None` once the queue is closed and drained, which is how a
     /// consumer loop terminates cleanly.
     pub fn pop(&self) -> Option<T> {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         loop {
             if let Some(item) = state.items.pop_front() {
                 self.not_full.notify_one();
@@ -89,7 +95,10 @@ impl<T> BoundedQueue<T> {
 
     /// Pop without blocking.
     pub fn try_pop(&self) -> Option<T> {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         let item = state.items.pop_front();
         if item.is_some() {
             self.not_full.notify_one();
@@ -102,7 +111,10 @@ impl<T> BoundedQueue<T> {
     /// Pending and future `pop` calls return `None` after the queue drains, and
     /// future `push` calls fail. Idempotent.
     pub fn close(&self) {
-        let mut state = self.state.lock().expect("queue mutex poisoned");
+        let mut state = self
+            .state
+            .lock()
+            .expect("queue mutex poisoned");
         state.closed = true;
         drop(state);
         self.not_empty.notify_all();
@@ -160,7 +172,9 @@ mod tests {
             let queue = Arc::clone(&queue);
             thread::spawn(move || {
                 for value in 0..1_000 {
-                    queue.push(value).expect("queue stays open");
+                    queue
+                        .push(value)
+                        .expect("queue stays open");
                 }
                 queue.close();
             })
@@ -170,7 +184,9 @@ mod tests {
         while let Some(value) = queue.pop() {
             received.push(value);
         }
-        producer.join().expect("producer panicked");
+        producer
+            .join()
+            .expect("producer panicked");
 
         assert_eq!(received, (0..1_000).collect::<Vec<_>>());
     }
@@ -184,7 +200,9 @@ mod tests {
             let observed_peak = Arc::clone(&observed_peak);
             thread::spawn(move || {
                 for value in 0..200u32 {
-                    queue.push(value).expect("queue stays open");
+                    queue
+                        .push(value)
+                        .expect("queue stays open");
                     observed_peak.fetch_max(queue.len(), Ordering::SeqCst);
                 }
                 queue.close();
@@ -194,7 +212,9 @@ mod tests {
         while queue.pop().is_some() {
             thread::sleep(Duration::from_micros(50));
         }
-        producer.join().expect("producer panicked");
+        producer
+            .join()
+            .expect("producer panicked");
 
         assert!(observed_peak.load(Ordering::SeqCst) <= 4);
     }
@@ -210,7 +230,12 @@ mod tests {
         thread::sleep(Duration::from_millis(20));
         queue.close();
 
-        assert_eq!(consumer.join().expect("consumer panicked"), None);
+        assert_eq!(
+            consumer
+                .join()
+                .expect("consumer panicked"),
+            None
+        );
     }
 
     #[test]

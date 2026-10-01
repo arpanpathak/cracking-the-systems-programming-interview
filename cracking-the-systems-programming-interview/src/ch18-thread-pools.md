@@ -200,12 +200,12 @@ Version 4 catches the panic (figure 18.3).
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 18.8</b> The worker loop (lines 144 to 159). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
+<p class="listing"><b>Listing 18.8</b> The worker loop (lines 150 to 169). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:11:22}}
 
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:144:159}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:150:169}}
 ```
 
 `panic::catch_unwind(f)` runs `f`. If `f` panics, the unwinding stops at `catch_unwind`, which returns `Err`.
@@ -240,10 +240,10 @@ running.
 ```rust
 impl ThreadPool {
     // ...
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:119:135}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:119:141}}
 }
 
-{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:138:142}}
+{{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:144:148}}
 ```
 
 `shutdown` takes `self` by value and returns a `Report` with the two counts. The work is in `close_and_join`, which

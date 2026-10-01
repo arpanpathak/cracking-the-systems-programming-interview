@@ -49,7 +49,8 @@ impl ConsistentHash {
         let name: Arc<str> = Arc::from(node);
         for replica in 0..self.replicas {
             let hash = virtual_node_hash(node, replica);
-            self.ring.push((hash, Arc::clone(&name)));
+            self.ring
+                .push((hash, Arc::clone(&name)));
         }
         self.ring.sort_by_key(|(hash, _)| *hash);
     }
@@ -143,11 +144,16 @@ mod tests {
             let owner = ring
                 .get(&format!("key-{key}"))
                 .expect("ring is populated");
-            *counts.entry(owner.to_string()).or_insert(0) += 1;
+            *counts
+                .entry(owner.to_string())
+                .or_insert(0) += 1;
         }
 
         assert_eq!(counts.len(), 3, "every node should own some keys");
-        let smallest = *counts.values().min().expect("non-empty");
+        let smallest = *counts
+            .values()
+            .min()
+            .expect("non-empty");
         assert!(smallest > 300, "distribution is too lumpy: {counts:?}");
     }
 

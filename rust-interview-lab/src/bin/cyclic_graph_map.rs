@@ -45,13 +45,17 @@ impl<T: Copy + Eq + Hash> Graph<T> {
             }
 
             state.insert(u, State::Visiting);
-            let found = g.adj[&u].iter().any(|&v| dfs(g, v, state));
+            let found = g.adj[&u]
+                .iter()
+                .any(|&v| dfs(g, v, state));
             state.insert(u, State::Done);
             found
         }
 
         let mut state = HashMap::new();
-        self.adj.keys().any(|&u| dfs(self, u, &mut state))
+        self.adj
+            .keys()
+            .any(|&u| dfs(self, u, &mut state))
     }
 }
 

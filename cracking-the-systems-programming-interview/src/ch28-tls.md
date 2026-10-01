@@ -107,7 +107,7 @@ The configurations are built in steps. Both name the crypto provider, `ring`, ex
 its certificate and key, and the client gives its trust store:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:223:236}}
+{{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:228:241}}
     // ...
 }
 ```
@@ -128,7 +128,7 @@ tell a complete reply from a truncated one, and `rustls` reports that case as an
 The client connects through the tap, sends `hello over tls`, and reads the reply:
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:163:198}}
+{{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:163:203}}
 ```
 
 `ServerName` is the name the client expects. `rustls` sends it as SNI in the `ClientHello`, and checks the
@@ -201,7 +201,7 @@ The server adds a client certificate verifier that trusts the same CA:
 ```rust
 fn main() -> Result<(), Error> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:255:272}}
+{{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:260:277}}
 }
 ```
 

@@ -422,10 +422,10 @@ The program's settings live in one struct, with a default value for each setting
 
 Parsing walks the arguments one at a time and fills in the options. An unknown argument is an error. So is a flag with no value after it, and a count that is not a number.
 
-<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 43).</p>
+<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 47).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:21:43}}
+{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:21:47}}
 ```
 
 `parse` takes `impl IntoIterator<Item = String>`, which means "anything that can produce `String`s one at a
@@ -445,10 +445,10 @@ An argument the program does not know is an error, so a misspelled option is rep
 
 `main` ties the pieces together: it parses the arguments, runs, and tells the shell whether it succeeded.
 
-<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 45 to 64).</p>
+<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 49 to 68).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:45:64}}
+{{#include ../../rust-interview-lab/src/bin/command_line_args.rs:49:68}}
 ```
 
 A program's **exit code** is a number it returns to whoever started it. Zero means success. `main` returns

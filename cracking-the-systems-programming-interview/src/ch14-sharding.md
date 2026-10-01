@@ -173,7 +173,7 @@ blocks forever or panics. A thread waiting forever for a lock is called a **dead
 
 Some operations need every shard: the total size, and clearing the cache. They visit the shards one at a time.
 
-<p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 96 to 114).</p>
+<p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 96 to 119).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
@@ -181,7 +181,7 @@ where
     K: Hash + Eq,
 {
     // ...
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:96:114}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:96:119}}
     // ...
 }
 ```
@@ -289,7 +289,7 @@ The ring of figure 14.4 can be stored as a vector of points, kept sorted by hash
 {{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:18:24}}
 
 impl ConsistentHash {
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:27:61}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:27:62}}
     // ...
 }
 ```
@@ -310,10 +310,10 @@ adds a pointer to that same block and increases its reference count. No text is 
 `remove_node` keeps every entry that belongs to another server, with `retain`. Removing entries does not
 change the order of the rest, so the ring stays sorted.
 
-<p class="listing"><b>Listing 14.7</b> The hash functions (lines 93 to 108).</p>
+<p class="listing"><b>Listing 14.7</b> The hash functions (lines 94 to 109).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:93:108}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:94:109}}
 ```
 
 `virtual_node_hash` feeds both the server name and the replica number into one hasher. Each replica number gives a
@@ -333,12 +333,12 @@ fixed, documented algorithm.
 
 To find a key's server, hash the key and find the first point on the ring after that hash. If there is none, wrap around to the first point.
 
-<p class="listing"><b>Listing 14.8</b> <code>get</code> (lines 63 to 76).</p>
+<p class="listing"><b>Listing 14.8</b> <code>get</code> (lines 64 to 77).</p>
 
 ```rust
 impl ConsistentHash {
     // ...
-{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:63:76}}
+{{#include ../../rust-interview-lab/src/problems/consistent_hash.rs:64:77}}
     // ...
 }
 ```
