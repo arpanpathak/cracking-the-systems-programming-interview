@@ -1,0 +1,1753 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Linked lists - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch09.png" alt="Shackle, the robot who is the chain-smith, splices links without dropping one, beside a crane hook holding a chain of links, one opened for splicing">
+<h1 id="linked-lists"><a class="header" href="#linked-lists">Linked lists</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What a linked list is, and how it differs from a <code>Vec</code> in memory</li>
+<li>Moving ownership of nodes with <code>Option::take</code> and <code>std::mem::replace</code></li>
+<li>Reversing a list in place</li>
+<li>Four ways to write a list node, measured against each other</li>
+<li>Why dropping a long list can crash the program, and how to prevent it</li>
+<li>A doubly linked list built from <code>Rc</code>, <code>RefCell</code>, and <code>Weak</code></li>
+</ul>
+</div>
+
+<p>Chapter 8 introduced the pointer types. This chapter uses them to build the classic linked structure, the
+linked list. Linked lists are a good first test of ownership. Each operation moves a node from one owner to another,
+and the compiler checks every move.</p>
+<p>The chapter goes from simple to hard. First a singly linked list, where each node points only to the next,
+and an algorithm that reverses it. Then four ways to write the same list, and a benchmark that compares them.
+The benchmark finds a size at which the list crashes the program when it is dropped. After explaining and
+fixing that, the chapter ends with a doubly linked list, where each node also points back to the one before.</p>
+<h2 id="91-what-a-linked-list-is"><a class="header" href="#91-what-a-linked-list-is">9.1 What a linked list is</a></h2>
+<p>A <strong>linked list</strong> stores a sequence of values in separate nodes. Each <strong>node</strong> holds one value and a pointer
+to the next node. The list itself holds a pointer to the first node, called the <strong>head</strong>. The last node’s
+pointer is empty, which marks the end.</p>
+<p>Figure 9.1 compares a linked list with a <code>Vec</code> holding the same three values.</p>
+<figure>
+<img src="figures/list-vs-vec.svg" alt="A Vec holds 1, 2, 3 side by side in one block. A linked list has a head pointing to a node holding 1, which points to a node holding 2, which points to a node holding 3 whose next is None; the nodes are scattered.">
+<figcaption><b>Figure 9.1</b> A <code>Vec</code> stores its values next to each other. A linked list stores each value in its own heap block and connects the blocks with pointers.</figcaption>
+</figure>
+<p>The two structures are good at different things:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th><code>Vec</code></th><th>Singly linked list</th></tr>
+</thead>
+<tbody>
+<tr><td>Read the value at position i</td><td>O(1): compute the address</td><td>O(i): follow i pointers</td></tr>
+<tr><td>Add or remove at the front</td><td>O(n): shift every element</td><td>O(1): change the head pointer</td></tr>
+<tr><td>Add at the end</td><td>amortized O(1)</td><td>O(n), unless the list keeps a tail pointer</td></tr>
+<tr><td>Memory per value</td><td>the value</td><td>the value, a pointer, and a heap block’s overhead</td></tr>
+</tbody>
+</table>
+</div>
+<p>In practice, a <code>Vec</code> is faster for most work. Its values are next to each other in memory, and the
+processor reads nearby memory quickly; chapter 15 measures that effect. The techniques you learn here for
+moving nodes between owners carry over to the trees and graphs of chapters 11 and 12.</p>
+<p>In Rust, a node owns the next node through a <code>Box</code>, and the “empty” pointer at the end is <code>None</code>. So a node’s
+<code>next</code> field has type <code>Option&lt;Box&lt;Node&gt;&gt;</code>.</p>
+<h2 id="92-moving-nodes-take-and-replace"><a class="header" href="#92-moving-nodes-take-and-replace">9.2 Moving nodes: <code>take</code> and <code>replace</code></a></h2>
+<p>Every list operation moves a node from one owner to another. Rust has a rule that makes this tricky. You cannot move a value out of a place that you only borrowed.
+That would leave the place empty, and the owner would later find garbage there.</p>
+<p>Two standard functions solve this by putting something valid in the place as they take the value out:</p>
+<ul>
+<li><code>option.take()</code> returns the value inside an <code>Option</code> and leaves <code>None</code> in its place.</li>
+<li><code>std::mem::replace(&amp;mut place, new_value)</code> returns the old value and puts <code>new_value</code> in its place.</li>
+</ul>
+<p>Figure 9.2 shows <code>take</code> on a node’s <code>next</code> field.</p>
+<figure>
+<img src="figures/list-take.svg" alt="Before: node.next holds Some pointing to the rest of the list. After take: node.next is None, and the variable rest owns the rest of the list.">
+<figcaption><b>Figure 9.2</b> <code>node.next.take()</code> moves the rest of the list out of the node into a variable, and leaves <code>None</code> behind.</figcaption>
+</figure>
+<p>You will see these two calls in almost every listing of this chapter.</p>
+<h2 id="93-reversing-a-list"><a class="header" href="#93-reversing-a-list">9.3 Reversing a list</a></h2>
+<p><strong>The problem.</strong> Given the list 1 → 2 → 3 → 4, turn it into 4 → 3 → 2 → 1. Change the pointers; do not
+copy the values.</p>
+<p><strong>The idea.</strong> Walk the list from the front. Keep two variables: <code>previous</code>, the part already reversed, and
+<code>current</code>, the part not yet visited. At each step, take the first node of <code>current</code>, point it at <code>previous</code>,
+and make it the new front of <code>previous</code>. Figure 9.3 shows the state after two steps.</p>
+<figure>
+<img src="figures/ch04-reverse.svg" alt="Nodes 1 and 2 point left toward None; the link from 2 to 3 is cut; 3 points to 4">
+<figcaption><b>Figure 9.3</b> Halfway through. <code>previous</code> owns the reversed part (2 → 1), and <code>current</code> owns the rest (3 → 4).</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch04-reverse.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The list 1, 2, 3, 4 as four boxes with arrows between them, and the variables previous and current pointing at nodes. For each node, take moves the rest of the list into current, the node&#39;s link is turned back toward previous, and previous moves to the node. The list ends as 4, 3, 2, 1. A last part turns the link before taking the rest, and nodes 2, 3, and 4 are dropped." data-chapters="[[0.0, &quot;loop&quot;], [81.12, &quot;flip first&quot;]]"><img src="figures/ch04-reverse.gif" alt="The list 1, 2, 3, 4 as four boxes with arrows between them, and the variables previous and current pointing at nodes. For each node, take moves the rest of the list into current, the node&#39;s link is turned back toward previous, and previous moves to the node. The list ends as 4, 3, 2, 1. A last part turns the link before taking the rest, and nodes 2, 3, and 4 are dropped."></video>
+<figcaption><b>Animation 9.1</b> <code>reverse_list</code> one node at a time: take the rest, point the node back, move <code>previous</code> forward. No node is copied. The last part flips the link before taking the rest, and the rest of the list is dropped.</figcaption>
+</figure>
+<p>First, the node type and two helpers for building and reading lists:</p>
+<p class="listing"><b>Listing 9.1</b> The node and two helpers (lines 1 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs">src/problems/linked_list.rs</a></p>
+
+<pre><code class="language-rust">//! Reverse a singly linked list.
+//!
+//! Uses `Option&lt;Box&lt;ListNode&gt;&gt;` and a `while let` loop to move pointers in a
+//! borrow-safe way.
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option&lt;Box&lt;ListNode&gt;&gt;,
+}
+
+impl ListNode {
+    pub fn from_slice(values: &amp;[i32]) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+        let mut head = None;
+        for &amp;value in values.iter().rev() {
+            head = Some(Box::new(ListNode {
+                val: value,
+                next: head,
+            }));
+        }
+        head
+    }
+
+    pub fn to_vec(head: Option&lt;Box&lt;ListNode&gt;&gt;) -&gt; Vec&lt;i32&gt; {
+        let mut result = Vec::new();
+        let mut current = head;
+        while let Some(node) = current {
+            result.push(node.val);
+            current = node.next;
+        }
+        result
+    }
+}</code></pre>
+<p><code>from_slice</code> builds a list from a slice. It walks the slice backward, putting each value in front of the list
+built so far. The last value pushed is <code>values[0]</code>, so it ends up first. Building from the back means it never
+needs a pointer to the end of the list.</p>
+<p><code>to_vec</code> reads a list into a <code>Vec</code>. It takes the list by value and consumes it. In <code>while let Some(node) = current</code>, each pass moves one box out of <code>current</code>. <code>current = node.next</code> then moves the rest of the list out
+of that node before the node is freed.</p>
+<p>Now the reversal:</p>
+<p class="listing"><b>Listing 9.2</b> Reversing the list (lines 35 to 46).</p>
+
+<pre><code class="language-rust">pub fn reverse_list(head: Option&lt;Box&lt;ListNode&gt;&gt;) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+    let mut previous = None;
+    let mut current = head;
+
+    while let Some(mut node) = current {
+        current = node.next.take();
+        node.next = previous;
+        previous = Some(node);
+    }
+
+    previous
+}</code></pre>
+<p>Each pass through the loop does three moves:</p>
+<ol>
+<li><code>current = node.next.take();</code> takes the rest of the list out of the node, as in figure 9.2.</li>
+<li><code>node.next = previous;</code> points the node at the reversed part.</li>
+<li><code>previous = Some(node);</code> makes the node the front of the reversed part.</li>
+</ol>
+<p>Trace it on 1 → 2 → 3:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>After pass</th><th><code>previous</code></th><th><code>current</code></th></tr>
+</thead>
+<tbody>
+<tr><td>start</td><td>None</td><td>1 → 2 → 3</td></tr>
+<tr><td>1</td><td>1</td><td>2 → 3</td></tr>
+<tr><td>2</td><td>2 → 1</td><td>3</td></tr>
+<tr><td>3</td><td>3 → 2 → 1</td><td>None</td></tr>
+</tbody>
+</table>
+</div>
+<p>At no moment do two variables own the same node, which is why the compiler accepts the code. The function
+visits each node once, so it is O(n), and it uses O(1) extra memory.</p>
+<p class="listing"><b>Listing 9.3</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs">src/problems/linked_list.rs</a></p>
+
+<pre><code class="language-rust">//! Reverse a singly linked list.
+//!
+//! Uses `Option&lt;Box&lt;ListNode&gt;&gt;` and a `while let` loop to move pointers in a
+//! borrow-safe way.
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ListNode {
+    pub val: i32,
+    pub next: Option&lt;Box&lt;ListNode&gt;&gt;,
+}
+
+impl ListNode {
+    pub fn from_slice(values: &amp;[i32]) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+        let mut head = None;
+        for &amp;value in values.iter().rev() {
+            head = Some(Box::new(ListNode {
+                val: value,
+                next: head,
+            }));
+        }
+        head
+    }
+
+    pub fn to_vec(head: Option&lt;Box&lt;ListNode&gt;&gt;) -&gt; Vec&lt;i32&gt; {
+        let mut result = Vec::new();
+        let mut current = head;
+        while let Some(node) = current {
+            result.push(node.val);
+            current = node.next;
+        }
+        result
+    }
+}
+
+pub fn reverse_list(head: Option&lt;Box&lt;ListNode&gt;&gt;) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
+    let mut previous = None;
+    let mut current = head;
+
+    while let Some(mut node) = current {
+        current = node.next.take();
+        node.next = previous;
+        previous = Some(node);
+    }
+
+    previous
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reverses_list() {
+        let head = ListNode::from_slice(&amp;[1, 2, 3, 4]);
+        assert_eq!(ListNode::to_vec(reverse_list(head)), vec![4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn handles_empty_and_single() {
+        assert_eq!(reverse_list(None), None);
+        assert_eq!(
+            ListNode::to_vec(reverse_list(ListNode::from_slice(&amp;[42]))),
+            vec![42]
+        );
+    }
+}</code></pre>
+<p>The tests reverse a four-element list, an empty list, and a one-element list.</p>
+<h2 id="94-a-list-written-as-an-enum"><a class="header" href="#94-a-list-written-as-an-enum">9.4 A list written as an enum</a></h2>
+<p>The first list separated the node type from the <code>Option</code> that marks the end. Another way puts both into one
+enum: a list is either empty, or a node holding a value and the rest of the list.</p>
+<p class="listing"><b>Listing 9.4</b> The list type (lines 1 to 13). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs">src/bin/singly_linked_list.rs</a></p>
+
+<pre><code class="language-rust">// Singly linked list using an algebraic data type.
+//
+//    List&lt;T&gt; = Empty
+//            | Node { value: T, next: Link&lt;T&gt; }
+//
+// `Empty` is the end of the list.
+
+type Link&lt;T&gt; = Box&lt;List&lt;T&gt;&gt;;
+
+pub enum List&lt;T&gt; {
+    Empty,
+    Node { value: T, next: Link&lt;T&gt; },
+}</code></pre>
+<p><code>List&lt;T&gt;</code> is <strong>generic</strong>. The <code>T</code> is a placeholder for the type of the values, so the same code works for
+a list of numbers or of strings. <code>type Link&lt;T&gt; = Box&lt;List&lt;T&gt;&gt;;</code> gives the boxed rest of the list a short name.</p>
+<p class="listing"><b>Listing 9.5</b> Creating, checking, and measuring (lines 16 to 29).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; List&lt;T&gt; {
+    pub fn new() -&gt; Self {
+        List::Empty
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        matches!(self, List::Empty)
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        match self {
+            List::Empty =&gt; 0,
+            List::Node { next, .. } =&gt; 1 + next.len(),
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>len</code> counts the nodes recursively: an empty list has length 0, and a node adds 1 to the length of the rest.
+Each call waits for the next, so a list of n nodes uses n stack frames. Section 9.6 shows where that ends.</p>
+<p class="listing"><b>Listing 9.6</b> Adding and removing at the front (lines 31 to 49).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; List&lt;T&gt; {
+    // ...
+    /// O(1)
+    pub fn push_front(&amp;mut self, value: T) {
+        let old = std::mem::replace(self, List::Empty);
+        *self = List::Node {
+            value,
+            next: Link::new(old),
+        };
+    }
+
+    /// O(1)
+    pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        match std::mem::replace(self, List::Empty) {
+            List::Empty =&gt; None,
+            List::Node { value, next } =&gt; {
+                *self = *next;
+                Some(value)
+            }
+        }
+    }
+}</code></pre>
+<p>Both methods take <code>&amp;mut self</code>, so they change the list in place. They use <code>std::mem::replace</code> from section 9.2. The method cannot move the old list out of <code>*self</code> and assign a new one later. Between those two steps,
+<code>*self</code> would be empty. <code>replace(self, List::Empty)</code> puts a temporary <code>Empty</code> in place
+and hands back the old list in one step.</p>
+<p><code>push_front</code> wraps the old list in a new node with the new value, and writes it back into <code>*self</code>.</p>
+<p><code>pop_front</code> matches on the old list. If it was <code>Empty</code>, there is nothing to pop, and <code>*self</code> is already <code>Empty</code>
+again. If it was a <code>Node</code>, the method writes the rest of the list back into <code>*self</code> with <code>*self = *next</code>, and
+returns the value. <code>*next</code> moves the list out of its <code>Box</code>.</p>
+<p class="listing"><b>Listing 9.7</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs">src/bin/singly_linked_list.rs</a></p>
+
+<pre><code class="language-rust">// Singly linked list using an algebraic data type.
+//
+//    List&lt;T&gt; = Empty
+//            | Node { value: T, next: Link&lt;T&gt; }
+//
+// `Empty` is the end of the list.
+
+type Link&lt;T&gt; = Box&lt;List&lt;T&gt;&gt;;
+
+pub enum List&lt;T&gt; {
+    Empty,
+    Node { value: T, next: Link&lt;T&gt; },
+}
+
+impl&lt;T&gt; List&lt;T&gt; {
+    pub fn new() -&gt; Self {
+        List::Empty
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        matches!(self, List::Empty)
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        match self {
+            List::Empty =&gt; 0,
+            List::Node { next, .. } =&gt; 1 + next.len(),
+        }
+    }
+
+    /// O(1)
+    pub fn push_front(&amp;mut self, value: T) {
+        let old = std::mem::replace(self, List::Empty);
+        *self = List::Node {
+            value,
+            next: Link::new(old),
+        };
+    }
+
+    /// O(1)
+    pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        match std::mem::replace(self, List::Empty) {
+            List::Empty =&gt; None,
+            List::Node { value, next } =&gt; {
+                *self = *next;
+                Some(value)
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut list = List::new();
+    list.push_front(2);
+    list.push_front(1);
+    list.push_front(0);
+
+    assert_eq!(list.len(), 3);
+    assert_eq!(list.pop_front(), Some(0));
+    assert_eq!(list.pop_front(), Some(1));
+    assert_eq!(list.pop_front(), Some(2));
+    println!("ok");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_pop_works() {
+        let mut list = List::new();
+        list.push_front(1);
+        list.push_front(2);
+        assert_eq!(list.pop_front(), Some(2));
+        assert_eq!(list.pop_front(), Some(1));
+        assert_eq!(list.pop_front(), None);
+    }
+
+    #[test]
+    fn len_works() {
+        let mut list = List::new();
+        assert_eq!(list.len(), 0);
+        list.push_front(1);
+        list.push_front(2);
+        assert_eq!(list.len(), 2);
+    }
+}</code></pre>
+<p><code>main</code> pushes three values and pops them back in reverse order, the last one pushed coming out first. A list
+that adds and removes at the same end behaves as a stack, like the <code>Vec</code> in chapter 3.</p>
+<pre><code class="language-text">$ cargo run --bin singly_linked_list
+ok
+</code></pre>
+<h2 id="95-four-node-layouts-measured"><a class="header" href="#95-four-node-layouts-measured">9.5 Four node layouts, measured</a></h2>
+<p>Section 9.3 wrote a node as a struct with an <code>Option&lt;Box&lt;Node&gt;&gt;</code>, and section 9.4 wrote the list as an enum.
+Which is faster? To answer, the benchmark in this section puts four versions of the same list behind one <strong>trait</strong>. Then
+one piece of code can measure them all.</p>
+<h3 id="951-one-trait-for-four-lists"><a class="header" href="#951-one-trait-for-four-lists">9.5.1 One trait for four lists</a></h3>
+<p class="listing"><b>Listing 9.8</b> The trait every list implements. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/mod.rs">benchmarking_examples/lists/mod.rs</a></p>
+
+<pre><code class="language-rust">//! Singly linked lists in four variants, so one benchmark loop can cover all of
+//! them.
+//!
+//! The variants differ only in how a node is stored and in how the list frees
+//! itself. `boxed` and `enum_node` free a chain of boxes recursively, which
+//! overflows the stack past roughly 265,000 nodes. `boxed_drop` and `enum_drop`
+//! unlink iteratively and scale.
+
+pub mod boxed;
+pub mod boxed_drop;
+pub mod enum_drop;
+pub mod enum_node;
+
+/// The operations every variant supports, so the benchmark can be written once.
+pub trait SinglyList&lt;T&gt;: Sized {
+    /// A new, empty list.
+    fn new() -&gt; Self;
+
+    /// Adds `value` to the front of the list.
+    fn push_front(&amp;mut self, value: T);
+
+    /// Removes and returns the front value, if there is one.
+    fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt;;
+
+    /// Whether the list holds nothing.
+    fn is_empty(&amp;self) -&gt; bool;
+
+    /// The variant's name, for benchmark output and error messages.
+    fn variant() -&gt; &amp;'static str;
+}</code></pre>
+<p>The trait lists the operations: <code>new</code>, <code>push_front</code>, <code>pop_front</code>, <code>is_empty</code>, and <code>variant</code>, which returns a
+name for printing. <code>SinglyList&lt;T&gt;: Sized</code> limits the trait to types whose size is known at compile time. The benchmark uses
+the trait only through generic functions, so the limit costs nothing. The four <code>pub mod</code> lines declare the four versions, each in its own
+file.</p>
+<p>The first two versions are the struct form and the enum form:</p>
+<p class="listing"><b>Listing 9.9</b> <code>Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/boxed.rs">benchmarking_examples/lists/boxed.rs</a></p>
+
+<pre><code class="language-rust">//! `Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;`: one heap allocation per node.
+//!
+//! Pushing takes the old head and boxes it inside the new node. Freeing the head
+//! frees its `next`, which frees its `next`, so the drop recurses once per
+//! element and overflows the stack on a long list.
+
+use super::SinglyList;
+
+struct Node&lt;T&gt; {
+    value: T,
+    next: Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;,
+}
+
+pub struct LinkedList&lt;T&gt; {
+    head: Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;,
+}
+
+impl&lt;T&gt; SinglyList&lt;T&gt; for LinkedList&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self { head: None }
+    }
+
+    fn push_front(&amp;mut self, value: T) {
+        self.head = Some(Box::new(Node {
+            value,
+            // .take() leaves None in its place and extracts the old head
+            next: self.head.take(),
+        }));
+    }
+
+    fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.head.take().map(|node| {
+            // Point the list head to the next node in line
+            self.head = node.next;
+            // Return the unboxed value
+            node.value
+        })
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        self.head.is_none()
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "box"
+    }
+}</code></pre>
+<p class="listing"><b>Listing 9.10</b> <code>enum ListNode&lt;T&gt; { Empty, Next(T, Box&lt;ListNode&lt;T&gt;&gt;) }</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/enum_node.rs">benchmarking_examples/lists/enum_node.rs</a></p>
+
+<pre><code class="language-rust">//! `enum ListNode&lt;T&gt; { Empty, Next(T, Box&lt;ListNode&lt;T&gt;&gt;) }`.
+//!
+//! Same shape as the boxed variant, written with an enum instead of an
+//! `Option`. The enum cannot contain itself by value, so the recursive arm holds
+//! a `Box`. The drop is recursive for the same reason.
+
+use super::SinglyList;
+
+enum ListNode&lt;T&gt; {
+    Empty,
+    Next(T, Box&lt;ListNode&lt;T&gt;&gt;),
+}
+
+pub struct LinkedList&lt;T&gt; {
+    head: ListNode&lt;T&gt;,
+}
+
+impl&lt;T&gt; SinglyList&lt;T&gt; for LinkedList&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self {
+            head: ListNode::Empty,
+        }
+    }
+
+    fn push_front(&amp;mut self, value: T) {
+        // Extract the old head and leave Empty in its place
+        let old_head = std::mem::replace(&amp;mut self.head, ListNode::Empty);
+
+        // Wrap the old head inside a Box behind the new value
+        self.head = ListNode::Next(value, Box::new(old_head));
+    }
+
+    fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        let old_head = std::mem::replace(&amp;mut self.head, ListNode::Empty);
+
+        match old_head {
+            ListNode::Empty =&gt; None,
+            ListNode::Next(value, next_node) =&gt; {
+                // Point the list head to the next node in the sequence
+                self.head = *next_node;
+                Some(value)
+            }
+        }
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        matches!(self.head, ListNode::Empty)
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "enum"
+    }
+}</code></pre>
+<p>The two files implement the trait with <code>impl&lt;T&gt; SinglyList&lt;T&gt; for LinkedList&lt;T&gt;</code>. Each uses the tool from
+section 9.2 that fits its type: <code>take()</code> on the <code>Option</code> in the struct version, and <code>mem::replace</code> on the enum.</p>
+<h3 id="952-what-each-node-costs-in-memory"><a class="header" href="#952-what-each-node-costs-in-memory">9.5.2 What each node costs in memory</a></h3>
+<p>Figure 9.4 draws both lists after pushing 10, 20, and 30.</p>
+<figure>
+<img src="figures/ch04-layouts.svg" alt="The boxed list has an 8-byte head pointer and three nodes, the last with next None. The enum list stores Next(30) inline in the head and ends with a boxed Empty.">
+<figcaption><b>Figure 9.4</b> The two layouts after three pushes. The struct list's head is one pointer. The enum list keeps its first node inside the list value itself and ends with a heap-allocated <code>Empty</code>.</figcaption>
+</figure>
+<p>On a 64-bit machine, with <code>u64</code> values, each node is 16 bytes in both versions: 8 for the value and 8 for the
+pointer. <code>Option&lt;Box&lt;Node&gt;&gt;</code> is only 8 bytes, because a <code>Box</code> is never null, so Rust uses the null address to
+mean <code>None</code>. The enum gets the same treatment, using a null <code>Box</code> to mean <code>Empty</code>.</p>
+<p>The versions still differ in two ways. The enum list keeps its first node, 16 bytes, inside the list value. So every push moves those 16 bytes
+into a new box, where the struct version moves one 8-byte pointer. And the enum
+chain ends with a boxed <code>Empty</code>, so a list of n values makes n + 1 allocations instead of n.</p>
+<p>Two small programs exercise the two versions:</p>
+<p class="listing"><b>Listing 9.11</b> Demos of the two versions. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/list_box.rs">benchmarking_examples/list_box.rs</a> and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/list_enum.rs">list_enum.rs</a></p>
+
+<pre><code class="language-rust">//! Demo of the `Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;` list in `lists::boxed`.
+//!
+//! Run with: cargo run --bin list_box
+
+use systems_lab::lists::{SinglyList, boxed::LinkedList};
+
+fn main() {
+    let mut list = LinkedList::new();
+
+    list.push_front(10);
+    list.push_front(20);
+    list.push_front(30);
+
+    assert_eq!(list.pop_front(), Some(30));
+    assert_eq!(list.pop_front(), Some(20));
+    assert_eq!(list.pop_front(), Some(10));
+    assert_eq!(list.pop_front(), None);
+    assert!(list.is_empty());
+
+    println!("All tests passed successfully!");
+}</code></pre>
+<pre><code class="language-rust">//! Demo of the `enum ListNode&lt;T&gt;` list in `lists::enum_node`.
+//!
+//! Run with: cargo run --bin list_enum
+
+use systems_lab::lists::{SinglyList, enum_node::LinkedList};
+
+fn main() {
+    let mut list = LinkedList::new();
+    list.push_front(42);
+    list.push_front(100);
+
+    assert_eq!(list.pop_front(), Some(100));
+    assert_eq!(list.pop_front(), Some(42));
+    assert_eq!(list.pop_front(), None);
+    assert!(list.is_empty());
+}</code></pre>
+<p><code>use systems_lab::lists::...</code> imports the lists from the crate’s library, where <code>src/lib.rs</code> declares them.
+So the four programs share one compiled copy of the list code.</p>
+<h2 id="96-when-dropping-a-list-crashes"><a class="header" href="#96-when-dropping-a-list-crashes">9.6 When dropping a list crashes</a></h2>
+<p>Here is a short program built on the struct version:</p>
+<pre><code class="language-rust">let mut list = boxed::LinkedList::new();
+for value in 0..270_000u64 {
+    list.push_front(value);
+}
+// list goes out of scope here and is dropped</code></pre>
+<p>It builds the list without trouble, and then it crashes at the closing brace:</p>
+<pre><code class="language-text">thread 'main' has overflowed its stack
+fatal runtime error: stack overflow, aborting
+</code></pre>
+<p>None of the list’s methods is recursive. The recursion is in the code the compiler generates to drop the list.
+To drop the list, Rust drops <code>head</code>. To drop a <code>Box&lt;Node&gt;</code>, it drops the node, which means dropping its fields,
+including <code>next</code>, another <code>Box&lt;Node&gt;</code>. That drops the next node, and so on. Each step is a function call
+nested inside the previous one, so each node adds one stack frame (figure 9.5, left).</p>
+<figure>
+<img src="figures/list-drop.svg" alt="Left: nested drop calls, one per node, until the stack is full. Right: a loop that takes each node&#39;s next before freeing it, in one frame.">
+<figcaption><b>Figure 9.5</b> The default drop nests one call per node. A hand-written <code>Drop</code> detaches each node's successor first, so freeing one node never frees another.</figcaption>
+</figure>
+<p>The main thread’s stack is 8 MiB on most systems. The crash happened between 260,000 and 270,000 nodes, so
+each level of nesting used about 32 bytes of stack. A thread you start with <code>std::thread::spawn</code> gets a 2 MiB stack by default. On such a thread the limit
+would be about a quarter as many nodes.</p>
+<p>The fix is to write the list’s <code>Drop</code> yourself, as a loop. <strong><code>Drop</code></strong> is a trait. Rust calls its <code>drop</code> method when a value goes out of scope. If you implement it, your code runs before the fields are dropped.</p>
+<p class="listing"><b>Listing 9.12</b> The struct version with its own <code>Drop</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/boxed_drop.rs">benchmarking_examples/lists/boxed_drop.rs</a></p>
+
+<pre><code class="language-rust">//! `Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;` with an iterative `Drop`.
+//!
+//! Push and pop are identical to [`boxed`](super::boxed); only freeing changes.
+//! Dropping a node would otherwise drop its `next` and recurse once per element,
+//! so the list is unlinked in a loop before any node is freed.
+
+use super::SinglyList;
+
+struct Node&lt;T&gt; {
+    value: T,
+    next: Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;,
+}
+
+pub struct LinkedList&lt;T&gt; {
+    head: Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;,
+}
+
+impl&lt;T&gt; SinglyList&lt;T&gt; for LinkedList&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self { head: None }
+    }
+
+    fn push_front(&amp;mut self, value: T) {
+        self.head = Some(Box::new(Node {
+            value,
+            next: self.head.take(),
+        }));
+    }
+
+    fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.head.take().map(|node| {
+            self.head = node.next;
+            node.value
+        })
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        self.head.is_none()
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "box+drop"
+    }
+}
+
+impl&lt;T&gt; Drop for LinkedList&lt;T&gt; {
+    fn drop(&amp;mut self) {
+        // Walk the chain and unlink each node before it is freed, so no node's
+        // drop has to carry the rest of the list on the stack.
+        let mut current = self.head.take();
+        while let Some(mut node) = current {
+            current = node.next.take();
+        }
+    }
+}</code></pre>
+<p>The operations are the same as listing 9.9. Only the <code>Drop</code> implementation at the end is new. Its loop reads:</p>
+<ol>
+<li><code>let mut current = self.head.take();</code> takes the whole chain out of the list.</li>
+<li><code>while let Some(mut node) = current</code> moves the first box out of <code>current</code>.</li>
+<li><code>current = node.next.take();</code> moves the rest of the chain out of that node.</li>
+<li>At the end of the loop body, <code>node</code> goes out of scope and is freed. Its <code>next</code> is already <code>None</code>, so freeing
+it frees nothing else.</li>
+</ol>
+<p>The loop runs in one stack frame, whatever the length of the list.</p>
+<p class="listing"><b>Listing 9.13</b> The enum version with its own <code>Drop</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/enum_drop.rs">benchmarking_examples/lists/enum_drop.rs</a></p>
+
+<pre><code class="language-rust">//! `enum ListNode&lt;T&gt;` with an iterative `Drop`.
+//!
+//! Push and pop are identical to [`enum_node`](super::enum_node); only freeing
+//! changes. The recursive arm holds a `Box`, so the default drop walks the chain
+//! on the stack. This one replaces the head with `Empty`, then takes the box out
+//! of each node in turn.
+
+use super::SinglyList;
+
+enum ListNode&lt;T&gt; {
+    Empty,
+    Next(T, Box&lt;ListNode&lt;T&gt;&gt;),
+}
+
+pub struct LinkedList&lt;T&gt; {
+    head: ListNode&lt;T&gt;,
+}
+
+impl&lt;T&gt; SinglyList&lt;T&gt; for LinkedList&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self {
+            head: ListNode::Empty,
+        }
+    }
+
+    fn push_front(&amp;mut self, value: T) {
+        let old_head = std::mem::replace(&amp;mut self.head, ListNode::Empty);
+        self.head = ListNode::Next(value, Box::new(old_head));
+    }
+
+    fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        let old_head = std::mem::replace(&amp;mut self.head, ListNode::Empty);
+
+        match old_head {
+            ListNode::Empty =&gt; None,
+            ListNode::Next(value, next_node) =&gt; {
+                self.head = *next_node;
+                Some(value)
+            }
+        }
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        matches!(self.head, ListNode::Empty)
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "enum+drop"
+    }
+}
+
+impl&lt;T&gt; Drop for LinkedList&lt;T&gt; {
+    fn drop(&amp;mut self) {
+        // Take the chain out of the list first, then step it forward one node at
+        // a time. Each node has already lost its `next` by the time it is freed,
+        // so the drop stays on the heap.
+        let mut current = std::mem::replace(&amp;mut self.head, ListNode::Empty);
+        while let ListNode::Next(_, next) = current {
+            current = *next;
+        }
+    }
+}</code></pre>
+<p>The enum version does the same with <code>mem::replace</code> and a <code>while let ListNode::Next(_, next) = current</code> loop.
+<code>current = *next;</code> moves the rest of the chain out of the box. Assigning to <code>current</code> drops its old value, a
+<code>Next</code> whose box has already been emptied, so again nothing nests.</p>
+<p>A third demo builds a list of five million nodes and drops it:</p>
+<p class="listing"><b>Listing 9.14</b> Five million nodes, dropped with a loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/list_drop.rs">benchmarking_examples/list_drop.rs</a></p>
+
+<pre><code class="language-rust">//! Demo of the iterative `Drop` in `lists::boxed_drop`.
+//!
+//! The same program against `lists::boxed` aborts with a stack overflow at this
+//! size, because that variant frees its chain recursively.
+//!
+//! Run with: cargo run --release --bin list_drop
+
+use systems_lab::lists::{SinglyList, boxed_drop::LinkedList};
+
+fn main() {
+    const N: u64 = 5_000_000;
+
+    let mut list = LinkedList::new();
+    for value in 0..N {
+        list.push_front(value);
+    }
+    println!("built a list of {N} nodes");
+
+    list.pop_front();
+    println!("dropping the remaining {} nodes", N - 1);
+
+    drop(list);
+    println!("dropped without recursing");
+}</code></pre>
+<h2 id="97-the-benchmark"><a class="header" href="#97-the-benchmark">9.7 The benchmark</a></h2>
+<p>The benchmark program measures all four versions with one generic function. The full program also measures
+the caches of chapter 13, and is listed there. This is the part that measures the lists.</p>
+<p class="listing"><b>Listing 9.15</b> The list benchmark (lines 160 to 236). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    hint::black_box,
+    time::{Duration, Instant},
+};
+
+use systems_lab::{
+    cache::{Cache, arena::LruCache as ArenaCache, rc_list::LruCache as RcCache},
+    lists::{SinglyList, boxed, boxed_drop, enum_drop, enum_node},
+};
+
+// ---------------------------------------------------------------------------
+// Lists: four variants, one loop
+// ---------------------------------------------------------------------------
+
+fn list_benchmark(variant: Option&lt;&amp;str&gt;, elements: usize) {
+    println!(
+        "Singly linked list: push {} values, pop them back in order, then drop a full list",
+        with_thousands(elements as u64)
+    );
+    println!("Best of {LIST_RUNS} runs per variant, allocator warmed up.\n");
+    println!(
+        "  {:&lt;10} {:&gt;12} {:&gt;13} {:&gt;13}",
+        "variant", "elements", "push", "drop"
+    );
+    println!("  {}", "-".repeat(52));
+
+    match variant {
+        Some("box") =&gt; run_list::&lt;boxed::LinkedList&lt;u64&gt;&gt;(elements),
+        Some("enum") =&gt; run_list::&lt;enum_node::LinkedList&lt;u64&gt;&gt;(elements),
+        Some("box+drop") =&gt; run_list::&lt;boxed_drop::LinkedList&lt;u64&gt;&gt;(elements),
+        Some("enum+drop") =&gt; run_list::&lt;enum_drop::LinkedList&lt;u64&gt;&gt;(elements),
+        _ =&gt; {
+            run_list::&lt;boxed::LinkedList&lt;u64&gt;&gt;(elements);
+            run_list::&lt;enum_node::LinkedList&lt;u64&gt;&gt;(elements);
+            run_list::&lt;boxed_drop::LinkedList&lt;u64&gt;&gt;(elements);
+            run_list::&lt;enum_drop::LinkedList&lt;u64&gt;&gt;(elements);
+        }
+    }
+}
+
+fn run_list&lt;L: SinglyList&lt;u64&gt;&gt;(elements: usize) {
+    // Warm the allocator first: without this the first variant in a process pays
+    // for fresh heap pages and looks several times slower than an identical one.
+    let mut warm_up = L::new();
+    for value in 0..elements as u64 {
+        warm_up.push_front(value);
+    }
+    drop(warm_up);
+
+    let mut best_push = Duration::MAX;
+    let mut best_drop = Duration::MAX;
+
+    for _ in 0..LIST_RUNS {
+        let mut list = L::new();
+
+        let start = Instant::now();
+        for value in 0..elements as u64 {
+            list.push_front(value);
+        }
+        best_push = best_push.min(start.elapsed());
+
+        // Pop every value back and check the order, so a broken list cannot post
+        // a fast time.
+        let mut expected = elements as u64;
+        while let Some(value) = list.pop_front() {
+            expected -= 1;
+            assert_eq!(value, expected, "{} lost LIFO order", L::variant());
+        }
+        assert_eq!(expected, 0);
+        black_box(expected);
+
+        // Rebuild, then time the drop of a full list. This is where the
+        // recursive variants overflow the stack.
+        for value in 0..elements as u64 {
+            list.push_front(value);
+        }
+        let start = Instant::now();
+        drop(list);
+        best_drop = best_drop.min(start.elapsed());
+    }
+
+    println!(
+        "  {:&lt;10} {:&gt;12} {best_push:&gt;13.2?} {best_drop:&gt;13.2?}",
+        L::variant(),
+        with_thousands(elements as u64)
+    );
+}</code></pre>
+<p><code>run_list::&lt;L: SinglyList&lt;u64&gt;&gt;</code> is <strong>generic</strong> over the list type <code>L</code>. The compiler generates a separate copy of the function for each list type. So each list is measured with
+its own code.</p>
+<p>The function follows three rules that apply to any small benchmark:</p>
+<ol>
+<li><strong>Warm up first.</strong> The first time a program allocates a lot of memory, the operating system has to supply
+fresh pages, which is slow. A warm-up pass pays that cost before timing starts.</li>
+<li><strong>Run several times and keep the fastest.</strong> Other programs can slow a run down but never speed it
+up. So the fastest run is the closest to the true cost.</li>
+<li><strong>Check the result before trusting the time.</strong> Every run pops all the values and checks their order. A
+broken list cannot report a fast time.</li>
+</ol>
+<p><code>std::hint::black_box(expected)</code> tells the compiler to treat the value as used, so it cannot delete the loop
+that computed it.</p>
+<p>These results come from a release build on an 8-core aarch64 development board:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>list</th><th>how it drops</th><th>260,000 nodes</th><th>270,000 nodes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>box</code></td><td>recursively</td><td>completed</td><td>crashed</td></tr>
+<tr><td><code>enum</code></td><td>recursively</td><td>completed</td><td>crashed</td></tr>
+<tr><td><code>box+drop</code></td><td>with a loop</td><td>completed</td><td>completed</td></tr>
+<tr><td><code>enum+drop</code></td><td>with a loop</td><td>completed</td><td>completed</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-text">  variant        elements          push          drop
+  ----------------------------------------------------
+  box             200,000        2.40ms        3.23ms
+  enum            200,000        3.42ms        3.20ms
+  box+drop        200,000        2.32ms        2.91ms
+  enum+drop       200,000        3.62ms        2.52ms
+
+  box+drop      5,000,000       58.11ms       72.32ms
+  enum+drop     5,000,000       90.98ms       67.51ms
+</code></pre>
+<p>Read the table this way:</p>
+<ul>
+<li>A push costs about 12 nanoseconds for the struct node and about 17 for the enum node. Section 9.5.2 gave
+two differences that could explain the gap. The benchmark does not measure them separately.</li>
+<li><code>box</code> and <code>box+drop</code> share the same push code, and their push times agree, 2.40 against 2.32 ms. That
+agreement is a sign the measurement is stable.</li>
+<li>The loop drop is not much faster than the recursive one. Its purpose is to remove the size limit, not to
+save time.</li>
+</ul>
+<p>You can reproduce the crash and the fix:</p>
+<pre><code class="language-bash">cargo run --release --bin benchmark list box 260000   # completes
+cargo run --release --bin benchmark list box 270000   # crashes
+cargo run --release --bin list_drop                   # five million nodes, no crash
+</code></pre>
+<h2 id="98-a-doubly-linked-list"><a class="header" href="#98-a-doubly-linked-list">9.8 A doubly linked list</a></h2>
+<p>In a <strong>doubly linked list</strong>, each node points to the next node and also back to the previous one. That lets
+you add and remove at both ends in O(1), and walk the list in either direction.</p>
+<p>In Rust this creates an ownership problem. Every node in the middle is pointed to twice: by the previous
+node’s <code>next</code> and by the following node’s <code>prev</code>. A <code>Box</code> has exactly one owner, so it cannot express this.</p>
+<p>The solution uses the three types from chapter 8. Nodes live in <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code>, so they can have more than
+one handle and still be changed. The forward links, <code>next</code>, are strong <code>Rc</code> handles, so the list owns its nodes
+from front to back. The backward links, <code>prev</code>, are <code>Weak</code> handles, so they do not create reference cycles
+(figure 9.6).</p>
+<figure>
+<img src="figures/list-doubly.svg" alt="A list with head pointing to 20 and tail to 40; solid next links 20 to 10 to 30 to 40; dashed weak prev links back from each node to the one before">
+<figcaption><b>Figure 9.6</b> Strong links run forward and weak links run backward. If the back-links were strong, every pair of neighbors would form a cycle and no node would ever be freed.</figcaption>
+</figure>
+<h3 id="981-the-types"><a class="header" href="#981-the-types">9.8.1 The types</a></h3>
+<p class="listing"><b>Listing 9.16</b> Type names, the node, and the list (lines 1 to 26). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs">src/bin/ll.rs</a></p>
+
+<pre><code class="language-rust">// ============================================================================
+// Type aliases for clarity.
+// ============================================================================
+use std::cell::{Ref, RefCell}; // Ref is needed for peek return types
+use std::rc::{Rc, Weak};
+
+type NodeRef&lt;T&gt; = Rc&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;;
+type WeakNodeRef&lt;T&gt; = Weak&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;;
+type OptNodeRef&lt;T&gt; = Option&lt;NodeRef&lt;T&gt;&gt;;
+type OptWeakNodeRef&lt;T&gt; = Option&lt;WeakNodeRef&lt;T&gt;&gt;;
+
+// ============================================================================
+// Node and LinkedList definitions.
+// ============================================================================
+struct Node&lt;T&gt; {
+    data: T,
+    next: OptNodeRef&lt;T&gt;,
+    prev: OptWeakNodeRef&lt;T&gt;,
+}
+
+pub struct LinkedList&lt;T&gt; {
+    head: OptNodeRef&lt;T&gt;,
+    tail: OptNodeRef&lt;T&gt;,
+    len: usize,
+}</code></pre>
+<p>The full type of a link is <code>Option&lt;Rc&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;&gt;</code>. It appears in almost every function, so the file
+names it once, <code>OptNodeRef&lt;T&gt;</code>, with a <code>type</code> alias. The list keeps a <code>head</code>, a <code>tail</code>, and its length.</p>
+<h3 id="982-adding-at-either-end"><a class="header" href="#982-adding-at-either-end">9.8.2 Adding at either end</a></h3>
+<p class="listing"><b>Listing 9.17</b> <code>new</code>, <code>len</code>, and <code>push_front</code> (lines 28 to 69).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
+    /// Creates an empty list.
+    pub fn new() -&gt; Self {
+        LinkedList {
+            head: None,
+            tail: None,
+            len: 0,
+        }
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.len
+    }
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.len == 0
+    }
+
+    // --------------------------------------------------------------------
+    // push_front
+    // --------------------------------------------------------------------
+    pub fn push_front(&amp;mut self, data: T) {
+        let new_node = Rc::new(RefCell::new(Node {
+            data,
+            next: None,
+            prev: None,
+        }));
+
+        // take() moves the old head out of the Option, leaving None.
+        match self.head.take() {
+            Some(old_head) =&gt; {
+                // Link old head back to new node (weakly).
+                old_head.borrow_mut().prev = Some(Rc::downgrade(&amp;new_node));
+                // Link new node forward to old head.
+                new_node.borrow_mut().next = Some(old_head);
+            }
+            None =&gt; {
+                // List was empty: new node is also the tail.
+                self.tail = Some(new_node.clone());
+            }
+        }
+        self.head = Some(new_node);
+        self.len += 1;
+    }
+    // ...
+}</code></pre>
+<p><code>push_front</code> creates the new node, then looks at the old head with <code>self.head.take()</code>:</p>
+<ul>
+<li>If there was an old head, its <code>prev</code> becomes a weak link to the new node, made with <code>Rc::downgrade</code>.
+The new node’s <code>next</code> becomes the old head.</li>
+<li>If there was no old head, the list was empty, so the new node is also the tail. <code>new_node.clone()</code> makes a
+second strong handle for <code>tail</code>.</li>
+</ul>
+<p>Finally the new node becomes the head, and the length grows by one. <code>borrow_mut()</code> is the <code>RefCell</code> method
+from section 8.4. Each call is released at the end of its statement, so no two borrows of the same node
+overlap.</p>
+<p class="listing"><b>Listing 9.18</b> <code>push_back</code> (lines 71 to 93).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
+    // ...
+    // --------------------------------------------------------------------
+    // push_back
+    // --------------------------------------------------------------------
+    pub fn push_back(&amp;mut self, data: T) {
+        let new_node = Rc::new(RefCell::new(Node {
+            data,
+            next: None,
+            // self.tail.as_ref() gives Option&lt;&amp;NodeRef&lt;T&gt;&gt;,
+            // map(Rc::downgrade) turns it into Option&lt;WeakNodeRef&lt;T&gt;&gt;.
+            prev: self.tail.as_ref().map(Rc::downgrade),
+        }));
+
+        match self.tail.take() {
+            Some(old_tail) =&gt; {
+                old_tail.borrow_mut().next = Some(new_node.clone());
+            }
+            None =&gt; {
+                self.head = Some(new_node.clone());
+            }
+        }
+        self.tail = Some(new_node);
+        self.len += 1;
+    }
+    // ...
+}</code></pre>
+<p><code>push_back</code> mirrors it at the other end. The new node’s <code>prev</code> is set as it is created:
+<code>self.tail.as_ref().map(Rc::downgrade)</code>. <code>as_ref()</code> turns <code>Option&lt;Rc&lt;...&gt;&gt;</code> into <code>Option&lt;&amp;Rc&lt;...&gt;&gt;</code>, so the
+tail is looked at without being moved. <code>map(Rc::downgrade)</code> turns that reference into a weak link.</p>
+<h3 id="983-removing-from-either-end"><a class="header" href="#983-removing-from-either-end">9.8.3 Removing from either end</a></h3>
+<p class="listing"><b>Listing 9.19</b> <code>pop_front</code> (lines 95 to 125).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
+    // ...
+    // --------------------------------------------------------------------
+    // pop_front
+    // --------------------------------------------------------------------
+    pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.head.take().and_then(|old_head| {
+            // Take ownership of the next node (if any).
+            let next = old_head.borrow_mut().next.take();
+
+            match next {
+                Some(next_node) =&gt; {
+                    // Disconnect the new head's prev pointer.
+                    next_node.borrow_mut().prev = None;
+                    self.head = Some(next_node);
+                }
+                None =&gt; {
+                    self.tail = None; // list becomes empty
+                }
+            }
+
+            self.len -= 1;
+
+            // Safely extract the data. At this point, old_head is the only
+            // strong reference (because we removed it from the list and the
+            // new head's prev doesn't point to it).
+            let node = Rc::try_unwrap(old_head)
+                .ok()
+                .unwrap()
+                .into_inner();
+            Some(node.data)
+        })
+    }
+    // ...
+}</code></pre>
+<p><code>pop_front</code> must return the value by ownership, not a reference. To move the value out, the node itself must
+be moved out of its <code>Rc</code>, and <code>Rc::try_unwrap</code> does that. It succeeds only if the handle is the last strong
+one. So the method first removes every other strong link to the node:</p>
+<ol>
+<li><code>self.head.take()</code> removes the list’s link to it.</li>
+<li>The next node’s <code>prev</code> is set to <code>None</code>. That link was weak, so it did not count anyway.</li>
+<li>If there was no next node, the list is now empty, so <code>self.tail</code> is cleared, removing the tail’s link.</li>
+</ol>
+<p>Now <code>Rc::try_unwrap(old_head)</code> succeeds, and <code>.into_inner()</code> moves the <code>Node</code> out of its <code>RefCell</code>.</p>
+<p>The call is written <code>.ok().unwrap()</code> rather than <code>.unwrap()</code>. <code>Result::unwrap</code> needs to print the error if it
+fails, which requires the error type to implement <code>Debug</code>. Here the error type is the <code>Rc</code> itself, and <code>Node</code>
+does not implement <code>Debug</code>, so <code>.unwrap()</code> would not compile. <code>.ok()</code> turns the <code>Result</code> into an <code>Option</code>,
+whose <code>unwrap</code> needs no <code>Debug</code>.</p>
+<p class="listing"><b>Listing 9.20</b> <code>pop_back</code> (lines 127 to 157).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
+    // ...
+    // --------------------------------------------------------------------
+    // pop_back
+    // --------------------------------------------------------------------
+    pub fn pop_back(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.tail.take().and_then(|old_tail| {
+            // Get the previous node (upgrade the weak reference).
+            let prev = old_tail
+                .borrow_mut()
+                .prev
+                .take()
+                .and_then(|w| w.upgrade());
+
+            match prev {
+                Some(prev_node) =&gt; {
+                    prev_node.borrow_mut().next = None;
+                    self.tail = Some(prev_node);
+                }
+                None =&gt; {
+                    self.head = None; // list becomes empty
+                }
+            }
+
+            self.len -= 1;
+
+            let node = Rc::try_unwrap(old_tail)
+                .ok()
+                .unwrap()
+                .into_inner();
+            Some(node.data)
+        })
+    }
+    // ...
+}</code></pre>
+<p><code>pop_back</code> mirrors <code>pop_front</code>. It follows the weak <code>prev</code> link with <code>upgrade()</code>, which returns <code>None</code> if the
+previous node is gone, then clears that node’s <code>next</code>.</p>
+<h3 id="984-looking-without-removing"><a class="header" href="#984-looking-without-removing">9.8.4 Looking without removing</a></h3>
+<p class="listing"><b>Listing 9.21</b> <code>peek_front</code> and <code>peek_back</code> (lines 149 to 171).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LinkedList&lt;T&gt; {
+    // ...
+    // --------------------------------------------------------------------
+    // peek_front: returns a guarded reference to the front data.
+    // The returned Ref&lt;'_, T&gt; holds the borrow of the RefCell until it goes
+    // out of scope, ensuring the reference stays valid.
+    // --------------------------------------------------------------------
+    pub fn peek_front(&amp;self) -&gt; Option&lt;Ref&lt;'_, T&gt;&gt; {
+        // self.head.as_ref() -&gt; Option&lt;&amp;NodeRef&lt;T&gt;&gt;
+        self.head.as_ref().map(|node| {
+            // node.borrow() returns Ref&lt;'_, Node&lt;T&gt;&gt;.
+            // Ref::map projects that to a Ref&lt;'_, T&gt; pointing to the data field.
+            Ref::map(node.borrow(), |n| &amp;n.data)
+        })
+    }
+
+    // --------------------------------------------------------------------
+    // peek_back: similar to peek_front.
+    // --------------------------------------------------------------------
+    pub fn peek_back(&amp;self) -&gt; Option&lt;Ref&lt;'_, T&gt;&gt; {
+        self.tail
+            .as_ref()
+            .map(|node| Ref::map(node.borrow(), |n| &amp;n.data))
+    }
+}</code></pre>
+<p><code>peek_front</code> returns <code>Option&lt;Ref&lt;'_, T&gt;&gt;</code>, not <code>Option&lt;&amp;T&gt;</code>. The value is inside a <code>RefCell</code>, and a reference
+to it is only safe while the cell’s borrow is active. A <code>Ref</code> is the guard that keeps the borrow active, as
+section 8.4 showed. <code>Ref::map</code> narrows a guard for the whole node into a guard for its <code>data</code> field. The
+caller reads the value with <code>*</code>, as <code>main</code> does.</p>
+<h3 id="985-the-complete-program"><a class="header" href="#985-the-complete-program">9.8.5 The complete program</a></h3>
+<p class="listing"><b>Listing 9.22</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/ll.rs">src/bin/ll.rs</a></p>
+
+<pre><code class="language-rust">// ============================================================================
+// Type aliases for clarity.
+// ============================================================================
+use std::cell::{Ref, RefCell}; // Ref is needed for peek return types
+use std::rc::{Rc, Weak};
+
+type NodeRef&lt;T&gt; = Rc&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;;
+type WeakNodeRef&lt;T&gt; = Weak&lt;RefCell&lt;Node&lt;T&gt;&gt;&gt;;
+type OptNodeRef&lt;T&gt; = Option&lt;NodeRef&lt;T&gt;&gt;;
+type OptWeakNodeRef&lt;T&gt; = Option&lt;WeakNodeRef&lt;T&gt;&gt;;
+
+// ============================================================================
+// Node and LinkedList definitions.
+// ============================================================================
+struct Node&lt;T&gt; {
+    data: T,
+    next: OptNodeRef&lt;T&gt;,
+    prev: OptWeakNodeRef&lt;T&gt;,
+}
+
+pub struct LinkedList&lt;T&gt; {
+    head: OptNodeRef&lt;T&gt;,
+    tail: OptNodeRef&lt;T&gt;,
+    len: usize,
+}
+
+impl&lt;T&gt; LinkedList&lt;T&gt; {
+    /// Creates an empty list.
+    pub fn new() -&gt; Self {
+        LinkedList {
+            head: None,
+            tail: None,
+            len: 0,
+        }
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.len
+    }
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.len == 0
+    }
+
+    // --------------------------------------------------------------------
+    // push_front
+    // --------------------------------------------------------------------
+    pub fn push_front(&amp;mut self, data: T) {
+        let new_node = Rc::new(RefCell::new(Node {
+            data,
+            next: None,
+            prev: None,
+        }));
+
+        // take() moves the old head out of the Option, leaving None.
+        match self.head.take() {
+            Some(old_head) =&gt; {
+                // Link old head back to new node (weakly).
+                old_head.borrow_mut().prev = Some(Rc::downgrade(&amp;new_node));
+                // Link new node forward to old head.
+                new_node.borrow_mut().next = Some(old_head);
+            }
+            None =&gt; {
+                // List was empty: new node is also the tail.
+                self.tail = Some(new_node.clone());
+            }
+        }
+        self.head = Some(new_node);
+        self.len += 1;
+    }
+
+    // --------------------------------------------------------------------
+    // push_back
+    // --------------------------------------------------------------------
+    pub fn push_back(&amp;mut self, data: T) {
+        let new_node = Rc::new(RefCell::new(Node {
+            data,
+            next: None,
+            // self.tail.as_ref() gives Option&lt;&amp;NodeRef&lt;T&gt;&gt;,
+            // map(Rc::downgrade) turns it into Option&lt;WeakNodeRef&lt;T&gt;&gt;.
+            prev: self.tail.as_ref().map(Rc::downgrade),
+        }));
+
+        match self.tail.take() {
+            Some(old_tail) =&gt; {
+                old_tail.borrow_mut().next = Some(new_node.clone());
+            }
+            None =&gt; {
+                self.head = Some(new_node.clone());
+            }
+        }
+        self.tail = Some(new_node);
+        self.len += 1;
+    }
+
+    // --------------------------------------------------------------------
+    // pop_front
+    // --------------------------------------------------------------------
+    pub fn pop_front(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.head.take().and_then(|old_head| {
+            // Take ownership of the next node (if any).
+            let next = old_head.borrow_mut().next.take();
+
+            match next {
+                Some(next_node) =&gt; {
+                    // Disconnect the new head's prev pointer.
+                    next_node.borrow_mut().prev = None;
+                    self.head = Some(next_node);
+                }
+                None =&gt; {
+                    self.tail = None; // list becomes empty
+                }
+            }
+
+            self.len -= 1;
+
+            // Safely extract the data. At this point, old_head is the only
+            // strong reference (because we removed it from the list and the
+            // new head's prev doesn't point to it).
+            let node = Rc::try_unwrap(old_head)
+                .ok()
+                .unwrap()
+                .into_inner();
+            Some(node.data)
+        })
+    }
+
+    // --------------------------------------------------------------------
+    // pop_back
+    // --------------------------------------------------------------------
+    pub fn pop_back(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.tail.take().and_then(|old_tail| {
+            // Get the previous node (upgrade the weak reference).
+            let prev = old_tail
+                .borrow_mut()
+                .prev
+                .take()
+                .and_then(|w| w.upgrade());
+
+            match prev {
+                Some(prev_node) =&gt; {
+                    prev_node.borrow_mut().next = None;
+                    self.tail = Some(prev_node);
+                }
+                None =&gt; {
+                    self.head = None; // list becomes empty
+                }
+            }
+
+            self.len -= 1;
+
+            let node = Rc::try_unwrap(old_tail)
+                .ok()
+                .unwrap()
+                .into_inner();
+            Some(node.data)
+        })
+    }
+
+    // --------------------------------------------------------------------
+    // peek_front: returns a guarded reference to the front data.
+    // The returned Ref&lt;'_, T&gt; holds the borrow of the RefCell until it goes
+    // out of scope, ensuring the reference stays valid.
+    // --------------------------------------------------------------------
+    pub fn peek_front(&amp;self) -&gt; Option&lt;Ref&lt;'_, T&gt;&gt; {
+        // self.head.as_ref() -&gt; Option&lt;&amp;NodeRef&lt;T&gt;&gt;
+        self.head.as_ref().map(|node| {
+            // node.borrow() returns Ref&lt;'_, Node&lt;T&gt;&gt;.
+            // Ref::map projects that to a Ref&lt;'_, T&gt; pointing to the data field.
+            Ref::map(node.borrow(), |n| &amp;n.data)
+        })
+    }
+
+    // --------------------------------------------------------------------
+    // peek_back: similar to peek_front.
+    // --------------------------------------------------------------------
+    pub fn peek_back(&amp;self) -&gt; Option&lt;Ref&lt;'_, T&gt;&gt; {
+        self.tail
+            .as_ref()
+            .map(|node| Ref::map(node.borrow(), |n| &amp;n.data))
+    }
+}
+
+// ============================================================================
+// Demonstration with main().
+// ============================================================================
+fn main() {
+    let mut list = LinkedList::new();
+
+    list.push_front(10);
+    list.push_front(20);
+    list.push_back(30);
+    list.push_back(40);
+
+    println!("Length: {}", list.len());
+
+    // Peek returns a Ref; we can dereference it with *.
+    if let Some(front) = list.peek_front() {
+        println!("Front: {}", *front);
+    }
+    if let Some(back) = list.peek_back() {
+        println!("Back: {}", *back);
+    }
+
+    println!("Pop front: {:?}", list.pop_front()); // 20
+    println!("Pop back:  {:?}", list.pop_back()); // 40
+
+    // Drain the list.
+    while let Some(val) = list.pop_front() {
+        println!("Popped: {}", val);
+    }
+    println!("Empty? {}", list.is_empty());
+}
+
+// ============================================================================
+// Tests (cargo test --bin ll)
+// ============================================================================
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_list_is_empty() {
+        let list: LinkedList&lt;i32&gt; = LinkedList::new();
+        assert!(list.is_empty());
+        assert_eq!(list.len(), 0);
+        assert!(list.peek_front().is_none());
+        assert!(list.peek_back().is_none());
+    }
+
+    #[test]
+    fn push_front_back_and_len() {
+        let mut list = LinkedList::new();
+        list.push_back(1);
+        list.push_back(2);
+        list.push_front(0);
+
+        assert_eq!(list.len(), 3);
+        assert_eq!(*list.peek_front().unwrap(), 0);
+        assert_eq!(*list.peek_back().unwrap(), 2);
+    }
+
+    #[test]
+    fn pop_front_and_back_work_in_order() {
+        let mut list = LinkedList::new();
+        list.push_back(10);
+        list.push_back(20);
+        list.push_back(30);
+
+        assert_eq!(list.pop_front(), Some(10));
+        assert_eq!(list.pop_back(), Some(30));
+        assert_eq!(list.pop_front(), Some(20));
+        assert_eq!(list.pop_front(), None);
+        assert_eq!(list.pop_back(), None);
+        assert!(list.is_empty());
+    }
+
+    #[test]
+    fn popping_last_item_empties_the_list() {
+        let mut list = LinkedList::new();
+        list.push_back(42);
+        assert_eq!(list.peek_front().map(|x| *x), Some(42));
+        assert_eq!(list.pop_back(), Some(42));
+        assert!(list.is_empty());
+    }
+
+    #[test]
+    fn alternating_push_pop_keeps_invariants() {
+        let mut list = LinkedList::new();
+        for i in 0..100 {
+            list.push_back(i);
+            list.push_front(-i);
+        }
+        assert_eq!(list.len(), 200);
+        for i in (0..100).rev() {
+            assert_eq!(list.pop_front(), Some(-i));
+            assert_eq!(list.pop_back(), Some(i));
+        }
+        assert!(list.is_empty());
+    }
+}
+
+// ============================================================================
+// Explanation of key methods used:
+//
+// - Rc::new / RefCell::new        : create a reference-counted, mutable cell.
+// - borrow() / borrow_mut()       : borrow the RefCell's contents (immutably/mutably).
+// - Rc::downgrade()               : turn an Rc into a Weak (no ownership).
+// - Weak::upgrade()               : attempt to get an Rc from a Weak (returns Option).
+// - Option::take()                : take the value out of an Option, leaving None.
+// - Option::as_ref()              : convert Option&lt;T&gt; to Option&lt;&amp;T&gt; without moving.
+// - Option::map()                 : apply a function to the inner value if Some.
+// - Option::and_then()            : like map but returns an Option (for chaining).
+// - Rc::try_unwrap()              : move the value out of the Rc if it's the only strong ref.
+// - Ref::map()                    : project a Ref to a subfield, keeping the borrow alive.
+// ============================================================================</code></pre>
+<pre><code class="language-text">$ cargo run --bin ll
+Length: 4
+Front: 20
+Back: 40
+Pop front: Some(20)
+Pop back:  Some(40)
+Popped: 10
+Popped: 30
+Empty? true
+</code></pre>
+<p>The test <code>alternating_push_pop_keeps_invariants</code> pushes 100 values at each end, then pops from both ends and
+checks every value. The comment block at the end of the file lists each standard-library method the file
+uses, with a one-line description.</p>
+<p>This list costs more than the singly linked list. Each node needs a heap block, two counts, and a borrow
+flag, and every access is checked. It also keeps the recursive drop from section 9.6, because dropping the head drops the
+next <code>Rc</code>, which drops the next node. Chapter 13 avoids both costs for an LRU cache by storing its nodes in a
+<code>Vec</code> and linking them by index.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A linked list stores each value in its own node and links the nodes with pointers. It adds and removes at
+the front in O(1), but reaching position i takes O(i).</li>
+<li><code>Option::take</code> and <code>std::mem::replace</code> move a value out of a place and leave a valid value behind. List
+code uses them to move nodes between owners.</li>
+<li>Reversing a list moves three owners per node: take the rest, point the node back, make it the new front.</li>
+<li>A list can be a struct with <code>Option&lt;Box&lt;Node&gt;&gt;</code> or an enum. Both nodes are 16 bytes for <code>u64</code> values.</li>
+<li>The compiler-generated drop of a <code>Box</code> list recurses once per node and overflows the stack for long lists.
+A hand-written <code>Drop</code> loop removes the limit.</li>
+<li>A benchmark should warm up, keep the fastest of several runs, and check its results.</li>
+<li>A doubly linked list needs <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code> with strong forward links and <code>Weak</code> back-links.</li>
+</ul>
+</div>
+
+<p>Chapter 10 uses the singly linked list from section 9.3 to merge many sorted lists into one, and compares ten
+ways of doing it.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Write <code>len</code> for the enum list of section 9.4 with a loop instead of recursion.</li>
+<li>Implement <code>Iterator</code> for the struct list of section 9.3, with an <code>iter()</code> method that yields <code>&amp;i32</code>.</li>
+<li>Implement <code>Drop</code> for the doubly linked list, and test it with one million nodes.</li>
+<li>Build a doubly linked list whose nodes live in a <code>Vec</code>, with <code>Option&lt;usize&gt;</code> indexes as links. Compare its
+push and pop times with the <code>Rc</code> version.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch08-pointers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch10-merge-k.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch08-pointers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch10-merge-k.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

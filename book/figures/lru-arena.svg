@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300.0" width="760" height="300.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Version 2: nodes in a Vec, linked by index</text>
+<text x="20" y="46" font-size="11.0" fill="#5b6b7c" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">after put(A,10) put(B,20) put(C,30) get(A), capacity 3</text>
+<text x="20" y="78" font-size="10.0" fill="#5b6b7c" text-anchor="start" >lookup_table: HashMap&lt;K, usize&gt;</text>
+<rect x="20" y="86" width="40" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="40.0" y="102.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<rect x="60" y="86" width="40" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="80.0" y="102.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">0</text>
+<rect x="20" y="116" width="40" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="40.0" y="132.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">B</text>
+<rect x="60" y="116" width="40" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="80.0" y="132.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<rect x="20" y="146" width="40" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="40.0" y="162.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">C</text>
+<rect x="60" y="146" width="40" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="80.0" y="162.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<text x="200" y="78" font-size="10.0" fill="#5b6b7c" text-anchor="start" >nodes: Vec&lt;Node&lt;K, V&gt;&gt;</text>
+<text x="250" y="100" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >index</text>
+<text x="330" y="100" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >key</text>
+<text x="410" y="100" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >value</text>
+<text x="490" y="100" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >prev</text>
+<text x="570" y="100" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >next</text>
+<rect x="210" y="108" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="250.0" y="124.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">0</text>
+<rect x="290" y="108" width="80" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="330.0" y="124.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">A</text>
+<rect x="370" y="108" width="80" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="410.0" y="124.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">10</text>
+<rect x="450" y="108" width="80" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="490.0" y="124.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">None</text>
+<rect x="530" y="108" width="80" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="570.0" y="124.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(2)</text>
+<rect x="210" y="138" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="250.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<rect x="290" y="138" width="80" height="26" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="330.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">B</text>
+<rect x="370" y="138" width="80" height="26" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="410.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">20</text>
+<rect x="450" y="138" width="80" height="26" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="490.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(2)</text>
+<rect x="530" y="138" width="80" height="26" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="570.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">None</text>
+<rect x="210" y="168" width="80" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="250.0" y="184.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<rect x="290" y="168" width="80" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="330.0" y="184.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">C</text>
+<rect x="370" y="168" width="80" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="410.0" y="184.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">30</text>
+<rect x="450" y="168" width="80" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="490.0" y="184.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(0)</text>
+<rect x="530" y="168" width="80" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="570.0" y="184.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(1)</text>
+<text x="630" y="125" font-size="10.0" fill="#2f7f86" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">head = Some(0)</text>
+<text x="630" y="145" font-size="10.0" fill="#d9622b" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">tail = Some(1)</text>
+<text x="20" y="220" font-size="11.0" fill="#1d2733" text-anchor="start" >Following next from head gives the recency order:</text>
+<rect x="20" y="232" width="100" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="70.0" y="249.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">A (index 0)</text>
+<rect x="170" y="232" width="100" height="28" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="220.0" y="249.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">C (index 2)</text>
+<line x1="122" y1="246" x2="168" y2="246" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="168,246 160.8,249.5 160.8,242.5" fill="#1d2733"/>
+<rect x="320" y="232" width="100" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="370.0" y="249.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">B (index 1)</text>
+<line x1="272" y1="246" x2="318" y2="246" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="318,246 310.8,249.5 310.8,242.5" fill="#1d2733"/>
+<text x="20" y="278" font-size="10.0" fill="#2f7f86" text-anchor="start" >most recent</text>
+<text x="320" y="278" font-size="10.0" fill="#d9622b" text-anchor="start" >least recent, evicted next</text>
+<text x="470" y="246" font-size="10.0" fill="#5b6b7c" text-anchor="start" >An index is a pointer the borrow checker does not track.</text>
+</svg>

@@ -1,0 +1,2038 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Threads, atomics, and locks - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch16.png" alt="Spindle, the robot who is the locksmith of the shared axle, beside spools of thread and a heavy padlock on the shared axle">
+<h1 id="threads-atomics-and-locks"><a class="header" href="#threads-atomics-and-locks">Threads, atomics, and locks</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>Starting threads with <code>thread::spawn</code> and <code>thread::scope</code>, and collecting their results</li>
+<li>The <code>Send</code> and <code>Sync</code> traits, which let the compiler reject data races</li>
+<li>Atomic integers, and why <code>count += 1</code> from two threads can lose an update</li>
+<li>Splitting a sum across threads, measuring it, and Amdahl’s law</li>
+<li>A spin lock built from one atomic flag, with acquire and release ordering</li>
+<li>A counting semaphore built from a <code>Mutex</code> and a <code>Condvar</code></li>
+<li>What happens to a <code>Mutex</code> when its holder panics, and how to detect a deadlock</li>
+</ul>
+</div>
+
+<p>Chapter 15 showed that a laptop CPU has several cores. A program that runs on one thread uses one of them. To use
+the others, the program must split its work across several <strong>threads</strong>: independent sequences of instructions
+that the operating system schedules onto cores.</p>
+<p>Threads share the process’s memory, so they can all read the same data. That sharing also makes them
+dangerous. When two threads change the same memory at the same time, the result can be wrong in ways that
+are hard to reproduce.</p>
+<p>Rust’s promise here is narrow and specific. Safe Rust code cannot contain a <strong>data race</strong>. In a data race, two threads access the same memory at the same time, and at least one of them writes.
+Nothing orders the two accesses. The
+compiler checks this with two traits, <code>Send</code> and <code>Sync</code>. The chapter starts there.</p>
+<h2 id="161-starting-threads"><a class="header" href="#161-starting-threads">16.1 Starting threads</a></h2>
+<h3 id="1611-spawn-and-join"><a class="header" href="#1611-spawn-and-join">16.1.1 <code>spawn</code> and <code>join</code></a></h3>
+<p><code>std::thread::spawn</code> starts a new thread that runs a closure. It returns a <code>JoinHandle</code>. Calling <code>join()</code> on the
+handle waits for the thread to finish and returns the closure’s result:</p>
+<pre><code class="language-rust">let handle = thread::spawn(|| 6 * 7);
+assert_eq!(handle.join().expect("worker panicked"), 42);</code></pre>
+<p><code>join</code> returns a <code>Result</code>, because the thread might have panicked. <code>Ok</code> carries the closure’s return value.</p>
+<p>A spawned thread may outlive the function that started it. So the closure cannot borrow local variables, which
+might be gone by the time the thread uses them. The compiler requires the closure to own everything it uses, or
+to borrow only data that lives for the whole program. That requirement is written <code>'static</code>. To share data with
+a spawned thread, you move an <code>Arc</code> into the closure, as section 8.6 did.</p>
+<h3 id="1612-scoped-threads"><a class="header" href="#1612-scoped-threads">16.1.2 Scoped threads</a></h3>
+<p><code>thread::scope</code> removes that restriction for work that finishes before the function continues. It takes a
+closure that receives a <code>scope</code> value. Threads started with <code>scope.spawn</code> may borrow local data. The scope waits
+for every one of them before <code>thread::scope</code> returns, so the borrowed data is still alive while they run.</p>
+<p>The file <code>threads.rs</code> uses a scope to sum a slice on several threads (figure 16.1).</p>
+<figure>
+<img src="figures/scope-chunks.svg" alt="A slice split into four chunks. Each chunk goes to a worker that sums it. The four partial sums are joined and added.">
+<figcaption><b>Figure 16.1</b> Each worker sums one chunk, borrowing it from the caller's slice.</figcaption>
+</figure>
+<p class="listing"><b>Listing 16.1</b> <code>available_workers</code> and <code>parallel_sum</code> (lines 31 to 69). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">src/problems/threads.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{
+        OnceLock,
+        atomic::{AtomicUsize, Ordering},
+    },
+    thread,
+};
+
+/// Number of hardware threads the runtime can use, defaulting to 1.
+pub fn available_workers() -&gt; usize {
+    thread::available_parallelism()
+        .map(|count| count.get())
+        .unwrap_or(1)
+}
+
+/// Sum a slice by splitting it into chunks that run on scoped threads.
+///
+/// `thread::scope` is what makes this ergonomic: the workers borrow `values`
+/// directly, so there is no `Arc` and no `'static` bound. The scope waits for
+/// every thread, which removes the forgotten-join bug.
+pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
+    if values.is_empty() {
+        return 0;
+    }
+
+    let workers = available_workers().min(values.len());
+    let chunk_size = values.len().div_ceil(workers);
+
+    thread::scope(|scope| {
+        let handles: Vec&lt;_&gt; = values
+            .chunks(chunk_size)
+            .map(|chunk| {
+                scope.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|value| i64::from(*value))
+                        .sum::&lt;i64&gt;()
+                })
+            })
+            .collect();
+
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("worker panicked"))
+            .sum()
+    })
+}</code></pre>
+<p><code>thread::available_parallelism()</code> asks the operating system how many threads can run at the same time. On this
+laptop it returns 8: four cores, each running two hardware threads. It returns a <code>Result</code>, so the code falls back
+to 1 if the question cannot be answered.</p>
+<p>The function never starts more workers than there are values. <code>values.len().div_ceil(workers)</code> computes a chunk
+size that rounds up, so the chunks cover every value. <code>values.chunks(chunk_size)</code> then yields sub-slices of that
+size, with a shorter last one.</p>
+<p>Each worker converts its values to <code>i64</code> with <code>i64::from(*value)</code> before adding. The sum of many <code>i32</code> values can
+exceed the <code>i32</code> range, and an <code>i64</code> has room for it.</p>
+<p>The order of two steps decides whether the threads run in parallel. The workers are all started, and their handles collected into a <code>Vec</code>,
+before any is joined. Iterators are lazy. A single chain like <code>.map(spawn).map(join)</code> would start one thread, wait
+for it, then start the next. The work would run one chunk at a time. Collecting first starts every thread before
+waiting on any of them.</p>
+<p>The closure passed to <code>scope.spawn</code> is a <code>move</code> closure. It moves <code>chunk</code>, a <code>&amp;[i32]</code>, into the thread. Moving a
+reference copies the reference, not the data.</p>
+<h3 id="1613-send-and-sync"><a class="header" href="#1613-send-and-sync">16.1.3 <code>Send</code> and <code>Sync</code></a></h3>
+<p>How does the compiler know which values may be used from another thread? Two marker traits describe it:</p>
+<ul>
+<li>A type is <strong><code>Send</code></strong> if a value of it can be moved to another thread.</li>
+<li>A type is <strong><code>Sync</code></strong> if a reference to it, <code>&amp;T</code>, can be shared with other threads. Put another way, <code>T</code> is
+<code>Sync</code> exactly when <code>&amp;T</code> is <code>Send</code>.</li>
+</ul>
+<p>These traits have no methods. They are <strong>auto traits</strong>: the compiler implements them for a type automatically
+when all of the type’s fields have them. <code>i32</code>, <code>String</code>, <code>Vec&lt;i32&gt;</code>, and <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> are both <code>Send</code> and
+<code>Sync</code>.</p>
+<p><code>Rc</code> is neither. Its reference count is a plain integer, so two threads cloning the same <code>Rc</code> could lose a count,
+as section 16.2 shows. <code>RefCell</code> is <code>Send</code> but not <code>Sync</code>: its borrow flag is not safe to change from two threads.
+<code>thread::spawn</code> and <code>scope.spawn</code> require their closures to be <code>Send</code>. A closure that captures an <code>Rc</code> is
+therefore rejected at compile time.</p>
+<p class="listing"><b>Listing 16.2</b> A compile-time check (lines 119 to 123).</p>
+
+<pre><code class="language-rust">/// A compile-time assertion that `T` may cross thread boundaries.
+///
+/// Calling `assert_send_sync::&lt;Client&gt;()` fails to compile if `Client` is not
+/// thread-safe, which turns a concurrency assumption into a build error.
+pub fn assert_send_sync&lt;T: Send + Sync&gt;() {}</code></pre>
+<p><code>assert_send_sync</code> has an empty body. Calling <code>assert_send_sync::&lt;AtomicCounter&gt;()</code> compiles only if
+<code>AtomicCounter</code> is <code>Send + Sync</code>. If a later change added an <code>Rc</code> field to it, the call would stop compiling. The
+check costs nothing at run time.</p>
+<h2 id="162-atomic-integers"><a class="header" href="#162-atomic-integers">16.2 Atomic integers</a></h2>
+<h3 id="1621-the-lost-update"><a class="header" href="#1621-the-lost-update">16.2.1 The lost update</a></h3>
+<p><code>count += 1</code> looks like one step, but the CPU performs three: read the value, add one, and write the result back.
+If two threads do this at the same time, their steps can interleave (figure 16.2).</p>
+<figure>
+<img src="figures/lost-update.svg" alt="Thread 1 reads 5, thread 2 reads 5, both add 1 to get 6, and both write 6. The counter ends at 6 instead of 7.">
+<figcaption><b>Figure 16.2</b> A lost update. Both threads read 5, so one of the two increments disappears.</figcaption>
+</figure>
+<p>Safe Rust does not compile this: sharing a plain <code>usize</code> for writing between threads needs <code>&amp;mut</code> in two places
+at once. Other languages compile it, and the program loses counts only under load.</p>
+<p>An <strong>atomic</strong> type performs the read, the change, and the write as one indivisible operation. No other thread can
+see or change the value in between. <code>AtomicUsize::fetch_add(1, ordering)</code> adds 1 and returns the old value.</p>
+<h3 id="1622-a-counter-without-a-lock"><a class="header" href="#1622-a-counter-without-a-lock">16.2.2 A counter without a lock</a></h3>
+<p class="listing"><b>Listing 16.3</b> <code>AtomicCounter</code> and <code>scoped_increment</code> (lines 71 to 108).</p>
+
+<pre><code class="language-rust">/// A counter that several threads may increment without a lock.
+///
+/// `Relaxed` is correct here because the counter is the only value being
+/// communicated; there is no other data whose visibility depends on it.
+#[derive(Default)]
+pub struct AtomicCounter {
+    value: AtomicUsize,
+}
+
+impl AtomicCounter {
+    pub const fn new() -&gt; Self {
+        Self {
+            value: AtomicUsize::new(0),
+        }
+    }
+
+    /// Increment and return the new value.
+    pub fn increment(&amp;self) -&gt; usize {
+        self.value.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    pub fn get(&amp;self) -&gt; usize {
+        self.value.load(Ordering::Relaxed)
+    }
+}
+
+/// Increment a counter from several scoped threads that share it by reference.
+pub fn scoped_increment(counter: &amp;AtomicCounter, threads: usize, per_thread: usize) {
+    thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                for _ in 0..per_thread {
+                    counter.increment();
+                }
+            });
+        }
+    });
+}</code></pre>
+<p><code>increment</code> takes <code>&amp;self</code>, not <code>&amp;mut self</code>. An atomic can be changed through a shared reference, the same way a
+<code>RefCell</code> can, but safely across threads. So many threads can hold <code>&amp;AtomicCounter</code> and increment it at once.</p>
+<p><code>fetch_add</code> returns the value before the addition, so <code>increment</code> adds 1 to report the new value.</p>
+<p><code>scoped_increment</code> starts <code>threads</code> threads that each increment the counter <code>per_thread</code> times. The closure has
+no <code>move</code>, so it borrows <code>counter</code>, which the scope allows. The test runs 8 threads × 500 increments and checks
+that the total is exactly 4,000. No increment is lost.</p>
+<h3 id="1623-memory-ordering"><a class="header" href="#1623-memory-ordering">16.2.3 Memory ordering</a></h3>
+<p>Every atomic operation takes an <code>Ordering</code> argument. The ordering answers a question beyond the atomic value itself. When this thread changes the atomic, what
+may other threads assume about the <em>other</em> memory this thread changed?</p>
+<p>Compilers and CPUs reorder memory operations to run faster. Within one thread, the reordering is invisible.
+Another thread watching the memory can see writes in a different order from the one in the source code. The
+ordering argument limits that reordering around the atomic operation.</p>
+<ul>
+<li><code>Relaxed</code> makes the operation itself atomic, and promises nothing about other memory. That is enough for a
+counter whose value no other data depends on, which is the case here.</li>
+<li><code>Release</code>, used when writing, and <code>Acquire</code>, used when reading, work as a pair. Section 16.4 uses them to build
+a lock.</li>
+<li><code>SeqCst</code> is the strongest. All <code>SeqCst</code> operations appear in one order that every thread agrees on. It is the
+simplest to reason about, and sometimes slower.</li>
+</ul>
+<h3 id="1624-initializing-a-value-once"><a class="header" href="#1624-initializing-a-value-once">16.2.4 Initializing a value once</a></h3>
+<p class="listing"><b>Listing 16.4</b> <code>OnceLock</code> (lines 110 to 117).</p>
+
+<pre><code class="language-rust">/// A value initialized once and shared by every caller.
+///
+/// `OnceLock` is the primitive behind lazy process-wide configuration, and it is
+/// safe because initialization happens at most once even under concurrent calls.
+pub fn build_channel() -&gt; &amp;'static str {
+    static CHANNEL: OnceLock&lt;&amp;'static str&gt; = OnceLock::new();
+    CHANNEL.get_or_init(|| "stable")
+}</code></pre>
+<p>A <code>static</code> is a single value shared by the whole program. <code>OnceLock</code> holds a value that starts empty and is set at
+most once. <code>get_or_init</code> runs the closure the first time, and returns the stored value after that. If several
+threads call it at the same moment, one runs the closure and the others wait for its result.</p>
+<p class="listing"><b>Listing 16.5</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">src/problems/threads.rs</a></p>
+
+<pre><code class="language-rust">//! Threads and fearless concurrency.
+//!
+//! Rust's claim about concurrency is narrow and checkable: safe code cannot
+//! produce a data race, because `Send` and `Sync` describe what may cross a
+//! thread boundary and the compiler refuses programs that violate the rules.
+//!
+//! - `Send` means a value may be moved to another thread.
+//! - `Sync` means `&amp;T` may be shared across threads.
+//!
+//! Both are auto traits: a type is `Send`/`Sync` when its fields are. `Rc` and
+//! `RefCell` are the standard counter-examples, which is precisely why sharing
+//! them across threads does not compile. The compile error is the feature, not an
+//! obstacle.
+//!
+//! Three ways to get work onto other threads, in increasing order of ceremony:
+//!
+//! 1. `thread::scope` for work that borrows local data and finishes with the
+//!    scope. No `'static`, no `Arc`.
+//! 2. `thread::spawn` for work that must own its data and outlive the caller.
+//! 3. A thread pool when the number of units of work is large and threads should
+//!    be reused.
+
+use std::{
+    sync::{
+        OnceLock,
+        atomic::{AtomicUsize, Ordering},
+    },
+    thread,
+};
+
+/// Number of hardware threads the runtime can use, defaulting to 1.
+pub fn available_workers() -&gt; usize {
+    thread::available_parallelism()
+        .map(|count| count.get())
+        .unwrap_or(1)
+}
+
+/// Sum a slice by splitting it into chunks that run on scoped threads.
+///
+/// `thread::scope` is what makes this ergonomic: the workers borrow `values`
+/// directly, so there is no `Arc` and no `'static` bound. The scope waits for
+/// every thread, which removes the forgotten-join bug.
+pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
+    if values.is_empty() {
+        return 0;
+    }
+
+    let workers = available_workers().min(values.len());
+    let chunk_size = values.len().div_ceil(workers);
+
+    thread::scope(|scope| {
+        let handles: Vec&lt;_&gt; = values
+            .chunks(chunk_size)
+            .map(|chunk| {
+                scope.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|value| i64::from(*value))
+                        .sum::&lt;i64&gt;()
+                })
+            })
+            .collect();
+
+        handles
+            .into_iter()
+            .map(|handle| handle.join().expect("worker panicked"))
+            .sum()
+    })
+}
+
+/// A counter that several threads may increment without a lock.
+///
+/// `Relaxed` is correct here because the counter is the only value being
+/// communicated; there is no other data whose visibility depends on it.
+#[derive(Default)]
+pub struct AtomicCounter {
+    value: AtomicUsize,
+}
+
+impl AtomicCounter {
+    pub const fn new() -&gt; Self {
+        Self {
+            value: AtomicUsize::new(0),
+        }
+    }
+
+    /// Increment and return the new value.
+    pub fn increment(&amp;self) -&gt; usize {
+        self.value.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    pub fn get(&amp;self) -&gt; usize {
+        self.value.load(Ordering::Relaxed)
+    }
+}
+
+/// Increment a counter from several scoped threads that share it by reference.
+pub fn scoped_increment(counter: &amp;AtomicCounter, threads: usize, per_thread: usize) {
+    thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                for _ in 0..per_thread {
+                    counter.increment();
+                }
+            });
+        }
+    });
+}
+
+/// A value initialized once and shared by every caller.
+///
+/// `OnceLock` is the primitive behind lazy process-wide configuration, and it is
+/// safe because initialization happens at most once even under concurrent calls.
+pub fn build_channel() -&gt; &amp;'static str {
+    static CHANNEL: OnceLock&lt;&amp;'static str&gt; = OnceLock::new();
+    CHANNEL.get_or_init(|| "stable")
+}
+
+/// A compile-time assertion that `T` may cross thread boundaries.
+///
+/// Calling `assert_send_sync::&lt;Client&gt;()` fails to compile if `Client` is not
+/// thread-safe, which turns a concurrency assumption into a build error.
+pub fn assert_send_sync&lt;T: Send + Sync&gt;() {}
+
+#[cfg(test)]
+mod tests {
+    use std::thread;
+
+    use super::*;
+
+    #[test]
+    fn parallel_sum_matches_the_sequential_sum() {
+        let values: Vec&lt;i32&gt; = (1..=10_000).collect();
+        let expected: i64 = values.iter().map(|value| i64::from(*value)).sum();
+        assert_eq!(parallel_sum(&amp;values), expected);
+    }
+
+    #[test]
+    fn parallel_sum_handles_small_and_empty_inputs() {
+        assert_eq!(parallel_sum(&amp;[]), 0);
+        assert_eq!(parallel_sum(&amp;[7]), 7);
+        assert_eq!(parallel_sum(&amp;[-1, 1, -2, 2]), 0);
+    }
+
+    #[test]
+    fn scoped_threads_share_a_counter_without_arc() {
+        let counter = AtomicCounter::new();
+        scoped_increment(&amp;counter, 8, 500);
+        assert_eq!(counter.get(), 4_000);
+    }
+
+    #[test]
+    fn spawn_returns_a_join_handle_that_carries_the_result() {
+        let handle = thread::spawn(|| 6 * 7);
+        assert_eq!(handle.join().expect("worker panicked"), 42);
+    }
+
+    #[test]
+    fn once_lock_initializes_a_single_value() {
+        assert_eq!(build_channel(), "stable");
+        assert_eq!(build_channel(), build_channel());
+    }
+
+    #[test]
+    fn counter_is_thread_safe_by_construction() {
+        assert_send_sync::&lt;AtomicCounter&gt;();
+        assert!(available_workers() &gt;= 1);
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo test --lib problems::threads
+running 6 tests
+test problems::threads::tests::counter_is_thread_safe_by_construction ... ok
+test problems::threads::tests::once_lock_initializes_a_single_value ... ok
+test problems::threads::tests::spawn_returns_a_join_handle_that_carries_the_result ... ok
+test problems::threads::tests::scoped_threads_share_a_counter_without_arc ... ok
+test problems::threads::tests::parallel_sum_handles_small_and_empty_inputs ... ok
+test problems::threads::tests::parallel_sum_matches_the_sequential_sum ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 131 filtered out
+</code></pre>
+<h2 id="163-how-much-faster-do-threads-make-it"><a class="header" href="#163-how-much-faster-do-threads-make-it">16.3 How much faster do threads make it?</a></h2>
+<h3 id="1631-a-billion-elements"><a class="header" href="#1631-a-billion-elements">16.3.1 A billion elements</a></h3>
+<p><code>parallel_sum.rs</code> times the same idea at a large scale. It sums a billion elements three times, as <code>i32</code>, <code>i64</code>,
+and <code>i128</code>, once on one thread and once on several.</p>
+<p class="listing"><b>Listing 16.6</b> The parallel sum for <code>i32</code> (lines 15 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs">src/bin/parallel_sum.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    env,
+    thread,
+    time::{Duration, Instant},
+};
+
+fn par_i32(data: &amp;[i32], n: usize) -&gt; (i32, Duration) {
+    let t = Instant::now();
+    let sum = thread::scope(|s| {
+        let handles: Vec&lt;_&gt; = (0..n)
+            .map(|i| {
+                s.spawn(move || {
+                    let chunk = data.len() / n;
+                    let start = i * chunk;
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
+                    data[start..end].iter().sum::&lt;i32&gt;()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::&lt;i32&gt;()
+    });
+    (sum, t.elapsed())
+}</code></pre>
+<p>This version divides the work by index instead of with <code>chunks</code>. Worker <code>i</code> sums the range from <code>i * chunk</code> to the
+next boundary. The last worker takes everything to the end, so the leftover elements from the integer division
+are not lost. The handles are collected before joining, for the reason in section 16.1.2.</p>
+<p class="listing"><b>Listing 16.7</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs">src/bin/parallel_sum.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    env,
+    thread,
+    time::{Duration, Instant},
+};
+
+const SIZE: usize = 1_000_000_000;
+
+fn seq_i32(data: &amp;[i32]) -&gt; (i32, Duration) {
+    let t = Instant::now();
+    let sum = data.iter().sum::&lt;i32&gt;();
+    (sum, t.elapsed())
+}
+
+fn par_i32(data: &amp;[i32], n: usize) -&gt; (i32, Duration) {
+    let t = Instant::now();
+    let sum = thread::scope(|s| {
+        let handles: Vec&lt;_&gt; = (0..n)
+            .map(|i| {
+                s.spawn(move || {
+                    let chunk = data.len() / n;
+                    let start = i * chunk;
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
+                    data[start..end].iter().sum::&lt;i32&gt;()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::&lt;i32&gt;()
+    });
+    (sum, t.elapsed())
+}
+
+fn seq_i64(data: &amp;[i64]) -&gt; (i64, Duration) {
+    let t = Instant::now();
+    let sum = data.iter().sum::&lt;i64&gt;();
+    (sum, t.elapsed())
+}
+
+fn par_i64(data: &amp;[i64], n: usize) -&gt; (i64, Duration) {
+    let t = Instant::now();
+    let sum = thread::scope(|s| {
+        let handles: Vec&lt;_&gt; = (0..n)
+            .map(|i| {
+                s.spawn(move || {
+                    let chunk = data.len() / n;
+                    let start = i * chunk;
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
+                    data[start..end].iter().sum::&lt;i64&gt;()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::&lt;i64&gt;()
+    });
+    (sum, t.elapsed())
+}
+
+fn seq_i128(data: &amp;[i128]) -&gt; (i128, Duration) {
+    let t = Instant::now();
+    let sum = data.iter().sum::&lt;i128&gt;();
+    (sum, t.elapsed())
+}
+
+fn par_i128(data: &amp;[i128], n: usize) -&gt; (i128, Duration) {
+    let t = Instant::now();
+    let sum = thread::scope(|s| {
+        let handles: Vec&lt;_&gt; = (0..n)
+            .map(|i| {
+                s.spawn(move || {
+                    let chunk = data.len() / n;
+                    let start = i * chunk;
+                    let end = if i == n - 1 {
+                        data.len()
+                    } else {
+                        start + chunk
+                    };
+                    data[start..end].iter().sum::&lt;i128&gt;()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .sum::&lt;i128&gt;()
+    });
+    (sum, t.elapsed())
+}
+
+fn main() {
+    let n: usize = env::args()
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8);
+
+    {
+        let data: Vec&lt;i32&gt; = vec![1; SIZE];
+        let (s1, t1) = seq_i32(&amp;data);
+        let (s2, t2) = par_i32(&amp;data, n);
+        assert_eq!(s1, s2);
+        println!("i32   seq sum = {s1}, elapsed = {t1:?}");
+        println!("i32   par sum = {s2}, elapsed = {t2:?}  (n = {n})");
+    }
+
+    {
+        let data: Vec&lt;i64&gt; = vec![1; SIZE];
+        let (s1, t1) = seq_i64(&amp;data);
+        let (s2, t2) = par_i64(&amp;data, n);
+        assert_eq!(s1, s2);
+        println!("i64   seq sum = {s1}, elapsed = {t1:?}");
+        println!("i64   par sum = {s2}, elapsed = {t2:?}  (n = {n})");
+    }
+
+    {
+        let data: Vec&lt;i128&gt; = vec![1; SIZE];
+        let (s1, t1) = seq_i128(&amp;data);
+        let (s2, t2) = par_i128(&amp;data, n);
+        assert_eq!(s1, s2);
+        println!("i128  seq sum = {s1}, elapsed = {t1:?}");
+        println!("i128  par sum = {s2}, elapsed = {t2:?}  (n = {n})");
+    }
+}</code></pre>
+<p>The thread count comes from the first command-line argument, and defaults to 8. Each block creates its vector,
+times both sums, and drops the vector at the closing brace before the next block starts.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> The three vectors take 4 GB, 8 GB, and 16 GB of memory. On a machine with 16 GB, the larger two do not fit next to everything else in memory. The operating system
+then compresses pages or swaps them to disk. Lower
+<code>SIZE</code> before you run this on a small machine.</p>
+</div>
+
+<p>Here is one run on the 16 GB laptop:</p>
+<pre><code class="language-text">$ cargo run --release --bin parallel_sum
+i32   seq sum = 1000000000, elapsed = 522.646188ms
+i32   par sum = 1000000000, elapsed = 142.427408ms  (n = 8)
+i64   seq sum = 1000000000, elapsed = 7.750109265s
+i64   par sum = 1000000000, elapsed = 2.591278253s  (n = 8)
+i128  seq sum = 1000000000, elapsed = 16.173010504s
+i128  par sum = 1000000000, elapsed = 10.198263426s  (n = 8)
+</code></pre>
+<p>Read these numbers with care. The <code>i32</code> rows are the only ones that measure the sum. Eight threads made it about
+3.7 times faster, not 8 times. The <code>i64</code> and <code>i128</code> rows are dominated by the memory pressure from the warning. Reading 8 GB should take
+well under a second, so 7.7 seconds means pages were being brought back from compression or disk.</p>
+<p>The runs were not stable, either. In an earlier run, the sequential <code>i32</code> sum took 4.6 seconds instead of 0.52.
+To check the <code>i32</code> result, I wrote a separate test that fills the vector once and times each sum several times.
+The sequential sum took 0.25 to 0.29 seconds, and eight threads took 0.08 seconds, about 3.2 times faster.</p>
+<p>Why not 8 times? Summing is almost no work per byte, so the loop is limited by how fast memory delivers bytes, not
+by how fast cores add. One core cannot use all of the memory bandwidth, so several cores help, but only until
+the memory bus is full. The laptop also has four cores, not eight. Its eight hardware threads share those cores
+in pairs.</p>
+<h3 id="1632-amdahls-law"><a class="header" href="#1632-amdahls-law">16.3.2 Amdahl’s law</a></h3>
+<p>Most programs also contain work that cannot be split: reading input, starting threads, combining results.
+<strong>Amdahl’s law</strong> states how much that serial part limits the speedup.</p>
+<p>Suppose a fraction <code>s</code> of the run time is serial, and <code>p</code> processors share the rest perfectly. The run time
+becomes <code>s + (1 - s) / p</code> of the original, and the speedup is one divided by that:</p>
+<pre><code class="language-text">speedup(s, p) = 1 / (s + (1 - s) / p)
+</code></pre>
+<p>Work through one case by hand: <code>s = 0.5</code> and <code>p = 4</code>. The run time is 0.5 + 0.5 / 4 = 0.625 of the original,
+so the speedup is 1 / 0.625 = 1.6.</p>
+<p class="listing"><b>Listing 16.8</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_amdahl.rs">src/bin/concurrency_amdahl.rs</a></p>
+
+<pre><code class="language-rust">//! Amdahl's law: the serial fraction of the work caps the speedup from adding
+//! processors. A program that is 50 percent serial cannot go faster than 2x, no
+//! matter how many cores it gets.
+//!
+//! Run with: cargo run --bin concurrency_amdahl
+
+/// Speedup with `processors` when `serial` is the non-parallel fraction.
+fn speedup(serial: f64, processors: f64) -&gt; f64 {
+    1.0 / (serial + (1.0 - serial) / processors)
+}
+
+fn main() {
+    let processor_counts = [1.0, 2.0, 4.0, 8.0, 16.0];
+    let serial_fractions = [0.0, 0.05, 0.10, 0.25, 0.50];
+
+    print!("{:&gt;8} |", "serial");
+    for processors in processor_counts {
+        print!(" {processors:&gt;6.0}");
+    }
+    println!("   &lt;- processors");
+    println!("{:-&gt;9}+{}", "", "-".repeat(7 * processor_counts.len()));
+
+    for serial in serial_fractions {
+        print!("{serial:&gt;8.2} |");
+        for processors in processor_counts {
+            print!(" {:&gt;6.2}", speedup(serial, processors));
+        }
+        println!();
+    }
+
+    println!("\nlimit as processors grow: 1 / serial");
+    for serial in serial_fractions {
+        let limit = if serial == 0.0 {
+            f64::INFINITY
+        } else {
+            1.0 / serial
+        };
+        println!("  {serial:&gt;4.2} -&gt; {limit:&gt;6.1}");
+    }
+
+    assert!((speedup(0.0, 4.0) - 4.0).abs() &lt; 1e-9);
+    assert!((speedup(0.5, 4.0) - 1.6).abs() &lt; 1e-9);
+    assert!(speedup(0.5, 16.0) &lt; 1.9, "2x is the ceiling for 50% serial");
+
+    println!("\nall checks passed");
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin concurrency_amdahl
+  serial |      1      2      4      8     16   &lt;- processors
+---------+-----------------------------------
+    0.00 |   1.00   2.00   4.00   8.00  16.00
+    0.05 |   1.00   1.90   3.48   5.93   9.14
+    0.10 |   1.00   1.82   3.08   4.71   6.40
+    0.25 |   1.00   1.60   2.29   2.91   3.37
+    0.50 |   1.00   1.33   1.60   1.78   1.88
+
+limit as processors grow: 1 / serial
+  0.00 -&gt;    inf
+  0.05 -&gt;   20.0
+  0.10 -&gt;   10.0
+  0.25 -&gt;    4.0
+  0.50 -&gt;    2.0
+
+all checks passed
+</code></pre>
+<figure>
+<img src="figures/amdahl.svg" alt="Speedup curves from 1 to 16 processors for serial fractions 0, 0.05, 0.10, 0.25, and 0.50, reaching 16, 9.14, 6.40, 3.37, and 1.88 at 16 processors.">
+<figcaption><b>Figure 16.3</b> The table as curves. With 5% serial work, 16 processors give a speedup of 9.14.</figcaption>
+</figure>
+<p>As <code>p</code> grows, <code>(1 - s) / p</code> shrinks toward zero, and the speedup approaches <code>1 / s</code>. A program that is 5% serial
+can never run more than 20 times faster, however many cores it gets.</p>
+<h2 id="164-a-spin-lock"><a class="header" href="#164-a-spin-lock">16.4 A spin lock</a></h2>
+<p>A <code>Mutex</code> from the standard library lets one thread at a time use a value. This section builds a simpler lock
+from one atomic <code>bool</code>, to show what a lock must do.</p>
+<p>A <strong>spin lock</strong> waits by looping. A thread that wants the lock checks it over and over until it is free. This
+works well when the lock is held for a very short time. When it is held longer, the waiting threads waste whole
+cores doing nothing useful. <code>std::sync::Mutex</code> instead asks the operating system to put a waiting thread to sleep.</p>
+<h3 id="1641-the-type"><a class="header" href="#1641-the-type">16.4.1 The type</a></h3>
+<p class="listing"><b>Listing 16.9</b> The lock, the guard, and <code>new</code> (lines 24 to 48). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/spin_lock.rs">src/problems/spin_lock.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cell::UnsafeCell,
+    hint::spin_loop,
+    ops::{Deref, DerefMut},
+    sync::atomic::{AtomicBool, Ordering},
+};
+
+/// A mutual-exclusion lock that busy-waits instead of parking.
+pub struct SpinLock&lt;T&gt; {
+    locked: AtomicBool,
+    value: UnsafeCell&lt;T&gt;,
+}
+
+// SAFETY: `value` is only accessed while `locked` is held, and the acquire/release
+// ordering on `locked` makes a hand-off between threads well defined. Sharing
+// `&amp;SpinLock` across threads therefore only requires the protected value to be
+// `Send`, which lets one thread move data in and another move it out.
+unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}
+
+/// Grants access to the protected value and releases the lock when dropped.
+pub struct SpinGuard&lt;'a, T&gt; {
+    lock: &amp;'a SpinLock&lt;T&gt;,
+}
+
+impl&lt;T&gt; SpinLock&lt;T&gt; {
+    /// Create an unlocked spin lock.
+    pub const fn new(value: T) -&gt; Self {
+        Self {
+            locked: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>SpinLock&lt;T&gt;</code> holds a flag, <code>locked</code>, and the protected value inside an <code>UnsafeCell&lt;T&gt;</code>. <code>UnsafeCell</code> is the one
+type through which Rust allows changing data behind a shared reference. <code>RefCell</code>, <code>Mutex</code>, and the atomic types
+are all built on it. Its <code>get()</code> method returns a raw pointer, <code>*mut T</code>. Using that pointer requires <code>unsafe</code>,
+and the code must make sure no two threads use it at once.</p>
+<p><code>UnsafeCell</code> is not <code>Sync</code>, so <code>SpinLock</code> would not be <code>Sync</code> either. The line <code>unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}</code> declares that it is. The compiler cannot check this claim, which is why the implementation needs
+<code>unsafe</code>. The <code>SAFETY</code> comment above it gives the reason the claim holds: the value is used only while the lock is
+held.</p>
+<p>The bound is <code>T: Send</code>, not <code>T: Sync</code>. Only one thread uses the value at a time, but different threads use it one
+after another, so the value effectively moves between threads.</p>
+<p><code>SpinGuard</code> is returned by <code>lock</code>. It holds a reference to the lock, gives access to the value, and releases the
+lock when it is dropped.</p>
+<h3 id="1642-taking-and-releasing-the-lock"><a class="header" href="#1642-taking-and-releasing-the-lock">16.4.2 Taking and releasing the lock</a></h3>
+<p class="listing"><b>Listing 16.10</b> <code>lock</code>, <code>try_lock</code>, and <code>unlock</code> (lines 52 to 86).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; SpinLock&lt;T&gt; {
+    // ...
+    /// Acquire the lock, spinning until it is free.
+    pub fn lock(&amp;self) -&gt; SpinGuard&lt;'_, T&gt; {
+        loop {
+            if self
+                .locked
+                .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_ok()
+            {
+                return SpinGuard { lock: self };
+            }
+
+            // Spin on a relaxed load so the contention loop does not keep
+            // bouncing the cache line with exclusive accesses.
+            while self.locked.load(Ordering::Relaxed) {
+                spin_loop();
+            }
+        }
+    }
+
+    /// Acquire the lock only if it is free right now.
+    pub fn try_lock(&amp;self) -&gt; Option&lt;SpinGuard&lt;'_, T&gt;&gt; {
+        self.locked
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .ok()
+            .map(|_| SpinGuard { lock: self })
+    }
+
+    /// Whether the lock is currently held.
+    pub fn is_locked(&amp;self) -&gt; bool {
+        self.locked.load(Ordering::Relaxed)
+    }
+
+    fn unlock(&amp;self) {
+        self.locked.store(false, Ordering::Release);
+    }
+}</code></pre>
+<p>Taking the lock must be one atomic step: check that it is free and mark it taken, with no other thread slipping
+in between. <code>compare_exchange(false, true, ...)</code> does that. If the flag is <code>false</code>, it sets it to <code>true</code> and
+returns <code>Ok</code>. If it is already <code>true</code>, it changes nothing and returns <code>Err</code>.</p>
+<p><code>lock</code> uses <code>compare_exchange_weak</code>, which may fail even when the flag is <code>false</code>. The weak form is cheaper on
+some CPUs, and inside a loop a false failure costs one more pass.</p>
+<p>When the exchange fails, the thread waits in an inner loop that only reads the flag with a <code>Relaxed</code> load. A read
+lets the cache line stay shared between the waiting cores. A compare-exchange must take the line for writing, as
+section 15.4 described, so repeating it would bounce the line between cores. When the read sees <code>false</code>, the outer
+loop tries the exchange again. <code>spin_loop()</code> tells the CPU that this is a wait loop. The CPU can then save power and let the other
+hardware thread on the core run.</p>
+<p><code>try_lock</code> makes one attempt and returns <code>None</code> if the lock is taken.</p>
+<h3 id="1643-acquire-and-release"><a class="header" href="#1643-acquire-and-release">16.4.3 Acquire and release</a></h3>
+<p>The orderings in <code>lock</code> and <code>unlock</code> make the lock correct (figure 16.4).</p>
+<figure>
+<img src="figures/acquire-release.svg" alt="Thread A locks with an Acquire compare-exchange, increments the value, and unlocks with a Release store. Thread B spins, then its Acquire compare-exchange succeeds after A&#39;s release, and it sees the increment.">
+<figcaption><b>Figure 16.4</b> The release store in <code>unlock</code> pairs with the acquire exchange in the next <code>lock</code>.</figcaption>
+</figure>
+<ul>
+<li><code>unlock</code> stores <code>false</code> with <code>Release</code>. Every write the thread made before the store happens before the store, as far as other threads can tell.
+That includes its changes to the value.</li>
+<li><code>lock</code> exchanges with <code>Acquire</code>. Every read the thread makes after the exchange happens after it.</li>
+</ul>
+<p>When B’s acquire reads the <code>false</code> that A’s release wrote, the two operations <strong>synchronize</strong>. Everything A wrote
+before unlocking is then visible to B after locking. With <code>Relaxed</code> in both places, B could take the lock and
+still read an old copy of the value.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch16-spin-lock.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Thread A and thread B on either side of the atomic word locked. A&#39;s compare_exchange_weak changes false to true and A holds the lock. B&#39;s exchange fails, and B spins on a relaxed load. A&#39;s unlock stores false with Release; B&#39;s next exchange succeeds with Acquire." data-chapters="[[0.0, &quot;A locks&quot;], [5.0, &quot;B spins&quot;], [15.68, &quot;handoff&quot;]]"><img src="figures/ch16-spin-lock.gif" alt="Thread A and thread B on either side of the atomic word locked. A&#39;s compare_exchange_weak changes false to true and A holds the lock. B&#39;s exchange fails, and B spins on a relaxed load. A&#39;s unlock stores false with Release; B&#39;s next exchange succeeds with Acquire."></video>
+<figcaption><b>Animation 16.1</b> <code>lock</code> from listing 16.10. B stays on the CPU while it spins. The Release store in <code>unlock</code> pairs with B's Acquire exchange.</figcaption>
+</figure>
+<p>The second ordering argument to <code>compare_exchange</code>, <code>Relaxed</code>, applies when the exchange fails. A failed attempt
+does not take the lock, so it needs no ordering.</p>
+<h3 id="1644-the-guard"><a class="header" href="#1644-the-guard">16.4.4 The guard</a></h3>
+<p class="listing"><b>Listing 16.11</b> The guard's traits (lines 95 to 115).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
+    fn drop(&amp;mut self) {
+        self.lock.unlock();
+    }
+}
+
+impl&lt;T&gt; Deref for SpinGuard&lt;'_, T&gt; {
+    type Target = T;
+
+    fn deref(&amp;self) -&gt; &amp;T {
+        // SAFETY: holding the guard means this thread has exclusive access.
+        unsafe { &amp;*self.lock.value.get() }
+    }
+}
+
+impl&lt;T&gt; DerefMut for SpinGuard&lt;'_, T&gt; {
+    fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
+        // SAFETY: holding the guard means this thread has exclusive access.
+        unsafe { &amp;mut *self.lock.value.get() }
+    }
+}</code></pre>
+<p>The guard implements three traits:</p>
+<ul>
+<li><code>Drop</code> releases the lock. The lock is released when the guard goes out of scope, even if the code between
+panics. This pattern, tying a resource’s release to a value’s drop, is called <strong>RAII</strong>.</li>
+<li><code>Deref</code> lets <code>*guard</code> and method calls on the guard reach the value, as <code>&amp;T</code>.</li>
+<li><code>DerefMut</code> gives <code>&amp;mut T</code>, so <code>*lock.lock() += 1</code> changes the value.</li>
+</ul>
+<p>Each method turns the raw pointer from <code>UnsafeCell::get</code> into a reference. That is sound only because holding the
+guard means holding the lock.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> <code>SpinGuard</code> has a gap. Its auto traits come from its field <code>&amp;SpinLock&lt;T&gt;</code>, so the guard is <code>Sync</code>
+whenever <code>T</code> is <code>Send</code>. Take a type such as <code>Cell&lt;u64&gt;</code>, which is <code>Send</code> but not <code>Sync</code>. Safe code can share
+<code>&amp;SpinGuard&lt;Cell&lt;u64&gt;&gt;</code> between two scoped threads, and both can call <code>Cell::set</code> at once. That is a data race. I compiled
+such a program to confirm it. <code>std::sync::MutexGuard</code> avoids this by being <code>Sync</code> only when <code>T</code> is <code>Sync</code>.
+Exercise 3 asks you to close the gap.</p>
+</div>
+
+<p class="listing"><b>Listing 16.12</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/spin_lock.rs">src/problems/spin_lock.rs</a></p>
+
+<pre><code class="language-rust">//! A spin lock built from a single `AtomicBool`.
+//!
+//! The loop is short. The memory ordering and the ownership argument are what
+//! make the unsafe block sound.
+//!
+//! - `lock`/`try_lock` use a compare-exchange with `Acquire` ordering, so the
+//!   critical section observes every write the previous holder made before it
+//!   released.
+//! - `unlock` uses a `Release` store, so writes inside the critical section are
+//!   visible to whoever acquires next.
+//! - The guard derefs to `&amp;T`/`&amp;mut T`. Mutual exclusion is what makes handing out
+//!   `&amp;mut T` sound, and that is exactly what the lock guarantees.
+//!
+//! A spin lock is the wrong choice when the critical section can block or is
+//! long: every waiting thread burns a core. Use it for very short sections on
+//! dedicated cores, and prefer `std::sync::Mutex` (which parks the thread) in
+//! general code.
+
+use std::{
+    cell::UnsafeCell,
+    hint::spin_loop,
+    ops::{Deref, DerefMut},
+    sync::atomic::{AtomicBool, Ordering},
+};
+
+/// A mutual-exclusion lock that busy-waits instead of parking.
+pub struct SpinLock&lt;T&gt; {
+    locked: AtomicBool,
+    value: UnsafeCell&lt;T&gt;,
+}
+
+// SAFETY: `value` is only accessed while `locked` is held, and the acquire/release
+// ordering on `locked` makes a hand-off between threads well defined. Sharing
+// `&amp;SpinLock` across threads therefore only requires the protected value to be
+// `Send`, which lets one thread move data in and another move it out.
+unsafe impl&lt;T: Send&gt; Sync for SpinLock&lt;T&gt; {}
+
+/// Grants access to the protected value and releases the lock when dropped.
+pub struct SpinGuard&lt;'a, T&gt; {
+    lock: &amp;'a SpinLock&lt;T&gt;,
+}
+
+impl&lt;T&gt; SpinLock&lt;T&gt; {
+    /// Create an unlocked spin lock.
+    pub const fn new(value: T) -&gt; Self {
+        Self {
+            locked: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    /// Acquire the lock, spinning until it is free.
+    pub fn lock(&amp;self) -&gt; SpinGuard&lt;'_, T&gt; {
+        loop {
+            if self
+                .locked
+                .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_ok()
+            {
+                return SpinGuard { lock: self };
+            }
+
+            // Spin on a relaxed load so the contention loop does not keep
+            // bouncing the cache line with exclusive accesses.
+            while self.locked.load(Ordering::Relaxed) {
+                spin_loop();
+            }
+        }
+    }
+
+    /// Acquire the lock only if it is free right now.
+    pub fn try_lock(&amp;self) -&gt; Option&lt;SpinGuard&lt;'_, T&gt;&gt; {
+        self.locked
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .ok()
+            .map(|_| SpinGuard { lock: self })
+    }
+
+    /// Whether the lock is currently held.
+    pub fn is_locked(&amp;self) -&gt; bool {
+        self.locked.load(Ordering::Relaxed)
+    }
+
+    fn unlock(&amp;self) {
+        self.locked.store(false, Ordering::Release);
+    }
+}
+
+impl&lt;T: Default&gt; Default for SpinLock&lt;T&gt; {
+    fn default() -&gt; Self {
+        Self::new(T::default())
+    }
+}
+
+impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
+    fn drop(&amp;mut self) {
+        self.lock.unlock();
+    }
+}
+
+impl&lt;T&gt; Deref for SpinGuard&lt;'_, T&gt; {
+    type Target = T;
+
+    fn deref(&amp;self) -&gt; &amp;T {
+        // SAFETY: holding the guard means this thread has exclusive access.
+        unsafe { &amp;*self.lock.value.get() }
+    }
+}
+
+impl&lt;T&gt; DerefMut for SpinGuard&lt;'_, T&gt; {
+    fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
+        // SAFETY: holding the guard means this thread has exclusive access.
+        unsafe { &amp;mut *self.lock.value.get() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{sync::Arc, thread};
+
+    use super::*;
+
+    #[test]
+    fn serializes_concurrent_increments() {
+        let lock = Arc::new(SpinLock::new(0usize));
+        let mut handles = Vec::new();
+
+        for _ in 0..8 {
+            let lock = Arc::clone(&amp;lock);
+            handles.push(thread::spawn(move || {
+                for _ in 0..1_000 {
+                    *lock.lock() += 1;
+                }
+            }));
+        }
+        for handle in handles {
+            handle.join().expect("worker panicked");
+        }
+
+        assert_eq!(*lock.lock(), 8_000);
+    }
+
+    #[test]
+    fn try_lock_reports_contention() {
+        let lock = SpinLock::new(1u32);
+        let guard = lock.lock();
+        assert!(lock.try_lock().is_none());
+        assert!(lock.is_locked());
+        drop(guard);
+        assert!(lock.try_lock().is_some());
+        assert!(!lock.is_locked());
+    }
+
+    #[test]
+    fn guard_gives_mutable_access() {
+        let lock = SpinLock::new(vec![1, 2, 3]);
+        {
+            let mut guard = lock.lock();
+            guard.push(4);
+        }
+        assert_eq!(*lock.lock(), vec![1, 2, 3, 4]);
+    }
+}</code></pre>
+<p>The first test shares the lock between 8 threads with an <code>Arc</code>, and each adds 1,000. The total must be 8,000.</p>
+<pre><code class="language-text">$ cargo test --lib problems::spin_lock
+running 3 tests
+test problems::spin_lock::tests::try_lock_reports_contention ... ok
+test problems::spin_lock::tests::guard_gives_mutable_access ... ok
+test problems::spin_lock::tests::serializes_concurrent_increments ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 134 filtered out
+</code></pre>
+<h2 id="165-a-counting-semaphore"><a class="header" href="#165-a-counting-semaphore">16.5 A counting semaphore</a></h2>
+<p>A lock lets one thread at a time proceed. A <strong>semaphore</strong> lets up to N threads proceed at once. It holds a count of
+<strong>permits</strong>. A thread takes a permit before it starts, and returns it when it finishes. When no permit is left,
+the next thread waits (figure 16.5).</p>
+<p>Semaphores limit how much of something runs at once. Examples are open connections to a database, requests
+to a server, and open files.</p>
+<figure>
+<img src="figures/semaphore.svg" alt="A semaphore with 2 permits and 0 available. Threads 1 and 2 hold permits. Threads 3 and 4 wait on the condition variable until a release wakes one of them.">
+<figcaption><b>Figure 16.5</b> A semaphore with two permits, both taken.</figcaption>
+</figure>
+<h3 id="1651-waiting-without-spinning"><a class="header" href="#1651-waiting-without-spinning">16.5.1 Waiting without spinning</a></h3>
+<p>A waiting thread should sleep, not spin, because the wait may be long. A <strong>condition variable</strong>, <code>Condvar</code>, lets a
+thread sleep until another thread signals it. It always works together with a <code>Mutex</code>:</p>
+<ol>
+<li>The waiting thread locks the mutex and checks the condition.</li>
+<li>If the condition is false, it calls <code>condvar.wait(guard)</code>. That call releases the mutex and puts the thread to
+sleep, in one step.</li>
+<li>Another thread locks the mutex, changes the state, and calls <code>notify_one()</code>.</li>
+<li>The sleeping thread wakes up, holding the mutex again, and checks the condition again.</li>
+</ol>
+<p>The check in step 4 is needed for two reasons. Another thread may have taken the permit first. And a thread can
+sometimes wake up with no notification at all, which is called a <strong>spurious wakeup</strong>. So the wait always sits in a
+<code>while</code> loop, not an <code>if</code>.</p>
+<p class="listing"><b>Listing 16.13</b> The state and <code>acquire_guard</code> (lines 13 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">src/problems/semaphore.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{Condvar, Mutex},
+    time::Duration,
+};
+
+struct State {
+    available: usize,
+}
+
+/// A counting semaphore. Cloning is not provided; share one behind `Arc`.
+pub struct Semaphore {
+    state: Mutex&lt;State&gt;,
+    released: Condvar,
+}
+
+impl Semaphore {
+    /// Create a semaphore with `permits` permits available.
+    pub fn new(permits: usize) -&gt; Self {
+        Self {
+            state: Mutex::new(State { available: permits }),
+            released: Condvar::new(),
+        }
+    }
+
+    /// Block until a permit is available.
+    pub fn acquire(&amp;self) {
+        let _guard = self.acquire_guard();
+    }
+
+    /// Block until a permit is available, returning a guard that releases it.
+    pub fn acquire_guard(&amp;self) -&gt; SemaphoreGuard&lt;'_&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        while state.available == 0 {
+            state = self
+                .released
+                .wait(state)
+                .expect("semaphore mutex poisoned");
+        }
+        state.available -= 1;
+        SemaphoreGuard { semaphore: self }
+    }
+    // ...
+}</code></pre>
+<p><code>acquire_guard</code> follows the four steps. <code>self.released.wait(state)</code> takes the guard, sleeps, and returns a new
+guard when the thread wakes. When the loop ends, a permit is free and the thread holds the mutex, so it takes the
+permit by subtracting 1.</p>
+<p>The permit is returned by a guard, the same RAII pattern as in section 16.4.</p>
+<p class="listing"><b>Listing 16.14</b> The other ways to acquire, and <code>release</code> (lines 47 to 103).</p>
+
+<pre><code class="language-rust">impl Semaphore {
+    // ...
+    /// Take a permit only if one is free right now.
+    pub fn try_acquire(&amp;self) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        if state.available == 0 {
+            None
+        } else {
+            state.available -= 1;
+            Some(SemaphoreGuard { semaphore: self })
+        }
+    }
+
+    /// Take a permit, waiting at most `timeout`.
+    pub fn try_acquire_timeout(&amp;self, timeout: Duration) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        if state.available &gt; 0 {
+            state.available -= 1;
+            return Some(SemaphoreGuard { semaphore: self });
+        }
+
+        let (mut state, _timed_out) = self
+            .released
+            .wait_timeout(state, timeout)
+            .expect("semaphore mutex poisoned");
+
+        if state.available == 0 {
+            None
+        } else {
+            state.available -= 1;
+            Some(SemaphoreGuard { semaphore: self })
+        }
+    }
+
+    /// Permits currently free. Useful for metrics, not for control flow.
+    pub fn available_permits(&amp;self) -&gt; usize {
+        self.state
+            .lock()
+            .expect("semaphore mutex poisoned")
+            .available
+    }
+
+    fn release(&amp;self) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        state.available += 1;
+        self.released.notify_one();
+    }
+}
+
+/// Releases one permit when dropped.
+pub struct SemaphoreGuard&lt;'a&gt; {
+    semaphore: &amp;'a Semaphore,
+}
+
+impl Drop for SemaphoreGuard&lt;'_&gt; {
+    fn drop(&amp;mut self) {
+        self.semaphore.release();
+    }
+}</code></pre>
+<p><code>release</code> adds a permit and wakes one sleeping thread with <code>notify_one</code>. It is private, and only the guard’s <code>Drop</code>
+calls it. A caller therefore cannot release a permit it never took.</p>
+<p>Two methods have problems:</p>
+<ul>
+<li><code>acquire</code> calls <code>acquire_guard</code> and stores the guard in <code>_guard</code>. The guard is dropped when <code>acquire</code> returns,
+so the permit is released at once. A caller of <code>acquire</code> never actually holds a permit. <code>acquire_guard</code> is the
+method to use.</li>
+<li><code>try_acquire_timeout</code> waits once. If it wakes early, from a spurious wakeup or because another thread took the
+permit first, it returns <code>None</code> before the timeout has passed. A correct version loops, and waits again for the
+time remaining. Exercise 4 asks you to write it.</li>
+</ul>
+<p class="listing"><b>Listing 16.15</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">src/problems/semaphore.rs</a></p>
+
+<pre><code class="language-rust">//! Counting semaphore built from `Mutex` + `Condvar`.
+//!
+//! A semaphore bounds how many callers may proceed at once without protecting any
+//! data. It is the primitive behind connection pools, per-account limits, and
+//! bounded fan-out in a client library or command-line tool.
+//!
+//! The RAII guard returns the permit on drop, so a panicking worker cannot leak a
+//! permit and slowly deadlock the pool.
+
+use std::{
+    sync::{Condvar, Mutex},
+    time::Duration,
+};
+
+struct State {
+    available: usize,
+}
+
+/// A counting semaphore. Cloning is not provided; share one behind `Arc`.
+pub struct Semaphore {
+    state: Mutex&lt;State&gt;,
+    released: Condvar,
+}
+
+impl Semaphore {
+    /// Create a semaphore with `permits` permits available.
+    pub fn new(permits: usize) -&gt; Self {
+        Self {
+            state: Mutex::new(State { available: permits }),
+            released: Condvar::new(),
+        }
+    }
+
+    /// Block until a permit is available.
+    pub fn acquire(&amp;self) {
+        let _guard = self.acquire_guard();
+    }
+
+    /// Block until a permit is available, returning a guard that releases it.
+    pub fn acquire_guard(&amp;self) -&gt; SemaphoreGuard&lt;'_&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        while state.available == 0 {
+            state = self
+                .released
+                .wait(state)
+                .expect("semaphore mutex poisoned");
+        }
+        state.available -= 1;
+        SemaphoreGuard { semaphore: self }
+    }
+
+    /// Take a permit only if one is free right now.
+    pub fn try_acquire(&amp;self) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        if state.available == 0 {
+            None
+        } else {
+            state.available -= 1;
+            Some(SemaphoreGuard { semaphore: self })
+        }
+    }
+
+    /// Take a permit, waiting at most `timeout`.
+    pub fn try_acquire_timeout(&amp;self, timeout: Duration) -&gt; Option&lt;SemaphoreGuard&lt;'_&gt;&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        if state.available &gt; 0 {
+            state.available -= 1;
+            return Some(SemaphoreGuard { semaphore: self });
+        }
+
+        let (mut state, _timed_out) = self
+            .released
+            .wait_timeout(state, timeout)
+            .expect("semaphore mutex poisoned");
+
+        if state.available == 0 {
+            None
+        } else {
+            state.available -= 1;
+            Some(SemaphoreGuard { semaphore: self })
+        }
+    }
+
+    /// Permits currently free. Useful for metrics, not for control flow.
+    pub fn available_permits(&amp;self) -&gt; usize {
+        self.state
+            .lock()
+            .expect("semaphore mutex poisoned")
+            .available
+    }
+
+    fn release(&amp;self) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("semaphore mutex poisoned");
+        state.available += 1;
+        self.released.notify_one();
+    }
+}
+
+/// Releases one permit when dropped.
+pub struct SemaphoreGuard&lt;'a&gt; {
+    semaphore: &amp;'a Semaphore,
+}
+
+impl Drop for SemaphoreGuard&lt;'_&gt; {
+    fn drop(&amp;mut self) {
+        self.semaphore.release();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        thread,
+    };
+
+    use super::*;
+
+    #[test]
+    fn never_exceeds_the_permit_count() {
+        let permits = 4;
+        let semaphore = Arc::new(Semaphore::new(permits));
+        let active = Arc::new(AtomicUsize::new(0));
+        let peak = Arc::new(AtomicUsize::new(0));
+
+        let mut handles = Vec::new();
+        for _ in 0..32 {
+            let semaphore = Arc::clone(&amp;semaphore);
+            let active = Arc::clone(&amp;active);
+            let peak = Arc::clone(&amp;peak);
+            handles.push(thread::spawn(move || {
+                let _guard = semaphore.acquire_guard();
+                let now = active.fetch_add(1, Ordering::SeqCst) + 1;
+                peak.fetch_max(now, Ordering::SeqCst);
+                thread::sleep(Duration::from_millis(1));
+                active.fetch_sub(1, Ordering::SeqCst);
+            }));
+        }
+        for handle in handles {
+            handle.join().expect("worker panicked");
+        }
+
+        assert!(peak.load(Ordering::SeqCst) &lt;= permits);
+        assert_eq!(semaphore.available_permits(), permits);
+    }
+
+    #[test]
+    fn guard_returns_the_permit_on_drop() {
+        let semaphore = Semaphore::new(1);
+        {
+            let _guard = semaphore.acquire_guard();
+            assert_eq!(semaphore.available_permits(), 0);
+        }
+        assert_eq!(semaphore.available_permits(), 1);
+    }
+
+    #[test]
+    fn try_acquire_reports_contention() {
+        let semaphore = Semaphore::new(1);
+        let first = semaphore
+            .try_acquire()
+            .expect("first permit is free");
+        assert!(semaphore.try_acquire().is_none());
+        drop(first);
+        assert!(semaphore.try_acquire().is_some());
+    }
+
+    #[test]
+    fn timeout_gives_up_when_no_permit_arrives() {
+        let semaphore = Semaphore::new(0);
+        assert!(
+            semaphore
+                .try_acquire_timeout(Duration::from_millis(5))
+                .is_none()
+        );
+    }
+}</code></pre>
+<p>The test <code>never_exceeds_the_permit_count</code> starts 32 threads on a semaphore with 4 permits. Each thread counts
+itself in <code>active</code> while it holds a permit, and records the highest count ever seen in <code>peak</code> with <code>fetch_max</code>.
+The peak must not exceed 4.</p>
+<pre><code class="language-text">$ cargo test --lib problems::semaphore
+running 4 tests
+test problems::semaphore::tests::guard_returns_the_permit_on_drop ... ok
+test problems::semaphore::tests::try_acquire_reports_contention ... ok
+test problems::semaphore::tests::timeout_gives_up_when_no_permit_arrives ... ok
+test problems::semaphore::tests::never_exceeds_the_permit_count ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
+</code></pre>
+<h2 id="166-when-a-lock-holder-panics"><a class="header" href="#166-when-a-lock-holder-panics">16.6 When a lock holder panics</a></h2>
+<p>A lock protects data that must stay consistent. A bank transfer, for example, takes money from one account and
+adds it to another. Between those two steps, the data is briefly inconsistent. The lock hides that moment from
+other threads.</p>
+<p>What if the thread panics between the two steps? The guard is dropped during the panic, so the lock is released.
+The data, though, stays half-changed. The standard <code>Mutex</code> records that this happened, and the mutex becomes
+<strong>poisoned</strong> (figure 16.6). Every later <code>lock()</code> returns <code>Err(PoisonError)</code> instead of <code>Ok(guard)</code>.</p>
+<figure>
+<img src="figures/poison.svg" alt="A timeline: branch A locks, changes stock and cash, panics, and the guard is dropped; the mutex is poisoned; the audit thread&#39;s lock returns Err; into_inner gives it the guard to repair the data.">
+<figcaption><b>Figure 16.6</b> The sequence in <code>mutex_poisoning.rs</code>.</figcaption>
+</figure>
+<p>The error does not hide the data. <code>PoisonError::into_inner()</code> returns the guard anyway, for code that can check
+and repair the data.</p>
+<p class="listing"><b>Listing 16.16</b> The recovery function (lines 54 to 82). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs">src/bin/mutex_poisoning.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    error::Error,
+    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    thread,
+};
+
+/// Recovers from a poisoned mutex by taking ownership of the guard that the
+/// panicked thread left behind.
+///
+/// `PoisonError::into_inner()` gives us the `MutexGuard`, which means we still
+/// hold the lock while repairing state. The guard is dropped when this function
+/// returns.
+fn recover_ledger(poisoned: PoisonError&lt;MutexGuard&lt;'_, Ledger&gt;&gt;) -&gt; Ledger {
+    // into_inner() returns the MutexGuard. We own the lock exclusively even
+    // though the previous holder panicked.
+    let mut guard = poisoned.into_inner();
+
+    println!("[Reconciliation] Physical audit reveals a cash discrepancy.");
+    println!(
+        "[Reconciliation] Digital cash: {} | Corrected cash: {}",
+        guard.cash_on_hand,
+        guard.cash_on_hand - 200
+    );
+
+    // Correct the data while we still hold the guard.
+    guard.cash_on_hand -= 200;
+    guard.is_settled = true;
+    guard.transaction_id += 1;
+
+    println!("[Reconciliation] Ledger corrected. Transaction marked failed and closed.");
+
+    // Clone the inner data to return an owned value. The guard drops here and
+    // releases the lock.
+    guard.clone()
+}</code></pre>
+<p><code>recover_ledger</code> receives the <code>PoisonError</code> and takes the guard out of it. It holds the lock while it corrects the
+ledger. It returns a clone of the corrected data, and the guard is dropped at the end of the function.</p>
+<p class="listing"><b>Listing 16.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs">src/bin/mutex_poisoning.rs</a></p>
+
+<pre><code class="language-rust">// ============================================================================
+// Mutex poisoning: failed transaction and audit recovery
+//
+// Ported from the Rust playground repo (`scam_transaction.rs`).
+//
+// Story:
+//   A branch executes a financial transaction that mutates shared state under
+//   a `Mutex`. Mid-transaction the thread panics. In Rust, a `Mutex` whose
+//   guard was held during a panic becomes **poisoned**. Future `lock()` calls
+//   return `Err(PoisonError)` instead of silently letting another thread
+//   observe an inconsistent partial update.
+//
+// Where this appears in practice:
+//   - Controllers/reconcilers mutate shared state; a panic while holding a lock
+//     is a real failure mode in worker pools, caches, and rate limiters.
+//   - Rust chooses fail-fast over data corruption: a poisoned mutex tells
+//     callers that the protected invariant may be broken. The caller must
+//     decide whether to abort, recover, or reset state.
+//   - `PoisonError::into_inner()` returns the `MutexGuard`, so a recovery path
+//     can inspect/correct the last known state without waiting for the lock to
+//     be released by the panicked thread.
+//
+// Run:
+//   cargo run --bin mutex_poisoning
+// ============================================================================
+
+use std::{
+    error::Error,
+    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    thread,
+};
+
+/// Shared ledger state. In a real system this would be behind a transactional
+/// store; here it is plain in-memory state to illustrate lock poisoning.
+#[derive(Debug, Clone)]
+struct Ledger {
+    cash_on_hand: i64,
+    stock_value: i64,
+    transaction_id: u32,
+    is_settled: bool,
+}
+
+impl Ledger {
+    fn new() -&gt; Self {
+        Ledger {
+            cash_on_hand: 10_000,
+            stock_value: 5_000,
+            transaction_id: 0,
+            is_settled: false,
+        }
+    }
+}
+
+/// Recovers from a poisoned mutex by taking ownership of the guard that the
+/// panicked thread left behind.
+///
+/// `PoisonError::into_inner()` gives us the `MutexGuard`, which means we still
+/// hold the lock while repairing state. The guard is dropped when this function
+/// returns.
+fn recover_ledger(poisoned: PoisonError&lt;MutexGuard&lt;'_, Ledger&gt;&gt;) -&gt; Ledger {
+    // into_inner() returns the MutexGuard. We own the lock exclusively even
+    // though the previous holder panicked.
+    let mut guard = poisoned.into_inner();
+
+    println!("[Reconciliation] Physical audit reveals a cash discrepancy.");
+    println!(
+        "[Reconciliation] Digital cash: {} | Corrected cash: {}",
+        guard.cash_on_hand,
+        guard.cash_on_hand - 200
+    );
+
+    // Correct the data while we still hold the guard.
+    guard.cash_on_hand -= 200;
+    guard.is_settled = true;
+    guard.transaction_id += 1;
+
+    println!("[Reconciliation] Ledger corrected. Transaction marked failed and closed.");
+
+    // Clone the inner data to return an owned value. The guard drops here and
+    // releases the lock.
+    guard.clone()
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let ledger = Arc::new(Mutex::new(Ledger::new()));
+
+    // Thread A: the faulty transaction. It mutates one side of the ledger and
+    // then panics before marking the transaction settled.
+    let ledger_a = Arc::clone(&amp;ledger);
+    let handle_a = thread::spawn(move || {
+        // SAFETY-free normal code: if the mutex is already poisoned, unwrap()
+        // panics; in a controlled demo this is the first lock so it is fine.
+        let mut guard = ledger_a.lock().unwrap();
+
+        println!(
+            "[Branch A] Transaction {} commenced.",
+            guard.transaction_id + 1
+        );
+        guard.stock_value -= 1_000;
+        println!(
+            "[Branch A] Stock deducted. New value: {}",
+            guard.stock_value
+        );
+        guard.cash_on_hand += 1_200;
+        println!(
+            "[Branch A] Cash updated. New balance: {}",
+            guard.cash_on_hand
+        );
+
+        // Panic while `guard` is still alive -&gt; the Mutex becomes poisoned.
+        panic!("[Branch A] Settlement failure: arithmetic overflow in reconciliation.");
+    });
+
+    // A panic in a spawned thread does not abort the process unless the panic
+    // strategy is set to abort. `join()` returns Err, which is expected here.
+    let _ = handle_a.join();
+
+    // Thread B: the forensic audit. It sees Err(PoisonError), inspects the
+    // recovered state, and repairs the ledger.
+    let ledger_b = Arc::clone(&amp;ledger);
+    let handle_b = thread::spawn(move || {
+        println!("\n[Audit] Attempting to access the ledger...");
+
+        match ledger_b.lock() {
+            Ok(guard) =&gt; {
+                println!("[Audit] Ledger is not poisoned: {:?}", *guard);
+            }
+            Err(poisoned) =&gt; {
+                println!("[Audit] Mutex is poisoned. Recovered state before correction:");
+                println!("[Audit] {:?}", *poisoned.get_ref());
+
+                let corrected = recover_ledger(poisoned);
+                println!("[Audit] Corrected ledger: {:?}", corrected);
+            }
+        }
+    });
+
+    handle_b.join().unwrap();
+
+    // Important: recovering the data does NOT clear the poison bit on the
+    // Mutex itself. Subsequent lock() calls still return Err(PoisonError) so
+    // callers can decide whether the repaired state is trustworthy.
+    // Uncommenting the next lines would panic:
+    //
+    // let _guard = ledger.lock().unwrap();
+
+    Ok(())
+}
+
+// ============================================================================
+// Tests (cargo test --bin mutex_poisoning)
+// ============================================================================
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ledger_starts_in_expected_state() {
+        let ledger = Ledger::new();
+        assert_eq!(ledger.cash_on_hand, 10_000);
+        assert_eq!(ledger.stock_value, 5_000);
+        assert!(!ledger.is_settled);
+    }
+
+    #[test]
+    fn recovery_repairs_a_poisoned_ledger() {
+        let ledger = Arc::new(Mutex::new(Ledger::new()));
+
+        // Poison the mutex from a helper thread, exactly like the demo.
+        let ledger_a = Arc::clone(&amp;ledger);
+        let handle = thread::spawn(move || {
+            let _guard = ledger_a.lock().unwrap();
+            panic!("boom");
+        });
+        let _ = handle.join();
+
+        let lock_result = ledger.lock();
+        assert!(lock_result.is_err(), "mutex should be poisoned");
+
+        let recovered = recover_ledger(lock_result.unwrap_err());
+        assert!(recovered.is_settled);
+        assert_eq!(recovered.transaction_id, 1);
+        assert_eq!(recovered.cash_on_hand, 10_000 - 200);
+    }
+}</code></pre>
+<p>In <code>main</code>, thread A changes the stock and the cash and then panics before marking the transaction settled. The
+panic does not stop the process. It ends only thread A, and <code>handle_a.join()</code> returns an <code>Err</code>, which <code>main</code>
+ignores on purpose with <code>let _ =</code>.</p>
+<p>Thread B then locks the ledger. <code>match</code> on the result separates the two cases. <code>poisoned.get_ref()</code> shows the data
+without taking the guard, and <code>recover_ledger</code> repairs it.</p>
+<pre><code class="language-text">$ cargo run --bin mutex_poisoning
+[Branch A] Transaction 1 commenced.
+[Branch A] Stock deducted. New value: 4000
+[Branch A] Cash updated. New balance: 11200
+
+thread '&lt;unnamed&gt;' (5795284) panicked at src/bin/mutex_poisoning.rs:109:9:
+[Branch A] Settlement failure: arithmetic overflow in reconciliation.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+[Audit] Attempting to access the ledger...
+[Audit] Mutex is poisoned. Recovered state before correction:
+[Audit] Ledger { cash_on_hand: 11200, stock_value: 4000, transaction_id: 0, is_settled: false }
+[Reconciliation] Physical audit reveals a cash discrepancy.
+[Reconciliation] Digital cash: 11200 | Corrected cash: 11000
+[Reconciliation] Ledger corrected. Transaction marked failed and closed.
+[Audit] Corrected ledger: Ledger { cash_on_hand: 11000, stock_value: 4000, transaction_id: 1, is_settled: true }
+</code></pre>
+<p>The panic message goes to standard error, so in a terminal it can appear between the other lines. The number in
+parentheses is the thread’s ID and changes on every run.</p>
+<p>Recovering the data does not clear the poison flag. A later <code>lock()</code> on the same mutex still returns <code>Err</code>, as the
+comment at the end of <code>main</code> notes. Rust 1.77 added <code>Mutex::clear_poison</code> for code that has repaired the data and
+wants to say so.</p>
+<h2 id="167-deadlock"><a class="header" href="#167-deadlock">16.7 Deadlock</a></h2>
+<p>A <strong>deadlock</strong> happens when threads wait for each other in a circle, so none can continue. The classic case needs
+two locks. Thread 1 holds lock A and waits for lock B. Thread 2 holds lock B and waits for lock A. Neither will
+ever release what it holds.</p>
+<p>To analyze a deadlock, draw a <strong>wait-for graph</strong>. Each thread is a node. An edge from T0 to T1 means T0 is waiting
+for a lock that T1 holds. The threads are deadlocked exactly when the graph has a cycle (figure 16.7). Finding a
+cycle is the three-state DFS from section 12.6.</p>
+<figure>
+<img src="figures/wait-for.svg" alt="Left: T0 waits for T1 and T2, and T1 waits for T2. There is no cycle. Right: T0 waits for T1, T1 for T2, and T2 for T0, a cycle.">
+<figcaption><b>Figure 16.7</b> The two graphs from the program. Only the right one is deadlocked.</figcaption>
+</figure>
+<p class="listing"><b>Listing 16.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_deadlock.rs">src/bin/concurrency_deadlock.rs</a></p>
+
+<pre><code class="language-rust">//! Deadlock detection: a deadlock exists exactly when the wait-for graph has a
+//! cycle. Each edge `(waiter, holder)` means the first task is blocked on the
+//! second.
+//!
+//! Run with: cargo run --bin concurrency_deadlock
+
+/// Iterative-friendly depth-first search over a small adjacency list.
+fn has_deadlock(waits_for: &amp;[(usize, usize)]) -&gt; bool {
+    let Some(highest) = waits_for.iter().flat_map(|(a, b)| [*a, *b]).max() else {
+        return false;
+    };
+
+    let mut edges = vec![Vec::new(); highest + 1];
+    for (waiter, holder) in waits_for {
+        edges[*waiter].push(*holder);
+    }
+
+    // 1 = on the current path, 2 = fully explored.
+    fn visit(node: usize, edges: &amp;[Vec&lt;usize&gt;], state: &amp;mut [u8]) -&gt; bool {
+        match state[node] {
+            1 =&gt; return true,
+            2 =&gt; return false,
+            _ =&gt; state[node] = 1,
+        }
+        for &amp;next in &amp;edges[node] {
+            if visit(next, edges, state) {
+                return true;
+            }
+        }
+        state[node] = 2;
+        false
+    }
+
+    let mut state = vec![0u8; edges.len()];
+    (0..edges.len()).any(|node| visit(node, &amp;edges, &amp;mut state))
+}
+
+fn main() {
+    let acyclic = [(0, 1), (1, 2), (0, 2)];
+    let cycle = [(0, 1), (1, 2), (2, 0)];
+    let self_wait = [(0, 0)];
+
+    for (label, graph) in [
+        ("0-&gt;1, 1-&gt;2, 0-&gt;2", &amp;acyclic[..]),
+        ("0-&gt;1, 1-&gt;2, 2-&gt;0", &amp;cycle[..]),
+        ("0-&gt;0", &amp;self_wait[..]),
+    ] {
+        println!("{label:&lt;20} deadlock: {}", has_deadlock(graph));
+    }
+
+    // The four Coffman conditions must all hold for a deadlock; removing any one
+    // of them prevents it.
+    println!("\nCoffman conditions:");
+    for condition in [
+        "mutual exclusion",
+        "hold and wait",
+        "no preemption",
+        "circular wait",
+    ] {
+        println!("  - {condition}");
+    }
+
+    assert!(!has_deadlock(&amp;acyclic));
+    assert!(has_deadlock(&amp;cycle));
+    assert!(has_deadlock(&amp;self_wait));
+    assert!(!has_deadlock(&amp;[]));
+
+    println!("\nall checks passed");
+}</code></pre>
+<p><code>has_deadlock</code> takes the edges as <code>(waiter, holder)</code> pairs. It finds the largest thread number with a <code>let ... else</code>, so an empty list returns <code>false</code> at once. It then builds an adjacency list and runs the DFS.</p>
+<p>The states are plain numbers here: 0 for unvisited, 1 for on the current path, and 2 for fully explored. An edge
+back to a node in state 1 is a cycle. The third test graph, <code>(0, 0)</code>, is a thread waiting for itself, as happens
+when a thread tries to lock a <code>Mutex</code> it already holds.</p>
+<pre><code class="language-text">$ cargo run --bin concurrency_deadlock
+0-&gt;1, 1-&gt;2, 0-&gt;2     deadlock: false
+0-&gt;1, 1-&gt;2, 2-&gt;0     deadlock: true
+0-&gt;0                 deadlock: true
+
+Coffman conditions:
+  - mutual exclusion
+  - hold and wait
+  - no preemption
+  - circular wait
+
+all checks passed
+</code></pre>
+<p>The program ends with the four <strong>Coffman conditions</strong>. A deadlock needs all four:</p>
+<ol>
+<li><strong>Mutual exclusion</strong>: a lock can be held by only one thread.</li>
+<li><strong>Hold and wait</strong>: a thread holds one lock while waiting for another.</li>
+<li><strong>No preemption</strong>: a lock cannot be taken away from its holder.</li>
+<li><strong>Circular wait</strong>: the waiting forms a cycle.</li>
+</ol>
+<p>Removing any one prevents deadlock. The most practical rule removes the fourth: give every lock a fixed order, and
+always take locks in that order. If every thread takes lock A before lock B, no thread can hold B while waiting for
+A, and no cycle can form.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch16-deadlock.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Thread A and thread B, and two locks m1 and m2. A takes m1 and B takes m2. A waits for m2 and B waits for m1, which forms the cycle A, m2, B, m1. A second run uses one order for both threads: B waits for m1 while holding nothing, A takes m2 and finishes, then B takes both locks." data-chapters="[[0.0, &quot;opposite order&quot;], [28.64, &quot;fixed order&quot;]]"><img src="figures/ch16-deadlock.gif" alt="Thread A and thread B, and two locks m1 and m2. A takes m1 and B takes m2. A waits for m2 and B waits for m1, which forms the cycle A, m2, B, m1. A second run uses one order for both threads: B waits for m1 while holding nothing, A takes m2 and finishes, then B takes both locks."></video>
+<figcaption><b>Animation 16.2</b> Each lock is taken correctly; the opposite orders form the cycle. When both threads take <code>m1</code> first, the waiting thread holds nothing, and no cycle can form.</figcaption>
+</figure>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li><code>thread::spawn</code> needs closures that own their data. <code>thread::scope</code> lets threads borrow local data, and waits
+for them.</li>
+<li>Collect the join handles before joining, or lazy iterators run the threads one at a time.</li>
+<li><code>Send</code> and <code>Sync</code> are auto traits. <code>Rc</code> and <code>RefCell</code> lack them, so the compiler rejects sharing them across
+threads.</li>
+<li>An atomic performs read, change, and write as one step. <code>Relaxed</code> suffices for a standalone counter. <code>Release</code>
+and <code>Acquire</code> pair up to pass other data between threads.</li>
+<li>Eight threads summed a large array about 3 to 4 times faster, limited by memory bandwidth and four physical
+cores. Amdahl’s law caps speedup at <code>1 / s</code> for a serial fraction <code>s</code>.</li>
+<li>A spin lock is an atomic flag, a compare-exchange loop, and a guard that releases on drop. Its <code>unsafe impl Sync</code> is a promise the code must keep.</li>
+<li>A semaphore built from a <code>Mutex</code> and a <code>Condvar</code> waits in a <code>while</code> loop, because wakeups can be spurious.</li>
+<li>A panic while holding a <code>MutexGuard</code> poisons the mutex, and <code>into_inner</code> gives the data to recovery code.</li>
+<li>Threads are deadlocked when their wait-for graph has a cycle. A global lock order prevents it.</li>
+</ul>
+</div>
+
+<p>Chapter 17 uses these tools to build queues that pass work between threads, and makes producers wait when the
+queue is full.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Write a version of <code>parallel_sum</code> from listing 16.1 as a single lazy chain, <code>.map(spawn).map(join).sum()</code>, and
+time both on a large slice. Explain the difference.</li>
+<li>Make the three pairs of functions in <code>parallel_sum.rs</code> one generic function over <code>T: Sum&lt;T&gt; + Copy + Send + Sync</code>.
+Which extra bound does <code>sum::&lt;T&gt;()</code> over <code>&amp;T</code> items need?</li>
+<li>Close the gap in <code>SpinGuard</code>. Add a field <code>_marker: PhantomData&lt;&amp;'a mut T&gt;</code>, and explain why this makes the
+guard <code>Sync</code> only when <code>T: Sync</code>.</li>
+<li>Rewrite <code>try_acquire_timeout</code> to loop until a permit is free or the whole timeout has passed. Use
+<code>Instant::now()</code> to compute the time left for each wait.</li>
+<li>Write a program that deadlocks with two <code>Mutex</code> values and two threads. Then fix it by taking the locks in a
+fixed order.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch15-memory-os.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch17-queues.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch15-memory-os.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch17-queues.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

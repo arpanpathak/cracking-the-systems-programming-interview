@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 290" width="780" height="290" font-family="Helvetica, Arial, sans-serif">
+<text x="20" y="22" font-size="13" font-weight="bold" fill="#1d2733">Shadowing: three bindings, three slots</text>
+<text x="430" y="22" font-size="13" font-weight="bold" fill="#1d2733">Mutation: one slot, shown at four moments</text>
+<text x="20" y="44" font-size="11" fill="#5b6b7c">stack frame of demonstrate_shadowing</text>
+<rect x="20" y="56" width="300" height="38" rx="4" fill="#f1f3f5" stroke="#1d2733"/>
+<text x="30" y="80" font-size="11" fill="#1d2733" font-family="Menlo, monospace">value (1st): u32 = 7</text>
+<rect x="20" y="104" width="300" height="38" rx="4" fill="#f1f3f5" stroke="#1d2733"/>
+<text x="30" y="128" font-size="11" fill="#1d2733" font-family="Menlo, monospace">value (2nd): String = ptr | len 1 | cap 1</text>
+<rect x="20" y="152" width="300" height="38" rx="4" fill="#e3f1ea" stroke="#1d2733"/>
+<text x="30" y="176" font-size="11" fill="#1d2733" font-family="Menlo, monospace">value (3rd): usize = 1</text>
+<rect x="120" y="222" width="70" height="30" rx="4" fill="#fdf6e8" stroke="#c89b3c"/><text x="140" y="242" font-size="12" font-family="Menlo, monospace">"7"</text>
+<text x="200" y="242" font-size="11" fill="#5b6b7c">heap: the String's bytes</text>
+<path d="M 250 132 C 260 190, 170 190, 160 220" fill="none" stroke="#c89b3c" stroke-width="1.5"/>
+<text x="20" y="276" font-size="11" fill="#5b6b7c">Only the 3rd slot has a usable name. All three are freed when the function returns.</text>
+<text x="430" y="44" font-size="11" fill="#5b6b7c">stack frame of demonstrate_mutation (one slot)</text>
+<rect x="430" y="56" width="200" height="38" rx="4" fill="#ffffff" stroke="#c9d4de" stroke-dasharray="4,3"/>
+<text x="440" y="80" font-size="11" fill="#9aa7b4" font-family="Menlo, monospace">count: i32 = 0</text>
+<text x="645" y="80" font-size="10" fill="#5b6b7c">start</text>
+<rect x="430" y="104" width="200" height="38" rx="4" fill="#ffffff" stroke="#c9d4de" stroke-dasharray="4,3"/>
+<text x="440" y="128" font-size="11" fill="#9aa7b4" font-family="Menlo, monospace">count: i32 = 1</text>
+<text x="645" y="128" font-size="10" fill="#5b6b7c">after iteration 1</text>
+<rect x="430" y="152" width="200" height="38" rx="4" fill="#ffffff" stroke="#c9d4de" stroke-dasharray="4,3"/>
+<text x="440" y="176" font-size="11" fill="#9aa7b4" font-family="Menlo, monospace">count: i32 = 2</text>
+<text x="645" y="176" font-size="10" fill="#5b6b7c">after iteration 2</text>
+<rect x="430" y="200" width="200" height="38" rx="4" fill="#e3f1ea" stroke="#1d2733" />
+<text x="440" y="224" font-size="11" fill="#1d2733" font-family="Menlo, monospace">count: i32 = 3</text>
+<text x="645" y="224" font-size="10" fill="#5b6b7c">after iteration 3</text>
+<text x="430" y="276" font-size="11" fill="#5b6b7c">The same slot is overwritten each time; the type never changes.</text>
+</svg>

@@ -1,0 +1,730 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Ownership and the pointer types - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch08.png" alt="Hook, the robot who knows who owns every crate, beside a crane holding one boxed crate, and a crate with two tags and a count">
+<h1 id="ownership-and-the-pointer-types"><a class="header" href="#ownership-and-the-pointer-types">Ownership and the pointer types</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>Ownership and moves, drawn in memory</li>
+<li><code>Box</code>: putting a value on the heap, and why recursive types need it</li>
+<li><code>Rc</code>: one value with several owners, counted</li>
+<li><code>RefCell</code>: changing a value that has several owners, checked while the program runs</li>
+<li><code>Weak</code>: a pointer that does not keep its value alive, and the leak it prevents</li>
+<li><code>Arc</code> and <code>Mutex</code>: sharing and changing a value across threads</li>
+<li><code>Cow</code>: borrowing when possible and copying only when needed</li>
+</ul>
+</div>
+
+<p>In chapter 7 every value had exactly one owner. That is the normal case in Rust, and most code needs nothing
+more. But some structures cannot be described with one owner per value. A tree node wants to point back to
+its parent. A counter must be updated by several threads. An expression contains smaller expressions of its
+own type.</p>
+<p>For each of these, the standard library has a <strong>pointer type</strong>. A pointer type holds the address of a
+value and adds a rule about who owns it. This chapter covers the main ones, one at a time. For each, I show where its
+data sits in memory and which problem it solves. The next four chapters, on linked lists, trees, and graphs,
+use every one of them.</p>
+<p>I start by reviewing ownership itself, because each pointer type is a change to its rules.</p>
+<h2 id="81-ownership-and-moves"><a class="header" href="#81-ownership-and-moves">8.1 Ownership and moves</a></h2>
+<p>Every value in Rust has one <strong>owner</strong>, the variable or structure that holds it. When the owner goes away, at
+the end of its scope, the value is dropped and its memory is freed.</p>
+<p>Assigning a value to another variable <strong>moves</strong> it: ownership passes to the new variable, and the old one can
+no longer be used. Figure 8.1 shows a move of a <code>String</code>.</p>
+<figure>
+<img src="figures/own-move.svg" alt="Before the move, a holds a String header pointing to heap text hi. After let b = a, the header is copied into b, a cannot be used, and the text stays in place.">
+<figcaption><b>Figure 8.1</b> Moving a <code>String</code>. The small header is copied; the heap text is not. Only one variable may free the text, so the old one becomes unusable.</figcaption>
+</figure>
+<p>A move copies only the header on the stack, the pointer, length, and capacity. The text on the heap stays
+where it is. If both <code>a</code> and <code>b</code> were usable, both would try to free the same text when they went out of
+scope. The compiler prevents that by making <code>a</code> unusable after the move.</p>
+<p>Instead of moving a value, you can <strong>borrow</strong> it with a reference. A shared reference <code>&amp;T</code> lets you read. A
+mutable reference <code>&amp;mut T</code> lets you change. The borrow rules say you may have either any number of <code>&amp;T</code> or exactly one <code>&amp;mut T</code>, but not both at once.
+And no reference may outlive its value.</p>
+<p>These rules cover most programs. The pointer types in this chapter handle the cases they cannot.</p>
+<p>The module for this chapter starts with a table that summarizes them:</p>
+<p class="listing"><b>Listing 8.1</b> The module comment and imports (lines 1 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">src/problems/smart_pointers.rs</a></p>
+
+<pre><code class="language-rust">//! Smart pointers and interior mutability.
+//!
+//! Each pointer type answers a different ownership question, and picking the
+//! wrong one shows up as either a compile error or a runtime bug.
+//!
+//! | Type | Ownership | Mutation | Across threads |
+//! |---|---|---|---|
+//! | `Box&lt;T&gt;` | single | through `&amp;mut` | if `T: Send` |
+//! | `Rc&lt;T&gt;` | shared, non-atomic count | no | no |
+//! | `Arc&lt;T&gt;` | shared, atomic count | no | if `T: Send + Sync` |
+//! | `RefCell&lt;T&gt;` | single | runtime checked | no |
+//! | `Mutex&lt;T&gt;` | single | blocking lock | yes |
+//! | `Weak&lt;T&gt;` | non-owning | no | as `Arc` |
+//! | `Cow&lt;'a, T&gt;` | borrow or own | no | as the borrow |
+//!
+//! Two rules cover most decisions. `Rc`/`RefCell` is for graphs and caches inside
+//! one thread; `Arc`/`Mutex` is for state shared between threads. `Weak` exists to
+//! break reference cycles, because two strong references in a cycle never reach a
+//! count of zero and the memory is never freed.
+
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    rc::{Rc, Weak},
+    sync::{Arc, Mutex},
+    thread,
+};</code></pre>
+<p>Do not try to memorize the table yet. Each section below covers one row.</p>
+<h2 id="82-box-one-owner-on-the-heap"><a class="header" href="#82-box-one-owner-on-the-heap">8.2 <code>Box</code>: one owner, on the heap</a></h2>
+<p>A <code>Box&lt;T&gt;</code> puts a value of type <code>T</code> on the heap and owns it. The <code>Box</code> itself is one pointer, 8 bytes on a
+64-bit machine. When the <code>Box</code> is dropped, it drops the value and frees the heap memory. So a <code>Box</code> behaves
+like an owned value that happens to live on the heap.</p>
+<p>You need a <code>Box</code> most often for a type that contains itself. Consider an arithmetic expression: it is either
+a number, or the sum of two smaller expressions. Written directly, that type would have no size (figure 8.2).</p>
+<figure>
+<img src="figures/own-box-recursive.svg" alt="Left: an Expr that contains two Exprs directly, nested forever. Right: an Expr that holds two Box pointers to child Exprs on the heap.">
+<figcaption><b>Figure 8.2</b> Left: an <code>Add</code> that contains two <code>Expr</code> values directly would need infinite space. Right: with <code>Box</code>, an <code>Add</code> holds two pointers.</figcaption>
+</figure>
+<p>To lay out a type, the compiler must know its size. An <code>Add(Expr, Expr)</code> contains two <code>Expr</code> values, each of
+which may be another <code>Add</code>. The size has no end, so the compiler rejects the type. <code>Box&lt;Expr&gt;</code> is always 8
+bytes, whatever it points to, so <code>Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;)</code> has a fixed size.</p>
+<p class="listing"><b>Listing 8.2</b> An expression tree (lines 29 to 43).</p>
+
+<pre><code class="language-rust">/// A recursive type needs indirection, because `Expr` cannot contain itself by
+/// value. `Box` provides the fixed-size indirection.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Expr {
+    Lit(i64),
+    Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;),
+}
+
+/// Evaluate an expression tree.
+pub fn eval(expr: &amp;Expr) -&gt; i64 {
+    match expr {
+        Expr::Lit(value) =&gt; *value,
+        Expr::Add(left, right) =&gt; eval(left) + eval(right),
+    }
+}</code></pre>
+<p><code>eval</code> computes the value of an expression. For a number, the value is the number. For a sum, it evaluates
+both sides and adds them. The call <code>eval(left)</code> passes a <code>&amp;Box&lt;Expr&gt;</code> where the function expects <code>&amp;Expr</code>.
+Rust converts it automatically, following the box to the value inside. This automatic conversion is called
+<strong>deref coercion</strong>.</p>
+<p>To build <code>1 + 2</code>, you write <code>Expr::Add(Box::new(Expr::Lit(1)), Box::new(Expr::Lit(2)))</code>. <code>Box::new</code>
+allocates on the heap and moves the value there.</p>
+<h2 id="83-rc-several-owners-counted"><a class="header" href="#83-rc-several-owners-counted">8.3 <code>Rc</code>: several owners, counted</a></h2>
+<p>Sometimes one value really has several owners, and none of them can be picked as the one that frees it. A
+node in a graph with several incoming edges is an example. For this, Rust has <code>Rc&lt;T&gt;</code>, short for <strong>reference
+counted</strong>.</p>
+<p><code>Rc::new(value)</code> puts the value on the heap together with a count of how many <code>Rc</code> handles point to it.
+<code>Rc::clone(&amp;rc)</code> does not copy the value. It adds 1 to the count and returns another handle to the same value.
+Dropping a handle subtracts 1. When the count reaches zero, the value is dropped. Figure 8.3 shows two handles.</p>
+<figure>
+<img src="figures/ch01-rc-layout.svg" alt="On the stack, a Box points to its heap value. Two Rc handles point to one heap block containing strong count 2, weak count 1, a RefCell borrow flag, and the value 11. A Weak handle points to the same block with a dashed arrow.">
+<figcaption><b>Figure 8.3</b> Two <code>Rc</code> handles share one heap block. The block holds a strong count (the number of <code>Rc</code> handles), a weak count (section 8.5), and the value.</figcaption>
+</figure>
+<p>An <code>Rc</code> hands out only shared references to its value. With several owners, a <code>&amp;mut</code> through one of them
+would break the rule that a <code>&amp;mut</code> is the only reference. So by itself, a value inside an <code>Rc</code> cannot be
+changed. The next section adds that ability.</p>
+<div class="callout note" markdown="1">
+<p><strong>NOTE:</strong> <code>Rc</code> updates its count with ordinary, non-atomic arithmetic. If two threads updated it at the same
+moment, the count could end up wrong. So the compiler does not let an <code>Rc</code> be sent to another thread.
+Section 8.6 covers <code>Arc</code>, the version for threads.</p>
+</div>
+
+<h2 id="84-refcell-changing-a-shared-value-checked-at-run-time"><a class="header" href="#84-refcell-changing-a-shared-value-checked-at-run-time">8.4 <code>RefCell</code>: changing a shared value, checked at run time</a></h2>
+<p><code>RefCell&lt;T&gt;</code> holds a value and allows it to be changed through a shared reference. It keeps the borrow rules,
+but checks them while the program runs instead of at compile time. Figure 8.4 shows what it tracks.</p>
+<figure>
+<img src="figures/own-refcell.svg" alt="A RefCell starts not borrowed. borrow() moves it to n shared borrows, where more borrow() calls are allowed and borrow_mut() panics. borrow_mut() moves it to one mutable borrow, where any other borrow panics.">
+<figcaption><b>Figure 8.4</b> The borrow states of a <code>RefCell</code>. Breaking the rules is not a compile error; it panics when it happens.</figcaption>
+</figure>
+<ul>
+<li><code>cell.borrow()</code> returns a guard that acts like <code>&amp;T</code>. Many can exist at once.</li>
+<li><code>cell.borrow_mut()</code> returns a guard that acts like <code>&amp;mut T</code>. It panics if any other borrow is active.</li>
+<li>When a guard is dropped, its borrow ends.</li>
+</ul>
+<p><code>Rc</code> and <code>RefCell</code> are used together: <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> gives several owners who can each change the value.</p>
+<p class="listing"><b>Listing 8.3</b> Two handles to one counter (lines 45 to 55).</p>
+
+<pre><code class="language-rust">/// Shared mutation inside one thread, with `Rc` for aliasing and `RefCell` for
+/// the runtime borrow check.
+pub fn shared_counter_with_rc_refcell() -&gt; i32 {
+    let counter = Rc::new(RefCell::new(0));
+    let alias = Rc::clone(&amp;counter);
+
+    *alias.borrow_mut() += 1;
+    *counter.borrow_mut() += 10;
+
+    *counter.borrow()
+}</code></pre>
+<p>Step through it:</p>
+<ol>
+<li><code>Rc::new(RefCell::new(0))</code> creates a counter holding 0, with a strong count of 1.</li>
+<li><code>Rc::clone(&amp;counter)</code> makes a second handle, <code>alias</code>. The strong count is now 2. There is still one counter.</li>
+<li><code>*alias.borrow_mut() += 1;</code> borrows mutably through <code>alias</code> and adds 1. The guard is dropped at the end of
+the statement, so the borrow ends there.</li>
+<li><code>*counter.borrow_mut() += 10;</code> does the same through the other handle.</li>
+<li><code>*counter.borrow()</code> reads 11.</li>
+</ol>
+<p>Each <code>borrow_mut</code> ends before the next starts, so no panic occurs. If you stored the first guard in a variable
+and then called <code>borrow_mut</code> again while it was still alive, the program would panic.</p>
+<h2 id="85-weak-a-pointer-that-does-not-own"><a class="header" href="#85-weak-a-pointer-that-does-not-own">8.5 <code>Weak</code>: a pointer that does not own</a></h2>
+<p>Counting has a weakness. If two values hold <code>Rc</code> handles to each other, each keeps the other’s count above
+zero. When you drop your own handles, both counts stay at 1, and neither value is ever freed. This is a
+<strong>reference cycle</strong>, and it leaks memory (figure 8.5, left).</p>
+<figure>
+<img src="figures/own-cycle.svg" alt="Left: a parent and a child each hold an Rc to the other, so both counts stay above zero. Right: the child&#39;s link to the parent is Weak, so dropping the parent frees both.">
+<figcaption><b>Figure 8.5</b> Left: a cycle of strong pointers is never freed. Right: making the back-link <code>Weak</code> breaks the cycle.</figcaption>
+</figure>
+<p>The fix is a pointer that does not count as an owner. <code>Weak&lt;T&gt;</code> is made from an <code>Rc</code> with <code>Rc::downgrade</code>.
+It increases only the weak count, which does not keep the value alive. To use the value, you call
+<code>upgrade()</code>, which returns <code>Some(Rc)</code> if the value still exists and <code>None</code> if it has been dropped.</p>
+<p>The usual pattern is that parents own children with <code>Rc</code>, and children point back to their parents with
+<code>Weak</code>.</p>
+<p class="listing"><b>Listing 8.4</b> A tree node with a weak parent pointer (lines 57 to 87).</p>
+
+<pre><code class="language-rust">/// A node whose parent link is weak, so a child does not keep its parent alive.
+pub struct TreeNode {
+    pub value: i32,
+    parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;,
+}
+
+impl TreeNode {
+    /// A node with no parent.
+    pub fn root(value: i32) -&gt; Rc&lt;Self&gt; {
+        Rc::new(Self {
+            value,
+            parent: RefCell::new(Weak::new()),
+        })
+    }
+
+    /// A node that points back weakly at `parent`.
+    pub fn child_of(parent: &amp;Rc&lt;Self&gt;, value: i32) -&gt; Rc&lt;Self&gt; {
+        Rc::new(Self {
+            value,
+            parent: RefCell::new(Rc::downgrade(parent)),
+        })
+    }
+
+    /// The parent's value, or `None` once the parent has been dropped.
+    pub fn parent_value(&amp;self) -&gt; Option&lt;i32&gt; {
+        self.parent
+            .borrow()
+            .upgrade()
+            .map(|parent| parent.value)
+    }
+}</code></pre>
+<ul>
+<li><code>parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;</code> stores the link to the parent. The <code>RefCell</code> allows the link to be
+changed after the node exists.</li>
+<li><code>root</code> creates a node with <code>Weak::new()</code>, an empty weak pointer whose <code>upgrade</code> always returns <code>None</code>.</li>
+<li><code>child_of</code> creates a node whose parent link is <code>Rc::downgrade(parent)</code>.</li>
+<li><code>parent_value</code> borrows the link, calls <code>upgrade()</code>, and reads the parent’s value if the parent still
+exists. <code>Option::map</code> applies the closure only when there is a value.</li>
+</ul>
+<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in listing 8.7 checks the behavior. It creates a
+root and a child, drops the root, and then checks that the child’s <code>parent_value()</code> is <code>None</code>.</p>
+<h2 id="86-arc-and-mutex-sharing-across-threads"><a class="header" href="#86-arc-and-mutex-sharing-across-threads">8.6 <code>Arc</code> and <code>Mutex</code>: sharing across threads</a></h2>
+<p><code>Arc&lt;T&gt;</code> is <code>Rc&lt;T&gt;</code> with an atomic count. An <strong>atomic</strong> operation is one the processor completes as a single step. That stays true even when several
+cores run it on the same memory at the same moment. So <code>Arc</code> handles can
+be sent to other threads. Chapter 16 explains atomic operations in detail.</p>
+<p><code>Mutex&lt;T&gt;</code> is the thread-safe counterpart of <code>RefCell</code>. <code>lock()</code> returns a guard that gives access to the
+value. If another thread holds the lock, <code>lock()</code> waits until it is released, instead of panicking.</p>
+<p class="listing"><b>Listing 8.5</b> Several threads adding to one total (lines 89 to 110).</p>
+
+<pre><code class="language-rust">/// Shared mutation across threads, with `Arc` for ownership and `Mutex` for
+/// exclusive access.
+pub fn total_with_arc_mutex(threads: usize, per_thread: usize) -&gt; usize {
+    let total = Arc::new(Mutex::new(0usize));
+    let mut handles = Vec::with_capacity(threads);
+
+    for _ in 0..threads {
+        let total = Arc::clone(&amp;total);
+        handles.push(thread::spawn(move || {
+            for _ in 0..per_thread {
+                let mut guard = total.lock().expect("mutex poisoned");
+                *guard += 1;
+            }
+        }));
+    }
+
+    for handle in handles {
+        handle.join().expect("worker panicked");
+    }
+
+    *total.lock().expect("mutex poisoned")
+}</code></pre>
+<p>Step through it:</p>
+<ol>
+<li><code>Arc::new(Mutex::new(0usize))</code> creates the shared total.</li>
+<li>For each thread, <code>Arc::clone(&amp;total)</code> makes a new handle, and <code>thread::spawn(move || ...)</code> moves that handle
+into the new thread. <code>move</code> means the closure takes ownership of what it uses.</li>
+<li>Each thread locks the mutex, adds 1, and drops the guard, <code>per_thread</code> times.</li>
+<li><code>handle.join()</code> waits for each thread to finish.</li>
+<li>The last line locks once more and reads the result.</li>
+</ol>
+<p><code>lock()</code> returns a <code>Result</code>, because a thread that panics while holding the lock leaves the mutex marked as
+<strong>poisoned</strong>. <code>.expect("mutex poisoned")</code> stops the program with that message in that case. Chapter 16 covers
+poisoning.</p>
+<p>This function locks once for every single increment, so the threads spend most of their time waiting for each
+other. It is correct but slow. Chapter 16 measures faster ways to count across threads.</p>
+<h2 id="87-cow-borrow-when-you-can"><a class="header" href="#87-cow-borrow-when-you-can">8.7 <code>Cow</code>: borrow when you can</a></h2>
+<p><code>Cow&lt;'a, str&gt;</code> holds either a borrowed <code>&amp;'a str</code> or an owned <code>String</code>. Its name stands for “clone on write”.
+It fits functions that usually return their input unchanged but sometimes need to change it.</p>
+<p class="listing"><b>Listing 8.6</b> Uppercase only when needed (lines 112 to 126).</p>
+
+<pre><code class="language-rust">/// Borrow when no change is needed, allocate only when there is one.
+///
+/// `Cow` is the idiomatic return type for a function that usually passes its
+/// input through unchanged.
+pub fn normalize(input: &amp;str, uppercase: bool) -&gt; Cow&lt;'_, str&gt; {
+    if uppercase
+        &amp;&amp; input
+            .bytes()
+            .any(|byte| byte.is_ascii_lowercase())
+    {
+        Cow::Owned(input.to_uppercase())
+    } else {
+        Cow::Borrowed(input)
+    }
+}</code></pre>
+<p><code>normalize</code> checks whether any byte is a lowercase letter. If there is nothing to change, it returns
+<code>Cow::Borrowed(input)</code>, which costs nothing. Only when a change is needed does it allocate a new uppercase
+<code>String</code> and return <code>Cow::Owned</code>. The caller can use either variant as a <code>&amp;str</code>.</p>
+<h2 id="88-the-complete-file"><a class="header" href="#88-the-complete-file">8.8 The complete file</a></h2>
+<p class="listing"><b>Listing 8.7</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">src/problems/smart_pointers.rs</a></p>
+
+<pre><code class="language-rust">//! Smart pointers and interior mutability.
+//!
+//! Each pointer type answers a different ownership question, and picking the
+//! wrong one shows up as either a compile error or a runtime bug.
+//!
+//! | Type | Ownership | Mutation | Across threads |
+//! |---|---|---|---|
+//! | `Box&lt;T&gt;` | single | through `&amp;mut` | if `T: Send` |
+//! | `Rc&lt;T&gt;` | shared, non-atomic count | no | no |
+//! | `Arc&lt;T&gt;` | shared, atomic count | no | if `T: Send + Sync` |
+//! | `RefCell&lt;T&gt;` | single | runtime checked | no |
+//! | `Mutex&lt;T&gt;` | single | blocking lock | yes |
+//! | `Weak&lt;T&gt;` | non-owning | no | as `Arc` |
+//! | `Cow&lt;'a, T&gt;` | borrow or own | no | as the borrow |
+//!
+//! Two rules cover most decisions. `Rc`/`RefCell` is for graphs and caches inside
+//! one thread; `Arc`/`Mutex` is for state shared between threads. `Weak` exists to
+//! break reference cycles, because two strong references in a cycle never reach a
+//! count of zero and the memory is never freed.
+
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    rc::{Rc, Weak},
+    sync::{Arc, Mutex},
+    thread,
+};
+
+/// A recursive type needs indirection, because `Expr` cannot contain itself by
+/// value. `Box` provides the fixed-size indirection.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Expr {
+    Lit(i64),
+    Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;),
+}
+
+/// Evaluate an expression tree.
+pub fn eval(expr: &amp;Expr) -&gt; i64 {
+    match expr {
+        Expr::Lit(value) =&gt; *value,
+        Expr::Add(left, right) =&gt; eval(left) + eval(right),
+    }
+}
+
+/// Shared mutation inside one thread, with `Rc` for aliasing and `RefCell` for
+/// the runtime borrow check.
+pub fn shared_counter_with_rc_refcell() -&gt; i32 {
+    let counter = Rc::new(RefCell::new(0));
+    let alias = Rc::clone(&amp;counter);
+
+    *alias.borrow_mut() += 1;
+    *counter.borrow_mut() += 10;
+
+    *counter.borrow()
+}
+
+/// A node whose parent link is weak, so a child does not keep its parent alive.
+pub struct TreeNode {
+    pub value: i32,
+    parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;,
+}
+
+impl TreeNode {
+    /// A node with no parent.
+    pub fn root(value: i32) -&gt; Rc&lt;Self&gt; {
+        Rc::new(Self {
+            value,
+            parent: RefCell::new(Weak::new()),
+        })
+    }
+
+    /// A node that points back weakly at `parent`.
+    pub fn child_of(parent: &amp;Rc&lt;Self&gt;, value: i32) -&gt; Rc&lt;Self&gt; {
+        Rc::new(Self {
+            value,
+            parent: RefCell::new(Rc::downgrade(parent)),
+        })
+    }
+
+    /// The parent's value, or `None` once the parent has been dropped.
+    pub fn parent_value(&amp;self) -&gt; Option&lt;i32&gt; {
+        self.parent
+            .borrow()
+            .upgrade()
+            .map(|parent| parent.value)
+    }
+}
+
+/// Shared mutation across threads, with `Arc` for ownership and `Mutex` for
+/// exclusive access.
+pub fn total_with_arc_mutex(threads: usize, per_thread: usize) -&gt; usize {
+    let total = Arc::new(Mutex::new(0usize));
+    let mut handles = Vec::with_capacity(threads);
+
+    for _ in 0..threads {
+        let total = Arc::clone(&amp;total);
+        handles.push(thread::spawn(move || {
+            for _ in 0..per_thread {
+                let mut guard = total.lock().expect("mutex poisoned");
+                *guard += 1;
+            }
+        }));
+    }
+
+    for handle in handles {
+        handle.join().expect("worker panicked");
+    }
+
+    *total.lock().expect("mutex poisoned")
+}
+
+/// Borrow when no change is needed, allocate only when there is one.
+///
+/// `Cow` is the idiomatic return type for a function that usually passes its
+/// input through unchanged.
+pub fn normalize(input: &amp;str, uppercase: bool) -&gt; Cow&lt;'_, str&gt; {
+    if uppercase
+        &amp;&amp; input
+            .bytes()
+            .any(|byte| byte.is_ascii_lowercase())
+    {
+        Cow::Owned(input.to_uppercase())
+    } else {
+        Cow::Borrowed(input)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn boxed_expression_evaluates() {
+        let expr = Expr::Add(Box::new(Expr::Lit(1)), Box::new(Expr::Lit(2)));
+        assert_eq!(eval(&amp;expr), 3);
+    }
+
+    #[test]
+    fn rc_refcell_shares_mutation_within_a_thread() {
+        assert_eq!(shared_counter_with_rc_refcell(), 11);
+    }
+
+    #[test]
+    fn weak_parent_link_does_not_keep_the_parent_alive() {
+        let root = TreeNode::root(1);
+        let child = TreeNode::child_of(&amp;root, 2);
+
+        assert_eq!(child.parent_value(), Some(1));
+        drop(root);
+        assert_eq!(child.parent_value(), None);
+    }
+
+    #[test]
+    fn arc_mutex_sums_concurrent_updates() {
+        assert_eq!(total_with_arc_mutex(8, 250), 2_000);
+    }
+
+    #[test]
+    fn cow_borrows_and_owns_as_needed() {
+        assert!(matches!(normalize("A100", true), Cow::Borrowed(_)));
+        assert!(matches!(normalize("a100", true), Cow::Owned(_)));
+        assert_eq!(normalize("a100", true), "A100");
+        assert_eq!(normalize("a100", false), "a100");
+    }
+}</code></pre>
+<p>The tests check one behavior per pointer type. <code>cow_borrows_and_owns_as_needed</code> uses <code>matches!</code> to check
+which variant came back, not only the text. That is how a test shows that the unchanged case did not
+allocate. Run them with <code>cargo test --lib smart_pointers</code>.</p>
+<p>Figure 8.6 turns the chapter into three questions you can ask when choosing a pointer type.</p>
+<figure>
+<img src="figures/ch01-pointer-choice.svg" alt="Decision tree from &#39;more than one owner?&#39; through &#39;more than one thread?&#39; and &#39;must owners mutate?&#39; to Box, Rc, Rc RefCell, Arc, and Arc Mutex">
+<figcaption><b>Figure 8.6</b> Choosing a pointer type: owners first, then threads, then whether the owners change the value.</figcaption>
+</figure>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Every value has one owner. Assignment moves ownership, copying only the stack header, and borrowing lends
+access without moving.</li>
+<li><code>Box&lt;T&gt;</code> owns a value on the heap. It gives recursive types a fixed size.</li>
+<li><code>Rc&lt;T&gt;</code> lets several owners share a value, counted, within one thread. Cloning an <code>Rc</code> adds to the count.</li>
+<li><code>RefCell&lt;T&gt;</code> allows changes through shared references and checks the borrow rules at run time, panicking on
+a violation.</li>
+<li>Two <code>Rc</code> handles pointing at each other leak. <code>Weak&lt;T&gt;</code> does not count as an owner and breaks such cycles.</li>
+<li><code>Arc&lt;T&gt;</code> is <code>Rc</code> with an atomic count, for threads, and <code>Mutex&lt;T&gt;</code> makes other threads wait instead of
+panicking.</li>
+<li><code>Cow</code> returns borrowed data unchanged and allocates only when it must change it.</li>
+</ul>
+</div>
+
+<p>Chapter 9 puts these types to work. You will build linked lists with <code>Box</code> and see how dropping a very long one can crash. Then you will build
+a doubly linked list with <code>Rc</code>, <code>RefCell</code>, and <code>Weak</code>.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Build the expression <code>(1 + 2) + 3</code> with <code>Expr</code> and check that <code>eval</code> returns 6.</li>
+<li>In <code>shared_counter_with_rc_refcell</code>, keep the first <code>borrow_mut</code> guard in a variable and call
+<code>borrow_mut</code> again. Run it and read the panic message.</li>
+<li>Build a parent with two children that point back with <code>Weak</code>. Print <code>Rc::strong_count</code> and <code>Rc::weak_count</code>
+for the parent before and after creating the children.</li>
+<li>Change <code>total_with_arc_mutex</code> so each thread counts in a local variable and adds its total to the mutex
+once. Compare the running time for 8 threads and one million increments each.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch07-types.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch09-linked-lists.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch07-types.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch09-linked-lists.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,860 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Heaps - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch05.png" alt="Hoist, the robot who keeps the smallest crate on top, beside a pyramid of crates, the smallest always on top, under a hoist">
+<h1 id="heaps"><a class="header" href="#heaps">Heaps</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What a heap is, and how it stores a tree inside a <code>Vec</code></li>
+<li>How <code>push</code> and <code>pop</code> keep the largest item on top in O(log n) steps</li>
+<li>Rust’s <code>BinaryHeap</code>, and turning it into a min-heap with <code>Reverse</code></li>
+<li>How tuples compare, and why <code>(count, value)</code> orders items by count</li>
+<li>Finding the k most frequent items, first with a full heap and then with a heap of size k</li>
+<li>Keeping the median of a stream of numbers with two heaps</li>
+</ul>
+</div>
+
+<p>Chapter 3 used vectors, strings, and hash maps. This chapter adds one more collection, the heap. A heap
+answers one question quickly: “what is the largest item right now?” It keeps answering it while items are
+added and removed.</p>
+<p>That question comes up whenever you want the best few items from many. Two examples are the most frequent
+words in a text and the next job to run from a queue ordered by priority. You will build three programs. Two find
+the most frequent items. The third keeps the median of a stream of numbers.</p>
+<p>As in chapter 3, I start with how the structure works, with pictures, and then show the code.</p>
+<p>A few terms used throughout the chapter:</p>
+<ul>
+<li>A <strong>binary tree</strong> is a set of nodes where each node has at most two children, a left one and a right one.
+The node with no parent is the <strong>root</strong>.</li>
+<li>A <strong>max-heap</strong> is a binary tree where every parent is at least as large as each of its children. So the
+root holds the largest item.</li>
+<li>A <strong>min-heap</strong> is the same with “at least as large” replaced by “at most as large”. The root holds the
+smallest item.</li>
+<li>The <strong>median</strong> of a list of numbers is the middle value once they are sorted. For an even count, it is
+the average of the two middle values.</li>
+</ul>
+<h2 id="51-a-tree-stored-in-a-vector"><a class="header" href="#51-a-tree-stored-in-a-vector">5.1 A tree stored in a vector</a></h2>
+<p>A heap is a tree, but it does not store pointers between nodes. It stores the nodes in a <code>Vec</code>, level by
+level: the root first, then its two children, then their four children, and so on. Figure 5.1 shows a
+max-heap of six numbers and the vector that holds it.</p>
+<figure>
+<img src="figures/heap-layout.svg" alt="A tree with 9 at the root, children 7 and 8, and 3, 5, 6 below; the same values in a vector 9, 7, 8, 3, 5, 6 at indexes 0 to 5">
+<figcaption><b>Figure 5.1</b> A max-heap and its vector. The children of the node at index i are at 2i + 1 and 2i + 2.</figcaption>
+</figure>
+<p>Because the nodes are packed level by level, simple arithmetic finds a node’s relatives. The children of index i are at 2i + 1 and 2i + 2. Its parent is at (i − 1) / 2, rounded down. In figure 5.1, the
+children of 7 (index 1) are at indexes 3 and 4, which hold 3 and 5.</p>
+<p>The heap rule only compares parents with children. It says nothing about brothers or cousins. In figure
+5.1, 7 is on the left and 8 on the right, and that is allowed. That weak rule keeps a heap cheap to
+maintain.</p>
+<p>A tree with n nodes packed this way has about log₂ n levels. A heap of a million items is only about 20
+levels deep.</p>
+<h2 id="52-adding-and-removing"><a class="header" href="#52-adding-and-removing">5.2 Adding and removing</a></h2>
+<h3 id="521-push"><a class="header" href="#521-push">5.2.1 Push</a></h3>
+<p>To add an item, put it at the end of the vector, which is the next free spot on the bottom level. It may be
+larger than its parent, which breaks the rule. So swap it with its parent, and keep swapping upward until it
+is not larger than its parent, or it reaches the root. Figure 5.2 pushes 10.</p>
+<figure>
+<img src="figures/heap-push.svg" alt="10 is added under 8, swaps with 8, then swaps with 9 and becomes the root">
+<figcaption><b>Figure 5.2</b> Pushing 10. It moves up one level per swap until the rule holds again.</figcaption>
+</figure>
+<p>Each swap moves the item one level up, and there are about log₂ n levels. So a push takes O(log n) steps.</p>
+<h3 id="522-pop"><a class="header" href="#522-pop">5.2.2 Pop</a></h3>
+<p>To remove the largest item, take the root. That leaves a hole at the top. Fill it with the last item in the
+vector, which shrinks the vector by one. The moved item is probably too small for the top. So swap it with its larger child, and keep swapping
+downward until both its children are smaller. Figure 5.3 pops the 10
+that figure 5.2 added.</p>
+<figure>
+<img src="figures/heap-pop.svg" alt="The root 10 is removed and the last value 6 moves to the top; 6 swaps with its larger child 9, then with 8">
+<figcaption><b>Figure 5.3</b> Popping the largest item. The item moved to the top sinks one level per swap.</figcaption>
+</figure>
+<p>It swaps with the larger child for a reason. That child is about to become the parent of the other one,
+and a parent must be at least as large as its children. Pop is also O(log n).</p>
+<p>Looking at the largest item without removing it is O(1): it is always at index 0.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch05-heap-sift.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A max-heap 9, 5, 8, 3, 2 drawn as a tree above its array. push(10) appends 10 at index 5; it swaps with its parent 8 at index 2, then with 9 at the root. pop() takes 10 from the root, moves the last value 8 into the root, and 8 swaps with its larger child 9. A last part swaps 8 with the smaller child 5 instead, and 5 ends up as the parent of 9." data-chapters="[[0.0, &quot;push&quot;], [34.32, &quot;pop&quot;], [55.74, &quot;wrong child&quot;]]"><img src="figures/ch05-heap-sift.gif" alt="A max-heap 9, 5, 8, 3, 2 drawn as a tree above its array. push(10) appends 10 at index 5; it swaps with its parent 8 at index 2, then with 9 at the root. pop() takes 10 from the root, moves the last value 8 into the root, and 8 swaps with its larger child 9. A last part swaps 8 with the smaller child 5 instead, and 5 ends up as the parent of 9."></video>
+<figcaption><b>Animation 5.1</b> A push appends and swaps up; a pop moves the last value to the root and swaps it down with the larger child. Each value moves in the tree and in the array at the same time. The last part swaps with the smaller child and breaks the heap rule.</figcaption>
+</figure>
+<h2 id="53-heaps-in-rust"><a class="header" href="#53-heaps-in-rust">5.3 Heaps in Rust</a></h2>
+<p>Rust’s standard library provides <code>std::collections::BinaryHeap&lt;T&gt;</code>, a max-heap. Its main methods match the
+operations above:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Method</th><th>What it does</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td><code>push(x)</code></td><td>adds <code>x</code></td><td>O(log n)</td></tr>
+<tr><td><code>pop()</code></td><td>removes and returns the largest item, as an <code>Option</code></td><td>O(log n)</td></tr>
+<tr><td><code>peek()</code></td><td>returns a reference to the largest item, as an <code>Option</code></td><td>O(1)</td></tr>
+<tr><td><code>len()</code></td><td>the number of items</td><td>O(1)</td></tr>
+<tr><td><code>into_sorted_vec()</code></td><td>consumes the heap and returns its items in ascending order</td><td>O(n log n)</td></tr>
+</tbody>
+</table>
+</div>
+<p>To decide which item is larger, <code>BinaryHeap</code> uses the <code>Ord</code> trait, which types such as <code>i32</code>, <code>String</code>, and
+tuples implement.</p>
+<h3 id="531-how-tuples-compare"><a class="header" href="#531-how-tuples-compare">5.3.1 How tuples compare</a></h3>
+<p>Tuples compare element by element, from the left. Two tuples are compared on their first elements, and
+only if those are equal does the second element decide. So <code>(3, 1) &gt; (2, 9)</code>, because 3 &gt; 2, and the 9 is
+never looked at. And <code>(3, 1) &lt; (3, 2)</code>, because the first elements tie and 1 &lt; 2.</p>
+<p>This gives a way to choose what a heap orders by: put that field first in a tuple. A heap of
+<code>(count, value)</code> pairs orders by count, and breaks ties by value.</p>
+<h3 id="532-a-min-heap-with-reverse"><a class="header" href="#532-a-min-heap-with-reverse">5.3.2 A min-heap with <code>Reverse</code></a></h3>
+<p><code>BinaryHeap</code> has no min-heap mode. Instead, the standard library provides a wrapper,
+<code>std::cmp::Reverse&lt;T&gt;</code>, whose comparison is the opposite of <code>T</code>’s. <code>Reverse(3) &gt; Reverse(5)</code>, because 3 &lt; 5.
+So a <code>BinaryHeap&lt;Reverse&lt;i32&gt;&gt;</code> keeps the smallest number on top.</p>
+<p>To put a value in, wrap it: <code>heap.push(Reverse(x))</code>. To get it out, unwrap it with a pattern:
+<code>if let Some(Reverse(x)) = heap.pop()</code>.</p>
+<p>Now you can read the three programs.</p>
+<h2 id="54-the-k-most-frequent-numbers"><a class="header" href="#54-the-k-most-frequent-numbers">5.4 The k most frequent numbers</a></h2>
+<p><strong>The problem.</strong> Given a list of numbers and a count k, return the k numbers that occur most often. For
+<code>[1, 1, 1, 2, 2, 3]</code> and k = 2, the answer is 1 and 2.</p>
+<p><strong>The idea.</strong> Count each number with a <code>HashMap</code>. Put every <code>(count, number)</code> pair into a max-heap. Pop k
+times.</p>
+<p class="listing"><b>Listing 5.1</b> Top k with a full heap. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/top_k_frequent.rs">src/problems/top_k_frequent.rs</a></p>
+
+<pre><code class="language-rust">//! Top K Frequent Elements.
+//!
+//! Count occurrences with a HashMap, then use a max-heap (`BinaryHeap`) to pull
+//! out the top k elements. O(n log n) worst case; acceptable and readable.
+
+use std::collections::{BinaryHeap, HashMap};
+
+pub fn top_k_frequent(nums: &amp;[i32], k: usize) -&gt; Vec&lt;i32&gt; {
+    let mut counts: HashMap&lt;i32, usize&gt; = HashMap::with_capacity(nums.len());
+    for &amp;num in nums.iter() {
+        *counts.entry(num).or_insert(0) += 1;
+    }
+
+    // BinaryHeap is a max-heap in Rust, so (count, num) keeps highest counts first.
+    let mut heap: BinaryHeap&lt;(usize, i32)&gt; = counts
+        .into_iter()
+        .map(|(num, count)| (count, num))
+        .collect();
+
+    let mut result = Vec::with_capacity(k);
+    while result.len() &lt; k {
+        match heap.pop() {
+            Some((_, num)) =&gt; result.push(num),
+            None =&gt; break,
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_top_two() {
+        let nums = [1, 1, 1, 2, 2, 3];
+        let mut result = top_k_frequent(&amp;nums, 2);
+        result.sort_unstable();
+        assert_eq!(result, vec![1, 2]);
+    }
+
+    #[test]
+    fn k_larger_than_unique_values_returns_all() {
+        let result = top_k_frequent(&amp;[1, 2, 3], 10);
+        assert_eq!(result.len(), 3);
+    }
+}</code></pre>
+<p>Step through it:</p>
+<ol>
+<li><code>*counts.entry(num).or_insert(0) += 1;</code> counts one occurrence. <code>entry(num)</code> finds the map slot for <code>num</code>,
+and <code>or_insert(0)</code> creates it with 0 if it is missing. Both steps return a mutable reference to the
+count, and <code>*</code> followed by <code>+= 1</code> adds one to the value it points to.</li>
+<li><code>counts.into_iter().map(|(num, count)| (count, num)).collect()</code> turns each map entry around, so the count
+comes first, and collects the pairs straight into a <code>BinaryHeap</code>. A <code>BinaryHeap</code> can be built with
+<code>collect</code> like a <code>Vec</code>.</li>
+<li>The <code>while</code> loop pops until it has k numbers. If there are fewer than k distinct numbers, <code>pop</code> returns
+<code>None</code> and the loop stops early. The second test checks that case.</li>
+</ol>
+<p>Counting takes O(n). Building the heap from u distinct numbers takes O(u), and k pops take O(k log u).</p>
+<p>The first test sorts the result before comparing it. The order of numbers with equal counts depends on the map’s iteration order. That order changes between
+runs, so a test must not depend on it.</p>
+<h2 id="55-the-k-most-frequent-words-with-a-heap-of-size-k"><a class="header" href="#55-the-k-most-frequent-words-with-a-heap-of-size-k">5.5 The k most frequent words, with a heap of size k</a></h2>
+<p>The first version puts every distinct number in the heap. If the input has millions of distinct words and
+you only want the top 3, most of that heap is wasted. The second version never lets the heap grow past k + 1
+entries.</p>
+<p><strong>The idea.</strong> Use a min-heap. Push each <code>(count, word)</code> pair. Whenever the heap has more than k entries, pop
+once. A min-heap pops its smallest entry, which is the least frequent word seen so far, so the k most
+frequent words survive (figure 5.4).</p>
+<figure>
+<img src="figures/heap-topk.svg" alt="Five pushes into a min-heap limited to 3 entries; when a fourth entry arrives, the smallest is popped">
+<figcaption><b>Figure 5.4</b> A min-heap bounded to k = 3 entries. Each time a fourth entry arrives, the smallest is removed.</figcaption>
+</figure>
+<p>The program first turns the text into words, then counts them, then runs the bounded heap.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch05-top-k.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)." data-chapters="[[0.0, &quot;count&quot;], [8.16, &quot;heap&quot;]]"><img src="figures/ch05-top-k.gif" alt="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)."></video>
+<figcaption><b>Animation 5.2</b> The bounded heap from listing 5.2 with k = 2. The top of the heap is the least frequent word kept, and it is popped whenever the heap holds k + 1 entries.</figcaption>
+</figure>
+<p class="listing"><b>Listing 5.2</b> The function (lines 1 to 39). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse as Rev,
+    collections::{BinaryHeap, HashMap},
+};
+
+/// Returns vec!&lt;(word, frequency)&gt;, most frequent first.
+fn top_k_frequent(sentence: &amp;str, k: usize) -&gt; Vec&lt;(String, u32)&gt; {
+    // Split string by white spaces. Map it and trim any non alphanumeric characters. Finally,
+    // filter all the empty strings and map everything to lowercase characters.
+    let words: Vec&lt;String&gt; = sentence
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()))
+        .filter(|w| !w.is_empty())
+        .map(str::to_lowercase)
+        .collect();
+
+    // Build the frequency map...
+    let mut frequencies = HashMap::&lt;&amp;str, u32&gt;::new();
+    for word in &amp;words {
+        *frequencies.entry(word.as_str()).or_default() += 1;
+    }
+
+    // Keep a min heap of size k. Reverse flips the max heap, so the least
+    // frequent word sits on top and gets popped once we go over k.
+    let mut min_heap = BinaryHeap::&lt;Rev&lt;(u32, &amp;str)&gt;&gt;::new();
+    for (&amp;word, &amp;frequency) in &amp;frequencies {
+        min_heap.push(Rev((frequency, word)));
+        if min_heap.len() &gt; k {
+            min_heap.pop();
+        }
+    }
+
+    // Ascending order of Reverse means most frequent first.
+    min_heap
+        .into_sorted_vec()
+        .into_iter()
+        .map(|Rev((frequency, word))| (word.to_string(), frequency))
+        .collect()
+}</code></pre>
+<p><strong>Turning text into words.</strong> The chain splits on whitespace. Then it trims characters that are not letters
+or digits from both ends of each piece, so <code>"sentence."</code> becomes <code>"sentence"</code>. It drops empty pieces, which a
+lone punctuation mark leaves behind, and lowercases each word. <code>trim_matches</code> takes a closure that decides
+which characters to trim. <code>map(str::to_lowercase)</code> passes a function by name instead of writing a closure.</p>
+<p><strong>Counting without copying.</strong> The map is <code>HashMap&lt;&amp;str, u32&gt;</code>. Its keys are references into the <code>words</code>
+vector, so counting allocates nothing for each occurrence. <code>or_default()</code> inserts the type’s default value,
+0 for <code>u32</code>, when the key is missing.</p>
+<p><strong>The bounded heap.</strong> <code>use std::cmp::Reverse as Rev;</code> gives <code>Reverse</code> a shorter name. Each entry is
+<code>Rev((frequency, word))</code>, so the heap’s top is the smallest <code>(frequency, word)</code> pair. After each push, if
+the heap has more than k entries, one pop removes that smallest pair.</p>
+<p><strong>The result.</strong> <code>into_sorted_vec()</code> returns the entries in ascending order of <code>Rev</code>, which is descending
+order of frequency. The final <code>map</code> unwraps each <code>Rev</code> with a pattern and copies the word into an owned <code>String</code>. The result
+must not borrow from <code>words</code>, because <code>words</code> is dropped when the function returns.</p>
+<p>The heap holds at most k + 1 entries, so each push and pop costs O(log k). For u distinct words, the heap
+work is O(u log k) instead of O(u log u), and its memory is O(k) instead of O(u).</p>
+<h3 id="551-the-complete-program"><a class="header" href="#551-the-complete-program">5.5.1 The complete program</a></h3>
+<p class="listing"><b>Listing 5.3</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse as Rev,
+    collections::{BinaryHeap, HashMap},
+};
+
+/// Returns vec!&lt;(word, frequency)&gt;, most frequent first.
+fn top_k_frequent(sentence: &amp;str, k: usize) -&gt; Vec&lt;(String, u32)&gt; {
+    // Split string by white spaces. Map it and trim any non alphanumeric characters. Finally,
+    // filter all the empty strings and map everything to lowercase characters.
+    let words: Vec&lt;String&gt; = sentence
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()))
+        .filter(|w| !w.is_empty())
+        .map(str::to_lowercase)
+        .collect();
+
+    // Build the frequency map...
+    let mut frequencies = HashMap::&lt;&amp;str, u32&gt;::new();
+    for word in &amp;words {
+        *frequencies.entry(word.as_str()).or_default() += 1;
+    }
+
+    // Keep a min heap of size k. Reverse flips the max heap, so the least
+    // frequent word sits on top and gets popped once we go over k.
+    let mut min_heap = BinaryHeap::&lt;Rev&lt;(u32, &amp;str)&gt;&gt;::new();
+    for (&amp;word, &amp;frequency) in &amp;frequencies {
+        min_heap.push(Rev((frequency, word)));
+        if min_heap.len() &gt; k {
+            min_heap.pop();
+        }
+    }
+
+    // Ascending order of Reverse means most frequent first.
+    min_heap
+        .into_sorted_vec()
+        .into_iter()
+        .map(|Rev((frequency, word))| (word.to_string(), frequency))
+        .collect()
+}
+
+fn main() {
+    let sentence = r"This is a short sentence. We'll count words.
+    Let us count words in this sentence
+    ";
+
+    let top_k = top_k_frequent(sentence, 3);
+    println!("Top 3 frequency [(word, frequency)] : \n {:#?}", top_k);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picks_most_frequent() {
+        let result = top_k_frequent("a a a b b c", 2);
+        assert_eq!(result, vec![("a".to_string(), 3), ("b".to_string(), 2)]);
+    }
+
+    #[test]
+    fn ignores_case_and_punctuation() {
+        let result = top_k_frequent("Hello, hello! HELLO world.", 1);
+        assert_eq!(result, vec![("hello".to_string(), 3)]);
+    }
+
+    #[test]
+    fn k_larger_than_word_count() {
+        assert_eq!(top_k_frequent("x y", 10).len(), 2);
+    }
+
+    #[test]
+    fn empty_input() {
+        assert!(top_k_frequent("", 3).is_empty());
+    }
+}</code></pre>
+<p>The sentence in <code>main</code> is a <strong>raw string literal</strong>, written <code>r"..."</code>. A raw string treats backslashes as
+ordinary characters, and this one also spans several lines. The tests cover the basic case, uppercase and
+punctuation, a k larger than the number of words, and an empty input.</p>
+<pre><code class="language-text">$ cargo run --bin top_k_frequent_words
+Top 3 frequency [(word, frequency)] :
+ [
+    (
+        "words",
+        2,
+    ),
+    (
+        "this",
+        2,
+    ),
+    (
+        "sentence",
+        2,
+    ),
+]
+</code></pre>
+<p>Four words occur twice in the sentence: “this”, “sentence”, “count”, and “words”. Only three fit, and
+“count” was evicted. When two entries have the same count, the tuple comparison falls to the word, and the
+min-heap evicts the alphabetically smallest one. So among equal counts, this version keeps the words that
+come last in alphabetical order.</p>
+<div class="callout tip" markdown="1">
+<p><strong>TIP:</strong> To keep the alphabetically first words instead, push <code>Rev((frequency, Reverse(word)))</code>. The inner
+<code>Reverse</code> flips the order of words only. Among equal counts, the alphabetically last word then has the
+smallest key and is evicted first.</p>
+</div>
+
+<h2 id="56-the-median-of-a-stream"><a class="header" href="#56-the-median-of-a-stream">5.6 The median of a stream</a></h2>
+<p><strong>The problem.</strong> Numbers arrive one at a time. After each one, report the median of all the numbers so far.</p>
+<p><strong>The simple idea.</strong> Keep every number in a sorted <code>Vec</code>, and read the middle. Inserting into the middle of a
+sorted vector shifts the elements after it, which costs O(n) per number.</p>
+<p><strong>The idea with heaps.</strong> Split the numbers into two halves (figure 5.5):</p>
+<ul>
+<li><code>low</code>, a max-heap holding the smaller half. Its top is the largest of the small numbers.</li>
+<li><code>high</code>, a min-heap holding the larger half. Its top is the smallest of the large numbers.</li>
+</ul>
+<p>Keep two rules. Every number in <code>low</code> is at most every number in <code>high</code>. And <code>low</code> has either the same
+number of items as <code>high</code>, or one more. Then the median is always at the tops. With an odd count, it is the
+top of <code>low</code>. With an even count, it is the average of the two tops.</p>
+<figure>
+<img src="figures/ch03-two-heaps.svg" alt="Two heaps after eleven values: low holds 3,2,1,0,0,0 with 3 on top; high holds 5,6,6,6,10 with 5 on top">
+<figcaption><b>Figure 5.5</b> The two heaps after all eleven sample values. <code>low</code> has six values and <code>high</code> five, so the median is 3, the top of <code>low</code>.</figcaption>
+</figure>
+<h3 id="561-adding-a-number"><a class="header" href="#561-adding-a-number">5.6.1 Adding a number</a></h3>
+<p class="listing"><b>Listing 5.4</b> The structure and <code>add_num</code> (lines 1 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs">src/bin/median_finder.rs</a></p>
+
+<pre><code class="language-rust">use std::{cmp::Reverse, collections::BinaryHeap};
+
+#[derive(Default)]
+pub struct MedianFinder {
+    low: BinaryHeap&lt;i32&gt;,
+    high: BinaryHeap&lt;Reverse&lt;i32&gt;&gt;,
+}
+
+impl MedianFinder {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    pub fn add_num(&amp;mut self, num: i32) {
+        self.low.push(num);
+
+        if let Some(val) = self.low.pop() {
+            self.high.push(Reverse(val));
+        }
+
+        if self.high.len() &gt; self.low.len() {
+            if let Some(Reverse(val)) = self.high.pop() {
+                self.low.push(val);
+            }
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>add_num</code> keeps both rules with three moves, and never compares numbers itself:</p>
+<ol>
+<li>Push the new number into <code>low</code>.</li>
+<li>Pop the largest number from <code>low</code> and push it into <code>high</code>. This keeps the first rule: whatever <code>high</code>
+receives is at least as large as everything left in <code>low</code>.</li>
+<li>If <code>high</code> now has more items than <code>low</code>, pop its smallest and push it back into <code>low</code>. This keeps the
+second rule.</li>
+</ol>
+<p>Trace the first three numbers of the sample, 6, 10, and 2:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Add</th><th>After step 1 (<code>low</code>)</th><th>After step 2 (<code>low</code> / <code>high</code>)</th><th>After step 3 (<code>low</code> / <code>high</code>)</th><th>Median</th></tr>
+</thead>
+<tbody>
+<tr><td>6</td><td>{6}</td><td>{} / {6}</td><td>{6} / {}</td><td>6</td></tr>
+<tr><td>10</td><td>{6, 10}</td><td>{6} / {10}</td><td>{6} / {10}</td><td>(6 + 10) / 2 = 8</td></tr>
+<tr><td>2</td><td>{2, 6}</td><td>{2} / {6, 10}</td><td>{2, 6} / {10}</td><td>6</td></tr>
+</tbody>
+</table>
+</div>
+<p>Each move is one heap operation, so adding a number is O(log n).</p>
+<h3 id="562-reading-the-median"><a class="header" href="#562-reading-the-median">5.6.2 Reading the median</a></h3>
+<p class="listing"><b>Listing 5.5</b> <code>find_median</code> (lines 28 to 37).</p>
+
+<pre><code class="language-rust">impl MedianFinder {
+    // ...
+    pub fn find_median(&amp;self) -&gt; Option&lt;f64&gt; {
+        let max_low = *self.low.peek()?;
+
+        if self.low.len() &gt; self.high.len() {
+            Some(max_low as f64)
+        } else {
+            let Reverse(min_high) = *self.high.peek()?;
+            Some((max_low as f64 + min_high as f64) / 2.0)
+        }
+    }
+}</code></pre>
+<p><code>*self.low.peek()?</code> reads the top of <code>low</code>. The <code>?</code> works on <code>Option</code> the same way it works on <code>Result</code>. If no number has been added, <code>peek</code> returns
+<code>None</code>, and so does the function. The function returns
+<code>Option&lt;f64&gt;</code>, a floating-point number, because the average of two integers can be a half.</p>
+<p><code>let Reverse(min_high) = *self.high.peek()?;</code> unwraps the <code>Reverse</code> in the <code>let</code> pattern itself.</p>
+<h3 id="563-the-complete-program"><a class="header" href="#563-the-complete-program">5.6.3 The complete program</a></h3>
+<p class="listing"><b>Listing 5.6</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs">src/bin/median_finder.rs</a></p>
+
+<pre><code class="language-rust">use std::{cmp::Reverse, collections::BinaryHeap};
+
+#[derive(Default)]
+pub struct MedianFinder {
+    low: BinaryHeap&lt;i32&gt;,
+    high: BinaryHeap&lt;Reverse&lt;i32&gt;&gt;,
+}
+
+impl MedianFinder {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    pub fn add_num(&amp;mut self, num: i32) {
+        self.low.push(num);
+
+        if let Some(val) = self.low.pop() {
+            self.high.push(Reverse(val));
+        }
+
+        if self.high.len() &gt; self.low.len() {
+            if let Some(Reverse(val)) = self.high.pop() {
+                self.low.push(val);
+            }
+        }
+    }
+
+    pub fn find_median(&amp;self) -&gt; Option&lt;f64&gt; {
+        let max_low = *self.low.peek()?;
+
+        if self.low.len() &gt; self.high.len() {
+            Some(max_low as f64)
+        } else {
+            let Reverse(min_high) = *self.high.peek()?;
+            Some((max_low as f64 + min_high as f64) / 2.0)
+        }
+    }
+}
+
+const SAMPLE: [i32; 11] = [6, 10, 2, 6, 5, 0, 6, 3, 1, 0, 0];
+
+fn main() {
+    let mut finder = MedianFinder::new();
+
+    for value in SAMPLE {
+        finder.add_num(value);
+        match finder.find_median() {
+            Some(median) =&gt; println!("after {value:&gt;2}: median {median}"),
+            None =&gt; println!("after {value:&gt;2}: no median"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The median of a sorted slice, computed directly.
+    fn median_of_sorted(values: &amp;[i32]) -&gt; f64 {
+        let middle = values.len() / 2;
+        if values.len() % 2 == 1 {
+            values[middle] as f64
+        } else {
+            (values[middle - 1] as f64 + values[middle] as f64) / 2.0
+        }
+    }
+
+    #[test]
+    fn an_empty_finder_has_no_median() {
+        assert_eq!(MedianFinder::new().find_median(), None);
+    }
+
+    #[test]
+    fn one_value_is_the_median() {
+        let mut finder = MedianFinder::new();
+        finder.add_num(7);
+        assert_eq!(finder.find_median(), Some(7.0));
+    }
+
+    #[test]
+    fn an_even_count_averages_the_middle_two() {
+        let mut finder = MedianFinder::new();
+        finder.add_num(1);
+        finder.add_num(2);
+        assert_eq!(finder.find_median(), Some(1.5));
+    }
+
+    #[test]
+    fn three_values_are_ordered() {
+        let mut finder = MedianFinder::new();
+        for (value, median) in [1, 2, 3].into_iter().zip([1.0, 1.5, 2.0]) {
+            finder.add_num(value);
+            assert_eq!(finder.find_median(), Some(median));
+        }
+    }
+
+    #[test]
+    fn duplicates_are_kept() {
+        let mut finder = MedianFinder::new();
+        for value in [4, 4, 4, 4] {
+            finder.add_num(value);
+        }
+        assert_eq!(finder.find_median(), Some(4.0));
+    }
+
+    #[test]
+    fn the_stream_matches_a_sort_on_every_step() {
+        let mut finder = MedianFinder::new();
+        let mut seen = Vec::new();
+
+        for value in SAMPLE {
+            finder.add_num(value);
+            seen.push(value);
+            seen.sort_unstable();
+
+            assert_eq!(finder.find_median(), Some(median_of_sorted(&amp;seen)));
+        }
+    }
+
+    #[test]
+    fn the_two_heaps_never_differ_by_more_than_one() {
+        let mut finder = MedianFinder::new();
+
+        for value in SAMPLE {
+            finder.add_num(value);
+            assert!(finder.low.len().abs_diff(finder.high.len()) &lt;= 1);
+        }
+    }
+}</code></pre>
+<p><code>main</code> adds the eleven sample values and prints the median after each one.</p>
+<pre><code class="language-text">$ cargo run --bin median_finder
+after  6: median 6
+after 10: median 8
+after  2: median 6
+after  6: median 6
+after  5: median 6
+after  0: median 5.5
+after  6: median 6
+after  3: median 5.5
+after  1: median 5
+after  0: median 4
+after  0: median 3
+</code></pre>
+<p>Look at the test <code>the_stream_matches_a_sort_on_every_step</code>. After every added number, it sorts a copy of all the numbers so far. Then it computes the median the slow
+way, with the helper <code>median_of_sorted</code>. Then it checks
+that the heaps give the same answer. A test like this, which compares a fast method with a slow method you
+can trust, is called an <strong>oracle test</strong>. It catches mistakes that a few hand-picked examples miss.</p>
+<p>The last test checks the second rule directly: after every number, the two heaps’ sizes differ by at most one.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A heap is a binary tree stored level by level in a <code>Vec</code>. The children of index i are at 2i + 1 and 2i + 2.</li>
+<li>In a max-heap every parent is at least as large as its children, so the largest item is at index 0.</li>
+<li>Push adds at the end and swaps upward. Pop moves the last item to the top and swaps downward with the
+larger child. Both are O(log n).</li>
+<li><code>BinaryHeap</code> is a max-heap. Wrapping items in <code>Reverse</code> makes it a min-heap.</li>
+<li>Tuples compare element by element from the left, so <code>(count, value)</code> orders by count first.</li>
+<li>Top k with a full heap costs O(u) memory. A min-heap bounded to k entries costs O(k) memory and O(u log k)
+time.</li>
+<li>Two heaps, a max-heap for the small half and a min-heap for the large half, give the running median in
+O(log n) per number.</li>
+</ul>
+</div>
+
+<p>Chapter 6 covers recursion and dynamic programming. You will solve problems by combining answers to
+smaller versions of themselves, and save those answers so none is computed twice.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Implement a max-heap yourself on a <code>Vec&lt;i32&gt;</code>, with <code>push</code>, <code>pop</code>, and <code>peek</code>, using the index formulas
+from section 5.1. Test it against <code>BinaryHeap</code> on random input.</li>
+<li>Change <code>top_k_frequent_words</code> to keep the alphabetically first words among ties, as the tip in section 5.5
+describes, and add a test.</li>
+<li>Add a method <code>len</code> to <code>MedianFinder</code> that returns how many numbers it holds.</li>
+<li>Extend the running median to remove numbers as well, so it can report the median of the last 100
+numbers only. Hint: remove lazily, by remembering which numbers are waiting to be deleted.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch04-iterators.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch06-dynamic-programming.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch04-iterators.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch06-dynamic-programming.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

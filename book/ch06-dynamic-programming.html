@@ -1,0 +1,723 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Recursion and dynamic programming - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch06.png" alt="Cog, the robot who keeps a notebook so no gear turns twice, beside a train of gears, each half the size of the last">
+<h1 id="recursion-and-dynamic-programming"><a class="header" href="#recursion-and-dynamic-programming">Recursion and dynamic programming</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>Recognizing a problem that can be built from answers to smaller versions of itself</li>
+<li>Filling a table of answers from the smallest case upward</li>
+<li>Listing every subset of a set by exploring a tree of choices</li>
+<li>The longest increasing run hidden inside a list, in O(n log n)</li>
+<li>Choosing jobs that do not overlap, to earn the most</li>
+</ul>
+</div>
+
+<p>In chapter 1 you computed Fibonacci numbers three ways. The recursive version repeated work. The memoized
+version saved each answer in a table, and the loop version kept only the answers it still needed. That
+small example contains the whole idea of this chapter.</p>
+<p><strong>Dynamic programming</strong> is a way to solve a problem by answering smaller versions of the same problem first,
+saving those answers, and combining them. It applies when two things are true:</p>
+<ol>
+<li>The answer for a large input can be built from the answers for smaller inputs.</li>
+<li>The same smaller inputs come up again and again, so saving their answers avoids repeated work.</li>
+</ol>
+<p>This chapter works through four problems. The first, making change with coins, is dynamic programming in its
+plainest form. The second, listing subsets, uses recursion without any saved answers. The last two combine
+dynamic programming with the sorting and searching you learned in chapter 3.</p>
+<p>For each problem I first say, in one sentence, what one entry of the table means. That sentence is called
+the <strong>subproblem</strong>. Once it is written down, the code follows from it.</p>
+<h2 id="61-making-change-with-the-fewest-coins"><a class="header" href="#61-making-change-with-the-fewest-coins">6.1 Making change with the fewest coins</a></h2>
+<p><strong>The problem.</strong> You have coins of some values, as many of each as you like. What is the fewest number of
+coins that add up to a given amount? With coins 1, 2, and 5, the amount 11 needs three coins: 5 + 5 + 1.
+Some amounts cannot be made at all. With only a 2 coin, the amount 3 is impossible.</p>
+<h3 id="611-why-the-obvious-approach-fails"><a class="header" href="#611-why-the-obvious-approach-fails">6.1.1 Why the obvious approach fails</a></h3>
+<p>A natural first try is to take the largest coin that fits, again and again. This is called a <strong>greedy</strong>
+approach. It works for 1, 2, and 5. It does not work for every set of coins (figure 6.1).</p>
+<figure>
+<img src="figures/dp-greedy.svg" alt="With coins 1, 3, 4 and amount 6, greedy picks 4, 1, 1 for three coins; the best answer is 3, 3 for two coins">
+<figcaption><b>Figure 6.1</b> Greedy picks 4 first and needs three coins. The best answer uses two.</figcaption>
+</figure>
+<p>So the program has to consider every coin at every step. Trying every combination directly takes
+exponential time. Dynamic programming makes it fast.</p>
+<h3 id="612-the-subproblem"><a class="header" href="#612-the-subproblem">6.1.2 The subproblem</a></h3>
+<p>Write down what one entry of the table means:</p>
+<blockquote>
+<p><code>dp[t]</code> is the fewest coins that add up to exactly <code>t</code>.</p>
+</blockquote>
+<p>Now think about the last coin used to make <code>t</code>. If that coin is <code>c</code>, the coins before it add up to <code>t - c</code>,
+and the fewest coins for that is <code>dp[t - c]</code>. So using coin <code>c</code> last costs <code>dp[t - c] + 1</code> coins. You do not
+know which coin is last in the best answer, so try every coin and keep the smallest:</p>
+<blockquote>
+<p><code>dp[t]</code> = the smallest of <code>dp[t - c] + 1</code>, over every coin <code>c</code> that is not larger than <code>t</code>.</p>
+</blockquote>
+<p>The starting point is <code>dp[0] = 0</code>: zero coins make zero.</p>
+<p>Fill the table by hand for the coins in figure 6.1, which are 1, 3, and 4, and the amount 6. Each row tries
+every coin that fits, and keeps the smallest count:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>t</code></th><th>coins that fit</th><th>options from each coin</th><th><code>dp[t]</code></th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>1</td><td><code>dp[0] + 1</code> = 1</td><td>1</td></tr>
+<tr><td>2</td><td>1</td><td><code>dp[1] + 1</code> = 2</td><td>2</td></tr>
+<tr><td>3</td><td>1, 3</td><td><code>dp[2] + 1</code> = 3, <code>dp[0] + 1</code> = 1</td><td>1</td></tr>
+<tr><td>4</td><td>1, 3, 4</td><td><code>dp[3] + 1</code> = 2, <code>dp[1] + 1</code> = 2, <code>dp[0] + 1</code> = 1</td><td>1</td></tr>
+<tr><td>5</td><td>1, 3, 4</td><td><code>dp[4] + 1</code> = 2, <code>dp[2] + 1</code> = 3, <code>dp[1] + 1</code> = 2</td><td>2</td></tr>
+<tr><td>6</td><td>1, 3, 4</td><td><code>dp[5] + 1</code> = 3, <code>dp[3] + 1</code> = 2, <code>dp[2] + 1</code> = 3</td><td>2</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>dp[6]</code> is 2, from <code>3 + 3</code>. Greedy needed three coins for the same amount, because it took the 4 first and
+never went back. The table records the best count for every smaller amount. Each new amount is then one
+lookup plus one.</p>
+<p>Two properties must hold for that to work. The answers must <strong>overlap</strong>, so that saving them avoids work.
+<code>dp[6]</code> and <code>dp[5]</code> both read <code>dp[1]</code>, and a longer table reads each entry many times. The best answer must
+also be built from best answers to smaller amounts. Taking the smallest of <code>dp[t - c] + 1</code> relies on that.
+If some way of making <code>t - c</code> used fewer coins, <code>dp[t - c]</code> would hold that smaller number. When either
+property fails, the table gives a wrong answer.</p>
+<p>Because <code>dp[t]</code> only uses entries for smaller amounts, you can fill the table from left to right. Figure 6.2
+shows the table for coins 1, 2, and 5, and how <code>dp[11]</code> is computed.</p>
+<figure>
+<img src="figures/dp-coins.svg" alt="A table dp[0] to dp[11] with values 0 1 1 2 2 1 2 2 3 3 2 3; dp[11] is the smallest of dp[10]+1, dp[9]+1, and dp[6]+1">
+<figcaption><b>Figure 6.2</b> The filled table. For <code>dp[11]</code>, the three coins lead back to <code>dp[10]</code>, <code>dp[9]</code>, and <code>dp[6]</code>.</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch06-coin-change.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The table dp[0] to dp[11] for coins 1, 2, and 5, filled left to right. For each amount t, arcs connect the entries dp[t - coin] it reads to dp[t]. The first amounts are shown one coin at a time; dp[11] ends as 3. A last part shows greedy on coins 1, 3, 4 for amount 6 taking 4 + 1 + 1, three coins, where the table finds two." data-chapters="[[0.0, &quot;dp[1..2]&quot;], [30.12, &quot;dp[3..10]&quot;], [66.12, &quot;dp[11]&quot;], [89.76, &quot;greedy&quot;]]"><img src="figures/ch06-coin-change.gif" alt="The table dp[0] to dp[11] for coins 1, 2, and 5, filled left to right. For each amount t, arcs connect the entries dp[t - coin] it reads to dp[t]. The first amounts are shown one coin at a time; dp[11] ends as 3. A last part shows greedy on coins 1, 3, 4 for amount 6 taking 4 + 1 + 1, three coins, where the table finds two."></video>
+<figcaption><b>Animation 6.1</b> Each entry reads only entries to its left, so one pass fills the table. The arcs show which entries <code>dp[t]</code> reads. The last part shows greedy choosing three coins where two are enough.</figcaption>
+</figure>
+<h3 id="613-the-code"><a class="header" href="#613-the-code">6.1.3 The code</a></h3>
+<p class="listing"><b>Listing 6.1</b> Coin change (lines 6 to 29). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/dp.rs">src/problems/dp.rs</a></p>
+
+<pre><code class="language-rust">pub fn coin_change(coins: &amp;[i32], amount: i32) -&gt; Option&lt;i32&gt; {
+    if amount &lt; 0 {
+        return None;
+    }
+
+    let amount = amount as usize;
+    let mut dp = vec![usize::MAX; amount + 1];
+    dp[0] = 0;
+
+    for total in 1..=amount {
+        for &amp;coin in coins {
+            let coin = coin as usize;
+            if coin &gt; total || dp[total - coin] == usize::MAX {
+                continue;
+            }
+            dp[total] = dp[total].min(dp[total - coin] + 1);
+        }
+    }
+
+    match dp[amount] {
+        usize::MAX =&gt; None,
+        count =&gt; Some(count as i32),
+    }
+}</code></pre>
+<p>Read it against the recurrence:</p>
+<ul>
+<li>A negative amount is rejected first. After that check, <code>amount as usize</code> cannot produce a strange value.</li>
+<li><code>vec![usize::MAX; amount + 1]</code> creates the table, one entry per amount from 0 to <code>amount</code>. <code>usize::MAX</code>,
+the largest <code>usize</code>, stands for “cannot be made yet”.</li>
+<li><code>dp[0] = 0</code> is the starting point.</li>
+<li>The outer loop fills amounts from 1 upward. The inner loop tries every coin.</li>
+<li>The <code>continue</code> skips a coin that is larger than the amount, or whose remainder cannot be made. The second
+check also prevents <code>usize::MAX + 1</code>, which would overflow.</li>
+<li><code>dp[total].min(dp[total - coin] + 1)</code> keeps the smaller of the current best and the new option.</li>
+</ul>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING</strong> The second half of that <code>continue</code> is not an optimisation. Remove it and the function breaks.
+If <code>dp[total - coin]</code> holds the sentinel, then <code>dp[total - coin] + 1</code> adds one to the largest <code>usize</code>. A
+debug build panics with “attempt to add with overflow”. A release build wraps around to 0, and the final
+<code>match</code> reads 0 as a real count of zero coins. The table then reports fewer coins than exist. Add the
+sentinel check before adding, or <code>usize::MAX</code> cannot stand for “impossible”.</p>
+</div>
+
+<p>At the end, a <code>match</code> turns the table entry into the result. The pattern <code>usize::MAX</code> matches that exact
+value, meaning impossible, and returns <code>None</code>. Any other value is a count. So the function returns
+<code>Option&lt;i32&gt;</code>, and the caller cannot mistake “impossible” for a number of coins.</p>
+<p>The table has <code>amount + 1</code> entries and each one tries every coin. The cost is O(amount × coins) time and
+O(amount) memory.</p>
+<p class="listing"><b>Listing 6.2</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/dp.rs">src/problems/dp.rs</a></p>
+
+<pre><code class="language-rust">//! Coin Change: minimum number of coins to make an amount.
+//!
+//! Classic dynamic programming. `Option&lt;i32&gt;` expresses "impossible" instead of
+//! a magic `-1`.
+
+pub fn coin_change(coins: &amp;[i32], amount: i32) -&gt; Option&lt;i32&gt; {
+    if amount &lt; 0 {
+        return None;
+    }
+
+    let amount = amount as usize;
+    let mut dp = vec![usize::MAX; amount + 1];
+    dp[0] = 0;
+
+    for total in 1..=amount {
+        for &amp;coin in coins {
+            let coin = coin as usize;
+            if coin &gt; total || dp[total - coin] == usize::MAX {
+                continue;
+            }
+            dp[total] = dp[total].min(dp[total - coin] + 1);
+        }
+    }
+
+    match dp[amount] {
+        usize::MAX =&gt; None,
+        count =&gt; Some(count as i32),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn computes_minimum_coins() {
+        assert_eq!(coin_change(&amp;[1, 2, 5], 11), Some(3)); // 5 + 5 + 1
+        assert_eq!(coin_change(&amp;[2], 3), None);
+        assert_eq!(coin_change(&amp;[1], 0), Some(0));
+    }
+}</code></pre>
+<p>Run the tests with <code>cargo test --lib coin_change</code>. The tests check the example from section 6.1, an
+impossible amount, and the amount 0.</p>
+<h2 id="62-listing-every-subset"><a class="header" href="#62-listing-every-subset">6.2 Listing every subset</a></h2>
+<p>Not every recursive problem needs a table. Sometimes you need every possible answer, not the best one. Then
+recursion explores all the choices, and there is nothing to save.</p>
+<p><strong>The problem.</strong> List every subset of a set of distinct numbers. A <strong>subset</strong> is any selection of the
+elements, including none of them and all of them. <code>[1, 2, 3]</code> has eight subsets: <code>[]</code>, <code>[1]</code>, <code>[2]</code>, <code>[3]</code>,
+<code>[1, 2]</code>, <code>[1, 3]</code>, <code>[2, 3]</code>, and <code>[1, 2, 3]</code>.</p>
+<p><strong>The idea.</strong> Build subsets one element at a time. Start with the empty subset. From any subset, you can add
+one more element, as long as it comes later in the input than the elements already chosen. That rule is what
+stops <code>[2, 1]</code> from appearing as a copy of <code>[1, 2]</code>. Figure 6.3 draws the choices as a tree. Every node in
+the tree is one subset.</p>
+<figure>
+<img src="figures/dp-subsets.svg" alt="A tree rooted at the empty subset; each edge pushes a later element; the eight nodes are the eight subsets">
+<figcaption><b>Figure 6.3</b> The tree of choices for <code>[1, 2, 3]</code>. Each edge adds an element that comes after the last one chosen.</figcaption>
+</figure>
+<p>To visit the whole tree, the program walks it depth first, going down one branch as far as it can before
+trying the next. Going down means adding an element; coming back up means removing it. This way of exploring
+choices is called <strong>backtracking</strong>.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch06-subsets.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The tree of choices for 1, 2, 3, with the current path highlighted. The recursion records a subset at each node, pushes the next element on the way down, and pops it on the way back. The result list grows to [], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]. A last part shows the copy [2, 1] that a loop starting at 0 would record." data-chapters="[[0.0, &quot;walk&quot;], [67.44, &quot;loop from 0&quot;]]"><img src="figures/ch06-subsets.gif" alt="The tree of choices for 1, 2, 3, with the current path highlighted. The recursion records a subset at each node, pushes the next element on the way down, and pops it on the way back. The result list grows to [], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]. A last part shows the copy [2, 1] that a loop starting at 0 would record."></video>
+<figcaption><b>Animation 6.2</b> The recursion records each subset when it reaches its node, in depth-first order. Starting each loop at <code>start</code> keeps <code>[2, 1]</code> out of the result.</figcaption>
+</figure>
+<p class="listing"><b>Listing 6.3</b> Subsets by backtracking. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/backtracking.rs">src/problems/backtracking.rs</a></p>
+
+<pre><code class="language-rust">//! Subsets: enumerate every subset of a set of distinct integers.
+//!
+//! Backtracking with clean `path.push(...)` + recursive exploration + `pop`.
+//! `Vec&lt;Vec&lt;i32&gt;&gt;` is sorted in the tests to avoid order-dependent assertions.
+
+pub fn subsets(nums: Vec&lt;i32&gt;) -&gt; Vec&lt;Vec&lt;i32&gt;&gt; {
+    let mut result = Vec::with_capacity(1 &lt;&lt; nums.len());
+    let mut path = Vec::new();
+
+    fn backtrack(nums: &amp;[i32], start: usize, path: &amp;mut Vec&lt;i32&gt;, result: &amp;mut Vec&lt;Vec&lt;i32&gt;&gt;) {
+        result.push(path.clone());
+        for idx in start..nums.len() {
+            path.push(nums[idx]);
+            backtrack(nums, idx + 1, path, result);
+            path.pop();
+        }
+    }
+
+    backtrack(&amp;nums, 0, &amp;mut path, &amp;mut result);
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generates_all_subsets() {
+        let mut subsets = subsets(vec![1, 2, 3]);
+        subsets.sort_unstable();
+        assert_eq!(subsets.len(), 8);
+        assert!(subsets.contains(&amp;vec![]));
+        assert!(subsets.contains(&amp;vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn empty_input_has_one_subset() {
+        assert_eq!(subsets(vec![]), vec![vec![]]);
+    }
+}</code></pre>
+<p><code>backtrack</code> is a function defined inside <code>subsets</code>, as <code>go</code> was in chapter 1. It takes four things:</p>
+<ul>
+<li><code>nums</code>, the input, borrowed.</li>
+<li><code>start</code>, the first position it may choose from.</li>
+<li><code>path</code>, the subset being built. Only one <code>path</code> vector exists for the whole search, passed as <code>&amp;mut</code>.</li>
+<li><code>result</code>, the list of finished subsets, also passed as <code>&amp;mut</code>.</li>
+</ul>
+<p>On entry, <code>backtrack</code> records <code>path.clone()</code> in the result. The current path is one subset, the node of
+the tree it has reached. Then, for each later position, it pushes that element, recurses to explore the
+subtree below, and pops the element. After the pop, <code>path</code> is exactly as it was before the push, ready for
+the next choice.</p>
+<p>Trace the start of <code>subsets(vec![1, 2, 3])</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th><code>path</code> on entry</th><th>Records</th><th>Then pushes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>backtrack(start 0)</code></td><td><code>[]</code></td><td><code>[]</code></td><td>1</td></tr>
+<tr><td><code>backtrack(start 1)</code></td><td><code>[1]</code></td><td><code>[1]</code></td><td>2</td></tr>
+<tr><td><code>backtrack(start 2)</code></td><td><code>[1, 2]</code></td><td><code>[1, 2]</code></td><td>3</td></tr>
+<tr><td><code>backtrack(start 3)</code></td><td><code>[1, 2, 3]</code></td><td><code>[1, 2, 3]</code></td><td>nothing: the loop is empty</td></tr>
+<tr><td>back in <code>start 2</code></td><td><code>[1, 2]</code> after pop</td><td></td><td>no more positions</td></tr>
+<tr><td>back in <code>start 1</code></td><td><code>[1]</code> after pop</td><td></td><td>3</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>Vec::with_capacity(1 &lt;&lt; nums.len())</code> reserves exactly enough room. <code>1 &lt;&lt; n</code> means 2 to the power n, because
+shifting 1 left by n bits doubles it n times. A set of n elements has 2ⁿ subsets.</p>
+<p>The work is O(n · 2ⁿ): there are 2ⁿ subsets and each clone copies up to n numbers. No algorithm can do
+better, because the output itself has that size.</p>
+<h2 id="63-the-longest-increasing-run-inside-a-list"><a class="header" href="#63-the-longest-increasing-run-inside-a-list">6.3 The longest increasing run inside a list</a></h2>
+<p><strong>The problem.</strong> In a list of numbers, pick some of them and keep their order. Each picked number must be
+larger than the one before. What is the most you can pick? The picked numbers are called an <strong>increasing
+subsequence</strong>. In <code>[10, 9, 2, 5, 3, 7, 101, 18]</code>, you can pick <code>2, 3, 7, 18</code>, so the answer is 4.</p>
+<p>A subsequence may skip numbers. That is the difference from the substrings of chapter 3, which were
+contiguous.</p>
+<p><strong>The direct dynamic program.</strong> Let <code>dp[i]</code> be the length of the longest increasing subsequence that ends at
+position i. For each i, look at every earlier j with a smaller number, and take the best <code>dp[j] + 1</code>. That is
+O(n²), because each position looks at every earlier one.</p>
+<p><strong>A faster idea.</strong> Keep a different table, called <code>tails</code>. Its entries have this meaning:</p>
+<blockquote>
+<p>The k-th smallest entry of <code>tails</code> is the smallest number that can end an increasing subsequence of
+length k.</p>
+</blockquote>
+<p>Keeping the smallest possible ending number is useful because a smaller ending leaves more room for later
+numbers to extend it. When a new number arrives:</p>
+<ul>
+<li>If it is larger than every entry, it extends the longest subsequence found so far. Add it.</li>
+<li>Otherwise, find the smallest entry that is at least as large as it, and replace that entry with it. Some
+subsequence of that length can now end with a smaller number.</li>
+</ul>
+<p>At the end, the number of entries is the answer. Figure 6.4 follows the example.</p>
+<figure>
+<img src="figures/dp-lis.svg" alt="Eight rows showing tails after each number: 10; 9; 2; 2 5; 2 3; 2 3 7; 2 3 7 101; 2 3 7 18">
+<figcaption><b>Figure 6.4</b> <code>tails</code> after each number. The green cell is the one that changed.</figcaption>
+</figure>
+<p>Look at the last row. <code>tails</code> is <code>2, 3, 7, 18</code>, which happens to be a real increasing subsequence here. That
+is not true in general. <code>tails</code> can mix numbers from different subsequences. Only its length is meaningful.</p>
+<p>The entries of <code>tails</code> are always in increasing order, so finding “the smallest entry at least as large” can
+use a sorted structure. The program uses a <code>BTreeSet</code>, a set that keeps its elements sorted.</p>
+<p class="listing"><b>Listing 6.4</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/longest_increasing_subsequence.rs">src/bin/longest_increasing_subsequence.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::BTreeSet;
+
+fn lis_len(nums: &amp;[i32]) -&gt; usize {
+    let mut tails = BTreeSet::new();
+
+    for &amp;num in nums {
+        if let Some(&amp;ceiling) = tails.range(num..).next() {
+            tails.remove(&amp;ceiling);
+        }
+        tails.insert(num);
+    }
+
+    tails.len()
+}
+
+fn main() {
+    println!("{}", lis_len(&amp;[10, 9, 2, 5, 3, 7, 101, 18])); // 4
+    println!("{}", lis_len(&amp;[0, 1, 0, 3, 2, 3])); // 4
+    println!("{}", lis_len(&amp;[7, 7, 7, 7])); // 1
+    println!("{}", lis_len(&amp;[5, 4, 3, 2, 1])); // 1
+    println!("{}", lis_len(&amp;[1, 2, 3, 4, 5])); // 5
+    println!("{}", lis_len(&amp;[])); // 0
+}</code></pre>
+<p><code>tails.range(num..)</code> returns the elements from <code>num</code> upward, in sorted order. <code>.next()</code> takes the first of
+them, the smallest element that is at least <code>num</code>. If there is one, the program removes it. Then it inserts
+<code>num</code> in every case. Removing and inserting is how the set replaces one element with another.</p>
+<p>The range <code>num..</code> includes <code>num</code> itself, which handles repeated numbers. In <code>[7, 7, 7, 7]</code>, the second 7
+finds the first 7, removes it, and inserts itself again, so the answer stays 1. A run with a repeated number
+is not strictly increasing, so 1 is correct.</p>
+<p>Each <code>range</code>, <code>remove</code>, and <code>insert</code> on a <code>BTreeSet</code> costs O(log n), so the whole program is O(n log n).</p>
+<pre><code class="language-text">$ cargo run --bin longest_increasing_subsequence
+4
+4
+1
+1
+5
+0
+</code></pre>
+<p>The six outputs match the comments in <code>main</code>.</p>
+<h2 id="64-choosing-jobs-that-do-not-overlap"><a class="header" href="#64-choosing-jobs-that-do-not-overlap">6.4 Choosing jobs that do not overlap</a></h2>
+<p><strong>The problem.</strong> A machine can run one job at a time. Each job has a start time, an end time, and a profit.
+Choose jobs that do not overlap so that the total profit is as large as possible. Figure 6.5 shows the four
+sample jobs.</p>
+<figure>
+<img src="figures/dp-jobs.svg" alt="Four jobs on a timeline: A from 1 to 3 profit 50, B from 2 to 4 profit 10, C from 3 to 5 profit 40, D from 3 to 6 profit 70; A and D are highlighted">
+<figcaption><b>Figure 6.5</b> The sample jobs. A and D fit together and earn 120, the best possible.</figcaption>
+</figure>
+<p>A job written <code>[s, e)</code> runs from time s up to, but not including, time e. So a job ending at 3 and a job
+starting at 3 do not overlap.</p>
+<h3 id="641-building-the-subproblem"><a class="header" href="#641-building-the-subproblem">6.4.1 Building the subproblem</a></h3>
+<p>First sort the jobs by end time. Then any job that can come before job i in a schedule ends earlier, so it
+appears earlier in the sorted list. The subproblem is:</p>
+<blockquote>
+<p><code>dp[i]</code> is the best profit using only the first i jobs of the sorted list.</p>
+</blockquote>
+<p>For job i there are two choices:</p>
+<ul>
+<li><strong>Skip it.</strong> The best profit stays <code>dp[i]</code>, the best without it.</li>
+<li><strong>Take it.</strong> Then only jobs that end by its start time can come before it. Those jobs are a prefix of the
+sorted list, say the first <code>prev</code> jobs. The profit is <code>dp[prev] + profit of job i</code>.</li>
+</ul>
+<p>So <code>dp[i + 1]</code> is the larger of the two. The last entry is the answer.</p>
+<p>Finding <code>prev</code> is a search in a sorted list, so it can be a binary search, like chapter 3’s. The standard
+library provides one as <code>partition_point</code>. Given a condition that is true for a prefix of the list and false
+after it, <code>partition_point</code> returns the length of that prefix.</p>
+<h3 id="642-the-code"><a class="header" href="#642-the-code">6.4.2 The code</a></h3>
+<p class="listing"><b>Listing 6.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/job_scheduling_with_profit_and_deadline.rs">src/bin/job_scheduling_with_profit_and_deadline.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Debug, Default, Clone, Copy)]
+struct Job {
+    start: u32,
+    end: u32,
+    profit: u64,
+}
+
+fn max_profit(mut jobs: Vec&lt;Job&gt;) -&gt; u64 {
+    // Sort by end time so every job that could come before
+    // job `i` in a schedule sits somewhere in jobs[..i].
+    jobs.sort_unstable_by_key(|job| job.end);
+
+    // dp[i] = best profit achievable using only the first `i` jobs.
+    let mut dp = vec![0; jobs.len() + 1];
+
+    for (i, job) in jobs.iter().enumerate() {
+        // Binary search for how many earlier jobs finish by the time
+        // this one starts. Those are exactly the jobs compatible with it,
+        // and since they form a prefix, dp[prev] is their best profit.
+        let prev = jobs[..i].partition_point(|j| j.end &lt;= job.start);
+
+        // Either skip this job (keep dp[i]),
+        // or take it on top of the best compatible prefix.
+        dp[i + 1] = dp[i].max(dp[prev] + job.profit);
+    }
+
+    // After considering every job, the last entry holds the answer.
+    dp[jobs.len()]
+}
+
+fn main() {
+    let jobs = vec![
+        Job {
+            start: 1,
+            end: 3,
+            profit: 50,
+        },
+        Job {
+            start: 2,
+            end: 4,
+            profit: 10,
+        },
+        Job {
+            start: 3,
+            end: 5,
+            profit: 40,
+        },
+        Job {
+            start: 3,
+            end: 6,
+            profit: 70,
+        },
+    ];
+
+    println!("{}", max_profit(jobs)); // 120
+}</code></pre>
+<p>The comments inside <code>max_profit</code> walk through the same reasoning as section 6.4.1, step by step.
+<code>jobs[..i].partition_point(|j| j.end &lt;= job.start)</code> counts the jobs among the first i that end by this job’s
+start. Because the list is sorted by end time, those jobs come first, which is the condition
+<code>partition_point</code> needs.</p>
+<p>Trace it on the sorted jobs A, B, C, D:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>i</th><th>job</th><th>prev</th><th>skip: <code>dp[i]</code></th><th>take: <code>dp[prev]</code> + profit</th><th><code>dp[i + 1]</code></th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>A [1, 3) 50</td><td>0</td><td>0</td><td>0 + 50 = 50</td><td>50</td></tr>
+<tr><td>1</td><td>B [2, 4) 10</td><td>0</td><td>50</td><td>0 + 10 = 10</td><td>50</td></tr>
+<tr><td>2</td><td>C [3, 5) 40</td><td>1</td><td>50</td><td>50 + 40 = 90</td><td>90</td></tr>
+<tr><td>3</td><td>D [3, 6) 70</td><td>1</td><td>90</td><td>50 + 70 = 120</td><td><strong>120</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>For C and D, <code>prev</code> is 1: only A ends by time 3. Sorting costs O(n log n), and each job does one binary
+search, so the whole program is O(n log n).</p>
+<pre><code class="language-text">$ cargo run --bin job_scheduling_with_profit_and_deadline
+120
+</code></pre>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Dynamic programming answers smaller versions of a problem first, saves the answers, and combines them.</li>
+<li>Start by writing, in one sentence, what one table entry means. The recurrence and the code follow from it.</li>
+<li>Coin change fills <code>dp[t]</code> from <code>dp[t - c] + 1</code> for each coin, left to right, in O(amount × coins).</li>
+<li>Greedy choices can fail. Coins 1, 3, and 4 make 6 greedily with three coins, but two suffice.</li>
+<li>Backtracking explores a tree of choices with one shared <code>path</code>, pushing before each recursive call and
+popping after it. Listing all subsets is O(n · 2ⁿ), the size of the output.</li>
+<li>The longest increasing subsequence keeps the smallest possible ending for each length, in a sorted set,
+for O(n log n).</li>
+<li>Weighted job scheduling sorts by end time, uses <code>partition_point</code> to find compatible jobs, and fills a
+table of best profits.</li>
+</ul>
+</div>
+
+<p>Chapter 7 begins Part 3, on modeling data. You will build types that can only hold valid values, using
+structs, enums, and error types.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Change <code>coin_change</code> to also return the coins it used. Store the last coin chosen for each amount, then
+follow those choices back from <code>amount</code>.</li>
+<li>Write the O(n²) version of the longest increasing subsequence described in section 6.3, and check that it
+agrees with <code>lis_len</code> on random lists.</li>
+<li>Generate all subsets without recursion. Count a number <code>mask</code> from 0 to 2ⁿ − 1, and include element i
+when bit i of <code>mask</code> is set.</li>
+<li>Extend <code>max_profit</code> to return which jobs it chose, not only the total.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch05-heaps.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch07-types.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch05-heaps.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch07-types.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

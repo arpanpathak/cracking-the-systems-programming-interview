@@ -1,0 +1,1651 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Thread pools - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch18.png" alt="Foreman, the robot who hires the crew, sends them home cleanly, beside a job hopper feeding four small worker bots at a line shaft">
+<h1 id="thread-pools"><a class="header" href="#thread-pools">Thread pools</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>A pool of worker threads that take jobs from a shared channel</li>
+<li>A measured bug: a lock held for too long turned four parallel jobs into a sequence</li>
+<li>Returning errors instead of panicking, and shutting down in <code>Drop</code></li>
+<li>Keeping workers alive when a job panics, with <code>catch_unwind</code></li>
+<li>A bounded job queue, results sent back through a channel, and many producers</li>
+<li>A parallel map that returns results in input order</li>
+</ul>
+</div>
+
+<p>Starting a thread costs time and memory. The operating system must create it, give it a stack, and schedule it.
+For a program that runs thousands of small jobs, starting a thread per job wastes most of its time on starting
+threads.</p>
+<p>A <strong>thread pool</strong> starts a fixed number of threads once, and reuses them. The threads are called <strong>workers</strong>. Each
+worker waits for a job, runs it, and waits for the next. Jobs wait in a queue until a worker is free. This is the
+queue of chapter 17, with the consumers built in.</p>
+<p>This chapter builds the pool several times. Each version fixes a problem found in the one before, so read them in
+order.</p>
+<h2 id="181-the-parts-of-a-pool"><a class="header" href="#181-the-parts-of-a-pool">18.1 The parts of a pool</a></h2>
+<p>Every pool here has the same parts (figure 18.1).</p>
+<figure>
+<img src="figures/pool-parts.svg" alt="execute sends a job into a channel through a Sender. The single Receiver is shared by four workers through an Arc and a Mutex. Notes explain the Job type, the shared receiver, and how dropping the Sender closes the channel.">
+<figcaption><b>Figure 18.1</b> A job travels from <code>execute</code>, through a channel, to whichever worker takes it first.</figcaption>
+</figure>
+<p><strong>The job type.</strong> A job is any closure that the pool can run once on another thread:</p>
+<pre><code class="language-rust">type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;</code></pre>
+<p>Each closure has its own unnamed type, so a queue cannot hold them directly. <code>Box&lt;dyn FnOnce()&gt;</code> puts each closure
+on the heap behind a pointer of one common type. <code>dyn FnOnce()</code> means “some type that can be called once with no
+arguments”. <code>Send</code> lets the job move to a worker thread. <code>'static</code> means the job borrows nothing that could be
+dropped before the job runs.</p>
+<p><strong>The channel.</strong> <code>std::sync::mpsc::channel()</code> returns a <code>Sender</code> and a <code>Receiver</code>. Values sent through the sender
+come out of the receiver in the same order. <code>mpsc</code> stands for multiple producer, single consumer: the <code>Sender</code> can
+be cloned, but there is only one <code>Receiver</code>.</p>
+<p><strong>The shared receiver.</strong> Every worker needs to take jobs from the one receiver. So the pool wraps it in a <code>Mutex</code>,
+and shares the mutex through an <code>Arc</code>. A worker locks the mutex, calls <code>recv()</code> to take the next job, and runs it.</p>
+<p><strong>Shutdown.</strong> When every <code>Sender</code> is dropped, the channel closes. <code>recv()</code> then returns <code>Err</code> once the remaining
+jobs are taken. A worker that sees the <code>Err</code> leaves its loop, and the thread ends.</p>
+<h2 id="182-version-1-and-a-bug-you-can-measure"><a class="header" href="#182-version-1-and-a-bug-you-can-measure">18.2 Version 1, and a bug you can measure</a></h2>
+<p class="listing"><b>Listing 18.1</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs">src/bin/thread_pool.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    sender: mpsc::Sender&lt;Job&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    pub fn new(size: usize) -&gt; Self {
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let rx = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    while let Ok(job) = rx.lock().unwrap().recv() {
+                        job();
+                    }
+                })
+            })
+            .collect();
+
+        Self { sender, workers }
+    }
+
+    pub fn execute(&amp;self, job: Job) {
+        self.sender.send(job).unwrap();
+    }
+
+    pub fn join(self) {
+        drop(self.sender);
+        for w in self.workers {
+            let _ = w.join();
+        }
+    }
+}
+
+fn main() {
+    let pool = ThreadPool::new(4);
+    for i in 0..10_000 {
+        pool.execute(Box::new(move || println!("task {i}")));
+    }
+
+    pool.join();
+}</code></pre>
+<p><code>new</code> creates the channel and starts <code>size</code> workers. Each gets its own clone of the <code>Arc</code> around the receiver.
+<code>execute</code> sends a boxed job. <code>join</code> takes <code>self</code> by value, drops the sender to close the channel, and waits for
+every worker. <code>main</code> queues 10,000 jobs that each print a line.</p>
+<p>The program prints 10,000 lines and looks correct. It has one bug, in the worker loop:</p>
+<pre><code class="language-rust">while let Ok(job) = rx.lock().unwrap().recv() {
+    job();
+}</code></pre>
+<p><code>rx.lock().unwrap()</code> creates a <code>MutexGuard</code>. The guard is a temporary value inside the <code>while let</code> condition. A
+temporary in that position lives until the end of the loop body, so the guard is still alive while <code>job()</code> runs.
+The worker holds the lock for the whole job, and no other worker can take a job in the meantime.</p>
+<p>To see the effect, I ran four jobs that each sleep for 200 ms on four workers. I ran them once with this
+loop and once with the loop of version 2. Figure 18.2 shows the result.</p>
+<figure>
+<img src="figures/pool-lock-held.svg" alt="With the while-let loop, four 200 ms jobs run one after another and take 814 ms. With a let statement, they run at the same time and take 205 ms.">
+<figcaption><b>Figure 18.2</b> The same four jobs with each loop shape, release build.</figcaption>
+</figure>
+<p>With <code>while let</code>, the four jobs ran one after another and took 814 ms. With the lock released before the job, they
+ran at the same time and took 205 ms. The first pool had four threads but used one at a time.</p>
+<p>The same bug has a second effect. If a job panics, the panic happens while the guard is alive, so it poisons the
+mutex. When I piped this program’s output into <code>head</code>, which closes the pipe after five lines, <code>println!</code> panicked
+inside a job. The other three workers then panicked on <code>.unwrap()</code> of the poisoned lock, and <code>main</code> panicked when
+<code>send</code> found no worker left.</p>
+<h2 id="183-version-2-release-the-lock-before-the-job"><a class="header" href="#183-version-2-release-the-lock-before-the-job">18.3 Version 2: release the lock before the job</a></h2>
+<p class="listing"><b>Listing 18.2</b> The worker loop and <code>execute</code> (lines 23 to 64). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+impl ThreadPool {
+    /// Start `size` workers. Panics if `size` is zero.
+    pub fn new(size: usize) -&gt; Self {
+        assert!(size &gt; 0, "a thread pool needs at least one worker");
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    loop {
+                        // The guard is a temporary of this `let` statement, so the
+                        // lock is released here, before the job runs.
+                        let job = receiver.lock().unwrap().recv();
+                        match job {
+                            Ok(job) =&gt; job(),
+                            Err(_) =&gt; break, // every sender is gone: shut down
+                        }
+                    }
+                })
+            })
+            .collect();
+
+        Self { sender, workers }
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender.send(Box::new(job)).unwrap();
+    }
+
+    /// Stop accepting jobs, let the workers drain the queue, and wait for them.
+    pub fn join(self) {
+        drop(self.sender);
+        for worker in self.workers {
+            let _ = worker.join();
+        }
+    }
+}</code></pre>
+<p>The fix is one line. <code>let job = receiver.lock().unwrap().recv();</code> is a separate statement, and the temporary guard
+is dropped at the end of that statement. The lock is released before <code>match</code> runs the job.</p>
+<p>Version 2 also changes <code>execute</code>. It is generic over <code>F: FnOnce() + Send + 'static</code>, and does the boxing itself.
+Callers write <code>pool.execute(|| ...)</code> instead of <code>pool.execute(Box::new(|| ...))</code>.</p>
+<p class="listing"><b>Listing 18.3</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
+
+<pre><code class="language-rust">//! Thread pool, version 2: workers really run in parallel.
+//!
+//! Version 1 (`src/bin/thread_pool.rs`) holds the receiver's lock while a job runs,
+//! because the `MutexGuard` in `while let Ok(job) = rx.lock().unwrap().recv()` lives
+//! until the end of the loop body. This version takes the job in its own `let`
+//! statement, so the guard is dropped before the job starts.
+//!
+//! It also accepts any closure in `execute`, so callers no longer write `Box::new`.
+
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    sender: mpsc::Sender&lt;Job&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    /// Start `size` workers. Panics if `size` is zero.
+    pub fn new(size: usize) -&gt; Self {
+        assert!(size &gt; 0, "a thread pool needs at least one worker");
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || {
+                    loop {
+                        // The guard is a temporary of this `let` statement, so the
+                        // lock is released here, before the job runs.
+                        let job = receiver.lock().unwrap().recv();
+                        match job {
+                            Ok(job) =&gt; job(),
+                            Err(_) =&gt; break, // every sender is gone: shut down
+                        }
+                    }
+                })
+            })
+            .collect();
+
+        Self { sender, workers }
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender.send(Box::new(job)).unwrap();
+    }
+
+    /// Stop accepting jobs, let the workers drain the queue, and wait for them.
+    pub fn join(self) {
+        drop(self.sender);
+        for worker in self.workers {
+            let _ = worker.join();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        sync::{
+            Barrier,
+            atomic::{AtomicUsize, Ordering},
+        },
+        time::Duration,
+    };
+
+    use super::*;
+
+    #[test]
+    fn runs_every_job() {
+        let pool = ThreadPool::new(4);
+        let counter = Arc::new(AtomicUsize::new(0));
+        for _ in 0..100 {
+            let counter = Arc::clone(&amp;counter);
+            pool.execute(move || {
+                counter.fetch_add(1, Ordering::Relaxed);
+            });
+        }
+        pool.join();
+        assert_eq!(counter.load(Ordering::Relaxed), 100);
+    }
+
+    #[test]
+    fn jobs_run_at_the_same_time() {
+        // Four jobs wait on a barrier for four parties. They can only all get
+        // through if four workers run them at once; version 1 would never finish.
+        let pool = ThreadPool::new(4);
+        let barrier = Arc::new(Barrier::new(4));
+        let (done_tx, done_rx) = mpsc::channel();
+
+        for _ in 0..4 {
+            let barrier = Arc::clone(&amp;barrier);
+            let done_tx = done_tx.clone();
+            pool.execute(move || {
+                barrier.wait();
+                done_tx.send(()).unwrap();
+            });
+        }
+
+        for _ in 0..4 {
+            done_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("jobs did not run in parallel");
+        }
+        pool.join();
+    }
+
+    #[test]
+    #[should_panic(expected = "at least one worker")]
+    fn zero_workers_is_rejected() {
+        let _ = ThreadPool::new(0);
+    }
+}</code></pre>
+<p>The test <code>jobs_run_at_the_same_time</code> checks the fix without measuring time. It uses a <code>Barrier</code> for four threads.
+A barrier makes each thread that calls <code>wait()</code> sleep until four threads have called it, then releases them all.
+Four jobs wait on the barrier. They can only get through if four workers run them at the same moment. With
+version 1’s loop, the first job would hold the lock and wait on the barrier forever.</p>
+<p>The test waits for the results with <code>recv_timeout(Duration::from_secs(5))</code>, so a broken pool fails the test after
+five seconds instead of hanging it.</p>
+<h2 id="184-version-3-errors-and-shutdown-on-drop"><a class="header" href="#184-version-3-errors-and-shutdown-on-drop">18.4 Version 3: errors, and shutdown on drop</a></h2>
+<p>Version 2 still panics in three places: for a size of zero, when <code>send</code> fails, and when the lock is poisoned. And
+if the caller forgets to call <code>join</code>, the pool is dropped without waiting for its jobs. Version 3 fixes both.</p>
+<p class="listing"><b>Listing 18.4</b> The error type (lines 16 to 32). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fmt,
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+/// Why the pool refused a request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PoolError {
+    NoWorkers,
+    ShutDown,
+}
+
+impl fmt::Display for PoolError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::NoWorkers =&gt; write!(f, "a thread pool needs at least one worker"),
+            Self::ShutDown =&gt; write!(f, "the thread pool has shut down"),
+        }
+    }
+}
+
+impl std::error::Error for PoolError {}</code></pre>
+<p><code>PoolError</code> names the two ways a request can fail. It implements <code>Display</code> for a message, and <code>Error</code> so callers
+can use <code>?</code> and <code>Box&lt;dyn Error&gt;</code> with it.</p>
+<p class="listing"><b>Listing 18.5</b> <code>execute</code>, <code>shutdown</code>, and <code>Drop</code> (lines 61 to 87).</p>
+
+<pre><code class="language-rust">impl ThreadPool {
+    // ...
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F) -&gt; Result&lt;(), PoolError&gt;
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender
+            .as_ref()
+            .ok_or(PoolError::ShutDown)?
+            .send(Box::new(job))
+            .map_err(|_| PoolError::ShutDown)
+    }
+
+    /// Stop accepting jobs, drain the queue, and wait for every worker.
+    /// Calling it again does nothing.
+    pub fn shutdown(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.shutdown();
+    }
+}</code></pre>
+<p>The sender is now an <code>Option&lt;Sender&lt;Job&gt;&gt;</code>. <code>shutdown</code> takes it out with <code>self.sender.take()</code>, which leaves <code>None</code>
+behind, and drops it. <code>execute</code> checks for <code>None</code> with <code>.ok_or(PoolError::ShutDown)?</code>.</p>
+<p><code>shutdown</code> takes <code>&amp;mut self</code>, not <code>self</code>, so that <code>Drop</code> can call it. <code>self.workers.drain(..)</code> removes the handles
+from the vector one at a time and gives each to the loop. A second call finds no sender and no workers, so it does
+nothing.</p>
+<p><code>impl Drop for ThreadPool</code> calls <code>shutdown</code>. When a pool goes out of scope, it closes its channel and waits for
+every queued job to finish.</p>
+<p class="listing"><b>Listing 18.6</b> The worker loop (lines 91 to 104).</p>
+
+<pre><code class="language-rust">fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;) {
+    loop {
+        // A poisoned lock means another worker panicked while holding it;
+        // stop this worker instead of panicking a second time.
+        let Ok(guard) = receiver.lock() else { return };
+        let job = guard.recv();
+        drop(guard);
+
+        match job {
+            Ok(job) =&gt; job(),
+            Err(_) =&gt; return,
+        }
+    }
+}</code></pre>
+<p>The worker loop is now a named function. It uses <code>let ... else</code> to leave quietly if the lock is poisoned, and
+drops the guard explicitly before running the job.</p>
+<p class="listing"><b>Listing 18.7</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
+
+<pre><code class="language-rust">//! Thread pool, version 3: errors instead of panics, and shutdown on drop.
+//!
+//! - `new` returns `Err(PoolError::NoWorkers)` for a size of zero.
+//! - `execute` returns `Err(PoolError::ShutDown)` once the pool no longer accepts work.
+//! - Dropping the pool closes the queue and joins every worker, so a pool that goes
+//!   out of scope still finishes the jobs it was given.
+
+use std::{
+    fmt,
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+/// Why the pool refused a request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PoolError {
+    NoWorkers,
+    ShutDown,
+}
+
+impl fmt::Display for PoolError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::NoWorkers =&gt; write!(f, "a thread pool needs at least one worker"),
+            Self::ShutDown =&gt; write!(f, "the thread pool has shut down"),
+        }
+    }
+}
+
+impl std::error::Error for PoolError {}
+
+pub struct ThreadPool {
+    // `None` after shutdown: dropping the sender is what tells workers to stop.
+    sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    /// Start `size` workers.
+    pub fn new(size: usize) -&gt; Result&lt;Self, PoolError&gt; {
+        if size == 0 {
+            return Err(PoolError::NoWorkers);
+        }
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..size)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || worker_loop(&amp;receiver))
+            })
+            .collect();
+
+        Ok(Self {
+            sender: Some(sender),
+            workers,
+        })
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F) -&gt; Result&lt;(), PoolError&gt;
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender
+            .as_ref()
+            .ok_or(PoolError::ShutDown)?
+            .send(Box::new(job))
+            .map_err(|_| PoolError::ShutDown)
+    }
+
+    /// Stop accepting jobs, drain the queue, and wait for every worker.
+    /// Calling it again does nothing.
+    pub fn shutdown(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.shutdown();
+    }
+}
+
+fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;) {
+    loop {
+        // A poisoned lock means another worker panicked while holding it;
+        // stop this worker instead of panicking a second time.
+        let Ok(guard) = receiver.lock() else { return };
+        let job = guard.recv();
+        drop(guard);
+
+        match job {
+            Ok(job) =&gt; job(),
+            Err(_) =&gt; return,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use super::*;
+
+    #[test]
+    fn zero_workers_is_an_error() {
+        assert_eq!(ThreadPool::new(0).err(), Some(PoolError::NoWorkers));
+    }
+
+    #[test]
+    fn dropping_the_pool_finishes_queued_jobs() {
+        let counter = Arc::new(AtomicUsize::new(0));
+        {
+            let pool = ThreadPool::new(2).unwrap();
+            for _ in 0..50 {
+                let counter = Arc::clone(&amp;counter);
+                pool.execute(move || {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                })
+                .unwrap();
+            }
+        } // drop: close the queue and join
+        assert_eq!(counter.load(Ordering::Relaxed), 50);
+    }
+
+    #[test]
+    fn execute_after_shutdown_is_an_error() {
+        let mut pool = ThreadPool::new(1).unwrap();
+        pool.shutdown();
+        assert_eq!(pool.execute(|| {}), Err(PoolError::ShutDown));
+        pool.shutdown(); // idempotent
+    }
+
+    #[test]
+    fn errors_render_a_message() {
+        assert_eq!(
+            PoolError::NoWorkers.to_string(),
+            "a thread pool needs at least one worker"
+        );
+        assert_eq!(
+            PoolError::ShutDown.to_string(),
+            "the thread pool has shut down"
+        );
+    }
+}</code></pre>
+<p>The test <code>dropping_the_pool_finishes_queued_jobs</code> creates a pool inside a block, queues 50 jobs, and lets the pool
+go out of scope at the closing brace. After the block, all 50 jobs must have run.</p>
+<h2 id="185-version-4-surviving-a-panicking-job"><a class="header" href="#185-version-4-surviving-a-panicking-job">18.5 Version 4: surviving a panicking job</a></h2>
+<p>Version 3 has one remaining weakness. If a job panics, the panic unwinds out of <code>worker_loop</code> and ends that
+worker’s thread. The pool now has one worker fewer, and nothing reports it. After enough panics, no worker is left,
+and jobs queue up forever.</p>
+<p>Version 4 catches the panic (figure 18.3).</p>
+<figure>
+<img src="figures/pool-catch-unwind.svg" alt="A worker takes a job and runs it inside catch_unwind. Ok increments completed; Err, a caught panic, increments panicked. The worker continues.">
+<figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
+</figure>
+<p class="listing"><b>Listing 18.8</b> The worker loop (lines 144 to 159). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fmt,
+    io,
+    panic::{self, AssertUnwindSafe},
+    sync::{
+        Arc,
+        Mutex,
+        atomic::{AtomicUsize, Ordering},
+        mpsc,
+    },
+    thread,
+};
+
+fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;, counters: &amp;Counters) {
+    loop {
+        let Ok(guard) = receiver.lock() else { return };
+        let job = guard.recv();
+        drop(guard);
+
+        let Ok(job) = job else { return };
+
+        // `AssertUnwindSafe` is sound here: the job owns everything it touches,
+        // and a panicking job's partial state is never observed by this loop.
+        match panic::catch_unwind(AssertUnwindSafe(job)) {
+            Ok(()) =&gt; counters.completed.fetch_add(1, Ordering::Relaxed),
+            Err(_) =&gt; counters.panicked.fetch_add(1, Ordering::Relaxed),
+        };
+    }
+}</code></pre>
+<p><code>panic::catch_unwind(f)</code> runs <code>f</code>. If <code>f</code> panics, the unwinding stops at <code>catch_unwind</code>, which returns <code>Err</code>.
+Otherwise it returns <code>Ok</code> with <code>f</code>’s result.</p>
+<p><code>catch_unwind</code> requires the closure to be <code>UnwindSafe</code>. The trait marks types that cannot leave broken data
+visible after a panic. A boxed <code>dyn FnOnce</code> does not have it, because the compiler cannot see what the closure
+captured. <code>AssertUnwindSafe(job)</code> is a wrapper that declares the closure safe anyway. The comment gives the reason:
+the job owns everything it touches, and this loop never looks at its partial state.</p>
+<p>Each outcome increments one of two atomic counters, <code>completed</code> or <code>panicked</code>.</p>
+<p class="listing"><b>Listing 18.9</b> Named workers (lines 73 to 105).</p>
+
+<pre><code class="language-rust">impl ThreadPool {
+    /// Start `size` named workers.
+    pub fn new(size: usize) -&gt; Result&lt;Self, PoolError&gt; {
+        if size == 0 {
+            return Err(PoolError::NoWorkers);
+        }
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let counters = Arc::new(Counters::default());
+
+        let mut pool = Self {
+            sender: Some(sender),
+            workers: Vec::with_capacity(size),
+            counters,
+        };
+
+        for id in 0..size {
+            let receiver = Arc::clone(&amp;receiver);
+            let counters = Arc::clone(&amp;pool.counters);
+            let spawned = thread::Builder::new()
+                .name(format!("pool-worker-{id}"))
+                .spawn(move || worker_loop(&amp;receiver, &amp;counters));
+
+            match spawned {
+                Ok(handle) =&gt; pool.workers.push(handle),
+                // Dropping `pool` here closes the queue and joins the workers
+                // that did start, so none of them is leaked.
+                Err(error) =&gt; return Err(PoolError::Spawn(error)),
+            }
+        }
+
+        Ok(pool)
+    }
+    // ...
+}</code></pre>
+<p><code>thread::Builder</code> configures a thread before starting it. Here it gives each worker a name, <code>pool-worker-0</code> and so
+on, which appears in panic messages and debuggers. <code>Builder::spawn</code> returns a <code>Result</code>, because the operating system
+can refuse to create a thread. <code>thread::spawn</code> panics in that case.</p>
+<p>The pool is built before the workers are started. If starting the third worker fails, <code>return Err(...)</code> drops the
+half-built <code>pool</code>. Its <code>Drop</code> closes the channel and joins the two workers that did start, so no thread is left
+running.</p>
+<p class="listing"><b>Listing 18.10</b> <code>shutdown</code> and the report (lines 113 to 136).</p>
+
+<pre><code class="language-rust">impl ThreadPool {
+    // ...
+    /// Close the queue, wait for every queued job, and report the outcome.
+    pub fn shutdown(mut self) -&gt; Report {
+        self.close_and_join();
+        Report {
+            completed: self.counters.completed.load(Ordering::Relaxed),
+            panicked: self.counters.panicked.load(Ordering::Relaxed),
+        }
+    }
+
+    fn close_and_join(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            // Jobs cannot unwind out of `worker_loop`, so a join error would mean
+            // a bug in the loop itself; there is nothing further to clean up.
+            let _ = worker.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.close_and_join();
+    }
+}</code></pre>
+<p><code>shutdown</code> takes <code>self</code> by value and returns a <code>Report</code> with the two counts. The work is in <code>close_and_join</code>, which
+<code>Drop</code> also calls. When <code>shutdown</code> returns, <code>self</code> is dropped, and <code>Drop</code> runs <code>close_and_join</code> a second time. The
+second call finds nothing left to do.</p>
+<p class="listing"><b>Listing 18.11</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
+
+<pre><code class="language-rust">//! Thread pool, version 4: survives panicking jobs and reports what happened.
+//!
+//! - Workers are named threads created with `thread::Builder`, and a failure to
+//!   spawn one is returned as `PoolError::Spawn` after the already started workers
+//!   are shut down.
+//! - Each job runs inside `catch_unwind`, so a panicking job no longer kills its
+//!   worker and silently shrinks the pool.
+//! - `shutdown` consumes the pool and returns a `Report` with the number of jobs
+//!   that completed and the number that panicked.
+
+use std::{
+    fmt,
+    io,
+    panic::{self, AssertUnwindSafe},
+    sync::{
+        Arc,
+        Mutex,
+        atomic::{AtomicUsize, Ordering},
+        mpsc,
+    },
+    thread,
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+/// Why the pool could not be created or refused a job.
+#[derive(Debug)]
+pub enum PoolError {
+    NoWorkers,
+    Spawn(io::Error),
+    ShutDown,
+}
+
+impl fmt::Display for PoolError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::NoWorkers =&gt; write!(f, "a thread pool needs at least one worker"),
+            Self::Spawn(error) =&gt; write!(f, "failed to spawn a worker thread: {error}"),
+            Self::ShutDown =&gt; write!(f, "the thread pool has shut down"),
+        }
+    }
+}
+
+impl std::error::Error for PoolError {
+    fn source(&amp;self) -&gt; Option&lt;&amp;(dyn std::error::Error + 'static)&gt; {
+        match self {
+            Self::Spawn(error) =&gt; Some(error),
+            _ =&gt; None,
+        }
+    }
+}
+
+/// What the pool did over its lifetime.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Report {
+    pub completed: usize,
+    pub panicked: usize,
+}
+
+#[derive(Default)]
+struct Counters {
+    completed: AtomicUsize,
+    panicked: AtomicUsize,
+}
+
+pub struct ThreadPool {
+    sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+    workers: Vec&lt;thread::JoinHandle&lt;()&gt;&gt;,
+    counters: Arc&lt;Counters&gt;,
+}
+
+impl ThreadPool {
+    /// Start `size` named workers.
+    pub fn new(size: usize) -&gt; Result&lt;Self, PoolError&gt; {
+        if size == 0 {
+            return Err(PoolError::NoWorkers);
+        }
+
+        let (sender, receiver) = mpsc::channel::&lt;Job&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let counters = Arc::new(Counters::default());
+
+        let mut pool = Self {
+            sender: Some(sender),
+            workers: Vec::with_capacity(size),
+            counters,
+        };
+
+        for id in 0..size {
+            let receiver = Arc::clone(&amp;receiver);
+            let counters = Arc::clone(&amp;pool.counters);
+            let spawned = thread::Builder::new()
+                .name(format!("pool-worker-{id}"))
+                .spawn(move || worker_loop(&amp;receiver, &amp;counters));
+
+            match spawned {
+                Ok(handle) =&gt; pool.workers.push(handle),
+                // Dropping `pool` here closes the queue and joins the workers
+                // that did start, so none of them is leaked.
+                Err(error) =&gt; return Err(PoolError::Spawn(error)),
+            }
+        }
+
+        Ok(pool)
+    }
+
+    /// Queue a closure to run on the next free worker.
+    pub fn execute&lt;F&gt;(&amp;self, job: F) -&gt; Result&lt;(), PoolError&gt;
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        self.sender
+            .as_ref()
+            .ok_or(PoolError::ShutDown)?
+            .send(Box::new(job))
+            .map_err(|_| PoolError::ShutDown)
+    }
+
+    /// Close the queue, wait for every queued job, and report the outcome.
+    pub fn shutdown(mut self) -&gt; Report {
+        self.close_and_join();
+        Report {
+            completed: self.counters.completed.load(Ordering::Relaxed),
+            panicked: self.counters.panicked.load(Ordering::Relaxed),
+        }
+    }
+
+    fn close_and_join(&amp;mut self) {
+        drop(self.sender.take());
+        for worker in self.workers.drain(..) {
+            // Jobs cannot unwind out of `worker_loop`, so a join error would mean
+            // a bug in the loop itself; there is nothing further to clean up.
+            let _ = worker.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.close_and_join();
+    }
+}
+
+fn worker_loop(receiver: &amp;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;, counters: &amp;Counters) {
+    loop {
+        let Ok(guard) = receiver.lock() else { return };
+        let job = guard.recv();
+        drop(guard);
+
+        let Ok(job) = job else { return };
+
+        // `AssertUnwindSafe` is sound here: the job owns everything it touches,
+        // and a panicking job's partial state is never observed by this loop.
+        match panic::catch_unwind(AssertUnwindSafe(job)) {
+            Ok(()) =&gt; counters.completed.fetch_add(1, Ordering::Relaxed),
+            Err(_) =&gt; counters.panicked.fetch_add(1, Ordering::Relaxed),
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, sync::mpsc::channel, time::Duration};
+
+    use super::*;
+
+    #[test]
+    fn reports_completed_jobs() {
+        let pool = ThreadPool::new(4).unwrap();
+        for _ in 0..20 {
+            pool.execute(|| {}).unwrap();
+        }
+        assert_eq!(
+            pool.shutdown(),
+            Report {
+                completed: 20,
+                panicked: 0
+            }
+        );
+    }
+
+    #[test]
+    fn a_panicking_job_does_not_kill_its_worker() {
+        // One worker: if the panic killed it, the second job would never run.
+        let pool = ThreadPool::new(1).unwrap();
+        let (done_tx, done_rx) = channel();
+
+        pool.execute(|| panic!("job failed on purpose"))
+            .unwrap();
+        pool.execute(move || done_tx.send(()).unwrap())
+            .unwrap();
+
+        done_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("the worker died with the panicking job");
+        assert_eq!(
+            pool.shutdown(),
+            Report {
+                completed: 1,
+                panicked: 1
+            }
+        );
+    }
+
+    #[test]
+    fn workers_are_named() {
+        let pool = ThreadPool::new(1).unwrap();
+        let (name_tx, name_rx) = channel();
+        pool.execute(move || {
+            let name = thread::current().name().map(str::to_string);
+            name_tx.send(name).unwrap();
+        })
+        .unwrap();
+        assert_eq!(name_rx.recv().unwrap().as_deref(), Some("pool-worker-0"));
+    }
+
+    #[test]
+    fn zero_workers_is_an_error() {
+        assert!(matches!(ThreadPool::new(0), Err(PoolError::NoWorkers)));
+    }
+
+    #[test]
+    fn spawn_errors_expose_their_source() {
+        let error = PoolError::Spawn(io::Error::other("no threads left"));
+        assert!(error.to_string().contains("no threads left"));
+        assert!(error.source().is_some());
+        assert!(PoolError::ShutDown.source().is_none());
+    }
+}</code></pre>
+<p>The test <code>a_panicking_job_does_not_kill_its_worker</code> uses a pool with one worker. The first job panics. If that
+killed the worker, the second job would never run, and <code>recv_timeout</code> would fail after five seconds.</p>
+<p>The test <code>spawn_errors_expose_their_source</code> checks the <code>source</code> method. <code>Error::source</code> returns the lower-level
+error that caused this one, so a caller can print the whole chain.</p>
+<pre><code class="language-text">$ cargo test --lib problems::thread_pool
+running 12 tests
+test problems::thread_pool_v3::tests::zero_workers_is_an_error ... ok
+test problems::thread_pool_v3::tests::errors_render_a_message ... ok
+test problems::thread_pool_v2::tests::zero_workers_is_rejected - should panic ... ok
+test problems::thread_pool_v3::tests::execute_after_shutdown_is_an_error ... ok
+test problems::thread_pool_v3::tests::dropping_the_pool_finishes_queued_jobs ... ok
+test problems::thread_pool_v2::tests::runs_every_job ... ok
+test problems::thread_pool_v4::tests::spawn_errors_expose_their_source ... ok
+test problems::thread_pool_v2::tests::jobs_run_at_the_same_time ... ok
+test problems::thread_pool_v4::tests::zero_workers_is_an_error ... ok
+test problems::thread_pool_v4::tests::reports_completed_jobs ... ok
+test problems::thread_pool_v4::tests::a_panicking_job_does_not_kill_its_worker ... ok
+test problems::thread_pool_v4::tests::workers_are_named ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 125 filtered out
+</code></pre>
+<p>The filter <code>problems::thread_pool</code> matches all three versions. <code>cargo test</code> hides what passing tests print,
+including the message of the job that panics on purpose. Add <code>-- --nocapture</code> to see it. The message names the
+thread, <code>pool-worker-0</code>, which shows the thread names at work.</p>
+<h2 id="186-shorter-pools"><a class="header" href="#186-shorter-pools">18.6 Shorter pools</a></h2>
+<p>Three more pools take the lessons of versions 2 and 3 in a more compact form, and each adds one feature.</p>
+<h3 id="1861-shutdown-in-drop-compactly"><a class="header" href="#1861-shutdown-in-drop-compactly">18.6.1 Shutdown in <code>Drop</code>, compactly</a></h3>
+<p class="listing"><b>Listing 18.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_bruce_lee.rs">src/bin/thread_pool_bruce_lee.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread::{self, JoinHandle},
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+    job_sender: Option&lt;mpsc::Sender&lt;Job&gt;&gt;,
+}
+
+impl ThreadPool {
+    pub fn new(size: usize) -&gt; Self {
+        assert!(size &gt; 0, "pool size must be &gt; 0");
+        let (job_sender, job_receiver) = mpsc::channel();
+        let job_receiver = Arc::new(Mutex::new(job_receiver));
+
+        let workers = (0..size)
+            .map(|_| Self::spawn_worker(Arc::clone(&amp;job_receiver)))
+            .collect();
+
+        Self {
+            workers,
+            job_sender: Some(job_sender),
+        }
+    }
+
+    fn spawn_worker(job_receiver: Arc&lt;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;&gt;) -&gt; JoinHandle&lt;()&gt; {
+        thread::spawn(move || {
+            loop {
+                let message = job_receiver.lock().unwrap().recv();
+                match message {
+                    Ok(job) =&gt; job(),
+                    Err(_) =&gt; break,
+                }
+            }
+        })
+    }
+
+    pub fn execute(&amp;self, task: impl FnOnce() + Send + 'static) {
+        if let Some(job_sender) = &amp;self.job_sender {
+            job_sender.send(Box::new(task)).unwrap();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.job_sender = None; // close channel so workers stop
+        for worker in self.workers.drain(..) {
+            worker.join().unwrap(); // Wait for workers to finish... This will ensure gracefull shutdown..
+        }
+    }
+}
+
+fn main() {
+    let pool = ThreadPool::new(4);
+    for i in 0..8 {
+        pool.execute(move || println!("task {i} on {:?}", thread::current().id()));
+    }
+}</code></pre>
+<p>This pool keeps version 2’s worker loop and version 3’s <code>Option</code> sender and <code>Drop</code>. <code>self.job_sender = None</code>
+drops the sender by overwriting it. <code>thread::spawn(move || loop { ... })</code> passes a closure whose whole body is the
+<code>loop</code>.</p>
+<p><code>main</code> has no explicit shutdown. The pool is dropped at the end of <code>main</code>, and <code>Drop</code> waits for all eight jobs.</p>
+<pre><code class="language-text">$ cargo run --bin thread_pool_bruce_lee
+task 0 on ThreadId(4)
+task 4 on ThreadId(4)
+task 5 on ThreadId(4)
+task 6 on ThreadId(4)
+task 7 on ThreadId(4)
+task 1 on ThreadId(3)
+task 2 on ThreadId(2)
+task 3 on ThreadId(5)
+</code></pre>
+<p>In this run, one worker took five of the eight jobs. Printing a line is so quick that the first worker to wake
+could take the next job before the others were scheduled. The pool does not promise an even split.</p>
+<p><code>Drop</code> calls <code>worker.join().unwrap()</code>. If a job panicked, its worker’s <code>join</code> returns <code>Err</code>, and the <code>unwrap</code> panics
+inside <code>Drop</code>. The later versions use <code>let _ = worker.join();</code> instead.</p>
+<h3 id="1862-a-bounded-queue-and-results"><a class="header" href="#1862-a-bounded-queue-and-results">18.6.2 A bounded queue and results</a></h3>
+<p class="listing"><b>Listing 18.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs">src/bin/thread_pool_with_back_pressure.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread::{self, JoinHandle},
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+pub struct ThreadPool {
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+    job_sender: Option&lt;mpsc::SyncSender&lt;Job&gt;&gt;, // changed: bounded sender
+}
+
+impl ThreadPool {
+    pub fn new(size: usize, queue_size: usize) -&gt; Self {
+        // changed: queue_size
+        assert!(size &gt; 0, "pool size must be &gt; 0");
+        let (job_sender, job_receiver) = mpsc::sync_channel(queue_size); // changed: bounded queue
+        let job_receiver = Arc::new(Mutex::new(job_receiver));
+
+        let workers = (0..size)
+            .map(|_| Self::spawn_worker(Arc::clone(&amp;job_receiver)))
+            .collect();
+
+        Self {
+            workers,
+            job_sender: Some(job_sender),
+        }
+    }
+
+    fn spawn_worker(job_receiver: Arc&lt;Mutex&lt;mpsc::Receiver&lt;Job&gt;&gt;&gt;) -&gt; JoinHandle&lt;()&gt; {
+        thread::spawn(move || {
+            loop {
+                let message = job_receiver.lock().unwrap().recv();
+                match message {
+                    Ok(job) =&gt; job(),
+                    Err(_) =&gt; break,
+                }
+            }
+        })
+    }
+
+    pub fn execute(&amp;self, task: impl FnOnce() + Send + 'static) {
+        if let Some(job_sender) = &amp;self.job_sender {
+            job_sender.send(Box::new(task)).unwrap(); // blocks when queue is full
+        }
+    }
+
+    // new: run a task and get its result back
+    pub fn submit&lt;T: Send + 'static&gt;(
+        &amp;self,
+        task: impl FnOnce() -&gt; T + Send + 'static,
+    ) -&gt; mpsc::Receiver&lt;T&gt; {
+        let (result_sender, result_receiver) = mpsc::channel();
+        self.execute(move || {
+            let _ = result_sender.send(task());
+        });
+        result_receiver
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.job_sender = None;
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
+}
+
+fn main() {
+    let pool = ThreadPool::new(4, 10); // 4 workers, at most 10 jobs waiting
+
+    let results: Vec&lt;_&gt; = (0..8)
+        .map(|i| pool.submit(move || i * i))
+        .collect();
+
+    for r in results {
+        println!("{}", r.recv().unwrap());
+    }
+}</code></pre>
+<p>The comments marked <code>changed</code> and <code>new</code> show the two additions.</p>
+<p><code>mpsc::sync_channel(queue_size)</code> creates a channel that holds at most <code>queue_size</code> messages. <code>SyncSender::send</code>
+blocks while the channel is full. This is the backpressure of section 17.1, built into the standard library’s channel. A caller that queues
+jobs faster than the workers run them has to wait.</p>
+<p><code>submit</code> returns a result. It creates a new channel for each job, and the job sends its return value into it. The
+caller gets the <code>Receiver</code> back at once, and calls <code>recv()</code> when it needs the value. A value that will be ready
+later is often called a <strong>future</strong>, and chapter 22 builds on that idea.</p>
+<pre><code class="language-text">$ cargo run --bin thread_pool_with_back_pressure
+0
+1
+4
+9
+16
+25
+36
+49
+</code></pre>
+<p>The results print in order because <code>main</code> calls <code>recv()</code> on the receivers in order, even though the jobs may finish
+in any order.</p>
+<h3 id="1863-many-producers"><a class="header" href="#1863-many-producers">18.6.3 Many producers</a></h3>
+<p class="listing"><b>Listing 18.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs">src/bin/mpmc_thread_pool_engine.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    sync::{
+        Arc,
+        Mutex,
+        mpsc::{self, Receiver, SendError, SyncSender},
+    },
+    thread::{self, JoinHandle},
+};
+
+type Job = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+type SharedLockedChannel = Arc&lt;Mutex&lt;Receiver&lt;Job&gt;&gt;&gt;;
+
+pub struct ThreadPool {
+    tx: Option&lt;SyncSender&lt;Job&gt;&gt;,
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    pub fn new(num_workers: usize, queue_size: usize) -&gt; Self {
+        let (tx, rx) = mpsc::sync_channel::&lt;Job&gt;(queue_size);
+        let rx = SharedLockedChannel::new(Mutex::new(rx));
+
+        let workers = (0..num_workers)
+            .map(|_| Self::spawn_worker(Arc::clone(&amp;rx)))
+            .collect();
+
+        Self {
+            tx: Some(tx),
+            workers,
+        }
+    }
+
+    fn spawn_worker(rx: SharedLockedChannel) -&gt; JoinHandle&lt;()&gt; {
+        thread::spawn(move || {
+            loop {
+                let Ok(receiver) = rx.lock() else { break }; // mutex poisoned
+                let Ok(job) = receiver.recv() else { break }; // channel closed
+                drop(receiver); // release lock before running the job
+                job();
+            }
+        })
+    }
+
+    pub fn execute&lt;F&gt;(&amp;self, f: F) -&gt; Result&lt;(), SendError&lt;Job&gt;&gt;
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job: Job = Box::new(f);
+        match &amp;self.tx {
+            Some(tx) =&gt; tx.send(job), // blocks when queue is full
+            None =&gt; Err(SendError(job)),
+        }
+    }
+
+    pub fn join_all&lt;I&gt;(&amp;self, handles: I)
+    where
+        I: IntoIterator&lt;Item = JoinHandle&lt;()&gt;&gt;,
+    {
+        for handle in handles {
+            let _ = handle.join();
+        }
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        drop(self.tx.take()); // close channel so workers exit
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
+}
+
+fn main() {
+    let pool = Arc::new(ThreadPool::new(4, 16));
+
+    let producers: Vec&lt;_&gt; = (0..3)
+        .map(|p| {
+            let pool = Arc::clone(&amp;pool);
+            thread::spawn(move || {
+                for i in 0..5 {
+                    let _ = pool.execute(move || println!("producer {p}, job {i}"));
+                }
+            })
+        })
+        .collect();
+
+    pool.join_all(producers);
+} // last Arc dropped here: Drop waits for all queued jobs</code></pre>
+<p>This pool’s worker loop is the clearest of the chapter:</p>
+<pre><code class="language-rust">let Ok(receiver) = rx.lock() else { break }; // mutex poisoned
+let Ok(job) = receiver.recv() else { break }; // channel closed
+drop(receiver); // release lock before running the job
+job();</code></pre>
+<p>Each <code>let ... else</code> line handles one failure and says which. The lock is released explicitly before the job runs.</p>
+<p><code>execute</code> returns <code>Result&lt;(), SendError&lt;Job&gt;&gt;</code>. When the pool is shut down, it returns the job inside the error,
+so the caller can still run it or report it.</p>
+<p><code>main</code> shares the pool between three producer threads with an <code>Arc</code>. Each producer queues five jobs. When the last
+<code>Arc</code> is dropped at the end of <code>main</code>, <code>Drop</code> runs and waits for every queued job.</p>
+<pre><code class="language-text">$ cargo run --bin mpmc_thread_pool_engine
+producer 0, job 0
+producer 0, job 3
+producer 0, job 4
+producer 1, job 1
+producer 1, job 2
+producer 0, job 1
+producer 1, job 4
+producer 2, job 0
+producer 2, job 1
+producer 2, job 2
+producer 0, job 2
+producer 2, job 4
+producer 2, job 3
+producer 1, job 3
+producer 1, job 0
+</code></pre>
+<p>All 15 jobs ran. The order is mixed, even within one producer, because four workers run the jobs at the same time.</p>
+<h2 id="187-a-parallel-map-that-keeps-order"><a class="header" href="#187-a-parallel-map-that-keeps-order">18.7 A parallel map that keeps order</a></h2>
+<p>The last pool is a single function. <code>map_order</code> applies a function to every input on several threads, and returns
+the results in the same order as the inputs.</p>
+<p>The difficulty is that jobs finish in any order. The fix is to tag each input with its position, and use the tag
+to put each result back in place (figure 18.4).</p>
+<figure>
+<img src="figures/pool-ordered.svg" alt="Inputs are sent as index and value pairs. Results arrive out of order as index and result pairs. Each result is stored at its index in a Vec of Options.">
+<figcaption><b>Figure 18.4</b> The index travels with the job, and puts the result back in its slot.</figcaption>
+</figure>
+<p class="listing"><b>Listing 18.15</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs">src/problems/worker_pool.rs</a></p>
+
+<pre><code class="language-rust">//! Bounded worker pool with ordered results.
+//!
+//! Programs often fan out network calls across a bounded number of workers.
+//! This example maps `Vec&lt;T&gt;` to `Vec&lt;R&gt;` with N threads and preserves input
+//! order in the output. It demonstrates `Arc&lt;Mutex&lt;_&gt;&gt;`, channels, scoped
+//! ownership, and panic-free dispatch.
+
+use std::{
+    sync::{Arc, Mutex, mpsc},
+    thread,
+};
+
+pub fn map_order&lt;T, R, F&gt;(worker_count: usize, inputs: Vec&lt;T&gt;, mapper: F) -&gt; Vec&lt;R&gt;
+where
+    T: Send + 'static,
+    R: Send + 'static,
+    F: Fn(T) -&gt; R + Send + Sync + 'static,
+{
+    assert!(worker_count &gt; 0, "worker_count must be &gt; 0");
+    assert!(!inputs.is_empty(), "inputs must not be empty");
+
+    let expected = inputs.len();
+    let mapper = Arc::new(mapper);
+    let (job_tx, job_rx) = mpsc::channel::&lt;(usize, T)&gt;();
+    let job_rx = Arc::new(Mutex::new(job_rx));
+    let (result_tx, result_rx) = mpsc::channel::&lt;(usize, R)&gt;();
+
+    let mut handles = Vec::with_capacity(worker_count);
+    for _worker_id in 0..worker_count {
+        let mapper = Arc::clone(&amp;mapper);
+        let job_rx = Arc::clone(&amp;job_rx);
+        let result_tx = result_tx.clone();
+        handles.push(thread::spawn(move || {
+            loop {
+                let job = {
+                    let guard = job_rx.lock().expect("job_rx poisoned");
+                    guard.recv()
+                };
+                match job {
+                    Ok((idx, input)) =&gt; {
+                        let output = mapper(input);
+                        if result_tx.send((idx, output)).is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) =&gt; break, // all senders dropped
+                }
+            }
+        }));
+    }
+
+    // Send all jobs, then close the job channel so workers finish after draining it.
+    for (idx, input) in inputs.into_iter().enumerate() {
+        job_tx
+            .send((idx, input))
+            .expect("bounded by memory; channel only blocks until a worker receives");
+    }
+    drop(job_tx);
+
+    // Drop our result sender. Only the worker clones remain, so `iter()` ends
+    // after every worker exits.
+    drop(result_tx);
+
+    // Reassemble results in input order.
+    let mut ordered: Vec&lt;Option&lt;R&gt;&gt; = Vec::new();
+    for (idx, value) in result_rx.iter() {
+        if ordered.len() &lt;= idx {
+            ordered.resize_with(idx + 1, || None);
+        }
+        ordered[idx] = Some(value);
+    }
+
+    for handle in handles {
+        let _ = handle.join();
+    }
+
+    assert_eq!(
+        ordered.len(),
+        expected,
+        "every job must produce exactly one result"
+    );
+    ordered
+        .into_iter()
+        .map(|value| value.expect("all results present"))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_all_inputs_and_preserves_order() {
+        let inputs: Vec&lt;i32&gt; = (0..100).collect();
+        let results = map_order(4, inputs, |x| x * x);
+        assert_eq!(results.len(), 100);
+        for (i, value) in results.iter().enumerate() {
+            assert_eq!(*value, (i as i32) * (i as i32));
+        }
+    }
+
+    #[test]
+    fn one_worker_works() {
+        let results = map_order(1, vec![1, 2, 3], |x| x + 10);
+        assert_eq!(results, vec![11, 12, 13]);
+    }
+}</code></pre>
+<p>The function uses two channels. Jobs go out as <code>(usize, T)</code> pairs, and results come back as <code>(usize, R)</code> pairs.</p>
+<p><code>mapper</code> is shared by all workers, so it goes in an <code>Arc</code>, and it must be <code>Sync</code> as well as <code>Send</code>. It has type
+<code>F: Fn(T) -&gt; R</code>, not <code>FnOnce</code>, because each worker calls it many times.</p>
+<p>The worker loop takes the job inside a block: <code>let job = { let guard = ...; guard.recv() };</code>. The guard is dropped
+at the end of the block, so the lock is released before <code>mapper</code> runs. This is the third way in this chapter to
+write the same fix.</p>
+<p>After sending every job, the function drops its own <code>job_tx</code> so that the workers stop when the queue is empty. It
+also drops its own <code>result_tx</code>. Only the workers’ clones remain, and <code>result_rx.iter()</code> ends when the last worker
+exits and drops its clone.</p>
+<p>Each result is stored at its index in <code>ordered</code>, a <code>Vec&lt;Option&lt;R&gt;&gt;</code>, which grows as needed with <code>resize_with</code>. At
+the end, every slot must hold <code>Some</code>, and the options are unwrapped into the final <code>Vec&lt;R&gt;</code>.</p>
+<pre><code class="language-text">$ cargo test --lib problems::worker_pool
+running 2 tests
+test problems::worker_pool::tests::one_worker_works ... ok
+test problems::worker_pool::tests::maps_all_inputs_and_preserves_order ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 135 filtered out
+</code></pre>
+<h2 id="188-the-versions-compared"><a class="header" href="#188-the-versions-compared">18.8 The versions compared</a></h2>
+<p class="listing"><b>Table 18.1</b> What each pool handles</p>
+
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Pool</th><th>Jobs run in parallel</th><th>Shutdown</th><th>Poisoned lock</th><th>Panicking job</th><th>Queue</th></tr>
+</thead>
+<tbody>
+<tr><td>v1 <code>thread_pool.rs</code></td><td>no: lock held during job</td><td><code>join(self)</code></td><td>panics</td><td>poisons the lock</td><td>unbounded</td></tr>
+<tr><td>v2 <code>thread_pool_v2.rs</code></td><td>yes</td><td><code>join(self)</code></td><td>panics</td><td>kills the worker</td><td>unbounded</td></tr>
+<tr><td>v3 <code>thread_pool_v3.rs</code></td><td>yes</td><td><code>Drop</code></td><td>worker exits</td><td>kills the worker</td><td>unbounded</td></tr>
+<tr><td>v4 <code>thread_pool_v4.rs</code></td><td>yes</td><td><code>Drop</code>, <code>Report</code></td><td>worker exits</td><td>caught and counted</td><td>unbounded</td></tr>
+<tr><td><code>thread_pool_bruce_lee.rs</code></td><td>yes</td><td><code>Drop</code></td><td>panics</td><td>kills the worker</td><td>unbounded</td></tr>
+<tr><td><code>thread_pool_with_back_pressure.rs</code></td><td>yes</td><td><code>Drop</code></td><td>panics</td><td>kills the worker</td><td>bounded</td></tr>
+<tr><td><code>mpmc_thread_pool_engine.rs</code></td><td>yes</td><td><code>Drop</code></td><td>worker exits</td><td>kills the worker</td><td>bounded</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A thread pool reuses a fixed set of worker threads. Jobs are boxed closures, <code>Box&lt;dyn FnOnce() + Send + 'static&gt;</code>, sent through a channel whose receiver the workers share behind <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>.</li>
+<li>In <code>while let Ok(job) = rx.lock().unwrap().recv()</code>, the guard lives through the loop body. The workers ran one at
+a time: 814 ms instead of 205 ms for four 200 ms jobs.</li>
+<li>Release the lock before running the job: take it in its own <code>let</code> statement, in a block, or with <code>drop(guard)</code>.</li>
+<li>Dropping the sender closes the channel. Workers drain the queue, see <code>Err</code> from <code>recv</code>, and exit. Doing this in
+<code>Drop</code> makes a pool finish its jobs when it goes out of scope.</li>
+<li><code>catch_unwind</code> with <code>AssertUnwindSafe</code> keeps a worker alive when its job panics.</li>
+<li><code>sync_channel</code> bounds the queue and adds backpressure. A per-job channel carries a result back to the caller.</li>
+<li>Tagging each job with its index returns parallel results in input order.</li>
+</ul>
+</div>
+
+<p>Chapter 19 turns to failures between programs: limiting request rates, retrying failed calls, and making repeated
+requests safe.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Add a test to <code>thread_pool_v2.rs</code> that measures four jobs sleeping 200 ms each, and asserts that they finish in
+under 400 ms.</li>
+<li>Add <code>submit</code> from listing 18.13 to version 4, returning the job’s result through a channel.</li>
+<li>Make version 4’s queue bounded with <code>sync_channel</code>, and add a <code>try_execute</code> method that returns the job instead
+of blocking when the queue is full.</li>
+<li>Write <code>map_order</code> so that it returns <code>Result&lt;Vec&lt;R&gt;, E&gt;</code> for a mapper of type <code>Fn(T) -&gt; Result&lt;R, E&gt;</code>, and stops
+sending jobs after the first error.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch17-queues.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch19-reliability.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch17-queues.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch19-reliability.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220.0" width="760" height="220.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">A semaphore with 2 permits: at most two threads run the guarded section at once</text>
+<rect x="260" y="50" width="240" height="110" rx="8" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="380" y="72" font-size="10.0" fill="#5b6b7c" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Mutex&lt;State&gt; + Condvar</text>
+<text x="380" y="100" font-size="12.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve" font-weight="bold">available: 0</text>
+<text x="380" y="124" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >waiters sleep on the Condvar</text>
+<text x="380" y="140" font-size="10.0" fill="#5b6b7c" text-anchor="middle" >until release calls notify_one</text>
+<rect x="540" y="60" width="200" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="77.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 1: holds a permit</text>
+<rect x="540" y="100" width="200" height="28" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="117.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 2: holds a permit</text>
+<rect x="30" y="60" width="200" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="130.0" y="77.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 3: waiting</text>
+<rect x="30" y="100" width="200" height="28" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="130.0" y="117.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">thread 4: waiting</text>
+<line x1="230" y1="74" x2="258" y2="90" stroke="#d9622b" stroke-width="1.2"/>
+<polygon points="258,90 250.0,89.4 253.5,83.4" fill="#d9622b"/>
+<line x1="230" y1="114" x2="258" y2="110" stroke="#d9622b" stroke-width="1.2"/>
+<polygon points="258,110 251.4,114.5 250.4,107.6" fill="#d9622b"/>
+<text x="20" y="196" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Dropping a SemaphoreGuard adds 1 to available and wakes one waiter, which then takes the permit.</text>
+</svg>

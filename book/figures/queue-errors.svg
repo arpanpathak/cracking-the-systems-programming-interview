@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220.0" width="760" height="220.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Three ways the queues handle a poisoned mutex</text>
+<rect x="20" y="60" width="230" height="30" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="135.0" y="78.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">lock(): Err(PoisonError&lt;Guard&gt;)</text>
+<line x1="250" y1="75" x2="300" y2="55" stroke="#5b6b7c" stroke-width="1.2"/>
+<polygon points="300,55 294.6,60.9 292.0,54.4" fill="#5b6b7c"/>
+<rect x="300" y="40" width="440" height="30" rx="4" fill="#f1f3f5" stroke="#1d2733" stroke-width="1.4"/>
+<text x="520.0" y="58.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">bounded_buffer.rs  .unwrap(): the thread panics too</text>
+<line x1="250" y1="75" x2="300" y2="99" stroke="#5b6b7c" stroke-width="1.2"/>
+<polygon points="300,99 292.0,99.0 295.0,92.7" fill="#5b6b7c"/>
+<rect x="300" y="84" width="440" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="520.0" y="102.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">..._with_error_handling.rs  .map_poison()?: Err(QueuePoisonedError)</text>
+<line x1="250" y1="75" x2="300" y2="143" stroke="#5b6b7c" stroke-width="1.2"/>
+<polygon points="300,143 292.9,139.3 298.5,135.1" fill="#5b6b7c"/>
+<rect x="300" y="128" width="440" height="30" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="520.0" y="146.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">..._error_propagation.rs  .map_err(|e| e.to_string())?: Box&lt;dyn Error&gt;</text>
+<text x="20" y="190" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The PoisonError holds a guard that borrows the mutex, so it cannot leave the function in a Box&lt;dyn Error&gt;.</text>
+<text x="20" y="206" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Both error-returning versions convert it into a value that owns nothing: a unit struct, or a String.</text>
+</svg>

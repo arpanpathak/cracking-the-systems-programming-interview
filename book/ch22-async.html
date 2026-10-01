@@ -1,0 +1,1331 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Async Rust from the executor up - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch22.png" alt="Flywheel, the robot who polls every future, sleeps when none are ready, beside a flywheel driven by a piston, with futures parked on a rail">
+<h1 id="async-rust-from-the-executor-up"><a class="header" href="#async-rust-from-the-executor-up">Async Rust from the executor up</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What <code>Future::poll</code>, <code>Poll::Pending</code>, and a <code>Waker</code> promise each other</li>
+<li>Why one thread can hold thousands of waiting connections</li>
+<li><code>block_on</code>: an executor in a dozen lines that parks the thread between polls</li>
+<li>Two futures written by hand: one that yields, and one that waits on a timer</li>
+<li>A task queue where waking a task is the same as scheduling it</li>
+<li>What an <code>async</code> block compiles to, and why <code>poll</code> takes <code>Pin&lt;&amp;mut Self&gt;</code></li>
+<li>Two HTTP clients with caching and retries, one blocking and one on Tokio</li>
+</ul>
+</div>
+
+<p>Chapter 20’s echo server gave every client a thread, and chapter 21 parsed HTTP on top of it. That design works for tens or hundreds of clients. It stops working when a program holds thousands of mostly idle connections.</p>
+<p>This chapter builds the runtime that replaces one thread per connection with one thread and many waiting tasks. It starts at the bottom, with the single method a <code>Future</code> has, and works up to a client on Tokio.</p>
+<h2 id="221-why-a-thread-per-connection-does-not-scale"><a class="header" href="#221-why-a-thread-per-connection-does-not-scale">22.1 Why a thread per connection does not scale</a></h2>
+<p>A spawned thread in Rust is given a stack of 2 MiB by default. The stack stays reserved for as long as the thread lives, including all the time the thread spends parked in <code>read</code>. Ten thousand idle connections held as threads reserve about 20 GB of address space before any work happens.</p>
+<p>The alternative is to keep one thread and represent each connection as a <strong>future</strong>. A future is a value that may not have finished yet. While it waits, it is not running on a thread. It is a small object that records where it stopped and what it was doing.</p>
+<p>A <strong>task</strong> is a future a runtime has taken responsibility for. The runtime will poll the future again when there is a reason to.</p>
+<p>A suspended future holds only the values alive across its pause points. An idle connection can be a few hundred bytes instead of two megabytes. Ten thousand of them fit in a few megabytes rather than tens of gigabytes. Figure 22.1 contrasts the two arrangements.</p>
+<figure>
+<img src="figures/ch22-thread-vs-task.svg" alt="On the left, one thread per connection, each thread reserving a 2 MiB stack. On the right, one worker thread holding thousands of small task state machines.">
+<figcaption><b>Figure 22.1</b> A parked thread keeps its stack. A parked future keeps only the values it needs to resume.</figcaption>
+</figure>
+<p>The cost of this saving is that waiting has to be written as a state machine. <code>async</code> and <code>.await</code> are the notation that lets the state machine still look like ordinary code.</p>
+<p>You can now work out what a thread-per-connection design costs, and name what a future stores instead.</p>
+<h2 id="222-the-contract"><a class="header" href="#222-the-contract">22.2 The contract</a></h2>
+<p>The chapter starts with the one method a <code>Future</code> has. A type that implements <code>Future</code> answers a single question: has the work finished?</p>
+<pre><code class="language-rust">fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt;;</code></pre>
+<p><code>poll</code> returns <code>Poll::Ready(value)</code> when the work is done. It returns <code>Poll::Pending</code> when the work is not finished yet.</p>
+<p><code>Pending</code> carries an obligation. Before returning it, the future must arrange for <code>cx.waker()</code> to be called once progress is possible. The waker is a handle the executor gives to the future. Calling it tells the executor that this task should be polled again.</p>
+<p>The executor has the matching obligation. It polls the task again after a wake. Until a wake arrives it does not poll the task, and it does not spin. Figure 22.2 draws both sides.</p>
+<figure>
+<img src="figures/ch22-contract.svg" alt="The executor polls the future. Ready returns the value. Pending requires the future to arm the waker; the executor parks, the waker fires, and the executor polls again. A dashed branch shows a dropped waker, where the task never runs again.">
+<figcaption><b>Figure 22.2</b> The poll contract. A dropped waker is the one branch with no error and no panic.</figcaption>
+</figure>
+<p>Two rules follow from the contract. Polling a future that is not ready is always safe: it returns <code>Pending</code> again, so a spurious wake costs one wasted poll. Forgetting to arrange a wake is not safe: the task returns <code>Pending</code>, nothing calls its waker, and the task never runs again.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING</strong> The second failure has no symptom. There is no panic, no error, and no CPU use. One task stops making progress while the rest of the program carries on. When an async program hangs for no visible reason, look first for a waker that was dropped instead of called.</p>
+</div>
+
+<p>One part of the signature is explained in section 22.6: <code>poll</code> takes <code>Pin&lt;&amp;mut Self&gt;</code>, not <code>&amp;mut self</code>. For now, read it as a promise that the future will not move in memory between polls.</p>
+<p>You can now state what each side of the contract promises, and say which broken promise shows up as a hang.</p>
+<h2 id="223-the-smallest-executor"><a class="header" href="#223-the-smallest-executor">22.3 The smallest executor</a></h2>
+<p><code>.await</code> does not call the operating system. Something has to call <code>poll</code> and decide what a <code>Pending</code> result means. That something is an <strong>executor</strong>.</p>
+<p>The smallest useful executor drives one future on the current thread. When the future is not ready, it parks the thread rather than polling again. Listing 22.1 is the whole of it.</p>
+<p class="listing"><b>Listing 22.1</b> <code>block_on</code> and its waker (lines 36 to 61). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::VecDeque,
+    future::Future,
+    pin::Pin,
+    sync::{
+        Arc,
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    task::{Context, Poll, Wake, Waker},
+    thread,
+    time::Duration,
+};
+
+pub fn block_on&lt;F: Future&gt;(future: F) -&gt; F::Output {
+    let mut future = Box::pin(future);
+    let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
+    let mut context = Context::from_waker(&amp;waker);
+
+    loop {
+        match future.as_mut().poll(&amp;mut context) {
+            Poll::Ready(value) =&gt; return value,
+            // `park` may return spuriously, so the loop re-polls either way.
+            Poll::Pending =&gt; thread::park(),
+        }
+    }
+}
+
+/// Waker that unparks the thread which is driving the future.
+struct ThreadWaker(thread::Thread);
+
+impl Wake for ThreadWaker {
+    fn wake(self: Arc&lt;Self&gt;) {
+        self.0.unpark();
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        self.0.unpark();
+    }
+}</code></pre>
+<p><code>block_on</code> does three things, in order:</p>
+<ol>
+<li><code>Box::pin(future)</code> moves the future to the heap and pins it there, so its address is the same for every poll.</li>
+<li><code>Waker::from(Arc::new(ThreadWaker(thread::current())))</code> builds a waker. <code>ThreadWaker</code> implements <code>Wake</code>, and its <code>wake</code> method unparks the thread driving the future. <code>Waker::from</code> is the safe way to build a waker without writing a raw vtable.</li>
+<li>The loop polls. <code>Ready</code> returns the value. <code>Pending</code> calls <code>thread::park()</code>, which sleeps until <code>unpark</code> is called on this thread.</li>
+</ol>
+<p><code>park</code> can return without anyone calling <code>unpark</code>. The loop tolerates that by polling again: a second poll of a future that is not ready returns <code>Pending</code> a second time. Spurious wakes are harmless, which is the other half of the contract.</p>
+<p><code>park</code> and <code>unpark</code> also cover a race the loop depends on. If <code>unpark</code> runs before <code>park</code>, it leaves a token behind, and the next <code>park</code> returns at once.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch22-poll-wake.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A robot labelled executor thread polls a future that waits on a timer, and hands it a waker drawn as a bell. The future&#39;s ready flag is false, so it stores the bell in its waker slot and returns Pending. The executor parks, and its CPU gauge falls to zero. A timer thread sleeps for 50 ms, sets ready to true, takes the bell out of the slot, and rings it, which unparks the executor. The second poll returns Ready. The run then repeats with the line that stores the waker deleted: the timer finds the slot empty, and the executor stays parked forever." data-chapters="[[0.0, &quot;cast&quot;], [4.74, &quot;poll&quot;], [27.42, &quot;park&quot;], [33.14, &quot;wake&quot;], [48.86, &quot;ready&quot;], [63.26, &quot;no waker&quot;]]"><img src="figures/ch22-poll-wake.gif" alt="A robot labelled executor thread polls a future that waits on a timer, and hands it a waker drawn as a bell. The future&#39;s ready flag is false, so it stores the bell in its waker slot and returns Pending. The executor parks, and its CPU gauge falls to zero. A timer thread sleeps for 50 ms, sets ready to true, takes the bell out of the slot, and rings it, which unparks the executor. The second poll returns Ready. The run then repeats with the line that stores the waker deleted: the timer finds the slot empty, and the executor stays parked forever."></video>
+<figcaption><b>Animation 22.1</b> <code>block_on</code> driving a future that waits on a timer, the <code>Delay</code> of section 22.4.2, with the line each thread is running. In the second run the waker is never stored, and the executor never wakes.</figcaption>
+</figure>
+<p>You can now read <code>block_on</code> line by line and explain why an idle future costs no CPU.</p>
+<h2 id="224-two-futures-written-by-hand"><a class="header" href="#224-two-futures-written-by-hand">22.4 Two futures written by hand</a></h2>
+<p>Almost every future has one of two shapes. The first re-arms itself and asks to be polled again. The second waits on an event outside the executor, and keeps the waker of whoever is waiting for it.</p>
+<h3 id="2241-a-future-that-yields-to-itself"><a class="header" href="#2241-a-future-that-yields-to-itself">22.4.1 A future that yields to itself</a></h3>
+<p><code>YieldTimes</code> returns <code>Pending</code> a set number of times before it completes. Nothing is blocking it. It is giving the executor a chance to run other tasks before it finishes its own work.</p>
+<p class="listing"><b>Listing 22.2</b> <code>YieldTimes</code>, a future that re-arms itself (lines 63 to 97). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">/// A future that yields to the executor `times` times before completing.
+///
+/// Completes with the number of times it yielded, which makes it easy to assert
+/// that a runtime actually suspended and resumed a task.
+pub struct YieldTimes {
+    remaining: usize,
+    yielded: usize,
+}
+
+impl YieldTimes {
+    pub fn new(times: usize) -&gt; Self {
+        Self {
+            remaining: times,
+            yielded: 0,
+        }
+    }
+}
+
+impl Future for YieldTimes {
+    type Output = usize;
+
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;usize&gt; {
+        // `YieldTimes` is `Unpin`, so a mutable reference is safe to take.
+        let this = self.get_mut();
+        if this.remaining == 0 {
+            return Poll::Ready(this.yielded);
+        }
+
+        this.remaining -= 1;
+        this.yielded += 1;
+        // Ask to be polled again; an executor that ignores this hangs.
+        context.waker().wake_by_ref();
+        Poll::Pending
+    }
+}</code></pre>
+<p><code>YieldTimes</code> holds two <code>usize</code> values, which makes it <code>Unpin</code>: safe to move even after a poll. <code>self.get_mut()</code> uses that to turn <code>Pin&lt;&amp;mut Self&gt;</code> into <code>&amp;mut Self</code> without <code>unsafe</code>.</p>
+<p>One line asks for the next poll: <code>context.waker().wake_by_ref()</code>. It runs, then <code>poll</code> returns <code>Pending</code>. This is what <code>tokio::task::yield_now</code> does. <code>YieldTimes</code> completes with the number of times it yielded. A test can use that count to check that the executor suspended and resumed it.</p>
+<h3 id="2242-a-future-that-waits-on-a-timer"><a class="header" href="#2242-a-future-that-waits-on-a-timer">22.4.2 A future that waits on a timer</a></h3>
+<p><code>Delay</code> completes after a wall-clock duration. It is the second shape, and it is the one that looks like real I/O.</p>
+<p>Its state is a <code>ready</code> flag and an optional stored <code>Waker</code>, shared with a background thread through <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>.</p>
+<p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 135). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">struct DelayState {
+    ready: bool,
+    waker: Option&lt;Waker&gt;,
+}
+
+/// A future that completes after a wall-clock duration.
+///
+/// A background thread sleeps and then wakes the task. Storing and waking the
+/// [`Waker`] — rather than spinning in `poll` — is the whole point: `poll` never
+/// blocks the executor thread.
+pub struct Delay {
+    state: Arc&lt;Mutex&lt;DelayState&gt;&gt;,
+}
+
+impl Delay {
+    pub fn new(duration: Duration) -&gt; Self {
+        let state = Arc::new(Mutex::new(DelayState {
+            ready: false,
+            waker: None,
+        }));
+
+        let thread_state = Arc::clone(&amp;state);
+        thread::spawn(move || {
+            thread::sleep(duration);
+            let waker = {
+                let mut guard = thread_state.lock().expect("delay mutex poisoned");
+                guard.ready = true;
+                guard.waker.take()
+            };
+            if let Some(waker) = waker {
+                waker.wake();
+            }
+        });
+
+        Self { state }
+    }
+}</code></pre>
+<p><code>poll</code> checks <code>ready</code>. While it is false, <code>poll</code> stores a clone of the current waker and returns <code>Pending</code>.</p>
+<p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 137 to 149). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">impl Future for Delay {
+    type Output = ();
+
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
+        let mut guard = self.state.lock().expect("delay mutex poisoned");
+        if guard.ready {
+            Poll::Ready(())
+        } else {
+            guard.waker = Some(context.waker().clone());
+            Poll::Pending
+        }
+    }
+}</code></pre>
+<p>The background thread sleeps, sets <code>ready</code>, takes the waker out of the state, releases the lock, and calls <code>wake()</code>. Figure 22.3 shows the exchange.</p>
+<figure>
+<img src="figures/ch22-poll-wake.svg" alt="The executor polls Delay, which stores the waker and returns Pending; the executor parks. The timer thread sleeps, sets ready, takes the waker, and wakes it, which unparks the executor, which polls again and gets Ready.">
+<figcaption><b>Figure 22.3</b> One <code>Delay</code> from start to finish. The executor thread sleeps in <code>park</code>, not in <code>poll</code>.</figcaption>
+</figure>
+<p>Two details make it correct. <code>poll</code> stores the waker on every <code>Pending</code>, not only the first. A task can be polled with a different waker each time. A runtime may move the task to another thread, and only the latest waker reaches its current owner. The timer thread wakes after dropping the lock, so the woken executor does not immediately block on a mutex the waker still held.</p>
+<p>A real runtime replaces one thread per timer with a single timer wheel. It replaces the thread per socket with the <code>epoll</code> loop from chapter 20. That loop’s reactor keeps wakers by file descriptor, and wakes them when <code>epoll_wait</code> reports the descriptor ready.</p>
+<p>You can now write both shapes: a future that re-arms itself, and a future that keeps a waker for an outside event.</p>
+<h2 id="225-waking-is-scheduling"><a class="header" href="#225-waking-is-scheduling">22.5 Waking is scheduling</a></h2>
+<p><code>block_on</code> drives one future. A general executor drives many, and it shows that waking a task and scheduling it are the same operation.</p>
+<p>A <code>Task</code> holds its future, a handle to the executor’s queue, and a <code>completed</code> flag. It also implements <code>Wake</code>. Waking a task pushes an <code>Arc</code> of the task back on the queue.</p>
+<p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 151 to 172). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">struct Task {
+    future: Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;,
+    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
+    completed: AtomicBool,
+}
+
+impl Wake for Task {
+    fn wake(self: Arc&lt;Self&gt;) {
+        // Re-enqueue the task. Cloning the `Arc` is a refcount bump, not a deep copy.
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(Arc::clone(&amp;self));
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(Arc::clone(self));
+    }
+}</code></pre>
+<p><code>spawn</code> wraps a future in a task and enqueues it.</p>
+<p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 179 to 203). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Default)]
+pub struct MiniExecutor {
+    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
+}
+
+impl MiniExecutor {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    /// Add a task to the executor.
+    pub fn spawn&lt;F&gt;(&amp;self, future: F)
+    where
+        F: Future&lt;Output = ()&gt; + Send + 'static,
+    {
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(future)),
+            queue: Arc::clone(&amp;self.queue),
+            completed: AtomicBool::new(false),
+        });
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(task);
+    }
+    // ...
+}</code></pre>
+<p><code>run</code> pops tasks one at a time, builds a waker from the task itself, and polls the future. A <code>Ready</code> result marks the task completed, so a late wake is skipped by the <code>completed</code> check.</p>
+<p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 205 to 232). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">impl MiniExecutor {
+    // ...
+    /// Run until the queue is empty.
+    ///
+    /// A task that returns `Pending` without waking stays suspended, which is why
+    /// this returns rather than blocks: a runtime with timers or I/O would also
+    /// park on an event source.
+    pub fn run(&amp;self) {
+        loop {
+            let Some(task) = self
+                .queue
+                .lock()
+                .expect("executor queue poisoned")
+                .pop_front()
+            else {
+                return;
+            };
+
+            if task.completed.load(Ordering::Acquire) {
+                continue;
+            }
+
+            let waker = Waker::from(Arc::clone(&amp;task));
+            let mut context = Context::from_waker(&amp;waker);
+            let mut future = task.future.lock().expect("task mutex poisoned");
+            if future.as_mut().poll(&amp;mut context).is_ready() {
+                task.completed.store(true, Ordering::Release);
+            }
+        }
+    }
+}</code></pre>
+<figure class="anim">
+<video class="motion" src="figures/ch22-task-queue.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Three task tickets wait on a run queue. Each ticket shows its YieldTimes future, the yields it has left, and a bell for its waker. The executor pops the front ticket and polls it. A yield uses up one dot and rings the ticket&#39;s own bell, and the ticket flies to the back of the queue. A ticket with no yields left is stamped Ready and moves to the completed column, in the order 1, 2, 3. In a second run, task 1 returns Pending without ringing its bell. It drops out of the queue and is never polled again, while tasks 2 and 3 finish." data-chapters="[[0.0, &quot;spawn&quot;], [5.46, &quot;round 1&quot;], [38.22, &quot;round 2&quot;], [46.68, &quot;the rest&quot;], [65.87, &quot;no wake&quot;]]"><img src="figures/ch22-task-queue.gif" alt="Three task tickets wait on a run queue. Each ticket shows its YieldTimes future, the yields it has left, and a bell for its waker. The executor pops the front ticket and polls it. A yield uses up one dot and rings the ticket&#39;s own bell, and the ticket flies to the back of the queue. A ticket with no yields left is stamped Ready and moves to the completed column, in the order 1, 2, 3. In a second run, task 1 returns Pending without ringing its bell. It drops out of the queue and is never polled again, while tasks 2 and 3 finish."></video>
+<figcaption><b>Animation 22.2</b> Three tasks take turns on one thread. Waking a task pushes it onto the back of the queue. A task that returns <code>Pending</code> without waking is never polled again.</figcaption>
+</figure>
+<p><code>run</code> returns when the queue is empty. A task that returned <code>Pending</code> without waking is waiting on something outside this executor, and this executor has nothing to park on. A real runtime would park on its timer or its I/O reactor instead of returning.</p>
+<p>The <code>+ Send</code> bound on spawned futures comes from the waker. A waker may be sent to another thread, as <code>Delay</code> does, so the task it can reach must be safe to send too. This is the same bound <code>tokio::spawn</code> imposes. It is also why holding a <code>std::sync::MutexGuard</code> or an <code>Rc</code> across an <code>.await</code> in a spawned task is a compile error.</p>
+<p>Listings 22.8 and 22.9 are the complete pair: the runtime module, and the program that drives it, with no runtime dependency.</p>
+<p class="listing"><b>Listing 22.8</b> The complete runtime, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
+
+<pre><code class="language-rust">//! A minimal async runtime, built from `Future`, `Waker`, and `Pin`.
+//!
+//! `.await` is not magic. A `Future` is a state machine with one method, `poll`,
+//! that returns `Ready(value)` or `Pending`; when it returns `Pending` it must
+//! arrange for the `Waker` in its `Context` to be called later. An executor is a
+//! loop that polls tasks and parks until a waker fires.
+//!
+//! This module implements that loop twice, from scratch and without a runtime
+//! dependency:
+//!
+//! - [`block_on`] drives one future on the current thread, parking on `Pending`;
+//! - [`MiniExecutor`] queues independent tasks and re-enqueues them when woken.
+//!
+//! It is deliberately small. It makes three things concrete: why `poll` takes `Pin&lt;&amp;mut Self&gt;`, what `Pending` promises, and where
+//! `Send` matters for a multi-threaded runtime.
+
+use std::{
+    collections::VecDeque,
+    future::Future,
+    pin::Pin,
+    sync::{
+        Arc,
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    task::{Context, Poll, Wake, Waker},
+    thread,
+    time::Duration,
+};
+
+/// Block the current thread until `future` completes.
+///
+/// The future is pinned on the heap so its address is stable across `await`
+/// points, and the thread parks whenever the future reports `Pending`. The waker
+/// unparks it, so the loop polls again only when there is a reason to.
+pub fn block_on&lt;F: Future&gt;(future: F) -&gt; F::Output {
+    let mut future = Box::pin(future);
+    let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
+    let mut context = Context::from_waker(&amp;waker);
+
+    loop {
+        match future.as_mut().poll(&amp;mut context) {
+            Poll::Ready(value) =&gt; return value,
+            // `park` may return spuriously, so the loop re-polls either way.
+            Poll::Pending =&gt; thread::park(),
+        }
+    }
+}
+
+/// Waker that unparks the thread which is driving the future.
+struct ThreadWaker(thread::Thread);
+
+impl Wake for ThreadWaker {
+    fn wake(self: Arc&lt;Self&gt;) {
+        self.0.unpark();
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        self.0.unpark();
+    }
+}
+
+/// A future that yields to the executor `times` times before completing.
+///
+/// Completes with the number of times it yielded, which makes it easy to assert
+/// that a runtime actually suspended and resumed a task.
+pub struct YieldTimes {
+    remaining: usize,
+    yielded: usize,
+}
+
+impl YieldTimes {
+    pub fn new(times: usize) -&gt; Self {
+        Self {
+            remaining: times,
+            yielded: 0,
+        }
+    }
+}
+
+impl Future for YieldTimes {
+    type Output = usize;
+
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;usize&gt; {
+        // `YieldTimes` is `Unpin`, so a mutable reference is safe to take.
+        let this = self.get_mut();
+        if this.remaining == 0 {
+            return Poll::Ready(this.yielded);
+        }
+
+        this.remaining -= 1;
+        this.yielded += 1;
+        // Ask to be polled again; an executor that ignores this hangs.
+        context.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+
+struct DelayState {
+    ready: bool,
+    waker: Option&lt;Waker&gt;,
+}
+
+/// A future that completes after a wall-clock duration.
+///
+/// A background thread sleeps and then wakes the task. Storing and waking the
+/// [`Waker`] — rather than spinning in `poll` — is the whole point: `poll` never
+/// blocks the executor thread.
+pub struct Delay {
+    state: Arc&lt;Mutex&lt;DelayState&gt;&gt;,
+}
+
+impl Delay {
+    pub fn new(duration: Duration) -&gt; Self {
+        let state = Arc::new(Mutex::new(DelayState {
+            ready: false,
+            waker: None,
+        }));
+
+        let thread_state = Arc::clone(&amp;state);
+        thread::spawn(move || {
+            thread::sleep(duration);
+            let waker = {
+                let mut guard = thread_state.lock().expect("delay mutex poisoned");
+                guard.ready = true;
+                guard.waker.take()
+            };
+            if let Some(waker) = waker {
+                waker.wake();
+            }
+        });
+
+        Self { state }
+    }
+}
+
+impl Future for Delay {
+    type Output = ();
+
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, context: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
+        let mut guard = self.state.lock().expect("delay mutex poisoned");
+        if guard.ready {
+            Poll::Ready(())
+        } else {
+            guard.waker = Some(context.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+
+struct Task {
+    future: Mutex&lt;Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;&gt;,
+    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
+    completed: AtomicBool,
+}
+
+impl Wake for Task {
+    fn wake(self: Arc&lt;Self&gt;) {
+        // Re-enqueue the task. Cloning the `Arc` is a refcount bump, not a deep copy.
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(Arc::clone(&amp;self));
+    }
+
+    fn wake_by_ref(self: &amp;Arc&lt;Self&gt;) {
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(Arc::clone(self));
+    }
+}
+
+/// A single-threaded, `Send`-only executor.
+///
+/// Real runtimes add work stealing, timers, and I/O readiness. This keeps only the
+/// part that matters for explaining how `.await` makes progress: a queue of tasks
+/// where waking a task puts it back on the queue.
+#[derive(Default)]
+pub struct MiniExecutor {
+    queue: Arc&lt;Mutex&lt;VecDeque&lt;Arc&lt;Task&gt;&gt;&gt;&gt;,
+}
+
+impl MiniExecutor {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    /// Add a task to the executor.
+    pub fn spawn&lt;F&gt;(&amp;self, future: F)
+    where
+        F: Future&lt;Output = ()&gt; + Send + 'static,
+    {
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(future)),
+            queue: Arc::clone(&amp;self.queue),
+            completed: AtomicBool::new(false),
+        });
+        self.queue
+            .lock()
+            .expect("executor queue poisoned")
+            .push_back(task);
+    }
+
+    /// Run until the queue is empty.
+    ///
+    /// A task that returns `Pending` without waking stays suspended, which is why
+    /// this returns rather than blocks: a runtime with timers or I/O would also
+    /// park on an event source.
+    pub fn run(&amp;self) {
+        loop {
+            let Some(task) = self
+                .queue
+                .lock()
+                .expect("executor queue poisoned")
+                .pop_front()
+            else {
+                return;
+            };
+
+            if task.completed.load(Ordering::Acquire) {
+                continue;
+            }
+
+            let waker = Waker::from(Arc::clone(&amp;task));
+            let mut context = Context::from_waker(&amp;waker);
+            let mut future = task.future.lock().expect("task mutex poisoned");
+            if future.as_mut().poll(&amp;mut context).is_ready() {
+                task.completed.store(true, Ordering::Release);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{sync::atomic::AtomicUsize, time::Instant};
+
+    use super::*;
+
+    #[test]
+    fn block_on_drives_a_hand_written_future() {
+        assert_eq!(block_on(YieldTimes::new(3)), 3);
+    }
+
+    #[test]
+    fn block_on_polls_an_async_block() {
+        let total = block_on(async {
+            let a = YieldTimes::new(1).await;
+            let b = YieldTimes::new(2).await;
+            a + b
+        });
+        assert_eq!(total, 3);
+    }
+
+    #[test]
+    fn block_on_waits_for_a_delay() {
+        let start = Instant::now();
+        block_on(Delay::new(Duration::from_millis(30)));
+        assert!(start.elapsed() &gt;= Duration::from_millis(20));
+    }
+
+    #[test]
+    fn executor_runs_spawned_tasks_to_completion() {
+        let executor = MiniExecutor::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        for _ in 0..4 {
+            let counter = Arc::clone(&amp;counter);
+            executor.spawn(async move {
+                YieldTimes::new(2).await;
+                counter.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+
+        executor.run();
+        assert_eq!(counter.load(Ordering::SeqCst), 4);
+    }
+
+    #[test]
+    fn executor_polls_an_immediately_ready_task() {
+        let executor = MiniExecutor::new();
+        let flag = Arc::new(AtomicBool::new(false));
+
+        let task_flag = Arc::clone(&amp;flag);
+        executor.spawn(async move {
+            task_flag.store(true, Ordering::SeqCst);
+        });
+
+        executor.run();
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}</code></pre>
+<p class="listing"><b>Listing 22.9</b> The program that drives the runtime. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/async_demo.rs">src/bin/async_demo.rs</a></p>
+
+<pre><code class="language-rust">//! Runs the hand-written async runtime in [`systems_lab::problems::async_mini`].
+//!
+//! There is no Tokio here on purpose: the point is to show that `Future`, `Waker`,
+//! `Poll`, and `Pin` are enough to build an executor, and that `.await` is just
+//! sugar over a state machine that is polled.
+//!
+//! ```bash
+//! cargo run --bin async_demo
+//! ```
+
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::{Duration, Instant},
+};
+
+use systems_lab::problems::async_mini::{Delay, MiniExecutor, YieldTimes, block_on};
+
+fn main() {
+    println!("== block_on drives a hand-written future ==");
+    let yields = block_on(YieldTimes::new(3));
+    println!("YieldTimes suspended and resumed {yields} time(s)");
+
+    println!("\n== block_on drives an async block ==");
+    let total = block_on(async {
+        let first = YieldTimes::new(1).await;
+        let second = YieldTimes::new(2).await;
+        first + second
+    });
+    println!("async block finished with {total}");
+
+    println!("\n== block_on parks the thread until the waker fires ==");
+    let start = Instant::now();
+    block_on(Delay::new(Duration::from_millis(50)));
+    println!("Delay completed after {:?}", start.elapsed());
+
+    println!("\n== MiniExecutor runs independent tasks ==");
+    let executor = MiniExecutor::new();
+    let completed = Arc::new(AtomicUsize::new(0));
+
+    for id in 1..=3 {
+        let completed = Arc::clone(&amp;completed);
+        executor.spawn(async move {
+            YieldTimes::new(id).await;
+            completed.fetch_add(1, Ordering::SeqCst);
+            println!("task {id} completed after {id} yield(s)");
+        });
+    }
+
+    executor.run();
+    println!("{} task(s) completed", completed.load(Ordering::SeqCst));
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin async_demo
+== block_on drives a hand-written future ==
+YieldTimes suspended and resumed 3 time(s)
+
+== block_on drives an async block ==
+async block finished with 3
+
+== block_on parks the thread until the waker fires ==
+Delay completed after 52.083242ms
+
+== MiniExecutor runs independent tasks ==
+task 1 completed after 1 yield(s)
+task 2 completed after 2 yield(s)
+task 3 completed after 3 yield(s)
+3 task(s) completed
+</code></pre>
+<p>The tasks finish in the order 1, 2, 3 because each yield sends its task to the back of the queue. Each task takes a turn, as in the round-robin scheduler of chapter 15, with a yield as the end of a time slice.</p>
+<p>You can now follow a task from <code>spawn</code> to <code>Ready</code>, and say what <code>wake</code> does to the queue.</p>
+<h2 id="226-what-async-compiles-to-and-why-pin"><a class="header" href="#226-what-async-compiles-to-and-why-pin">22.6 What <code>async</code> compiles to, and why <code>Pin</code></a></h2>
+<p>An <code>async</code> block or function is notation. The compiler turns it into an anonymous type that implements <code>Future</code>. That type is usually an enum with one variant per suspension point, and each variant holds the values alive across that point.</p>
+<p>The block used by the demo is:</p>
+<pre><code class="language-rust">async {
+    let first = YieldTimes::new(1).await;
+    let second = YieldTimes::new(2).await;
+    first + second
+}</code></pre>
+<p>The compiler writes an enum with four states: <code>Start</code>, <code>Awaiting first</code>, <code>Awaiting second</code>, and <code>Done</code>. Figure 22.4 shows the states and the values each one keeps.</p>
+<figure>
+<img src="figures/ch22-state-machine.svg" alt="States: Start, Awaiting first (holds YieldTimes 1), Awaiting second (holds first and YieldTimes 2), and Done with first plus second. Pending loops back to the same state; an inner Ready moves to the next.">
+<figcaption><b>Figure 22.4</b> The state machine behind the async block. The value <code>first</code> survives the second <code>.await</code>, so it is stored in the second state.</figcaption>
+</figure>
+<p>Polling the block runs code until the next <code>.await</code> whose inner future returns <code>Pending</code>. It saves the state, stores the inner future and the live locals, and returns <code>Pending</code> too. A later poll resumes at the saved state rather than starting the block again.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch22-await.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The async block&#39;s code, with a bookmark at the await where the next poll resumes, beside the future&#39;s memory: a state tag and two slots. Poll 1 runs to the first await, stores YieldTimes(1), and the tag flips to AwaitingFirst. Poll 2 resumes at the bookmark. first = 1 moves into memory, YieldTimes(2) is stored, and the tag flips to AwaitingSecond. Poll 3 returns Pending and stays in the same state. Poll 4 computes first + second = 3, returns Ready(3), and the tag flips to Done. A fifth poll would find Done and panic." data-chapters="[[0.0, &quot;the block&quot;], [5.46, &quot;poll 1&quot;], [20.58, &quot;poll 2&quot;], [43.5, &quot;poll 3&quot;], [53.04, &quot;poll 4&quot;], [69.78, &quot;poll 5?&quot;]]"><img src="figures/ch22-await.gif" alt="The async block&#39;s code, with a bookmark at the await where the next poll resumes, beside the future&#39;s memory: a state tag and two slots. Poll 1 runs to the first await, stores YieldTimes(1), and the tag flips to AwaitingFirst. Poll 2 resumes at the bookmark. first = 1 moves into memory, YieldTimes(2) is stored, and the tag flips to AwaitingSecond. Poll 3 returns Pending and stays in the same state. Poll 4 computes first + second = 3, returns Ready(3), and the tag flips to Done. A fifth poll would find Done and panic."></video>
+<figcaption><b>Animation 22.3</b> The same block, one poll at a time. <code>first</code> lives across the second <code>.await</code>, so the future stores it. <code>second</code> does not, so the future never stores it.</figcaption>
+</figure>
+<p><code>first</code> survives the second <code>.await</code>, so it is stored in the <code>Awaiting second</code> state. The size of a future is fixed once its type is known. The compiler sizes each state to hold the largest set of locals that can live there.</p>
+<p>The remaining question is why <code>poll</code> takes <code>Pin&lt;&amp;mut Self&gt;</code>. A state can hold a reference to another field of the same state machine. One example is a local buffer that is borrowed and still used across an <code>.await</code>. If the machine moved after the borrow was created, the reference would point at the old location. Figure 22.5 shows the two cases.</p>
+<figure>
+<img src="figures/ch22-pin.svg" alt="Left: an unpinned future with a field r holding the address of its own buf. After a move, buf is at a new address but r still holds the old one, which is freed. Right: a pinned future stays at one address, so r stays valid.">
+<figcaption><b>Figure 22.5</b> Why a self-referential future must not move. Pinning keeps a borrow of one field valid across a suspension point.</figcaption>
+</figure>
+<p><code>Pin&lt;&amp;mut Self&gt;</code> is the promise that the value will not move after the first poll. That is why <code>block_on</code> calls <code>Box::pin</code> and why <code>MiniExecutor</code> stores <code>Pin&lt;Box&lt;...&gt;&gt;</code>. Both keep the future at one address for its whole life.</p>
+<p>Pinning is not a property of every type. A type whose values are safe to move even after a poll is <code>Unpin</code>, and for those types pinning adds no restriction. <code>YieldTimes</code> is <code>Unpin</code> because it holds two integers, so its <code>poll</code> can call <code>self.get_mut()</code> and work with <code>&amp;mut Self</code> directly.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch22-pin.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely." data-chapters="[[0.0, &quot;a borrow&quot;], [5.7, &quot;a move&quot;], [25.5, &quot;pinned&quot;], [39.72, &quot;rejected&quot;], [46.38, &quot;Unpin&quot;]]"><img src="figures/ch22-pin.gif" alt="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely."></video>
+<figcaption><b>Animation 22.4</b> A move copies bytes and leaves a reference into the old copy behind. <code>Box::pin</code> keeps the future at one address, so moving the handle the program holds moves only a pointer.</figcaption>
+</figure>
+<p>You can now read an <code>async</code> block as an enum of states, and explain what <code>Pin</code> stops the compiler from doing.</p>
+<h2 id="227-two-http-clients-with-caching-retries-and-idempotency"><a class="header" href="#227-two-http-clients-with-caching-retries-and-idempotency">22.7 Two HTTP clients with caching, retries, and idempotency</a></h2>
+<p>The last two programs put a runtime to work. Both send <code>POST /post</code> with a JSON body to <code>httpbin.org</code>, a public echo service, with the idempotency key <code>create-demo-001</code>. Both have the same three layers: a cache, a retry policy, and a transport. Figure 22.6 shows the stacks.</p>
+<figure>
+<img src="figures/ch22-clients.svg" alt="Two stacks. Blocking client: idempotency cache, then retry policy, then a hand-built HTTP request over TcpStream. Async client: cache lookup, then a retry loop on 429 and 5xx with tokio sleep, then a reqwest client with a timeout and an Idempotency-Key header.">
+<figcaption><b>Figure 22.6</b> The same three layers in both clients: cache, retry, transport.</figcaption>
+</figure>
+<p>Chapter 19 built retries and idempotency keys on their own. Here they meet a network call.</p>
+<h3 id="2271-a-blocking-client-over-tcpstream"><a class="header" href="#2271-a-blocking-client-over-tcpstream">22.7.1 A blocking client over <code>TcpStream</code></a></h3>
+<p>The blocking client composes its three layers in one line:</p>
+<pre><code class="language-rust">self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))</code></pre>
+<p><code>IdemCache</code> is chapter 19’s <code>Idempotent&lt;K, V&gt;</code> store under another name. <code>RetryPolicy::execute</code> retries any error with a doubling delay, <code>base × 2^(attempt - 1)</code>, capped at <code>max_delay</code>. <code>RequestType</code> is an enum whose variants carry exactly the fields each method needs.</p>
+<p><code>send</code> writes the request by hand. It writes the request line, <code>Host</code>, <code>Connection: close</code>, and the caller’s headers. A body adds <code>Content-Length</code>, a blank line, and then the body. <code>Connection: close</code> lets <code>read_to_string</code> work as the response reader, because the server closes the connection at the end. Chapter 17’s parser is the other side of this conversation.</p>
+<p class="listing"><b>Listing 22.10</b> Cache, retry, and a hand-written HTTP/1.1 request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">src/bin/fun_network_call.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    net::TcpStream,
+    sync::Mutex,
+    time::Duration,
+};
+
+type RuntimeError = Box&lt;dyn std::error::Error&gt;;
+
+/// header repsesents vec![(key, value)];
+type RequestHeader = Vec&lt;(String, String)&gt;;
+enum RequestType {
+    GET {
+        path: String,
+        headers: Vec&lt;(String, String)&gt;,
+    },
+    OPTION {
+        path: String,
+        headers: Vec&lt;(String, String)&gt;,
+    },
+    POST {
+        path: String,
+        headers: Vec&lt;(String, String)&gt;,
+        body: String,
+    },
+    PUT {
+        path: String,
+        headers: Vec&lt;(String, String)&gt;,
+        body: String,
+    },
+}
+
+/// An idempotency cache store to store requests if it's succeeded!
+struct IdemCache {
+    store: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
+}
+
+impl IdemCache {
+    fn new() -&gt; Self {
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn get_or_insert&lt;F&gt;(&amp;self, key: &amp;str, f: F) -&gt; Result&lt;String, RuntimeError&gt;
+    where
+        F: FnOnce() -&gt; Result&lt;String, RuntimeError&gt;,
+    {
+        let mut store = self.store.lock().map_err(|_| "lock poisoned")?;
+        if let Some(v) = store.get(key) {
+            return Ok(v.clone());
+        }
+        let v = f()?;
+        store.insert(key.to_string(), v.clone());
+        Ok(v)
+    }
+}
+
+struct RetryPolicy {
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+}
+
+impl RetryPolicy {
+    fn new() -&gt; Self {
+        Self {
+            max_attempts: 3,
+            base_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(5),
+        }
+    }
+
+    fn execute&lt;F, T&gt;(&amp;self, mut f: F) -&gt; Result&lt;T, RuntimeError&gt;
+    where
+        F: FnMut() -&gt; Result&lt;T, RuntimeError&gt;,
+    {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            match f() {
+                Ok(v) =&gt; return Ok(v),
+                Err(e) if attempt &gt;= self.max_attempts =&gt; return Err(e),
+                Err(_) =&gt; {
+                    let delay = (self.base_delay * 2u32.pow(attempt - 1)).min(self.max_delay);
+                    std::thread::sleep(delay);
+                }
+            }
+        }
+    }
+}
+
+/// -- Build a HTTP client with those strategies
+
+struct HttpClient {
+    host: String,
+    port: u16,
+    cache: IdemCache,
+    retry: RetryPolicy,
+}
+
+impl HttpClient {
+    fn new(host: &amp;str, port: u16) -&gt; Self {
+        Self {
+            host: host.to_string(),
+            port,
+            cache: IdemCache::new(),
+            retry: RetryPolicy::new(),
+        }
+    }
+
+    fn execute(&amp;self, key: &amp;str, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
+        self.cache
+            .get_or_insert(key, || self.retry.execute(|| self.send(req)))
+    }
+
+    fn send(&amp;self, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
+        let (method, path, headers, body) = match req {
+            RequestType::GET { path, headers } =&gt; ("GET", path, headers, None),
+            RequestType::OPTION { path, headers } =&gt; ("OPTIONS", path, headers, None),
+            RequestType::POST {
+                path,
+                headers,
+                body,
+            } =&gt; ("POST", path, headers, Some(body)),
+            RequestType::PUT {
+                path,
+                headers,
+                body,
+            } =&gt; ("PUT", path, headers, Some(body)),
+        };
+
+        let mut raw = format!(
+            "{method} {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
+            self.host
+        );
+        for (k, v) in headers {
+            raw += &amp;format!("{k}: {v}\r\n");
+        }
+        if let Some(b) = body {
+            raw += &amp;format!("Content-Length: {}\r\n", b.len());
+        }
+        raw += "\r\n";
+        if let Some(b) = body {
+            raw += b;
+        }
+
+        let mut stream = TcpStream::connect((self.host.as_str(), self.port))?;
+        stream.write_all(raw.as_bytes())?;
+        let mut resp = String::new();
+        stream.read_to_string(&amp;mut resp)?;
+        Ok(resp
+            .split_once("\r\n\r\n")
+            .map(|(_, b)| b)
+            .unwrap_or("")
+            .to_string())
+    }
+}
+
+// --- The actual REST call ---
+
+fn create_item(client: &amp;HttpClient, item_name: &amp;str) -&gt; Result&lt;String, RuntimeError&gt; {
+    client.execute(
+        "create-demo-001",
+        &amp;RequestType::POST {
+            path: "/post".into(),
+            headers: vec![
+                ("Content-Type".into(), "application/json".into()),
+                ("Accept".into(), "application/json".into()),
+            ],
+            body: format!(r#"{{"name":"{item_name}"}}"#),
+        },
+    )
+}
+
+fn main() -&gt; Result&lt;(), RuntimeError&gt; {
+    let client = HttpClient::new("httpbin.org", 80);
+    println!("created:\n{}", create_item(&amp;client, "demo")?);
+    Ok(())
+}</code></pre>
+<p>Two gaps separate this from a client you would ship, and both are visible in the code:</p>
+<ul>
+<li>The status code is never read. <code>send</code> returns whatever follows the first blank line. A <code>500</code> error page is returned as success, cached under the idempotency key, and never retried. Only transport errors reach the retry loop.</li>
+<li>Everything is retried. A policy should ask the error, as <code>Retryable</code> does in chapter 19. Here a DNS failure for a misspelled host is retried three times.</li>
+</ul>
+<h3 id="2272-an-async-client-with-reqwest"><a class="header" href="#2272-an-async-client-with-reqwest">22.7.2 An async client with <code>reqwest</code></a></h3>
+<p>The async client reads the status code and makes retry a decision about it. <code>RETRY</code> lists the statuses to retry: 429 and four 5xx codes. The <code>match</code> on the status then has three arms:</p>
+<pre><code class="language-rust">match status {
+    s if s.is_success() =&gt; {
+        self.store(key, &amp;text);
+        return Ok(text);
+    }
+    s if RETRY.contains(&amp;s) &amp;&amp; attempt &lt; self.cfg.max_attempts =&gt; {
+        tokio::time::sleep(delay).await;
+        delay = (delay * 2).min(self.cfg.max_delay);
+    }
+    s =&gt; return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+}</code></pre>
+<p><code>tokio::time::sleep</code> does not block the thread. It returns a future that registers with Tokio’s timer and returns <code>Pending</code>, which is the <code>Delay</code> of section 22.4.2 done properly. Other tasks run on the same thread while this one waits.</p>
+<p class="listing"><b>Listing 22.11</b> The same layers on Tokio. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">src/bin/reqwest_and_tokio.rs</a></p>
+
+<pre><code class="language-rust">use std::{collections::HashMap, sync::Mutex, time::Duration};
+
+use reqwest::{Client, Method, StatusCode};
+use serde_json::Value;
+
+type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;;
+
+const RETRY: [StatusCode; 5] = [
+    StatusCode::TOO_MANY_REQUESTS,
+    StatusCode::INTERNAL_SERVER_ERROR,
+    StatusCode::BAD_GATEWAY,
+    StatusCode::SERVICE_UNAVAILABLE,
+    StatusCode::GATEWAY_TIMEOUT,
+];
+
+struct Config {
+    base: String,
+    max_attempts: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+    timeout: Duration,
+}
+
+struct Api {
+    http: Client,
+    cache: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
+    cfg: Config,
+}
+
+impl Api {
+    fn new(cfg: Config) -&gt; Result&lt;Self, Error&gt; {
+        Ok(Self {
+            http: Client::builder().timeout(cfg.timeout).build()?,
+            cache: Mutex::new(HashMap::new()),
+            cfg,
+        })
+    }
+
+    fn cached(&amp;self, key: &amp;str) -&gt; Option&lt;String&gt; {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(key)
+            .cloned()
+    }
+
+    fn store(&amp;self, key: &amp;str, text: &amp;str) {
+        self.cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key.into(), text.into());
+    }
+
+    async fn call(
+        &amp;self,
+        key: &amp;str,
+        method: Method,
+        path: &amp;str,
+        body: Option&lt;&amp;Value&gt;,
+    ) -&gt; Result&lt;String, Error&gt; {
+        match self.cached(key) {
+            Some(hit) =&gt; return Ok(hit),
+            None =&gt; {}
+        }
+
+        let url = format!("{}{}", self.cfg.base, path);
+        let mut delay = self.cfg.base_delay;
+        let mut attempt = 0;
+
+        loop {
+            attempt += 1;
+
+            let req = self
+                .http
+                .request(method.clone(), &amp;url)
+                .header("Idempotency-Key", key)
+                .header("Accept", "application/json");
+            let req = match body {
+                Some(b) =&gt; req.json(b),
+                None =&gt; req,
+            };
+
+            let resp = req.send().await?;
+            let status = resp.status();
+            let text = resp.text().await?;
+
+            match status {
+                s if s.is_success() =&gt; {
+                    self.store(key, &amp;text);
+                    return Ok(text);
+                }
+                s if RETRY.contains(&amp;s) &amp;&amp; attempt &lt; self.cfg.max_attempts =&gt; {
+                    tokio::time::sleep(delay).await;
+                    delay = (delay * 2).min(self.cfg.max_delay);
+                }
+                s =&gt; return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+            }
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Error&gt; {
+    let api = Api::new(Config {
+        base: "https://httpbin.org".into(),
+        max_attempts: 3,
+        base_delay: Duration::from_millis(100),
+        max_delay: Duration::from_secs(5),
+        timeout: Duration::from_secs(15),
+    })?;
+
+    let body = serde_json::json!({ "name": "demo" });
+    let out = api
+        .call("create-demo-001", Method::POST, "/post", Some(&amp;body))
+        .await?;
+    println!("created:\n{out}");
+    Ok(())
+}</code></pre>
+<p>Several choices in this client are deliberate:</p>
+<ul>
+<li><code>Client::builder().timeout(cfg.timeout)</code> bounds every request. A client without a timeout can wait forever on a server that accepted the connection and never answered.</li>
+<li>The request carries <code>Idempotency-Key: create-demo-001</code>, so a server that honors the header can safely deduplicate the retried <code>POST</code>. The client-side cache gives the same guarantee within one process.</li>
+<li>The cache is a <code>std::sync::Mutex</code>. That is allowed in async code because the guard is never held across an <code>.await</code>; <code>cached</code> and <code>store</code> lock, act, and return. The lock is taken with <code>unwrap_or_else(|e| e.into_inner())</code>, chapter 16’s ignore-the-poison choice. A <code>HashMap</code> insert cannot leave the map half-updated, so recovering the guard is safe here.</li>
+<li><code>type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;</code> lets errors cross task boundaries.</li>
+</ul>
+<h3 id="2273-the-two-clients-side-by-side"><a class="header" href="#2273-the-two-clients-side-by-side">22.7.3 The two clients side by side</a></h3>
+<p>The asynchronous client has the opposite gap from the blocking one. It reads the status code, but a transport error from <code>send().await?</code> is not retried at all. The blocking client retries transport errors and never reads the status code. Merging the two means retrying both, with a policy that asks the error which kind it is.</p>
+<p>Neither client adds jitter, and neither honors <code>Retry-After</code>. Chapter 19 shows both in its delay policy.</p>
+<h3 id="2274-where-the-merged-client-belongs"><a class="header" href="#2274-where-the-merged-client-belongs">22.7.4 Where the merged client belongs</a></h3>
+<p>The repository has an empty crate named <code>rust-async-http-examples</code>, created for this. Its first program can be the client from section 22.7.2 moved into <code>lib.rs</code>, with the retry and cache layers exposed for testing. Its tests can then run against a local server such as chapter 17’s, instead of a public one.</p>
+<h2 id="228-questions-that-come-up"><a class="header" href="#228-questions-that-come-up">22.8 Questions that come up</a></h2>
+<p><strong>“What happens when a future returns <code>Pending</code>?”</strong>
+It has arranged for its waker to be called when it can make progress. The executor stops polling it and runs other tasks. When the waker fires, the executor polls it again.</p>
+<p><strong>“Why does <code>poll</code> take <code>Pin&lt;&amp;mut Self&gt;</code>?”</strong>
+An async state machine can hold a reference into itself across an <code>.await</code>. Pinning guarantees the value will not move after the first poll, so that reference stays valid.</p>
+<p><strong>“Why must spawned futures be <code>Send</code> in Tokio?”</strong>
+The multi-threaded runtime may resume a task on a different worker thread after any <code>.await</code>. Everything the task holds across an <code>.await</code> must therefore be safe to move between threads.</p>
+<p><strong>“Can you call blocking code inside async?”</strong>
+Only briefly. A blocking call holds the worker thread, and every task scheduled on it waits. Use <code>tokio::task::spawn_blocking</code> for blocking work, and async versions of I/O and sleep.</p>
+<p><strong>“Is a <code>std::sync::Mutex</code> allowed in async code?”</strong>
+Yes, if the guard is dropped before the next <code>.await</code>. Holding it across an <code>.await</code> can block the worker or deadlock it. Use <code>tokio::sync::Mutex</code> when the lock must be held across an await.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A future has one method, <code>poll</code>. <code>Ready</code> finishes the task. <code>Pending</code> is a promise that the waker will be called when progress becomes possible.</li>
+<li>The executor polls again after a wake and does not spin. Spurious wakes are harmless; a missing wake is a task that never runs again, with no error.</li>
+<li><code>block_on</code> is the whole executor for one future: pin, build a waker from the current thread, poll, and park on <code>Pending</code>.</li>
+<li>A future either re-arms itself (<code>YieldTimes</code>, <code>yield_now</code>) or keeps a waker for an event outside the executor (<code>Delay</code>, sockets, timers).</li>
+<li>Waking a task and scheduling it are the same operation. <code>Task</code> implements <code>Wake</code>, and <code>wake</code> pushes the task back on the queue.</li>
+<li>An <code>async</code> block compiles to an enum with one variant per suspension point. Each variant holds the values alive across that point.</li>
+<li><code>poll</code> takes <code>Pin&lt;&amp;mut Self&gt;</code> because a state can borrow from another field of the same future. Pinning keeps the value at one address, so the borrow stays valid.</li>
+<li>A spawned future must be <code>Send</code>, because a waker may move it to another worker thread.</li>
+<li>The two HTTP clients share three layers: cache, retry, and transport. The blocking client never reads the status code; the async one never retries a transport error.</li>
+</ul>
+</div>
+
+<p>Chapter 23 collects compact implementations of the structures from parts 2 to 6. Each one is the shortest program that still shows the structure working, and each fits on one screen.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Add a poll counter to <code>block_on</code> and print it. Check that the count matches the number of wakes for <code>Delay</code>, and that a spurious wake adds one poll without breaking anything.</li>
+<li>Write a <code>ReadyNow</code> future that returns <code>Ready</code> on its first poll. Confirm that <code>MiniExecutor::run</code> completes it in one poll.</li>
+<li>Change <code>MiniExecutor::run</code> to return the number of tasks it completed. Test it with tasks that yield different numbers of times.</li>
+<li>Give <code>Delay</code> a <code>Drop</code> that sets a flag the timer thread checks, so a cancelled delay does not keep a thread asleep.</li>
+<li>Merge the two HTTP clients. Retry a retryable status and a transport error, add jitter to the delay, and honor <code>Retry-After</code> when the server sends it.</li>
+<li>Move the async client into <code>rust-async-http-examples</code> as a library, and test it against chapter 21’s local server.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch21-http.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch23-drills.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch21-http.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch23-drills.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

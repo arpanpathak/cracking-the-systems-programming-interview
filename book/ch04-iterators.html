@@ -1,0 +1,605 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Iterators and references - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch04.png" alt="Sprocket, the robot who runs the line one part at a time, beside a belt of parts passing a map press and a filter gate into a collecting bin">
+<h1 id="iterators-and-references"><a class="header" href="#iterators-and-references">Iterators and references</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What an iterator is, and what a <code>for</code> loop does with one</li>
+<li>The three ways to walk a collection: by reference, by mutable reference, and by value</li>
+<li>Chaining <code>filter</code>, <code>map</code>, and <code>collect</code>, and why nothing runs until <code>collect</code></li>
+<li>Why a closure sometimes receives <code>&amp;&amp;i32</code>, and how patterns like <code>|&amp;&amp;x|</code> remove the references</li>
+<li>Lifetimes: what they are, why the compiler needs them, and how to read <code>'a</code> in a signature</li>
+<li>Building a map that stores references instead of copies</li>
+</ul>
+</div>
+
+<p>Chapter 3 used iterators and references in almost every listing: <code>nums.iter().enumerate()</code>,
+<code>s.chars()</code>, <code>seen.get(&amp;key)</code>. I explained each use briefly and moved on. This chapter slows down and
+looks at them properly, because every later chapter depends on them.</p>
+<p>The chapter has two halves. The first half is about iterators: what they are, how a <code>for</code> loop uses them,
+and how to chain them. The second half is about references and lifetimes. A <strong>lifetime</strong> is the part of a
+program during which a reference is guaranteed to point to valid data. You will see why Rust needs them,
+how to read them, and how to write a function whose signature uses one.</p>
+<p>Both halves meet in one short program. It turns a list of users into a map from each user’s ID to that
+user, without copying any user.</p>
+<h2 id="41-what-an-iterator-is"><a class="header" href="#41-what-an-iterator-is">4.1 What an iterator is</a></h2>
+<p>An <strong>iterator</strong> is a value that hands out items one at a time. It has one required method, <code>next</code>, which
+returns <code>Some(item)</code> while there are items left and <code>None</code> when there are none.</p>
+<p>You can think of an iterator over a slice as a cursor that starts before the first element. Each call to
+<code>next</code> returns the element under the cursor and moves the cursor one step (figure 4.1).</p>
+<figure>
+<img src="figures/iter-cursor.svg" alt="Four rows showing the cursor over 10, 20, 30 and then past the end; the calls return Some(&amp;10), Some(&amp;20), Some(&amp;30), and None">
+<figcaption><b>Figure 4.1</b> An iterator over <code>[10, 20, 30]</code>. Each call to <code>next</code> returns one item. After the last item, it returns <code>None</code>.</figcaption>
+</figure>
+<p>You rarely call <code>next</code> yourself. A <code>for</code> loop calls it for you. This loop:</p>
+<pre><code class="language-rust">for x in [10, 20, 30].iter() {
+    println!("{x}");
+}</code></pre>
+<p>does the same as this:</p>
+<pre><code class="language-rust">let mut it = [10, 20, 30].iter();
+while let Some(x) = it.next() {
+    println!("{x}");
+}</code></pre>
+<p><code>while let Some(x) = it.next()</code> keeps looping as long as <code>next</code> returns <code>Some</code>, and binds the item to <code>x</code>.
+Section 2.8 used this form directly, because it needed to call <code>next</code> inside the loop body.</p>
+<h2 id="42-three-ways-to-walk-a-collection"><a class="header" href="#42-three-ways-to-walk-a-collection">4.2 Three ways to walk a collection</a></h2>
+<p>A <code>Vec&lt;String&gt;</code> owns its strings. When you walk it, you have to decide what you get for each element: a
+shared reference, a mutable reference, or the string itself. Each choice has its own method (figure 4.2).</p>
+<figure>
+<img src="figures/iter-kinds.svg" alt="names.iter() yields &amp;String and leaves names usable; names.iter_mut() yields &amp;mut String; names.into_iter() yields String and uses names up">
+<figcaption><b>Figure 4.2</b> The three iteration methods and the item type each one yields.</figcaption>
+</figure>
+<ul>
+<li><code>iter()</code> gives <code>&amp;T</code>, a shared reference to each element. You can read the elements, and the collection
+is unchanged afterward.</li>
+<li><code>iter_mut()</code> gives <code>&amp;mut T</code>. You can change each element in place.</li>
+<li><code>into_iter()</code> gives <code>T</code>, the element itself. The collection is moved into the iterator, so you cannot use
+it afterward.</li>
+</ul>
+<p>A <code>for</code> loop chooses for you based on what you write after <code>in</code>. <code>for x in &amp;names</code> means <code>names.iter()</code>.
+<code>for x in &amp;mut names</code> means <code>names.iter_mut()</code>. <code>for x in names</code> means <code>names.into_iter()</code>, and <code>names</code> is
+gone after the loop.</p>
+<div class="callout tip" markdown="1">
+<p><strong>TIP:</strong> When you are not sure which one you have, look at the item type the compiler reports. A
+deliberate type error such as <code>let () = x;</code> inside the loop makes the compiler print the type of <code>x</code>.</p>
+</div>
+
+<h2 id="43-chaining-iterators"><a class="header" href="#43-chaining-iterators">4.3 Chaining iterators</a></h2>
+<p>An <strong>iterator adapter</strong> is a method that takes one iterator and returns another. <code>filter</code> keeps only the
+items for which a closure returns <code>true</code>. <code>map</code> replaces each item with the closure’s result. <code>collect</code>
+is different: it runs the whole chain and gathers the items into a collection, such as a <code>Vec</code>.</p>
+<p>Figure 4.3 follows three numbers through a chain.</p>
+<figure>
+<img src="figures/iter-pipeline.svg" alt="Stages iter, filter, map, collect. &amp;10 and &amp;20 pass the filter, &amp;15 is dropped, map turns them into 100 and 200, collect builds vec![100, 200]">
+<figcaption><b>Figure 4.3</b> Items flow through the chain one at a time. The odd number 15 stops at <code>filter</code>.</figcaption>
+</figure>
+<p>Adapters are <strong>lazy</strong>. <code>iter().filter(...).map(...)</code> only builds a description of the work. Nothing happens
+until something asks for items, as <code>collect</code> or a <code>for</code> loop does. Then each item goes through every stage
+before the next item starts. No temporary vector is created between stages.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> Because adapters are lazy, a chain that ends without <code>collect</code>, a <code>for</code> loop, or another method
+that consumes it does nothing at all. The compiler warns about such a chain: “unused <code>Map</code> that must be used”.</p>
+</div>
+
+<h2 id="44-references-to-references"><a class="header" href="#44-references-to-references">4.4 References to references</a></h2>
+<p>Look closely at the chain in figure 4.3. <code>slice.iter()</code> yields items of type <code>&amp;i32</code>. <code>filter</code> passes its
+closure a reference to each item, so that the closure can look at the item without taking it. So the
+closure receives <code>&amp;&amp;i32</code>: a reference to a reference to an <code>i32</code> (figure 4.4).</p>
+<figure>
+<img src="figures/iter-refref.svg" alt="An i32 in the slice, a &amp;i32 pointing to it from iter(), and a &amp;&amp;i32 pointing to that from filter">
+<figcaption><b>Figure 4.4</b> The two layers of reference inside <code>filter</code>'s closure.</figcaption>
+</figure>
+<p>A closure’s parameter can be a pattern, the same as the left side of a <code>let</code>. The pattern <code>&amp;x</code> matches a
+reference and binds <code>x</code> to what it points to. So:</p>
+<ul>
+<li><code>.filter(|&amp;&amp;x| x % 2 == 0)</code> removes both layers. Inside the closure, <code>x</code> is an <code>i32</code>.</li>
+<li><code>.map(|&amp;x| x * 10)</code> removes the one layer that <code>map</code> gives. <code>map</code> passes the item itself, not a reference
+to it.</li>
+</ul>
+<p>This works for <code>i32</code> because <code>i32</code> is <code>Copy</code>: removing the reference copies the number. A <code>String</code> is not
+<code>Copy</code>. For it, a pattern like <code>|&amp;s|</code> would try to move the value out of a reference, and the compiler
+rejects that. You would write <code>|s|</code> and use <code>s</code> as a reference instead.</p>
+<h2 id="45-the-same-work-in-two-styles"><a class="header" href="#45-the-same-work-in-two-styles">4.5 The same work in two styles</a></h2>
+<p>The program for this chapter starts with a small <code>User</code> type and two functions that do similar work in two
+styles.</p>
+<p class="listing"><b>Listing 4.1</b> The <code>User</code> type and two ways to transform a slice (lines 1 to 23). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lifetime_reference_drill.rs">src/bin/lifetime_reference_drill.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::HashMap;
+
+#[derive(Debug)]
+struct User {
+    id: u32,
+    name: String,
+}
+
+fn functional_numbers_drill(slice: &amp;[i32]) -&gt; Vec&lt;i32&gt; {
+    slice
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .map(|&amp;x| x * 10)
+        .collect()
+}
+
+fn imperative_numbers_map(slice: &amp;[i32]) -&gt; HashMap&lt;i32, i32&gt; {
+    let mut map = HashMap::new();
+    for &amp;num in slice {
+        map.insert(num, num * 100);
+    }
+    map
+}</code></pre>
+<p><code>functional_numbers_drill</code> is the chain from figure 4.3. <code>collect()</code> knows to build a <code>Vec&lt;i32&gt;</code> because
+that is the function’s return type. When the type is not clear from context, you write it, as in
+<code>collect::&lt;Vec&lt;i32&gt;&gt;()</code>.</p>
+<p><code>imperative_numbers_map</code> uses a <code>for</code> loop and builds a <code>HashMap</code> from each number to that number times
+100. <code>for &amp;num in slice</code> removes the one reference that iterating a slice gives, so <code>num</code> is an <code>i32</code>.</p>
+<p>Neither style is faster. Both compile to similar machine code. Iterator chains read well when the work is a
+sequence of steps. Loops read well when the body does several unrelated things.</p>
+<p>With iterators covered, the rest of the chapter turns to the references they hand out, and to the rules
+that keep those references safe.</p>
+<h2 id="46-lifetimes"><a class="header" href="#46-lifetimes">4.6 Lifetimes</a></h2>
+<p>A reference points to data owned by something else. If the owner is dropped while the reference is still
+in use, the reference points to freed memory. Reading through it would give garbage or crash the program.
+Figure 4.5 shows the smallest example.</p>
+<figure>
+<img src="figures/iter-dangling.svg" alt="A reference r is set to &amp;s inside a block; s is dropped at the end of the block, and r is used afterward. The compiler reports error E0597, s does not live long enough.">
+<figcaption><b>Figure 4.5</b> A reference that would outlive its data. The compiler rejects this program.</figcaption>
+</figure>
+<p>To prevent this, the compiler tracks, for every reference, the part of the program where it is used. It
+also knows where each value is dropped. If a reference is used after its value is dropped, the program does
+not compile. The part of the program where a reference is valid is its lifetime.</p>
+<p>Inside one function, the compiler works out all lifetimes on its own. Across function calls it needs help.
+Consider a function that takes a reference and returns one:</p>
+<pre><code class="language-rust">fn first_word(s: &amp;str) -&gt; &amp;str { ... }</code></pre>
+<p>The caller needs to know how long the returned reference is valid. Here the only possible answer is “as
+long as <code>s</code>”, and the compiler assumes that without being told. These assumptions are called <strong>lifetime
+elision rules</strong>. For a function with one reference parameter, the returned reference gets that parameter’s
+lifetime.</p>
+<p>When the rules cannot decide, or when you want to state a relationship yourself, you name lifetimes. A
+lifetime name is an apostrophe and a short name, usually <code>'a</code>. You declare it in angle brackets after the
+function name, like a generic type, and then attach it to references:</p>
+<pre><code class="language-rust">fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str { ... }</code></pre>
+<p>Read this as: “for some lifetime <code>'a</code>, both inputs are valid for <code>'a</code>, and so is the output”. The compiler
+then checks every caller. The returned reference may not be used after either input’s data is dropped.</p>
+<p>A lifetime annotation does not change how long anything lives. It describes a relationship, and the
+compiler checks that the code keeps it.</p>
+<h2 id="47-a-map-that-points-into-a-slice"><a class="header" href="#47-a-map-that-points-into-a-slice">4.7 A map that points into a slice</a></h2>
+<p>Now you have what you need to read the main functions of the program. The goal is to index a list of users
+by ID. You could copy each user into a <code>HashMap&lt;u32, User&gt;</code>. Or you could store only a reference to each
+user, in a <code>HashMap&lt;u32, &amp;User&gt;</code>, and leave the users where they are. Figure 4.6 compares the two.</p>
+<figure>
+<img src="figures/ch01-borrow-layout.svg" alt="A map of copies, each entry holding a cloned User, and a map of references, each entry holding a pointer into the original users array">
+<figcaption><b>Figure 4.6</b> A map of copies duplicates every user and its name. A map of references stores one pointer per entry, and depends on the original array staying alive.</figcaption>
+</figure>
+<p>The map of references is cheaper. It also depends on the users staying alive while the map is used. The
+function’s signature states that dependency with a lifetime.</p>
+<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 25 to 31).</p>
+
+<pre><code class="language-rust">fn struct_slice_to_map&lt;'a&gt;(slice: &amp;'a [User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
+    let mut map = HashMap::new();
+    for user in slice {
+        map.insert(user.id, user);
+    }
+    map
+}</code></pre>
+<p>Read the signature the way section 4.6 showed. For some lifetime <code>'a</code>, the input is a slice of users valid
+for <code>'a</code>. The output is a map whose values are references valid for <code>'a</code>. Because both mention the same
+<code>'a</code>, the map may not be used after the users are dropped. If you tried, the compiler would reject the
+program with the same error as figure 4.5.</p>
+<p>Inside the function, <code>for user in slice</code> walks the slice by reference, so <code>user</code> is a <code>&amp;User</code>. The map
+stores that reference. No <code>User</code> is cloned.</p>
+<h2 id="48-two-lifetimes-in-one-type"><a class="header" href="#48-two-lifetimes-in-one-type">4.8 Two lifetimes in one type</a></h2>
+<p>The second function takes a different input. Instead of a slice of users, it takes a slice of references to
+users.</p>
+<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 33 to 39).</p>
+
+<pre><code class="language-rust">fn ref_slice_to_map&lt;'a&gt;(slice: &amp;[&amp;'a User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
+    let mut map = HashMap::new();
+    for &amp;user in slice {
+        map.insert(user.id, user);
+    }
+    map
+}</code></pre>
+<p>The type <code>&amp;[&amp;'a User]</code> has two references in it:</p>
+<ul>
+<li>The outer <code>&amp;</code> is the slice itself, a short list of pointers. Its lifetime has no name here.</li>
+<li>The inner <code>&amp;'a User</code> is each pointer in the list. Its lifetime <code>'a</code> belongs to the users those pointers
+point to.</li>
+</ul>
+<p>The returned map mentions only <code>'a</code>. So the map depends on the users, not on the list of pointers. The list
+can be dropped right after the call, and the map stays valid (figure 4.7).</p>
+<figure>
+<img src="figures/ch01-lifetimes.svg" alt="A short-lived slice of references, the users it points to, and a map pointing directly at the users">
+<figcaption><b>Figure 4.7</b> The map copies the pointers out of the short-lived slice. It points at the users directly, so only the users must stay alive.</figcaption>
+</figure>
+<p><code>for &amp;user in slice</code> copies each pointer out of the slice. A reference is a <code>Copy</code> value, one machine word, so
+this copy is cheap.</p>
+<h2 id="49-the-complete-program"><a class="header" href="#49-the-complete-program">4.9 The complete program</a></h2>
+<p class="listing"><b>Listing 4.4</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lifetime_reference_drill.rs">src/bin/lifetime_reference_drill.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::HashMap;
+
+#[derive(Debug)]
+struct User {
+    id: u32,
+    name: String,
+}
+
+fn functional_numbers_drill(slice: &amp;[i32]) -&gt; Vec&lt;i32&gt; {
+    slice
+        .iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .map(|&amp;x| x * 10)
+        .collect()
+}
+
+fn imperative_numbers_map(slice: &amp;[i32]) -&gt; HashMap&lt;i32, i32&gt; {
+    let mut map = HashMap::new();
+    for &amp;num in slice {
+        map.insert(num, num * 100);
+    }
+    map
+}
+
+fn struct_slice_to_map&lt;'a&gt;(slice: &amp;'a [User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
+    let mut map = HashMap::new();
+    for user in slice {
+        map.insert(user.id, user);
+    }
+    map
+}
+
+fn ref_slice_to_map&lt;'a&gt;(slice: &amp;[&amp;'a User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
+    let mut map = HashMap::new();
+    for &amp;user in slice {
+        map.insert(user.id, user);
+    }
+    map
+}
+
+fn main() {
+    let vv = vec![1, 2, 3, 4, 5, 6];
+
+    let filtered: Vec&lt;i32&gt; = vv
+        .iter()
+        .filter(|x| *x % 2 == 0)
+        .copied()
+        .collect();
+    println!("Filtered : {:?}", filtered);
+
+    println!("--- Ultra-Lean Inline Slice Drill ---\n");
+
+    let processed_nums = functional_numbers_drill(&amp;[10, 15, 20, 25, 30]);
+    println!("1. Functional Numbers (Even * 10): {:?}", processed_nums);
+
+    let num_map = imperative_numbers_map(&amp;[10, 15, 20, 25, 30]);
+    println!("2. Imperative Numbers Map: {:?}", num_map);
+
+    // explicit reference binding holding the inline array literal
+    let users: &amp;[User] = &amp;[
+        User {
+            id: 101,
+            name: "Alice".to_string(),
+        },
+        User {
+            id: 102,
+            name: "Bob".to_string(),
+        },
+        User {
+            id: 103,
+            name: "Charlie".to_string(),
+        },
+    ];
+    println!("\n3. Zero-Allocation Struct Map (From &amp;[User]):");
+    let struct_map = struct_slice_to_map(users);
+    for (id, user_ref) in &amp;struct_map {
+        println!("   Key ID: {} -&gt; Value Name: {}", id, user_ref.name);
+    }
+
+    // explicit reference binding holding the inline array of &amp;User
+    let user_refs: &amp;[&amp;User] = &amp;[struct_map[&amp;101], struct_map[&amp;102]];
+    println!("\n4. Zero-Allocation Ref Slice Map (From &amp;[&amp;User]):");
+    let ref_slice_map = ref_slice_to_map(user_refs);
+    for (id, user_ref) in &amp;ref_slice_map {
+        println!("   Key ID: {} -&gt; Value Name: {}", id, user_ref.name);
+    }
+
+    println!("\n--- Drill Completed Successfully! ---");
+}</code></pre>
+<p><code>main</code> starts with one more iterator chain. <code>vv.iter()</code> yields <code>&amp;i32</code>, and <code>filter</code> receives <code>&amp;&amp;i32</code>. This
+closure writes <code>|x|</code> and then <code>*x % 2</code>. The <code>*</code> removes one layer of reference, and the <code>%</code> operator works
+through the other. <code>.copied()</code> turns each <code>&amp;i32</code> into an <code>i32</code>, so <code>collect</code> builds a <code>Vec&lt;i32&gt;</code>.</p>
+<p>Two lines in <code>main</code> use a rule you have not seen yet:</p>
+<pre><code class="language-rust">let users: &amp;[User] = &amp;[ User { ... }, User { ... }, User { ... } ];</code></pre>
+<p><code>&amp;[ ... ]</code> takes a reference to an array that was never given a name of its own. Such a value is a
+<strong>temporary</strong>, and a temporary is normally dropped at the end of the statement. That would leave <code>users</code>
+pointing to freed memory. Rust extends the temporary’s life to the end of the enclosing block when it is the
+direct value of a <code>let</code>. This is called <strong>temporary lifetime extension</strong>. It is why <code>users</code> and <code>user_refs</code>
+stay valid for the rest of <code>main</code>.</p>
+<p>Run the program:</p>
+<pre><code class="language-text">$ cargo run --bin lifetime_reference_drill
+Filtered : [2, 4, 6]
+--- Ultra-Lean Inline Slice Drill ---
+
+1. Functional Numbers (Even * 10): [100, 200, 300]
+2. Imperative Numbers Map: {20: 2000, 10: 1000, 25: 2500, 15: 1500, 30: 3000}
+
+3. Zero-Allocation Struct Map (From &amp;[User]):
+   Key ID: 101 -&gt; Value Name: Alice
+   Key ID: 102 -&gt; Value Name: Bob
+   Key ID: 103 -&gt; Value Name: Charlie
+
+4. Zero-Allocation Ref Slice Map (From &amp;[&amp;User]):
+   Key ID: 102 -&gt; Value Name: Bob
+   Key ID: 101 -&gt; Value Name: Alice
+
+--- Drill Completed Successfully! ---
+</code></pre>
+<p>Run it again and the map lines may come out in a different order. As section 3.4 explained, <code>HashMap</code> uses a
+randomly seeded hash, so its iteration order is not fixed. When you need a stable order, use a <code>BTreeMap</code>,
+which keeps its keys sorted, or sort the keys before printing.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>An iterator hands out items through <code>next</code>, which returns <code>Some(item)</code> or <code>None</code>. A <code>for</code> loop calls
+<code>next</code> until it gets <code>None</code>.</li>
+<li><code>iter()</code> yields <code>&amp;T</code>, <code>iter_mut()</code> yields <code>&amp;mut T</code>, and <code>into_iter()</code> yields <code>T</code> and uses up the
+collection.</li>
+<li>Adapters such as <code>filter</code> and <code>map</code> are lazy. <code>collect</code> or a loop drives them, one item at a time.</li>
+<li><code>filter</code> passes a reference to each item, so over <code>iter()</code> its closure receives <code>&amp;&amp;T</code>. Patterns like
+<code>|&amp;&amp;x|</code> remove the references for <code>Copy</code> types.</li>
+<li>A lifetime is the part of the program where a reference is valid. The compiler rejects a reference used
+after its data is dropped.</li>
+<li><code>'a</code> in a signature names a lifetime and ties inputs to outputs. It describes a relationship; it does not
+change how long anything lives.</li>
+<li>A <code>HashMap&lt;u32, &amp;'a User&gt;</code> indexes data without copying it, and cannot outlive that data.</li>
+</ul>
+</div>
+
+<p>Chapter 5 uses iterators and collections to solve problems with heaps and sorted collections, such as
+finding the most frequent words in a text.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Rewrite <code>imperative_numbers_map</code> as an iterator chain that ends in <code>collect::&lt;HashMap&lt;_, _&gt;&gt;()</code>.</li>
+<li>Write <code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code>. Then write a <code>main</code> where calling it and
+using the result fails to compile, and read the error.</li>
+<li>Change <code>struct_slice_to_map</code> to return a <code>BTreeMap</code>, and check that the output order is now stable.</li>
+<li>Write a function that takes <code>&amp;mut [User]</code> and uses <code>iter_mut()</code> to append “ (admin)“ to every name.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch03-collections.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch05-heaps.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch03-collections.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch05-heaps.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

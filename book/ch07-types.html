@@ -1,0 +1,1164 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Types that refuse bad input - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch07.png" alt="Rivet, the inspector robot who rejects bad parts at the gate, beside a shape sorter: blocks on a belt, and a gate that accepts one profile">
+<h1 id="types-that-refuse-bad-input"><a class="header" href="#types-that-refuse-bad-input">Types that refuse bad input</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>Traits: what they are, how to implement one, and what <code>#[derive]</code> writes for you</li>
+<li>A newtype: a struct around one number that can only hold valid values</li>
+<li>Error types that say what went wrong, with <code>Display</code> and <code>std::error::Error</code></li>
+<li>Converting between types with <code>From</code> and <code>TryFrom</code></li>
+<li>Enums whose variants carry data, used for commands, for states, and for errors</li>
+<li>A parser that turns a line of text into a typed command</li>
+</ul>
+</div>
+
+<p>This chapter begins Part 3, on modeling data. So far your programs have used the types Rust provides:
+numbers, strings, vectors, and maps. In this chapter you design your own types, so that invalid values cannot
+be represented at all.</p>
+<p>The examples come from a small command-line tool that manages jobs on a remote computer. The jobs are called
+<strong>workloads</strong>. Each workload asks for a number of GPUs, which must be between 1 and 64. A GPU is a graphics processor,
+and servers also use GPUs for general computation. A workload moves through states such as pending,
+running, and terminated. The tool reads commands typed by a user, such as <code>create triton 4</code>, which asks for a
+workload named <code>triton</code> with 4 GPUs. That is all you need to know about the tool.</p>
+<p>Here is the problem this chapter solves. A GPU count arrives as text typed by a user. The program must reject
+<code>0</code>, <code>99</code>, and <code>many</code>, and it must do so before the count reaches the code that uses it. If each function
+checked the count itself, one forgotten check would let a bad value through. Instead, the program checks the
+count once, where the text enters, and stores the result in a type that can only hold valid counts. Every
+function that receives that type can rely on it without checking again.</p>
+<p>The chapter builds this in order:</p>
+<ol>
+<li>Section 7.1 explains traits, which the rest of the chapter implements.</li>
+<li>Section 7.2 builds the GPU count type.</li>
+<li>Section 7.3 gives it an error type.</li>
+<li>Section 7.4 adds the standard conversions.</li>
+<li>Section 7.5 builds an enum for commands and a parser for them.</li>
+<li>Section 7.6 models the workload’s states and the moves between them.</li>
+<li>Section 7.7 models the errors a server can return.</li>
+</ol>
+<h2 id="71-traits"><a class="header" href="#71-traits">7.1 Traits</a></h2>
+<p>A <strong>trait</strong> is a set of methods that a type promises to provide. The standard library defines many traits.
+For example, the <code>Display</code> trait has one method, <code>fmt</code>, which writes a value as text for a person to read.
+<code>println!("{}", x)</code> works for any <code>x</code> whose type implements <code>Display</code>.</p>
+<p>You implement a trait for your type with an <code>impl</code> block that names the trait:</p>
+<pre><code class="language-rust">impl fmt::Display for GpuCountError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(formatter, "...")
+    }
+}</code></pre>
+<p>Some traits are so regular that the compiler can write them for you. <code>#[derive(Debug, Clone, PartialEq)]</code> placed above a struct asks the compiler to generate three traits.
+<code>Debug</code> prints with <code>{:?}</code>, <code>Clone</code> copies with <code>.clone()</code>, and <code>PartialEq</code> compares with <code>==</code>. The derived versions work field by field.</p>
+<p>Table 7.1 lists the traits this chapter uses.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Trait</th><th>What it gives you</th><th>How you get it</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Debug</code></td><td>printing with <code>{:?}</code>, for programmers</td><td><code>#[derive(Debug)]</code></td></tr>
+<tr><td><code>Display</code></td><td>printing with <code>{}</code>, for users</td><td>write <code>impl Display</code> yourself</td></tr>
+<tr><td><code>Clone</code>, <code>Copy</code></td><td><code>.clone()</code>, and for <code>Copy</code>, copying by assignment</td><td>derive</td></tr>
+<tr><td><code>PartialEq</code>, <code>Eq</code></td><td><code>==</code> and <code>!=</code></td><td>derive</td></tr>
+<tr><td><code>PartialOrd</code>, <code>Ord</code></td><td><code>&lt;</code>, <code>&gt;</code>, and sorting</td><td>derive</td></tr>
+<tr><td><code>Hash</code></td><td>use as a <code>HashMap</code> key</td><td>derive</td></tr>
+<tr><td><code>std::error::Error</code></td><td>use as an error with <code>?</code> and <code>Box&lt;dyn Error&gt;</code></td><td>write an empty <code>impl</code> once <code>Debug</code> and <code>Display</code> exist</td></tr>
+<tr><td><code>From</code>, <code>TryFrom</code></td><td>conversions between types</td><td>write <code>impl</code> yourself</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="72-a-gpu-count-that-is-always-valid"><a class="header" href="#72-a-gpu-count-that-is-always-valid">7.2 A GPU count that is always valid</a></h2>
+<p>A <strong>newtype</strong> is a struct with one field, used to give a plain value a type of its own. Here the plain value
+is a <code>u32</code>, and the new type is <code>GpuCount</code>.</p>
+<p>The trick is privacy. Fields in Rust are private by default. Code outside the module where the struct is defined cannot read or
+write them, and cannot build the struct with <code>GpuCount(0)</code>. The only way to get a
+<code>GpuCount</code> is through the functions the module offers. If those functions check the value, every
+<code>GpuCount</code> in the program is valid. Figure 7.1 shows the design.</p>
+<figure>
+<img src="figures/ch01-boundary.svg" alt="Untrusted inputs, a string and a u32, pass through a parse/try_from gate. Valid input becomes a Command containing a GpuCount, which flows to functions that need no checks. Invalid input becomes a typed error.">
+<figcaption><b>Figure 7.1</b> Checks happen once, at the gate. Inside, the types guarantee the values are valid.</figcaption>
+</figure>
+<p>The module starts with a comment that lists its ideas:</p>
+<p class="listing"><b>Listing 7.1</b> The module comment (lines 1 to 12). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs">src/problems/adt_idioms.rs</a></p>
+
+<pre><code class="language-rust">//! Small algebraic-data-type idioms.
+//!
+//! These patterns are short and cannot represent invalid states.
+//!
+//! - A newtype gives a primitive a name and a single validating constructor, so
+//!   an out-of-range value cannot exist.
+//! - An enum with data models a closed set of alternatives, and `match` forces
+//!   every alternative to be handled.
+//! - Typed errors carry the reason instead of a string, so the caller can react.
+//! - `TryFrom` puts the validation on the type boundary, where it belongs.
+//! - An iterator chain states the intent in one pass and removes index
+//!   bookkeeping.</code></pre>
+<p>Here is the type:</p>
+<p class="listing"><b>Listing 7.2</b> <code>GpuCount</code> (lines 14 to 36).</p>
+
+<pre><code class="language-rust">use std::fmt;
+
+/// A GPU count that is validated at construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GpuCount(u32);
+
+impl GpuCount {
+    pub const MIN: u32 = 1;
+    pub const MAX: u32 = 64;
+
+    /// Validate a raw count.
+    pub fn new(value: u32) -&gt; Result&lt;Self, GpuCountError&gt; {
+        if (Self::MIN..=Self::MAX).contains(&amp;value) {
+            Ok(Self(value))
+        } else {
+            Err(GpuCountError(value))
+        }
+    }
+
+    pub fn get(self) -&gt; u32 {
+        self.0
+    }
+}</code></pre>
+<ul>
+<li><code>pub struct GpuCount(u32);</code> is a <strong>tuple struct</strong>: a struct whose field has no name, only a position. The
+struct is public, but its field is not.</li>
+<li><code>pub const MIN: u32 = 1;</code> and <code>MAX</code> are <strong>associated constants</strong>, constants that belong to the type. You
+refer to them as <code>GpuCount::MIN</code>, or <code>Self::MIN</code> inside the <code>impl</code>.</li>
+<li><code>new</code> is the gate. <code>(Self::MIN..=Self::MAX)</code> is the range 1 to 64, including both ends, and <code>.contains(&amp;value)</code>
+checks the value. If it is in range, <code>new</code> returns <code>Ok(Self(value))</code>. If not, it returns an error.</li>
+<li><code>get</code> returns the number inside. It takes <code>self</code> by value, which is fine because <code>GpuCount</code> is <code>Copy</code>.</li>
+</ul>
+<p>The long <code>#[derive(...)]</code> line gives <code>GpuCount</code> the same abilities as the <code>u32</code> inside it. You can print it,
+copy it, compare it, sort it, and use it as a map key.</p>
+<h2 id="73-an-error-that-says-what-went-wrong"><a class="header" href="#73-an-error-that-says-what-went-wrong">7.3 An error that says what went wrong</a></h2>
+<p>When <code>new</code> rejects a value, it returns a <code>GpuCountError</code>. Here is that type:</p>
+<p class="listing"><b>Listing 7.3</b> The error type (lines 38 to 54).</p>
+
+<pre><code class="language-rust">/// Why a raw GPU count was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpuCountError(pub u32);
+
+impl fmt::Display for GpuCountError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(
+            formatter,
+            "gpu count {} is outside {}..={}",
+            self.0,
+            GpuCount::MIN,
+            GpuCount::MAX
+        )
+    }
+}
+
+impl std::error::Error for GpuCountError {}</code></pre>
+<p><code>GpuCountError(pub u32)</code> keeps the rejected value. Its field is <code>pub</code>, so a caller can read which value was
+rejected.</p>
+<p>The <code>Display</code> implementation writes the message a user sees. <code>write!</code> works like <code>format!</code>, but writes into
+the formatter. The message includes the value and the allowed range: <code>gpu count 0 is outside 1..=64</code>.</p>
+<p><code>impl std::error::Error for GpuCountError {}</code> is empty. The <code>Error</code> trait’s methods all have defaults, and it
+requires <code>Debug</code> and <code>Display</code>, which the type already has. Implementing it lets this error work with other
+error-handling code, such as <code>Box&lt;dyn std::error::Error&gt;</code>, which you will see in section 7.5.</p>
+<h2 id="74-converting-with-from-and-tryfrom"><a class="header" href="#74-converting-with-from-and-tryfrom">7.4 Converting with <code>From</code> and <code>TryFrom</code></a></h2>
+<p>The standard library has two traits for converting a value of one type into another:</p>
+<ul>
+<li><code>From&lt;A&gt; for B</code> is for conversions that always succeed. Implementing it gives you <code>B::from(a)</code>, and also
+<code>a.into()</code> wherever a <code>B</code> is expected.</li>
+<li><code>TryFrom&lt;A&gt; for B</code> is for conversions that can fail. Its <code>try_from</code> returns a <code>Result</code>. Implementing it
+gives you <code>B::try_from(a)</code> and <code>a.try_into()</code>.</li>
+</ul>
+<p class="listing"><b>Listing 7.4</b> The two conversions (lines 56 to 68).</p>
+
+<pre><code class="language-rust">impl TryFrom&lt;u32&gt; for GpuCount {
+    type Error = GpuCountError;
+
+    fn try_from(value: u32) -&gt; Result&lt;Self, Self::Error&gt; {
+        Self::new(value)
+    }
+}
+
+impl From&lt;GpuCount&gt; for u32 {
+    fn from(count: GpuCount) -&gt; u32 {
+        count.0
+    }
+}</code></pre>
+<p>Going from <code>u32</code> to <code>GpuCount</code> can fail, so it is <code>TryFrom</code>. Its body calls <code>new</code>, so the check still lives
+in one place. <code>type Error = GpuCountError;</code> names the error type this conversion returns.</p>
+<p>Going from <code>GpuCount</code> back to <code>u32</code> cannot fail, so it is <code>From</code>. The body returns the field, <code>count.0</code>.</p>
+<div class="callout tip" markdown="1">
+<p><strong>TIP:</strong> Rust also has the <code>as</code> keyword, as in <code>x as u32</code>. <code>as</code> never reports failure: converting 300 to a
+<code>u8</code> with <code>as</code> quietly gives 44. Prefer <code>From</code> when a conversion cannot fail and <code>TryFrom</code> when it can, and
+keep <code>as</code> for cases where you want truncation.</p>
+</div>
+
+<h2 id="75-commands-an-enum-that-carries-data"><a class="header" href="#75-commands-an-enum-that-carries-data">7.5 Commands: an enum that carries data</a></h2>
+<h3 id="751-why-an-enum"><a class="header" href="#751-why-an-enum">7.5.1 Why an enum</a></h3>
+<p>The tool accepts four commands. <code>list</code> takes no arguments. <code>get</code> and <code>delete</code> each take an ID. <code>create</code>
+takes a name and a GPU count. A first design might put all the possible fields in one struct:</p>
+<pre><code class="language-rust">struct Command {
+    verb: String,
+    id: Option&lt;String&gt;,        // only for get and delete
+    name: Option&lt;String&gt;,      // only for create
+    gpus: Option&lt;u32&gt;,         // only for create
+}</code></pre>
+<p>This struct can hold a <code>get</code> without an ID, or a <code>list</code> with a GPU count. Every function that receives it
+has to check which fields make sense for the verb.</p>
+<p>An enum whose variants each carry their own data cannot hold those combinations:</p>
+<p class="listing"><b>Listing 7.5</b> The command enum (lines 70 to 77).</p>
+
+<pre><code class="language-rust">/// A closed set of commands, each carrying exactly the data it needs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    List,
+    Get { id: String },
+    Create { name: String, gpus: GpuCount },
+    Delete { id: String },
+}</code></pre>
+<p>A <code>Create</code> always has a name and a valid <code>GpuCount</code>, because Rust will not build one without them. A <code>List</code>
+has no fields, because it needs none.</p>
+<p>In memory, every <code>Command</code> takes the same space, enough for its largest variant, as figure 7.2 shows.</p>
+<figure>
+<img src="figures/enum-layout.svg" alt="Four rows of 32 bytes: List uses none, Get and Delete use 24 bytes for a String, Create uses 24 bytes for a String and 4 for the count">
+<figcaption><b>Figure 7.2</b> A <code>Command</code> is 32 bytes. Rust also records which variant a value is. Here it stores that in bit patterns the <code>String</code> never uses, so no extra byte is needed.</figcaption>
+</figure>
+<h3 id="752-parsing-a-line-of-text"><a class="header" href="#752-parsing-a-line-of-text">7.5.2 Parsing a line of text</a></h3>
+<p class="listing"><b>Listing 7.6</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 115).</p>
+
+<pre><code class="language-rust">impl Command {
+    /// Parse one command line.
+    pub fn parse(line: &amp;str) -&gt; Result&lt;Self, CommandError&gt; {
+        let mut parts = line.split_whitespace();
+        let verb = parts.next().ok_or(CommandError::Empty)?;
+
+        match verb {
+            "list" =&gt; Ok(Self::List),
+            "get" =&gt; Ok(Self::Get {
+                id: argument(&amp;mut parts, "id")?.to_string(),
+            }),
+            "delete" =&gt; Ok(Self::Delete {
+                id: argument(&amp;mut parts, "id")?.to_string(),
+            }),
+            "create" =&gt; {
+                let name = argument(&amp;mut parts, "name")?.to_string();
+                let raw = argument(&amp;mut parts, "gpu count")?;
+                let value: u32 = raw
+                    .parse()
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                let gpus = GpuCount::new(value)
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                Ok(Self::Create { name, gpus })
+            }
+            other =&gt; Err(CommandError::UnknownVerb(other.to_string())),
+        }
+    }
+
+    pub fn verb(&amp;self) -&gt; &amp;'static str {
+        match self {
+            Self::List =&gt; "list",
+            Self::Get { .. } =&gt; "get",
+            Self::Create { .. } =&gt; "create",
+            Self::Delete { .. } =&gt; "delete",
+        }
+    }
+}</code></pre>
+<p><code>parse</code> returns <code>Result&lt;Self, CommandError&gt;</code>: a command, or the reason the line could not be parsed. Trace
+<code>Command::parse("create triton 4")</code> step by step:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step</th><th>Code</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td><code>line.split_whitespace()</code></td><td>an iterator over <code>"create"</code>, <code>"triton"</code>, <code>"4"</code></td></tr>
+<tr><td>2</td><td><code>parts.next().ok_or(CommandError::Empty)?</code></td><td><code>verb</code> is <code>"create"</code></td></tr>
+<tr><td>3</td><td><code>match verb</code></td><td>runs the <code>"create"</code> arm</td></tr>
+<tr><td>4</td><td><code>argument(&amp;mut parts, "name")?</code></td><td><code>"triton"</code>, turned into a <code>String</code></td></tr>
+<tr><td>5</td><td><code>argument(&amp;mut parts, "gpu count")?</code></td><td><code>raw</code> is <code>"4"</code></td></tr>
+<tr><td>6</td><td><code>raw.parse()</code></td><td>the number 4</td></tr>
+<tr><td>7</td><td><code>GpuCount::new(value)</code></td><td><code>GpuCount(4)</code></td></tr>
+<tr><td>8</td><td><code>Ok(Self::Create { name, gpus })</code></td><td>the finished command</td></tr>
+</tbody>
+</table>
+</div>
+<p>Now try some bad inputs. An empty line fails at step 2, because there is no first word. <code>ok_or</code> turns the
+<code>None</code> into <code>Err(CommandError::Empty)</code>, and <code>?</code> returns it. The line <code>create triton many</code> fails at step 6,
+because <code>"many"</code> is not a number. The line <code>create triton 0</code> passes step 6 and fails at step 7.</p>
+<p>Steps 6 and 7 can fail for different reasons, but both failures are reported the same way.
+<code>.map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))</code> replaces whatever error came back with
+<code>InvalidGpuCount</code>, carrying the text the user typed. The user then sees their own input in the message.</p>
+<p><code>verb</code> goes the other way, from a command to its name. The patterns <code>Self::Get { .. }</code> match a variant and
+ignore its fields.</p>
+<h3 id="753-the-parsers-errors-and-helper"><a class="header" href="#753-the-parsers-errors-and-helper">7.5.3 The parser’s errors and helper</a></h3>
+<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 117 to 146).</p>
+
+<pre><code class="language-rust">/// A typed parse failure, so callers can distinguish the cases.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandError {
+    Empty,
+    UnknownVerb(String),
+    MissingArgument(&amp;'static str),
+    InvalidGpuCount(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Empty =&gt; write!(formatter, "empty command"),
+            Self::UnknownVerb(verb) =&gt; write!(formatter, "unknown verb {verb:?}"),
+            Self::MissingArgument(name) =&gt; write!(formatter, "missing argument: {name}"),
+            Self::InvalidGpuCount(raw) =&gt; write!(formatter, "invalid gpu count: {raw:?}"),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+fn argument&lt;'a&gt;(
+    parts: &amp;mut impl Iterator&lt;Item = &amp;'a str&gt;,
+    name: &amp;'static str,
+) -&gt; Result&lt;&amp;'a str, CommandError&gt; {
+    parts
+        .next()
+        .ok_or(CommandError::MissingArgument(name))
+}</code></pre>
+<p><code>CommandError</code> lists every way parsing can fail, and its <code>Display</code> writes a message for each. Because the
+errors are enum variants, a caller can <code>match</code> on them and react differently to each. A CLI could print usage
+help for <code>MissingArgument</code> and the allowed range for <code>InvalidGpuCount</code>. With a plain <code>String</code> error, the
+caller would have to read the message text to tell the cases apart.</p>
+<p><code>argument</code> takes the next word from the iterator, or fails with the argument’s name. Look at its first
+parameter, <code>&amp;mut impl Iterator&lt;Item = &amp;'a str&gt;</code>. It borrows the caller’s iterator mutably, so that each call
+consumes one more word. The lifetime <code>'a</code>, which you met in chapter 4, says the returned <code>&amp;str</code> points into
+the original line. So no text is copied until <code>parse</code> decides to keep it with <code>to_string()</code>.</p>
+<h3 id="754-adding-up-without-an-index"><a class="header" href="#754-adding-up-without-an-index">7.5.4 Adding up without an index</a></h3>
+<p>The file has one more small function:</p>
+<p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 148 to 155).</p>
+
+<pre><code class="language-rust">/// Count and sum in one pass, without managing an index.
+pub fn summarize(values: &amp;[i32]) -&gt; (usize, i64) {
+    values
+        .iter()
+        .fold((0usize, 0i64), |(count, sum), value| {
+            (count + 1, sum + i64::from(*value))
+        })
+}</code></pre>
+<p><code>fold</code> walks the slice once and carries a value along. Here the value is a pair, <code>(count, sum)</code>, starting at
+<code>(0, 0)</code>. For each element, the closure returns the new pair. <code>i64::from(*value)</code> widens each <code>i32</code> to <code>i64</code>.
+That conversion is a <code>From</code>, so it can never lose information.</p>
+<h3 id="755-the-complete-file"><a class="header" href="#755-the-complete-file">7.5.5 The complete file</a></h3>
+<p class="listing"><b>Listing 7.9</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs">src/problems/adt_idioms.rs</a></p>
+
+<pre><code class="language-rust">//! Small algebraic-data-type idioms.
+//!
+//! These patterns are short and cannot represent invalid states.
+//!
+//! - A newtype gives a primitive a name and a single validating constructor, so
+//!   an out-of-range value cannot exist.
+//! - An enum with data models a closed set of alternatives, and `match` forces
+//!   every alternative to be handled.
+//! - Typed errors carry the reason instead of a string, so the caller can react.
+//! - `TryFrom` puts the validation on the type boundary, where it belongs.
+//! - An iterator chain states the intent in one pass and removes index
+//!   bookkeeping.
+
+use std::fmt;
+
+/// A GPU count that is validated at construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GpuCount(u32);
+
+impl GpuCount {
+    pub const MIN: u32 = 1;
+    pub const MAX: u32 = 64;
+
+    /// Validate a raw count.
+    pub fn new(value: u32) -&gt; Result&lt;Self, GpuCountError&gt; {
+        if (Self::MIN..=Self::MAX).contains(&amp;value) {
+            Ok(Self(value))
+        } else {
+            Err(GpuCountError(value))
+        }
+    }
+
+    pub fn get(self) -&gt; u32 {
+        self.0
+    }
+}
+
+/// Why a raw GPU count was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpuCountError(pub u32);
+
+impl fmt::Display for GpuCountError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(
+            formatter,
+            "gpu count {} is outside {}..={}",
+            self.0,
+            GpuCount::MIN,
+            GpuCount::MAX
+        )
+    }
+}
+
+impl std::error::Error for GpuCountError {}
+
+impl TryFrom&lt;u32&gt; for GpuCount {
+    type Error = GpuCountError;
+
+    fn try_from(value: u32) -&gt; Result&lt;Self, Self::Error&gt; {
+        Self::new(value)
+    }
+}
+
+impl From&lt;GpuCount&gt; for u32 {
+    fn from(count: GpuCount) -&gt; u32 {
+        count.0
+    }
+}
+
+/// A closed set of commands, each carrying exactly the data it needs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    List,
+    Get { id: String },
+    Create { name: String, gpus: GpuCount },
+    Delete { id: String },
+}
+
+impl Command {
+    /// Parse one command line.
+    pub fn parse(line: &amp;str) -&gt; Result&lt;Self, CommandError&gt; {
+        let mut parts = line.split_whitespace();
+        let verb = parts.next().ok_or(CommandError::Empty)?;
+
+        match verb {
+            "list" =&gt; Ok(Self::List),
+            "get" =&gt; Ok(Self::Get {
+                id: argument(&amp;mut parts, "id")?.to_string(),
+            }),
+            "delete" =&gt; Ok(Self::Delete {
+                id: argument(&amp;mut parts, "id")?.to_string(),
+            }),
+            "create" =&gt; {
+                let name = argument(&amp;mut parts, "name")?.to_string();
+                let raw = argument(&amp;mut parts, "gpu count")?;
+                let value: u32 = raw
+                    .parse()
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                let gpus = GpuCount::new(value)
+                    .map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))?;
+                Ok(Self::Create { name, gpus })
+            }
+            other =&gt; Err(CommandError::UnknownVerb(other.to_string())),
+        }
+    }
+
+    pub fn verb(&amp;self) -&gt; &amp;'static str {
+        match self {
+            Self::List =&gt; "list",
+            Self::Get { .. } =&gt; "get",
+            Self::Create { .. } =&gt; "create",
+            Self::Delete { .. } =&gt; "delete",
+        }
+    }
+}
+
+/// A typed parse failure, so callers can distinguish the cases.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandError {
+    Empty,
+    UnknownVerb(String),
+    MissingArgument(&amp;'static str),
+    InvalidGpuCount(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&amp;self, formatter: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Empty =&gt; write!(formatter, "empty command"),
+            Self::UnknownVerb(verb) =&gt; write!(formatter, "unknown verb {verb:?}"),
+            Self::MissingArgument(name) =&gt; write!(formatter, "missing argument: {name}"),
+            Self::InvalidGpuCount(raw) =&gt; write!(formatter, "invalid gpu count: {raw:?}"),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+fn argument&lt;'a&gt;(
+    parts: &amp;mut impl Iterator&lt;Item = &amp;'a str&gt;,
+    name: &amp;'static str,
+) -&gt; Result&lt;&amp;'a str, CommandError&gt; {
+    parts
+        .next()
+        .ok_or(CommandError::MissingArgument(name))
+}
+
+/// Count and sum in one pass, without managing an index.
+pub fn summarize(values: &amp;[i32]) -&gt; (usize, i64) {
+    values
+        .iter()
+        .fold((0usize, 0i64), |(count, sum), value| {
+            (count + 1, sum + i64::from(*value))
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_each_command_variant() {
+        assert_eq!(Command::parse("list"), Ok(Command::List));
+        assert_eq!(
+            Command::parse("get wl-7"),
+            Ok(Command::Get { id: "wl-7".into() })
+        );
+        assert_eq!(
+            Command::parse("create triton 4"),
+            Ok(Command::Create {
+                name: "triton".into(),
+                gpus: GpuCount::new(4).expect("valid")
+            })
+        );
+        assert_eq!(
+            Command::parse("delete wl-7"),
+            Ok(Command::Delete { id: "wl-7".into() })
+        );
+    }
+
+    #[test]
+    fn rejects_bad_input_with_typed_errors() {
+        assert_eq!(Command::parse(""), Err(CommandError::Empty));
+        assert_eq!(
+            Command::parse("frobnicate"),
+            Err(CommandError::UnknownVerb("frobnicate".into()))
+        );
+        assert_eq!(
+            Command::parse("get"),
+            Err(CommandError::MissingArgument("id"))
+        );
+        assert_eq!(
+            Command::parse("create triton 0"),
+            Err(CommandError::InvalidGpuCount("0".into()))
+        );
+        assert_eq!(
+            Command::parse("create triton many"),
+            Err(CommandError::InvalidGpuCount("many".into()))
+        );
+    }
+
+    #[test]
+    fn newtype_rejects_out_of_range_values() {
+        assert!(GpuCount::new(1).is_ok());
+        assert!(GpuCount::new(64).is_ok());
+        assert!(GpuCount::new(0).is_err());
+        assert!(GpuCount::new(65).is_err());
+        assert_eq!(u32::from(GpuCount::try_from(8).expect("valid")), 8);
+        assert!(GpuCount::try_from(0).is_err());
+    }
+
+    #[test]
+    fn summarize_reports_count_and_sum() {
+        assert_eq!(summarize(&amp;[]), (0, 0));
+        assert_eq!(summarize(&amp;[1, 2, 3]), (3, 6));
+        assert_eq!(summarize(&amp;[-5, 5]), (2, 0));
+    }
+
+    #[test]
+    fn errors_render_a_reason() {
+        assert_eq!(
+            Command::parse("create triton 0")
+                .unwrap_err()
+                .to_string(),
+            "invalid gpu count: \"0\""
+        );
+        assert!(
+            GpuCount::new(99)
+                .unwrap_err()
+                .to_string()
+                .contains("outside")
+        );
+    }
+}</code></pre>
+<p>Read the tests as a description of the behavior. <code>parses_each_command_variant</code> shows one valid line per
+variant. <code>rejects_bad_input_with_typed_errors</code> shows each failure, and compares the errors with <code>assert_eq!</code>.
+That comparison works because <code>CommandError</code> derives <code>PartialEq</code>. <code>newtype_rejects_out_of_range_values</code>
+tests both edges of the range, 1 and 64, and one step past each.</p>
+<p>The tests run in parallel, so their order in the output can change from run to run:</p>
+<pre><code class="language-text">$ cargo test --lib adt_idioms
+running 5 tests
+test problems::adt_idioms::tests::newtype_rejects_out_of_range_values ... ok
+test problems::adt_idioms::tests::summarize_reports_count_and_sum ... ok
+test problems::adt_idioms::tests::rejects_bad_input_with_typed_errors ... ok
+test problems::adt_idioms::tests::parses_each_command_variant ... ok
+test problems::adt_idioms::tests::errors_render_a_reason ... ok
+
+test result: ok. 5 passed; 0 failed
+</code></pre>
+<p>The command enum describes what a user asks for. The next section uses an enum to describe something that
+changes over time.</p>
+<h2 id="76-the-states-of-a-workload"><a class="header" href="#76-the-states-of-a-workload">7.6 The states of a workload</a></h2>
+<p>A workload is accepted (<code>Pending</code>), gets machines assigned (<code>Provisioning</code>), runs (<code>Running</code>), is shut down
+(<code>Terminating</code>), and ends (<code>Terminated</code>). Any of the active states can fail, and a failed workload can be
+tried again. A description like this, a set of states and the allowed moves between them, is called a
+<strong>state machine</strong>. Figure 7.3 draws it.</p>
+<figure>
+<img src="figures/ch01-state-machine.svg" alt="State diagram: Pending to Provisioning to Running to Terminating to Terminated, every live state can fail, and Failed can retry into Pending or Provisioning">
+<figcaption><b>Figure 7.3</b> The workload's states. Double borders mark states where the workload holds no machines. Dashed arrows are retries.</figcaption>
+</figure>
+<p class="listing"><b>Listing 7.10</b> The states (lines 1 to 18). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs">src/problems/state_machine.rs</a></p>
+
+<pre><code class="language-rust">//! Algebraic data types / enum state machines.
+//!
+//! Cloud SDKs model workloads as finite state machines. Rust `enum` is
+//! perfect for this: invalid states are unrepresentable and transitions are
+//! explicit `match` arms, not nested `if` chains.
+
+use std::time::Duration;
+
+/// Lifecycle of a GPU cloud workload exposed through an SDK/API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkloadState {
+    Pending,
+    Provisioning,
+    Running,
+    Terminating,
+    Terminated,
+    Failed,
+}</code></pre>
+<p>Each state is a variant with no data. Such an enum is stored as a single byte, and it derives <code>Copy</code>, so you
+pass states around by value.</p>
+<p class="listing"><b>Listing 7.11</b> The allowed moves (lines 20 to 56).</p>
+
+<pre><code class="language-rust">impl WorkloadState {
+    /// Returns an error string for impossible transitions, or `Ok(())`.
+    pub fn can_transition_to(self, next: Self) -&gt; Result&lt;(), String&gt; {
+        match (self, next) {
+            // Forward lifecycle.
+            (Self::Pending, Self::Provisioning)
+            | (Self::Pending, Self::Failed)
+            | (Self::Provisioning, Self::Running)
+            | (Self::Provisioning, Self::Failed)
+            | (Self::Running, Self::Terminating)
+            | (Self::Running, Self::Failed)
+            | (Self::Terminating, Self::Terminated)
+            | (Self::Terminating, Self::Failed) =&gt; Ok(()),
+
+            // Retry loops allowed from failed states.
+            (Self::Failed, Self::Pending) | (Self::Failed, Self::Provisioning) =&gt; Ok(()),
+
+            // Everything else is invalid.
+            _ =&gt; Err(format!("cannot transition from {self:?} to {next:?}")),
+        }
+    }
+
+    pub fn is_terminal(self) -&gt; bool {
+        matches!(self, Self::Terminated | Self::Failed)
+    }
+
+    pub fn summary(self) -&gt; &amp;'static str {
+        match self {
+            Self::Pending =&gt; "workload accepted, waiting for scheduler",
+            Self::Provisioning =&gt; "GPU resources being allocated",
+            Self::Running =&gt; "workload is running",
+            Self::Terminating =&gt; "cleanup in progress",
+            Self::Terminated =&gt; "workload stopped and billing ended",
+            Self::Failed =&gt; "workload failed; inspect logs",
+        }
+    }
+}</code></pre>
+<p><code>can_transition_to</code> checks one move, from <code>self</code> to <code>next</code>. It matches on the pair <code>(self, next)</code>, so each
+pattern is one arrow in figure 7.3. Patterns joined with <code>|</code> share one arm: this is an <strong>or-pattern</strong>. The
+first arm lists the forward moves and the failure moves. The second lists the retries. The last arm, <code>_</code>,
+matches every other pair and returns an error.</p>
+<p>That last arm decides what happens to moves nobody listed. With it, any move not written down is rejected.
+If someone adds a new state later, every move into or out of it is rejected until they list it. That is the
+safe default for a state machine.</p>
+<p><code>is_terminal</code> uses the <code>matches!</code> macro, which returns <code>true</code> when a value matches a pattern. <code>Failed</code> counts
+as terminal even though it can retry, because it holds no machines. <code>summary</code> returns a fixed message for
+each state. Its return type <code>&amp;'static str</code> means the text lives for the whole program, because it is written
+into the program itself.</p>
+<h2 id="77-errors-from-a-server"><a class="header" href="#77-errors-from-a-server">7.7 Errors from a server</a></h2>
+<p>The same file models the errors a server can send back. Here, different errors carry different information.</p>
+<p class="listing"><b>Listing 7.12</b> <code>ApiError</code> and its methods (lines 58 to 91).</p>
+
+<pre><code class="language-rust">/// API error modeled as an enum with associated data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApiError {
+    InvalidRequest(String),
+    Unauthorized,
+    RateLimited { retry_after: Duration },
+    NotFound { resource_id: String },
+    Server { status: u16, message: String },
+}
+
+impl ApiError {
+    pub fn is_retryable(&amp;self) -&gt; bool {
+        matches!(
+            self,
+            Self::RateLimited { .. }
+                | Self::Server {
+                    status: 500..=599,
+                    ..
+                }
+        )
+    }
+
+    pub fn user_message(&amp;self) -&gt; String {
+        match self {
+            Self::InvalidRequest(msg) =&gt; format!("invalid request: {msg}"),
+            Self::Unauthorized =&gt; "authentication required or token expired".to_string(),
+            Self::RateLimited { retry_after } =&gt; {
+                format!("rate limited, retry in {}ms", retry_after.as_millis())
+            }
+            Self::NotFound { resource_id } =&gt; format!("resource not found: {resource_id}"),
+            Self::Server { status, message } =&gt; format!("server error {status}: {message}"),
+        }
+    }
+}</code></pre>
+<p>A rate-limit error says how long to wait before trying again. A not-found error says which resource. A server
+error carries the HTTP status code and a message.</p>
+<p><code>is_retryable</code> answers a question every client asks after a failure: could trying again help? A rate limit
+will pass, and a server error in the 500s may be temporary, so both are retryable. A missing resource will
+still be missing. The whole rule is one pattern:</p>
+<pre><code class="language-rust">Self::RateLimited { .. } | Self::Server { status: 500..=599, .. }</code></pre>
+<p><code>status: 500..=599</code> inside the struct pattern matches any status from 500 to 599. <code>..</code> ignores the other
+fields. Chapter 19 builds a retry loop around this method.</p>
+<p><code>user_message</code> turns each error into text for a person. <code>retry_after.as_millis()</code> converts the waiting time
+to milliseconds for the message.</p>
+<p class="listing"><b>Listing 7.13</b> A small parser (lines 93 to 101).</p>
+
+<pre><code class="language-rust">/// Typical SDK helper: never expose nested `if let` soup to callers.
+pub fn parse_gpu_count(raw: &amp;str) -&gt; Result&lt;u32, ApiError&gt; {
+    match raw.trim() {
+        "" =&gt; Err(ApiError::InvalidRequest("gpuCount is empty".into())),
+        parsed =&gt; parsed.parse::&lt;u32&gt;().map_err(|_| {
+            ApiError::InvalidRequest(format!("gpuCount must be a number, got {raw:?}"))
+        }),
+    }
+}</code></pre>
+<p><code>parse_gpu_count</code> is a shorter version of the gate from section 7.2. It trims the text, handles the empty
+case with its own message, and converts the standard library’s parse error into <code>ApiError::InvalidRequest</code>.
+<code>{raw:?}</code> prints the text with quotes, so an empty or odd input is visible in the message.</p>
+<p class="listing"><b>Listing 7.14</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs">src/problems/state_machine.rs</a></p>
+
+<pre><code class="language-rust">//! Algebraic data types / enum state machines.
+//!
+//! Cloud SDKs model workloads as finite state machines. Rust `enum` is
+//! perfect for this: invalid states are unrepresentable and transitions are
+//! explicit `match` arms, not nested `if` chains.
+
+use std::time::Duration;
+
+/// Lifecycle of a GPU cloud workload exposed through an SDK/API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkloadState {
+    Pending,
+    Provisioning,
+    Running,
+    Terminating,
+    Terminated,
+    Failed,
+}
+
+impl WorkloadState {
+    /// Returns an error string for impossible transitions, or `Ok(())`.
+    pub fn can_transition_to(self, next: Self) -&gt; Result&lt;(), String&gt; {
+        match (self, next) {
+            // Forward lifecycle.
+            (Self::Pending, Self::Provisioning)
+            | (Self::Pending, Self::Failed)
+            | (Self::Provisioning, Self::Running)
+            | (Self::Provisioning, Self::Failed)
+            | (Self::Running, Self::Terminating)
+            | (Self::Running, Self::Failed)
+            | (Self::Terminating, Self::Terminated)
+            | (Self::Terminating, Self::Failed) =&gt; Ok(()),
+
+            // Retry loops allowed from failed states.
+            (Self::Failed, Self::Pending) | (Self::Failed, Self::Provisioning) =&gt; Ok(()),
+
+            // Everything else is invalid.
+            _ =&gt; Err(format!("cannot transition from {self:?} to {next:?}")),
+        }
+    }
+
+    pub fn is_terminal(self) -&gt; bool {
+        matches!(self, Self::Terminated | Self::Failed)
+    }
+
+    pub fn summary(self) -&gt; &amp;'static str {
+        match self {
+            Self::Pending =&gt; "workload accepted, waiting for scheduler",
+            Self::Provisioning =&gt; "GPU resources being allocated",
+            Self::Running =&gt; "workload is running",
+            Self::Terminating =&gt; "cleanup in progress",
+            Self::Terminated =&gt; "workload stopped and billing ended",
+            Self::Failed =&gt; "workload failed; inspect logs",
+        }
+    }
+}
+
+/// API error modeled as an enum with associated data.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApiError {
+    InvalidRequest(String),
+    Unauthorized,
+    RateLimited { retry_after: Duration },
+    NotFound { resource_id: String },
+    Server { status: u16, message: String },
+}
+
+impl ApiError {
+    pub fn is_retryable(&amp;self) -&gt; bool {
+        matches!(
+            self,
+            Self::RateLimited { .. }
+                | Self::Server {
+                    status: 500..=599,
+                    ..
+                }
+        )
+    }
+
+    pub fn user_message(&amp;self) -&gt; String {
+        match self {
+            Self::InvalidRequest(msg) =&gt; format!("invalid request: {msg}"),
+            Self::Unauthorized =&gt; "authentication required or token expired".to_string(),
+            Self::RateLimited { retry_after } =&gt; {
+                format!("rate limited, retry in {}ms", retry_after.as_millis())
+            }
+            Self::NotFound { resource_id } =&gt; format!("resource not found: {resource_id}"),
+            Self::Server { status, message } =&gt; format!("server error {status}: {message}"),
+        }
+    }
+}
+
+/// Typical SDK helper: never expose nested `if let` soup to callers.
+pub fn parse_gpu_count(raw: &amp;str) -&gt; Result&lt;u32, ApiError&gt; {
+    match raw.trim() {
+        "" =&gt; Err(ApiError::InvalidRequest("gpuCount is empty".into())),
+        parsed =&gt; parsed.parse::&lt;u32&gt;().map_err(|_| {
+            ApiError::InvalidRequest(format!("gpuCount must be a number, got {raw:?}"))
+        }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_machine_rejects_invalid_transitions() {
+        assert!(
+            WorkloadState::Pending
+                .can_transition_to(WorkloadState::Provisioning)
+                .is_ok()
+        );
+        assert!(
+            WorkloadState::Running
+                .can_transition_to(WorkloadState::Running)
+                .is_err()
+        );
+        assert!(
+            WorkloadState::Terminated
+                .can_transition_to(WorkloadState::Running)
+                .is_err()
+        );
+        assert!(WorkloadState::Terminating.is_terminal() == false);
+        assert!(WorkloadState::Terminated.is_terminal());
+    }
+
+    #[test]
+    fn api_error_retry_policy() {
+        let rate_limited = ApiError::RateLimited {
+            retry_after: Duration::from_millis(100),
+        };
+        let not_found = ApiError::NotFound {
+            resource_id: "gpu-123".into(),
+        };
+        let server = ApiError::Server {
+            status: 503,
+            message: "maintenance".into(),
+        };
+
+        assert!(rate_limited.is_retryable());
+        assert!(!not_found.is_retryable());
+        assert!(server.is_retryable());
+    }
+
+    #[test]
+    fn parsing_returns_typed_errors() {
+        assert_eq!(parse_gpu_count("4"), Ok(4));
+        assert!(parse_gpu_count("").is_err());
+        assert!(parse_gpu_count("abc").is_err());
+    }
+}</code></pre>
+<p>The tests check an allowed move and two forbidden ones, the retry rule for three errors, and the parser.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A trait is a set of methods a type promises. You implement one with <code>impl Trait for Type</code>, and
+<code>#[derive]</code> generates the standard ones.</li>
+<li>A newtype with a private field and a checking constructor can only hold valid values, so the code that
+receives it needs no checks.</li>
+<li>An error type with <code>Display</code> and <code>std::error::Error</code> tells the caller what went wrong, and works with <code>?</code>.</li>
+<li><code>From</code> converts when it cannot fail. <code>TryFrom</code> returns a <code>Result</code> when it can.</li>
+<li>An enum whose variants carry their own data replaces a struct full of <code>Option</code> fields, and is as large as its
+largest variant.</li>
+<li>A parser turns text into a typed value, and <code>map_err</code> turns low-level failures into your own errors.</li>
+<li>Matching on a pair of states describes a state machine, and a final <code>_</code> arm rejects every move not listed.</li>
+<li>Error enums can carry data and methods such as <code>is_retryable</code>.</li>
+</ul>
+</div>
+
+<p>Every value in this chapter had exactly one owner. Chapter 8 covers the pointer types for data that needs
+several owners, or that must be shared between threads.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Write a <code>Port</code> newtype for network ports that rejects 0, with a <code>TryFrom&lt;u16&gt;</code> implementation and its own
+error type.</li>
+<li>Implement the <code>FromStr</code> trait for <code>Command</code>, so that <code>"list".parse::&lt;Command&gt;()</code> works. Its method can
+call <code>Command::parse</code>.</li>
+<li>Add a <code>Suspended</code> state to <code>WorkloadState</code> that can be entered from <code>Running</code> and left back to <code>Running</code>,
+and add tests for both moves.</li>
+<li>Give <code>ApiError</code> a <code>Display</code> implementation that uses <code>user_message</code>, then implement <code>std::error::Error</code>
+for it.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch06-dynamic-programming.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch08-pointers.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch06-dynamic-programming.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch08-pointers.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

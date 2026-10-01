@@ -1,0 +1,814 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Appendix B. The benchmark report - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/app-b.png" alt="Dispatch, the robot with a television head and a flag, beside an open manual on a lectern and a brass gear">
+<h1 id="appendix-b-the-benchmark-report"><a class="header" href="#appendix-b-the-benchmark-report">Appendix B. The benchmark report</a></h1>
+<p>Chapters 4 and 9 quote measurements from the Rust lab’s benchmark program. This appendix reproduces the full
+report written from those runs: <code>rust-interview-lab/benchmarking_examples/benchmarking-report.md</code>. It
+presents them as a short paper, with method, results, discussion, and threats to validity. The recorded
+program output it relies on is in <code>rust-interview-lab/BENCHMARKS.md</code>.</p>
+<blockquote>
+<p><strong>A correction to sections 2.2 and 5.2 of the report.</strong> They attribute the enum list’s slower push to
+a discriminant stored alongside the boxed continuation. On a 64-bit target,
+<code>std::mem::size_of::&lt;ListNode&lt;u64&gt;&gt;()</code> is 16, the same as <code>Node&lt;u64&gt;</code>: the <code>Box</code> field’s non-null niche
+encodes <code>Empty</code>, so there is no separate discriminant. Chapter 4, section 4.3, gives the two structural
+differences that remain (the inline head moved on every push, and the extra allocation for the final
+<code>Empty</code>). The measured timings are unaffected.</p>
+</blockquote>
+<p>The report is built as its own PDF by this script and stylesheet:</p>
+<p class="listing"><b>Listing B.1</b> The report's build script. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/build_report_pdf.py">benchmarking_examples/build_report_pdf.py</a></p>
+
+<pre><code class="language-python">#!/usr/bin/env python3
+"""Render `benchmarking-report.md` as a PDF.
+
+    python3 benchmarking_examples/build_report_pdf.py
+
+Markdown is rendered by Python-Markdown with Pygments for the code blocks, the
+result is wrapped in one HTML document, and WeasyPrint paginates it using
+`report.css`. Requires `markdown`, `pygments`, and `weasyprint`.
+"""
+
+from __future__ import annotations
+
+import pathlib
+import sys
+
+import markdown
+from pygments.formatters import HtmlFormatter
+from weasyprint import CSS, HTML
+
+HERE = pathlib.Path(__file__).resolve().parent
+SOURCE = HERE / "benchmarking-report.md"
+STYLESHEET = HERE / "report.css"
+OUTPUT = HERE / "benchmarking-report.pdf"
+TITLE = "A Comparative Study of LRU Cache Storage Strategies and Singly Linked List Deallocation"
+
+EXTENSIONS = ["extra", "codehilite", "sane_lists"]
+CONFIG = {"codehilite": {"guess_lang": False, "css_class": "highlight"}}
+
+# The title block is written as ordinary Markdown paragraphs. These identifiers
+# let the stylesheet centre them and distinguish them from body text.
+TITLE_BLOCK = (
+    ('&lt;p&gt;&lt;strong&gt;Arpan Pathak&lt;/strong&gt;&lt;/p&gt;', '&lt;p id="title-author"&gt;&lt;strong&gt;Arpan Pathak&lt;/strong&gt;&lt;/p&gt;'),
+    ('&lt;p&gt;11 September 2026&lt;/p&gt;', '&lt;p id="title-date"&gt;11 September 2026&lt;/p&gt;'),
+    (
+        '&lt;p&gt;&lt;strong&gt;Keywords:&lt;/strong&gt;',
+        '&lt;p id="title-keywords"&gt;&lt;strong&gt;Keywords:&lt;/strong&gt;',
+    ),
+)
+
+
+def build_document() -&gt; str:
+    """The whole report as one HTML document."""
+    body = markdown.markdown(
+        SOURCE.read_text(encoding="utf-8"), extensions=EXTENSIONS, extension_configs=CONFIG
+    )
+
+    for old, new in TITLE_BLOCK:
+        body = body.replace(old, new, 1)
+
+    style = HtmlFormatter(style="friendly").get_style_defs(".highlight")
+    return "\n".join(
+        [
+            "&lt;!doctype html&gt;",
+            '&lt;html lang="en"&gt;',
+            "&lt;head&gt;",
+            '&lt;meta charset="utf-8"&gt;',
+            f"&lt;title&gt;{TITLE}&lt;/title&gt;",
+            '&lt;meta name="author" content="Arpan Pathak"&gt;',
+            f"&lt;style&gt;{style}&lt;/style&gt;",
+            "&lt;/head&gt;",
+            "&lt;body&gt;",
+            body,
+            "&lt;/body&gt;",
+            "&lt;/html&gt;",
+        ]
+    )
+
+
+def main() -&gt; int:
+    if not SOURCE.exists():
+        print(f"missing {SOURCE}", file=sys.stderr)
+        return 1
+
+    document = build_document()
+    stylesheet = CSS(filename=str(STYLESHEET))
+    rendered = HTML(string=document, base_url=str(HERE))
+    page_count = len(rendered.render(stylesheets=[stylesheet]).pages)
+    rendered.write_pdf(target=str(OUTPUT), stylesheets=[stylesheet])
+
+    print(f"wrote {OUTPUT.name} ({page_count} pages)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+</code></pre>
+<p class="listing"><b>Listing B.2</b> The report's stylesheet. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/report.css">benchmarking_examples/report.css</a></p>
+
+<pre><code class="language-css">/* Print stylesheet for the benchmarking report.
+   Rendered by WeasyPrint, which implements the paged-media parts of CSS. */
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 20mm 20mm;
+
+  @bottom-center {
+    content: counter(page);
+    font-family: "DejaVu Sans", Helvetica, sans-serif;
+    font-size: 8.5pt;
+    color: #666;
+  }
+}
+
+html {
+  font-size: 10.5pt;
+}
+
+body {
+  font-family: "DejaVu Serif", Georgia, serif;
+  line-height: 1.5;
+  color: #111;
+  margin: 0;
+  text-align: left;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "DejaVu Sans", Helvetica, sans-serif;
+  color: #000;
+  line-height: 1.25;
+}
+
+/* Title block: centered, in the manner of a journal article. */
+h1 {
+  font-size: 16pt;
+  text-align: center;
+  margin: 0 0 0.7em 0;
+}
+
+#title-author {
+  text-align: center;
+  font-size: 12pt;
+  margin: 0.5em 0 0 0;
+}
+
+#title-date {
+  text-align: center;
+  font-size: 10pt;
+  color: #444;
+  margin: 0.15em 0 0 0;
+}
+
+#title-keywords {
+  font-size: 9.5pt;
+  color: #333;
+  margin: 0.9em 0 0.4em 0;
+}
+
+h2 {
+  font-size: 12.5pt;
+  margin: 1.7em 0 0.5em 0;
+  padding-bottom: 0.12em;
+  border-bottom: 0.6pt solid #bbb;
+  break-after: avoid;
+}
+
+h3 {
+  font-size: 11pt;
+  margin: 1.1em 0 0.4em 0;
+  break-after: avoid;
+}
+
+p {
+  margin: 0 0 0.7em 0;
+  text-align: justify;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.7em 0 1.1em 0;
+  font-size: 9.5pt;
+  break-inside: avoid;
+}
+
+th {
+  text-align: left;
+  font-family: "DejaVu Sans", Helvetica, sans-serif;
+  font-size: 8.5pt;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #333;
+  border-bottom: 1pt solid #333;
+  padding: 0.35em 0.5em 0.3em 0.5em;
+}
+
+td {
+  border-bottom: 0.4pt solid #ddd;
+  padding: 0.35em 0.5em;
+  vertical-align: top;
+}
+
+pre {
+  background: #f6f6f6;
+  border: 0.4pt solid #ddd;
+  padding: 0.6em 0.7em;
+  font-size: 8.6pt;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  break-inside: avoid;
+}
+
+code {
+  font-family: "DejaVu Sans Mono", monospace;
+  font-size: 0.92em;
+}
+
+p code,
+li code {
+  background: #f2f2f2;
+  padding: 0 0.15em;
+  /* An identifier split across two lines is a defect, and the longest token in
+     this report is short enough to fit on a line of the text block. */
+  white-space: nowrap;
+}
+
+td code,
+th code {
+  background: #f2f2f2;
+  padding: 0 0.15em;
+}
+
+h1 code {
+  white-space: nowrap;
+}
+
+hr {
+  border: none;
+  border-top: 0.6pt solid #bbb;
+  margin: 1.6em 0;
+}
+
+ol,
+ul {
+  margin: 0 0 0.8em 1.3em;
+  padding: 0;
+}
+
+li {
+  margin-bottom: 0.3em;
+  text-align: justify;
+}
+
+h2 + p,
+h2 + table,
+h2 + pre,
+h3 + p {
+  margin-top: 0;
+}
+</code></pre>
+<hr>
+<h1 id="a-comparative-study-of-lru-cache-storagestrategies-and-singly-linked-list-deallocation"><a class="header" href="#a-comparative-study-of-lru-cache-storagestrategies-and-singly-linked-list-deallocation">A Comparative Study of LRU Cache Storage<br>Strategies and Singly Linked List Deallocation</a></h1>
+<p><strong>Arpan Pathak</strong></p>
+<p>11 September 2026</p>
+<hr>
+<h2 id="abstract"><a class="header" href="#abstract">Abstract</a></h2>
+<p>Two experiments are reported. The first compares two storage strategies for a
+fixed-capacity least-recently-used cache: an index arena, in which nodes are held
+in a contiguous vector and linked by integer offsets, and a reference-counted
+doubly linked list, in which each node is a separate heap allocation linked by
+pointers. On a workload of ten million requests with a measured hit rate of 89.8
+percent, the arena completed in 1.00 s against 1.86 s for the reference-counted
+list, a ratio of 1.87. The magnitude of the difference is bounded by the hash
+table lookup that both implementations perform on every request; across access
+patterns the ratio ranged from 1.1 to 1.9.</p>
+<p>The second experiment compares four singly linked list variants that combine two
+node representations with two deallocation strategies. The variants that rely on
+compiler-generated deallocation cannot free more than approximately 265,000 nodes
+on an 8 MiB stack, because freeing a node frees its successor and the recursion
+consumes one stack frame per element; beyond that size the process terminates
+with a stack overflow. The iterative variants free five million nodes without
+incident. The iterative strategy is not substantially faster, saving about 0.3 ms
+on a 3.2 ms deallocation at 200,000 nodes; its principal contribution is the
+removal of the size limit.</p>
+<p>The measurement procedure, including the treatment of allocation warm-up, and the
+threats to the validity of both results are discussed.</p>
+<p><strong>Keywords:</strong> cache replacement, index arena, reference counting, linked list,
+stack overflow, benchmarking methodology</p>
+<h2 id="1-introduction"><a class="header" href="#1-introduction">1. Introduction</a></h2>
+<p>A cache that must bound memory occupancy needs a replacement policy, and the
+least-recently-used policy requires a recency order over the stored entries. The
+order is conventionally maintained by a doubly linked list, and the two decisions
+that determine the cost of that list are how nodes are allocated and how links
+between them are represented.</p>
+<p>The first decision concerns ownership. A node may be owned individually, as one
+heap allocation reached through a pointer, or collectively, as one element of a
+contiguous array. Individually owned nodes support stable addresses and permit
+removal without disturbing the rest of the structure, at the cost of one
+allocation per node and a reference count or equivalent mechanism to express
+ownership. Collectively owned nodes require the allocator to be invoked once, and
+express the identity of a node by its index, at the cost of a level of
+indirection.</p>
+<p>The second decision concerns deallocation. A recursively defined structure
+releases its storage through a recursive destructor unless the recursion is
+replaced by an iterative walk. This choice is frequently treated as a matter of
+performance, and the present study finds that the performance difference is
+small. Its consequences are otherwise: the recursive form has a maximum size
+beyond which the program terminates.</p>
+<p>This document reports measurements of both decisions. Section 2 describes the
+structures. Section 3 gives the experimental method. Section 4 presents the
+results, Section 5 discusses them and states the threats to their validity, and
+Section 6 concludes.</p>
+<h2 id="2-background"><a class="header" href="#2-background">2. Background</a></h2>
+<h3 id="21-storage-for-a-fixed-capacity-lru-cache"><a class="header" href="#21-storage-for-a-fixed-capacity-lru-cache">2.1 Storage for a fixed-capacity LRU cache</a></h3>
+<p>Both cache implementations under study maintain a hash table that maps a key to a
+node, and a doubly linked list that orders the nodes by recency. Insertion of a
+new entry when the cache is full removes the least recently used node. A lookup
+that succeeds moves the located node to the most recently used end.</p>
+<p>In the index arena implementation, the nodes are elements of a <code>Vec</code>, and the
+links are values of type <code>Option&lt;usize&gt;</code>. The hash table maps a key to the index
+of its node. Removal of the least recently used entry reuses that entry’s slot
+rather than deallocating it, so the arena is allocated once, grows to its capacity,
+and is never resized during operation. The implementation is
+<code>benchmarking_examples/cache/arena.rs</code>.</p>
+<p>In the second implementation, each node is allocated separately and reached
+through a reference-counted cell. Forward links hold strong references and
+backward links hold weak references, which prevents ownership cycles. Removal of the least recently used entry
+removes the tail node from the hash table and detaches it, after which the new
+entry is allocated as a fresh node. The implementation is
+<code>benchmarking_examples/cache/rc_list.rs</code>.</p>
+<p>Both implementations satisfy the same trait, <code>cache::Cache</code>, and are therefore
+exercised by one workload.</p>
+<h3 id="22-node-representation-and-deallocation-in-a-singly-linked-list"><a class="header" href="#22-node-representation-and-deallocation-in-a-singly-linked-list">2.2 Node representation and deallocation in a singly linked list</a></h3>
+<p>Four variants of a singly linked list are compared. They share push and pop
+operations and differ in two independent properties.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Variant</th><th>Node representation</th><th>Deallocation</th></tr>
+</thead>
+<tbody>
+<tr><td><code>box</code></td><td><code>Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;</code></td><td>compiler-generated, recursive</td></tr>
+<tr><td><code>enum</code></td><td><code>enum ListNode&lt;T&gt;</code></td><td>compiler-generated, recursive</td></tr>
+<tr><td><code>box+drop</code></td><td><code>Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;</code></td><td>explicit, iterative</td></tr>
+<tr><td><code>enum+drop</code></td><td><code>enum ListNode&lt;T&gt;</code></td><td>explicit, iterative</td></tr>
+</tbody>
+</table>
+</div>
+<p>The two representations have different sizes. <code>Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;</code> occupies one
+machine word on a 64-bit target, because a boxed value is never null and the
+all-zero address is therefore available to encode the empty case. The enum
+representation carries a discriminant in addition to the boxed continuation, and
+is consequently larger. The variant definitions are in
+<code>benchmarking_examples/lists/</code>.</p>
+<p>The deallocation strategies differ in their recursion. The compiler-generated
+destructor for a node releases the node, whose destructor releases its successor,
+and so on, consuming one stack frame per element. The iterative strategy replaces
+the head of the list with the empty state and then walks the chain, detaching each
+node before it is freed, so no destructor is called with the remainder of the list
+still attached.</p>
+<h2 id="3-method"><a class="header" href="#3-method">3. Method</a></h2>
+<h3 id="31-environment"><a class="header" href="#31-environment">3.1 Environment</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Processor</td><td>AArch64, 8 cores, development board</td></tr>
+<tr><td>Compiler</td><td><code>rustc</code> 1.96.0-nightly</td></tr>
+<tr><td>Build profile</td><td><code>--release</code></td></tr>
+<tr><td>Concurrency</td><td>one thread per measurement</td></tr>
+<tr><td>Default stack size</td><td>8 MiB</td></tr>
+</tbody>
+</table>
+</div>
+<p>Absolute times are properties of this machine and this toolchain. The ratios and
+the maximum list size are the quantities intended to generalise, the latter only
+within the constraint of the stack size in force.</p>
+<h3 id="32-workloads"><a class="header" href="#32-workloads">3.2 Workloads</a></h3>
+<p><strong>Cache workload.</strong> A fixed-capacity cache of 65,536 entries receives ten million
+requests over a key space of 131,072 keys. Four requests in five are drawn from a
+hot set comprising one percent of the key space, and the remainder are drawn
+uniformly over the whole key space. The request sequence is generated from a fixed
+seed, so both implementations receive an identical sequence. A request that misses
+performs an insertion, which evicts the least recently used entry once the cache
+has reached capacity. The measured hit rate was 89.8 percent, comprising 8,979,314
+hits and 1,020,686 insertions.</p>
+<p><strong>Linked list workload.</strong> Each variant is measured at 200,000 elements, a size at
+which all four complete. The two iterative variants are additionally measured at
+5,000,000 elements. The recursive variants are measured at incrementally
+increasing sizes until termination occurs, to establish the size at which
+deallocation fails.</p>
+<h3 id="33-measurement-procedure"><a class="header" href="#33-measurement-procedure">3.3 Measurement procedure</a></h3>
+<p>An initial observation established that a single timing pass is not reproducible
+on this platform. Timings of one push loop of fixed size varied between 2.3 ms and
+11.4 ms depending on whether the measurement was the first large allocation
+performed by the process. The variance is attributable to the allocator and the
+operating system rather than to the structure under test: a first pass over a
+fresh heap requires pages to be mapped, and that cost is charged to the structure
+being measured.</p>
+<p>Accordingly, each measurement is preceded by a warm-up pass of the same magnitude
+as the measured pass, and then repeated three times, with the shortest of the
+three reported. The shortest pass is preferred to the mean because the quantity of
+interest is the cost of the work, while a lengthened pass reflects interference
+from outside the process. This procedure follows the practice recommended for
+benchmarking where the number of repetitions is constrained [3, 4]. The residual
+variation between runs of the cache experiment, computed over the reported
+configuration, is approximately three percent.</p>
+<p>Measurements are normalised per request for the cache experiment and per element
+for the list experiment, so that the two experiments can be reported in
+comparable units.</p>
+<h3 id="34-verification-and-controls"><a class="header" href="#34-verification-and-controls">3.4 Verification and controls</a></h3>
+<p>Each measurement is accompanied by a check that the intended work was performed.</p>
+<p>In the list experiment, every value inserted is removed and compared with the
+expected value, so that a structure which loses or reorders elements cannot report
+a time. The verification loop is not included in any timed interval.</p>
+<p>In the cache experiment, the two implementations process the same request sequence
+and their hit counts are compared before any timing is reported. Agreement
+establishes that both implementations were given the same problem.</p>
+<p>The variants <code>box</code> and <code>box+drop</code> share an identical push implementation and differ
+only in deallocation. Their push times therefore serve as a control: a discrepancy
+beyond the run-to-run variation indicates a fault in the measurement rather than a
+difference between the structures.</p>
+<h2 id="4-results"><a class="header" href="#4-results">4. Results</a></h2>
+<h3 id="41-cache-storage-strategies"><a class="header" href="#41-cache-storage-strategies">4.1 Cache storage strategies</a></h3>
+<pre><code>LRU cache: 65,536 entries, 10,000,000 requests over 131,072 keys
+
+  hit rate: 89.8%  (8,979,314 hits, 1,020,686 inserts)
+
+  storage                       total   per request
+  ------------------------------------------------
+  arena (Vec + indices)         1.00s      100 ns
+  Rc&lt;RefCell&gt; list              1.86s      186 ns
+</code></pre>
+<p>The arena required 1.00 s and the reference-counted list 1.86 s, giving a ratio of
+1.87 in favour of the arena. Measured per request, the costs are 100 ns and 186 ns
+respectively. Repeated runs of the same configuration produced ratios between 1.81
+and 1.87.</p>
+<h3 id="42-deallocation-in-singly-linked-lists"><a class="header" href="#42-deallocation-in-singly-linked-lists">4.2 Deallocation in singly linked lists</a></h3>
+<p>All four variants completed at 260,000 elements. At 270,000 elements the two
+recursive variants terminated with a stack overflow and the two iterative variants
+completed.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Variant</th><th>260,000 elements</th><th>270,000 elements</th></tr>
+</thead>
+<tbody>
+<tr><td><code>box</code></td><td>completed</td><td>stack overflow</td></tr>
+<tr><td><code>enum</code></td><td>completed</td><td>stack overflow</td></tr>
+<tr><td><code>box+drop</code></td><td>completed</td><td>completed</td></tr>
+<tr><td><code>enum+drop</code></td><td>completed</td><td>completed</td></tr>
+</tbody>
+</table>
+</div>
+<p>The termination message recorded for the recursive variants is:</p>
+<pre><code>thread 'main' has overflowed its stack
+fatal runtime error: stack overflow, aborting
+</code></pre>
+<p>On an 8 MiB stack, the limit therefore lies between 260,000 and 270,000 elements,
+corresponding to approximately 32 bytes of stack per element.</p>
+<p>Timings at 200,000 elements, where all four variants complete:</p>
+<pre><code>  variant        elements          push          drop
+  ----------------------------------------------------
+  box             200,000        2.40ms        3.23ms
+  enum            200,000        3.42ms        3.20ms
+  box+drop        200,000        2.32ms        2.91ms
+  enum+drop       200,000        3.62ms        2.52ms
+</code></pre>
+<p>Timings at 5,000,000 elements, where only the iterative variants complete:</p>
+<pre><code>  box+drop      5,000,000       58.11ms       72.32ms
+  enum+drop     5,000,000       90.98ms       67.51ms
+</code></pre>
+<p>Normalised per element at 200,000 elements, insertion costs 12.0 ns for the boxed
+node and 17.1 ns for the enum node, and deallocation costs 16.2 ns, 16.0 ns,
+14.6 ns and 12.6 ns for the four variants in the order listed.</p>
+<h2 id="5-discussion"><a class="header" href="#5-discussion">5. Discussion</a></h2>
+<h3 id="51-interpretation-of-the-cache-result"><a class="header" href="#51-interpretation-of-the-cache-result">5.1 Interpretation of the cache result</a></h3>
+<p>The arena was faster by a factor of 1.87 on the reported workload, and the
+mechanism is visible in the operations each implementation performs when a lookup
+succeeds. The arena writes two indices into vector elements and reads two more; no
+memory is allocated or released and no reference count is modified. The
+reference-counted list clones a handle, upgrades a weak handle, borrows a
+<code>RefCell</code>, writes through the borrow, and drops the clone. Each step is small, but
+all of them occur on every successful lookup, and the node they operate on must be
+reached through a pointer to a separate allocation.</p>
+<p>Eviction differs in the same direction. The arena reuses the least recently used
+slot. The list frees the tail node and allocates a node for the incoming key, an
+allocation and a deallocation that the arena does not perform.</p>
+<p>The ratio is nevertheless smaller than the difference in list manipulation alone
+would suggest, because every request performs a hash table lookup and that cost is
+identical in both implementations. The measured ratio therefore depends on the
+proportion of each request that is spent on list maintenance. Across access
+patterns, the ratio ranged from 1.1 to 1.9; a stream with no reuse tends towards
+the lower end, since such a stream is dominated by lookups that miss and by
+evictions.</p>
+<h3 id="52-interpretation-of-the-list-result"><a class="header" href="#52-interpretation-of-the-list-result">5.2 Interpretation of the list result</a></h3>
+<p>The difference in insertion cost between the two node representations, 12.0 ns
+against 17.1 ns per element, is consistent with the difference in node size. Both
+representations perform one allocation per element; the enum node additionally
+carries a discriminant, so each insertion moves more memory.</p>
+<p>The difference in deallocation cost between the recursive and the iterative
+strategies is small, 0.32 ms and 0.68 ms at 200,000 elements, against totals of
+3.23 ms and 3.20 ms. The iterative strategy is therefore not a performance
+measure. Its contribution is that it removes the maximum size: the recursive
+variants terminate above approximately 265,000 elements on an 8 MiB stack, and the
+iterative variants complete at 5,000,000, the largest size tested.</p>
+<h3 id="53-threats-to-validity"><a class="header" href="#53-threats-to-validity">5.3 Threats to validity</a></h3>
+<p><strong>Internal validity.</strong> The measurements are taken on a single machine, with one
+implementation measured after another in the same process. Allocation warm-up was
+identified as a source of variation and is controlled by the procedure described
+in Section 3.3, and the two list variants that share an insertion implementation
+provide a control on that stage. The deallocation measurements remain the least
+stable part of the results, since they follow a sequence of allocations and
+deallocations of the same memory.</p>
+<p><strong>External validity.</strong> Absolute times are specific to this processor, compiler and
+allocator. The maximum list size is a property of the stack size in addition to
+the code; a program running on a thread with a smaller stack would fail at a
+smaller size, and one with a larger stack at a larger size. The value of
+5,000,000 reported for the iterative variants is the largest size tested and not
+an observed limit.</p>
+<p><strong>Construct validity.</strong> The cache fn wrappedexperiment measures request latency for both a
+lookup and an insertion, but reports only the aggregate. It does not separate the
+cost of the hash table lookup from the cost of list maintenance, and it does not
+report peak memory, although the two node representations differ in size. The
+list experiment measures insertion, removal and deallocation, and does not measure
+iteration, search, or insertion at an arbitrary position.</p>
+<p><strong>Generality.</strong> Both experiments are single-threaded and therefore characterise
+neither contention nor synchronisation cost. A shared arena would require
+sharding or locking, and the cost of that mechanism is not represented here.</p>
+<h2 id="6-conclusion"><a class="header" href="#6-conclusion">6. Conclusion</a></h2>
+<p>For a fixed-capacity LRU cache, an index arena was faster than a reference-counted
+linked list by a factor of 1.87 on the reported workload, with the difference
+attributable to the per-node bookkeeping and the allocation performed on eviction.
+The ratio is bounded by the hash table lookup common to both implementations, and
+ranged from 1.1 to 1.9 across access patterns.</p>
+<p>For a singly linked list, an iterative deallocation strategy is worth adopting for
+robustness rather than for speed. It saved about ten percent of the deallocation
+time at the size measured, and it raised the maximum list size from approximately
+265,000 elements to beyond 5,000,000, the largest size tested.</p>
+<p>Further work would separate lookup cost from list maintenance cost by timing the
+two phases independently, report peak memory for each variant, and extend the
+cache experiment to a multi-threaded configuration in which the synchronisation
+cost of the arena becomes measurable.</p>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ol>
+<li>The Rust Reference. <a href="https://doc.rust-lang.org/reference/type-layout.html">Type layout</a>. On size, alignment, and the null-pointer optimisation.</li>
+<li>The Rust Standard Library. <a href="https://doc.rust-lang.org/std/mem/fn.size_of.html"><code>std::mem::size_of</code></a>, <a href="https://doc.rust-lang.org/std/mem/fn.align_of.html"><code>std::mem::align_of</code></a>, and <a href="https://doc.rust-lang.org/std/thread/struct.Builder.html#method.stack_size"><code>std::thread::Builder::stack_size</code></a>.</li>
+<li>T. Kalibera and R. Jones. Rigorous Benchmarking in Reasonable Time. <em>Proceedings of the 2013 International Symposium on Memory Management (ISMM)</em>, 2013.</li>
+<li>A. Georges, D. Buytaert, and L. Eeckhout. Statistically Rigorous Java Performance Evaluation. <em>Proceedings of the 22nd Annual ACM SIGPLAN Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA)</em>, 2007.</li>
+<li>T. Mytkowicz, A. Diwan, M. Hauswirth, and P. F. Sweeney. Producing Wrong Data Without Doing Anything Obviously Wrong! <em>Proceedings of the 14th International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)</em>, 2009.</li>
+</ol>
+<h2 id="appendix-a-source-files"><a class="header" href="#appendix-a-source-files">Appendix A. Source files</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Contents</th></tr>
+</thead>
+<tbody>
+<tr><td><code>benchmarking_examples/cache/mod.rs</code></td><td>The <code>Cache</code> trait</td></tr>
+<tr><td><code>benchmarking_examples/cache/arena.rs</code></td><td>Index arena implementation</td></tr>
+<tr><td><code>benchmarking_examples/cache/rc_list.rs</code></td><td>Reference-counted implementation</td></tr>
+<tr><td><code>benchmarking_examples/lists/mod.rs</code></td><td>The <code>SinglyList</code> trait</td></tr>
+<tr><td><code>benchmarking_examples/lists/boxed.rs</code></td><td>Boxed node, recursive deallocation</td></tr>
+<tr><td><code>benchmarking_examples/lists/enum_node.rs</code></td><td>Enum node, recursive deallocation</td></tr>
+<tr><td><code>benchmarking_examples/lists/boxed_drop.rs</code></td><td>Boxed node, iterative deallocation</td></tr>
+<tr><td><code>benchmarking_examples/lists/enum_drop.rs</code></td><td>Enum node, iterative deallocation</td></tr>
+<tr><td><code>benchmarking_examples/benchmark.rs</code></td><td>The measurement program</td></tr>
+<tr><td><code>rust-interview-lab/BENCHMARKS.md</code></td><td>Captured program output</td></tr>
+</tbody>
+</table>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="appendix-a-cheatsheet.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="appendix-a-cheatsheet.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

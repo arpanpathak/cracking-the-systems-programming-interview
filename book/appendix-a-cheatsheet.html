@@ -1,0 +1,730 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Appendix A. The Rust cheat sheet - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/app-a.png" alt="Manual, the goggled dome robot with a clipboard, beside an open manual on a lectern and a brass gear">
+<h1 id="appendix-a-the-rust-cheat-sheet"><a class="header" href="#appendix-a-the-rust-cheat-sheet">Appendix A. The Rust cheat sheet</a></h1>
+<p>This appendix reproduces <code>rust-interview-lab/src/bin/RUST_CHEATSHEET.md</code>, the page of compile errors and
+idioms that cost the most time while the Rust lab was being written. Its own instructions are the right way
+to use it: read a block, close the file, and type it from memory.</p>
+<p>Its sections map onto the chapters of this book:</p>
+<ul>
+<li>reference levels and iterator closures: chapters 1 and 3</li>
+<li><code>Option</code> and <code>Result</code> combinators: chapter 1</li>
+<li>collections and heaps: chapter 3</li>
+<li>locks and guards: chapters 12 to 14</li>
+<li>strings and match ergonomics: chapters 1 to 3</li>
+</ul>
+<hr>
+<h1 id="rust-cheat-sheet--the-gotchas-that-cost-you-minutes"><a class="header" href="#rust-cheat-sheet--the-gotchas-that-cost-you-minutes">Rust cheat sheet — the gotchas that cost you minutes</a></h1>
+<p>Every snippet below was compiled with <code>rustc 1.96</code>, edition 2024. Comments in the code
+are the explanation.</p>
+<p>Read a block, close the file, type it from memory. If you need to look, you don’t have it yet.</p>
+<hr>
+<h2 id="0-the-errors-i-hit-while-writing-this-sheet"><a class="header" href="#0-the-errors-i-hit-while-writing-this-sheet">0. The errors I hit while writing this sheet</a></h2>
+<p>These are real, not hypothetical. All three are the kind of thing that eats 5 minutes.</p>
+<pre><code class="language-rust">// 1. filter does not change the iterator's Item, even when you destructure it.
+let d: Vec&lt;i32&gt; = v.iter().filter(|&amp;&amp;x| x &gt; 2).collect();
+// error[E0277]: a value of type `Vec&lt;i32&gt;` cannot be built from an iterator
+//               over elements of type `&amp;i32`
+let d: Vec&lt;&amp;i32&gt; = v.iter().filter(|&amp;&amp;x| x &gt; 2).collect();          // ok
+let d: Vec&lt;i32&gt; = v.iter().filter(|&amp;&amp;x| x &gt; 2).copied().collect();  // ok
+
+// 2. An unannotated float literal can stay ambiguous until a method needs the type.
+let mut ys = vec![2.5, 1.0, 3.5];
+ys.sort_by(|a, b| b.total_cmp(a));
+// error[E0599]: no method named `total_cmp` found for reference `&amp;{float}`
+let mut ys: Vec&lt;f64&gt; = vec![2.5, 1.0, 3.5];                          // ok
+
+// 3. Option/Result combinators take `self`, so they move. A second call fails.
+let r: Result&lt;i32, String&gt; = Ok(1);
+let m = r.map(|v| v + 1);
+let e = r.map_err(|err| err.len());
+// error[E0382]: use of moved value: `r`
+let m = r.as_ref().map(|v| v + 1);        // borrow instead
+let e = r.clone().map_err(|err| err.len()); // or clone</code></pre>
+<hr>
+<h2 id="1-which-reference-level-do-i-have"><a class="header" href="#1-which-reference-level-do-i-have">1. Which reference level do I have?</a></h2>
+<p>The single most common source of noise. Memorise this table.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>You have</th><th>You want</th><th>Write</th></tr>
+</thead>
+<tbody>
+<tr><td><code>&amp;Option&lt;T&gt;</code></td><td><code>Option&lt;&amp;T&gt;</code></td><td><code>.as_ref()</code></td></tr>
+<tr><td><code>&amp;mut Option&lt;T&gt;</code></td><td><code>Option&lt;&amp;mut T&gt;</code></td><td><code>.as_mut()</code></td></tr>
+<tr><td><code>Option&lt;String&gt;</code></td><td><code>Option&lt;&amp;str&gt;</code></td><td><code>.as_deref()</code></td></tr>
+<tr><td><code>Option&lt;Box&lt;T&gt;&gt;</code></td><td><code>Option&lt;&amp;T&gt;</code></td><td><code>.as_deref()</code></td></tr>
+<tr><td><code>Option&lt;Vec&lt;T&gt;&gt;</code></td><td><code>Option&lt;&amp;[T]&gt;</code></td><td><code>.as_deref()</code></td></tr>
+<tr><td><code>Option&lt;&amp;T&gt;</code>, <code>T: Copy</code></td><td><code>Option&lt;T&gt;</code></td><td><code>.copied()</code></td></tr>
+<tr><td><code>Option&lt;&amp;T&gt;</code>, <code>T: Clone</code></td><td><code>Option&lt;T&gt;</code></td><td><code>.cloned()</code></td></tr>
+<tr><td><code>Option&lt;T&gt;</code></td><td><code>Option&lt;T&gt;</code> copy</td><td><code>.clone()</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-rust">let a: Option&lt;String&gt; = Some("x".into());
+
+let r: Option&lt;&amp;String&gt; = a.as_ref();      // &amp;Option&lt;T&gt; -&gt; Option&lt;&amp;T&gt;
+let s: Option&lt;&amp;str&gt;   = a.as_deref();     // Option&lt;String&gt; -&gt; Option&lt;&amp;str&gt;
+let c: Option&lt;String&gt; = a.clone();        // deep copy
+
+let n: Option&lt;i32&gt; = Some(4);
+let nr: Option&lt;&amp;i32&gt; = n.as_ref();
+let copied: Option&lt;i32&gt; = nr.copied();    // Option&lt;&amp;i32&gt; -&gt; Option&lt;i32&gt;
+let cloned: Option&lt;String&gt; = r.cloned();
+
+// Most common real signature: you receive a reference, you return a borrow.
+fn takes_ref_option(o: &amp;Option&lt;String&gt;) -&gt; Option&lt;&amp;str&gt; {
+    o.as_deref()
+}</code></pre>
+<p>Why it matters: <code>&amp;Option&lt;T&gt;</code> is a reference <em>to the whole Option</em>. You usually want the
+Option of a reference, which is <code>Option&lt;&amp;T&gt;</code>. <code>as_ref</code> is the bridge, <code>as_deref</code> does the
+<code>String -&gt; str</code> step at the same time.</p>
+<hr>
+<h2 id="2-option-combinators"><a class="header" href="#2-option-combinators">2. Option combinators</a></h2>
+<pre><code class="language-rust">let n: Option&lt;i32&gt; = Some(4);
+
+// Transform the value. Closure gets T by value.
+let doubled  = n.map(|v| v * 2);                     // Some(8)
+
+// Transform and possibly fail. Closure returns Option.
+let positive = n.and_then(|v| (v &gt; 0).then_some(v)); // Some(4)
+let lazy     = n.and_then(|v| if v &gt; 100 { Some(v) } else { None });
+
+// Replace None. map_or is eager, map_or_else is lazy. unwrap_or is for a plain value.
+let defaulted      = n.map_or(0, |v| v * 2);        // 8
+let lazy_default   = n.map_or_else(|| 0, |v| v * 2); // 8
+let plain          = n.unwrap_or(0);                 // 4
+let plain_lazy     = n.unwrap_or_else(|| 0);         // 4
+let default_trait  = n.unwrap_or_default();          // needs i32: Default
+
+// filter takes &amp;T, so deref the closure argument.
+let filtered = n.filter(|v| *v &gt; 10);                // None
+
+// Combining two Options.
+let chained     = n.and(Some(9));                    // Some(9): n is Some, so take the arg
+let alternative = n.or(Some(9));                     // Some(4): n is Some, keep it
+let paired      = n.zip(Some("a"));                  // Some((4, "a"))
+
+// Predicate by value.
+let checked = n.is_some_and(|v| v &gt; 3);              // true
+
+// Mutating a slot in place.
+let mut slot: Option&lt;i32&gt; = None;
+let inserted: &amp;mut i32 = slot.get_or_insert(7);      // inserts, returns &amp;mut T
+*inserted += 1;
+let taken: Option&lt;i32&gt; = slot.take();                // moves out, leaves None
+let old:   Option&lt;i32&gt; = slot.replace(3);            // swaps in 3, returns the old value</code></pre>
+<p>Which one to say out loud: <code>map</code> transforms, <code>and_then</code> chains a second fallible step,
+<code>unwrap_or</code> is the default, <code>ok_or</code> converts to a <code>Result</code> so <code>?</code> can take over.</p>
+<hr>
+<h2 id="3-result-and-"><a class="header" href="#3-result-and-">3. Result and <code>?</code></a></h2>
+<pre><code class="language-rust">fn option_to_result() -&gt; Result&lt;i32, String&gt; {
+    let o: Option&lt;i32&gt; = Some(1);
+    let v = o.ok_or_else(|| "missing".to_string())?;   // Option -&gt; Result -&gt; `?`
+    Ok(v)
+}
+
+fn result_combinators() -&gt; Result&lt;i32, String&gt; {
+    let r: Result&lt;i32, String&gt; = Ok(1);
+    let m = r.as_ref().map(|v| v + 1);     // borrow, do not move
+    let e = r.clone().map_err(|err| err.len());
+    let chain: Result&lt;i32, String&gt; = Ok(2).and_then(|v| Ok(v * 2));
+    let o: Option&lt;i32&gt; = r.ok();           // discards the error
+    Ok(1)
+}
+
+// `?` in main: no unwrap needed, and the error type is erased.
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let n: i32 = "42".parse::&lt;i32&gt;()?;
+    Ok(())
+}</code></pre>
+<hr>
+<h2 id="4-iterator-closures-x-vs-x-vs-x"><a class="header" href="#4-iterator-closures-x-vs-x-vs-x">4. Iterator closures: <code>|x|</code> vs <code>|&amp;x|</code> vs <code>*x</code></a></h2>
+<p>The rule: some adapters take <code>Self::Item</code>, some take <code>&amp;Self::Item</code>. The ones taking a
+reference hand you one extra <code>&amp;</code>.</p>
+<p>For <code>v.iter()</code> where <code>Item = &amp;i32</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Adapter</th><th>Closure argument</th></tr>
+</thead>
+<tbody>
+<tr><td><code>map</code>, <code>filter_map</code>, <code>for_each</code>, <code>flat_map</code></td><td><code>&amp;i32</code></td></tr>
+<tr><td><code>any</code>, <code>all</code>, <code>position</code>, <code>fold</code>’s item</td><td><code>&amp;i32</code></td></tr>
+<tr><td><code>filter</code>, <code>find</code>, <code>take_while</code>, <code>skip_while</code>, <code>partition</code></td><td><code>&amp;&amp;i32</code></td></tr>
+<tr><td><code>max_by_key</code>, <code>min_by_key</code></td><td><code>&amp;&amp;i32</code></td></tr>
+<tr><td><code>max_by</code>, <code>min_by</code></td><td><code>&amp;&amp;i32, &amp;&amp;i32</code></td></tr>
+<tr><td>slice <code>sort_by</code></td><td><code>&amp;T, &amp;T</code></td></tr>
+<tr><td>slice <code>sort_by_key</code>, <code>binary_search_by</code></td><td><code>&amp;T</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The escape hatch: call <code>.copied()</code> or <code>.cloned()</code> first and every downstream closure
+works by value. That removes the whole problem.</p>
+<pre><code class="language-rust">let v = vec![3, 1, 4, 1, 5];
+
+// Item is &amp;i32. `x * 2` works because i32: Copy and auto-deref handles the rest.
+let a: Vec&lt;i32&gt; = v.iter().map(|x| x * 2).collect();
+
+// Three ways to filter, all valid. Pick one and stay consistent.
+let b: Vec&lt;i32&gt;  = v.iter().copied().filter(|x| *x &gt; 2).collect();  // Item = i32
+let cc: Vec&lt;i32&gt; = v.iter().filter(|x| **x &gt; 2).copied().collect(); // Item = &amp;i32
+let d: Vec&lt;&amp;i32&gt; = v.iter().filter(|&amp;&amp;x| x &gt; 2).collect();          // destructure
+let e: Vec&lt;i32&gt;  = v.clone().into_iter().filter(|x| *x &gt; 2).collect(); // owned
+
+let found:  Option&lt;&amp;i32&gt;  = v.iter().find(|x| **x == 4);   // &amp;&amp; i32
+let idx:    Option&lt;usize&gt; = v.iter().position(|x| *x == 4); // &amp;i32
+let any:    bool          = v.iter().any(|x| *x == 4);      // &amp;i32
+let all:    bool          = v.iter().all(|x| *x &gt; 0);       // &amp;i32
+let mx:     Option&lt;&amp;i32&gt;  = v.iter().max_by_key(|x| **x);    // &amp;&amp; i32
+let taken:  Vec&lt;&amp;i32&gt;     = v.iter().take_while(|x| **x &gt; 1).collect();
+
+let total:  i32 = v.iter().fold(0, |acc, x| acc + x);  // acc: i32, x: &amp;i32
+let summed: i32 = v.iter().sum();
+let count        = v.iter().count();
+let mapped: Vec&lt;String&gt; = v.iter().map(|x| x.to_string()).collect();
+
+let (small, big): (Vec&lt;i32&gt;, Vec&lt;i32&gt;) = v.iter().copied().partition(|x| *x &gt; 2);
+let zipped: Vec&lt;(i32, i32)&gt; = v.iter().copied().zip(v.iter().copied()).collect();
+
+// Option inside a collection: flatten drops the Nones.
+let flat: Vec&lt;i32&gt; = vec![Some(1), None, Some(2)].into_iter().flatten().collect();
+let transposed: Option&lt;i32&gt; = Some(Some(1)).flatten();</code></pre>
+<p><code>filter</code> does not change the Item type, even with <code>|&amp;&amp;x|</code>. That is error 1 above.</p>
+<hr>
+<h2 id="5-hashmap-hashset-btreemap"><a class="header" href="#5-hashmap-hashset-btreemap">5. HashMap, HashSet, BTreeMap</a></h2>
+<pre><code class="language-rust">use std::collections::{BTreeMap, HashMap, HashSet};
+
+// The counting idiom. Memorise this exact line.
+let words = ["a", "b", "a"];
+let mut counts: HashMap&lt;&amp;str, u32&gt; = HashMap::new();
+for w in words {
+    *counts.entry(w).or_insert(0) += 1;
+}
+
+// entry(): insert default, then modify in one lookup.
+counts.entry("c").or_insert(0);
+counts.entry("a").and_modify(|c| *c += 10).or_insert(1);
+
+// Grouping: or_default() needs V: Default. Vec&lt;u32&gt; is.
+let mut groups: HashMap&lt;u32, Vec&lt;u32&gt;&gt; = HashMap::new();
+for n in [1u32, 2, 3, 4] {
+    groups.entry(n % 2).or_default().push(n);
+}
+
+// get returns Option&lt;&amp;V&gt;, never V. That is why you keep needing .copied().
+let map: HashMap&lt;i32, i32&gt; = vec![(1, 2)].into_iter().collect();
+let lookup: Option&lt;&amp;i32&gt; = map.get(&amp;1);
+let value:  Option&lt;i32&gt;  = map.get(&amp;1).copied();
+let exists: bool         = map.contains_key(&amp;1);
+
+let set: HashSet&lt;i32&gt; = vec![1, 1, 2].into_iter().collect();
+
+// Ordered iteration needs BTreeMap. HashMap order is arbitrary.
+let mut bt: BTreeMap&lt;i32, &amp;str&gt; = BTreeMap::new();
+bt.insert(1, "a");
+let first = bt.first_key_value();
+let in_range = bt.range(0..2).count();</code></pre>
+<p>Key requirements: <code>HashMap</code>/<code>HashSet</code> need <code>Hash + Eq</code>. <code>BTreeMap</code>/<code>BTreeSet</code> need <code>Ord</code>.
+<code>f64</code> has neither, so it cannot be a key in any of them.</p>
+<hr>
+<h2 id="6-sorting-searching-dequeues"><a class="header" href="#6-sorting-searching-dequeues">6. Sorting, searching, dequeues</a></h2>
+<pre><code class="language-rust">let mut v = vec![(1, "b"), (2, "a"), (1, "a")];
+
+v.sort_by_key(|p| p.0);                        // stable, key: &amp;T -&gt; K
+v.sort_by_key(|p| std::cmp::Reverse(p.0));     // descending without a custom comparator
+v.sort_by(|a, b| a.0.cmp(&amp;b.0).then(a.1.cmp(b.1))); // tie-break: Ordering::then
+v.sort_unstable();                             // fastest, order not preserved
+v.sort_unstable_by(|a, b| b.0.cmp(&amp;a.0));      // descending
+
+let mut xs = vec![3, 1, 4, 1, 5];
+xs.sort_unstable();
+xs.dedup();                                    // only removes CONSECUTIVE duplicates
+
+let idx: Result&lt;usize, usize&gt; = xs.binary_search(&amp;4);          // Ok(found) | Err(insert_at)
+let idx2: Result&lt;usize, usize&gt; = v.binary_search_by_key(&amp;2, |p| p.0); // slice must be sorted
+let has = xs.contains(&amp;4);                     // linear scan, no sort needed
+
+// Floats: sort with total_cmp, never partial_cmp().unwrap(). NaN makes the latter panic.
+let mut ys: Vec&lt;f64&gt; = vec![2.5, 1.0, 3.5];
+ys.sort_by(|a, b| b.total_cmp(a));             // descending, NaN-safe, total order
+
+// VecDeque is the queue and stack with O(1) at both ends.
+let mut q = std::collections::VecDeque::new();
+q.push_back(1);
+q.push_front(0);
+let front = q.pop_front();
+let back  = q.pop_back();</code></pre>
+<p><code>sort_by_key</code> cannot return a borrowed value — use <code>sort_by</code> for that. <code>dedup</code> without a
+preceding sort does almost nothing.</p>
+<hr>
+<h2 id="7-binaryheap-ord-and-f64"><a class="header" href="#7-binaryheap-ord-and-f64">7. BinaryHeap, <code>Ord</code>, and f64</a></h2>
+<p><code>BinaryHeap&lt;T&gt;</code> requires <code>T: Ord</code>, which is why f64 does not work: it only implements
+<code>PartialOrd</code>, because NaN has no ordering.</p>
+<pre><code class="language-rust">use std::cmp::{Ordering, Reverse};
+use std::collections::BinaryHeap;
+
+// Ord types are fine. This is a MAX-heap.
+let mut max_heap: BinaryHeap&lt;i32&gt; = BinaryHeap::new();
+max_heap.push(3);
+max_heap.push(1);
+let top:  Option&lt;i32&gt;  = max_heap.pop();    // Some(3) - largest first
+let peek: Option&lt;&amp;i32&gt; = max_heap.peek();   // borrow, does not remove
+let from_vec: BinaryHeap&lt;i32&gt; = BinaryHeap::from(vec![1, 2, 3]);
+
+// Min-heap: wrap in Reverse. pop() then gives Reverse&lt;T&gt;, so unwrap the field.
+let mut min_heap: BinaryHeap&lt;Reverse&lt;i32&gt;&gt; = BinaryHeap::new();
+min_heap.push(Reverse(5));
+min_heap.push(Reverse(2));
+let smallest = min_heap.pop().map(|r| r.0); // Some(2)
+
+// Tuples are Ord when all elements are. This is a tie-broken key.
+let mut pairs: BinaryHeap&lt;(i32, usize)&gt; = BinaryHeap::new();
+pairs.push((1, 0));
+pairs.push((2, 1));
+
+// A heap of f64 needs a wrapper. All five items below are required:
+// derive PartialEq, then impl Eq, PartialOrd, Ord.
+#[derive(PartialEq)]
+struct F(f64);
+
+impl Eq for F {}
+
+impl PartialOrd for F {
+    fn partial_cmp(&amp;self, other: &amp;Self) -&gt; Option&lt;Ordering&gt; {
+        Some(self.cmp(other))          // delegate: total_cmp is already a total order
+    }
+}
+
+impl Ord for F {
+    fn cmp(&amp;self, other: &amp;Self) -&gt; Ordering {
+        self.0.total_cmp(&amp;other.0)     // never panics, handles NaN and -0.0
+    }
+}
+
+let mut float_heap: BinaryHeap&lt;F&gt; = BinaryHeap::new();
+float_heap.push(F(1.5));
+float_heap.push(F(0.5));
+let smallest_float = float_heap.pop().map(|f| f.0);</code></pre>
+<p>If the interviewer only wants a sorted list, skip the wrapper: <code>sort_by(|a, b| b.total_cmp(a))</code>.
+Reach for the heap when you need streaming top-k, and say why.</p>
+<hr>
+<h2 id="8-locks-guards-and-the-deadlock-i-wrote"><a class="header" href="#8-locks-guards-and-the-deadlock-i-wrote">8. Locks, guards, and the deadlock I wrote</a></h2>
+<p><code>Mutex::lock()</code> returns <code>LockResult&lt;MutexGuard&lt;T&gt;&gt;</code>, so it needs <code>unwrap()</code>, and the guard
+is what derefs to <code>T</code>.</p>
+<pre><code class="language-rust">use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+let shared = Arc::new(Mutex::new(vec![1]));
+
+let mut handles = Vec::new();
+for i in 0..4 {
+    let shared = Arc::clone(&amp;shared);          // clone the handle, move it in
+    handles.push(std::thread::spawn(move || {
+        let mut guard = shared.lock().unwrap(); // MutexGuard&lt;Vec&lt;i32&gt;&gt;
+        guard.push(i);                          // method call auto-derefs
+        *guard = vec![i];                       // explicit deref to replace the value
+    }));                                        // guard drops here -&gt; unlock
+}
+for h in handles { h.join().unwrap(); }
+
+// Poisoning: lock() is a Result. Propagate, or take the data back.
+let ignoring = shared.lock().unwrap_or_else(|e| e.into_inner());
+
+// THE TRAP. These two look identical and are not.
+let _ = shared.lock();     // guard dropped at the end of THIS statement: not locked
+let _g = shared.lock();    // guard held until end of scope: intended
+
+// THE OTHER TRAP. `lock()` returns a guard, so binding it holds the lock for the
+// rest of the body. This deadlocks on the final line, same thread, no warning:
+//   let again = shared.lock().unwrap();
+//   let g2 = shared.lock().unwrap();      // hangs forever
+// Bind the DATA instead, or scope the guard:
+let len = { let g = shared.lock().unwrap(); g.len() };</code></pre>
+<pre><code class="language-rust">// RwLock: many readers OR one writer.
+let rw = Arc::new(RwLock::new(0));
+{
+    let r1 = rw.read().unwrap();
+    let r2 = rw.read().unwrap();   // two readers coexist
+}
+{
+    let mut w = rw.write().unwrap();
+    *w += 1;
+}
+
+// Atomics: every operation takes an Ordering. Forgetting it is a compile error.
+let counter = AtomicUsize::new(0);
+counter.fetch_add(1, Ordering::Relaxed);
+let loaded  = counter.load(Ordering::SeqCst);
+let swapped = counter.swap(5, Ordering::AcqRel);
+let cas: Result&lt;usize, usize&gt; =
+    counter.compare_exchange(5, 6, Ordering::AcqRel, Ordering::Relaxed);</code></pre>
+<p>Which to reach for:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Need</th><th>Type</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Counter across threads</td><td><code>AtomicUsize</code></td><td>needs an <code>Ordering</code> every call</td></tr>
+<tr><td>Counter, single thread</td><td><code>Cell&lt;T&gt;</code></td><td><code>T: Copy</code> only, <code>get</code>/<code>set</code></td></tr>
+<tr><td>Shared mutable state, single thread</td><td><code>RefCell&lt;T&gt;</code></td><td><code>borrow</code>/<code>borrow_mut</code>, <strong>panics</strong> on conflict</td></tr>
+<tr><td>Shared mutable state, threads</td><td><code>Mutex&lt;T&gt;</code></td><td>blocking, <strong>poisons</strong> on panic</td></tr>
+<tr><td>Read-mostly across threads</td><td><code>RwLock&lt;T&gt;</code></td><td>many readers or one writer</td></tr>
+<tr><td>Single-thread shared ownership</td><td><code>Rc&lt;T&gt;</code></td><td>not <code>Send</code></td></tr>
+<tr><td>Cross-thread shared ownership</td><td><code>Arc&lt;T&gt;</code></td><td>clone the handle, not the data</td></tr>
+</tbody>
+</table>
+</div>
+<p>Lock guard held across <code>.await</code> is not <code>Send</code> — that needs <code>tokio::sync::Mutex</code>.</p>
+<hr>
+<h2 id="9-strings"><a class="header" href="#9-strings">9. Strings</a></h2>
+<pre><code class="language-rust">let s:  String = "hi there".to_string();
+let s2: String = String::from("hi");
+let s3: String = "hi".to_owned();
+
+let r:  &amp;str = &amp;s;            // deref coercion: String -&gt; &amp;str
+let r2: &amp;str = s.as_str();    // the explicit form
+let own: String = r.to_string(); // &amp;str -&gt; String
+
+// parse returns Result, so it needs `?` or an unwrap in a function.
+let n: i32 = "42".parse::&lt;i32&gt;()?;
+let with_default = "42".parse::&lt;i32&gt;().unwrap_or(0);
+let as_option    = "42".parse::&lt;i32&gt;().ok();
+
+let parts: Vec&lt;&amp;str&gt; = s.split_whitespace().collect();
+let joined = parts.join(",");
+let upper  = s.to_uppercase();
+let first: Option&lt;char&gt; = s.chars().next();    // bytes vs chars are different
+let nth:   Option&lt;char&gt; = s.chars().nth(1);
+let reversed: String = s.chars().rev().collect();
+let formatted = format!("{s} {n}");
+
+let mut m = String::new();
+m.push('a');
+m.push_str("bc");</code></pre>
+<p><code>s[0]</code> gives a <em>byte</em> and panics on a non-ASCII boundary. Use <code>s.chars().nth(i)</code>.
+Function parameters should be <code>&amp;str</code>, struct fields should be <code>String</code>.</p>
+<hr>
+<h2 id="10-match-ergonomics"><a class="header" href="#10-match-ergonomics">10. Match ergonomics</a></h2>
+<p>Matching a reference makes the bindings references automatically. You rarely need <code>&amp;</code> in
+the pattern.</p>
+<pre><code class="language-rust">match &amp;opt {
+    Some(x) =&gt; { let _: &amp;String = x; }   // x is &amp;String, no `&amp;` written
+    None =&gt; {}
+}
+
+match &amp;mut mopt {
+    Some(x) =&gt; x.push('!'),              // x is &amp;mut String
+    None =&gt; {}
+}
+
+match opt {
+    Some(x) =&gt; { let _: String = x; }     // x is String: this one MOVES
+    None =&gt; {}
+}
+
+if let Some(x) = &amp;mopt {}                 // x: &amp;String
+while let Some(x) = stack.pop() {}        // x: i32, owned
+let Some(x) = mopt else { return };       // let-else: bind or leave
+
+if let Some(Ok(v)) = Some(Ok::&lt;i32, String&gt;(1)) {}  // nested patterns in one line
+
+let s = String::from("quit");
+match &amp;s[..] {                            // &amp;str patterns need a slice, not &amp;String
+    "quit" =&gt; {}
+    _ =&gt; {}
+}
+
+match n {
+    x @ 1..=5 =&gt; { let _ = x; }           // bind and test at once
+    _ =&gt; {}
+}</code></pre>
+<p>When the compiler says <code>expected &amp;String, found String</code>, add <code>&amp;</code> to the scrutinee
+(<code>match &amp;opt</code>) rather than to the pattern.</p>
+<hr>
+<h2 id="11-escaping-the-borrow-checker"><a class="header" href="#11-escaping-the-borrow-checker">11. Escaping the borrow checker</a></h2>
+<pre><code class="language-rust">let mut v = vec![1, 2, 3, 4];
+
+// Two mutable borrows into one slice, without cloning.
+let (left, right) = v.split_at_mut(2);
+left[0] = 9;
+right[0] = 8;
+
+// Read and write in one expression does not compile. Copy the index out first.
+let i = 1usize;
+let value = v[i];
+v[i] = value + 1;
+
+for x in &amp;mut v { *x += 1; }        // &amp;mut i32, deref to assign
+for x in v.iter().copied() { }      // by value, no borrow held
+
+// Move a value out of a slot that is borrowed elsewhere.
+let mut owned = vec![1, 2, 3];
+let taken    = std::mem::take(&amp;mut owned);              // leaves Default (empty)
+let replaced = std::mem::replace(&amp;mut owned, vec![7]);  // leaves vec![7]
+
+let mut opt = Some(vec![1]);
+let moved = opt.take();                                  // Option&lt;T&gt; -&gt; Option&lt;T&gt;, leaves None
+
+let snapshot = v.len();     // copy the value out
+let copy = v.clone();       // the pragmatic unblock when you are short on time</code></pre>
+<p>Order of attack when the borrow checker fights you: copy the value out, then
+<code>split_at_mut</code>, then <code>mem::take</code>, then <code>clone</code>. Save <code>clone</code> for when the clock matters
+and say out loud that you know it is a clone.</p>
+<hr>
+<h2 id="12-final-checklist-of-syntax-slips"><a class="header" href="#12-final-checklist-of-syntax-slips">12. Final checklist of syntax slips</a></h2>
+<ul>
+<li><code>Vec::pop</code>, <code>HashMap::get</code>, <code>stack.pop()</code>, <code>BinaryHeap::pop</code> all return <code>Option</code>. Handle it.</li>
+<li><code>.iter()</code> gives <code>&amp;T</code>; add <code>.copied()</code> / <code>.cloned()</code> before the closures.</li>
+<li><code>filter</code>, <code>find</code>, <code>take_while</code>, <code>max_by_key</code> give <code>&amp;&amp;T</code>.</li>
+<li>The binding needs <code>mut</code>, not the value: <code>let mut v = ...</code>.</li>
+<li><code>.collect()</code> needs a target type: <code>let v: Vec&lt;_&gt; = ...</code> or <code>collect::&lt;Vec&lt;_&gt;&gt;()</code>.</li>
+<li>Integer literals default to <code>i32</code>; annotate <code>0usize</code>, <code>vec![0u32; n]</code> when indexing.</li>
+<li>Indexing needs <code>usize</code>: <code>v[x as usize]</code>.</li>
+<li>Unannotated float literals can stay ambiguous until a method pins the type.</li>
+<li><code>Option</code>/<code>Result</code> combinators take <code>self</code> and move. Use <code>.as_ref()</code> to keep the value.</li>
+<li>Locks return guards. Bind the data, not the guard. <code>let _ = lock()</code> unlocks instantly.</li>
+<li><code>#[derive(Debug, Clone, PartialEq)]</code> on any struct you plan to print or assert on.</li>
+<li><code>assert_eq!</code> needs <code>Debug</code> and <code>PartialEq</code> on both sides.</li>
+<li><code>.to_string()</code> needs <code>Display</code>; <code>format!("{x:?}")</code> needs <code>Debug</code>.</li>
+<li>Closure needs <code>move</code> only to cross a thread boundary or to return it.</li>
+<li><code>Arc::clone(&amp;x)</code> inside the loop, then <code>move</code> the clone into the spawn.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch23-drills.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="appendix-d-benchmark-report.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch23-drills.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="appendix-d-benchmark-report.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

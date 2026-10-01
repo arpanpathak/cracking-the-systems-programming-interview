@@ -1,0 +1,1748 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Trees and tries - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch11.png" alt="Branch, the robot who is the pipefitter of the manifold, beside a branching pipe manifold drawn as a binary tree">
+<h1 id="trees-and-tries"><a class="header" href="#trees-and-tries">Trees and tries</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>The vocabulary of trees: root, leaf, child, subtree, depth</li>
+<li>A binary tree as an enum, and the three depth-first visiting orders</li>
+<li>Binary search trees: insert, search, remove, and range queries, written two ways</li>
+<li>Trees with any number of children: depth-first and breadth-first visits, and grouping by level</li>
+<li>Saving a tree to a file and loading it back</li>
+<li>A trie, a tree for finding words by their first letters</li>
+</ul>
+</div>
+
+<p>In a linked list, each node points to at most one next node. In a <strong>tree</strong>, each node can point to several
+nodes, called its children. Trees describe anything organized as a hierarchy. Examples are folders on a disk, the parts of an
+expression, and a sorted set of numbers arranged for fast search.</p>
+<p>Trees are easier to write in Rust than the doubly linked list of chapter 9. Each node has exactly one parent,
+so a parent can own its children outright, with <code>Box</code> or with a <code>Vec</code>. No <code>Rc</code> or <code>RefCell</code> is needed. The
+harder parts are elsewhere: replacing a node from inside a method, and choosing between recursion and an
+explicit stack or queue.</p>
+<p>The chapter starts with vocabulary, then binary trees, then binary search trees, then trees with any number of
+children, and ends with the trie.</p>
+<h2 id="111-tree-vocabulary"><a class="header" href="#111-tree-vocabulary">11.1 Tree vocabulary</a></h2>
+<p>Figure 11.1 names the parts of a tree.</p>
+<figure>
+<img src="figures/tree-terms.svg" alt="A tree with root 3, children 9 and 20, and 20&#39;s children 15 and 7. The root, the leaves, the children of 20, and the subtree of 20 are marked.">
+<figcaption><b>Figure 11.1</b> The small tree used by this chapter's tests, with its parts labeled.</figcaption>
+</figure>
+<ul>
+<li>The <strong>root</strong> is the one node with no parent. Trees are drawn with the root at the top.</li>
+<li>A <strong>leaf</strong> is a node with no children.</li>
+<li>The <strong>subtree</strong> of a node is that node and everything below it. Every subtree is a tree itself. So a function on a tree can call itself on each subtree, which is
+recursion.</li>
+<li>The <strong>depth</strong> of a tree is the number of levels from the root down to its deepest leaf.</li>
+</ul>
+<p>A <strong>binary tree</strong> is a tree in which each node has at most two children, called the left child and the right
+child.</p>
+<h2 id="112-a-binary-tree-as-an-enum"><a class="header" href="#112-a-binary-tree-as-an-enum">11.2 A binary tree as an enum</a></h2>
+<p>A binary tree is either empty, or a node holding a value and two smaller binary trees. That sentence
+translates directly into an enum:</p>
+<p class="listing"><b>Listing 11.1</b> The tree type (lines 1 to 16). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs">src/problems/binary_tree.rs</a></p>
+
+<pre><code class="language-rust">//! Binary tree as an algebraic data type.
+//!
+//! ```text
+//! Tree = Empty
+//!      | Node { value, left: Box&lt;Tree&gt;, right: Box&lt;Tree&gt; }
+//! ```
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Tree {
+    Empty,
+    Node {
+        value: i32,
+        left: Box&lt;Tree&gt;,
+        right: Box&lt;Tree&gt;,
+    },
+}</code></pre>
+<p>The children are <code>Box&lt;Tree&gt;</code> for the reason chapter 8 gave. A <code>Tree</code> cannot contain two <code>Tree</code> values
+directly, because its size would have no end. A <code>Box</code> is one pointer, so a node has a fixed size.</p>
+<h3 id="1121-depth-and-inversion"><a class="header" href="#1121-depth-and-inversion">11.2.1 Depth and inversion</a></h3>
+<p class="listing"><b>Listing 11.2</b> Depth and inversion (lines 19 to 35).</p>
+
+<pre><code class="language-rust">impl Tree {
+    pub fn max_depth(&amp;self) -&gt; usize {
+        match self {
+            Tree::Empty =&gt; 0,
+            Tree::Node { left, right, .. } =&gt; 1 + left.max_depth().max(right.max_depth()),
+        }
+    }
+
+    pub fn invert(&amp;mut self) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { left, right, .. } =&gt; {
+                left.invert();
+                right.invert();
+                std::mem::swap(left, right);
+            }
+        }
+    }
+    // ...
+}</code></pre>
+<p>Each method is a <code>match</code> with two arms. The <code>Empty</code> arm is the <strong>base case</strong>, the input small enough to answer
+directly. The <code>Node</code> arm calls the method on the children and combines the results.</p>
+<p><code>max_depth</code> reads as a definition. An empty tree has depth 0. A node has depth 1 plus the larger depth of
+its two subtrees. For the tree in figure 11.1: the leaves have depth 1, node 20 has depth 2, and the root has
+depth 3.</p>
+<p><code>invert</code> swaps every node’s left and right children, so the tree becomes its mirror image. It inverts both
+subtrees first and then calls <code>std::mem::swap(left, right)</code>. The pattern binds <code>left</code> and <code>right</code> as mutable
+references to the boxes, so the swap exchanges two pointers and moves no nodes.</p>
+<h3 id="1122-the-three-depth-first-orders"><a class="header" href="#1122-the-three-depth-first-orders">11.2.2 The three depth-first orders</a></h3>
+<p>Visiting every node of a tree once is called a <strong>traversal</strong>. Going down one branch as far as possible before
+trying the next is <strong>depth-first</strong> traversal. There are three common depth-first orders. They differ only in
+when a node is visited relative to its children (figure 11.2).</p>
+<figure>
+<img src="figures/tree-orders.svg" alt="The same tree three times. Pre-order visits 3, 9, 20, 15, 7. In-order visits 9, 3, 15, 20, 7. Post-order visits 9, 15, 7, 20, 3.">
+<figcaption><b>Figure 11.2</b> The badges show the order in which each traversal visits the nodes.</figcaption>
+</figure>
+<ul>
+<li><strong>Pre-order</strong> visits the node first, then its left subtree, then its right subtree.</li>
+<li><strong>In-order</strong> visits the left subtree, then the node, then the right subtree.</li>
+<li><strong>Post-order</strong> visits both subtrees, then the node.</li>
+</ul>
+<p class="listing"><b>Listing 11.3</b> The public traversal methods (lines 37 to 53).</p>
+
+<pre><code class="language-rust">impl Tree {
+    // ...
+    pub fn preorder(&amp;self) -&gt; Vec&lt;i32&gt; {
+        let mut out = Vec::new();
+        self.collect_preorder(&amp;mut out);
+        out
+    }
+
+    pub fn inorder(&amp;self) -&gt; Vec&lt;i32&gt; {
+        let mut out = Vec::new();
+        self.collect_inorder(&amp;mut out);
+        out
+    }
+
+    pub fn postorder(&amp;self) -&gt; Vec&lt;i32&gt; {
+        let mut out = Vec::new();
+        self.collect_postorder(&amp;mut out);
+        out
+    }
+    // ...
+}</code></pre>
+<p>Each public method creates an empty <code>Vec</code>, passes it to a private helper, and returns it. Creating the vector
+once and passing it down avoids building a new vector at every node.</p>
+<p class="listing"><b>Listing 11.4</b> The recursive helpers (lines 55 to 86).</p>
+
+<pre><code class="language-rust">impl Tree {
+    // ...
+    fn collect_preorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { value, left, right } =&gt; {
+                out.push(*value);
+                left.collect_preorder(out);
+                right.collect_preorder(out);
+            }
+        }
+    }
+
+    fn collect_inorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { value, left, right } =&gt; {
+                left.collect_inorder(out);
+                out.push(*value);
+                right.collect_inorder(out);
+            }
+        }
+    }
+
+    fn collect_postorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { value, left, right } =&gt; {
+                left.collect_postorder(out);
+                right.collect_postorder(out);
+                out.push(*value);
+            }
+        }
+    }
+}</code></pre>
+<p>The three helpers are identical except for one line: where <code>out.push(*value)</code> appears relative to the two
+recursive calls. <code>*value</code> copies the <code>i32</code> out of the reference.</p>
+<p class="listing"><b>Listing 11.5</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs">src/problems/binary_tree.rs</a></p>
+
+<pre><code class="language-rust">//! Binary tree as an algebraic data type.
+//!
+//! ```text
+//! Tree = Empty
+//!      | Node { value, left: Box&lt;Tree&gt;, right: Box&lt;Tree&gt; }
+//! ```
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Tree {
+    Empty,
+    Node {
+        value: i32,
+        left: Box&lt;Tree&gt;,
+        right: Box&lt;Tree&gt;,
+    },
+}
+
+impl Tree {
+    pub fn max_depth(&amp;self) -&gt; usize {
+        match self {
+            Tree::Empty =&gt; 0,
+            Tree::Node { left, right, .. } =&gt; 1 + left.max_depth().max(right.max_depth()),
+        }
+    }
+
+    pub fn invert(&amp;mut self) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { left, right, .. } =&gt; {
+                left.invert();
+                right.invert();
+                std::mem::swap(left, right);
+            }
+        }
+    }
+
+    pub fn preorder(&amp;self) -&gt; Vec&lt;i32&gt; {
+        let mut out = Vec::new();
+        self.collect_preorder(&amp;mut out);
+        out
+    }
+
+    pub fn inorder(&amp;self) -&gt; Vec&lt;i32&gt; {
+        let mut out = Vec::new();
+        self.collect_inorder(&amp;mut out);
+        out
+    }
+
+    pub fn postorder(&amp;self) -&gt; Vec&lt;i32&gt; {
+        let mut out = Vec::new();
+        self.collect_postorder(&amp;mut out);
+        out
+    }
+
+    fn collect_preorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { value, left, right } =&gt; {
+                out.push(*value);
+                left.collect_preorder(out);
+                right.collect_preorder(out);
+            }
+        }
+    }
+
+    fn collect_inorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { value, left, right } =&gt; {
+                left.collect_inorder(out);
+                out.push(*value);
+                right.collect_inorder(out);
+            }
+        }
+    }
+
+    fn collect_postorder(&amp;self, out: &amp;mut Vec&lt;i32&gt;) {
+        match self {
+            Tree::Empty =&gt; {}
+            Tree::Node { value, left, right } =&gt; {
+                left.collect_postorder(out);
+                right.collect_postorder(out);
+                out.push(*value);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn leaf(value: i32) -&gt; Tree {
+        Tree::Node {
+            value,
+            left: Box::new(Tree::Empty),
+            right: Box::new(Tree::Empty),
+        }
+    }
+
+    fn node(value: i32, left: Tree, right: Tree) -&gt; Tree {
+        Tree::Node {
+            value,
+            left: Box::new(left),
+            right: Box::new(right),
+        }
+    }
+
+    fn sample() -&gt; Tree {
+        node(3, leaf(9), node(20, leaf(15), leaf(7)))
+    }
+
+    #[test]
+    fn max_depth_works() {
+        assert_eq!(Tree::Empty.max_depth(), 0);
+        assert_eq!(leaf(1).max_depth(), 1);
+        assert_eq!(sample().max_depth(), 3);
+    }
+
+    #[test]
+    fn invert_swaps_subtrees() {
+        let mut tree = sample();
+        tree.invert();
+
+        match &amp;tree {
+            Tree::Node { left, right, .. } =&gt; {
+                match left.as_ref() {
+                    Tree::Node { value, .. } =&gt; assert_eq!(*value, 20),
+                    _ =&gt; panic!("expected left node"),
+                }
+                match right.as_ref() {
+                    Tree::Node { value, .. } =&gt; assert_eq!(*value, 9),
+                    _ =&gt; panic!("expected right node"),
+                }
+            }
+            _ =&gt; panic!("expected node"),
+        }
+    }
+
+    #[test]
+    fn traversals_work() {
+        let tree = sample();
+        assert_eq!(tree.preorder(), vec![3, 9, 20, 15, 7]);
+        assert_eq!(tree.inorder(), vec![9, 3, 15, 20, 7]);
+        assert_eq!(tree.postorder(), vec![9, 15, 7, 20, 3]);
+    }
+}</code></pre>
+<p>The test module defines two small helpers, <code>leaf</code> and <code>node</code>, so a test tree can be built in one readable
+expression. <code>sample()</code> builds the tree of figure 11.1. The traversal test checks all three orders from figure
+11.2.</p>
+<h2 id="113-binary-search-trees"><a class="header" href="#113-binary-search-trees">11.3 Binary search trees</a></h2>
+<p>A <strong>binary search tree</strong> (BST) is a binary tree with an ordering rule. For every node, all values in its left
+subtree are smaller than the node’s value, and all values in its right subtree are larger.</p>
+<p>The rule makes searching fast. To find a value, compare it with the root. If it is smaller, it can only be in
+the left subtree; if larger, only in the right. Each comparison discards one subtree (figure 11.3).</p>
+<figure>
+<img src="figures/bst-search.svg" alt="A BST with root 10, children 5 and 15, and leaves 3, 7, 12, 18. Searching for 7 goes left at 10, right at 5, and finds 7.">
+<figcaption><b>Figure 11.3</b> Searching for 7 visits one node per level. In a balanced tree of n values, that is about log₂ n comparisons.</figcaption>
+</figure>
+<p>The code for this chapter has two implementations of the same BST. They agree on inserting and searching, and differ in
+how they remove values and answer range queries. I’ll go through the first fully, then the parts where the
+second differs.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch11-bst.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&amp;6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain." data-chapters="[[0.0, &quot;insert&quot;], [94.1, &quot;sorted input&quot;]]"><img src="figures/ch11-bst.gif" alt="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&amp;6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain."></video>
+<figcaption><b>Animation 11.1</b> Each insert is a walk from the root that ends at an empty subtree, and a search is the same walk. Sorted input produces a chain, so the shape depends on the insert order.</figcaption>
+</figure>
+<h3 id="1131-the-type-insertion-and-search"><a class="header" href="#1131-the-type-insertion-and-search">11.3.1 The type, insertion, and search</a></h3>
+<p class="listing"><b>Listing 11.6</b> The type (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs">src/bin/bst_clean.rs</a></p>
+
+<pre><code class="language-rust">use std::cmp::Ordering;
+
+type TreeLink&lt;T&gt; = Box&lt;BST&lt;T&gt;&gt;;
+
+#[derive(Debug, Clone, Default)]
+pub enum BST&lt;T&gt; {
+    #[default]
+    Empty,
+    Node {
+        value: T,
+        left: TreeLink&lt;T&gt;,
+        right: TreeLink&lt;T&gt;,
+    },
+}</code></pre>
+<p><code>BST&lt;T&gt;</code> is generic over the value type. The methods require <code>T: Ord</code>, meaning values of type <code>T</code> can be
+ordered, which a search tree needs. <code>#[default]</code> on <code>Empty</code> makes an empty tree the default value, which the
+removal code uses.</p>
+<p class="listing"><b>Listing 11.7</b> Creating, inserting, and searching (lines 17 to 47).</p>
+
+<pre><code class="language-rust">impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    pub fn new() -&gt; Self {
+        Self::Empty
+    }
+
+    pub fn insert(&amp;mut self, val: T) {
+        match self {
+            Self::Empty =&gt; {
+                *self = Self::Node {
+                    value: val,
+                    left: Box::new(Self::Empty),
+                    right: Box::new(Self::Empty),
+                };
+            }
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Ordering::Less =&gt; left.insert(val),
+                Ordering::Greater =&gt; right.insert(val),
+                Ordering::Equal =&gt; {}
+            },
+        }
+    }
+
+    pub fn contains(&amp;self, val: &amp;T) -&gt; bool {
+        match self {
+            Self::Empty =&gt; false,
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Ordering::Less =&gt; left.contains(val),
+                Ordering::Greater =&gt; right.contains(val),
+                Ordering::Equal =&gt; true,
+            },
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>insert</code> takes <code>&amp;mut self</code> because it changes the tree in place. It walks down with recursive calls. When it
+reaches an <code>Empty</code> tree, it replaces that spot with a new leaf: <code>*self = Self::Node { ... }</code>. On the way down,
+<code>val.cmp(value)</code> compares the new value with the node’s and returns <code>Ordering::Less</code>, <code>Greater</code>, or <code>Equal</code>. A
+value equal to one already in the tree is ignored, so the tree holds each value once.</p>
+<p><code>contains</code> follows the same path without changing anything.</p>
+<h3 id="1132-removal"><a class="header" href="#1132-removal">11.3.2 Removal</a></h3>
+<p>Removing a value is the hardest operation, because the tree must keep its ordering rule. There are three cases
+(figure 11.4).</p>
+<figure>
+<img src="figures/bst-remove.svg" alt="Case 1: a node with no left child is replaced by its right child. Case 2: a node with no right child is replaced by its left child. Case 3: a node with two children takes the smallest value from its right subtree, which is then removed there.">
+<figcaption><b>Figure 11.4</b> The three removal cases. In case 3, removing 10 copies 12 into the root, then removes 12 from the right subtree.</figcaption>
+</figure>
+<ol>
+<li><strong>No left child.</strong> Replace the node with its right subtree.</li>
+<li><strong>No right child.</strong> Replace the node with its left subtree.</li>
+<li><strong>Two children.</strong> Keep the node, but give it a new value: the smallest value in its right subtree. That value
+is larger than everything on the left and smaller than everything else on the right, so the rule still
+holds. Then remove that smallest value from the right subtree. The smallest value has no left child, so its
+removal is case 1.</li>
+</ol>
+<p class="listing"><b>Listing 11.8</b> Removal (lines 49 to 90).</p>
+
+<pre><code class="language-rust">impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    // ...
+    pub fn remove(&amp;mut self, val: &amp;T) -&gt; bool {
+        match self {
+            Self::Empty =&gt; false,
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Ordering::Less =&gt; left.remove(val),
+                Ordering::Greater =&gt; right.remove(val),
+                Ordering::Equal =&gt; {
+                    if left.is_empty() &amp;&amp; right.is_empty() {
+                        *self = Self::Empty;
+                        return true;
+                    }
+                    if left.is_empty() {
+                        *self = *std::mem::take(right);
+                        return true;
+                    }
+                    if right.is_empty() {
+                        *self = *std::mem::take(left);
+                        return true;
+                    }
+                    let min_val = right.remove_min().unwrap();
+                    *value = min_val;
+                    true
+                }
+            },
+        }
+    }
+
+    fn remove_min(&amp;mut self) -&gt; Option&lt;T&gt; {
+        match self {
+            Self::Empty =&gt; None,
+            Self::Node { left, .. } if left.is_empty() =&gt; {
+                let node = std::mem::take(self);
+                if let Self::Node { value, right, .. } = node {
+                    *self = *right;
+                    Some(value)
+                } else {
+                    unreachable!()
+                }
+            }
+            Self::Node { left, .. } =&gt; left.remove_min(),
+        }
+    }
+    // ...
+}</code></pre>
+<p>The first two cases need to replace <code>*self</code> with one of its own children. That is not straightforward, because
+<code>right</code> is a reference into <code>*self</code>. You cannot move a subtree out through <code>right</code> and assign it to <code>*self</code> in
+one step. <code>std::mem::take(right)</code> solves it: it moves the subtree out and leaves the default value, an empty
+tree, in its place. Then <code>*self = *std::mem::take(right)</code> assigns the subtree, and the <code>*</code> moves it out of its
+<code>Box</code>. <code>take</code> needs <code>Default</code>, which is why the type derives it.</p>
+<p>The code also handles a leaf, a node with no children, separately. Case 1 would already cover it.</p>
+<p>For case 3, <code>remove_min</code> removes and returns the smallest value of the right subtree. It walks left until it
+reaches a node whose left child is empty, using a match guard: <code>Self::Node { left, .. } if left.is_empty()</code>.
+That node holds the smallest value. The method takes the whole node out with <code>std::mem::take(self)</code>, puts its
+right subtree in its place, and returns its value. The <code>if let ... else { unreachable!() }</code> is there because
+the compiler cannot see that the value taken from a <code>Node</code> arm is a <code>Node</code>. <code>unreachable!()</code> panics if that
+ever turns out false.</p>
+<p><code>remove</code> returns <code>true</code> if the value was found and removed, and <code>false</code> otherwise, so a caller can tell the two
+apart.</p>
+<h3 id="1133-range-queries"><a class="header" href="#1133-range-queries">11.3.3 Range queries</a></h3>
+<p>A <strong>range query</strong> returns every value between a low and a high bound, in order. A BST can answer it without
+visiting subtrees that cannot contain an answer.</p>
+<p class="listing"><b>Listing 11.9</b> Range queries (lines 92 to 114).</p>
+
+<pre><code class="language-rust">impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    // ...
+    pub fn range(&amp;self, low: &amp;T, high: &amp;T) -&gt; Vec&lt;&amp;T&gt; {
+        let mut result = Vec::new();
+        self.range_helper(low, high, &amp;mut result);
+        result
+    }
+
+    // Explicit lifetime 'a ties the references in the vector to the lifetime of &amp;self.
+    fn range_helper&lt;'a&gt;(&amp;'a self, low: &amp;T, high: &amp;T, acc: &amp;mut Vec&lt;&amp;'a T&gt;) {
+        match self {
+            Self::Empty =&gt; {}
+            Self::Node { value, left, right } =&gt; {
+                if value &lt; low {
+                    right.range_helper(low, high, acc);
+                } else if value &gt; high {
+                    left.range_helper(low, high, acc);
+                } else {
+                    left.range_helper(low, high, acc);
+                    acc.push(value);
+                    right.range_helper(low, high, acc);
+                }
+            }
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>range_helper</code> collects matching values into an accumulator, <code>acc</code>. Its three branches skip work:</p>
+<ul>
+<li>If the node’s value is below <code>low</code>, everything in its left subtree is lower still, so only the right subtree
+is searched.</li>
+<li>If the value is above <code>high</code>, only the left subtree is searched.</li>
+<li>Otherwise, the helper searches the left subtree, adds the value, and searches the right subtree. That order
+is in-order traversal, so the results come out sorted.</li>
+</ul>
+<p>The signature has an explicit lifetime: <code>fn range_helper&lt;'a&gt;(&amp;'a self, ..., acc: &amp;mut Vec&lt;&amp;'a T&gt;)</code>. The
+references pushed into <code>acc</code> point into the tree, so they must live as long as the tree borrow <code>&amp;'a self</code>.
+Without the named <code>'a</code>, the elision rules from chapter 4 would give <code>self</code> and the vector’s elements
+separate lifetimes. The push would then not compile.</p>
+<p class="listing"><b>Listing 11.10</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs">src/bin/bst_clean.rs</a></p>
+
+<pre><code class="language-rust">use std::cmp::Ordering;
+
+type TreeLink&lt;T&gt; = Box&lt;BST&lt;T&gt;&gt;;
+
+#[derive(Debug, Clone, Default)]
+pub enum BST&lt;T&gt; {
+    #[default]
+    Empty,
+    Node {
+        value: T,
+        left: TreeLink&lt;T&gt;,
+        right: TreeLink&lt;T&gt;,
+    },
+}
+
+impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    pub fn new() -&gt; Self {
+        Self::Empty
+    }
+
+    pub fn insert(&amp;mut self, val: T) {
+        match self {
+            Self::Empty =&gt; {
+                *self = Self::Node {
+                    value: val,
+                    left: Box::new(Self::Empty),
+                    right: Box::new(Self::Empty),
+                };
+            }
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Ordering::Less =&gt; left.insert(val),
+                Ordering::Greater =&gt; right.insert(val),
+                Ordering::Equal =&gt; {}
+            },
+        }
+    }
+
+    pub fn contains(&amp;self, val: &amp;T) -&gt; bool {
+        match self {
+            Self::Empty =&gt; false,
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Ordering::Less =&gt; left.contains(val),
+                Ordering::Greater =&gt; right.contains(val),
+                Ordering::Equal =&gt; true,
+            },
+        }
+    }
+
+    pub fn remove(&amp;mut self, val: &amp;T) -&gt; bool {
+        match self {
+            Self::Empty =&gt; false,
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Ordering::Less =&gt; left.remove(val),
+                Ordering::Greater =&gt; right.remove(val),
+                Ordering::Equal =&gt; {
+                    if left.is_empty() &amp;&amp; right.is_empty() {
+                        *self = Self::Empty;
+                        return true;
+                    }
+                    if left.is_empty() {
+                        *self = *std::mem::take(right);
+                        return true;
+                    }
+                    if right.is_empty() {
+                        *self = *std::mem::take(left);
+                        return true;
+                    }
+                    let min_val = right.remove_min().unwrap();
+                    *value = min_val;
+                    true
+                }
+            },
+        }
+    }
+
+    fn remove_min(&amp;mut self) -&gt; Option&lt;T&gt; {
+        match self {
+            Self::Empty =&gt; None,
+            Self::Node { left, .. } if left.is_empty() =&gt; {
+                let node = std::mem::take(self);
+                if let Self::Node { value, right, .. } = node {
+                    *self = *right;
+                    Some(value)
+                } else {
+                    unreachable!()
+                }
+            }
+            Self::Node { left, .. } =&gt; left.remove_min(),
+        }
+    }
+
+    pub fn range(&amp;self, low: &amp;T, high: &amp;T) -&gt; Vec&lt;&amp;T&gt; {
+        let mut result = Vec::new();
+        self.range_helper(low, high, &amp;mut result);
+        result
+    }
+
+    // Explicit lifetime 'a ties the references in the vector to the lifetime of &amp;self.
+    fn range_helper&lt;'a&gt;(&amp;'a self, low: &amp;T, high: &amp;T, acc: &amp;mut Vec&lt;&amp;'a T&gt;) {
+        match self {
+            Self::Empty =&gt; {}
+            Self::Node { value, left, right } =&gt; {
+                if value &lt; low {
+                    right.range_helper(low, high, acc);
+                } else if value &gt; high {
+                    left.range_helper(low, high, acc);
+                } else {
+                    left.range_helper(low, high, acc);
+                    acc.push(value);
+                    right.range_helper(low, high, acc);
+                }
+            }
+        }
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        matches!(self, Self::Empty)
+    }
+}
+
+fn main() {
+    let mut bst = BST::new();
+    bst.insert(10);
+    bst.insert(5);
+    bst.insert(15);
+    bst.insert(3);
+    bst.insert(7);
+    bst.insert(12);
+    bst.insert(18);
+
+    println!("Contains 7: {}", bst.contains(&amp;7));
+    println!("Contains 12: {}", bst.contains(&amp;12));
+
+    let range = bst.range(&amp;4, &amp;16);
+    println!("Values in [4, 16]: {:?}", range);
+
+    println!("Remove 5: {}", bst.remove(&amp;5));
+    println!("Remove 10: {}", bst.remove(&amp;10));
+    println!("Remove 99: {}", bst.remove(&amp;99));
+
+    println!("After removals: {:#?}", bst);
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin bst_clean
+Contains 7: true
+Contains 12: true
+Values in [4, 16]: [5, 7, 10, 12, 15]
+Remove 5: true
+Remove 10: true
+Remove 99: false
+After removals: Node {
+    value: 12,
+    left: Node {
+        value: 7,
+        left: Node {
+            value: 3,
+            left: Empty,
+            right: Empty,
+        },
+        right: Empty,
+    },
+    right: Node {
+        value: 15,
+        left: Empty,
+        right: Node {
+            value: 18,
+            left: Empty,
+            right: Empty,
+        },
+    },
+}
+</code></pre>
+<p>Follow the two removals by hand. Node 5 has two children, 3 and 7. So it takes 7, the smallest value on its right, and the old 7 leaf is
+removed. Node 10 also has two children, so the root takes 12, the smallest
+value in its right subtree. The printed tree shows 12 at the root and 7 where 5 was.</p>
+<h3 id="1134-a-second-bst-with-an-iterative-minimum"><a class="header" href="#1134-a-second-bst-with-an-iterative-minimum">11.3.4 A second BST, with an iterative minimum</a></h3>
+<p>The second implementation writes removal and range queries differently.</p>
+<p class="listing"><b>Listing 11.11</b> Removal and <code>pop_min</code> (lines 49 to 84). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Ordering::{Equal, Greater, Less},
+    mem,
+};
+
+impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    // ...
+    pub fn remove(&amp;mut self, val: &amp;T) {
+        match self {
+            Self::Empty =&gt; {}
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Less =&gt; left.remove(val),
+                Greater =&gt; right.remove(val),
+                Equal =&gt; {
+                    if left.is_empty() {
+                        *self = right.take();
+                    } else if right.is_empty() {
+                        *self = left.take();
+                    } else {
+                        *value = right.pop_min().unwrap();
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn pop_min(&amp;mut self) -&gt; Option&lt;T&gt; {
+        let mut node = self;
+
+        while node.has_left() {
+            if let Self::Node { left, .. } = node {
+                node = left;
+            }
+        }
+
+        match node.take() {
+            Self::Empty =&gt; None,
+            Self::Node { value, right, .. } =&gt; {
+                *node = *right;
+                Some(value)
+            }
+        }
+    }
+    // ...
+}</code></pre>
+<p>This <code>remove</code> uses a helper <code>take</code>, defined at the end of the file, that swaps in <code>Empty</code> with
+<code>mem::replace</code>. So the type does not need <code>Default</code>. <code>right.take()</code> reaches through the <code>Box</code> automatically
+and returns the tree inside.</p>
+<p><code>pop_min</code> finds the smallest value with a loop instead of recursion. It moves a mutable reference, <code>node</code>, down
+the left side of the tree:</p>
+<pre><code class="language-rust">let mut node = self;
+while node.has_left() {
+    if let Self::Node { left, .. } = node {
+        node = left;
+    }
+}</code></pre>
+<p>When the loop ends, <code>node</code> refers to the leftmost node. <code>match node.take()</code> splits it into its value and its
+right subtree, with no <code>unreachable!</code>. The loop uses one stack frame however deep the tree is. <code>pop_min</code> is also public, so the tree can serve as
+a queue that always returns the smallest value.</p>
+<p class="listing"><b>Listing 11.12</b> A range query that returns a new vector (lines 86 to 102).</p>
+
+<pre><code class="language-rust">impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    // ...
+    pub fn range(&amp;self, from: &amp;T, to: &amp;T) -&gt; Vec&lt;&amp;T&gt; {
+        let mut result = Vec::new();
+
+        if let Self::Node { value, left, right } = self {
+            if from &lt; value {
+                result.extend(left.range(from, to));
+            }
+            if from &lt;= value &amp;&amp; value &lt;= to {
+                result.push(value);
+            }
+            if value &lt; to {
+                result.extend(right.range(from, to));
+            }
+        }
+
+        result
+    }
+    // ...
+}</code></pre>
+<p>This <code>range</code> returns a new <code>Vec</code> from each call and joins the children’s results with <code>extend</code>. It is shorter
+than the accumulator version, and it allocates a vector at every node it visits, where the accumulator version
+allocates one.</p>
+<p class="listing"><b>Listing 11.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Ordering::{Equal, Greater, Less},
+    mem,
+};
+
+#[derive(Debug, Clone)]
+pub enum BST&lt;T&gt; {
+    Empty,
+    Node {
+        value: T,
+        left: Box&lt;BST&lt;T&gt;&gt;,
+        right: Box&lt;BST&lt;T&gt;&gt;,
+    },
+}
+
+impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    pub fn new() -&gt; Self {
+        Self::Empty
+    }
+
+    pub fn insert(&amp;mut self, val: T) {
+        match self {
+            Self::Empty =&gt; {
+                *self = Self::Node {
+                    value: val,
+                    left: Box::new(Self::Empty),
+                    right: Box::new(Self::Empty),
+                };
+            }
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Less =&gt; left.insert(val),
+                Greater =&gt; right.insert(val),
+                Equal =&gt; {}
+            },
+        }
+    }
+
+    pub fn contains(&amp;self, val: &amp;T) -&gt; bool {
+        match self {
+            Self::Empty =&gt; false,
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Less =&gt; left.contains(val),
+                Greater =&gt; right.contains(val),
+                Equal =&gt; true,
+            },
+        }
+    }
+
+    pub fn remove(&amp;mut self, val: &amp;T) {
+        match self {
+            Self::Empty =&gt; {}
+            Self::Node { value, left, right } =&gt; match val.cmp(value) {
+                Less =&gt; left.remove(val),
+                Greater =&gt; right.remove(val),
+                Equal =&gt; {
+                    if left.is_empty() {
+                        *self = right.take();
+                    } else if right.is_empty() {
+                        *self = left.take();
+                    } else {
+                        *value = right.pop_min().unwrap();
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn pop_min(&amp;mut self) -&gt; Option&lt;T&gt; {
+        let mut node = self;
+
+        while node.has_left() {
+            if let Self::Node { left, .. } = node {
+                node = left;
+            }
+        }
+
+        match node.take() {
+            Self::Empty =&gt; None,
+            Self::Node { value, right, .. } =&gt; {
+                *node = *right;
+                Some(value)
+            }
+        }
+    }
+
+    pub fn range(&amp;self, from: &amp;T, to: &amp;T) -&gt; Vec&lt;&amp;T&gt; {
+        let mut result = Vec::new();
+
+        if let Self::Node { value, left, right } = self {
+            if from &lt; value {
+                result.extend(left.range(from, to));
+            }
+            if from &lt;= value &amp;&amp; value &lt;= to {
+                result.push(value);
+            }
+            if value &lt; to {
+                result.extend(right.range(from, to));
+            }
+        }
+
+        result
+    }
+
+    fn is_empty(&amp;self) -&gt; bool {
+        match self {
+            Self::Empty =&gt; true,
+            Self::Node { .. } =&gt; false,
+        }
+    }
+
+    fn has_left(&amp;self) -&gt; bool {
+        match self {
+            Self::Empty =&gt; false,
+            Self::Node { left, .. } =&gt; !left.is_empty(),
+        }
+    }
+
+    fn take(&amp;mut self) -&gt; Self {
+        mem::replace(self, Self::Empty)
+    }
+}
+
+fn main() {
+    let mut bst = BST::new();
+
+    bst.insert(10);
+    bst.insert(5);
+    bst.insert(15);
+    bst.insert(3);
+    bst.insert(7);
+    bst.insert(12);
+
+    println!("Contains 7: {}", bst.contains(&amp;7));
+    println!("Range 4 to 12: {:?}", bst.range(&amp;4, &amp;12));
+
+    bst.remove(&amp;10);
+    println!("After removing 10: {:?}", bst.range(&amp;0, &amp;100));
+
+    println!("Pop min: {:?}", bst.pop_min());
+    println!("{:#?}", bst);
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin bst_easy
+Contains 7: true
+Range 4 to 12: [5, 7, 10, 12]
+After removing 10: [3, 5, 7, 12, 15]
+Pop min: Some(3)
+</code></pre>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> Neither tree keeps itself balanced. Suppose you insert 1, 2, 3, and so on in increasing order. Each value becomes the right child of the
+previous one, and the tree turns into a chain n levels deep. Searches
+then take O(n), and every recursive method recurses n levels. The standard library’s <code>BTreeMap</code> stays balanced.</p>
+</div>
+
+<h2 id="114-trees-with-any-number-of-children"><a class="header" href="#114-trees-with-any-number-of-children">11.4 Trees with any number of children</a></h2>
+<p>Many real trees are not binary. A folder can hold any number of files and folders. A node that owns a
+<code>Vec&lt;TreeNode&lt;T&gt;&gt;</code> of children describes such a tree. It needs no <code>Box</code>, because the <code>Vec</code> already keeps its
+elements on the heap, so the node’s own size is fixed.</p>
+<h3 id="1141-depth-first-and-breadth-first"><a class="header" href="#1141-depth-first-and-breadth-first">11.4.1 Depth first and breadth first</a></h3>
+<p>Figure 11.5 shows the two basic ways to visit such a tree. A <strong>depth-first</strong> visit goes down one branch completely before starting the next, as in section 11.2.2. A
+<strong>breadth-first</strong> visit goes level by level: the root, then all its children, then all their children.</p>
+<figure>
+<img src="figures/tree-dfs-bfs.svg" alt="The same tree of six nodes twice. Depth first visits 1, 2, 4, 5, 3, 6. Breadth first visits 1, 2, 3, 4, 5, 6.">
+<figcaption><b>Figure 11.5</b> Depth first finishes node 2's branch before visiting 3. Breadth first finishes each level before the next.</figcaption>
+</figure>
+<p>Depth first is naturally recursive. Breadth first needs a <strong>queue</strong>: a collection where items leave in the
+order they arrived. You put the root in the queue. Then, repeatedly, you take the node at the front, visit it,
+and add its children at the back. Because children join at the back, every node of one level leaves the queue
+before any node of the next.</p>
+<p class="listing"><b>Listing 11.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/test_tree.rs">src/bin/test_tree.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+struct TreeNode&lt;T&gt; {
+    value: T,
+    children: Vec&lt;TreeNode&lt;T&gt;&gt;, // Owned children directly inline
+}
+
+impl&lt;T&gt; TreeNode&lt;T&gt;
+where
+    T: Clone + std::fmt::Display,
+{
+    /// Recursive DFS (Pre-order) - No callbacks
+    pub fn dfs(&amp;self) {
+        println!("{}", self.value);
+        for child in self.children.iter() {
+            child.dfs();
+        }
+    }
+
+    /// Level Order BFS - Idiomatic VecDeque::from([self])
+    pub fn bfs(&amp;self) {
+        let mut queue = VecDeque::from([self]); // Idiomatic initialization
+
+        while let Some(node) = queue.pop_front() {
+            println!("{}", node.value);
+
+            for child in &amp;node.children {
+                queue.push_back(child);
+            }
+        }
+    }
+}
+
+fn main() {
+    // --- Inline Construction (No variables, no push) ---
+
+    let root = TreeNode {
+        value: 1,
+        children: vec![
+            TreeNode {
+                value: 2,
+                children: vec![
+                    TreeNode {
+                        value: 4,
+                        children: vec![],
+                    },
+                    TreeNode {
+                        value: 5,
+                        children: Vec::new(),
+                    },
+                ],
+            },
+            TreeNode {
+                value: 3,
+                children: vec![TreeNode {
+                    value: 6,
+                    children: Vec::new(),
+                }],
+            },
+        ],
+    };
+
+    println!("=== DFS ===");
+    root.dfs();
+    // Output: 1, 2, 4, 5, 3, 6
+
+    println!("\n=== BFS ===");
+    root.bfs();
+    // Output: 1, 2, 3, 4, 5, 6
+}</code></pre>
+<p><code>dfs</code> prints the node and then calls itself on each child, which is pre-order.</p>
+<p><code>bfs</code> uses a <code>VecDeque</code> as the queue. <code>VecDeque::from([self])</code> starts it with the root. The queue holds
+references, <code>&amp;TreeNode&lt;T&gt;</code>, so no node is moved or copied. <code>pop_front</code> takes from the front, and <code>push_back</code>
+adds each child at the back.</p>
+<p>The tree in <code>main</code> is written as one nested value. The shape of the code matches the shape of the tree, which
+makes test data easy to check.</p>
+<pre><code class="language-text">$ cargo run --bin test_tree
+=== DFS ===
+1
+2
+4
+5
+3
+6
+
+=== BFS ===
+1
+2
+3
+4
+5
+6
+</code></pre>
+<h3 id="1142-grouping-values-by-level"><a class="header" href="#1142-grouping-values-by-level">11.4.2 Grouping values by level</a></h3>
+<p>A common variation returns the values grouped by level, as a list of lists. The first list holds the
+root’s value, the second the values of its children, and so on. The file solves it twice.</p>
+<p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+#[derive(Debug)]
+struct TreeNode&lt;T&gt; {
+    value: T,
+    children: Vec&lt;TreeNode&lt;T&gt;&gt;,
+}
+
+fn level_order&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
+    let mut result = Vec::new();
+    let mut level = vec![root];
+    while !level.is_empty() {
+        result.push(level.iter().map(|n| &amp;n.value).collect());
+        level = level.iter().flat_map(|n| &amp;n.children).collect();
+    }
+    result
+}</code></pre>
+<p><code>level_order</code> keeps one whole level in <code>level</code>, a <code>Vec</code> of references to nodes. Each pass of the loop does two
+things. It adds the values of this level to the result. Then it builds the next level from all the children of
+all the nodes in this level: <code>level.iter().flat_map(|n| &amp;n.children).collect()</code>. <code>flat_map</code> turns each node into
+its children and joins all those children into one sequence. The loop ends when a level has no nodes.</p>
+<p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 19 to 37).</p>
+
+<pre><code class="language-rust">fn level_order_readable&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
+    let mut result = Vec::new();
+    let mut queue = VecDeque::from([(root)]);
+
+    while !queue.is_empty() {
+        let current_size = queue.len();
+        let mut level = Vec::with_capacity(current_size);
+
+        for _ in 1..=current_size {
+            let Some(node) = queue.pop_front() else { break };
+
+            level.push(&amp;node.value);
+            queue.extend(&amp;node.children);
+        }
+
+        result.push(level);
+    }
+    result
+}</code></pre>
+<p><code>level_order_readable</code> uses one queue, as <code>bfs</code> did. The trick is <code>queue.len()</code> at the start of each round. At
+that moment, the queue holds exactly one level. So the loop pops exactly that many nodes, collecting their
+values, while their children pile up behind them for the next round.</p>
+<p><code>let Some(node) = queue.pop_front() else { break };</code> is a <strong>let-else</strong> statement. It binds <code>node</code> if the pattern
+matches, and runs the <code>else</code> block, which must leave the loop or the function, if it does not.
+<code>queue.extend(&amp;node.children)</code> adds references to all the children at once.</p>
+<p class="listing"><b>Listing 11.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+#[derive(Debug)]
+struct TreeNode&lt;T&gt; {
+    value: T,
+    children: Vec&lt;TreeNode&lt;T&gt;&gt;,
+}
+
+fn level_order&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
+    let mut result = Vec::new();
+    let mut level = vec![root];
+    while !level.is_empty() {
+        result.push(level.iter().map(|n| &amp;n.value).collect());
+        level = level.iter().flat_map(|n| &amp;n.children).collect();
+    }
+    result
+}
+
+fn level_order_readable&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
+    let mut result = Vec::new();
+    let mut queue = VecDeque::from([(root)]);
+
+    while !queue.is_empty() {
+        let current_size = queue.len();
+        let mut level = Vec::with_capacity(current_size);
+
+        for _ in 1..=current_size {
+            let Some(node) = queue.pop_front() else { break };
+
+            level.push(&amp;node.value);
+            queue.extend(&amp;node.children);
+        }
+
+        result.push(level);
+    }
+    result
+}
+
+fn main() {
+    let root: TreeNode&lt;String&gt; = TreeNode {
+        value: "root".into(),
+        children: vec![
+            TreeNode {
+                value: "branch_a".into(),
+                children: vec![
+                    TreeNode {
+                        value: "leaf_1".into(),
+                        children: vec![],
+                    },
+                    TreeNode {
+                        value: "leaf_2".into(),
+                        children: vec![],
+                    },
+                ],
+            },
+            TreeNode {
+                value: "branch_b".into(),
+                children: vec![TreeNode {
+                    value: "leaf_3".into(),
+                    children: vec![],
+                }],
+            },
+        ],
+    };
+
+    let levels = level_order(&amp;root);
+    println!("Tree\n {:#?}", root);
+
+    for level in levels {
+        println!("{:?}", level);
+    }
+}</code></pre>
+<p><code>main</code> calls the first version, <code>level_order</code>. It prints the tree with <code>{:#?}</code>, then the levels:</p>
+<pre><code class="language-text">["root"]
+["branch_a", "branch_b"]
+["leaf_1", "leaf_2", "leaf_3"]
+</code></pre>
+<p>Both functions return <code>Vec&lt;Vec&lt;&amp;T&gt;&gt;</code>, references into the tree, and both run in O(n).</p>
+<h2 id="115-saving-a-tree-to-a-file-and-loading-it-back"><a class="header" href="#115-saving-a-tree-to-a-file-and-loading-it-back">11.5 Saving a tree to a file and loading it back</a></h2>
+<p>To save a tree, you turn it into a flat sequence of text. Later, you rebuild exactly the same tree from
+that text. Turning a structure into a flat sequence is called <strong>serialization</strong>.</p>
+<p>A list of values in pre-order is not enough, because it does not say where one node’s children end. The file’s
+format adds, after each value, the number of children that follow (figure 11.6). A reader can then rebuild the
+tree: read a value and a count, then read that many subtrees.</p>
+<figure>
+<img src="figures/tree-serialize.svg" alt="A tree with root, a, b, a1, a2, b1, and its serialized form: root 2, a 2, a1 0, a2 0, b 1, b1 0">
+<figcaption><b>Figure 11.6</b> Each node is written as its value and its number of children, in pre-order.</figcaption>
+</figure>
+<p class="listing"><b>Listing 11.18</b> Writing the pairs (lines 30 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
+
+<pre><code class="language-rust">use std::{collections::VecDeque, fs, io, str::FromStr};
+
+impl&lt;T&gt; TreeNode&lt;T&gt; {
+    // ...
+    fn serialize(&amp;self) -&gt; Vec&lt;String&gt;
+    where
+        T: ToString,
+    {
+        let mut serialized = Vec::new();
+        let mut stack = vec![self];
+
+        while let Some(node) = stack.pop() {
+            serialized.push(node.value.to_string());
+            serialized.push(node.children.len().to_string());
+
+            for child in node.children.iter().rev() {
+                stack.push(child);
+            }
+        }
+
+        serialized
+    }
+    // ...
+}</code></pre>
+<p><code>serialize</code> walks the tree in pre-order without recursion, using a <code>Vec</code> as a <strong>stack</strong>: the last item pushed
+is the first popped. It pushes the children in reverse order, with <code>iter().rev()</code>, so that the first child is on
+top and is popped first. For each node it writes the value and the child count as strings.</p>
+<p>The line <code>where T: ToString</code> sits on the method, not on the whole <code>impl</code>. So a tree of any type exists, and only
+a tree whose values can become strings gets a <code>serialize</code> method.</p>
+<p class="listing"><b>Listing 11.19</b> Reading the pairs back (lines 49 to 63).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; TreeNode&lt;T&gt; {
+    // ...
+    fn deserialize(serialized: &amp;[String], pos: &amp;mut usize) -&gt; Option&lt;Self&gt;
+    where
+        T: FromStr,
+    {
+        let value = serialized.get(*pos)?.parse().ok()?;
+        let child_count: usize = serialized.get(*pos + 1)?.parse().ok()?;
+        *pos += 2;
+
+        let mut children = Vec::new();
+        for _ in 0..child_count {
+            children.push(Self::deserialize(serialized, pos)?);
+        }
+
+        Some(TreeNode { value, children })
+    }
+    // ...
+}</code></pre>
+<p><code>deserialize</code> is recursive. <code>pos</code> is a <code>&amp;mut usize</code>, a position in the token list shared by all the calls. Each
+call reads a value and a count at <code>pos</code>, advances <code>pos</code> by two, and then calls itself <code>child_count</code> times to read
+the children.</p>
+<p>Every step that can fail uses <code>?</code> on an <code>Option</code>. The failures are a missing token, a value that does not
+parse, and a count that is not a number. <code>.parse().ok()?</code> first turns the parse <code>Result</code> into an <code>Option</code>. Any failure makes the whole
+function return <code>None</code>.</p>
+<p class="listing"><b>Listing 11.20</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
+
+<pre><code class="language-rust">use std::{collections::VecDeque, fs, io, str::FromStr};
+
+#[derive(Debug)]
+struct TreeNode&lt;T&gt; {
+    value: T,
+    children: Vec&lt;TreeNode&lt;T&gt;&gt;,
+}
+
+impl&lt;T&gt; TreeNode&lt;T&gt; {
+    fn level_order(&amp;self) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
+        let mut result = Vec::new();
+        let mut queue = VecDeque::from([self]);
+
+        while !queue.is_empty() {
+            let current_size = queue.len();
+            let mut level = Vec::with_capacity(current_size);
+
+            for _ in 1..=current_size {
+                let Some(node) = queue.pop_front() else { break };
+                level.push(&amp;node.value);
+                queue.extend(&amp;node.children);
+            }
+
+            result.push(level);
+        }
+
+        result
+    }
+
+    fn serialize(&amp;self) -&gt; Vec&lt;String&gt;
+    where
+        T: ToString,
+    {
+        let mut serialized = Vec::new();
+        let mut stack = vec![self];
+
+        while let Some(node) = stack.pop() {
+            serialized.push(node.value.to_string());
+            serialized.push(node.children.len().to_string());
+
+            for child in node.children.iter().rev() {
+                stack.push(child);
+            }
+        }
+
+        serialized
+    }
+
+    fn deserialize(serialized: &amp;[String], pos: &amp;mut usize) -&gt; Option&lt;Self&gt;
+    where
+        T: FromStr,
+    {
+        let value = serialized.get(*pos)?.parse().ok()?;
+        let child_count: usize = serialized.get(*pos + 1)?.parse().ok()?;
+        *pos += 2;
+
+        let mut children = Vec::new();
+        for _ in 0..child_count {
+            children.push(Self::deserialize(serialized, pos)?);
+        }
+
+        Some(TreeNode { value, children })
+    }
+
+    fn save(&amp;self, path: &amp;str) -&gt; io::Result&lt;()&gt;
+    where
+        T: ToString,
+    {
+        fs::write(path, self.serialize().join("\n"))
+    }
+
+    fn load(path: &amp;str) -&gt; Option&lt;Self&gt;
+    where
+        T: FromStr,
+    {
+        let text = fs::read_to_string(path).ok()?;
+        let serialized: Vec&lt;String&gt; = text.lines().map(String::from).collect();
+        Self::deserialize(&amp;serialized, &amp;mut 0)
+    }
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let root = TreeNode {
+        value: "root".to_string(),
+        children: vec![
+            TreeNode {
+                value: "a".to_string(),
+                children: vec![
+                    TreeNode {
+                        value: "a1".to_string(),
+                        children: vec![],
+                    },
+                    TreeNode {
+                        value: "a2".to_string(),
+                        children: vec![],
+                    },
+                ],
+            },
+            TreeNode {
+                value: "b".to_string(),
+                children: vec![TreeNode {
+                    value: "b1".to_string(),
+                    children: vec![],
+                }],
+            },
+        ],
+    };
+
+    root.save("tree.bin")?;
+
+    let Some(loaded) = TreeNode::&lt;String&gt;::load("tree.bin") else {
+        println!("invalid tree file");
+        return Ok(());
+    };
+
+    for level in loaded.level_order() {
+        println!("{:?}", level);
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>save</code> joins the tokens with newlines and writes the file. <code>load</code> reads the file, splits it into lines, and starts
+reading at position 0 with <code>&amp;mut 0</code>. <code>main</code> saves a tree, loads it back, and prints its levels to show the shape
+survived:</p>
+<pre><code class="language-text">$ cargo run --bin tree_serializ_deserialize_into_file
+["root"]
+["a", "b"]
+["a1", "a2", "b1"]
+</code></pre>
+<p>The format breaks if a value contains a newline, because the reader splits on newlines. For arbitrary text,
+write each value’s length before it, or use a serialization library such as <code>serde</code>.</p>
+<h2 id="116-a-trie-for-finding-words-by-prefix"><a class="header" href="#116-a-trie-for-finding-words-by-prefix">11.6 A trie for finding words by prefix</a></h2>
+<p>A <strong>trie</strong> (usually pronounced “try”) stores a set of words by sharing their common beginnings. Each edge is one
+character. Walking from the root along the characters of a word leads to the node for that word. A flag on the
+node marks whether a stored word ends there (figure 11.7).</p>
+<figure>
+<img src="figures/trie.svg" alt="A chain from the root through g, p, u, c, l, o, u, d; the node after u and the node after d are green, marking the ends of gpu and gpucloud">
+<figcaption><b>Figure 11.7</b> A trie holding <code>"gpu"</code> and <code>"gpucloud"</code>. The two words share their first three nodes.</figcaption>
+</figure>
+<p>A <strong>prefix</strong> is the beginning of a word: <code>"gp"</code> is a prefix of <code>"gpu"</code>. A trie answers “is any stored word
+starting with this prefix?” by walking the prefix’s characters. That makes it the usual structure behind
+autocompletion.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch11-trie.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b." data-chapters="[[0.0, &quot;insert cat&quot;], [15.44, &quot;insert car&quot;], [32.44, &quot;insert dog&quot;], [49.44, &quot;queries&quot;]]"><img src="figures/ch11-trie.gif" alt="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b."></video>
+<figcaption><b>Animation 11.2</b> <code>insert</code> creates a node only when the character has no child yet, so words with a common start share nodes. <code>"ca"</code> is a prefix but not a word, and <code>"cab"</code> stops at a missing child.</figcaption>
+</figure>
+<p class="listing"><b>Listing 11.21</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/trie.rs">src/problems/trie.rs</a></p>
+
+<pre><code class="language-rust">//! Trie / prefix tree.
+//!
+//! Used for autocomplete, command completion, and prefix matching.
+
+use std::collections::HashMap;
+
+#[derive(Default)]
+pub struct Trie {
+    root: Node,
+}
+
+#[derive(Default)]
+struct Node {
+    children: HashMap&lt;char, Node&gt;,
+    terminal: bool,
+}
+
+impl Trie {
+    pub fn new() -&gt; Self {
+        Self::default()
+    }
+
+    pub fn insert(&amp;mut self, word: &amp;str) {
+        let mut node = &amp;mut self.root;
+        for ch in word.chars() {
+            node = node.children.entry(ch).or_default();
+        }
+        node.terminal = true;
+    }
+
+    pub fn search(&amp;self, word: &amp;str) -&gt; bool {
+        self.find_node(word)
+            .is_some_and(|node| node.terminal)
+    }
+
+    pub fn starts_with(&amp;self, prefix: &amp;str) -&gt; bool {
+        self.find_node(prefix).is_some()
+    }
+
+    fn find_node(&amp;self, word: &amp;str) -&gt; Option&lt;&amp;Node&gt; {
+        let mut node = &amp;self.root;
+        for ch in word.chars() {
+            node = node.children.get(&amp;ch)?;
+        }
+        Some(node)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trie_insert_search_and_prefix() {
+        let mut trie = Trie::new();
+        trie.insert("gpu");
+        trie.insert("gpucloud");
+
+        assert!(trie.search("gpu"));
+        assert!(trie.search("gpucloud"));
+        assert!(!trie.search("gp"));
+        assert!(!trie.search("gpucloudapi"));
+
+        assert!(trie.starts_with("gp"));
+        assert!(trie.starts_with("gpucloud"));
+        assert!(!trie.starts_with("cpu"));
+    }
+}</code></pre>
+<p>Each <code>Node</code> has a <code>HashMap</code> from a character to a child node, and a <code>terminal</code> flag. Both types derive <code>Default</code>,
+so an empty node is <code>Node::default()</code>.</p>
+<p><code>insert</code> walks a mutable cursor, <code>node</code>, down the word, one character per line:</p>
+<pre><code class="language-rust">node = node.children.entry(ch).or_default();</code></pre>
+<p><code>entry(ch).or_default()</code> finds the child for <code>ch</code>, creating an empty one if it is missing, and returns a mutable
+reference to it. Assigning that to <code>node</code> moves the cursor down one level. After the last character, the node is
+marked terminal.</p>
+<p><code>find_node</code> walks the same way without changing anything. <code>node.children.get(&amp;ch)?</code> returns <code>None</code> from the
+function at the first missing character. <code>search</code> then checks that the node exists and is terminal, with
+<code>is_some_and</code>. <code>starts_with</code> only checks that the node exists.</p>
+<p>Searching for a word of m characters takes m steps, whatever the number of stored words. A <code>HashMap</code> per node is
+flexible but uses a lot of memory. For words of lowercase English letters only, an array of 26 child pointers
+per node is faster and smaller.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A tree is a hierarchy of nodes. Each subtree is itself a tree, so recursion fits tree problems.</li>
+<li>A binary tree fits in an enum with <code>Box</code> children. Pre-order, in-order, and post-order differ only in when a
+node is visited relative to its subtrees.</li>
+<li>A binary search tree keeps smaller values on the left and larger on the right, so a search discards a subtree
+at each step.</li>
+<li>Removing from a BST has three cases. The two-children case copies in the smallest value of the right subtree.</li>
+<li><code>std::mem::take</code> and <code>mem::replace</code> let a method replace <code>*self</code> with one of its own children.</li>
+<li>A range query skips subtrees outside the range and visits the rest in order.</li>
+<li>A node with <code>Vec</code> children describes a tree with any number of children. Breadth-first traversal uses a queue,
+and <code>queue.len()</code> at the start of a round gives the size of a level.</li>
+<li>Pre-order with child counts saves a tree in a form that can be rebuilt exactly.</li>
+<li>A trie shares prefixes between words, and finds a word in time proportional to its length.</li>
+</ul>
+</div>
+
+<p>Chapter 12 generalizes trees to graphs, where any node can connect to any other, and cycles are possible.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Write an in-order traversal of the binary tree from listing 11.1 without recursion, using a <code>Vec</code> of
+references as a stack.</li>
+<li>Add a <code>height</code> method to one of the BSTs. Insert the numbers 1 to 1,000 in order, then in shuffled order, and
+compare the heights.</li>
+<li>Serialize a binary tree using a marker such as <code>#</code> for each empty child, and write the matching reader.</li>
+<li>Add <code>words_with_prefix(&amp;self, prefix: &amp;str) -&gt; Vec&lt;String&gt;</code> to the trie.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch10-merge-k.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch12-graphs.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch10-merge-k.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch12-graphs.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

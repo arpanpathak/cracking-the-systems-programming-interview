@@ -1,0 +1,2059 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Graphs - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch12.png" alt="Valve, the robot who is the plumber of shortest paths, beside pipes and valves wired into a small weighted graph">
+<h1 id="graphs"><a class="header" href="#graphs">Graphs</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What a graph is, and two ways to store one in memory</li>
+<li>Breadth-first and depth-first search, and the queue and stack behind them</li>
+<li>Finding cycles with three node states</li>
+<li>Treating a grid of cells as a graph, to count islands</li>
+<li>Ordering tasks so that each comes after its prerequisites</li>
+<li>Shortest paths with Dijkstra’s algorithm, written five ways</li>
+<li>Connecting every node at the lowest cost with Kruskal’s algorithm and a union-find</li>
+</ul>
+</div>
+
+<p>In chapter 11, every node had exactly one parent, and no path could lead back to where it started. A <strong>graph</strong>
+drops both rules. Any node can connect to any other node, and a path can come back to its start.</p>
+<p>Graphs describe many real systems. Roads between cities form a graph. So do links between web pages, and
+network links between machines. Courses and their prerequisites form a graph, and so do build steps and their
+inputs.</p>
+<p>The freedom has a cost. A traversal that follows edges can reach the same node many times, or walk around a loop
+forever. Every algorithm in this chapter therefore keeps a record of which nodes it has already handled. The
+record is a <code>Vec&lt;bool&gt;</code>, a <code>HashSet</code>, or a <code>HashMap</code> of states.</p>
+<h2 id="121-graph-vocabulary"><a class="header" href="#121-graph-vocabulary">12.1 Graph vocabulary</a></h2>
+<p>Figure 12.1 names the parts of a graph.</p>
+<figure>
+<img src="figures/graph-terms.svg" alt="On the left, three nodes x, y, z joined by undirected edges in a triangle. In the middle, the sample graph: A to B weight 1, A to C weight 4, B to C weight 2, B to D weight 5, C to D weight 1. On the right, definitions of node, edge, neighbor, weight, path, and cycle.">
+<figcaption><b>Figure 12.1</b> An undirected graph, and the directed, weighted sample graph used in sections 12.2 to 12.4.</figcaption>
+</figure>
+<ul>
+<li>A <strong>node</strong>, also called a vertex, is one of the things in the graph.</li>
+<li>An <strong>edge</strong> connects two nodes. In a <strong>directed</strong> graph, an edge goes one way, from one node to another. In an
+<strong>undirected</strong> graph, an edge works both ways, like a two-way road.</li>
+<li>The <strong>neighbors</strong> of a node are the nodes its edges lead to.</li>
+<li>A <strong>weight</strong> is a number on an edge, such as a distance or a cost.</li>
+<li>A <strong>path</strong> is a sequence of edges that you can follow one after another.</li>
+<li>A <strong>cycle</strong> is a path that ends at the node where it started.</li>
+</ul>
+<p>A directed graph with no cycles is called a <strong>directed acyclic graph</strong>, or DAG. A tree is a special graph: it
+has no cycles, and every node except the root has exactly one parent.</p>
+<h2 id="122-storing-a-graph"><a class="header" href="#122-storing-a-graph">12.2 Storing a graph</a></h2>
+<p>The most common way to store a graph is an <strong>adjacency list</strong>. For every node, you keep a list of its outgoing
+edges. Each edge is stored as a pair: the neighbor, and the weight of the edge.</p>
+<p>The code in this chapter uses two forms of adjacency list (figure 12.2).</p>
+<figure>
+<img src="figures/graph-layout.svg" alt="Index form: a Vec on the stack pointing to four Vec headers on the heap, one per node, each pointing to its (neighbor, weight) pairs; node 3 has no pairs and no allocation. Map form: four entries mapping a name to a slice of (name, weight) pairs.">
+<figcaption><b>Figure 12.2</b> The sample graph in the two adjacency-list forms.</figcaption>
+</figure>
+<p>In the <strong>index form</strong>, the nodes are numbered 0, 1, 2, and so on. The graph is a <code>Vec&lt;Vec&lt;(usize, u32)&gt;&gt;</code>.
+<code>graph[i]</code> is the list of edges out of node <code>i</code>, and each edge is a <code>(neighbor, weight)</code> pair. Finding a node’s
+edges is one array index. The record of visited nodes can be a <code>Vec&lt;bool&gt;</code> with one entry per node.</p>
+<p>In the <strong>map form</strong>, nodes can be any type that can be hashed, such as names. The graph is a <code>HashMap</code> from a
+node to its edges. Finding a node’s edges means hashing the key. The visited record becomes a <code>HashSet</code>.</p>
+<p>The index form is faster, and the map form is more convenient when nodes have natural names. Several files in
+this chapter solve the same problem both ways, so you can compare them side by side.</p>
+<p>The map form in <code>graph_bfs.rs</code> has a type alias:</p>
+<pre><code class="language-rust">use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    hash::Hash,
+};
+
+/// Adjacency list keyed by node: each node maps to its `(neighbor, weight)` edges.
+pub type GraphAdjList&lt;'a, Node&gt; = HashMap&lt;Node, &amp;'a [(Node, u32)]&gt;;</code></pre>
+<p><code>GraphAdjList&lt;'a, Node&gt;</code> is a <code>HashMap</code> whose values are borrowed slices, <code>&amp;'a [(Node, u32)]</code>. The map does not
+own the edges. They live somewhere else for at least the lifetime <code>'a</code>, and the map points at them. The tests
+keep the edges in constant arrays, which live for the whole program.</p>
+<h2 id="123-breadth-first-search"><a class="header" href="#123-breadth-first-search">12.3 Breadth-first search</a></h2>
+<p><strong>Breadth-first search</strong> (BFS) visits the start node first, then every node one edge away, then every node two
+edges away, and so on. It works the same way as the level-order tree traversal of section 11.4: a queue holds
+the nodes waiting to be visited.</p>
+<p>Unlike a tree, a graph can offer two paths to the same node. In the sample graph, A reaches C directly, and also
+through B. Without a record, C would enter the queue twice. So BFS marks a node as seen when it first enters the
+queue, and never adds it again.</p>
+<p>The top half of figure 12.3 follows the queue step by step.</p>
+<figure>
+<img src="figures/graph-bfs-dfs.svg" alt="The sample graph beside two tables. BFS from A: queue after taking A is B C; after B, C D; after C, D; after D, empty; visit order A B C D. DFS from A: stack after A is B C; after C, B D; after D, B; after B, C D; then D and C are skipped as already seen; visit order A C D B.">
+<figcaption><b>Figure 12.3</b> The queue in BFS and the stack in DFS, starting at A. Both visit every node once, in different orders.</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch12-bfs.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A graph of nodes 0 to 6 with a queue and a result list below it. BFS takes 0, then pushes its neighbors 1 and 2, then takes them in order and pushes their unvisited neighbors. The result is 0, 1, 2, 3, 4, 5. Node 6 has no edges to the others and is never reached." data-chapters="[[0.0, &quot;queue&quot;], [51.84, &quot;node 6&quot;]]"><img src="figures/ch12-bfs.gif" alt="A graph of nodes 0 to 6 with a queue and a result list below it. BFS takes 0, then pushes its neighbors 1 and 2, then takes them in order and pushes their unvisited neighbors. The result is 0, 1, 2, 3, 4, 5. Node 6 has no edges to the others and is never reached."></video>
+<figcaption><b>Animation 12.1</b> <code>bfs_vec</code> from node 0. The queue hands out the oldest entry first, so nodes are visited in order of distance. Node 6 is not connected and is never reached.</figcaption>
+</figure>
+<h3 id="1231-bfs-with-numbered-nodes"><a class="header" href="#1231-bfs-with-numbered-nodes">12.3.1 BFS with numbered nodes</a></h3>
+<p class="listing"><b>Listing 12.1</b> BFS over the index form (lines 18 to 36). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">src/problems/graph_bfs.rs</a></p>
+
+<pre><code class="language-rust">/// BFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn bfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited[start_node] = true;
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}</code></pre>
+<p>The function sets up three things. <code>visited</code> has one <code>false</code> per node. <code>queue</code> holds the start node. <code>result</code>
+collects the nodes in the order they are visited.</p>
+<p>The loop takes the front node, records it, and looks at its edges. The pattern <code>&amp;(neighbor, _)</code> takes each edge
+apart: it copies out the neighbor and ignores the weight with <code>_</code>. Each neighbor that has not been seen is
+marked and added to the back of the queue.</p>
+<p>Every node enters the queue at most once, and every edge is looked at once. So BFS runs in O(V + E) time, where
+V is the number of nodes and E the number of edges. Nodes that cannot be reached from the start never enter the
+queue, and are not in the result.</p>
+<h3 id="1232-bfs-with-any-node-type"><a class="header" href="#1232-bfs-with-any-node-type">12.3.2 BFS with any node type</a></h3>
+<p class="listing"><b>Listing 12.2</b> BFS over the map form (lines 38 to 59).</p>
+
+<pre><code class="language-rust">/// BFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn bfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::from([start_node]);
+    let mut result = vec![];
+
+    visited.insert(start_node);
+
+    while let Some(current_node) = queue.pop_front() {
+        result.push(current_node);
+        // slice iter yields &amp;(Node, u32); `&amp;` destructures it
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            if visited.insert(neighbor) {
+                queue.push_back(neighbor);
+            }
+        }
+    }
+    result
+}</code></pre>
+<p>The steps are the same. Three things change:</p>
+<ul>
+<li>The function is generic over <code>Node</code>. The <code>where</code> clause asks for <code>Copy</code>, so a node can be copied into the queue and the result. It also asks
+for <code>Eq + Hash</code>, so a node can be a key in a <code>HashSet</code>.</li>
+<li><code>graph[&amp;current_node]</code> looks up the edges by key. Indexing a <code>HashMap</code> panics if the key is missing, so every
+node needs an entry, even a node with no edges.</li>
+<li><code>visited.insert(neighbor)</code> does the check and the marking in one call. <code>insert</code> returns <code>true</code> if the value
+was not in the set before.</li>
+</ul>
+<p>The tests at the end of the file build the sample graph in both forms and check that the two functions agree:</p>
+<pre><code class="language-text">$ cargo test --lib problems::graph_bfs
+running 5 tests
+test problems::graph_bfs::tests::vec_variant_skips_unreachable_nodes ... ok
+test problems::graph_bfs::tests::vec_variant_visits_level_by_level ... ok
+test problems::graph_bfs::tests::vec_variant_handles_cycles ... ok
+test problems::graph_bfs::tests::both_variants_agree ... ok
+test problems::graph_bfs::tests::map_variant_visits_level_by_level ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
+</code></pre>
+<p>Tests run in parallel, so the order of the lines can change from run to run.</p>
+<h2 id="124-depth-first-search"><a class="header" href="#124-depth-first-search">12.4 Depth-first search</a></h2>
+<p><strong>Depth-first search</strong> (DFS) follows one path as far as it can before it tries another. You can write it with
+recursion, as the tree traversals of chapter 11 were. The versions here use a <code>Vec</code> as an explicit stack
+instead. An explicit stack has no depth limit other than memory, while deep recursion can overflow the thread’s
+stack.</p>
+<p class="listing"><b>Listing 12.3</b> DFS over the index form (lines 16 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">src/problems/graph_dfs.rs</a></p>
+
+<pre><code class="language-rust">use std::{collections::HashSet, hash::Hash};
+
+use crate::problems::graph_bfs::GraphAdjList;
+
+/// DFS over an index-based adjacency list. Returns nodes in visiting order.
+pub fn dfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;usize&gt; {
+    let mut visited = vec![false; graph.len()];
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if visited[current_node] {
+            continue;
+        }
+        visited[current_node] = true;
+        result.push(current_node);
+        for &amp;(neighbor, _) in &amp;graph[current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}</code></pre>
+<p>Compare this with listing 12.1. The queue became a stack, so <code>pop_front</code> became <code>pop</code>. The other change is when
+a node is marked. BFS marked a node when it was added. DFS marks a node when it is taken off the stack, and skips
+it if it was already visited.</p>
+<p>Marking late gives the true depth-first order, at a small cost. A node can sit on the stack more than once, as C
+and D do in the lower half of figure 12.3. The stack can hold up to one entry per edge, and the duplicates are
+skipped with <code>continue</code> when they come off.</p>
+<p>The neighbors are pushed in list order, so the last neighbor pushed is the first taken. From A, the stack
+receives B and then C, so C is explored first. The visit order is A, C, D, B.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch12-dfs.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The same graph with a stack and a result list. dfs_vec pops the newest entry, records it if it is unvisited, and pushes all its neighbors. Entries for nodes already visited are popped and skipped. The result is 0, 2, 4, 5, 3, 1." data-chapters="[[0.0, &quot;stack&quot;]]"><img src="figures/ch12-dfs.gif" alt="The same graph with a stack and a result list. dfs_vec pops the newest entry, records it if it is unvisited, and pushes all its neighbors. Entries for nodes already visited are popped and skipped. The result is 0, 2, 4, 5, 3, 1."></video>
+<figcaption><b>Animation 12.2</b> <code>dfs_vec</code> uses the same loop as BFS with a stack. The newest entry is taken first, so the walk goes deep before it goes wide.</figcaption>
+</figure>
+<p class="listing"><b>Listing 12.4</b> DFS over the map form (lines 35 to 54).</p>
+
+<pre><code class="language-rust">/// DFS over a `HashMap` adjacency list. Returns nodes in visiting order.
+pub fn dfs&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; Vec&lt;Node&gt;
+where
+    Node: Copy + Eq + Hash,
+{
+    let mut visited = HashSet::new();
+    let mut stack = vec![start_node];
+    let mut result = vec![];
+
+    while let Some(current_node) = stack.pop() {
+        if !visited.insert(current_node) {
+            continue;
+        }
+        result.push(current_node);
+        for &amp;(neighbor, _) in graph[&amp;current_node] {
+            stack.push(neighbor);
+        }
+    }
+    result
+}</code></pre>
+<p>Here <code>if !visited.insert(current_node)</code> is the “already visited” check. If <code>insert</code> returns <code>false</code>, the node
+was in the set, and the loop moves on.</p>
+<p>The file starts with <code>use crate::problems::graph_bfs::GraphAdjList;</code>, so both files share one type alias.</p>
+<h3 id="1241-a-stack-of-references"><a class="header" href="#1241-a-stack-of-references">12.4.1 A stack of references</a></h3>
+<p>When the graph is a tree, DFS needs no visited record, because no node can be reached twice. The following
+program walks a tree with a stack of references.</p>
+<p class="listing"><b>Listing 12.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rust_interview_hacks_graph.rs">src/bin/rust_interview_hacks_graph.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Debug)]
+struct Node {
+    value: i32,
+    children: Vec&lt;Node&gt;,
+}
+
+fn visit_iter(root: &amp;Node) {
+    let mut stack = Vec::&lt;&amp;Node&gt;::from([root]);
+
+    while let Some(node) = stack.pop() {
+        println!("{:?}", node);
+        // Idiomatic and concise way to extend stack with neighbour iterator
+        stack.extend(node.children.iter());
+    }
+}
+
+fn main() {
+    let tree = Node {
+        value: 1,
+        children: vec![
+            Node {
+                value: 2,
+                children: vec![],
+            },
+            Node {
+                value: 3,
+                children: vec![Node {
+                    value: 4,
+                    children: vec![],
+                }],
+            },
+        ],
+    };
+
+    visit_iter(&amp;tree);
+    println!("still own it: {}", tree.value); // tree wasn't moved
+}</code></pre>
+<p>The stack has type <code>Vec&lt;&amp;Node&gt;</code>. It holds borrowed references into the tree, so the loop moves no nodes and
+copies none. <code>stack.extend(node.children.iter())</code> pushes a reference to each child. The last line of <code>main</code> uses
+<code>tree.value</code> after the walk, which shows that <code>tree</code> still owns its nodes.</p>
+<pre><code class="language-text">$ cargo run --bin rust_interview_hacks_graph
+Node { value: 1, children: [Node { value: 2, children: [] }, Node { value: 3, children: [Node { value: 4, children: [] }] }] }
+Node { value: 3, children: [Node { value: 4, children: [] }] }
+Node { value: 4, children: [] }
+Node { value: 2, children: [] }
+still own it: 1
+</code></pre>
+<p><code>{:?}</code> prints each node with all its children, so the first line shows the whole tree. The order is 1, 3, 4, 2,
+because the last child pushed is the first popped.</p>
+<h2 id="125-a-graph-with-named-nodes"><a class="header" href="#125-a-graph-with-named-nodes">12.5 A graph with named nodes</a></h2>
+<p>Programs often receive a graph as pairs of names, such as <code>("A", "B")</code>. A common way to handle names is to give
+each name a number the first time you see it. The algorithm then runs on numbers, with the fast index form.
+Assigning numbers to names this way is called <strong>interning</strong>.</p>
+<p class="listing"><b>Listing 12.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/graph_bfs.rs">src/bin/graph_bfs.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::{HashMap, HashSet, VecDeque};
+
+#[derive(Default)]
+struct Connection {
+    to: String,
+}
+
+#[derive(Default)]
+struct Graph {
+    ids: HashMap&lt;String, usize&gt;,
+    adj: Vec&lt;Vec&lt;usize&gt;&gt;,
+}
+
+impl Graph {
+    fn id(&amp;mut self, name: &amp;str) -&gt; usize {
+        *self
+            .ids
+            .entry(name.to_owned())
+            .or_insert_with(|| {
+                self.adj.push(vec![]);
+                self.adj.len() - 1
+            })
+    }
+
+    fn add_edge(&amp;mut self, from: &amp;str, to: &amp;str) {
+        let (u, v) = (self.id(from), self.id(to));
+        self.adj[u].push(v);
+    }
+
+    fn bfs(&amp;self, start: &amp;str) -&gt; Vec&lt;usize&gt; {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::from([self.ids[start]]);
+        let mut order = Vec::new();
+
+        while let Some(node) = queue.pop_front() {
+            if !visited.insert(node) {
+                continue;
+            }
+            order.push(node);
+            queue.extend(self.adj[node].iter());
+        }
+        order
+    }
+}
+
+fn main() {
+    let mut g = Graph::default();
+    g.add_edge("A", "B");
+    g.add_edge("A", "C");
+    g.add_edge("B", "D");
+    g.add_edge("C", "E");
+    g.add_edge("D", "F");
+
+    println!("{:?}", g.bfs("A")); // [0, 1, 2, 3, 4, 5]
+}</code></pre>
+<p><code>Graph</code> has two fields. <code>ids</code> maps a name to its number, and <code>adj</code> is an index-form adjacency list without
+weights.</p>
+<p>The <code>id</code> method does the interning in one expression. <code>self.ids.entry(name.to_owned())</code> looks up the name.
+<code>or_insert_with</code> runs its closure only if the name is new. The closure adds an empty edge list to <code>adj</code> and
+returns its index, which becomes the name’s number. Either way, the expression returns a reference to the
+number, and the <code>*</code> at the front copies it out.</p>
+<p>The closure changes <code>self.adj</code> while <code>self.ids</code> is borrowed by the entry. The compiler allows this because a
+closure borrows only the fields it uses, here <code>self.adj</code>. The two borrows touch different fields, so they do not
+conflict.</p>
+<p>This <code>bfs</code> marks nodes when they leave the queue, as the DFS of section 12.4 did. A node can enter the queue
+more than once, and the second copy is skipped. <code>queue.extend(self.adj[node].iter())</code> adds all neighbors at
+once.</p>
+<pre><code class="language-text">$ cargo run --bin graph_bfs
+[0, 1, 2, 3, 4, 5]
+</code></pre>
+<p>The result is numbers, not names. A to F were numbered 0 to 5 in the order they first appeared.</p>
+<h2 id="126-finding-cycles"><a class="header" href="#126-finding-cycles">12.6 Finding cycles</a></h2>
+<p>Many problems need to know whether a directed graph has a cycle. A build system cannot build a file that
+depends on itself. A course plan cannot require a course before itself.</p>
+<p>A visited flag is not enough to find cycles. Look at the diamond on the right of figure 12.4. DFS reaches D
+through B, and later reaches D again through C. That second visit does not mean there is a loop. It only means
+two paths join.</p>
+<figure>
+<img src="figures/graph-cycle.svg" alt="Left: A to B to C and back to A; all three are Visiting when C&#39;s edge to A is found, a back edge. Right: a diamond A to B, A to C, B to D, C to D; B and D are Done when C&#39;s edge reaches D, so there is no cycle.">
+<figcaption><b>Figure 12.4</b> An edge to a node on the current path is a cycle. An edge to a finished node is not.</figcaption>
+</figure>
+<p>The fix is to give each node one of three states:</p>
+<ul>
+<li><strong>Unvisited</strong>: DFS has not reached the node yet.</li>
+<li><strong>Visiting</strong>: the node is on the path DFS is currently following. DFS has entered it and not yet finished it.</li>
+<li><strong>Done</strong>: DFS has explored everything reachable from the node.</li>
+</ul>
+<p>An edge that leads to a Visiting node goes back to an earlier point on the current path, so it closes a loop.
+Such an edge is called a <strong>back edge</strong>. An edge that leads to a Done node joins a path that was already fully
+explored, and cannot close a loop.</p>
+<h3 id="1261-a-graph-that-owns-its-node-data"><a class="header" href="#1261-a-graph-that-owns-its-node-data">12.6.1 A graph that owns its node data</a></h3>
+<p class="listing"><b>Listing 12.7</b> The graph and its states (lines 1 to 30). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph.rs">src/bin/cyclic_graph.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+type NodeId = usize;
+
+struct Graph&lt;T&gt; {
+    nodes: Vec&lt;T&gt;,
+    adj: Vec&lt;Vec&lt;NodeId&gt;&gt;, // adj[i] = nodes that i points to
+}
+
+#[derive(Clone, Copy)]
+enum State {
+    Unvisited,
+    Visiting,
+    Done,
+}
+
+impl&lt;T&gt; Graph&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self {
+            nodes: Vec::new(),
+            adj: Vec::new(),
+        }
+    }
+
+    fn add_node(&amp;mut self, data: T) -&gt; NodeId {
+        self.nodes.push(data);
+        self.adj.push(Vec::new());
+        self.nodes.len() - 1
+    }
+
+    fn add_edge(&amp;mut self, from: NodeId, to: NodeId) {
+        self.adj[from].push(to);
+    }
+
+    fn neighbors(&amp;self, id: NodeId) -&gt; impl Iterator&lt;Item = NodeId&gt; + '_ {
+        self.adj[id].iter().copied()
+    }
+    // ...
+}</code></pre>
+<p>This <code>Graph&lt;T&gt;</code> keeps the node data in <code>nodes</code>, and the edges in <code>adj</code>, as numbers. <code>NodeId</code> is a type alias
+for <code>usize</code>, so signatures say what a number means. <code>add_node</code> returns the new node’s number, and the caller
+uses that number to add edges.</p>
+<p>Storing numbers instead of references is the usual way to build graphs in Rust. A cycle of references between
+nodes would need <code>Rc</code> and <code>RefCell</code>, as chapter 9’s doubly linked list did. Numbers into a <code>Vec</code> have no
+ownership problems at all.</p>
+<p><code>neighbors</code> returns <code>impl Iterator&lt;Item = NodeId&gt; + '_</code>. That return type means “some iterator of node
+numbers”. The <code>+ '_</code> says the iterator borrows from <code>self</code>, so it cannot outlive the graph. <code>.copied()</code> turns
+the <code>&amp;usize</code> items of the slice iterator into <code>usize</code> values.</p>
+<p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 71).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; Graph&lt;T&gt; {
+    // ...
+    fn bfs(&amp;self, start: NodeId) -&gt; Vec&lt;NodeId&gt; {
+        let mut visited = vec![false; self.nodes.len()];
+        let mut queue = VecDeque::from([start]);
+        let mut order = Vec::new();
+        visited[start] = true;
+
+        while let Some(node) = queue.pop_front() {
+            order.push(node);
+            for next in self.neighbors(node) {
+                if !visited[next] {
+                    visited[next] = true;
+                    queue.push_back(next);
+                }
+            }
+        }
+        order
+    }
+
+    fn dfs(&amp;self, start: NodeId) -&gt; Vec&lt;NodeId&gt; {
+        let mut visited = vec![false; self.nodes.len()];
+        let mut stack = vec![start];
+        let mut order = Vec::new();
+
+        while let Some(node) = stack.pop() {
+            if visited[node] {
+                continue;
+            }
+            visited[node] = true;
+            order.push(node);
+            stack.extend(self.neighbors(node).filter(|&amp;n| !visited[n]));
+        }
+        order
+    }
+    // ...
+}</code></pre>
+<p>These are the algorithms of sections 12.3 and 12.4, written with <code>neighbors</code>. The DFS filters out visited
+neighbors before pushing them, with <code>.filter(|&amp;n| !visited[n])</code>. The filter keeps the stack smaller, but the
+check after <code>pop</code> is still needed. A node can be pushed by two different nodes before either copy is popped.</p>
+<p class="listing"><b>Listing 12.9</b> Cycle detection (lines 73 to 91).</p>
+
+<pre><code class="language-rust">impl&lt;T&gt; Graph&lt;T&gt; {
+    // ...
+    fn has_cycle(&amp;self) -&gt; bool {
+        let mut state = vec![State::Unvisited; self.nodes.len()];
+        (0..self.nodes.len()).any(|n| self.visit(n, &amp;mut state))
+    }
+
+    fn visit(&amp;self, node: NodeId, state: &amp;mut [State]) -&gt; bool {
+        match state[node] {
+            State::Visiting =&gt; true, // back edge: cycle found
+            State::Done =&gt; false,
+            State::Unvisited =&gt; {
+                state[node] = State::Visiting;
+                let found = self.adj[node]
+                    .iter()
+                    .any(|&amp;n| self.visit(n, state));
+                state[node] = State::Done;
+                found
+            }
+        }
+    }
+}</code></pre>
+<p><code>visit</code> is a recursive DFS that returns <code>true</code> as soon as it finds a cycle. It reads the node’s state:</p>
+<ul>
+<li><code>Visiting</code> means this edge is a back edge, so the answer is <code>true</code>.</li>
+<li><code>Done</code> means the node was explored before and no cycle was found through it, so the answer is <code>false</code>.</li>
+<li><code>Unvisited</code> means this is the first visit. The node becomes <code>Visiting</code>, and <code>visit</code> recurses into each
+neighbor. <code>any</code> stops at the first neighbor that reports a cycle. Then the node becomes <code>Done</code>.</li>
+</ul>
+<p><code>has_cycle</code> calls <code>visit</code> from every node, because a cycle might not be reachable from node 0. All the calls
+share one <code>state</code> vector, so each node is fully explored only once, and the whole check runs in O(V + E).</p>
+<p class="listing"><b>Listing 12.10</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph.rs">src/bin/cyclic_graph.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+type NodeId = usize;
+
+struct Graph&lt;T&gt; {
+    nodes: Vec&lt;T&gt;,
+    adj: Vec&lt;Vec&lt;NodeId&gt;&gt;, // adj[i] = nodes that i points to
+}
+
+#[derive(Clone, Copy)]
+enum State {
+    Unvisited,
+    Visiting,
+    Done,
+}
+
+impl&lt;T&gt; Graph&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self {
+            nodes: Vec::new(),
+            adj: Vec::new(),
+        }
+    }
+
+    fn add_node(&amp;mut self, data: T) -&gt; NodeId {
+        self.nodes.push(data);
+        self.adj.push(Vec::new());
+        self.nodes.len() - 1
+    }
+
+    fn add_edge(&amp;mut self, from: NodeId, to: NodeId) {
+        self.adj[from].push(to);
+    }
+
+    fn neighbors(&amp;self, id: NodeId) -&gt; impl Iterator&lt;Item = NodeId&gt; + '_ {
+        self.adj[id].iter().copied()
+    }
+
+    fn bfs(&amp;self, start: NodeId) -&gt; Vec&lt;NodeId&gt; {
+        let mut visited = vec![false; self.nodes.len()];
+        let mut queue = VecDeque::from([start]);
+        let mut order = Vec::new();
+        visited[start] = true;
+
+        while let Some(node) = queue.pop_front() {
+            order.push(node);
+            for next in self.neighbors(node) {
+                if !visited[next] {
+                    visited[next] = true;
+                    queue.push_back(next);
+                }
+            }
+        }
+        order
+    }
+
+    fn dfs(&amp;self, start: NodeId) -&gt; Vec&lt;NodeId&gt; {
+        let mut visited = vec![false; self.nodes.len()];
+        let mut stack = vec![start];
+        let mut order = Vec::new();
+
+        while let Some(node) = stack.pop() {
+            if visited[node] {
+                continue;
+            }
+            visited[node] = true;
+            order.push(node);
+            stack.extend(self.neighbors(node).filter(|&amp;n| !visited[n]));
+        }
+        order
+    }
+
+    fn has_cycle(&amp;self) -&gt; bool {
+        let mut state = vec![State::Unvisited; self.nodes.len()];
+        (0..self.nodes.len()).any(|n| self.visit(n, &amp;mut state))
+    }
+
+    fn visit(&amp;self, node: NodeId, state: &amp;mut [State]) -&gt; bool {
+        match state[node] {
+            State::Visiting =&gt; true, // back edge: cycle found
+            State::Done =&gt; false,
+            State::Unvisited =&gt; {
+                state[node] = State::Visiting;
+                let found = self.adj[node]
+                    .iter()
+                    .any(|&amp;n| self.visit(n, state));
+                state[node] = State::Done;
+                found
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut g = Graph::new();
+    let a = g.add_node("A");
+    let b = g.add_node("B");
+    let c = g.add_node("C");
+
+    g.add_edge(a, b);
+    g.add_edge(b, c);
+    g.add_edge(c, a); // closes the cycle
+
+    let names = |ids: Vec&lt;NodeId&gt;| -&gt; Vec&lt;&amp;str&gt; { ids.into_iter().map(|i| g.nodes[i]).collect() };
+
+    println!("BFS:   {:?}", names(g.bfs(a))); // ["A", "B", "C"]
+    println!("DFS:   {:?}", names(g.dfs(a))); // ["A", "B", "C"]
+    println!("Cycle: {}", g.has_cycle()); // true
+}</code></pre>
+<p><code>main</code> builds the loop A to B to C to A. The closure <code>names</code> converts a list of numbers back into names for
+printing.</p>
+<pre><code class="language-text">$ cargo run --bin cyclic_graph
+BFS:   ["A", "B", "C"]
+DFS:   ["A", "B", "C"]
+Cycle: true
+</code></pre>
+<h3 id="1262-the-same-graph-with-a-hashmap"><a class="header" href="#1262-the-same-graph-with-a-hashmap">12.6.2 The same graph with a HashMap</a></h3>
+<p>The second version stores the graph as a map from a node to its neighbors, with no numbering step.</p>
+<p class="listing"><b>Listing 12.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph_map.rs">src/bin/cyclic_graph_map.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    hash::Hash,
+};
+
+#[derive(Clone, Copy)]
+enum State {
+    Visiting,
+    Done,
+}
+
+#[derive(Default)]
+struct Graph&lt;T&gt; {
+    adj: HashMap&lt;T, Vec&lt;T&gt;&gt;,
+}
+
+impl&lt;T: Copy + Eq + Hash&gt; Graph&lt;T&gt; {
+    fn add_edge(&amp;mut self, u: T, v: T) {
+        self.adj.entry(v).or_default();
+        self.adj.entry(u).or_default().push(v);
+    }
+
+    fn bfs(&amp;self, start: T) -&gt; Vec&lt;T&gt; {
+        let mut seen = HashSet::from([start]);
+        let mut queue = VecDeque::from([start]);
+        let mut order = vec![];
+
+        while let Some(u) = queue.pop_front() {
+            order.push(u);
+            for &amp;v in &amp;self.adj[&amp;u] {
+                if seen.insert(v) {
+                    queue.push_back(v);
+                }
+            }
+        }
+        order
+    }
+
+    fn has_cycle(&amp;self) -&gt; bool {
+        fn dfs&lt;T: Copy + Eq + Hash&gt;(g: &amp;Graph&lt;T&gt;, u: T, state: &amp;mut HashMap&lt;T, State&gt;) -&gt; bool {
+            match state.get(&amp;u) {
+                Some(State::Visiting) =&gt; return true,
+                Some(State::Done) =&gt; return false,
+                None =&gt; {}
+            }
+
+            state.insert(u, State::Visiting);
+            let found = g.adj[&amp;u].iter().any(|&amp;v| dfs(g, v, state));
+            state.insert(u, State::Done);
+            found
+        }
+
+        let mut state = HashMap::new();
+        self.adj.keys().any(|&amp;u| dfs(self, u, &amp;mut state))
+    }
+}
+
+fn main() {
+    let mut g = Graph::default();
+    g.add_edge("A", "B");
+    g.add_edge("B", "C");
+    g.add_edge("C", "A");
+
+    println!("{:?}", g.bfs("A"));
+    println!("{}", g.has_cycle()); // true
+}</code></pre>
+<p>Three details differ from listing 12.10:</p>
+<ul>
+<li><code>State</code> has only <code>Visiting</code> and <code>Done</code>. A node that is not in the <code>state</code> map is unvisited, so the map itself
+plays the role of the third state.</li>
+<li><code>add_edge</code> inserts the target <code>v</code> as a key too, with <code>entry(v).or_default()</code>. Every node therefore has an
+entry, and <code>self.adj[&amp;u]</code> cannot panic on a node that has no outgoing edges.</li>
+<li>The recursive helper is a function declared inside <code>has_cycle</code>. A nested <code>fn</code> cannot use the local variables
+of the function around it, so it receives the graph and the state map as arguments.</li>
+</ul>
+<pre><code class="language-text">$ cargo run --bin cyclic_graph_map
+["A", "B", "C"]
+true
+</code></pre>
+<h2 id="127-a-grid-is-a-graph"><a class="header" href="#127-a-grid-is-a-graph">12.7 A grid is a graph</a></h2>
+<p>A grid of cells is a graph too, even though it is not stored as one. Each cell is a node, and each cell has an
+edge to the cells directly above, below, left, and right of it. The edges are computed from the coordinates when
+needed, not stored.</p>
+<p>The classic grid problem counts <strong>islands</strong>. The grid holds land and water. An island is a group of land cells
+connected up, down, left, or right. Diagonal neighbors do not count.</p>
+<p>The method is to scan every cell. When the scan finds a land cell that no earlier search has reached, that cell
+starts a new island. The count goes up by one, and a BFS from that cell marks every cell of the island. Filling
+a connected area this way is called a <strong>flood fill</strong> (figure 12.5).</p>
+<figure>
+<img src="figures/graph-islands.svg" alt="A 4 by 5 grid of 1s and 0s. The four 1s in the top-left corner are green, the single 1 at row 2 column 2 is cream, and the two 1s at row 3 columns 3 and 4 are pink. Steps on the right explain how the count reaches 3.">
+<figcaption><b>Figure 12.5</b> The grid from <code>main</code>. Each color is one island, found by one flood fill.</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch12-islands.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A 4 by 4 grid of 1s and 0s. The scan reaches land at (0, 0), count becomes 1, and the flood fill colors the three connected land cells. The scan passes cells already filled. At (1, 3) count becomes 2, and the fill colors the second island of three cells." data-chapters="[[2.4, &quot;island 1&quot;], [30.18, &quot;island 2&quot;]]"><img src="figures/ch12-islands.gif" alt="A 4 by 4 grid of 1s and 0s. The scan reaches land at (0, 0), count becomes 1, and the flood fill colors the three connected land cells. The scan passes cells already filled. At (1, 3) count becomes 2, and the fill colors the second island of three cells."></video>
+<figcaption><b>Animation 12.3</b> The scan starts a new island only at land the fill has not reached. Each fill marks one whole island, so the count is the number of islands.</figcaption>
+</figure>
+<p class="listing"><b>Listing 12.12</b> Counting islands (lines 27 to 72). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs">src/bin/count_islands.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::{HashSet, VecDeque};
+
+fn count_islands&lt;T: PartialEq&gt;(grid: &amp;[&amp;[T]], land: T) -&gt; usize {
+    if grid.is_empty() || grid[0].is_empty() {
+        return 0;
+    }
+
+    let rows = grid.len();
+    let cols = grid[0].len();
+    let mut visited = HashSet::new();
+    let mut count = 0;
+    let dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+    // BFS closure: flood-fill one island starting from a known land cell.
+    // Passing `visited` explicitly avoids borrow-checker friction when calling
+    // the closure from the outer loop.
+    let bfs = |start: (usize, usize), visited: &amp;mut HashSet&lt;(usize, usize)&gt;| {
+        let mut queue = VecDeque::new();
+        queue.push_back(start);
+        visited.insert(start);
+
+        while let Some((cr, cc)) = queue.pop_front() {
+            for &amp;(dr, dc) in &amp;dirs {
+                let nr = cr as i32 + dr;
+                let nc = cc as i32 + dc;
+
+                if (0..rows as i32).contains(&amp;nr) &amp;&amp; (0..cols as i32).contains(&amp;nc) {
+                    let (ur, uc) = (nr as usize, nc as usize);
+                    if grid[ur][uc] == land &amp;&amp; !visited.contains(&amp;(ur, uc)) {
+                        visited.insert((ur, uc));
+                        queue.push_back((ur, uc));
+                    }
+                }
+            }
+        }
+    };
+
+    for r in 0..rows {
+        for c in 0..cols {
+            if grid[r][c] == land &amp;&amp; !visited.contains(&amp;(r, c)) {
+                count += 1;
+                bfs((r, c), &amp;mut visited);
+            }
+        }
+    }
+
+    count
+}</code></pre>
+<p>The grid has type <code>&amp;[&amp;[T]]</code>, a slice of rows, where each row is a slice of cells. The function is generic, so
+cells can be characters, booleans, or numbers. <code>land: T</code> says which value counts as land, and <code>T: PartialEq</code>
+lets the code compare a cell with it.</p>
+<p><code>dirs</code> lists the four moves as (row change, column change) pairs. The BFS adds each move to the current cell’s
+coordinates. The coordinates are <code>usize</code>, which cannot be negative, and a move up from row 0 would go below
+zero. So the code converts to <code>i32</code> first. It checks that the new position is inside the grid with <code>(0..rows as i32).contains(&amp;nr)</code>, and only then converts back to <code>usize</code>.</p>
+<p>The BFS is a closure stored in <code>bfs</code>. It reads <code>grid</code>, <code>dirs</code>, <code>rows</code>, <code>cols</code>, and <code>land</code> from the function
+around it. It does not capture <code>visited</code>, though. It takes <code>visited</code> as a parameter instead. If the closure
+captured <code>visited</code> mutably, that borrow would last as long as the closure. The outer loop could then not call
+<code>visited.contains</code> while the closure exists. Passing it in on each call keeps the borrow short.</p>
+<p>Each cell is looked at a constant number of times, so the function runs in O(rows × cols). A <code>Vec&lt;bool&gt;</code> with
+one entry per cell would be faster than the <code>HashSet</code> of coordinates, because it avoids hashing.</p>
+<p class="listing"><b>Listing 12.13</b> The complete program, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs">src/bin/count_islands.rs</a></p>
+
+<pre><code class="language-rust">// ============================================================================
+// Count Islands
+//
+// Ported from the Rust playground repo.
+//
+// Problem: given a grid of cells, count the number of connected "land"
+// regions. Two land cells are connected when they are adjacent horizontally
+// or vertically (4-directional). Water cells are not traversable.
+//
+// Where this shape appears in practice:
+//   - "Islands" are connected-component counting, the same shape used to find
+//     connected machines, failure domains, network partitions, or storage
+//     groups in distributed systems.
+//   - The generic implementation accepts any land type (char, u8, bool) and
+//     uses BFS with an explicit visited set, which is easy to reason about.
+//
+// Time complexity: O(rows * cols)
+// Space complexity: O(rows * cols) for the visited set and BFS queue.
+// ============================================================================
+
+use std::collections::{HashSet, VecDeque};
+
+/// Counts 4-directionally connected components of `land` in a rectangular grid.
+///
+/// The grid is generic over cell values so callers can use `'1'/'0'`,
+/// `true/false`, `1u8/0u8`, or any other PartialEq value.
+fn count_islands&lt;T: PartialEq&gt;(grid: &amp;[&amp;[T]], land: T) -&gt; usize {
+    if grid.is_empty() || grid[0].is_empty() {
+        return 0;
+    }
+
+    let rows = grid.len();
+    let cols = grid[0].len();
+    let mut visited = HashSet::new();
+    let mut count = 0;
+    let dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+    // BFS closure: flood-fill one island starting from a known land cell.
+    // Passing `visited` explicitly avoids borrow-checker friction when calling
+    // the closure from the outer loop.
+    let bfs = |start: (usize, usize), visited: &amp;mut HashSet&lt;(usize, usize)&gt;| {
+        let mut queue = VecDeque::new();
+        queue.push_back(start);
+        visited.insert(start);
+
+        while let Some((cr, cc)) = queue.pop_front() {
+            for &amp;(dr, dc) in &amp;dirs {
+                let nr = cr as i32 + dr;
+                let nc = cc as i32 + dc;
+
+                if (0..rows as i32).contains(&amp;nr) &amp;&amp; (0..cols as i32).contains(&amp;nc) {
+                    let (ur, uc) = (nr as usize, nc as usize);
+                    if grid[ur][uc] == land &amp;&amp; !visited.contains(&amp;(ur, uc)) {
+                        visited.insert((ur, uc));
+                        queue.push_back((ur, uc));
+                    }
+                }
+            }
+        }
+    };
+
+    for r in 0..rows {
+        for c in 0..cols {
+            if grid[r][c] == land &amp;&amp; !visited.contains(&amp;(r, c)) {
+                count += 1;
+                bfs((r, c), &amp;mut visited);
+            }
+        }
+    }
+
+    count
+}
+
+// ============================================================================
+// Runnable demonstration
+// ============================================================================
+fn main() {
+    let grid = [
+        &amp;['1', '1', '0', '0', '0'][..],
+        &amp;['1', '1', '0', '0', '0'][..],
+        &amp;['0', '0', '1', '0', '0'][..],
+        &amp;['0', '0', '0', '1', '1'][..],
+    ];
+
+    println!("Islands: {}", count_islands(&amp;grid, '1'));
+
+    let boolean_grid = [
+        &amp;[true, true, false][..],
+        &amp;[false, false, false][..],
+        &amp;[false, true, true][..],
+    ];
+    println!("Boolean islands: {}", count_islands(&amp;boolean_grid, true));
+}
+
+// ============================================================================
+// Tests (cargo test --bin count_islands)
+// ============================================================================
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_grid_has_zero_islands() {
+        let empty: [&amp;[char]; 0] = [];
+        assert_eq!(count_islands(&amp;empty, '1'), 0);
+
+        let no_cols: [&amp;[char]; 2] = [&amp;[], &amp;[]];
+        assert_eq!(count_islands(&amp;no_cols, '1'), 0);
+    }
+
+    #[test]
+    fn counts_classic_example() {
+        let grid = [
+            &amp;['1', '1', '0', '0', '0'][..],
+            &amp;['1', '1', '0', '0', '0'][..],
+            &amp;['0', '0', '1', '0', '0'][..],
+            &amp;['0', '0', '0', '1', '1'][..],
+        ];
+        assert_eq!(count_islands(&amp;grid, '1'), 3);
+    }
+
+    #[test]
+    fn all_water_is_zero() {
+        let grid = [&amp;['0', '0'][..], &amp;['0', '0'][..]];
+        assert_eq!(count_islands(&amp;grid, '1'), 0);
+    }
+
+    #[test]
+    fn generic_bool_grid_works() {
+        let grid = [
+            &amp;[true, false, false][..],
+            &amp;[true, false, true][..],
+            &amp;[false, false, true][..],
+        ];
+        assert_eq!(count_islands(&amp;grid, true), 2);
+    }
+
+    #[test]
+    fn single_row_and_column() {
+        let row = [&amp;['1', '0', '1', '1'][..]];
+        assert_eq!(count_islands(&amp;row, '1'), 2);
+
+        let col = [&amp;['1'][..], &amp;['1'][..], &amp;['0'][..], &amp;['1'][..]];
+        assert_eq!(count_islands(&amp;col, '1'), 2);
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin count_islands
+Islands: 3
+Boolean islands: 2
+
+$ cargo test --bin count_islands
+running 5 tests
+test tests::empty_grid_has_zero_islands ... ok
+test tests::all_water_is_zero ... ok
+test tests::generic_bool_grid_works ... ok
+test tests::single_row_and_column ... ok
+test tests::counts_classic_example ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+</code></pre>
+<h2 id="128-putting-tasks-in-order"><a class="header" href="#128-putting-tasks-in-order">12.8 Putting tasks in order</a></h2>
+<p>Suppose you have tasks, and some tasks must finish before others can start. A <strong>topological order</strong> lists
+every task so that each one comes after all of its prerequisites. Build tools, package managers, and course
+planners all compute one.</p>
+<p>Draw an arrow from each task to the tasks that depend on it. The <strong>indegree</strong> of a node is the number of arrows
+coming into it: the number of prerequisites it is still waiting for.</p>
+<p><strong>Kahn’s algorithm</strong> builds the order step by step (figure 12.6):</p>
+<ol>
+<li>Put every node with indegree 0 in a queue. They have no prerequisites.</li>
+<li>Take a node from the queue and add it to the order.</li>
+<li>For each arrow out of that node, lower the target’s indegree by one. The target has one fewer prerequisite
+to wait for. If its indegree reaches 0, add it to the queue.</li>
+<li>Repeat until the queue is empty.</li>
+</ol>
+<figure>
+<img src="figures/graph-kahn.svg" alt="datastructs, indegree 0, points to algos and os, each indegree 1, which both point to compilers, indegree 2. A table shows the indegrees after each node is taken, ending in the order datastructs, algos, os, compilers.">
+<figcaption><b>Figure 12.6</b> Kahn's algorithm on four courses.</figcaption>
+</figure>
+<p>If the graph has a cycle, the nodes on the cycle wait for each other forever. Their indegrees never reach 0, so
+they never enter the order. The order then comes out shorter than the number of nodes, and that is how the
+algorithm detects a cycle.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch12-topo.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Five nodes with directed edges and each node&#39;s indegree below it. Node 0 has indegree 0 and is taken first; removing its edges brings 1 and 2 to 0. Then 1, 2, 3, and 4 follow. A last part adds an edge from 4 back to 1: after 0 and 2, no node reaches indegree 0, and the function returns None." data-chapters="[[0.0, &quot;Kahn&quot;], [61.44, &quot;cycle&quot;]]"><img src="figures/ch12-topo.gif" alt="Five nodes with directed edges and each node&#39;s indegree below it. Node 0 has indegree 0 and is taken first; removing its edges brings 1 and 2 to 0. Then 1, 2, 3, and 4 follow. A last part adds an edge from 4 back to 1: after 0 and 2, no node reaches indegree 0, and the function returns None."></video>
+<figcaption><b>Animation 12.4</b> Kahn's algorithm takes a node when nothing points into it, and removing its edges releases the next ones. With a cycle, the order stops short and the function returns <code>None</code>.</figcaption>
+</figure>
+<h3 id="1281-kahns-algorithm-on-numbered-nodes"><a class="header" href="#1281-kahns-algorithm-on-numbered-nodes">12.8.1 Kahn’s algorithm on numbered nodes</a></h3>
+<p class="listing"><b>Listing 12.14</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">src/problems/graph_topology.rs</a></p>
+
+<pre><code class="language-rust">//! Topological sort (Kahn's algorithm).
+//!
+//! Common in scheduling problems: prerequisite graphs, pipeline
+//! stages, and build or job dependency ordering.
+
+use std::collections::VecDeque;
+
+pub fn topological_sort(num_nodes: usize, edges: &amp;[(usize, usize)]) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
+    let mut graph = vec![Vec::new(); num_nodes];
+    let mut indegree = vec![0usize; num_nodes];
+
+    for &amp;(from, to) in edges {
+        graph[from].push(to);
+        indegree[to] += 1;
+    }
+
+    let mut queue: VecDeque&lt;usize&gt; = (0..num_nodes)
+        .filter(|&amp;n| indegree[n] == 0)
+        .collect();
+    let mut order = Vec::with_capacity(num_nodes);
+
+    while let Some(node) = queue.pop_front() {
+        order.push(node);
+
+        for &amp;next in &amp;graph[node] {
+            indegree[next] -= 1;
+            if indegree[next] == 0 {
+                queue.push_back(next);
+            }
+        }
+    }
+
+    (order.len() == num_nodes).then_some(order)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_order_for_dag() {
+        // 0 -&gt; 1, 0 -&gt; 2, 1 -&gt; 3, 2 -&gt; 3
+        let edges = [(0, 1), (0, 2), (1, 3), (2, 3)];
+        let order = topological_sort(4, &amp;edges).expect("DAG has an order");
+        assert_eq!(order.len(), 4);
+        assert!(
+            order.iter().position(|&amp;n| n == 0).unwrap()
+                &lt; order.iter().position(|&amp;n| n == 1).unwrap()
+        );
+        assert!(
+            order.iter().position(|&amp;n| n == 1).unwrap()
+                &lt; order.iter().position(|&amp;n| n == 3).unwrap()
+        );
+    }
+
+    #[test]
+    fn detects_cycle() {
+        // 0 -&gt; 1 -&gt; 0 is a cycle.
+        let edges = [(0, 1), (1, 0)];
+        assert_eq!(topological_sort(2, &amp;edges), None);
+    }
+
+    #[test]
+    fn disconnected_nodes_are_included() {
+        let edges = [(0, 1)];
+        let order = topological_sort(3, &amp;edges).expect("DAG has an order");
+        assert_eq!(order.len(), 3);
+    }
+}</code></pre>
+<p>The input is a node count and a slice of <code>(from, to)</code> edges. The first loop builds the adjacency list and
+counts each node’s indegree at the same time.</p>
+<p>The starting queue comes from one iterator chain. <code>(0..num_nodes)</code> produces every node number. <code>.filter(|&amp;n| indegree[n] == 0)</code> keeps the nodes with no prerequisites, and <code>.collect()</code> builds the <code>VecDeque</code>.</p>
+<p>The last line returns the answer. <code>bool::then_some(order)</code> gives <code>Some(order)</code> if the condition is true, and
+<code>None</code> if it is false. So the function returns <code>None</code> exactly when a cycle kept some nodes out of the order.</p>
+<p>The tests check positions rather than one exact order. A graph usually has several valid topological orders, and
+the tests only require that each edge’s source comes before its target.</p>
+<pre><code class="language-text">$ cargo test --lib problems::graph_topology
+running 3 tests
+test problems::graph_topology::tests::disconnected_nodes_are_included ... ok
+test problems::graph_topology::tests::returns_order_for_dag ... ok
+test problems::graph_topology::tests::detects_cycle ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 134 filtered out
+</code></pre>
+<h3 id="1282-kahns-algorithm-on-named-courses"><a class="header" href="#1282-kahns-algorithm-on-named-courses">12.8.2 Kahn’s algorithm on named courses</a></h3>
+<p>The second version takes courses with names and lists of prerequisites, the way the data might arrive from a
+file.</p>
+<p class="listing"><b>Listing 12.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dependency_resolutiom.rs">src/bin/dependency_resolutiom.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::{HashMap, VecDeque};
+
+#[derive(Clone)]
+struct Course {
+    name: String,
+    depends_on: Vec&lt;String&gt;,
+}
+
+fn topo_sort(courses: &amp;[Course]) -&gt; Vec&lt;String&gt; {
+    let mut adj: HashMap&lt;String, Vec&lt;String&gt;&gt; = HashMap::new();
+    let mut indegree: HashMap&lt;String, usize&gt; = HashMap::new();
+
+    for Course { name, depends_on } in courses {
+        indegree.insert(name.clone(), depends_on.len());
+        adj.entry(name.clone()).or_default();
+        for dep in depends_on {
+            adj.entry(dep.clone())
+                .or_default()
+                .push(name.clone());
+            indegree.entry(dep.clone()).or_insert(0);
+        }
+    }
+
+    let mut queue: VecDeque&lt;_&gt; = indegree
+        .iter()
+        .filter(|&amp;(_, deg)| *deg == 0)
+        .map(|(name, _)| name.clone())
+        .collect();
+
+    let mut order = Vec::new();
+    while let Some(node) = queue.pop_front() {
+        for next in &amp;adj[&amp;node] {
+            let d = indegree.get_mut(next).unwrap();
+            *d -= 1;
+            if *d == 0 {
+                queue.push_back(next.clone());
+            }
+        }
+        order.push(node);
+    }
+
+    if order.len() == indegree.len() {
+        order
+    } else {
+        Vec::new()
+    }
+}
+
+fn main() {
+    let courses = vec![
+        Course {
+            name: "algos".into(),
+            depends_on: vec!["datastructs".into()],
+        },
+        Course {
+            name: "compilers".into(),
+            depends_on: vec!["algos".into(), "os".into()],
+        },
+        Course {
+            name: "os".into(),
+            depends_on: vec!["datastructs".into()],
+        },
+    ];
+
+    let coned2 = courses.clone();
+
+    println!("{:?}", topo_sort(&amp;courses));
+}</code></pre>
+<p>The input describes edges backward from the way the algorithm needs them. Each course lists its prerequisites,
+but Kahn’s algorithm follows arrows from a prerequisite to the courses that need it. The loop turns them around.
+For each prerequisite <code>dep</code> of course <code>name</code>, it adds <code>name</code> to <code>adj[dep]</code>.</p>
+<p>A course’s indegree is the length of its <code>depends_on</code> list. A prerequisite that is never listed as a course,
+like <code>datastructs</code> here, still needs an entry. <code>indegree.entry(dep.clone()).or_insert(0)</code> adds it with indegree
+0, and <code>or_insert</code> leaves an existing entry alone.</p>
+<p><code>for Course { name, depends_on } in courses</code> takes each course apart in the loop header. Because <code>courses</code> is a
+slice reference, <code>name</code> and <code>depends_on</code> are references to the fields.</p>
+<p>If a cycle keeps some courses out of the order, the function returns an empty <code>Vec</code>. With <code>Option</code> as in listing
+12.14, the caller could tell “no courses” from “a cycle”.</p>
+<pre><code class="language-text">$ cargo run --bin dependency_resolutiom
+["datastructs", "algos", "os", "compilers"]
+</code></pre>
+<p>The starting queue is built by iterating over a <code>HashMap</code>, and that order changes between runs. This input has
+only one course with no prerequisites, so the output is always the same. With several such courses, the order
+among them could change from run to run.</p>
+<h2 id="129-shortest-paths"><a class="header" href="#129-shortest-paths">12.9 Shortest paths</a></h2>
+<p>In a weighted graph, the cost of a path is the sum of its edge weights. The <strong>shortest path</strong> from A to D is the
+path with the lowest cost. It is not always the one with the fewest edges.</p>
+<p>BFS finds the path with the fewest edges, which is a different question. <strong>Dijkstra’s algorithm</strong> finds the lowest
+cost from one start node to every other node, as long as no weight is negative.</p>
+<h3 id="1291-how-dijkstras-algorithm-works"><a class="header" href="#1291-how-dijkstras-algorithm-works">12.9.1 How Dijkstra’s algorithm works</a></h3>
+<p>The algorithm keeps two things:</p>
+<ul>
+<li><code>dist</code>, the lowest cost found so far to each node. At the start, only the start node has a cost, 0.</li>
+<li>A min-heap of <code>(cost, node)</code> entries, so the cheapest entry is always taken next. Chapter 5 built min-heaps
+with <code>BinaryHeap</code> and <code>Reverse</code>.</li>
+</ul>
+<p>Each step takes the cheapest entry from the heap. For each edge out of that node, it computes the cost of
+reaching the neighbor through this node. If that cost beats the neighbor’s recorded cost, the new cost is
+recorded and pushed onto the heap. Updating a recorded cost to a lower one is called <strong>relaxing</strong> the edge.</p>
+<p>When a node is taken from the heap with its recorded cost, that cost is final. Every other entry in the heap
+costs at least as much, and weights are never negative. So no path found later can come back cheaper.</p>
+<p>A node can be in the heap several times. When a cheaper path to B is found, the old entry for B stays in the heap.
+<code>BinaryHeap</code> has no way to find and update it. When the old entry is eventually taken, its cost is higher than
+B’s recorded cost, and the code skips it. Such an entry is called <strong>stale</strong>.</p>
+<p>Figure 12.7 follows every step on a four-node graph.</p>
+<figure>
+<img src="figures/graph-dijkstra.svg" alt="Graph: A to B weight 4, A to C weight 1, C to B weight 2, B to D weight 1, C to D weight 5. A table lists each pop with the distances and heap after it. The entries (4,B) and (6,D) are popped as stale. Final distances: A 0, C 1, B 3, D 4.">
+<figcaption><b>Figure 12.7</b> Dijkstra's algorithm from A. Two entries become stale when cheaper paths are found.</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch12-dijkstra.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A weighted graph A, B, C, D with each node&#39;s distance and the heap of entries. A settles at 0 and pushes B at 4 and C at 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. The older entry (4, B) is popped later and skipped as stale. D settles at 4." data-chapters="[[0.0, &quot;settle&quot;]]"><img src="figures/ch12-dijkstra.gif" alt="A weighted graph A, B, C, D with each node&#39;s distance and the heap of entries. A settles at 0 and pushes B at 4 and C at 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. The older entry (4, B) is popped later and skipped as stale. D settles at 4."></video>
+<figcaption><b>Animation 12.5</b> <code>dijkstra_vec</code> settles the node with the smallest cost in the heap, then relaxes its edges. An entry whose cost is above the recorded distance is stale and skipped.</figcaption>
+</figure>
+<p>Read the table row by row. Taking A records B at 4 and C at 1. Taking C finds B at 1 + 2 = 3, which beats 4, so
+B is recorded at 3 and pushed again. The old <code>(4, B)</code> entry is now stale. Taking B at 3 finds D at 4, which
+beats the 6 recorded through C. Later, <code>(4, B)</code> and <code>(6, D)</code> come off the heap, and each is skipped because its
+cost is higher than the recorded one.</p>
+<h3 id="1292-two-versions-side-by-side"><a class="header" href="#1292-two-versions-side-by-side">12.9.2 Two versions side by side</a></h3>
+<p class="listing"><b>Listing 12.16</b> Dijkstra over the index form (lines 23 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">src/problems/graph_dijkstra.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
+use crate::problems::graph_bfs::GraphAdjList;
+
+/// Shortest distances from `start_node` over an index-based adjacency list.
+pub fn dijkstra_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; Vec&lt;Option&lt;u32&gt;&gt; {
+    let mut distances = vec![None; graph.len()];
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    distances[start_node] = Some(0);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if distances[current_node].is_some_and(|best| current_cost &gt; best) {
+            continue;
+        }
+        for &amp;(neighbor, weight) in &amp;graph[current_node] {
+            let new_distance = current_cost + weight;
+            if distances[neighbor].is_none_or(|best| new_distance &lt; best) {
+                distances[neighbor] = Some(new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}</code></pre>
+<p>The distances are a <code>Vec&lt;Option&lt;u32&gt;&gt;</code>, where <code>None</code> means “no path found yet”. Two methods of <code>Option</code> read
+well here:</p>
+<ul>
+<li><code>is_some_and(|best| current_cost &gt; best)</code> is true only if there is a recorded cost and the popped cost is
+higher. That is the stale check.</li>
+<li><code>is_none_or(|best| new_distance &lt; best)</code> is true if there is no recorded cost, or the new cost is lower. That
+is the relax check.</li>
+</ul>
+<p>The heap holds <code>Reverse((cost, node))</code>. <code>BinaryHeap</code> pops the largest item, and <code>Reverse</code> flips the comparison,
+so the smallest cost comes out first. Tuples compare by their first field, then by their second, so the cost
+decides and the node number breaks ties.</p>
+<p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 69).</p>
+
+<pre><code class="language-rust">/// Shortest distances from `start_node` over a `HashMap` adjacency list.
+pub fn dijkstra&lt;Node&gt;(graph: &amp;GraphAdjList&lt;Node&gt;, start_node: Node) -&gt; HashMap&lt;Node, u32&gt;
+where
+    Node: Copy + Eq + Hash + Ord,
+{
+    let mut distances = HashMap::from([(start_node, 0)]);
+    let mut min_heap = BinaryHeap::from([Reverse((0, start_node))]);
+
+    while let Some(Reverse((current_cost, current_node))) = min_heap.pop() {
+        // stale heap entry, a shorter path was already recorded
+        if current_cost &gt; distances[&amp;current_node] {
+            continue;
+        }
+        for &amp;(neighbor, weight) in graph[&amp;current_node] {
+            let new_distance = current_cost + weight;
+
+            if new_distance &lt; *distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX) {
+                distances.insert(neighbor, new_distance);
+                min_heap.push(Reverse((new_distance, neighbor)));
+            }
+        }
+    }
+    distances
+}</code></pre>
+<p>In this version, <code>distances</code> is a <code>HashMap</code> that contains only nodes that have been reached. <code>Node</code> also needs
+<code>Ord</code>, because nodes sit inside the tuples that the heap compares.</p>
+<p><code>distances[&amp;current_node]</code> cannot panic here. A node is pushed onto the heap only after its distance is inserted,
+so every popped node has an entry. <code>distances.get(&amp;neighbor).unwrap_or(&amp;u32::MAX)</code> treats a missing entry as
+the largest possible cost, so any real cost beats it.</p>
+<p>Each edge can push one heap entry, and each heap operation takes O(log E). The whole algorithm runs in
+O(E log E), which is the same as O(E log V) for simple graphs.</p>
+<pre><code class="language-text">$ cargo test --lib problems::graph_dijkstra
+running 4 tests
+test problems::graph_dijkstra::tests::vec_variant_finds_shorter_multi_hop_paths ... ok
+test problems::graph_dijkstra::tests::vec_variant_marks_unreachable_nodes ... ok
+test problems::graph_dijkstra::tests::map_variant_omits_unreachable_nodes ... ok
+test problems::graph_dijkstra::tests::map_variant_finds_shorter_multi_hop_paths ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
+</code></pre>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> <code>current_cost + weight</code> panics on overflow in a debug build, and wraps around silently in a
+release build. With <code>u32</code> weights, a long path of large weights can overflow. Listing 12.20 shows the fix with
+<code>checked_add</code>.</p>
+</div>
+
+<h3 id="1293-edges-as-a-struct"><a class="header" href="#1293-edges-as-a-struct">12.9.3 Edges as a struct</a></h3>
+<p>The next three programs use a named <code>Edge</code> struct instead of a <code>(neighbor, weight)</code> tuple, and <code>u64</code> costs.
+They show three steps of the same function: it first clones node names, then borrows them, and finally handles
+missing nodes and overflow.</p>
+<p class="listing"><b>Listing 12.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra.rs">src/bin/dijkstra.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
+#[derive(Debug)]
+struct Edge&lt;Node&gt; {
+    to: Node,
+    weight: u64,
+}
+
+type AdjMap&lt;Node&gt; = HashMap&lt;Node, Vec&lt;Edge&lt;Node&gt;&gt;&gt;;
+
+fn dijkstra_ssmd_shortest&lt;Node&gt;(graph: &amp;AdjMap&lt;Node&gt;, start: Node) -&gt; HashMap&lt;Node, u64&gt;
+where
+    Node: Clone + Hash + Ord,
+{
+    let mut dist = HashMap::from([(start.clone(), 0)]);
+    let mut heap = BinaryHeap::from([Reverse((0, start))]);
+
+    while let Some(Reverse((cost, node))) = heap.pop() {
+        if cost &gt; dist[&amp;node] {
+            continue; // stale entry
+        }
+        for edge in &amp;graph[&amp;node] {
+            let new_cost = cost + edge.weight;
+            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+                dist.insert(edge.to.clone(), new_cost);
+                heap.push(Reverse((new_cost, edge.to.clone())));
+            }
+        }
+    }
+    dist
+}
+
+fn main() {
+    let graph: AdjMap&lt;&amp;str&gt; = HashMap::from([
+        (
+            "A",
+            vec![Edge { to: "B", weight: 4 }, Edge { to: "C", weight: 1 }],
+        ),
+        ("B", vec![Edge { to: "D", weight: 1 }]),
+        (
+            "C",
+            vec![Edge { to: "B", weight: 2 }, Edge { to: "D", weight: 5 }],
+        ),
+        ("D", vec![]),
+    ]);
+
+    println!("{:#?}", graph);
+    let dist = dijkstra_ssmd_shortest(&amp;graph, "A");
+    println!("{:#?}", dist); // {"A": 0, "C": 1, "B": 3, "D": 4} (order varies)
+}</code></pre>
+<p><code>edge.to</code> and <code>edge.weight</code> read better than <code>.0</code> and <code>.1</code>. The node type needs <code>Clone</code> instead of <code>Copy</code>, so
+it could be a <code>String</code>. The function clones a node each time it stores one in <code>dist</code> or on the heap.</p>
+<p><code>graph[&amp;node]</code> panics if a node has no entry in the map. <code>main</code> includes <code>"D"</code> with an empty list, so every node
+has one.</p>
+<pre><code class="language-text">$ cargo run --bin dijkstra
+{
+    "B": [
+        Edge {
+            to: "D",
+            weight: 1,
+        },
+    ],
+    ...
+}
+{
+    "B": 3,
+    "C": 1,
+    "A": 0,
+    "D": 4,
+}
+</code></pre>
+<p>The first print shows the graph and is cut short here. A <code>HashMap</code> does not keep its entries in any order. The lines of both prints can come out in a different
+order on your machine.</p>
+<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 15 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
+fn dijkstra_ssmd_shortest&lt;'a, Node&gt;(
+    graph: &amp;'a AdjMap&lt;Node&gt;,
+    start: &amp;'a Node,
+) -&gt; HashMap&lt;&amp;'a Node, u64&gt;
+where
+    Node: Hash + Ord,
+{
+    let mut dist = HashMap::from([(start, 0u64)]);
+    let mut heap = BinaryHeap::from([Reverse((0u64, start))]);
+
+    while let Some(Reverse((cost, node))) = heap.pop() {
+        if cost &gt; dist[node] {
+            continue; // stale entry
+        }
+        let Some(edges) = graph.get(node) else {
+            continue;
+        };
+
+        for edge in edges {
+            let Some(new_cost) = cost.checked_add(edge.weight) else {
+                continue;
+            };
+            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+                dist.insert(&amp;edge.to, new_cost);
+                heap.push(Reverse((new_cost, &amp;edge.to)));
+            }
+        }
+    }
+    dist
+}</code></pre>
+<p>This version stores references to nodes, <code>&amp;'a Node</code>, in <code>dist</code> and in the heap, so <code>Node</code> does not need <code>Clone</code>.
+With <code>String</code> nodes, that saves an allocation per clone.</p>
+<p>The lifetime <code>'a</code> ties everything together. The graph and the start node are both borrowed for <code>'a</code>, and the
+returned map holds <code>&amp;'a Node</code> keys. The compiler therefore keeps the graph alive as long as the result is in
+use. Every reference pushed onto the heap, <code>&amp;edge.to</code>, points into the graph, so it lives long enough.</p>
+<p>Two <code>let ... else</code> lines make the function safer than listing 12.18:</p>
+<ul>
+<li><code>let Some(edges) = graph.get(node) else { continue };</code> handles a node that has no entry in the map. <code>main</code>
+leaves <code>"D"</code> out of the map, and the function still works.</li>
+<li><code>let Some(new_cost) = cost.checked_add(edge.weight) else { continue };</code> skips an edge whose total cost would
+overflow. <code>checked_add</code> returns <code>None</code> on overflow instead of panicking or wrapping around.</li>
+</ul>
+<p class="listing"><b>Listing 12.20</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
+#[derive(Debug)]
+struct Edge&lt;Node&gt; {
+    to: Node,
+    weight: u64,
+}
+
+type AdjMap&lt;Node&gt; = HashMap&lt;Node, Vec&lt;Edge&lt;Node&gt;&gt;&gt;;
+
+fn dijkstra_ssmd_shortest&lt;'a, Node&gt;(
+    graph: &amp;'a AdjMap&lt;Node&gt;,
+    start: &amp;'a Node,
+) -&gt; HashMap&lt;&amp;'a Node, u64&gt;
+where
+    Node: Hash + Ord,
+{
+    let mut dist = HashMap::from([(start, 0u64)]);
+    let mut heap = BinaryHeap::from([Reverse((0u64, start))]);
+
+    while let Some(Reverse((cost, node))) = heap.pop() {
+        if cost &gt; dist[node] {
+            continue; // stale entry
+        }
+        let Some(edges) = graph.get(node) else {
+            continue;
+        };
+
+        for edge in edges {
+            let Some(new_cost) = cost.checked_add(edge.weight) else {
+                continue;
+            };
+            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+                dist.insert(&amp;edge.to, new_cost);
+                heap.push(Reverse((new_cost, &amp;edge.to)));
+            }
+        }
+    }
+    dist
+}
+
+fn main() {
+    let graph: AdjMap&lt;String&gt; = HashMap::from([
+        (
+            "A".into(),
+            vec![
+                Edge {
+                    to: "B".into(),
+                    weight: 4,
+                },
+                Edge {
+                    to: "C".into(),
+                    weight: 1,
+                },
+            ],
+        ),
+        (
+            "B".into(),
+            vec![Edge {
+                to: "D".into(),
+                weight: 1,
+            }],
+        ),
+        (
+            "C".into(),
+            vec![
+                Edge {
+                    to: "B".into(),
+                    weight: 2,
+                },
+                Edge {
+                    to: "D".into(),
+                    weight: 5,
+                },
+            ],
+        ),
+    ]);
+
+    println!("Graph =&gt; {:#?}", graph);
+
+    let start = "A".into();
+    println!(
+        "Shortest path {:#?}",
+        dijkstra_ssmd_shortest(&amp;graph, &amp;start)
+    ); // A:0, C:1, B:3, D:4
+}</code></pre>
+<p>In <code>main</code>, <code>let start = "A".into();</code> makes a <code>String</code> in its own variable, because the function needs a
+reference that lives as long as the graph borrow.</p>
+<pre><code class="language-text">$ cargo run --bin dijkstra_with_lifetime
+Graph =&gt; {
+    ...
+}
+Shortest path {
+    "A": 0,
+    "B": 3,
+    "D": 4,
+    "C": 1,
+}
+</code></pre>
+<p>The last version keeps the owned, cloning style of listing 12.18 and adds the two safety checks.</p>
+<p class="listing"><b>Listing 12.21</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_bruce_lee.rs">src/bin/dijkstra_bruce_lee.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap},
+    hash::Hash,
+};
+
+struct Edge&lt;Node&gt; {
+    to: Node,
+    weight: u64,
+}
+
+type AdjMap&lt;Node&gt; = HashMap&lt;Node, Vec&lt;Edge&lt;Node&gt;&gt;&gt;;
+
+fn dijkstra_ssmd_shortest&lt;Node&gt;(graph: &amp;AdjMap&lt;Node&gt;, start: Node) -&gt; HashMap&lt;Node, u64&gt;
+where
+    Node: Clone + Hash + Ord,
+{
+    let mut dist = HashMap::from([(start.clone(), 0)]);
+    let mut heap = BinaryHeap::from([Reverse((0u64, start))]);
+
+    while let Some(Reverse((cost, node))) = heap.pop() {
+        if cost &gt; dist[&amp;node] {
+            continue; // stale entry
+        }
+        let Some(edges) = graph.get(&amp;node) else {
+            continue;
+        }; // node with no outgoing edges
+
+        for edge in edges {
+            let Some(new_cost) = cost.checked_add(edge.weight) else {
+                continue;
+            }; // overflow
+            if dist.get(&amp;edge.to).is_none_or(|&amp;d| new_cost &lt; d) {
+                dist.insert(edge.to.clone(), new_cost);
+                heap.push(Reverse((new_cost, edge.to.clone())));
+            }
+        }
+    }
+    dist
+}
+
+fn main() {
+    let graph: AdjMap&lt;&amp;str&gt; = HashMap::from([
+        (
+            "A",
+            vec![Edge { to: "B", weight: 4 }, Edge { to: "C", weight: 1 }],
+        ),
+        ("B", vec![Edge { to: "D", weight: 1 }]),
+        (
+            "C",
+            vec![Edge { to: "B", weight: 2 }, Edge { to: "D", weight: 5 }],
+        ),
+    ]); // "D" has no entry now, and it no longer panics
+
+    println!("{:?}", dijkstra_ssmd_shortest(&amp;graph, "A"));
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin dijkstra_bruce_lee
+{"B": 3, "C": 1, "D": 4, "A": 0}
+</code></pre>
+<p>Table 12.1 compares the five versions.</p>
+<p class="listing"><b>Table 12.1</b> The five Dijkstra implementations</p>
+
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Listing</th><th>Nodes</th><th>Edges</th><th>Missing node entry</th><th>Overflow</th></tr>
+</thead>
+<tbody>
+<tr><td>12.16 <code>dijkstra_vec</code></td><td><code>usize</code> indices</td><td><code>(usize, u32)</code></td><td>cannot happen</td><td>panics in debug</td></tr>
+<tr><td>12.17 <code>dijkstra</code></td><td><code>Copy</code> values</td><td><code>(Node, u32)</code></td><td>panics</td><td>panics in debug</td></tr>
+<tr><td>12.18 <code>dijkstra.rs</code></td><td>cloned</td><td><code>Edge</code>, <code>u64</code></td><td>panics</td><td>panics in debug</td></tr>
+<tr><td>12.20 <code>dijkstra_with_lifetime.rs</code></td><td>borrowed</td><td><code>Edge</code>, <code>u64</code></td><td>skipped</td><td>skipped</td></tr>
+<tr><td>12.21 <code>dijkstra_bruce_lee.rs</code></td><td>cloned</td><td><code>Edge</code>, <code>u64</code></td><td>skipped</td><td>skipped</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="1210-connecting-every-node-at-the-lowest-cost"><a class="header" href="#1210-connecting-every-node-at-the-lowest-cost">12.10 Connecting every node at the lowest cost</a></h2>
+<p>The last problem uses an undirected, weighted graph. Think of the nodes as buildings and the weights as the cost
+of laying cable between two buildings. You want to connect every building, directly or indirectly, at the lowest
+total cost.</p>
+<p>A set of edges that connects all the nodes without forming a cycle is a <strong>spanning tree</strong>. A spanning tree with
+the lowest total weight is a <strong>minimum spanning tree</strong> (MST). With n nodes, a spanning tree has exactly n − 1
+edges. One edge fewer would leave a node disconnected, and one edge more would close a loop.</p>
+<p><strong>Kruskal’s algorithm</strong> builds an MST by taking edges from lightest to heaviest. It keeps an edge if the edge
+joins two groups of nodes that are not yet connected. It skips an edge whose two ends are already connected,
+because that edge would close a loop.</p>
+<h3 id="12101-union-find"><a class="header" href="#12101-union-find">12.10.1 Union-find</a></h3>
+<p>Kruskal’s algorithm needs to answer one question fast: are these two nodes already connected? A <strong>union-find</strong>
+structure, also called a disjoint set, answers it.</p>
+<p>Union-find keeps nodes in groups. Each group is a small tree stored in a <code>parent</code> array, where <code>parent[i]</code> is
+the node that <code>i</code> points to. The node at the top of a group points to itself and is called the group’s <strong>root</strong>.
+Two nodes are in the same group when they have the same root.</p>
+<p>There are two operations:</p>
+<ul>
+<li><code>find(x)</code> follows <code>parent</code> links from <code>x</code> up to the root.</li>
+<li><code>union(x, y)</code> finds both roots. If the roots differ, it makes one root point to the other, which joins the two
+groups.</li>
+</ul>
+<p class="listing"><b>Listing 12.22</b> Union-find (lines 10 to 49). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
+
+<pre><code class="language-rust">use std::cmp::Ordering::{Equal, Greater, Less};
+
+struct DisjointSet {
+    parent: Vec&lt;usize&gt;,
+    rank: Vec&lt;usize&gt;,
+}
+
+impl DisjointSet {
+    fn new(n: usize) -&gt; Self {
+        Self {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
+        }
+    }
+
+    fn find(&amp;mut self, elem: usize) -&gt; usize {
+        if self.parent[elem] != elem {
+            self.parent[elem] = self.find(self.parent[elem]);
+        }
+
+        self.parent[elem]
+    }
+
+    fn union(&amp;mut self, x: usize, y: usize) -&gt; bool {
+        let (x, y) = (self.find(x), self.find(y));
+
+        if x == y {
+            return false;
+        }
+
+        match self.rank[x].cmp(&amp;self.rank[y]) {
+            Less =&gt; self.parent[x] = y,
+            Greater =&gt; self.parent[y] = x,
+            Equal =&gt; {
+                self.parent[x] = y;
+                self.rank[y] += 1;
+            }
+        }
+
+        true
+    }
+}</code></pre>
+<p><code>new</code> makes every node its own group: <code>parent</code> is <code>[0, 1, 2, ...]</code>, built with <code>(0..n).collect()</code>.</p>
+<p><code>find</code> is recursive. On the way back from the root, it sets <code>parent[elem]</code> to the root directly. The next <code>find</code>
+on that node then takes one step instead of many. This trick is called <strong>path compression</strong>.</p>
+<p><code>union</code> returns <code>false</code> if both nodes already have the same root. Otherwise it joins the groups using <code>rank</code>, a
+rough measure of each group’s height. The shorter group goes under the taller one, so the trees stay flat. If
+both have the same rank, either can go under the other, and the new root’s rank grows by one. This is called
+<strong>union by rank</strong>.</p>
+<p>With both tricks, <code>find</code> and <code>union</code> take nearly constant time in practice.</p>
+<h3 id="12102-kruskals-algorithm"><a class="header" href="#12102-kruskals-algorithm">12.10.2 Kruskal’s algorithm</a></h3>
+<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 51 to 65).</p>
+
+<pre><code class="language-rust">fn kruskals(n: usize, mut edges: Vec&lt;Edge&gt;) -&gt; Vec&lt;Edge&gt; {
+    // Kruskal's algorithm is greedy: it takes the cheapest edges first.
+    edges.sort_by_key(|e| e.w);
+
+    let mut uf = DisjointSet::new(n);
+    let mut mst = Vec::new();
+
+    for edge in edges {
+        if uf.union(edge.u, edge.v) {
+            mst.push(edge);
+        }
+    }
+
+    mst
+}</code></pre>
+<p><code>edges.sort_by_key(|e| e.w)</code> sorts the edges by weight. Then each edge is offered to <code>union</code>. If <code>union</code>
+returns <code>true</code>, the edge joined two groups, and it goes into the tree. The edge is moved into <code>mst</code>, not copied,
+because <code>for edge in edges</code> takes ownership of each one.</p>
+<p>Sorting dominates the running time, so the algorithm runs in O(E log E).</p>
+<p>Figure 12.8 follows the <code>parent</code> array through every edge of the program’s graph.</p>
+<figure>
+<img src="figures/graph-kruskal.svg" alt="Five nodes with edges 0-1 weight 4, 0-2 weight 3, 1-2 weight 1, 1-3 weight 2, 2-3 weight 4, 3-4 weight 2. Kept edges 1-2, 1-3, 3-4, 0-2 are solid; 0-1 and 2-3 are dashed. A table shows the roots and the parent array after each union.">
+<figcaption><b>Figure 12.8</b> Kruskal's algorithm with union-find. The two weight-4 edges would close loops, so they are skipped.</figcaption>
+</figure>
+<p><code>sort_by_key</code> is a stable sort: edges with equal weights keep their input order. So 1-3 comes before 3-4, and
+0-1 comes before 2-3.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch12-kruskal.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Five nodes with weighted edges, colored by the set each node belongs to. The edges are taken cheapest first. An edge joining two sets is kept and the sets merge. The edges 0-1 and 2-3 would close cycles and are skipped. Four edges remain, total weight 8." data-chapters="[[2.4, &quot;union-find&quot;]]"><img src="figures/ch12-kruskal.gif" alt="Five nodes with weighted edges, colored by the set each node belongs to. The edges are taken cheapest first. An edge joining two sets is kept and the sets merge. The edges 0-1 and 2-3 would close cycles and are skipped. Four edges remain, total weight 8."></video>
+<figcaption><b>Animation 12.6</b> Edges arrive cheapest first. <code>union</code> keeps an edge only when its ends are in different sets, so no kept edge closes a cycle.</figcaption>
+</figure>
+<p class="listing"><b>Listing 12.24</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
+
+<pre><code class="language-rust">use std::cmp::Ordering::{Equal, Greater, Less};
+
+#[derive(Debug)]
+struct Edge {
+    u: usize,
+    v: usize,
+    w: u32,
+}
+
+struct DisjointSet {
+    parent: Vec&lt;usize&gt;,
+    rank: Vec&lt;usize&gt;,
+}
+
+impl DisjointSet {
+    fn new(n: usize) -&gt; Self {
+        Self {
+            parent: (0..n).collect(),
+            rank: vec![0; n],
+        }
+    }
+
+    fn find(&amp;mut self, elem: usize) -&gt; usize {
+        if self.parent[elem] != elem {
+            self.parent[elem] = self.find(self.parent[elem]);
+        }
+
+        self.parent[elem]
+    }
+
+    fn union(&amp;mut self, x: usize, y: usize) -&gt; bool {
+        let (x, y) = (self.find(x), self.find(y));
+
+        if x == y {
+            return false;
+        }
+
+        match self.rank[x].cmp(&amp;self.rank[y]) {
+            Less =&gt; self.parent[x] = y,
+            Greater =&gt; self.parent[y] = x,
+            Equal =&gt; {
+                self.parent[x] = y;
+                self.rank[y] += 1;
+            }
+        }
+
+        true
+    }
+}
+
+fn kruskals(n: usize, mut edges: Vec&lt;Edge&gt;) -&gt; Vec&lt;Edge&gt; {
+    // Kruskal's algorithm is greedy: it takes the cheapest edges first.
+    edges.sort_by_key(|e| e.w);
+
+    let mut uf = DisjointSet::new(n);
+    let mut mst = Vec::new();
+
+    for edge in edges {
+        if uf.union(edge.u, edge.v) {
+            mst.push(edge);
+        }
+    }
+
+    mst
+}
+
+fn main() {
+    let edges = vec![
+        Edge { u: 0, v: 1, w: 4 },
+        Edge { u: 0, v: 2, w: 3 },
+        Edge { u: 1, v: 2, w: 1 },
+        Edge { u: 1, v: 3, w: 2 },
+        Edge { u: 2, v: 3, w: 4 },
+        Edge { u: 3, v: 4, w: 2 },
+    ];
+
+    let mst = kruskals(5, edges);
+    let total: u32 = mst.iter().map(|e| e.w).sum();
+
+    for e in &amp;mst {
+        println!("{} - {} ({})", e.u, e.v, e.w);
+    }
+    println!("total: {total}");
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin kruskals_algorithm
+1 - 2 (1)
+1 - 3 (2)
+3 - 4 (2)
+0 - 2 (3)
+total: 8
+</code></pre>
+<p>The tree has four edges for five nodes, as expected.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A graph is a set of nodes and edges, with no rule against cycles. Every traversal needs a record of the nodes
+it has handled.</li>
+<li>An adjacency list stores each node’s outgoing edges. The index form uses <code>Vec&lt;Vec&lt;...&gt;&gt;</code> and numbered nodes.
+The map form uses a <code>HashMap</code> and allows any hashable node.</li>
+<li>BFS uses a queue and visits nodes in order of edge count from the start. DFS uses a stack and follows one path
+as deep as it goes. Both run in O(V + E).</li>
+<li>Graph nodes in Rust are usually numbers into a <code>Vec</code>, which avoids reference cycles.</li>
+<li>Cycle detection needs three states. An edge to a node on the current path, a Visiting node, closes a cycle.</li>
+<li>A grid is a graph whose edges are computed from coordinates. Counting islands runs one flood fill per island.</li>
+<li>Kahn’s algorithm produces a topological order by repeatedly taking nodes with indegree 0. A shorter order than
+the node count means the graph has a cycle.</li>
+<li>Dijkstra’s algorithm finds lowest-cost paths with a min-heap, skipping stale entries. <code>checked_add</code> and
+<code>let ... else</code> guard against overflow and missing nodes.</li>
+<li>Kruskal’s algorithm builds a minimum spanning tree from the lightest edges, using union-find to skip edges
+that would close a loop.</li>
+</ul>
+</div>
+
+<p>Chapter 13 builds an LRU cache, which combines a hash map with a linked list. It brings back the ownership
+questions of chapters 8 and 9.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Change <code>bfs_vec</code> in listing 12.1 to also return, for each node, the number of edges on the shortest path from
+the start.</li>
+<li>Extend <code>dijkstra_vec</code> to record each node’s predecessor on its shortest path. Then write a function that
+rebuilds the path from the start to a given node.</li>
+<li>Rewrite <code>count_islands</code> with a <code>Vec&lt;bool&gt;</code> for <code>visited</code>, and with a DFS stack instead of a BFS queue. Check
+that the tests still pass.</li>
+<li>Change <code>topo_sort</code> in listing 12.15 to return <code>Option&lt;Vec&lt;String&gt;&gt;</code>, and add a test with a cycle.</li>
+<li>Rewrite <code>find</code> in listing 12.22 with a loop instead of recursion, keeping path compression.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch11-trees.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch13-lru-cache.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch11-trees.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch13-lru-cache.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300.0" width="760" height="300.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Two ways to store the sample graph as an adjacency list</text>
+<text x="20" y="50" font-size="11.0" fill="#5b6b7c" text-anchor="start" >index form: Vec&lt;Vec&lt;(usize, u32)&gt;&gt;, A=0, B=1, C=2, D=3</text>
+<text x="20" y="76" font-size="10.0" fill="#5b6b7c" text-anchor="start" >stack</text>
+<rect x="20" y="82" width="46" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="43.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">ptr</text>
+<rect x="66" y="82" width="40" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="86.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">4</text>
+<rect x="106" y="82" width="40" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="126.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">4</text>
+<text x="66" y="120" font-size="9.0" fill="#5b6b7c" text-anchor="start" >len, cap</text>
+<line x1="43" y1="106" x2="43" y2="140" stroke="#1d2733" stroke-width="1.4"/>
+<line x1="43" y1="140" x2="160" y2="140" stroke="#1d2733" stroke-width="1.4"/>
+<line x1="160" y1="140" x2="160" y2="94" stroke="#1d2733" stroke-width="1.4"/>
+<line x1="160" y1="94" x2="178" y2="94" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="178,94 170.8,97.5 170.8,90.5" fill="#1d2733"/>
+<text x="200" y="76" font-size="10.0" fill="#5b6b7c" text-anchor="start" >heap: one Vec header per node</text>
+<text x="192" y="98" font-size="10.0" fill="#5b6b7c" text-anchor="end" font-family="Menlo, monospace" xml:space="preserve">0</text>
+<rect x="200" y="82" width="46" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="223.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">ptr</text>
+<rect x="246" y="82" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="261.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<rect x="276" y="82" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="291.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<line x1="306" y1="94" x2="346" y2="94" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="346,94 338.8,97.5 338.8,90.5" fill="#1d2733"/>
+<rect x="348" y="82" width="58" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="377.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(1,1)</text>
+<rect x="406" y="82" width="58" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="435.0" y="97.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(2,4)</text>
+<text x="192" y="128" font-size="10.0" fill="#5b6b7c" text-anchor="end" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<rect x="200" y="112" width="46" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="223.0" y="127.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">ptr</text>
+<rect x="246" y="112" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="261.0" y="127.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<rect x="276" y="112" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="291.0" y="127.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<line x1="306" y1="124" x2="346" y2="124" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="346,124 338.8,127.5 338.8,120.5" fill="#1d2733"/>
+<rect x="348" y="112" width="58" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="377.0" y="127.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(2,2)</text>
+<rect x="406" y="112" width="58" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="435.0" y="127.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(3,5)</text>
+<text x="192" y="158" font-size="10.0" fill="#5b6b7c" text-anchor="end" font-family="Menlo, monospace" xml:space="preserve">2</text>
+<rect x="200" y="142" width="46" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="223.0" y="157.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">ptr</text>
+<rect x="246" y="142" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="261.0" y="157.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<rect x="276" y="142" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="291.0" y="157.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1</text>
+<line x1="306" y1="154" x2="346" y2="154" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="346,154 338.8,157.5 338.8,150.5" fill="#1d2733"/>
+<rect x="348" y="142" width="58" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="377.0" y="157.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(3,1)</text>
+<text x="192" y="188" font-size="10.0" fill="#5b6b7c" text-anchor="end" font-family="Menlo, monospace" xml:space="preserve">3</text>
+<rect x="200" y="172" width="46" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="223.0" y="187.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">ptr</text>
+<rect x="246" y="172" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="261.0" y="187.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">0</text>
+<rect x="276" y="172" width="30" height="24" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="291.0" y="187.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">0</text>
+<text x="320" y="188" font-size="10.0" fill="#5b6b7c" text-anchor="start" >no allocation</text>
+<text x="348" y="76" font-size="10.0" fill="#5b6b7c" text-anchor="start" >heap: (neighbor, weight) pairs</text>
+<text x="20" y="222" font-size="11.0" fill="#5b6b7c" text-anchor="start" >map form: HashMap&lt;&amp;str, &amp;[(&amp;str, u32)]&gt;</text>
+<rect x="20" y="232" width="40" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="40.0" y="247.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">"A"</text>
+<rect x="60" y="232" width="130" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="125.0" y="247.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">[("B",1), ("C",4)]</text>
+<rect x="200" y="232" width="40" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="220.0" y="247.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">"B"</text>
+<rect x="240" y="232" width="130" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="305.0" y="247.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">[("C",2), ("D",5)]</text>
+<rect x="380" y="232" width="40" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="400.0" y="247.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">"C"</text>
+<rect x="420" y="232" width="130" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="485.0" y="247.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">[("D",1)]</text>
+<rect x="560" y="232" width="40" height="24" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="580.0" y="247.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">"D"</text>
+<rect x="600" y="232" width="130" height="24" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="665.0" y="247.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">[]</text>
+<text x="20" y="280" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The index form finds a node's edges with one array index. The map form hashes the key, and allows any node type.</text>
+</svg>

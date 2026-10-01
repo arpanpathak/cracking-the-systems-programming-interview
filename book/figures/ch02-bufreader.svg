@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 205" width="640" height="205" font-family="Helvetica, Arial, sans-serif">
+<text x="20" y="22" font-size="13" font-weight="bold" fill="#1d2733">Reading a 3-line file, line by line</text>
+<text x="20" y="48" font-size="12" fill="#d9622b" font-weight="bold">Without a buffer: one system call per small read</text>
+<rect x="20" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="42" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="70" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="92" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="120" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="142" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="170" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="192" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="220" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="242" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="270" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="292" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="320" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="342" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="370" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="392" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="420" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="442" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="470" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="492" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="520" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="542" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="570" y="58" width="44" height="26" rx="3" fill="#fbe3d6" stroke="#d9622b"/><text x="592" y="75" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<text x="20" y="102" font-size="11" fill="#5b6b7c">Each read crosses into the kernel and returns a few bytes.</text>
+<text x="20" y="132" font-size="12" fill="#2f7f86" font-weight="bold">With BufReader: one system call fills an 8 KiB buffer</text>
+<rect x="20" y="142" width="44" height="26" rx="3" fill="#e3f1ea" stroke="#2f7f86"/><text x="42" y="159" font-size="9" text-anchor="middle" font-family="Menlo, monospace">read</text>
+<rect x="80" y="142" width="420" height="26" rx="3" fill="#fdf6e8" stroke="#c89b3c"/>
+<text x="90" y="159" font-size="10" font-family="Menlo, monospace">line 1\n</text>
+<text x="180" y="159" font-size="10" font-family="Menlo, monospace">line 2\n</text>
+<text x="270" y="159" font-size="10" font-family="Menlo, monospace">line 3\n</text>
+<text x="360" y="159" font-size="10" font-family="Menlo, monospace">(rest of 8 KiB unused)</text>
+<text x="20" y="190" font-size="11" fill="#5b6b7c">read_line then copies each line out of the buffer, in your process, with no system call.</text>
+</svg>

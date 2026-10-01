@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220.0" width="760" height="220.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Wait-for graphs: an edge from T0 to T1 means T0 waits for a lock that T1 holds</text>
+<line x1="111.0" y1="90.0" x2="208.0" y2="90.0" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="208.0,90.0 200.8,93.5 200.8,86.5" fill="#1d2733"/>
+<line x1="217.10724711618667" y1="106.57639656490285" x2="173.50669349732826" y2="162.63425121772082" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="173.50669349732826,162.63425121772082 175.2,154.8 180.7,159.1" fill="#1d2733"/>
+<line x1="102.89275288381333" y1="106.57639656490285" x2="146.49330650267174" y2="162.63425121772082" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="146.49330650267174,162.63425121772082 139.3,159.1 144.8,154.8" fill="#1d2733"/>
+<circle cx="90" cy="90" r="20" fill="#eef3f7" stroke="#1d2733" stroke-width="1.6"/>
+<text x="90" y="94" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">T0</text>
+<circle cx="230" cy="90" r="20" fill="#eef3f7" stroke="#1d2733" stroke-width="1.6"/>
+<text x="230" y="94" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">T1</text>
+<circle cx="160" cy="180" r="20" fill="#eef3f7" stroke="#1d2733" stroke-width="1.6"/>
+<text x="160" y="184" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">T2</text>
+<text x="90" y="210" font-size="10.0" fill="#2f7f86" text-anchor="start" >no cycle: T2 finishes, then T1, then T0</text>
+<line x1="491.0" y1="90.0" x2="588.0" y2="90.0" stroke="#d9622b" stroke-width="1.6"/>
+<polygon points="588.0,90.0 580.8,93.5 580.8,86.5" fill="#d9622b"/>
+<line x1="597.1072471161867" y1="106.57639656490285" x2="553.5066934973282" y2="162.63425121772082" stroke="#d9622b" stroke-width="1.6"/>
+<polygon points="553.5066934973282,162.63425121772082 555.2,154.8 560.7,159.1" fill="#d9622b"/>
+<line x1="527.1072471161867" y1="163.42360343509714" x2="483.50669349732823" y2="107.36574878227918" stroke="#d9622b" stroke-width="1.6"/>
+<polygon points="483.50669349732823,107.36574878227918 490.7,110.9 485.2,115.2" fill="#d9622b"/>
+<circle cx="470" cy="90" r="20" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.6"/>
+<text x="470" y="94" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">T0</text>
+<circle cx="610" cy="90" r="20" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.6"/>
+<text x="610" y="94" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">T1</text>
+<circle cx="540" cy="180" r="20" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.6"/>
+<text x="540" y="184" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">T2</text>
+<text x="470" y="210" font-size="10.0" fill="#d9622b" text-anchor="start" >cycle: each waits for the next, forever</text>
+</svg>

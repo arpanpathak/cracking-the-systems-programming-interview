@@ -1,0 +1,1016 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Files, paths, and the command line - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch02.png" alt="Ledger, the robot who is the keeper of the file room, beside a filing cabinet, a stack of pages, and a paper feed">
+<h1 id="files-paths-and-the-command-line"><a class="header" href="#files-paths-and-the-command-line">Files, paths, and the command line</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What happens between your program and the disk when you read a file</li>
+<li><code>Result</code> and the <code>?</code> operator, which every later chapter uses</li>
+<li><code>Path</code> and <code>PathBuf</code>, and reading a file whole or line by line</li>
+<li>Appending, copying, renaming, and deleting files, and telling one error from another</li>
+<li>Listing and walking directories</li>
+<li>Reading a large file one page at a time, and parsing command-line arguments</li>
+</ul>
+</div>
+
+<p>In chapter 1 your programs only computed values. In this chapter they talk to the operating system. They
+read and write files, look inside directories, and read the arguments you type after a program’s name.</p>
+<p>Every one of these operations can fail. A file may not exist, or you may not have permission to read it.
+Rust reports such failures through a type called <code>Result</code>, so this chapter starts there. After that come
+paths, reading, writing, and directories. The chapter ends with two complete tools. One reads a file a page
+at a time. The other turns command-line arguments into typed options.</p>
+<p>A few terms:</p>
+<ul>
+<li>The <strong>kernel</strong> is the core of the operating system. It controls the disk, memory, and devices.</li>
+<li>A <strong>system call</strong> is a request from a program to the kernel, such as “open this file” or “read 100
+bytes”.</li>
+<li>A <strong>file descriptor</strong> is a small number the kernel gives your program for each open file. Later system
+calls use it to name that file.</li>
+</ul>
+<h2 id="21-what-happens-when-you-read-a-file"><a class="header" href="#21-what-happens-when-you-read-a-file">2.1 What happens when you read a file</a></h2>
+<p>Your program cannot read the disk directly. It asks the kernel with system calls, and the kernel does the
+work. Figure 2.1 shows the steps for reading a small file.</p>
+<figure>
+<img src="figures/ch02-syscall.svg" alt="The program asks the kernel through system calls; the kernel checks its page cache, reads from disk if needed, and copies bytes into the program&#39;s buffer. Opening the file returns file descriptor 3.">
+<figcaption><b>Figure 2.1</b> A read goes through the kernel. The kernel keeps recently used file data in memory, in its page cache. A second read of the same file usually does not touch the disk.</figcaption>
+</figure>
+<p>The steps are:</p>
+<ol>
+<li><code>open</code> asks the kernel to open the file. The kernel checks permissions and returns a file descriptor.</li>
+<li><code>read</code> asks for bytes from that descriptor. The kernel copies them into a buffer in your program.</li>
+<li><code>close</code> tells the kernel you are done, so it can release the descriptor.</li>
+</ol>
+<p>Rust’s standard library makes these calls for you. Each call can fail, and the library reports that with
+<code>Result</code>.</p>
+<h2 id="22-result-and-the--operator"><a class="header" href="#22-result-and-the--operator">2.2 <code>Result</code> and the <code>?</code> operator</a></h2>
+<p><code>Result</code> is an enum with two variants:</p>
+<pre><code class="language-rust">enum Result&lt;T, E&gt; {
+    Ok(T),    // the operation succeeded and produced a T
+    Err(E),   // the operation failed with an error of type E
+}</code></pre>
+<p>For file operations, the error type is <code>std::io::Error</code>, and <code>io::Result&lt;T&gt;</code> is a shorter name for
+<code>Result&lt;T, io::Error&gt;</code>. So <code>fs::read_to_string(path)</code> returns <code>io::Result&lt;String&gt;</code>: either the file’s text,
+or the reason it could not be read.</p>
+<p>You can handle a <code>Result</code> with <code>match</code>. That gets long when a function makes several calls, each of which
+can fail. The <code>?</code> operator shortens it. Put <code>?</code> after an expression of type <code>Result</code>, and it does one of two
+things (figure 2.2):</p>
+<ul>
+<li>If the value is <code>Ok(x)</code>, the expression evaluates to <code>x</code> and the function continues.</li>
+<li>If the value is <code>Err(e)</code>, the function returns <code>Err(e)</code> immediately.</li>
+</ul>
+<figure>
+<img src="figures/ch02-question.svg" alt="read_to_string returns a Result. On Ok, ? unwraps the value and the function continues. On Err, ? returns the error from the current function.">
+<figcaption><b>Figure 2.2</b> The <code>?</code> operator. It can only be used inside a function that itself returns <code>Result</code>.</figcaption>
+</figure>
+<p>Because <code>?</code> returns from the function, the function must return a <code>Result</code> too. That is why the programs in
+this chapter declare <code>fn main() -&gt; io::Result&lt;()&gt;</code>. If <code>main</code> returns an <code>Err</code>, Rust prints the error and
+the program exits with status 1.</p>
+<h2 id="23-paths"><a class="header" href="#23-paths">2.3 Paths</a></h2>
+<p>A <strong>path</strong> names a file or directory, such as <code>/tmp/data.txt</code>. Rust has two path types. <code>&amp;Path</code> is a
+borrowed view of a path, and <code>PathBuf</code> is an owned path that can grow. They relate the same way <code>&amp;str</code>
+relates to <code>String</code> (figure 2.3).</p>
+<figure>
+<img src="figures/ch02-path.svg" alt="PathBuf derefs to a Path reference; Path.join creates a new PathBuf; PathBuf.push modifies in place">
+<figcaption><b>Figure 2.3</b> <code>join</code> returns a new owned path. <code>push</code> extends a <code>PathBuf</code> in place. A <code>&amp;PathBuf</code> converts to <code>&amp;Path</code> automatically when a function asks for one.</figcaption>
+</figure>
+<p class="listing"><b>Listing 2.1</b> Building paths and taking them apart. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/path_buff.rs">src/bin/path_buff.rs</a></p>
+
+<pre><code class="language-rust">use std::path::{Path, PathBuf};
+
+fn main() {
+    let dir = Path::new("/tmp");
+    let file = dir.join("data.txt");
+
+    let mut buf = PathBuf::from(dir);
+    buf.push("nested");
+    buf.push("file.txt");
+
+    println!("file: {}", file.display());
+    println!("buf:  {}", buf.display());
+    println!("parent: {:?}", buf.parent());
+    println!("file_name: {:?}", buf.file_name());
+    println!("ext: {:?}", buf.extension());
+}</code></pre>
+<p><code>Path::new("/tmp")</code> wraps a string as a path without copying it. <code>dir.join("data.txt")</code> builds a new
+<code>PathBuf</code>. <code>PathBuf::from(dir)</code> copies the path into an owned buffer, and each <code>push</code> adds one component.</p>
+<pre><code class="language-text">$ cargo run --bin path_buff
+file: /tmp/data.txt
+buf:  /tmp/nested/file.txt
+parent: Some("/tmp/nested")
+file_name: Some("file.txt")
+ext: Some("txt")
+</code></pre>
+<p><code>parent</code>, <code>file_name</code>, and <code>extension</code> return <code>Option</code>, because some paths lack them: <code>/</code> has no parent.
+To print a path you call <code>display()</code>. On Linux and macOS a path is a sequence of bytes that need not be
+valid UTF-8. <code>display()</code> replaces any invalid bytes when it prints.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> If the argument to <code>join</code> or <code>push</code> is an absolute path, it replaces the whole path instead of
+extending it. <code>Path::new("/srv").join("/etc/passwd")</code> is <code>/etc/passwd</code>. If part of a path comes from a user,
+reject absolute paths and <code>..</code> before you join it.</p>
+</div>
+
+<h2 id="24-reading-a-file"><a class="header" href="#24-reading-a-file">2.4 Reading a file</a></h2>
+<h3 id="241-the-whole-file-at-once"><a class="header" href="#241-the-whole-file-at-once">2.4.1 The whole file at once</a></h3>
+<p>The simplest read loads the whole file into one <code>String</code>.</p>
+<p class="listing"><b>Listing 2.2</b> Write a file, then read it back. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_write_file.rs">src/bin/read_write_file.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fs,
+    io,
+    path::{Path, PathBuf},
+};
+
+// `&amp;Path` accepts both a `&amp;Path` and a `&amp;PathBuf` argument; `&amp;PathBuf` would not.
+fn read_content_of_file(path: &amp;Path) -&gt; io::Result&lt;String&gt; {
+    fs::read_to_string(path)
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    fs::write("hello.txt", "Hello, Rust!\n")?;
+
+    // `join` builds a new PathBuf and leaves `base_dir` unchanged.
+    let base_dir = PathBuf::from(".");
+    let joined_path = base_dir.join("hello.txt");
+
+    // `push` mutates the PathBuf in place instead of returning a new one.
+    let mut mut_base_dir = PathBuf::from(".");
+    mut_base_dir.push("hello.txt");
+
+    let text = read_content_of_file(&amp;joined_path)?;
+    println!("File contents (via .join()):\n{}", text);
+
+    let text_inplace = read_content_of_file(&amp;mut_base_dir)?;
+    println!("File contents (via .push()):\n{}", text_inplace);
+
+    Ok(())
+}</code></pre>
+<p><code>fs::write</code> creates the file (or empties an existing one) and writes the text. <code>fs::read_to_string</code> opens,
+reads, and closes the file in one call. Both calls end with <code>?</code>, so a failure in either one returns from
+<code>main</code>.</p>
+<p><code>read_content_of_file</code> takes <code>&amp;Path</code>. The program calls it twice, with a path built by <code>join</code> and a path built
+by <code>push</code>. Both are <code>PathBuf</code> values that convert to <code>&amp;Path</code>. The two calls print the
+same text.</p>
+<p><code>read_to_string</code> keeps the whole file in memory. That suits a small configuration file. For a log of
+several gigabytes, read one line at a time instead.</p>
+<h3 id="242-one-line-at-a-time"><a class="header" href="#242-one-line-at-a-time">2.4.2 One line at a time</a></h3>
+<p>To read line by line, wrap the file in a <code>BufReader</code>. Figure 2.4 shows why the buffer helps.</p>
+<figure>
+<img src="figures/ch02-bufreader.svg" alt="Top: without a buffer, reading a small file line by line makes twelve small read system calls. Bottom: with BufReader, one read fills an 8 KiB buffer and the lines are copied out of it.">
+<figcaption><b>Figure 2.4</b> A <code>BufReader</code> asks the kernel for a large block at once and hands out lines from it. Fewer system calls means less time spent crossing into the kernel.</figcaption>
+</figure>
+<p class="listing"><b>Listing 2.3</b> Numbered lines through a buffered reader. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/readfile_line_by_line.rs">src/bin/readfile_line_by_line.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+}; // BufRead brings `lines()` into scope.
+
+fn main() -&gt; std::io::Result&lt;()&gt; {
+    let file = File::open("log.txt")?;
+    let reader = BufReader::new(file);
+
+    for (i, line) in reader.lines().enumerate() {
+        let line = line?;
+        println!("{}: {}", i + 1, line);
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>BufReader::new(file)</code> takes ownership of the file and adds an 8 KiB buffer. The <code>lines</code> method comes from
+the <code>BufRead</code> trait, so the program imports that trait. Without the import, the method is not visible.</p>
+<p><code>lines()</code> yields one <code>io::Result&lt;String&gt;</code> per line, with the newline removed. Reading can fail partway
+through the file, so each line is a <code>Result</code>. <code>let line = line?;</code> replaces the <code>Result</code> with the <code>String</code>
+inside it, using the shadowing you saw in section 1.2. <code>enumerate()</code> pairs each line with its index,
+starting at 0, which is why the program prints <code>i + 1</code>.</p>
+<h3 id="243-reusing-one-buffer-and-skipping-bad-lines"><a class="header" href="#243-reusing-one-buffer-and-skipping-bad-lines">2.4.3 Reusing one buffer, and skipping bad lines</a></h3>
+<p><code>lines()</code> allocates a new <code>String</code> for every line. For a very large file, you can read every line into the
+same <code>String</code> instead.</p>
+<p class="listing"><b>Listing 2.4</b> One reused buffer, with invalid lines skipped. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_large_file.rs">src/bin/read_large_file.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fs::File,
+    io::{self, BufRead, BufReader},
+};
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let file = File::open("large.txt")?;
+    let mut reader = BufReader::new(file);
+    let mut line = String::new();
+
+    while match reader.read_line(&amp;mut line) {
+        Ok(0) =&gt; false, // EOF, stop
+        Ok(_) =&gt; {
+            process(line.trim_end());
+            line.clear();
+            true // keep reading
+        }
+        Err(e) if e.kind() == io::ErrorKind::InvalidData =&gt; {
+            eprintln!("skipping bad line: {e}");
+            line.clear();
+            true
+        }
+        Err(e) =&gt; return Err(e), // return works inside the condition
+    } {}
+
+    Ok(())
+}
+
+fn process(line: &amp;str) {
+    println!("{line}");
+}</code></pre>
+<p><code>reader.read_line(&amp;mut line)</code> appends the next line, including its newline, to <code>line</code>. It returns the
+number of bytes read. The loop is written in an unusual way: <code>while match ... { ... } {}</code>. The whole
+<code>match</code> is the loop’s condition, and the loop’s body, <code>{}</code>, is empty. Each arm of the <code>match</code> evaluates to
+<code>true</code> to continue or <code>false</code> to stop.</p>
+<p>Table 2.1 lists the four outcomes.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>read_line</code> returns</th><th>Meaning</th><th>What the loop does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Ok(0)</code></td><td>end of the file</td><td>stops</td></tr>
+<tr><td><code>Ok(n)</code></td><td>a line of <code>n</code> bytes</td><td>processes it, clears the buffer, continues</td></tr>
+<tr><td><code>Err(e)</code> with kind <code>InvalidData</code></td><td>the line is not valid UTF-8 text</td><td>prints a message, clears, continues</td></tr>
+<tr><td>any other <code>Err</code></td><td>a real read failure</td><td>returns the error from <code>main</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Because <code>read_line</code> appends, the loop must call <code>line.clear()</code> after each line. Otherwise the buffer would
+grow to hold the whole file.</p>
+<p>The <code>InvalidData</code> arm can continue safely because <code>read_line</code> has already consumed the invalid bytes. You
+can check this with a file whose second line holds two bytes that are not UTF-8:</p>
+<pre><code class="language-text">$ printf 'ok\n\xff\xfebad\nfine\n' &gt; large.txt
+$ cargo run --bin read_large_file
+ok
+skipping bad line: stream did not contain valid UTF-8
+fine
+</code></pre>
+<h2 id="25-writing-and-changing-files"><a class="header" href="#25-writing-and-changing-files">2.5 Writing and changing files</a></h2>
+<h3 id="251-appending"><a class="header" href="#251-appending">2.5.1 Appending</a></h3>
+<p><code>fs::write</code> replaces a file’s contents. To add lines to the end of a log instead, open the file with
+<code>OpenOptions</code>.</p>
+<p class="listing"><b>Listing 2.5</b> Appending lines to a file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/append_to_file_open_options.rs">src/bin/append_to_file_open_options.rs</a></p>
+
+<pre><code class="language-rust">use std::{fs::OpenOptions, io::Write};
+
+fn main() -&gt; std::io::Result&lt;()&gt; {
+    let mut file = OpenOptions::new()
+        .create(true) // create if missing
+        .append(true) // always write at the end
+        .open("log.txt")?;
+
+    writeln!(file, "New log line")?;
+    writeln!(file, "Another line")?;
+
+    Ok(())
+}</code></pre>
+<p><code>OpenOptions</code> collects settings, and <code>open</code> applies them. <code>create(true)</code> creates the file if it is missing.
+<code>append(true)</code> asks the kernel to move to the end of the file before every write. The kernel does that move
+and the write as one step. So two programs appending to the same log do not overwrite each other’s lines.</p>
+<p><code>writeln!</code> works like <code>println!</code>, but writes to any value that implements the <code>std::io::Write</code> trait, such
+as a <code>File</code>. The trait must be imported, as the second <code>use</code> line does.</p>
+<h3 id="252-copying-renaming-and-deleting"><a class="header" href="#252-copying-renaming-and-deleting">2.5.2 Copying, renaming, and deleting</a></h3>
+<p class="listing"><b>Listing 2.6</b> Copy, rename, remove. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs">src/bin/copy_rename_delete_file.rs</a></p>
+
+<pre><code class="language-rust">use std::{fs, io};
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    fs::write("a.txt", "hello")?;
+
+    fs::copy("a.txt", "b.txt")?;
+    fs::rename("b.txt", "c.txt")?;
+    fs::remove_file("a.txt")?;
+
+    println!("Done");
+    Ok(())
+}</code></pre>
+<p>After the program runs, <code>a.txt</code> is gone and <code>c.txt</code> holds <code>hello</code>. Each call is one or two system calls.</p>
+<p><code>fs::rename</code> has a property you can build on. When both names are on the same disk, the rename is
+<strong>atomic</strong>. Any other program sees either the old name or the new one, never a half-renamed file. To update
+a file safely, write the new contents to a temporary file, then rename it over the old one. A crash in the
+middle leaves either the old file or the new file, never a partial one.</p>
+<h3 id="253-telling-one-error-from-another"><a class="header" href="#253-telling-one-error-from-another">2.5.3 Telling one error from another</a></h3>
+<p>An <code>io::Error</code> carries a <strong>kind</strong>, an enum value such as <code>NotFound</code> or <code>PermissionDenied</code>. You can match on
+it to handle one failure and report the others.</p>
+<p class="listing"><b>Listing 2.7</b> Matching on the kind of an error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_error_handling.rs">src/bin/file_error_handling.rs</a></p>
+
+<pre><code class="language-rust">use std::{fs, io};
+
+fn read_file(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
+    fs::read_to_string(path)
+}
+
+fn main() {
+    match read_file("missing.txt") {
+        Ok(text) =&gt; println!("{}", text),
+        Err(e) if e.kind() == io::ErrorKind::NotFound =&gt; {
+            eprintln!("File not found");
+        }
+        Err(e) =&gt; eprintln!("Error: {}", e),
+    }
+}</code></pre>
+<p>The second arm has a <strong>match guard</strong>, the <code>if</code> after the pattern. It matches only errors whose kind is
+<code>NotFound</code>. Every other error falls through to the third arm. This <code>main</code> does not return a <code>Result</code>, so it
+cannot use <code>?</code>; it handles every case itself. Run it where <code>missing.txt</code> does not exist, and it prints
+<code>File not found</code>.</p>
+<h2 id="26-directories"><a class="header" href="#26-directories">2.6 Directories</a></h2>
+<p>A directory is a list of entries. Each entry has a name and a type: a file, a directory, or a symbolic
+link. A <strong>symbolic link</strong> is an entry that points to another path.</p>
+<h3 id="261-one-level"><a class="header" href="#261-one-level">2.6.1 One level</a></h3>
+<p class="listing"><b>Listing 2.8</b> Listing the current directory. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs">src/bin/list_directory.rs</a></p>
+
+<pre><code class="language-rust">use std::{fs, io};
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    for entry in fs::read_dir(".")? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            println!("[DIR]  {}", path.display());
+        } else {
+            println!("[FILE] {}", path.display());
+        }
+    }
+    Ok(())
+}</code></pre>
+<p><code>fs::read_dir(".")</code> returns an iterator over the entries of the current directory. Each item is a
+<code>Result</code>, because reading an entry can fail. <code>path.is_dir()</code> asks the kernel for the entry’s details. If
+the entry is a symbolic link, <code>is_dir</code> follows it and reports on the target.</p>
+<h3 id="262-every-level"><a class="header" href="#262-every-level">2.6.2 Every level</a></h3>
+<p>To visit subdirectories, the function calls itself on each directory it finds, the recursion you met in
+section 1.5.</p>
+<p class="listing"><b>Listing 2.9</b> Walking a directory tree. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/recusrive_directory_walk.rs">src/bin/recusrive_directory_walk.rs</a></p>
+
+<pre><code class="language-rust">use std::{fs, io, path::Path};
+
+fn walk(dir: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            println!("[DIR]  {}", path.display());
+            walk(&amp;path)?;
+        } else {
+            println!("[FILE] {}", path.display());
+        }
+    }
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    walk(Path::new("."))?;
+    Ok(())
+}</code></pre>
+<p><code>walk</code> uses <code>entry.file_type()</code> instead of <code>path.is_dir()</code>. The difference is how each treats symbolic
+links. <code>file_type()</code> does not follow them, so a link to a directory is reported as a link, and <code>walk</code> does
+not descend into it. That keeps the walk from looping forever through a link that points back to one of its
+own parent directories. On Linux, <code>file_type()</code> is usually also faster, because the kernel returns the type
+together with the name.</p>
+<p>The recursion goes one level deeper per directory level. Real directory trees are shallow, so the stack is
+not a concern here.</p>
+<h2 id="27-project-reading-a-large-file-one-page-at-a-time"><a class="header" href="#27-project-reading-a-large-file-one-page-at-a-time">2.7 Project: reading a large file one page at a time</a></h2>
+<p>Suppose a service stores millions of job records, one per line, in a file. A client asks for them a page at
+a time. With each page, the service returns a <strong>cursor</strong>, a value the client sends back to get the next page.</p>
+<p>If the cursor is the byte position where the next page starts, the service needs no memory of past
+requests. Any copy of the service can read the next page from the cursor alone.</p>
+<h3 id="271-the-page-type"><a class="header" href="#271-the-page-type">2.7.1 The page type</a></h3>
+<p class="listing"><b>Listing 2.10</b> The <code>Page</code> type (lines 1 to 9). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fs::File,
+    io::{self, BufRead, BufReader, Seek, SeekFrom},
+};
+
+struct Page {
+    jobs: Vec&lt;String&gt;,
+    next_cursor: Option&lt;u64&gt;, // Byte offset where the next page starts
+}</code></pre>
+<p>A <code>Page</code> holds the lines and an <code>Option&lt;u64&gt;</code> for the next cursor. <code>None</code> means there are no more pages.</p>
+<h3 id="272-counting-bytes-to-find-the-next-cursor"><a class="header" href="#272-counting-bytes-to-find-the-next-cursor">2.7.2 Counting bytes to find the next cursor</a></h3>
+<p>The next cursor is the byte where this page ends. There is a trap in finding it. You might ask the file for
+its current position after reading three lines. That answer is wrong, because the <code>BufReader</code> read 8 KiB
+ahead on its first read, as figure 2.4 showed. The file’s position is past the buffered data, not after the
+third line (figure 2.5).</p>
+<figure>
+<img src="figures/ch02-cursor.svg" alt="A file drawn as rows of three lines. cursor 0 points at the first line, next cursor 35 at line four, and the last page has no next cursor. The BufReader buffer extends far past the page.">
+<figcaption><b>Figure 2.5</b> Each row is one page. The next cursor is the sum of the bytes each <code>read_line</code> returned: 12 + 12 + 11 = 35 for the first page. The file's own position is far past that, at the end of what the buffer read.</figcaption>
+</figure>
+<p>So <code>read_page</code> counts the bytes itself:</p>
+<p class="listing"><b>Listing 2.11</b> <code>read_page</code> (lines 11 to 38).</p>
+
+<pre><code class="language-rust">fn read_page(path: &amp;str, cursor: u64, page_size: usize) -&gt; io::Result&lt;Page&gt; {
+    let mut file = File::open(path)?;
+    file.seek(SeekFrom::Start(cursor))?;
+    let mut reader = BufReader::new(file);
+
+    // Optimization which preserves as large as the max mage size
+    let mut jobs: Vec&lt;String&gt; = Vec::with_capacity(page_size);
+    let mut offset = cursor;
+    let mut line = String::new();
+
+    while jobs.len() &lt; page_size {
+        // Clear the previously read line
+        line.clear();
+
+        match reader.read_line(&amp;mut line)? {
+            0 =&gt; break,
+            bytes_read =&gt; {
+                offset += bytes_read as u64;
+                jobs.push(line.trim_end().to_string());
+            }
+        }
+    }
+
+    let at_end = reader.fill_buf()?.is_empty();
+    let next_cursor = if at_end { None } else { Some(offset) };
+
+    Ok(Page { jobs, next_cursor })
+}</code></pre>
+<p><code>read_page</code> opens the file and calls <code>seek(SeekFrom::Start(cursor))</code>, which moves the file’s read position
+to byte <code>cursor</code>. Then it wraps the file in a <code>BufReader</code>. <code>Vec::with_capacity(page_size)</code> reserves room
+for a full page, so pushing lines does not reallocate.</p>
+<p><code>offset</code> starts at <code>cursor</code>. Each <code>read_line</code> returns how many bytes it consumed, newline included, and
+<code>offset</code> grows by that amount. <code>line.trim_end()</code> removes the newline (and any trailing spaces) before the
+line is stored, but the count still includes them, so <code>offset</code> stays exact.</p>
+<p>The last page needs care. If the file ends exactly after this page’s last line, the page should report no
+next cursor. <code>reader.fill_buf()</code> returns the bytes waiting in the buffer, reading more if the buffer is
+empty, without consuming them. If it returns nothing, the file has ended, and the cursor is <code>None</code>.</p>
+<h3 id="273-the-complete-program"><a class="header" href="#273-the-complete-program">2.7.3 The complete program</a></h3>
+<p><code>main</code> acts as a client. It asks for pages of three lines until the cursor is <code>None</code>.</p>
+<p class="listing"><b>Listing 2.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    fs::File,
+    io::{self, BufRead, BufReader, Seek, SeekFrom},
+};
+
+struct Page {
+    jobs: Vec&lt;String&gt;,
+    next_cursor: Option&lt;u64&gt;, // Byte offset where the next page starts
+}
+
+fn read_page(path: &amp;str, cursor: u64, page_size: usize) -&gt; io::Result&lt;Page&gt; {
+    let mut file = File::open(path)?;
+    file.seek(SeekFrom::Start(cursor))?;
+    let mut reader = BufReader::new(file);
+
+    // Optimization which preserves as large as the max mage size
+    let mut jobs: Vec&lt;String&gt; = Vec::with_capacity(page_size);
+    let mut offset = cursor;
+    let mut line = String::new();
+
+    while jobs.len() &lt; page_size {
+        // Clear the previously read line
+        line.clear();
+
+        match reader.read_line(&amp;mut line)? {
+            0 =&gt; break,
+            bytes_read =&gt; {
+                offset += bytes_read as u64;
+                jobs.push(line.trim_end().to_string());
+            }
+        }
+    }
+
+    let at_end = reader.fill_buf()?.is_empty();
+    let next_cursor = if at_end { None } else { Some(offset) };
+
+    Ok(Page { jobs, next_cursor })
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let mut cursor = 0;
+
+    loop {
+        let page = read_page("src/bin/large_file.txt", cursor, 3)?;
+
+        println!("--- page ---");
+        for job in &amp;page.jobs {
+            println!("{job}");
+        }
+
+        match page.next_cursor {
+            Some(next) =&gt; cursor = next,
+            None =&gt; break,
+        }
+    }
+
+    Ok(())
+}</code></pre>
+<p>The input file has thirteen lines, so the program prints four full pages and one page of one line:</p>
+<pre><code class="language-text">$ cargo run --bin file_pagination
+--- page ---
+First Line
+Second Line
+Thrid Line
+--- page ---
+4
+5
+6
+--- page ---
+7
+8
+9
+--- page ---
+10
+11
+12
+--- page ---
+13
+</code></pre>
+<div class="callout tip" markdown="1">
+<p><strong>TIP:</strong> If the file can change between requests, an old cursor may point into the middle of a line. You
+can include a version number with the offset in the cursor, and reject cursors whose version is out of date.</p>
+</div>
+
+<h2 id="28-project-command-line-arguments"><a class="header" href="#28-project-command-line-arguments">2.8 Project: command-line arguments</a></h2>
+<p>When you run <code>command_line_args --name ada --count 2 --verbose</code>, the operating system passes the program a
+list of strings (figure 2.6). The first string is the program’s own path. The rest are the arguments, in
+the order you typed them.</p>
+<figure>
+<img src="figures/ch02-argv.svg" alt="Six boxes: the program path, --name, ada, --count, 2, --verbose, numbered 0 to 5">
+<figcaption><b>Figure 2.6</b> The arguments as the program receives them. <code>--name</code> and <code>--count</code> each take the next string as their value.</figcaption>
+</figure>
+<p>This program turns that list into a struct of typed options, or an error message.</p>
+<h3 id="281-the-options-and-their-defaults"><a class="header" href="#281-the-options-and-their-defaults">2.8.1 The options and their defaults</a></h3>
+<p class="listing"><b>Listing 2.13</b> The options (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs">src/bin/command_line_args.rs</a></p>
+
+<pre><code class="language-rust">use std::{env::args, process::ExitCode};
+
+/// The options this program understands.
+#[derive(Debug, PartialEq)]
+struct Options {
+    name: String,
+    count: u32,
+    verbose: bool,
+}
+
+impl Default for Options {
+    fn default() -&gt; Self {
+        Self {
+            name: String::from("world"),
+            count: 1,
+            verbose: false,
+        }
+    }
+}</code></pre>
+<p><code>Options</code> has one field per option. The <code>Default</code> trait gives the values used when an option is not given.
+<code>#[derive(Debug, PartialEq)]</code> lets the tests print and compare <code>Options</code> values.</p>
+<h3 id="282-parsing"><a class="header" href="#282-parsing">2.8.2 Parsing</a></h3>
+<p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 43).</p>
+
+<pre><code class="language-rust">/// Turn the arguments after the program name into `Options`.
+fn parse(arguments: impl IntoIterator&lt;Item = String&gt;) -&gt; Result&lt;Options, String&gt; {
+    let mut options = Options::default();
+    let mut arguments = arguments.into_iter();
+
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--name" =&gt; {
+                options.name = arguments.next().ok_or("--name needs a value")?;
+            }
+            "--count" =&gt; {
+                let value = arguments.next().ok_or("--count needs a value")?;
+                options.count = value
+                    .parse()
+                    .map_err(|_| format!("--count needs a number, got {value:?}"))?;
+            }
+            "--verbose" =&gt; options.verbose = true,
+            other =&gt; return Err(format!("unknown argument {other:?}")),
+        }
+    }
+
+    Ok(options)
+}</code></pre>
+<p><code>parse</code> takes <code>impl IntoIterator&lt;Item = String&gt;</code>, which means “anything that can produce <code>String</code>s one at a
+time”. The program passes the real arguments. The tests pass short lists written in the test code.</p>
+<p>The loop is <code>while let Some(argument) = arguments.next()</code>. It calls <code>next()</code> itself, rather than using
+<code>for</code>, because <code>--name</code> must take the next string from the same iterator as its value. A <code>for</code> loop holds
+the iterator for the whole loop, so the body could not call <code>next()</code> on it.</p>
+<p><code>arguments.next().ok_or("--name needs a value")?</code> does two steps. <code>ok_or</code> turns <code>None</code> into an <code>Err</code> with
+the message. Then <code>?</code> returns that error from <code>parse</code>. The <code>--count</code> arm adds a third step. <code>parse()</code>
+converts the text to a number, and <code>map_err</code> replaces a parse error with a message that includes the text.</p>
+<p>An argument the program does not know is an error, so a misspelled option is reported instead of ignored.</p>
+<h3 id="283-the-exit-code"><a class="header" href="#283-the-exit-code">2.8.3 The exit code</a></h3>
+<p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 45 to 64).</p>
+
+<pre><code class="language-rust">fn main() -&gt; ExitCode {
+    let options = match parse(args().skip(1)) {
+        Ok(options) =&gt; options,
+        Err(message) =&gt; {
+            eprintln!("error: {message}");
+            eprintln!("usage: command_line_args [--name NAME] [--count N] [--verbose]");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    for index in 0..options.count {
+        if options.verbose {
+            println!("[{index}] hello, {}", options.name);
+        } else {
+            println!("hello, {}", options.name);
+        }
+    }
+
+    ExitCode::SUCCESS
+}</code></pre>
+<p>A program’s <strong>exit code</strong> is a number it returns to whoever started it. Zero means success. <code>main</code> returns
+<code>ExitCode</code>, so it can report failure after printing its own message. <code>args().skip(1)</code> drops the program’s
+path. On an error, <code>main</code> prints the message and a usage line to standard error with <code>eprintln!</code>, then
+returns <code>ExitCode::FAILURE</code>, which is 1.</p>
+<h3 id="284-the-complete-program"><a class="header" href="#284-the-complete-program">2.8.4 The complete program</a></h3>
+<p class="listing"><b>Listing 2.16</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs">src/bin/command_line_args.rs</a></p>
+
+<pre><code class="language-rust">use std::{env::args, process::ExitCode};
+
+/// The options this program understands.
+#[derive(Debug, PartialEq)]
+struct Options {
+    name: String,
+    count: u32,
+    verbose: bool,
+}
+
+impl Default for Options {
+    fn default() -&gt; Self {
+        Self {
+            name: String::from("world"),
+            count: 1,
+            verbose: false,
+        }
+    }
+}
+
+/// Turn the arguments after the program name into `Options`.
+fn parse(arguments: impl IntoIterator&lt;Item = String&gt;) -&gt; Result&lt;Options, String&gt; {
+    let mut options = Options::default();
+    let mut arguments = arguments.into_iter();
+
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--name" =&gt; {
+                options.name = arguments.next().ok_or("--name needs a value")?;
+            }
+            "--count" =&gt; {
+                let value = arguments.next().ok_or("--count needs a value")?;
+                options.count = value
+                    .parse()
+                    .map_err(|_| format!("--count needs a number, got {value:?}"))?;
+            }
+            "--verbose" =&gt; options.verbose = true,
+            other =&gt; return Err(format!("unknown argument {other:?}")),
+        }
+    }
+
+    Ok(options)
+}
+
+fn main() -&gt; ExitCode {
+    let options = match parse(args().skip(1)) {
+        Ok(options) =&gt; options,
+        Err(message) =&gt; {
+            eprintln!("error: {message}");
+            eprintln!("usage: command_line_args [--name NAME] [--count N] [--verbose]");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    for index in 0..options.count {
+        if options.verbose {
+            println!("[{index}] hello, {}", options.name);
+        } else {
+            println!("hello, {}", options.name);
+        }
+    }
+
+    ExitCode::SUCCESS
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_args(arguments: &amp;[&amp;str]) -&gt; Result&lt;Options, String&gt; {
+        parse(arguments.iter().map(|value| value.to_string()))
+    }
+
+    #[test]
+    fn defaults_apply_when_there_are_no_arguments() {
+        assert_eq!(parse_args(&amp;[]).unwrap(), Options::default());
+    }
+
+    #[test]
+    fn a_value_option_consumes_the_next_argument() {
+        let options = parse_args(&amp;["--name", "ada", "--count", "3"]).unwrap();
+        assert_eq!(options.name, "ada");
+        assert_eq!(options.count, 3);
+    }
+
+    #[test]
+    fn verbose_is_a_flag() {
+        assert!(parse_args(&amp;["--verbose"]).unwrap().verbose);
+        assert!(!parse_args(&amp;[]).unwrap().verbose);
+    }
+
+    #[test]
+    fn a_value_option_without_a_value_is_an_error() {
+        assert!(parse_args(&amp;["--name"]).is_err());
+        assert!(parse_args(&amp;["--count"]).is_err());
+    }
+
+    #[test]
+    fn a_non_numeric_count_is_an_error() {
+        assert!(parse_args(&amp;["--count", "many"]).is_err());
+    }
+
+    #[test]
+    fn an_unknown_argument_is_an_error() {
+        assert!(parse_args(&amp;["--colour", "red"]).is_err());
+        assert!(parse_args(&amp;["extra"]).is_err());
+    }
+}</code></pre>
+<p>The helper <code>parse_args</code> in the test module converts a list of <code>&amp;str</code> into <code>String</code>s, so each test states its
+input in one line. The tests cover the defaults, each option, a missing value, a bad number, and an unknown
+argument.</p>
+<pre><code class="language-text">$ cargo run --bin command_line_args -- --name ada --count 2 --verbose
+[0] hello, ada
+[1] hello, ada
+$ cargo run --bin command_line_args -- --count many
+error: --count needs a number, got "many"
+usage: command_line_args [--name NAME] [--count N] [--verbose]
+$ echo $?
+1
+</code></pre>
+<p>The <code>--</code> after <code>cargo run --bin command_line_args</code> tells Cargo that the rest of the line belongs to your
+program, not to Cargo.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A program reads files through system calls. The kernel keeps recent file data in its page cache.</li>
+<li><code>Result&lt;T, E&gt;</code> holds either a value or an error. <code>?</code> returns the error from the current function, so that
+function must return <code>Result</code>.</li>
+<li><code>&amp;Path</code> and <code>PathBuf</code> are the borrowed and owned path types. Functions should take <code>&amp;Path</code>.</li>
+<li><code>fs::read_to_string</code> reads a whole file. A <code>BufReader</code> reads large files a line at a time with few system
+calls. <code>read_line</code> into one reused <code>String</code> avoids an allocation per line.</li>
+<li><code>OpenOptions</code> with <code>append(true)</code> adds to a file safely. A rename within one disk is atomic.</li>
+<li><code>io::Error::kind()</code> lets you handle one kind of failure and report the others.</li>
+<li><code>file_type()</code> does not follow symbolic links, which keeps a recursive walk from looping.</li>
+<li>A byte offset works as a page cursor if you count the bytes you read, not the file’s position.</li>
+<li>Command-line arguments arrive as strings. Parse them in a function that takes an iterator, and return an
+exit code.</li>
+</ul>
+</div>
+
+<p>Chapter 3 begins Part 2. It works with Rust’s main collections, <code>Vec</code>, <code>String</code>, and <code>HashMap</code>, on a series
+of problems about arrays and text.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Rewrite <code>walk</code> without recursion. Keep a <code>Vec&lt;PathBuf&gt;</code> of directories still to visit, and count the files
+and total bytes for each file extension.</li>
+<li>Write <code>atomic_write(path, bytes)</code>. Write to a temporary file in the same directory, call <code>sync_all()</code> on
+it, and rename it over the target.</li>
+<li>Add a version number to the pagination cursor, and return an error when the file changed between pages.</li>
+<li>Let the argument parser accept <code>--name=ada</code> as well as <code>--name ada</code>.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch01-bindings.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch03-collections.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch01-bindings.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch03-collections.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

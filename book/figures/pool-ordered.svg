@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250.0" width="760" height="250.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">map_order: tag each input with its index, and put each result back in its slot</text>
+<text x="20" y="50" font-size="10.0" fill="#5b6b7c" text-anchor="start" >jobs sent</text>
+<rect x="20" y="58" width="66" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="53.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(0, x0)</text>
+<rect x="90" y="58" width="66" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="123.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(1, x1)</text>
+<rect x="160" y="58" width="66" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="193.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(2, x2)</text>
+<rect x="230" y="58" width="66" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="263.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(3, x3)</text>
+<rect x="300" y="58" width="66" height="26" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="333.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(4, x4)</text>
+<text x="400" y="50" font-size="10.0" fill="#5b6b7c" text-anchor="start" >results arrive in finishing order</text>
+<rect x="400" y="58" width="66" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="433.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(1, r1)</text>
+<rect x="470" y="58" width="66" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="503.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(0, r0)</text>
+<rect x="540" y="58" width="66" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="573.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(3, r3)</text>
+<rect x="610" y="58" width="66" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="643.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(4, r4)</text>
+<rect x="680" y="58" width="66" height="26" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="713.0" y="74.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">(2, r2)</text>
+<line x1="380" y1="71" x2="398" y2="71" stroke="#5b6b7c" stroke-width="1.6"/>
+<polygon points="398,71 390.8,74.5 390.8,67.5" fill="#5b6b7c"/>
+<text x="20" y="128" font-size="10.0" fill="#5b6b7c" text-anchor="start" >ordered: Vec&lt;Option&lt;R&gt;&gt;, indexed by the tag</text>
+<rect x="20" y="136" width="66" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="53.0" y="152.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(r0)</text>
+<text x="53" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >0</text>
+<rect x="90" y="136" width="66" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="123.0" y="152.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(r1)</text>
+<text x="123" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >1</text>
+<rect x="160" y="136" width="66" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="193.0" y="152.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(r2)</text>
+<text x="193" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >2</text>
+<rect x="230" y="136" width="66" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="263.0" y="152.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(r3)</text>
+<text x="263" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >3</text>
+<rect x="300" y="136" width="66" height="26" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="333.0" y="152.24" font-size="9.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">Some(r4)</text>
+<text x="333" y="178" font-size="9.0" fill="#5b6b7c" text-anchor="middle" >4</text>
+<text x="400" y="150" font-size="10.0" fill="#2f7f86" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">ordered[idx] = Some(value)</text>
+<text x="20" y="220" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The result channel ends when every worker has dropped its Sender clone, so iter() stops after the last result.</text>
+</svg>

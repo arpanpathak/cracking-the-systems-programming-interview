@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 170.0" width="720" height="170.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">What a RefCell tracks at run time</text>
+<rect x="20" y="60" width="170" height="40" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="83.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">not borrowed</text>
+<rect x="270" y="30" width="190" height="40" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="365.0" y="53.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">n shared borrows</text>
+<rect x="270" y="100" width="190" height="40" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="365.0" y="123.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">1 mutable borrow</text>
+<line x1="190" y1="72" x2="268" y2="52" stroke="#2f7f86" stroke-width="1.6"/>
+<polygon points="268,52 261.9,57.2 260.2,50.4" fill="#2f7f86"/>
+<text x="200" y="50" font-size="10.0" fill="#2f7f86" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">borrow()</text>
+<line x1="190" y1="88" x2="268" y2="118" stroke="#2f7f86" stroke-width="1.6"/>
+<polygon points="268,118 260.0,118.7 262.5,112.2" fill="#2f7f86"/>
+<text x="190" y="128" font-size="10.0" fill="#2f7f86" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">borrow_mut()</text>
+<text x="480" y="48" font-size="10.0" fill="#2f7f86" text-anchor="start" >another borrow(): allowed</text>
+<text x="480" y="66" font-size="10.0" fill="#d9622b" text-anchor="start" >borrow_mut(): panics</text>
+<text x="480" y="118" font-size="10.0" fill="#d9622b" text-anchor="start" >any other borrow: panics</text>
+<text x="20" y="162" font-size="11.0" fill="#1d2733" text-anchor="start" >Each guard (Ref or RefMut) moves the cell back toward "not borrowed" when it is dropped.</text>
+</svg>

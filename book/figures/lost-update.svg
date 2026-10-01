@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250.0" width="760" height="250.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Two threads add 1 to the same plain counter. One increment is lost</text>
+<text x="120" y="50" font-size="11.0" fill="#2f7f86" text-anchor="middle"  font-weight="bold">thread 1</text>
+<text x="400" y="50" font-size="11.0" fill="#d9622b" text-anchor="middle"  font-weight="bold">thread 2</text>
+<text x="640" y="50" font-size="11.0" fill="#5b6b7c" text-anchor="middle" >counter in memory</text>
+<rect x="40" y="62" width="160" height="22" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="120.0" y="76.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">read 5</text>
+<rect x="600" y="62" width="80" height="22" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="76.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">5</text>
+<rect x="320" y="88" width="160" height="22" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="400.0" y="102.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">read 5</text>
+<rect x="600" y="88" width="80" height="22" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="102.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">5</text>
+<rect x="40" y="114" width="160" height="22" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="120.0" y="128.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">add 1: 6</text>
+<rect x="600" y="114" width="80" height="22" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="128.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">5</text>
+<rect x="320" y="140" width="160" height="22" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="400.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">add 1: 6</text>
+<rect x="600" y="140" width="80" height="22" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="154.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">5</text>
+<rect x="40" y="166" width="160" height="22" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="120.0" y="180.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">write 6</text>
+<rect x="600" y="166" width="80" height="22" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="180.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">6</text>
+<rect x="320" y="192" width="160" height="22" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="400.0" y="206.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">write 6</text>
+<rect x="600" y="192" width="80" height="22" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="640.0" y="206.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">6</text>
+<text x="20" y="236" font-size="10.0" fill="#5b6b7c" text-anchor="start" >Both threads read 5 before either wrote. The final value is 6, not 7. fetch_add does the read, add, and write as one step.</text>
+</svg>

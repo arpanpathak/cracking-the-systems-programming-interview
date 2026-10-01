@@ -1,0 +1,2091 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>An LRU cache - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch13.png" alt="Drawer, the robot who is the quartermaster of the hot shelf, beside a rack of drawers with the least recently used crate leaving on a chute">
+<h1 id="an-lru-cache"><a class="header" href="#an-lru-cache">An LRU cache</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>What a cache is, and the least-recently-used rule for deciding what to throw away</li>
+<li>An LRU cache built from a map and a queue of stamped events</li>
+<li>An LRU cache built from a doubly linked list stored in a <code>Vec</code>, with indices as links</li>
+<li>The same list split into small operations with stated preconditions</li>
+<li>A benchmark of the <code>Vec</code> version against a list of <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> nodes</li>
+</ul>
+</div>
+
+<p>A <strong>cache</strong> keeps a limited number of recent results close at hand, so a program does not have to compute or
+fetch them again. A web browser caches images. A database caches disk pages in memory. A CPU caches memory in
+small, fast storage next to its cores, which chapter 15 looks at.</p>
+<p>A cache has a fixed size. When it is full and a new entry arrives, it must remove, or <strong>evict</strong>, an old entry.
+The rule for choosing which entry to evict is the cache’s <strong>eviction policy</strong>.</p>
+<p>This chapter builds a cache with the <strong>least recently used</strong> (LRU) policy: evict the entry that has gone longest
+without being used. The idea is that an entry used recently is likely to be used again soon.</p>
+<p>You have already built both parts of an LRU cache. Chapter 3 covered <code>HashMap</code>, and chapters 8 and 9 covered
+linked lists and <code>Rc</code>. This chapter combines them, four ways, and then measures two of them.</p>
+<h2 id="131-what-an-lru-cache-does"><a class="header" href="#131-what-an-lru-cache-does">13.1 What an LRU cache does</a></h2>
+<p>An LRU cache has two operations:</p>
+<ul>
+<li><code>get(key)</code> returns the value for <code>key</code>, or nothing if the key is not cached. A successful <code>get</code> counts as a use,
+so the key becomes the most recently used.</li>
+<li><code>put(key, value)</code> stores the value. The key becomes the most recently used. If the cache was full and the key
+is new, the least recently used entry is evicted.</li>
+</ul>
+<p>Figure 13.1 follows five calls on a cache with room for two entries.</p>
+<figure>
+<img src="figures/lru-behaviour.svg" alt="Five rows, one per call, showing the recency order. put A gives A. put B gives B then A. get A gives A then B. put C evicts B and gives C then A. get B returns None.">
+<figcaption><b>Figure 13.1</b> The recency order after each call. The entry at the right end is evicted next.</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch13-lru.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A cache with two slots, the most recent on the left. put(A, 1) and put(B, 2) fill it. get(A) moves A to the most recent end. put(C, 3) evicts B, the least recent entry, and leaves C and A. A second run without get(A) evicts A instead." data-chapters="[[0.0, &quot;with get(A)&quot;], [33.48, &quot;without get(A)&quot;]]"><img src="figures/ch13-lru.gif" alt="A cache with two slots, the most recent on the left. put(A, 1) and put(B, 2) fill it. get(A) moves A to the most recent end. put(C, 3) evicts B, the least recent entry, and leaves C and A. A second run without get(A) evicts A instead."></video>
+<figcaption><b>Animation 13.1</b> The four calls from figure 13.1. The <code>get(A)</code> decides which entry <code>put(C, 3)</code> evicts: with it, B goes; without it, A goes.</figcaption>
+</figure>
+<p>The third call changes the outcome. Without <code>get(A)</code>, A would be the least recent entry, and <code>put(C, 3)</code> would
+evict A. Because <code>get(A)</code> counted as a use, B is evicted instead.</p>
+<p>A cache needs to answer two questions fast:</p>
+<ol>
+<li>Is this key cached, and what is its value? A <code>HashMap</code> answers that in O(1).</li>
+<li>Which entry is the least recently used? This needs an order that changes on every call.</li>
+</ol>
+<p>Keeping the order in a <code>Vec</code> would be slow. Moving an entry from the middle to the front shifts every element
+between, which is O(n). The four versions in this chapter keep the order in structures where each step is O(1).</p>
+<h2 id="132-version-1-stamped-events-in-a-queue"><a class="header" href="#132-version-1-stamped-events-in-a-queue">13.2 Version 1: stamped events in a queue</a></h2>
+<p>The first version avoids a linked list entirely. Its idea is to record each use as an event, and to sort out
+which events still count only when something must be evicted.</p>
+<p>The cache has a counter called <code>generation</code> that goes up by one on every call. Each call stamps the key with the
+current generation in two places (figure 13.2):</p>
+<ul>
+<li>The map stores each key’s value and its latest stamp: <code>HashMap&lt;K, (V, u64)&gt;</code>.</li>
+<li>A queue, <code>recency</code>, receives a <code>(key, stamp)</code> event at the back on every use.</li>
+</ul>
+<figure>
+<img src="figures/lru-stamps.svg" alt="The queue holds (a,1), (b,2), (a,3), (c,4). The map holds a with (1,3), b with (2,2), c with (3,4). Eviction skips (a,1) because a&#39;s stamp is 3, then removes b because its stamp 2 matches.">
+<figcaption><b>Figure 13.2</b> The state after four calls. The event (a, 1) is stale, because a was used again at stamp 3.</figcaption>
+</figure>
+<p>The queue is in the order of use, oldest at the front. A key used several times has several events in it. Only
+the event whose stamp matches the map is current. The others are <strong>stale</strong>, the same idea as the stale heap
+entries of Dijkstra’s algorithm in section 12.9.</p>
+<p>To evict, the cache pops events from the front. It skips stale events, and removes the key of the first
+current event. That key is the least recently used one.</p>
+<p class="listing"><b>Listing 13.1</b> The type (lines 10 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    collections::{HashMap, VecDeque},
+    hash::Hash,
+};
+
+pub struct LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    capacity: usize,
+    map: HashMap&lt;K, (V, u64)&gt;,
+    recency: VecDeque&lt;(K, u64)&gt;,
+    generation: u64,
+}</code></pre>
+<p>The key must be <code>Clone</code>, because a copy of it goes into the queue with every event. The value must be <code>Clone</code>,
+because <code>get</code> returns a copy of it.</p>
+<p class="listing"><b>Listing 13.2</b> <code>get</code> and <code>put</code> (lines 49 to 70).</p>
+
+<pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    // ...
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let (value, _) = self.map.get(key)?.clone();
+        self.generation += 1;
+        self.recency
+            .push_back((key.clone(), self.generation));
+        self.map
+            .insert(key.clone(), (value.clone(), self.generation));
+        Some(value)
+    }
+
+    pub fn put(&amp;mut self, key: K, value: V) {
+        self.generation += 1;
+        let is_new = self
+            .map
+            .insert(key.clone(), (value, self.generation))
+            .is_none();
+        self.recency.push_back((key, self.generation));
+
+        if is_new {
+            self.evict_if_needed();
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>get</code> looks up the key and returns early with <code>None</code> if it is missing: <code>self.map.get(key)?</code>. Then it advances the
+generation, records an event, and stores the value again with the new stamp.</p>
+<p><code>put</code> stores the value with a new stamp, and records an event. <code>HashMap::insert</code> returns the old value if the key
+was already present, or <code>None</code> if it was new. Only a new key can make the map too large, so only a new key
+triggers eviction.</p>
+<p class="listing"><b>Listing 13.3</b> Eviction (lines 72 to 86).</p>
+
+<pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    // ...
+    fn evict_if_needed(&amp;mut self) {
+        while self.map.len() &gt; self.capacity {
+            let Some((key, generation)) = self.recency.pop_front() else {
+                break;
+            };
+
+            match self.map.get(&amp;key) {
+                Some((_, current)) if *current == generation =&gt; {
+                    self.map.remove(&amp;key);
+                    break;
+                }
+                _ =&gt; {}
+            }
+        }
+    }
+}</code></pre>
+<p>The loop runs while the map holds more keys than the capacity. Each pass pops the oldest event. The match guard
+<code>Some((_, current)) if *current == generation</code> accepts the event only if its stamp matches the key’s stamp in
+the map. A match removes the key and ends the loop. A stale event matches the <code>_</code> arm and is dropped.</p>
+<p>Each event is pushed once and popped at most once. So the total work over many calls is proportional to the
+number of calls, and each call costs O(1) on average. A cost measured this way, averaged over a sequence of
+calls, is called <strong>amortized</strong>.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> The queue gets one new event per call, but loses events only during eviction. A workload of mostly
+hits evicts rarely, so the queue can grow far longer than the capacity. The memory used depends on the number of
+calls, not on the number of cached entries. Exercise 1 asks you to fix it.</p>
+</div>
+
+<p class="listing"><b>Listing 13.4</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
+
+<pre><code class="language-rust">//! LRU cache without a linked list.
+//!
+//! Design: `HashMap&lt;K, (V, generation)&gt;` + `VecDeque&lt;(K, generation)&gt;`.
+//!
+//! Each access pushes a new `(key, generation)` event to the back. On eviction
+//! we pop old events until we find the newest generation for a key, then remove
+//! it. Stale events are skipped. This keeps amortized O(1) operations while
+//! preserving true LRU semantics.
+
+use std::{
+    collections::{HashMap, VecDeque},
+    hash::Hash,
+};
+
+pub struct LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    capacity: usize,
+    map: HashMap&lt;K, (V, u64)&gt;,
+    recency: VecDeque&lt;(K, u64)&gt;,
+    generation: u64,
+}
+
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Eq + Hash + Clone,
+    V: Clone,
+{
+    pub fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "LRU cache capacity must be &gt; 0");
+        Self {
+            capacity,
+            map: HashMap::new(),
+            recency: VecDeque::new(),
+            generation: 0,
+        }
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.map.len()
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.map.is_empty()
+    }
+
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let (value, _) = self.map.get(key)?.clone();
+        self.generation += 1;
+        self.recency
+            .push_back((key.clone(), self.generation));
+        self.map
+            .insert(key.clone(), (value.clone(), self.generation));
+        Some(value)
+    }
+
+    pub fn put(&amp;mut self, key: K, value: V) {
+        self.generation += 1;
+        let is_new = self
+            .map
+            .insert(key.clone(), (value, self.generation))
+            .is_none();
+        self.recency.push_back((key, self.generation));
+
+        if is_new {
+            self.evict_if_needed();
+        }
+    }
+
+    fn evict_if_needed(&amp;mut self) {
+        while self.map.len() &gt; self.capacity {
+            let Some((key, generation)) = self.recency.pop_front() else {
+                break;
+            };
+
+            match self.map.get(&amp;key) {
+                Some((_, current)) if *current == generation =&gt; {
+                    self.map.remove(&amp;key);
+                    break;
+                }
+                _ =&gt; {}
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn put_get_and_len() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(1));
+        assert_eq!(cache.get(&amp;"missing".to_string()), None);
+    }
+
+    #[test]
+    fn evicts_least_recently_used() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+        cache.put("c".to_string(), 3);
+
+        assert_eq!(cache.get(&amp;"a".to_string()), None);
+        assert_eq!(cache.get(&amp;"b".to_string()), Some(2));
+        assert_eq!(cache.get(&amp;"c".to_string()), Some(3));
+    }
+
+    #[test]
+    fn get_updates_recency() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+
+        // Access "a" so it becomes most recently used.
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(1));
+
+        cache.put("c".to_string(), 3); // evicts "b"
+        assert_eq!(cache.get(&amp;"b".to_string()), None);
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(1));
+        assert_eq!(cache.get(&amp;"c".to_string()), Some(3));
+    }
+
+    #[test]
+    fn updating_existing_key_moves_it_to_mru() {
+        let mut cache = LruCache::new(2);
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+
+        // Update "a"; it becomes MRU, so "b" should be evicted next.
+        cache.put("a".to_string(), 10);
+        cache.put("c".to_string(), 3);
+
+        assert_eq!(cache.get(&amp;"a".to_string()), Some(10));
+        assert_eq!(cache.get(&amp;"b".to_string()), None);
+        assert_eq!(cache.get(&amp;"c".to_string()), Some(3));
+    }
+}</code></pre>
+<p>The tests cover the cases of figure 13.1. They check plain eviction, a <code>get</code> that saves an entry, and a
+<code>put</code> to an existing key, which also counts as a use.</p>
+<h2 id="133-version-2-a-linked-list-inside-a-vec"><a class="header" href="#133-version-2-a-linked-list-inside-a-vec">13.3 Version 2: a linked list inside a <code>Vec</code></a></h2>
+<p>The classic LRU design keeps the entries in a doubly linked list, ordered from most to least recently used.
+A doubly linked list can move an entry to the front in O(1). Removing the last entry and adding one at the
+front are O(1) too. The map stores, for each key, where that key’s node is.</p>
+<p>Chapter 9 showed that a doubly linked list of <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> nodes is awkward in Rust. Each node is owned
+jointly, every change goes through runtime borrow checks, and the back links must be <code>Weak</code> to avoid leaks.</p>
+<p>This version uses a different approach. All nodes live in one <code>Vec</code>, and a link is the index of another node in
+that <code>Vec</code>. A <code>Vec</code> used as a pool of nodes this way is called an <strong>arena</strong>. Figure 13.3 shows one.</p>
+<figure>
+<img src="figures/lru-arena.svg" alt="The lookup table maps A to 0, B to 1, C to 2. The nodes Vec has index 0 A 10 prev None next Some(2); index 1 B 20 prev Some(2) next None; index 2 C 30 prev Some(0) next Some(1). head is Some(0), tail is Some(1). Following next from the head gives A, C, B.">
+<figcaption><b>Figure 13.3</b> Three entries in the arena. The order in the <code>Vec</code> is the order of insertion. The <code>prev</code> and <code>next</code> indices give the order of use.</figcaption>
+</figure>
+<p>An index is a plain <code>usize</code>. The borrow checker does not track it, so a node can be “pointed to” by several other
+nodes with no <code>Rc</code> and no <code>RefCell</code>. The cost is that the compiler cannot catch a wrong index. The code must keep
+the links correct by itself.</p>
+<p class="listing"><b>Listing 13.5</b> The node and the cache (lines 20 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
+
+<pre><code class="language-rust">use std::{collections::HashMap, hash::Hash};
+
+/// A single cache entry, linked into the recency list by index.
+struct Node&lt;K, V&gt; {
+    /// Retained so we can delete the corresponding map entry when evicting.
+    key: K,
+    value: V,
+    /// Neighbour closer to the MRU end (or `None` if this is `head`).
+    prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (or `None` if this is `tail`).
+    next: Option&lt;usize&gt;,
+}
+
+/// Fixed-capacity LRU cache.
+pub struct LruCache&lt;K, V&gt; {
+    /// Maximum number of entries; `&gt;= 1` (enforced by `new`).
+    cap: usize,
+    /// Key → arena index. The single source of truth for "is this key cached?".
+    lookup_table: HashMap&lt;K, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to be evicted).
+    tail: Option&lt;usize&gt;,
+}</code></pre>
+<p>Each node stores its key as well as its value. When a node is evicted, the cache reads the key from the node to
+remove the key from <code>lookup_table</code>.</p>
+<p><code>prev</code> and <code>next</code> are <code>Option&lt;usize&gt;</code>, where <code>None</code> means “no neighbor on that side”. <code>head</code> is the index of the
+most recently used node, and <code>tail</code> is the index of the least recently used one.</p>
+<h3 id="1331-moving-a-node-to-the-front"><a class="header" href="#1331-moving-a-node-to-the-front">13.3.1 Moving a node to the front</a></h3>
+<p>Every <code>get</code> and <code>put</code> ends by moving one node to the front of the list. The method <code>touch</code> does it in two steps
+(figure 13.4):</p>
+<ol>
+<li><strong>Detach</strong> the node: make its two neighbors point at each other, so the list skips it.</li>
+<li><strong>Push it to the front</strong>: make it point at the old head, and make it the new head.</li>
+</ol>
+<figure>
+<img src="figures/lru-touch.svg" alt="Before: B, A, C, D with C highlighted. After detaching C: B, A, D, with A.next = D and D.prev = A. After push_front: C, B, A, D, with head = C.">
+<figcaption><b>Figure 13.4</b> Moving C to the front. Only the links around C and at the head change.</figcaption>
+</figure>
+<p class="listing"><b>Listing 13.6</b> <code>new</code> and <code>touch</code> (lines 51 to 101).</p>
+
+<pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+{
+    /// Create a cache holding at most `cap` entries.
+    ///
+    /// # Panics
+    /// Panics if `cap == 0`, since a zero-capacity cache cannot store anything.
+    pub fn new(cap: usize) -&gt; Self {
+        assert!(cap &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap,
+            lookup_table: HashMap::new(),
+            nodes: Vec::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    /// Promote node `i` to `head` (MRU).
+    ///
+    /// Handles both cases in one pass:
+    /// * **Already linked** — detach from its current neighbours first.
+    /// * **Brand new** — the node has `prev = next = None` and is not yet
+    ///   referenced by `head`/`tail`, so the detach step is skipped.
+    fn touch(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+
+        // A node is "linked" if any of its four references exist.
+        let linked =
+            prev.is_some() || next.is_some() || self.head == Some(i) || self.tail == Some(i);
+
+        if linked {
+            // Splice `i` out of the list.
+            match prev {
+                Some(p) =&gt; self.nodes[p].next = next,
+                None =&gt; self.head = next,
+            }
+            match next {
+                Some(n) =&gt; self.nodes[n].prev = prev,
+                None =&gt; self.tail = prev,
+            }
+        }
+
+        // Splice `i` in at the front.
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        if let Some(h) = self.head {
+            self.nodes[h].prev = Some(i);
+        }
+        self.head = Some(i);
+        if self.tail.is_none() {
+            self.tail = Some(i);
+        }
+    }
+    // ...
+}</code></pre>
+<p><code>touch</code> first copies the node’s <code>prev</code> and <code>next</code> into local variables. <code>Option&lt;usize&gt;</code> is <code>Copy</code>, so this reads
+the values without keeping a borrow of <code>self.nodes</code>.</p>
+<p>A brand-new node is not in the list yet, so there is nothing to detach. <code>touch</code> tells the two cases apart with
+<code>linked</code>. A node is in the list if it has a neighbor, or if it is the head or the tail. A list with one node has
+no neighbors, so the head and tail checks are needed for that case.</p>
+<p>The detach step handles the ends of the list. If the node has no <code>prev</code>, it was the head, so the head moves to
+its <code>next</code>. If it has no <code>next</code>, it was the tail, so the tail moves to its <code>prev</code>.</p>
+<p>The push step sets the node’s links, points the old head back at it, and makes it the head. If the list was
+empty, the node is also the tail.</p>
+<h3 id="1332-get-and-put"><a class="header" href="#1332-get-and-put">13.3.2 <code>get</code> and <code>put</code></a></h3>
+<p class="listing"><b>Listing 13.7</b> <code>get</code> and <code>put</code> (lines 103 to 147).</p>
+
+<pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+{
+    // ...
+    /// Look up `key`, promoting it to MRU on a hit.
+    ///
+    /// Returns `None` if the key is not cached.
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        let i = *self.lookup_table.get(key)?;
+        self.touch(i);
+        Some(&amp;self.nodes[i].value)
+    }
+
+    /// Insert or update `key`. Promotes it to MRU. Evicts the LRU entry if
+    /// the cache is full.
+    pub fn put(&amp;mut self, key: K, value: V) {
+        // Case 1: key already present → update value, promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.touch(i);
+            return;
+        }
+
+        // Case 2: room to grow → append a fresh node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.nodes.push(Node {
+                key: key.clone(),
+                value,
+                prev: None,
+                next: None,
+            });
+            self.lookup_table.insert(key, i);
+            self.touch(i);
+            return;
+        }
+
+        // Case 3: at capacity → reuse the LRU slot.
+        // `tail` is guaranteed to be `Some` here because `cap &gt;= 1` and the
+        // arena is full, but we still handle `None` gracefully.
+        if let Some(i) = self.tail {
+            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
+            self.nodes[i].value = value;
+            self.lookup_table.remove(&amp;old_key);
+            self.lookup_table
+                .insert(self.nodes[i].key.clone(), i);
+            self.touch(i);
+        }
+    }
+}</code></pre>
+<p><code>get</code> finds the index, touches the node, and returns a reference to the value. The return type <code>Option&lt;&amp;V&gt;</code>
+borrows from the cache. Because <code>get</code> takes <code>&amp;mut self</code>, the cache stays mutably borrowed while you hold that
+reference.</p>
+<p><code>put</code> has three cases:</p>
+<ol>
+<li><strong>The key is present.</strong> Replace the value and touch the node.</li>
+<li><strong>There is room.</strong> Push a new node onto the end of the <code>Vec</code>, record its index, and touch it.</li>
+<li><strong>The cache is full.</strong> Reuse the tail node’s slot for the new entry.</li>
+</ol>
+<p>The third case is the arena’s advantage. Eviction does not free anything, and insertion does not allocate. The
+tail slot receives the new key and value, and <code>touch</code> moves it to the front.</p>
+<p><code>std::mem::replace(&amp;mut self.nodes[i].key, key)</code> puts the new key into the node and returns the old key, in one
+step. The old key is then removed from <code>lookup_table</code>. The new key was moved into the node, so the map receives a
+clone of it.</p>
+<p>The file <code>src/bin/lru_cache_arena.rs</code> has the same cache with a <code>main</code> function:</p>
+<p class="listing"><b>Listing 13.8</b> The <code>main</code> function (lines 150 to 165). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_arena.rs">src/bin/lru_cache_arena.rs</a></p>
+
+<pre><code class="language-rust">use std::{collections::HashMap, hash::Hash};
+
+fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put("A", 10);
+    cache.put("B", 20);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10), A now MRU
+
+    cache.put("C", 30); // evicts B (LRU)
+
+    println!("get B = {:?}", cache.get(&amp;"B")); // None
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(10)
+    println!("get C = {:?}", cache.get(&amp;"C")); // Some(30)
+
+    cache.put("A", 99);
+    println!("get A = {:?}", cache.get(&amp;"A")); // Some(99)
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin lru_cache_arena
+get A = Some(10)
+get B = None
+get A = Some(10)
+get C = Some(30)
+get A = Some(99)
+</code></pre>
+<p>The complete library file follows, with its tests. One test uses a capacity of 1, where the single node is the head and the tail at once. Another checks that
+capacity 0 panics.</p>
+<p class="listing"><b>Listing 13.9</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
+
+<pre><code class="language-rust">//! A fixed-capacity LRU (Least Recently Used) cache.
+//!
+//! ## Design
+//!
+//! Two structures cooperate to give O(1) `get` and `put`:
+//!
+//! * `map: HashMap&lt;K, usize&gt;` — key → index into the arena.
+//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role
+//!   of pointers, sidestepping `Rc&lt;RefCell&lt;…&gt;&gt;` and its borrow-checker pain.
+//!
+//! The arena is stitched into a doubly linked list through `head`/`tail`:
+//!
+//! ```text
+//!   MRU  →  head → … → tail  →  LRU
+//! ```
+//!
+//! On eviction we **reuse the tail slot** instead of removing it, so no node
+//! is ever deallocated mid-life. That keeps the arena dense and index-stable.
+
+use std::{collections::HashMap, hash::Hash};
+
+/// A single cache entry, linked into the recency list by index.
+struct Node&lt;K, V&gt; {
+    /// Retained so we can delete the corresponding map entry when evicting.
+    key: K,
+    value: V,
+    /// Neighbour closer to the MRU end (or `None` if this is `head`).
+    prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (or `None` if this is `tail`).
+    next: Option&lt;usize&gt;,
+}
+
+/// Fixed-capacity LRU cache.
+pub struct LruCache&lt;K, V&gt; {
+    /// Maximum number of entries; `&gt;= 1` (enforced by `new`).
+    cap: usize,
+    /// Key → arena index. The single source of truth for "is this key cached?".
+    lookup_table: HashMap&lt;K, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to be evicted).
+    tail: Option&lt;usize&gt;,
+}
+
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+{
+    /// Create a cache holding at most `cap` entries.
+    ///
+    /// # Panics
+    /// Panics if `cap == 0`, since a zero-capacity cache cannot store anything.
+    pub fn new(cap: usize) -&gt; Self {
+        assert!(cap &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap,
+            lookup_table: HashMap::new(),
+            nodes: Vec::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    /// Promote node `i` to `head` (MRU).
+    ///
+    /// Handles both cases in one pass:
+    /// * **Already linked** — detach from its current neighbours first.
+    /// * **Brand new** — the node has `prev = next = None` and is not yet
+    ///   referenced by `head`/`tail`, so the detach step is skipped.
+    fn touch(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+
+        // A node is "linked" if any of its four references exist.
+        let linked =
+            prev.is_some() || next.is_some() || self.head == Some(i) || self.tail == Some(i);
+
+        if linked {
+            // Splice `i` out of the list.
+            match prev {
+                Some(p) =&gt; self.nodes[p].next = next,
+                None =&gt; self.head = next,
+            }
+            match next {
+                Some(n) =&gt; self.nodes[n].prev = prev,
+                None =&gt; self.tail = prev,
+            }
+        }
+
+        // Splice `i` in at the front.
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        if let Some(h) = self.head {
+            self.nodes[h].prev = Some(i);
+        }
+        self.head = Some(i);
+        if self.tail.is_none() {
+            self.tail = Some(i);
+        }
+    }
+
+    /// Look up `key`, promoting it to MRU on a hit.
+    ///
+    /// Returns `None` if the key is not cached.
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        let i = *self.lookup_table.get(key)?;
+        self.touch(i);
+        Some(&amp;self.nodes[i].value)
+    }
+
+    /// Insert or update `key`. Promotes it to MRU. Evicts the LRU entry if
+    /// the cache is full.
+    pub fn put(&amp;mut self, key: K, value: V) {
+        // Case 1: key already present → update value, promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.touch(i);
+            return;
+        }
+
+        // Case 2: room to grow → append a fresh node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.nodes.push(Node {
+                key: key.clone(),
+                value,
+                prev: None,
+                next: None,
+            });
+            self.lookup_table.insert(key, i);
+            self.touch(i);
+            return;
+        }
+
+        // Case 3: at capacity → reuse the LRU slot.
+        // `tail` is guaranteed to be `Some` here because `cap &gt;= 1` and the
+        // arena is full, but we still handle `None` gracefully.
+        if let Some(i) = self.tail {
+            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
+            self.nodes[i].value = value;
+            self.lookup_table.remove(&amp;old_key);
+            self.lookup_table
+                .insert(self.nodes[i].key.clone(), i);
+            self.touch(i);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_eviction() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1)); // A is now MRU
+        c.put("C", 3); // evicts B
+
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1));
+        assert_eq!(c.get(&amp;"C"), Some(&amp;3));
+    }
+
+    #[test]
+    fn updating_existing_key_keeps_it() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        c.put("A", 100); // update A, A becomes MRU
+        c.put("C", 3); // evicts B
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;100));
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"C"), Some(&amp;3));
+    }
+
+    #[test]
+    fn get_refreshes_recency() {
+        let mut c = LruCache::new(2);
+        c.put("A", 1);
+        c.put("B", 2);
+
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1)); // A refreshed
+        c.put("C", 3); // evicts B
+
+        assert_eq!(c.get(&amp;"B"), None);
+        assert_eq!(c.get(&amp;"A"), Some(&amp;1));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut c = LruCache::new(1);
+        c.put("A", 1);
+        c.put("B", 2); // evicts A
+
+        assert_eq!(c.get(&amp;"A"), None);
+        assert_eq!(c.get(&amp;"B"), Some(&amp;2));
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let mut c: LruCache&lt;&amp;str, i32&gt; = LruCache::new(2);
+        assert_eq!(c.get(&amp;"nope"), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be &gt; 0")]
+    fn zero_capacity_panics() {
+        let _: LruCache&lt;&amp;str, i32&gt; = LruCache::new(0);
+    }
+}</code></pre>
+<h2 id="134-version-3-one-operation-per-method"><a class="header" href="#134-version-3-one-operation-per-method">13.4 Version 3: one operation per method</a></h2>
+<p><code>touch</code> in version 2 does two jobs, and must first work out which situation it is in. Version 3 splits it into
+three methods, each with a stated precondition. A <strong>precondition</strong> is something that must be true when a
+function is called. The compiler cannot check these preconditions, so the doc comments state them.</p>
+<p>This version also fixes the key and value types to <code>i32</code>. <code>i32</code> is <code>Copy</code>, so the code never clones a key.</p>
+<p class="listing"><b>Listing 13.10</b> The link operations (lines 63 to 94). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::HashMap;
+
+impl LruCache {
+    // ...
+    /// Unlink node `i` from the list. `i` must currently be linked.
+    fn detach(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+        match prev {
+            Some(p) =&gt; self.nodes[p].next = next,
+            None =&gt; self.head = next,
+        }
+        match next {
+            Some(n) =&gt; self.nodes[n].prev = prev,
+            None =&gt; self.tail = prev,
+        }
+    }
+
+    /// Link node `i` in at the MRU end. `i` must currently be unlinked.
+    fn push_front(&amp;mut self, i: usize) {
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        match self.head {
+            Some(h) =&gt; self.nodes[h].prev = Some(i),
+            None =&gt; self.tail = Some(i), // list was empty
+        }
+        self.head = Some(i);
+    }
+
+    /// Promote an already-linked node to MRU.
+    fn promote_to_front(&amp;mut self, i: usize) {
+        if self.head == Some(i) {
+            return; // already MRU
+        }
+        self.detach(i);
+        self.push_front(i);
+    }
+    // ...
+}</code></pre>
+<ul>
+<li><code>detach</code> unlinks a node. Its precondition is that the node is in the list.</li>
+<li><code>push_front</code> links a node at the head. Its precondition is that the node is not in the list.</li>
+<li><code>promote_to_front</code> combines them for a node that is in the list. If the node is already the head, it does
+nothing.</li>
+</ul>
+<p>Each method now does one thing, with no <code>linked</code> check. <code>put</code> calls <code>push_front</code> for a new node and
+<code>promote_to_front</code> for an existing one, so each call satisfies its precondition.</p>
+<p class="listing"><b>Listing 13.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lru_cache_modular.rs">src/bin/lru_cache_modular.rs</a></p>
+
+<pre><code class="language-rust">//! A fixed-capacity LRU (Least Recently Used) cache.
+//!
+//! ## Design
+//!
+//! Two structures cooperate to give O(1) `get` and `put`:
+//!
+//! * `lookup_table: HashMap&lt;i32, usize&gt;` — key → index into the arena.
+//! * `nodes: Vec&lt;Node&gt;` — an **arena** of nodes; indices play the role
+//!   of pointers, sidestepping `Rc&lt;RefCell&lt;…&gt;&gt;` and its borrow-checker pain.
+//!
+//! The arena is stitched into a doubly linked list through `head`/`tail`:
+//!
+//! ```text
+//!   MRU  →  head → … → tail  →  LRU
+//! ```
+//!
+//! On eviction we **reuse the tail slot** instead of removing it, so no node
+//! is ever deallocated mid-life. That keeps the arena dense and index-stable.
+
+use std::collections::HashMap;
+
+/// A single cache entry, linked into the recency list by index.
+struct Node {
+    /// Retained so we can delete the corresponding map entry when evicting.
+    key: i32,
+    value: i32,
+    /// Neighbour closer to the MRU end (or `None` if this is `head`).
+    prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (or `None` if this is `tail`).
+    next: Option&lt;usize&gt;,
+}
+
+/// Fixed-capacity LRU cache.
+pub struct LruCache {
+    /// Maximum number of entries; `&gt;= 1` (enforced by `new`).
+    cap: usize,
+    /// Key → arena index. The single source of truth for "is this key cached?".
+    lookup_table: HashMap&lt;i32, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to be evicted).
+    tail: Option&lt;usize&gt;,
+}
+
+impl LruCache {
+    /// Create a cache holding at most `cap` entries.
+    ///
+    /// # Panics
+    /// Panics if `cap == 0`, since a zero-capacity cache cannot store anything.
+    pub fn new(cap: usize) -&gt; Self {
+        assert!(cap &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap,
+            lookup_table: HashMap::new(),
+            nodes: Vec::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    /// Unlink node `i` from the list. `i` must currently be linked.
+    fn detach(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+        match prev {
+            Some(p) =&gt; self.nodes[p].next = next,
+            None =&gt; self.head = next,
+        }
+        match next {
+            Some(n) =&gt; self.nodes[n].prev = prev,
+            None =&gt; self.tail = prev,
+        }
+    }
+
+    /// Link node `i` in at the MRU end. `i` must currently be unlinked.
+    fn push_front(&amp;mut self, i: usize) {
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        match self.head {
+            Some(h) =&gt; self.nodes[h].prev = Some(i),
+            None =&gt; self.tail = Some(i), // list was empty
+        }
+        self.head = Some(i);
+    }
+
+    /// Promote an already-linked node to MRU.
+    fn promote_to_front(&amp;mut self, i: usize) {
+        if self.head == Some(i) {
+            return; // already MRU
+        }
+        self.detach(i);
+        self.push_front(i);
+    }
+
+    /// Look up `key`, promoting it to MRU on a hit.
+    ///
+    /// Returns `None` if the key is not cached.
+    pub fn get(&amp;mut self, key: i32) -&gt; Option&lt;i32&gt; {
+        let i = *self.lookup_table.get(&amp;key)?;
+        self.promote_to_front(i);
+        Some(self.nodes[i].value)
+    }
+
+    /// Insert or update `key`. Promotes it to MRU. Evicts the LRU entry if
+    /// the cache is full.
+    pub fn put(&amp;mut self, key: i32, value: i32) {
+        // Case 1: key already present → update value, promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.promote_to_front(i);
+            return;
+        }
+
+        // Case 2: room to grow → append a fresh (unlinked) node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.nodes.push(Node {
+                key,
+                value,
+                prev: None,
+                next: None,
+            });
+            self.lookup_table.insert(key, i);
+            self.push_front(i);
+            return;
+        }
+
+        // Case 3: at capacity → reuse the LRU slot.
+        // `tail` is guaranteed to be `Some` here because `cap &gt;= 1` and the
+        // arena is full, but we still handle `None` gracefully.
+        if let Some(i) = self.tail {
+            // Swap the new key into the node and hand back the old one it held.
+            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
+            self.nodes[i].value = value;
+            self.lookup_table.remove(&amp;old_key);
+            self.lookup_table.insert(key, i);
+            self.promote_to_front(i);
+        }
+    }
+}
+
+fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put(1, 10);
+    cache.put(2, 20);
+    println!("get 1 = {:?}", cache.get(1)); // Some(10), 1 now MRU
+
+    cache.put(3, 30); // evicts 2 (LRU)
+
+    println!("get 2 = {:?}", cache.get(2)); // None
+    println!("get 1 = {:?}", cache.get(1)); // Some(10)
+    println!("get 3 = {:?}", cache.get(3)); // Some(30)
+
+    cache.put(1, 99);
+    println!("get 1 = {:?}", cache.get(1)); // Some(99)
+}
+
+#[cfg(test)]
+mod tests_for_lru {
+    use super::*;
+
+    #[test]
+    fn basic_eviction() {
+        let mut c = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        assert_eq!(c.get(1), Some(10)); // 1 is now MRU
+        c.put(3, 30); // evicts 2
+
+        assert_eq!(c.get(2), None);
+        assert_eq!(c.get(1), Some(10));
+        assert_eq!(c.get(3), Some(30));
+    }
+
+    #[test]
+    fn updating_existing_key_keeps_it() {
+        let mut c = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        c.put(1, 100); // update 1, 1 becomes MRU
+        c.put(3, 30); // evicts 2
+
+        assert_eq!(c.get(1), Some(100));
+        assert_eq!(c.get(2), None);
+        assert_eq!(c.get(3), Some(30));
+    }
+
+    #[test]
+    fn get_refreshes_recency() {
+        let mut c = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        assert_eq!(c.get(1), Some(10)); // 1 refreshed
+        c.put(3, 30); // evicts 2
+
+        assert_eq!(c.get(2), None);
+        assert_eq!(c.get(1), Some(10));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut c = LruCache::new(1);
+        c.put(1, 10);
+        c.put(2, 20); // evicts 1
+
+        assert_eq!(c.get(1), None);
+        assert_eq!(c.get(2), Some(20));
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let mut c = LruCache::new(2);
+        assert_eq!(c.get(42), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be &gt; 0")]
+    fn zero_capacity_panics() {
+        let _ = LruCache::new(0);
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin lru_cache_modular
+get 1 = Some(10)
+get 2 = None
+get 1 = Some(10)
+get 3 = Some(30)
+get 1 = Some(99)
+</code></pre>
+<h2 id="135-version-4-measuring-the-arena-against-rcrefcell_"><a class="header" href="#135-version-4-measuring-the-arena-against-rcrefcell_">13.5 Version 4: measuring the arena against <code>Rc&lt;RefCell&lt;_&gt;&gt;</code></a></h2>
+<p>Is the arena faster than a list of <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> nodes, and by how much? The only reliable answer is to
+measure. This section builds both caches behind one trait, and runs the same requests through each.</p>
+<h3 id="1351-one-trait-two-caches"><a class="header" href="#1351-one-trait-two-caches">13.5.1 One trait, two caches</a></h3>
+<p class="listing"><b>Listing 13.12</b> The trait. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">benchmarking_examples/cache/mod.rs</a></p>
+
+<pre><code class="language-rust">//! Two LRU caches of the same design, stored differently, so one benchmark loop
+//! can cover both.
+//!
+//! [`arena`] keeps nodes in a `Vec` and links them by `usize` index.
+//! [`rc_list`] allocates an `Rc&lt;RefCell&lt;_&gt;&gt;` per node and links them by pointer.
+
+pub mod arena;
+pub mod rc_list;
+
+use std::hash::Hash;
+
+/// The operations every cache supports.
+pub trait Cache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    /// A cache that holds at most `capacity` entries.
+    ///
+    /// # Panics
+    /// Panics if `capacity == 0`, since a zero-capacity cache cannot store
+    /// anything.
+    fn new(capacity: usize) -&gt; Self;
+
+    /// Looks up `key`, promoting it to most recently used on a hit.
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt;;
+
+    /// Inserts or updates `key`, evicting the least recently used entry when
+    /// the cache is full.
+    fn put(&amp;mut self, key: K, value: V);
+
+    /// How many entries are cached.
+    fn len(&amp;self) -&gt; usize;
+
+    /// The variant's name, for benchmark output.
+    fn variant() -&gt; &amp;'static str;
+}</code></pre>
+<p>The trait <code>Cache&lt;K, V&gt;</code> lists what the benchmark needs. <code>new</code> is part of the trait, so generic code can create
+a cache with <code>C::new(capacity)</code> without knowing which type <code>C</code> is. <code>variant</code> has no <code>self</code> parameter. It is
+called on the type, and gives each cache a name for the output.</p>
+<p><code>V: Copy</code> lets <code>get</code> return the value itself, <code>Option&lt;V&gt;</code>, instead of a reference. The benchmark stores <code>u64</code>
+values, which are <code>Copy</code>.</p>
+<p class="listing"><b>Listing 13.13</b> The arena cache behind the trait. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/arena.rs">benchmarking_examples/cache/arena.rs</a></p>
+
+<pre><code class="language-rust">//! Fixed-capacity LRU cache backed by an arena.
+//!
+//! ## Design
+//!
+//! Two structures cooperate to give O(1) `get` and `put`:
+//!
+//! * `lookup_table: HashMap&lt;K, usize&gt;` — key to index into the arena.
+//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role of
+//!   pointers, sidestepping `Rc&lt;RefCell&lt;...&gt;&gt;` and its borrow-checker pain.
+//!
+//! The arena is stitched into a doubly linked list through `head`/`tail`:
+//!
+//! ```text
+//!   MRU  -&gt;  head -&gt; ... -&gt; tail  -&gt;  LRU
+//! ```
+//!
+//! On eviction the tail slot is **reused** instead of removed, so no node is
+//! deallocated mid-life and the arena stays dense and index-stable.
+
+use std::{collections::HashMap, hash::Hash};
+
+use super::Cache;
+
+/// A single cache entry, linked into the recency list by index.
+struct Node&lt;K, V&gt; {
+    /// Retained so the corresponding map entry can be removed when evicting.
+    key: K,
+    value: V,
+    /// Neighbour closer to the MRU end (`None` if this is `head`).
+    prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (`None` if this is `tail`).
+    next: Option&lt;usize&gt;,
+}
+
+pub struct LruCache&lt;K, V&gt; {
+    /// Maximum number of entries; `&gt;= 1`.
+    cap: usize,
+    /// Key to arena index. The single source of truth for "is this cached?".
+    lookup_table: HashMap&lt;K, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to evict).
+    tail: Option&lt;usize&gt;,
+}
+
+impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    /// Promotes node `i` to `head` (MRU).
+    ///
+    /// Handles both cases in one pass:
+    /// * **Already linked** — detach from its current neighbours first.
+    /// * **Brand new** — the node has `prev = next = None` and is not yet
+    ///   referenced by `head`/`tail`, so the detach step is skipped.
+    fn touch(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+
+        // A node is "linked" if any of its four references exist.
+        let linked =
+            prev.is_some() || next.is_some() || self.head == Some(i) || self.tail == Some(i);
+
+        if linked {
+            // Splice `i` out of the list.
+            match prev {
+                Some(p) =&gt; self.nodes[p].next = next,
+                None =&gt; self.head = next,
+            }
+            match next {
+                Some(n) =&gt; self.nodes[n].prev = prev,
+                None =&gt; self.tail = prev,
+            }
+        }
+
+        // Splice `i` in at the front.
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        if let Some(h) = self.head {
+            self.nodes[h].prev = Some(i);
+        }
+        self.head = Some(i);
+        if self.tail.is_none() {
+            self.tail = Some(i);
+        }
+    }
+}
+
+impl&lt;K, V&gt; Cache&lt;K, V&gt; for LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap: capacity,
+            lookup_table: HashMap::new(),
+            nodes: Vec::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let i = *self.lookup_table.get(key)?;
+        self.touch(i);
+        Some(self.nodes[i].value)
+    }
+
+    fn put(&amp;mut self, key: K, value: V) {
+        // Case 1: key already present, update the value and promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.touch(i);
+            return;
+        }
+
+        // Case 2: room to grow, append a fresh node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.nodes.push(Node {
+                key: key.clone(),
+                value,
+                prev: None,
+                next: None,
+            });
+            self.lookup_table.insert(key, i);
+            self.touch(i);
+            return;
+        }
+
+        // Case 3: at capacity, reuse the LRU slot. `tail` is `Some` here because
+        // `cap &gt;= 1` and the arena is full, but handle `None` anyway.
+        if let Some(i) = self.tail {
+            let old_key = std::mem::replace(&amp;mut self.nodes[i].key, key);
+            self.nodes[i].value = value;
+            self.lookup_table.remove(&amp;old_key);
+            self.lookup_table
+                .insert(self.nodes[i].key.clone(), i);
+            self.touch(i);
+        }
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.lookup_table.len()
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "arena (Vec + indices)"
+    }
+}</code></pre>
+<p>This is version 2, split into two <code>impl</code> blocks. <code>touch</code> stays in an ordinary <code>impl</code>, because it is not part of
+the trait. The trait methods go in <code>impl&lt;K, V&gt; Cache&lt;K, V&gt; for LruCache&lt;K, V&gt;</code>.</p>
+<h3 id="1352-the-rcrefcell_-list"><a class="header" href="#1352-the-rcrefcell_-list">13.5.2 The <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> list</a></h3>
+<p class="listing"><b>Listing 13.14</b> The node and the cache (lines 10 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/rc_list.rs">benchmarking_examples/cache/rc_list.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::Hash,
+    rc::{Rc, Weak},
+};
+
+use super::Cache;
+
+type Link&lt;K, V&gt; = Option&lt;Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;&gt;;
+
+struct Node&lt;K, V&gt; {
+    key: K,
+    value: V,
+    prev: Weak&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;,
+    next: Link&lt;K, V&gt;,
+}
+
+pub struct LruCache&lt;K, V&gt; {
+    cap: usize,
+    map: HashMap&lt;K, Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;&gt;,
+    head: Link&lt;K, V&gt;,
+    tail: Link&lt;K, V&gt;,
+}</code></pre>
+<p>This is the doubly linked list of chapter 9. A node is <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code>: <code>Rc</code> so several owners can hold it,
+and <code>RefCell</code> so it can be changed through those shared handles. <code>next</code> is a strong link, and <code>prev</code> is a <code>Weak</code>
+link, so two neighbors do not keep each other alive forever. The map holds one more <code>Rc</code> to every node.</p>
+<p class="listing"><b>Listing 13.15</b> <code>detach</code> and <code>push_front</code> (lines 35 to 69).</p>
+
+<pre><code class="language-rust">impl&lt;K, V&gt; LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn detach(&amp;mut self, node: &amp;Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;) {
+        let (prev, next) = {
+            let entry = node.borrow();
+            (entry.prev.clone(), entry.next.clone())
+        };
+
+        match prev.upgrade() {
+            Some(previous) =&gt; previous.borrow_mut().next = next.clone(),
+            None =&gt; self.head = next.clone(),
+        }
+        match &amp;next {
+            Some(following) =&gt; following.borrow_mut().prev = prev,
+            None =&gt; self.tail = prev.upgrade(),
+        }
+    }
+
+    fn push_front(&amp;mut self, node: Rc&lt;RefCell&lt;Node&lt;K, V&gt;&gt;&gt;) {
+        let head = self.head.clone();
+        {
+            let mut entry = node.borrow_mut();
+            entry.prev = Weak::new();
+            entry.next = head.clone();
+        }
+        match &amp;head {
+            Some(previous) =&gt; previous.borrow_mut().prev = Rc::downgrade(&amp;node),
+            None =&gt; self.tail = Some(node.clone()),
+        }
+        self.head = Some(node);
+    }
+}</code></pre>
+<p>The logic matches listing 13.10, with pointers instead of indices. The difference is in the ceremony around
+each step:</p>
+<ul>
+<li><code>detach</code> reads the node’s links inside a small block. <code>node.borrow()</code> returns a guard that holds a shared
+borrow of the <code>RefCell</code>. The block ends before any neighbor is changed, so the guard is dropped early. A
+<code>RefCell</code> panics if a <code>borrow_mut</code> happens while another borrow of the same cell is alive.</li>
+<li><code>prev.upgrade()</code> turns the <code>Weak</code> link into an <code>Rc</code>, if the node still exists.</li>
+<li>Each <code>.clone()</code> of an <code>Rc</code> or a <code>Weak</code> increases a reference count, and each drop decreases one.</li>
+</ul>
+<p class="listing"><b>Listing 13.16</b> The trait methods and <code>Drop</code> (lines 71 to 139).</p>
+
+<pre><code class="language-rust">impl&lt;K, V&gt; Cache&lt;K, V&gt; for LruCache&lt;K, V&gt;
+where
+    K: Hash + Eq + Clone,
+    V: Copy,
+{
+    fn new(capacity: usize) -&gt; Self {
+        assert!(capacity &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap: capacity,
+            map: HashMap::new(),
+            head: None,
+            tail: None,
+        }
+    }
+
+    fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt; {
+        let node = self.map.get(key)?.clone();
+        self.detach(&amp;node);
+        self.push_front(node.clone());
+        Some(node.borrow().value)
+    }
+
+    fn put(&amp;mut self, key: K, value: V) {
+        if let Some(node) = self.map.get(&amp;key).cloned() {
+            node.borrow_mut().value = value;
+            self.detach(&amp;node);
+            self.push_front(node);
+            return;
+        }
+
+        if self.map.len() &gt;= self.cap {
+            if let Some(victim) = self.tail.clone() {
+                let old_key = victim.borrow().key.clone();
+                self.map.remove(&amp;old_key);
+                self.detach(&amp;victim);
+            }
+        }
+
+        let node = Rc::new(RefCell::new(Node {
+            key: key.clone(),
+            value,
+            prev: Weak::new(),
+            next: None,
+        }));
+        self.map.insert(key, node.clone());
+        self.push_front(node);
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.map.len()
+    }
+
+    fn variant() -&gt; &amp;'static str {
+        "Rc&lt;RefCell&gt; list"
+    }
+}
+
+impl&lt;K, V&gt; Drop for LruCache&lt;K, V&gt; {
+    fn drop(&amp;mut self) {
+        // Unlink iteratively: dropping a million-node chain recursively overflows
+        // the stack.
+        let mut current = self.head.take();
+        while let Some(node) = current {
+            let next = node.borrow_mut().next.take();
+            node.borrow_mut().prev = Weak::new();
+            current = next;
+        }
+    }
+}</code></pre>
+<p>On a miss with a full cache, <code>put</code> removes the tail node from the map and detaches it. When <code>victim</code> goes out of
+scope, the last <code>Rc</code> to that node is dropped, and its memory is freed. Then <code>Rc::new</code> allocates a new node for the
+new key. So every eviction frees one heap block and allocates another.</p>
+<p>The <code>Drop</code> implementation is the fix from chapter 9. Dropping a long chain of <code>next</code> links recursively uses one
+stack frame per node, and a large cache would overflow the stack. The loop breaks the links one node at a time.
+The map drops its <code>Rc</code> handles afterward, and each drop then frees a single node.</p>
+<p>Figure 13.5 compares where the two caches keep their nodes.</p>
+<figure>
+<img src="figures/lru-rc-layout.svg" alt="The arena is one contiguous row of 48-byte nodes. The Rc list node is a separate 56-byte block holding a strong count, a weak count, a RefCell borrow flag, key, value, prev, and next; such blocks are scattered and linked by arrows.">
+<figcaption><b>Figure 13.5</b> Node storage for <code>u64</code> keys and values. The sizes were measured with <code>std::mem::size_of</code>.</figcaption>
+</figure>
+<p>The arena’s node is 48 bytes: the key and value take 8 bytes each, and each <code>Option&lt;usize&gt;</code> takes 16. The <code>Rc</code> node is 32 bytes. The heap block around it adds a strong count, a weak count, and the <code>RefCell</code>
+flag, for 56 bytes. The memory sizes are close. What differs is the number of allocations and where the nodes sit in memory.</p>
+<h3 id="1353-the-benchmark"><a class="header" href="#1353-the-benchmark">13.5.3 The benchmark</a></h3>
+<p class="listing"><b>Listing 13.17</b> The request stream and the timed loop (lines 52 to 106). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    hint::black_box,
+    time::{Duration, Instant},
+};
+
+use systems_lab::{
+    cache::{Cache, arena::LruCache as ArenaCache, rc_list::LruCache as RcCache},
+    lists::{SinglyList, boxed, boxed_drop, enum_drop, enum_node},
+};
+
+// ---------------------------------------------------------------------------
+// Cache: arena vs Rc&lt;RefCell&gt; linked list
+// ---------------------------------------------------------------------------
+
+/// Request stream with realistic locality: four requests in five come from a hot
+/// set of 1% of the keys, the rest from the whole space.
+fn key_at(state: u64) -&gt; u64 {
+    let mixed = state &gt;&gt; 17;
+    if (state &gt;&gt; 33) % 100 &lt; 80 {
+        mixed % (KEY_SPACE / 100)
+    } else {
+        mixed % KEY_SPACE
+    }
+}
+
+/// The fastest of `CACHE_RUNS` timed passes, with the hit count and final size
+/// from the last one. Each pass starts from an empty cache, so the stream is the
+/// same every time.
+fn best_cache_run&lt;C: Cache&lt;u64, u64&gt;&gt;() -&gt; (Duration, u64, usize) {
+    let mut best = Duration::MAX;
+    let mut hits = 0;
+    let mut len = 0;
+
+    for _ in 0..CACHE_RUNS {
+        let mut cache = C::new(CACHE_CAPACITY);
+        let (elapsed, run_hits) = cache_workload(&amp;mut cache);
+        best = best.min(elapsed);
+        hits = run_hits;
+        len = cache.len();
+    }
+    (best, hits, len)
+}
+
+/// The same request stream against any cache.
+fn cache_workload&lt;C: Cache&lt;u64, u64&gt;&gt;(cache: &amp;mut C) -&gt; (Duration, u64) {
+    let mut state = 0x9e37_79b9_7f4a_7c15u64;
+    let mut hits = 0u64;
+
+    let start = Instant::now();
+    for _ in 0..OPERATIONS {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let key = key_at(state);
+
+        match cache.get(&amp;key) {
+            Some(value) =&gt; {
+                hits += 1;
+                black_box(value);
+            }
+            None =&gt; cache.put(key, key.rotate_left(17)),
+        }
+    }
+    (start.elapsed(), hits)
+}</code></pre>
+<p>A fair comparison needs both caches to see exactly the same requests. The program makes its own request stream
+from a number called <code>state</code>. Each step multiplies and adds two fixed constants, so the same starting <code>state</code>
+always produces the same sequence. A generator of this kind is called a <strong>linear congruential generator</strong>.</p>
+<p><code>key_at</code> shapes the stream to look like real traffic. Real caches see some keys far more often than others. Here,
+80% of requests pick from a hot set of 1% of the keys, and the rest pick from all 131,072 keys. The capacity,
+65,536, is half the key space.</p>
+<p>Each request calls <code>get</code>. On a miss, it calls <code>put</code>, the way a program fills a cache after it computes a missing
+value. <code>black_box</code> tells the compiler to treat the value as used, so the optimizer cannot remove the work.</p>
+<p class="listing"><b>Listing 13.18</b> Running and checking both caches (lines 108 to 158).</p>
+
+<pre><code class="language-rust">fn cache_benchmark() {
+    println!(
+        "LRU cache: {} entries, {} requests over {} keys",
+        with_thousands(CACHE_CAPACITY as u64),
+        with_thousands(OPERATIONS),
+        with_thousands(KEY_SPACE)
+    );
+    println!("A miss inserts and evicts the least recently used entry.");
+    println!("Best of {CACHE_RUNS} runs per cache.\n");
+
+    let (arena_time, arena_hits, arena_len) = best_cache_run::&lt;ArenaCache&lt;u64, u64&gt;&gt;();
+    let (list_time, list_hits, list_len) = best_cache_run::&lt;RcCache&lt;u64, u64&gt;&gt;();
+
+    // Same population and same hit count, or this compares nothing.
+    assert_eq!(arena_len, list_len);
+    assert_eq!(
+        arena_hits, list_hits,
+        "the two runs saw different request streams"
+    );
+
+    println!(
+        "  hit rate: {:.1}%  ({} hits, {} inserts)\n",
+        arena_hits as f64 * 100.0 / OPERATIONS as f64,
+        with_thousands(arena_hits),
+        with_thousands(OPERATIONS - arena_hits)
+    );
+
+    let per_request = |elapsed: Duration| elapsed.as_nanos() as f64 / OPERATIONS as f64;
+
+    // `{:.2?}` uses Duration's own Debug format, rounded to two decimals.
+    println!("  {:&lt;22} {:&gt;12} {:&gt;13}", "storage", "total", "per request");
+    println!("  {}", "-".repeat(48));
+    for (name, elapsed) in [
+        (
+            &lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant(),
+            arena_time,
+        ),
+        (&lt;RcCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant(), list_time),
+    ] {
+        println!(
+            "  {name:&lt;22} {elapsed:&gt;12.2?} {:&gt;8.0} ns",
+            per_request(elapsed)
+        );
+    }
+
+    let speedup = list_time.as_secs_f64() / arena_time.as_secs_f64();
+    println!(
+        "\n  the arena is {speedup:.2}x faster on the same requests: {arena_time:.2?} against {list_time:.2?}"
+    );
+    println!("  the arena reuses the evicted slot; the list frees a node and allocates another");
+}</code></pre>
+<p><code>best_cache_run::&lt;ArenaCache&lt;u64, u64&gt;&gt;()</code> runs the generic function with the arena cache, and the next line runs
+it with the <code>Rc</code> cache. The <code>::&lt;...&gt;</code> syntax, called the turbofish, names the type parameter explicitly.</p>
+<p>Before printing any times, the function checks that both caches finished with the same size and the same number
+of hits. Two correct LRU caches given the same requests make the same decisions. If the counts differed, one
+cache would have a bug, and its time would mean nothing.</p>
+<p><code>&lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant()</code> is the fully qualified way to call a trait function that
+has no <code>self</code>. It names both the type and the trait.</p>
+<p class="listing"><b>Listing 13.19</b> The complete benchmark program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
+
+<pre><code class="language-rust">//! One main for every benchmark in the lab.
+//!
+//! Usage:
+//!   cargo run --release --bin benchmark                    # cache, then lists
+//!   cargo run --release --bin benchmark cache              # cache only
+//!   cargo run --release --bin benchmark list               # all four variants
+//!   cargo run --release --bin benchmark list enum 500000   # one variant, one size
+//!
+//! The recursive list variants abort with a stack overflow past roughly 265,000
+//! nodes, so run them below that size or on their own.
+
+use std::{
+    hint::black_box,
+    time::{Duration, Instant},
+};
+
+use systems_lab::{
+    cache::{Cache, arena::LruCache as ArenaCache, rc_list::LruCache as RcCache},
+    lists::{SinglyList, boxed, boxed_drop, enum_drop, enum_node},
+};
+
+const CACHE_CAPACITY: usize = 65_536;
+const KEY_SPACE: u64 = 131_072;
+const OPERATIONS: u64 = 10_000_000;
+const DEFAULT_LIST_ELEMENTS: usize = 200_000;
+/// Timed passes per cache; the fastest is reported, since a slow pass is noise.
+const CACHE_RUNS: usize = 3;
+/// Timed passes per list variant.
+const LIST_RUNS: usize = 3;
+
+fn main() {
+    let arguments: Vec&lt;String&gt; = std::env::args().skip(1).collect();
+
+    match arguments.first().map(String::as_str) {
+        Some("cache") =&gt; cache_benchmark(),
+        Some("list") =&gt; {
+            let variant = arguments.get(1).map(String::as_str);
+            let elements = arguments
+                .get(2)
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(DEFAULT_LIST_ELEMENTS);
+            list_benchmark(variant, elements);
+        }
+        _ =&gt; {
+            cache_benchmark();
+            println!();
+            list_benchmark(None, DEFAULT_LIST_ELEMENTS);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cache: arena vs Rc&lt;RefCell&gt; linked list
+// ---------------------------------------------------------------------------
+
+/// Request stream with realistic locality: four requests in five come from a hot
+/// set of 1% of the keys, the rest from the whole space.
+fn key_at(state: u64) -&gt; u64 {
+    let mixed = state &gt;&gt; 17;
+    if (state &gt;&gt; 33) % 100 &lt; 80 {
+        mixed % (KEY_SPACE / 100)
+    } else {
+        mixed % KEY_SPACE
+    }
+}
+
+/// The fastest of `CACHE_RUNS` timed passes, with the hit count and final size
+/// from the last one. Each pass starts from an empty cache, so the stream is the
+/// same every time.
+fn best_cache_run&lt;C: Cache&lt;u64, u64&gt;&gt;() -&gt; (Duration, u64, usize) {
+    let mut best = Duration::MAX;
+    let mut hits = 0;
+    let mut len = 0;
+
+    for _ in 0..CACHE_RUNS {
+        let mut cache = C::new(CACHE_CAPACITY);
+        let (elapsed, run_hits) = cache_workload(&amp;mut cache);
+        best = best.min(elapsed);
+        hits = run_hits;
+        len = cache.len();
+    }
+    (best, hits, len)
+}
+
+/// The same request stream against any cache.
+fn cache_workload&lt;C: Cache&lt;u64, u64&gt;&gt;(cache: &amp;mut C) -&gt; (Duration, u64) {
+    let mut state = 0x9e37_79b9_7f4a_7c15u64;
+    let mut hits = 0u64;
+
+    let start = Instant::now();
+    for _ in 0..OPERATIONS {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let key = key_at(state);
+
+        match cache.get(&amp;key) {
+            Some(value) =&gt; {
+                hits += 1;
+                black_box(value);
+            }
+            None =&gt; cache.put(key, key.rotate_left(17)),
+        }
+    }
+    (start.elapsed(), hits)
+}
+
+fn cache_benchmark() {
+    println!(
+        "LRU cache: {} entries, {} requests over {} keys",
+        with_thousands(CACHE_CAPACITY as u64),
+        with_thousands(OPERATIONS),
+        with_thousands(KEY_SPACE)
+    );
+    println!("A miss inserts and evicts the least recently used entry.");
+    println!("Best of {CACHE_RUNS} runs per cache.\n");
+
+    let (arena_time, arena_hits, arena_len) = best_cache_run::&lt;ArenaCache&lt;u64, u64&gt;&gt;();
+    let (list_time, list_hits, list_len) = best_cache_run::&lt;RcCache&lt;u64, u64&gt;&gt;();
+
+    // Same population and same hit count, or this compares nothing.
+    assert_eq!(arena_len, list_len);
+    assert_eq!(
+        arena_hits, list_hits,
+        "the two runs saw different request streams"
+    );
+
+    println!(
+        "  hit rate: {:.1}%  ({} hits, {} inserts)\n",
+        arena_hits as f64 * 100.0 / OPERATIONS as f64,
+        with_thousands(arena_hits),
+        with_thousands(OPERATIONS - arena_hits)
+    );
+
+    let per_request = |elapsed: Duration| elapsed.as_nanos() as f64 / OPERATIONS as f64;
+
+    // `{:.2?}` uses Duration's own Debug format, rounded to two decimals.
+    println!("  {:&lt;22} {:&gt;12} {:&gt;13}", "storage", "total", "per request");
+    println!("  {}", "-".repeat(48));
+    for (name, elapsed) in [
+        (
+            &lt;ArenaCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant(),
+            arena_time,
+        ),
+        (&lt;RcCache&lt;u64, u64&gt; as Cache&lt;u64, u64&gt;&gt;::variant(), list_time),
+    ] {
+        println!(
+            "  {name:&lt;22} {elapsed:&gt;12.2?} {:&gt;8.0} ns",
+            per_request(elapsed)
+        );
+    }
+
+    let speedup = list_time.as_secs_f64() / arena_time.as_secs_f64();
+    println!(
+        "\n  the arena is {speedup:.2}x faster on the same requests: {arena_time:.2?} against {list_time:.2?}"
+    );
+    println!("  the arena reuses the evicted slot; the list frees a node and allocates another");
+}
+
+// ---------------------------------------------------------------------------
+// Lists: four variants, one loop
+// ---------------------------------------------------------------------------
+
+fn list_benchmark(variant: Option&lt;&amp;str&gt;, elements: usize) {
+    println!(
+        "Singly linked list: push {} values, pop them back in order, then drop a full list",
+        with_thousands(elements as u64)
+    );
+    println!("Best of {LIST_RUNS} runs per variant, allocator warmed up.\n");
+    println!(
+        "  {:&lt;10} {:&gt;12} {:&gt;13} {:&gt;13}",
+        "variant", "elements", "push", "drop"
+    );
+    println!("  {}", "-".repeat(52));
+
+    match variant {
+        Some("box") =&gt; run_list::&lt;boxed::LinkedList&lt;u64&gt;&gt;(elements),
+        Some("enum") =&gt; run_list::&lt;enum_node::LinkedList&lt;u64&gt;&gt;(elements),
+        Some("box+drop") =&gt; run_list::&lt;boxed_drop::LinkedList&lt;u64&gt;&gt;(elements),
+        Some("enum+drop") =&gt; run_list::&lt;enum_drop::LinkedList&lt;u64&gt;&gt;(elements),
+        _ =&gt; {
+            run_list::&lt;boxed::LinkedList&lt;u64&gt;&gt;(elements);
+            run_list::&lt;enum_node::LinkedList&lt;u64&gt;&gt;(elements);
+            run_list::&lt;boxed_drop::LinkedList&lt;u64&gt;&gt;(elements);
+            run_list::&lt;enum_drop::LinkedList&lt;u64&gt;&gt;(elements);
+        }
+    }
+}
+
+fn run_list&lt;L: SinglyList&lt;u64&gt;&gt;(elements: usize) {
+    // Warm the allocator first: without this the first variant in a process pays
+    // for fresh heap pages and looks several times slower than an identical one.
+    let mut warm_up = L::new();
+    for value in 0..elements as u64 {
+        warm_up.push_front(value);
+    }
+    drop(warm_up);
+
+    let mut best_push = Duration::MAX;
+    let mut best_drop = Duration::MAX;
+
+    for _ in 0..LIST_RUNS {
+        let mut list = L::new();
+
+        let start = Instant::now();
+        for value in 0..elements as u64 {
+            list.push_front(value);
+        }
+        best_push = best_push.min(start.elapsed());
+
+        // Pop every value back and check the order, so a broken list cannot post
+        // a fast time.
+        let mut expected = elements as u64;
+        while let Some(value) = list.pop_front() {
+            expected -= 1;
+            assert_eq!(value, expected, "{} lost LIFO order", L::variant());
+        }
+        assert_eq!(expected, 0);
+        black_box(expected);
+
+        // Rebuild, then time the drop of a full list. This is where the
+        // recursive variants overflow the stack.
+        for value in 0..elements as u64 {
+            list.push_front(value);
+        }
+        let start = Instant::now();
+        drop(list);
+        best_drop = best_drop.min(start.elapsed());
+    }
+
+    println!(
+        "  {:&lt;10} {:&gt;12} {best_push:&gt;13.2?} {best_drop:&gt;13.2?}",
+        L::variant(),
+        with_thousands(elements as u64)
+    );
+}
+
+fn with_thousands(value: u64) -&gt; String {
+    let digits = value.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (index, digit) in digits.chars().enumerate() {
+        if index &gt; 0 &amp;&amp; (digits.len() - index) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(digit);
+    }
+    out
+}</code></pre>
+<p>The list half of this file was explained in section 9.7. Run only the cache half with the <code>cache</code> argument, and
+always with <code>--release</code>. A debug build is not optimized, and its times do not show how the code performs.</p>
+<pre><code class="language-text">$ cargo run --release --bin benchmark cache
+LRU cache: 65,536 entries, 10,000,000 requests over 131,072 keys
+A miss inserts and evicts the least recently used entry.
+Best of 3 runs per cache.
+
+  hit rate: 89.8%  (8,979,314 hits, 1,020,686 inserts)
+
+  storage                       total   per request
+  ------------------------------------------------
+  arena (Vec + indices)      587.49ms       59 ns
+  Rc&lt;RefCell&gt; list              1.86s      186 ns
+
+  the arena is 3.16x faster on the same requests: 587.49ms against 1.86s
+  the arena reuses the evicted slot; the list frees a node and allocates another
+</code></pre>
+<figure>
+<img src="figures/lru-bench.svg" alt="Bar chart: arena 59 ns per request, Rc RefCell list 186 ns per request.">
+<figcaption><b>Figure 13.6</b> Time per request on an Intel Core i5-1038NG7 laptop.</figcaption>
+</figure>
+<p>On this machine, the arena handled a request in 59 ns on average, and the <code>Rc</code> list took 186 ns. Your numbers
+will differ, but the ratio should be similar on most machines.</p>
+<p>The two caches do the same O(1) work per request. Three differences in how they do it add up:</p>
+<ul>
+<li><strong>Allocation.</strong> About one request in ten is a miss, and each miss in the <code>Rc</code> list frees a node and allocates
+another. The arena reuses the tail slot.</li>
+<li><strong>Bookkeeping.</strong> The <code>Rc</code> list updates reference counts on every clone and drop, and checks the <code>RefCell</code>
+borrow flag on every access. The arena reads and writes plain integers.</li>
+<li><strong>Location.</strong> The arena’s nodes sit side by side in one block. The <code>Rc</code> nodes sit wherever the allocator put
+them. Chapter 15 explains why nearby memory is faster to reach.</li>
+</ul>
+<p>This benchmark measures the total, and does not separate the three costs. Exercise 4 suggests a way to
+separate them.</p>
+<div class="summary" markdown="1">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>An LRU cache evicts the entry that has gone longest without use. It needs fast lookup by key and a recency
+order that changes on every call.</li>
+<li>Version 1 records each use as a stamped event in a queue, and skips stale events during eviction. It is
+amortized O(1), but its queue grows with the number of calls.</li>
+<li>Version 2 keeps a doubly linked list in a <code>Vec</code>, with indices as links. Eviction reuses the tail slot, so the
+cache stops allocating once it is full.</li>
+<li>Version 3 splits the list operations into <code>detach</code>, <code>push_front</code>, and <code>promote_to_front</code>, each with one job and
+a stated precondition.</li>
+<li>Behind a common trait, the arena cache handled requests about three times faster than an <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> list
+in this benchmark.</li>
+<li>A fair benchmark feeds both versions the same input, checks that their results agree, and runs in release
+mode.</li>
+</ul>
+</div>
+
+<p>Chapter 14 spreads a cache across several machines, and asks how to decide which machine holds which key.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li>Bound the queue in version 1. When <code>recency</code> grows longer than twice the capacity, rebuild it with only the
+current events. Check that the cost stays amortized O(1).</li>
+<li>Add <code>peek(&amp;self, key: &amp;K) -&gt; Option&lt;&amp;V&gt;</code> to version 2, which returns a value without changing the order.</li>
+<li>Add <code>remove(&amp;mut self, key: &amp;K) -&gt; Option&lt;V&gt;</code> to version 3. The removed slot must be reused by a later <code>put</code>.
+Keep a list of free slots.</li>
+<li>Change the benchmark’s <code>CACHE_CAPACITY</code> to the full key space, so no request evicts anything. Compare the ratio
+with the one above, and explain what the change tells you about the cost of allocation.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch12-graphs.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch14-sharding.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch12-graphs.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch14-sharding.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

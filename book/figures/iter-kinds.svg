@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190.0" width="720" height="190.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">Three ways to walk a Vec&lt;String&gt; named names</text>
+<rect x="20" y="40" width="170" height="32" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="59.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">names.iter()</text>
+<rect x="200" y="40" width="110" height="32" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="255.0" y="59.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">&amp;String</text>
+<text x="320" y="60" font-size="11.0" fill="#1d2733" text-anchor="start" >borrows each element; names is unchanged and still usable</text>
+<rect x="20" y="86" width="170" height="32" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="105.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">names.iter_mut()</text>
+<rect x="200" y="86" width="110" height="32" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="255.0" y="105.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">&amp;mut String</text>
+<text x="320" y="106" font-size="11.0" fill="#1d2733" text-anchor="start" >borrows each element mutably; you can change them in place</text>
+<rect x="20" y="132" width="170" height="32" rx="4" fill="#fbe3d6" stroke="#1d2733" stroke-width="1.4"/>
+<text x="105.0" y="151.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">names.into_iter()</text>
+<rect x="200" y="132" width="110" height="32" rx="4" fill="#eef3f7" stroke="#1d2733" stroke-width="1.4"/>
+<text x="255.0" y="151.96" font-size="11.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">String</text>
+<text x="320" y="152" font-size="11.0" fill="#1d2733" text-anchor="start" >moves each element out; names is used up and cannot be used after</text>
+<text x="200" y="36" font-size="10.0" fill="#5b6b7c" text-anchor="start" >each item is a</text>
+<text x="20" y="182" font-size="11.0" fill="#1d2733" text-anchor="start" >A for loop over &amp;names calls iter(); over &amp;mut names, iter_mut(); over names, into_iter().</text>
+</svg>

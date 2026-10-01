@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250.0" width="760" height="250.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">What happens inside a blocked push</text>
+<rect x="20" y="44" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="32" y="60" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">1</text>
+<text x="56" y="60" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">lock the mutex</text>
+<text x="420" y="60" font-size="10.0" fill="#5b6b7c" text-anchor="start" >producer holds the guard</text>
+<rect x="20" y="76" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="32" y="92" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">2</text>
+<text x="56" y="92" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">len == capacity: call not_full.wait(guard)</text>
+<text x="420" y="92" font-size="10.0" fill="#5b6b7c" text-anchor="start" >wait unlocks the mutex and sleeps, in one step</text>
+<rect x="20" y="108" width="24" height="24" rx="12" fill="#d9622b" stroke="none" stroke-width="1.4"/>
+<text x="32" y="124" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">3</text>
+<text x="56" y="124" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">a consumer locks, pops, unlocks</text>
+<text x="420" y="124" font-size="10.0" fill="#5b6b7c" text-anchor="start" >then calls not_full.notify_one()</text>
+<rect x="20" y="140" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="32" y="156" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">4</text>
+<text x="56" y="156" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">wait returns a new guard</text>
+<text x="420" y="156" font-size="10.0" fill="#5b6b7c" text-anchor="start" >the producer holds the mutex again</text>
+<rect x="20" y="172" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="32" y="188" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">5</text>
+<text x="56" y="188" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">while loop checks len again</text>
+<text x="420" y="188" font-size="10.0" fill="#5b6b7c" text-anchor="start" >another producer may have taken the slot</text>
+<rect x="20" y="204" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="32" y="220" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">6</text>
+<text x="56" y="220" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">push_back, unlock, notify not_empty</text>
+<text x="420" y="220" font-size="10.0" fill="#5b6b7c" text-anchor="start" ></text>
+</svg>

@@ -1,0 +1,1555 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Parsing and serving HTTP/1.1 - Cracking the Systems Programming Interview</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-27ddf0fa.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-159882ee.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch21.png" alt="Courier, the robot who reads every header before opening the parcel, beside a pneumatic tube carrying a request capsule into a sorting office">
+<h1 id="parsing-and-serving-http11"><a class="header" href="#parsing-and-serving-http11">Parsing and serving HTTP/1.1</a></h1>
+<div class="covers" markdown="1">
+<p>This chapter covers</p>
+<ul>
+<li>Parsing an HTTP/1.1 request from bytes: request line, headers, and body framing</li>
+<li>Why <code>Content-Length</code> plus <code>Transfer-Encoding</code> must be rejected, and what request smuggling is</li>
+<li>Decoding chunked bodies, enforcing size limits, and reporting “incomplete” as a normal result</li>
+<li>A small REST server: a pure routing function, keep-alive, and status codes</li>
+<li>Reading the server against the RFC, and the three things it gets wrong</li>
+</ul>
+</div>
+
+<p>HTTP looks like text with line breaks, but it is a byte stream whose message boundaries are decided by
+headers. The security bugs in real servers come from disagreeing about where one request ends and the next
+begins. The parser in this chapter is built around that boundary. The server on top of it keeps protocol
+handling separate from routing, so each can be tested alone.</p>
+<h2 id="211-the-parser"><a class="header" href="#211-the-parser">21.1 The parser</a></h2>
+<p>The parser is one file, <code>src/problems/http_request.rs</code>. Listing 21.1 in section 21.3 is the whole file.</p>
+<h3 id="2111-types-first"><a class="header" href="#2111-types-first">21.1.1 Types first</a></h3>
+<p>The file opens with its vocabulary. <code>Method</code> is an enum with a <code>parse</code> that returns <code>None</code> for an unknown
+token, and two predicates from RFC 9110:</p>
+<pre><code class="language-rust">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Method {
+    Get,
+    Head,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Options,
+}
+
+impl Method {
+    pub fn parse(token: &amp;str) -&gt; Option&lt;Self&gt; {
+        Some(match token {
+            "GET" =&gt; Self::Get,
+            "HEAD" =&gt; Self::Head,
+            "POST" =&gt; Self::Post,
+            "PUT" =&gt; Self::Put,
+            "PATCH" =&gt; Self::Patch,
+            "DELETE" =&gt; Self::Delete,
+            "OPTIONS" =&gt; Self::Options,
+            _ =&gt; return None,
+        })
+    }
+
+    pub fn is_safe(self) -&gt; bool {
+        matches!(self, Self::Get | Self::Head | Self::Options)
+    }
+
+    pub fn is_idempotent(self) -&gt; bool {
+        matches!(
+            self,
+            Self::Get | Self::Head | Self::Options | Self::Put | Self::Delete
+        )
+    }
+}</code></pre>
+<p><code>is_safe</code> is true for GET, HEAD, and OPTIONS, which do not change state. <code>is_idempotent</code> adds PUT and
+DELETE to those. Chapter 19’s retry loop is the consumer that needs <code>is_idempotent</code>.</p>
+<p><code>Version</code> has two variants because the parser accepts two. <code>Limits</code> carries the header and body caps, with
+defaults of 16 KiB and 8 MiB:</p>
+<pre><code class="language-rust">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Version {
+    Http10,
+    Http11,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Limits {
+    pub max_header_bytes: usize,
+    pub max_body_bytes: usize,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Self {
+        Self {
+            max_header_bytes: 16 * 1024,
+            max_body_bytes: 8 * 1024 * 1024,
+        }
+    }
+}</code></pre>
+<p><code>Request</code> holds what the parser found:</p>
+<pre><code class="language-rust">#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Request {
+    pub method: Method,
+    pub target: String,
+    pub version: Version,
+    pub headers: Vec&lt;(String, String)&gt;,
+    pub body: Vec&lt;u8&gt;,
+}
+
+impl Request {
+    /// First header value matching `name`, case-insensitively.
+    pub fn header(&amp;self, name: &amp;str) -&gt; Option&lt;&amp;str&gt; {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// HTTP/1.1 reuses the connection unless `Connection: close`; HTTP/1.0 only
+    /// reuses it with `Connection: keep-alive`.
+    pub fn should_keep_alive(&amp;self) -&gt; bool {
+        let connection = self.header("connection").unwrap_or("");
+        let has = |token: &amp;str| {
+            connection
+                .split(',')
+                .any(|part| part.trim().eq_ignore_ascii_case(token))
+        };
+        match self.version {
+            Version::Http11 =&gt; !has("close"),
+            Version::Http10 =&gt; has("keep-alive"),
+        }
+    }
+}</code></pre>
+<p><code>Request::header</code> finds a header case-insensitively, because header names are case-insensitive. Then
+<code>should_keep_alive</code> encodes the one rule that differs by version. HTTP/1.1 keeps the connection open
+unless the client sends <code>Connection: close</code>. HTTP/1.0 closes it unless the client sends <code>Connection: keep-alive</code>. The <code>has</code> closure splits the header on commas because <code>Connection</code> carries a list.</p>
+<p><code>ParseError</code> distinguishes the cases a server must treat differently:</p>
+<pre><code class="language-rust">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseError {
+    /// Not a complete request yet; read more and retry.
+    Incomplete,
+    Malformed(&amp;'static str),
+    MissingHost,
+    /// `Content-Length` and `Transfer-Encoding` were both present.
+    AmbiguousBodyLength,
+    UnsupportedTransferEncoding,
+    PayloadTooLarge,
+}</code></pre>
+<p><code>Incomplete</code> is not a failure: it means “read more bytes and try again”, and the server’s loop in section
+21.2 depends on it. <code>PayloadTooLarge</code> maps to status 413, <code>MissingHost</code> and <code>Malformed</code> to 400.</p>
+<h3 id="2112-the-head-of-the-request"><a class="header" href="#2112-the-head-of-the-request">21.1.2 The head of the request</a></h3>
+<p><code>parse_request</code> works on <code>&amp;[u8]</code>, not <code>&amp;str</code>, because an HTTP body is arbitrary bytes and only the head is
+text. It first looks for the blank line that ends the head, <code>\r\n\r\n</code>, with <code>windows(4).position(...)</code>:</p>
+<pre><code class="language-rust">/// Parse one request from the start of `input`.
+pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    let Some(header_end) = input
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+    else {
+        return Err(if input.len() &gt; limits.max_header_bytes {
+            ParseError::PayloadTooLarge
+        } else {
+            ParseError::Incomplete
+        });
+    };
+    if header_end + 4 &gt; limits.max_header_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+
+    let head = &amp;input[..header_end];
+    let body_start = header_end + 4;
+    // ...
+}</code></pre>
+<p>If the blank line is missing, the request is <code>Incomplete</code>. The exception is a buffer already larger than
+<code>max_header_bytes</code>: then the client is sending an endless header and gets <code>PayloadTooLarge</code>. That check
+stops a slow client from holding memory with a header that never ends. Figure 21.1 shows the order of the
+remaining checks.</p>
+<figure>
+<img src="figures/ch21-framing.svg" alt="Flowchart: find the end of the head, parse the request line, parse headers, require exactly one Host for HTTP/1.1, then choose body framing: both headers is an error, Transfer-Encoding decodes chunked, Content-Length takes that many bytes, neither means no body">
+<figcaption><b>Figure 21.1</b> The order of checks in <code>parse_request</code> and <code>parse_body</code>.</figcaption>
+</figure>
+<p>The request line must be exactly three space-separated parts: a known method, a non-empty target, and
+<code>HTTP/1.1</code> or <code>HTTP/1.0</code>. A fourth part is an error.</p>
+<pre><code class="language-rust">pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    // ...
+    let mut lines = head
+        .split(|byte| *byte == b'\n')
+        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
+
+    let request_line = std::str::from_utf8(
+        lines
+            .next()
+            .ok_or(ParseError::Malformed("empty"))?,
+    )
+    .map_err(|_| ParseError::Malformed("request line"))?;
+    let mut parts = request_line.split(' ');
+    let method = Method::parse(
+        parts
+            .next()
+            .ok_or(ParseError::Malformed("method"))?,
+    )
+    .ok_or(ParseError::Malformed("unknown method"))?;
+    let target = parts
+        .next()
+        .ok_or(ParseError::Malformed("target"))?;
+    let version = match parts.next() {
+        Some("HTTP/1.1") =&gt; Version::Http11,
+        Some("HTTP/1.0") =&gt; Version::Http10,
+        _ =&gt; return Err(ParseError::Malformed("version")),
+    };
+    if parts.next().is_some() || target.is_empty() {
+        return Err(ParseError::Malformed("request line"));
+    }
+    // ...
+}</code></pre>
+<p>Header lines are split at the first colon. A name with whitespace is rejected, because RFC 9112 forbids
+whitespace between the name and the colon. A line that starts with a space or tab is <em>obsolete line
+folding</em>, a continuation syntax the RFC deprecates. Since different servers interpret it differently, the
+parser rejects it.</p>
+<pre><code class="language-rust">pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    // ...
+    let mut headers = Vec::new();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        if matches!(line.first(), Some(b' ') | Some(b'\t')) {
+            return Err(ParseError::Malformed("obsolete line folding"));
+        }
+        let colon = line
+            .iter()
+            .position(|byte| *byte == b':')
+            .ok_or(ParseError::Malformed("header without colon"))?;
+        let name = std::str::from_utf8(&amp;line[..colon])
+            .map_err(|_| ParseError::Malformed("header name"))?;
+        if name.is_empty()
+            || name
+                .bytes()
+                .any(|byte| byte.is_ascii_whitespace())
+        {
+            return Err(ParseError::Malformed("invalid header name"));
+        }
+        let value = std::str::from_utf8(&amp;line[colon + 1..])
+            .map_err(|_| ParseError::Malformed("header value"))?;
+        headers.push((name.to_string(), value.trim().to_string()));
+    }
+    // ...
+}</code></pre>
+<p>HTTP/1.1 requires exactly one <code>Host</code> header. The count uses <code>filter(...).count() != 1</code>, which rejects both
+zero and two.</p>
+<pre><code class="language-rust">pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    // ...
+    if version == Version::Http11
+        &amp;&amp; headers
+            .iter()
+            .filter(|(name, _)| name.eq_ignore_ascii_case("host"))
+            .count()
+            != 1
+    {
+        return Err(ParseError::MissingHost);
+    }
+    // ...
+}</code></pre>
+<h3 id="2113-body-framing-and-request-smuggling"><a class="header" href="#2113-body-framing-and-request-smuggling">21.1.3 Body framing and request smuggling</a></h3>
+<p><code>parse_body</code> decides how long the body is. A request with both <code>Content-Length</code> and <code>Transfer-Encoding</code> is
+rejected as <code>AmbiguousBodyLength</code>:</p>
+<pre><code class="language-rust">fn parse_body(
+    input: &amp;[u8],
+    body_start: usize,
+    headers: &amp;[(String, String)],
+    limits: Limits,
+) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let collect = |name: &amp;str| -&gt; Vec&lt;&amp;str&gt; {
+        headers
+            .iter()
+            .filter(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+            .collect()
+    };
+    let transfer_encoding = collect("transfer-encoding");
+    let content_length = collect("content-length");
+
+    // Two framing headers is the classic request-smuggling setup.
+    if !transfer_encoding.is_empty() &amp;&amp; !content_length.is_empty() {
+        return Err(ParseError::AmbiguousBodyLength);
+    }
+    // ...
+}</code></pre>
+<p>The reason is request smuggling (figure 21.2). A front-end proxy may frame a request by <code>Content-Length</code>,
+while the back-end server frames the same bytes by <code>Transfer-Encoding: chunked</code>. The two then disagree
+about where the request ends. The attacker places a second request in the part the back-end treats as
+“after the body”. The back-end runs it as though it arrived on its own, past whatever checks the proxy
+applied. Refusing ambiguous framing outright, and closing the connection, removes the disagreement.</p>
+<figure>
+<img src="figures/ch21-smuggling.svg" alt="One message with both Content-Length and Transfer-Encoding; the proxy reads one request, the back-end ends the POST at the zero chunk and reads GET /admin as a new request; the parser rejects the message instead">
+<figcaption><b>Figure 21.2</b> A CL.TE desynchronization. The parser answers such a request with 400 and closes the connection.</figcaption>
+</figure>
+<figure class="anim">
+<video class="motion" src="figures/ch21-http-framing.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A request&#39;s bytes stream into a buffer. The parser slides a window until it finds the blank line that ends the head, then splits the request line and headers into fields. With Content-Length: 5, a ruler counts five body bytes. With Transfer-Encoding: chunked, the parser reads a size line, takes that many bytes, and stops at the zero-size chunk. Last, one message carries both headers: a proxy frames it by Content-Length and sees one request, a back-end frames it by chunks and finds a hidden GET /admin after the body. The parser refuses the message with 400 and closes the connection." data-chapters="[[0.0, &quot;the head&quot;], [14.82, &quot;Content-Length&quot;], [24.42, &quot;chunked&quot;], [40.8, &quot;both&quot;]]"><img src="figures/ch21-http-framing.gif" alt="A request&#39;s bytes stream into a buffer. The parser slides a window until it finds the blank line that ends the head, then splits the request line and headers into fields. With Content-Length: 5, a ruler counts five body bytes. With Transfer-Encoding: chunked, the parser reads a size line, takes that many bytes, and stops at the zero-size chunk. Last, one message carries both headers: a proxy frames it by Content-Length and sees one request, a back-end frames it by chunks and finds a hidden GET /admin after the body. The parser refuses the message with 400 and closes the connection."></video>
+<figcaption><b>Animation 21.1</b> The head ends at the first blank line. <code>Content-Length</code> or chunked encoding then sets where the body ends. A message with both is refused with 400.</figcaption>
+</figure>
+<p><code>Transfer-Encoding</code> values from every such header are joined and split into codings. The parser supports
+only <code>chunked</code>, and requires it to be last, because a body whose final coding is not <code>chunked</code> has no
+defined end. Anything else is <code>UnsupportedTransferEncoding</code>.</p>
+<pre><code class="language-rust">fn parse_body(
+    input: &amp;[u8],
+    body_start: usize,
+    headers: &amp;[(String, String)],
+    limits: Limits,
+) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    // ...
+    if !transfer_encoding.is_empty() {
+        let joined = transfer_encoding.join(",");
+        let codings: Vec&lt;&amp;str&gt; = joined
+            .split(',')
+            .map(str::trim)
+            .filter(|token| !token.is_empty())
+            .collect();
+        let all_chunked = codings
+            .iter()
+            .all(|token| token.eq_ignore_ascii_case("chunked"));
+        if !all_chunked
+            || !codings
+                .last()
+                .is_some_and(|t| t.eq_ignore_ascii_case("chunked"))
+        {
+            return Err(ParseError::UnsupportedTransferEncoding);
+        }
+        return decode_chunked(&amp;input[body_start..], limits.max_body_bytes);
+    }
+    // ...
+}</code></pre>
+<p>Multiple <code>Content-Length</code> headers are allowed only if they all agree. The check parses each value and
+compares with <code>lengths.any(|length| length != Ok(first))</code>, comparing <code>Result</code>s directly. A length above
+<code>max_body_bytes</code> is rejected <em>before</em> the server waits for the bytes. A client cannot claim a huge body and
+make the server buffer it. If fewer bytes than the length have arrived, the result is <code>Incomplete</code>.</p>
+<pre><code class="language-rust">fn parse_body(
+    input: &amp;[u8],
+    body_start: usize,
+    headers: &amp;[(String, String)],
+    limits: Limits,
+) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    // ...
+    if content_length.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut lengths = content_length.iter().map(|value| {
+        value
+            .trim()
+            .parse::&lt;usize&gt;()
+            .map_err(|_| ParseError::Malformed("invalid Content-Length"))
+    });
+    let first = lengths.next().expect("non-empty")?;
+    if lengths.any(|length| length != Ok(first)) {
+        return Err(ParseError::Malformed("conflicting Content-Length"));
+    }
+    if first &gt; limits.max_body_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+    let end = body_start + first;
+    if input.len() &lt; end {
+        return Err(ParseError::Incomplete);
+    }
+    Ok(input[body_start..end].to_vec())
+}</code></pre>
+<h3 id="2114-chunked-bodies"><a class="header" href="#2114-chunked-bodies">21.1.4 Chunked bodies</a></h3>
+<p><code>decode_chunked</code> walks a cursor through <code>size-in-hex CRLF data CRLF</code> records until a size of 0. Chunk
+extensions after a <code>;</code> are ignored, as the RFC permits.</p>
+<pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let mut cursor = 0;
+    let mut body = Vec::new();
+
+    loop {
+        let line_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+        let size_token = data[cursor..line_end]
+            .split(|byte| *byte == b';')
+            .next()
+            .unwrap_or(&amp;[]);
+        let size = usize::from_str_radix(
+            std::str::from_utf8(size_token)
+                .map_err(|_| ParseError::Malformed("chunk size"))?
+                .trim(),
+            16,
+        )
+        .map_err(|_| ParseError::Malformed("chunk size"))?;
+        cursor = line_end + 2;
+    // ...
+}
+}</code></pre>
+<p>A size of 0 ends the body, after optional trailer lines up to an empty line:</p>
+<pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    // ...
+    loop {
+        // ...
+        if size == 0 {
+            // Consume trailers up to the final empty line.
+            loop {
+                let trailer_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+                let is_empty = trailer_end == cursor;
+                cursor = trailer_end + 2;
+                if is_empty {
+                    return Ok(body);
+                }
+            }
+        }
+        // ...
+    }
+}</code></pre>
+<p>Each other chunk checks the running total against the body limit. It computes the chunk’s end with
+<code>checked_add</code>, returns <code>Incomplete</code> if the data has not all arrived, and insists on the CRLF after the
+data.</p>
+<pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    // ...
+    loop {
+        // ...
+        if body.len() + size &gt; max_body {
+            return Err(ParseError::PayloadTooLarge);
+        }
+        let chunk_end = cursor
+            .checked_add(size)
+            .ok_or(ParseError::Malformed("chunk overflow"))?;
+        if chunk_end + 2 &gt; data.len() {
+            return Err(ParseError::Incomplete);
+        }
+        body.extend_from_slice(&amp;data[cursor..chunk_end]);
+        if &amp;data[chunk_end..chunk_end + 2] != b"\r\n" {
+            return Err(ParseError::Malformed("chunk not CRLF-terminated"));
+        }
+        cursor = chunk_end + 2;
+    }
+}</code></pre>
+<p><code>find_crlf</code> uses <code>data.get(from..)?</code> so that a cursor past the end is <code>None</code> rather than a panic.</p>
+<pre><code class="language-rust">fn find_crlf(data: &amp;[u8], from: usize) -&gt; Option&lt;usize&gt; {
+    data.get(from..)?
+        .windows(2)
+        .position(|window| window == b"\r\n")
+        .map(|offset| offset + from)
+}</code></pre>
+<p>One arithmetic detail needs tightening. <code>body.len() + size &gt; max_body</code> runs before the <code>checked_add</code>, and
+a chunk size near <code>usize::MAX</code> overflows that addition. <code>from_str_radix</code> parses such a size from sixteen
+<code>f</code>s. The form <code>size &gt; max_body - body.len()</code> cannot overflow.</p>
+<p><code>parse_request</code> returns the request but not how many bytes it consumed. A caller therefore cannot find the
+start of a second, pipelined request in the same buffer. The server below accepts that limitation, and its
+module comment says so.</p>
+<h2 id="212-a-small-rest-server"><a class="header" href="#212-a-small-rest-server">21.2 A small REST server</a></h2>
+<p>The server is <code>src/bin/http_server.rs</code>. Listing 21.2 in section 21.3 is the whole file.</p>
+<h3 id="2121-routing-as-a-pure-function"><a class="header" href="#2121-routing-as-a-pure-function">21.2.1 Routing as a pure function</a></h3>
+<p><code>route(&amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;)</code> decides the status, content type, and body without
+touching a socket:</p>
+<pre><code class="language-rust">/// Map a request to `(status, content_type, body)`.
+///
+/// Pure, so the routing rules are unit-testable without a socket.
+pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
+    let target = request.target.as_str();
+
+    if target == "/healthz" {
+        return match request.method {
+            Method::Get | Method::Head =&gt; (200, "text/plain", b"ok\n".to_vec()),
+            _ =&gt; method_not_allowed(),
+        };
+    }
+    // ...
+}</code></pre>
+<p>A known path with an unsupported method returns 405, an unknown path 404.</p>
+<pre><code class="language-rust">pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
+    // ...
+    if target == "/v1/gpu-workloads" {
+        return match request.method {
+            Method::Get | Method::Head =&gt; (
+                200,
+                "application/json",
+                br#"[{"id":"wl-a100-1","gpuCount":1,"state":"Running"}]"#.to_vec(),
+            ),
+            Method::Post =&gt; (
+                201,
+                "application/json",
+                br#"{"id":"wl-a100-2","gpuCount":1,"state":"Pending"}"#.to_vec(),
+            ),
+            _ =&gt; method_not_allowed(),
+        };
+    }
+    // ...
+}</code></pre>
+<p>For <code>/v1/gpu-workloads/{id}</code>, <code>strip_prefix</code> extracts the id, and an empty id or one containing <code>/</code> is a
+404.</p>
+<pre><code class="language-rust">pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
+    // ...
+    if let Some(id) = target.strip_prefix("/v1/gpu-workloads/") {
+        if id.is_empty() || id.contains('/') {
+            return (404, "text/plain", b"not found\n".to_vec());
+        }
+        return match request.method {
+            Method::Get | Method::Head =&gt; (
+                200,
+                "application/json",
+                format!(r#"{{"id":"{id}","state":"Running"}}"#).into_bytes(),
+            ),
+            Method::Delete =&gt; (204, "", Vec::new()),
+            _ =&gt; method_not_allowed(),
+        };
+    }
+
+    (404, "text/plain", b"not found\n".to_vec())
+}</code></pre>
+<p>Its doc comment gives the reason it is a separate function: it is unit-testable. The tests at the bottom
+of the file exercise every route by building a <code>Request</code> value directly.</p>
+<p><code>build_response</code> writes the status line, <code>Content-Length</code>, an optional <code>Content-Type</code>, and a <code>Connection</code>
+header that tells the client what the server will do:</p>
+<pre><code class="language-rust">fn build_response(status: u16, content_type: &amp;str, body: &amp;[u8], keep_alive: bool) -&gt; Vec&lt;u8&gt; {
+    let mut response = format!("HTTP/1.1 {} {}\r\n", status, status_reason(status));
+    response.push_str(&amp;format!("Content-Length: {}\r\n", body.len()));
+    if !content_type.is_empty() {
+        response.push_str(&amp;format!("Content-Type: {content_type}\r\n"));
+    }
+    response.push_str(if keep_alive {
+        "Connection: keep-alive\r\n"
+    } else {
+        "Connection: close\r\n"
+    });
+    response.push_str("\r\n");
+
+    let mut bytes = response.into_bytes();
+    bytes.extend_from_slice(body);
+    bytes
+}</code></pre>
+<h3 id="2122-the-connection-loop"><a class="header" href="#2122-the-connection-loop">21.2.2 The connection loop</a></h3>
+<p><code>handle_connection</code> accumulates bytes in <code>buffer</code> and asks the parser what it has (figure 21.3).</p>
+<figure>
+<img src="figures/ch21-connection.svg" alt="State loop: parse; on Ok route and respond, then clear the buffer and loop if keep-alive or close; on Incomplete read more and parse again; on other errors send 400 and close">
+<figcaption><b>Figure 21.3</b> The keep-alive loop in <code>handle_connection</code>.</figcaption>
+</figure>
+<p>On <code>Ok</code>, it routes, writes the response, and either closes or clears the buffer for the next request:</p>
+<pre><code class="language-rust">fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
+    stream.set_nodelay(true)?;
+    let limits = Limits::default();
+    let mut buffer = Vec::new();
+    let mut chunk = [0u8; 4096];
+
+    loop {
+        match parse_request(&amp;buffer, limits) {
+            Ok(request) =&gt; {
+                let keep_alive = request.should_keep_alive();
+                let (status, content_type, body) = route(&amp;request);
+                let response = build_response(status, content_type, &amp;body, keep_alive);
+                stream.write_all(&amp;response)?;
+
+                if !keep_alive {
+                    return Ok(());
+                }
+                buffer.clear();
+            }
+    // ...
+}
+}
+}</code></pre>
+<p>On <code>Incomplete</code>, it reads more; a read of 0 means the client left mid-request. Any other error gets a 400
+whose body is the error’s <code>Display</code> text, and the connection closes. After a framing error the server
+cannot know where the next request starts.</p>
+<pre><code class="language-rust">fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
+    // ...
+    loop {
+        match parse_request(&amp;buffer, limits) {
+            // ...
+            Err(ParseError::Incomplete) =&gt; {
+                let read = stream.read(&amp;mut chunk)?;
+                if read == 0 {
+                    // Peer closed mid-request.
+                    return Ok(());
+                }
+                buffer.extend_from_slice(&amp;chunk[..read]);
+            }
+            Err(error) =&gt; {
+                let response =
+                    build_response(400, "text/plain", error.to_string().as_bytes(), false);
+                stream.write_all(&amp;response)?;
+                return Ok(());
+            }
+        }
+    }
+}</code></pre>
+<figure class="anim">
+<video class="motion" src="figures/ch21-keep-alive.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A client and the server&#39;s connection loop. The first request arrives in two reads: the first read leaves the parser with Incomplete, so the loop reads again, and the second read completes the head. The parser returns Ok, route answers 200, the response goes back with Connection: keep-alive, and the buffer is cleared. A second request on the same connection is routed the same way. Last, a request with both Content-Length and Transfer-Encoding gets 400 and the connection closes." data-chapters="[[0.0, &quot;two reads&quot;], [20.46, &quot;route&quot;], [31.02, &quot;keep-alive&quot;], [39.54, &quot;framing error&quot;]]"><img src="figures/ch21-keep-alive.gif" alt="A client and the server&#39;s connection loop. The first request arrives in two reads: the first read leaves the parser with Incomplete, so the loop reads again, and the second read completes the head. The parser returns Ok, route answers 200, the response goes back with Connection: keep-alive, and the buffer is cleared. A second request on the same connection is routed the same way. Last, a request with both Content-Length and Transfer-Encoding gets 400 and the connection closes."></video>
+<figcaption><b>Animation 21.2</b> The first request arrives in two reads, so the parser returns <code>Incomplete</code> once. The second reuses the connection. The third has both framing headers, gets 400, and the connection closes.</figcaption>
+</figure>
+<p>A session with <code>curl</code> and <code>nc</code> against the server, started with
+<code>cargo run --bin http_server 127.0.0.1:18080</code>:</p>
+<pre><code class="language-text">$ curl -si http://127.0.0.1:18080/healthz
+HTTP/1.1 200 OK
+Content-Length: 3
+Content-Type: text/plain
+Connection: keep-alive
+
+ok
+$ curl -si -X POST -d '{"gpuCount":1}' http://127.0.0.1:18080/v1/gpu-workloads
+HTTP/1.1 201 Created
+Content-Length: 49
+Content-Type: application/json
+Connection: keep-alive
+
+{"id":"wl-a100-2","gpuCount":1,"state":"Pending"}
+$ printf 'POST / HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\nhello' | nc 127.0.0.1 18080
+HTTP/1.1 400 Bad Request
+Content-Length: 59
+Content-Type: text/plain
+Connection: close
+
+Content-Length and Transfer-Encoding are mutually exclusive
+</code></pre>
+<h3 id="2123-reading-the-server-against-the-rfc"><a class="header" href="#2123-reading-the-server-against-the-rfc">21.2.3 Reading the server against the RFC</a></h3>
+<p>The same session shows three places where the server departs from RFC 9110. None of them is hard to fix,
+and finding them is good practice.</p>
+<pre><code class="language-text">$ curl -si -X DELETE http://127.0.0.1:18080/v1/gpu-workloads/wl-7
+HTTP/1.1 204 No Content
+Content-Length: 0
+Connection: keep-alive
+
+$ printf 'HEAD /healthz HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n' | nc 127.0.0.1 18080
+HTTP/1.1 200 OK
+Content-Length: 3
+Content-Type: text/plain
+Connection: close
+
+ok
+</code></pre>
+<ul>
+<li><strong>HEAD must not carry a body.</strong> A HEAD response repeats the GET headers, including the
+<code>Content-Length</code> of a body it does not send. The server sends <code>ok</code>. A client that
+trusts the spec reads those three bytes as the start of the <em>next</em> response. The fix is one line in
+<code>handle_connection</code>: skip <code>body</code> when <code>request.method == Method::Head</code>.</li>
+<li><strong>204 must not carry <code>Content-Length</code>.</strong> <code>build_response</code> always writes it. Skipping it for 204 (and
+1xx) fixes that.</li>
+<li><strong>Errors all become 400.</strong> <code>PayloadTooLarge</code> deserves 413, and <code>status_reason</code> already has its text.
+Mapping <code>ParseError</code> to a status in one <code>match</code> fixes it. A 405 should also carry an <code>Allow</code> header
+listing the methods that path supports.</li>
+</ul>
+<p>Two more points concern safety rather than the RFC. The id is interpolated into JSON with <code>format!</code>, so an
+id containing <code>"</code> produces invalid JSON; a real server serializes with <code>serde_json</code>. And <code>buffer.clear()</code>
+after each request discards any pipelined bytes that arrived with it, which the module comment
+acknowledges.</p>
+<h2 id="213-the-complete-programs"><a class="header" href="#213-the-complete-programs">21.3 The complete programs</a></h2>
+<p class="listing"><b>Listing 21.1</b> An HTTP/1.1 request parser with framing checks and limits. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs">src/problems/http_request.rs</a></p>
+
+<pre><code class="language-rust">//! HTTP/1.1 request parsing: request line, headers, and body framing.
+//!
+//! The framing checks are the point. `Content-Length` together with
+//! `Transfer-Encoding` is rejected as ambiguous (request smuggling), as are
+//! obsolete line folding and a missing `Host`. Header and body sizes are bounded
+//! so a slow client cannot hold a connection open.
+
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Method {
+    Get,
+    Head,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Options,
+}
+
+impl Method {
+    pub fn parse(token: &amp;str) -&gt; Option&lt;Self&gt; {
+        Some(match token {
+            "GET" =&gt; Self::Get,
+            "HEAD" =&gt; Self::Head,
+            "POST" =&gt; Self::Post,
+            "PUT" =&gt; Self::Put,
+            "PATCH" =&gt; Self::Patch,
+            "DELETE" =&gt; Self::Delete,
+            "OPTIONS" =&gt; Self::Options,
+            _ =&gt; return None,
+        })
+    }
+
+    pub fn is_safe(self) -&gt; bool {
+        matches!(self, Self::Get | Self::Head | Self::Options)
+    }
+
+    pub fn is_idempotent(self) -&gt; bool {
+        matches!(
+            self,
+            Self::Get | Self::Head | Self::Options | Self::Put | Self::Delete
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Version {
+    Http10,
+    Http11,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Limits {
+    pub max_header_bytes: usize,
+    pub max_body_bytes: usize,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Self {
+        Self {
+            max_header_bytes: 16 * 1024,
+            max_body_bytes: 8 * 1024 * 1024,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Request {
+    pub method: Method,
+    pub target: String,
+    pub version: Version,
+    pub headers: Vec&lt;(String, String)&gt;,
+    pub body: Vec&lt;u8&gt;,
+}
+
+impl Request {
+    /// First header value matching `name`, case-insensitively.
+    pub fn header(&amp;self, name: &amp;str) -&gt; Option&lt;&amp;str&gt; {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+    }
+
+    /// HTTP/1.1 reuses the connection unless `Connection: close`; HTTP/1.0 only
+    /// reuses it with `Connection: keep-alive`.
+    pub fn should_keep_alive(&amp;self) -&gt; bool {
+        let connection = self.header("connection").unwrap_or("");
+        let has = |token: &amp;str| {
+            connection
+                .split(',')
+                .any(|part| part.trim().eq_ignore_ascii_case(token))
+        };
+        match self.version {
+            Version::Http11 =&gt; !has("close"),
+            Version::Http10 =&gt; has("keep-alive"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseError {
+    /// Not a complete request yet; read more and retry.
+    Incomplete,
+    Malformed(&amp;'static str),
+    MissingHost,
+    /// `Content-Length` and `Transfer-Encoding` were both present.
+    AmbiguousBodyLength,
+    UnsupportedTransferEncoding,
+    PayloadTooLarge,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            Self::Incomplete =&gt; write!(f, "incomplete request"),
+            Self::Malformed(reason) =&gt; write!(f, "malformed request: {reason}"),
+            Self::MissingHost =&gt; write!(f, "HTTP/1.1 requires exactly one Host header"),
+            Self::AmbiguousBodyLength =&gt; {
+                write!(
+                    f,
+                    "Content-Length and Transfer-Encoding are mutually exclusive"
+                )
+            }
+            Self::UnsupportedTransferEncoding =&gt; write!(f, "unsupported Transfer-Encoding"),
+            Self::PayloadTooLarge =&gt; write!(f, "request exceeds configured limits"),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+/// Parse one request from the start of `input`.
+pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
+    let Some(header_end) = input
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+    else {
+        return Err(if input.len() &gt; limits.max_header_bytes {
+            ParseError::PayloadTooLarge
+        } else {
+            ParseError::Incomplete
+        });
+    };
+    if header_end + 4 &gt; limits.max_header_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+
+    let head = &amp;input[..header_end];
+    let body_start = header_end + 4;
+
+    let mut lines = head
+        .split(|byte| *byte == b'\n')
+        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
+
+    let request_line = std::str::from_utf8(
+        lines
+            .next()
+            .ok_or(ParseError::Malformed("empty"))?,
+    )
+    .map_err(|_| ParseError::Malformed("request line"))?;
+    let mut parts = request_line.split(' ');
+    let method = Method::parse(
+        parts
+            .next()
+            .ok_or(ParseError::Malformed("method"))?,
+    )
+    .ok_or(ParseError::Malformed("unknown method"))?;
+    let target = parts
+        .next()
+        .ok_or(ParseError::Malformed("target"))?;
+    let version = match parts.next() {
+        Some("HTTP/1.1") =&gt; Version::Http11,
+        Some("HTTP/1.0") =&gt; Version::Http10,
+        _ =&gt; return Err(ParseError::Malformed("version")),
+    };
+    if parts.next().is_some() || target.is_empty() {
+        return Err(ParseError::Malformed("request line"));
+    }
+
+    let mut headers = Vec::new();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        if matches!(line.first(), Some(b' ') | Some(b'\t')) {
+            return Err(ParseError::Malformed("obsolete line folding"));
+        }
+        let colon = line
+            .iter()
+            .position(|byte| *byte == b':')
+            .ok_or(ParseError::Malformed("header without colon"))?;
+        let name = std::str::from_utf8(&amp;line[..colon])
+            .map_err(|_| ParseError::Malformed("header name"))?;
+        if name.is_empty()
+            || name
+                .bytes()
+                .any(|byte| byte.is_ascii_whitespace())
+        {
+            return Err(ParseError::Malformed("invalid header name"));
+        }
+        let value = std::str::from_utf8(&amp;line[colon + 1..])
+            .map_err(|_| ParseError::Malformed("header value"))?;
+        headers.push((name.to_string(), value.trim().to_string()));
+    }
+
+    if version == Version::Http11
+        &amp;&amp; headers
+            .iter()
+            .filter(|(name, _)| name.eq_ignore_ascii_case("host"))
+            .count()
+            != 1
+    {
+        return Err(ParseError::MissingHost);
+    }
+
+    let body = parse_body(input, body_start, &amp;headers, limits)?;
+
+    Ok(Request {
+        method,
+        target: target.to_string(),
+        version,
+        headers,
+        body,
+    })
+}
+
+fn parse_body(
+    input: &amp;[u8],
+    body_start: usize,
+    headers: &amp;[(String, String)],
+    limits: Limits,
+) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let collect = |name: &amp;str| -&gt; Vec&lt;&amp;str&gt; {
+        headers
+            .iter()
+            .filter(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+            .collect()
+    };
+    let transfer_encoding = collect("transfer-encoding");
+    let content_length = collect("content-length");
+
+    // Two framing headers is the classic request-smuggling setup.
+    if !transfer_encoding.is_empty() &amp;&amp; !content_length.is_empty() {
+        return Err(ParseError::AmbiguousBodyLength);
+    }
+
+    if !transfer_encoding.is_empty() {
+        let joined = transfer_encoding.join(",");
+        let codings: Vec&lt;&amp;str&gt; = joined
+            .split(',')
+            .map(str::trim)
+            .filter(|token| !token.is_empty())
+            .collect();
+        let all_chunked = codings
+            .iter()
+            .all(|token| token.eq_ignore_ascii_case("chunked"));
+        if !all_chunked
+            || !codings
+                .last()
+                .is_some_and(|t| t.eq_ignore_ascii_case("chunked"))
+        {
+            return Err(ParseError::UnsupportedTransferEncoding);
+        }
+        return decode_chunked(&amp;input[body_start..], limits.max_body_bytes);
+    }
+
+    if content_length.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut lengths = content_length.iter().map(|value| {
+        value
+            .trim()
+            .parse::&lt;usize&gt;()
+            .map_err(|_| ParseError::Malformed("invalid Content-Length"))
+    });
+    let first = lengths.next().expect("non-empty")?;
+    if lengths.any(|length| length != Ok(first)) {
+        return Err(ParseError::Malformed("conflicting Content-Length"));
+    }
+    if first &gt; limits.max_body_bytes {
+        return Err(ParseError::PayloadTooLarge);
+    }
+    let end = body_start + first;
+    if input.len() &lt; end {
+        return Err(ParseError::Incomplete);
+    }
+    Ok(input[body_start..end].to_vec())
+}
+
+fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
+    let mut cursor = 0;
+    let mut body = Vec::new();
+
+    loop {
+        let line_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+        let size_token = data[cursor..line_end]
+            .split(|byte| *byte == b';')
+            .next()
+            .unwrap_or(&amp;[]);
+        let size = usize::from_str_radix(
+            std::str::from_utf8(size_token)
+                .map_err(|_| ParseError::Malformed("chunk size"))?
+                .trim(),
+            16,
+        )
+        .map_err(|_| ParseError::Malformed("chunk size"))?;
+        cursor = line_end + 2;
+
+        if size == 0 {
+            // Consume trailers up to the final empty line.
+            loop {
+                let trailer_end = find_crlf(data, cursor).ok_or(ParseError::Incomplete)?;
+                let is_empty = trailer_end == cursor;
+                cursor = trailer_end + 2;
+                if is_empty {
+                    return Ok(body);
+                }
+            }
+        }
+
+        if body.len() + size &gt; max_body {
+            return Err(ParseError::PayloadTooLarge);
+        }
+        let chunk_end = cursor
+            .checked_add(size)
+            .ok_or(ParseError::Malformed("chunk overflow"))?;
+        if chunk_end + 2 &gt; data.len() {
+            return Err(ParseError::Incomplete);
+        }
+        body.extend_from_slice(&amp;data[cursor..chunk_end]);
+        if &amp;data[chunk_end..chunk_end + 2] != b"\r\n" {
+            return Err(ParseError::Malformed("chunk not CRLF-terminated"));
+        }
+        cursor = chunk_end + 2;
+    }
+}
+
+fn find_crlf(data: &amp;[u8], from: usize) -&gt; Option&lt;usize&gt; {
+    data.get(from..)?
+        .windows(2)
+        .position(|window| window == b"\r\n")
+        .map(|offset| offset + from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(raw: &amp;[u8]) -&gt; Result&lt;Request, ParseError&gt; {
+        parse_request(raw, Limits::default())
+    }
+
+    #[test]
+    fn parses_a_get_and_a_post_with_content_length() {
+        let get = parse(b"GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\nAccept: */*\r\n\r\n")
+            .expect("valid");
+        assert_eq!(get.method, Method::Get);
+        assert_eq!(get.header("HOST"), Some("api"));
+        assert!(get.body.is_empty());
+        assert!(get.should_keep_alive());
+
+        let post = parse(b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 5\r\n\r\nhello")
+            .expect("valid");
+        assert_eq!(post.body, b"hello");
+        assert!(!post.method.is_idempotent());
+    }
+
+    #[test]
+    fn decodes_chunked_bodies() {
+        let raw = b"POST /u HTTP/1.1\r\nHost: api\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n";
+        assert_eq!(parse(raw).expect("valid").body, b"hello world");
+    }
+
+    #[test]
+    fn rejects_ambiguous_framing_and_bad_framing() {
+        let smuggling = b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\nhello";
+        assert_eq!(parse(smuggling), Err(ParseError::AmbiguousBodyLength));
+
+        let gzip = b"POST / HTTP/1.1\r\nHost: api\r\nTransfer-Encoding: gzip\r\n\r\n";
+        assert_eq!(parse(gzip), Err(ParseError::UnsupportedTransferEncoding));
+    }
+
+    #[test]
+    fn rejects_missing_host_and_line_folding() {
+        assert_eq!(
+            parse(b"GET / HTTP/1.1\r\nAccept: */*\r\n\r\n"),
+            Err(ParseError::MissingHost)
+        );
+        let folded = b"GET / HTTP/1.1\r\nHost: api\r\nX-A: 1\r\n continued\r\n\r\n";
+        assert!(matches!(parse(folded), Err(ParseError::Malformed(_))));
+    }
+
+    #[test]
+    fn reports_incomplete_and_enforces_limits() {
+        assert_eq!(
+            parse(b"GET / HTTP/1.1\r\nHost: api\r\n"),
+            Err(ParseError::Incomplete)
+        );
+        let limits = Limits {
+            max_header_bytes: 1024,
+            max_body_bytes: 10,
+        };
+        let raw = b"POST / HTTP/1.1\r\nHost: api\r\nContent-Length: 999\r\n\r\n";
+        assert_eq!(parse_request(raw, limits), Err(ParseError::PayloadTooLarge));
+    }
+
+    #[test]
+    fn http_1_0_needs_keep_alive_opt_in() {
+        let raw = b"GET / HTTP/1.0\r\n\r\n";
+        assert!(!parse(raw).expect("valid").should_keep_alive());
+        let raw = b"GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n";
+        assert!(parse(raw).expect("valid").should_keep_alive());
+    }
+}</code></pre>
+<p class="listing"><b>Listing 21.2</b> Routes, responses, and a keep-alive loop over <code>std::net</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/http_server.rs">src/bin/http_server.rs</a></p>
+
+<pre><code class="language-rust">//! Minimal HTTP/1.1 server with REST-style routes.
+//!
+//! It uses only `std::net` plus the request parser in
+//! [`systems_lab::problems::http_request`], so the interesting parts
+//! stay visible: the accept loop, the keep-alive loop, status codes, and the
+//! routing decision.
+//!
+//! Routes:
+//!
+//! | Method | Path | Response |
+//! |---|---|---|
+//! | `GET` | `/healthz` | `200` plain text |
+//! | `GET` | `/v1/gpu-workloads` | `200` JSON list |
+//! | `POST` | `/v1/gpu-workloads` | `201` created |
+//! | `GET` | `/v1/gpu-workloads/{id}` | `200` one workload |
+//! | `DELETE` | `/v1/gpu-workloads/{id}` | `204` no content |
+//!
+//! A known path with the wrong method returns `405`, and an unknown path returns
+//! `404`. Pipelined requests are not supported: the loop handles one request per
+//! read buffer, which matches how most servers treat pipelining in practice.
+//!
+//! ```bash
+//! cargo run --bin http_server            # binds 127.0.0.1:8080
+//! curl -i http://127.0.0.1:8080/healthz
+//! curl -i -X POST -d '{"gpuCount":1}' http://127.0.0.1:8080/v1/gpu-workloads
+//! ```
+
+use std::{
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    thread,
+};
+
+use systems_lab::problems::http_request::{Limits, Method, ParseError, Request, parse_request};
+
+/// Map a request to `(status, content_type, body)`.
+///
+/// Pure, so the routing rules are unit-testable without a socket.
+pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
+    let target = request.target.as_str();
+
+    if target == "/healthz" {
+        return match request.method {
+            Method::Get | Method::Head =&gt; (200, "text/plain", b"ok\n".to_vec()),
+            _ =&gt; method_not_allowed(),
+        };
+    }
+
+    if target == "/v1/gpu-workloads" {
+        return match request.method {
+            Method::Get | Method::Head =&gt; (
+                200,
+                "application/json",
+                br#"[{"id":"wl-a100-1","gpuCount":1,"state":"Running"}]"#.to_vec(),
+            ),
+            Method::Post =&gt; (
+                201,
+                "application/json",
+                br#"{"id":"wl-a100-2","gpuCount":1,"state":"Pending"}"#.to_vec(),
+            ),
+            _ =&gt; method_not_allowed(),
+        };
+    }
+
+    if let Some(id) = target.strip_prefix("/v1/gpu-workloads/") {
+        if id.is_empty() || id.contains('/') {
+            return (404, "text/plain", b"not found\n".to_vec());
+        }
+        return match request.method {
+            Method::Get | Method::Head =&gt; (
+                200,
+                "application/json",
+                format!(r#"{{"id":"{id}","state":"Running"}}"#).into_bytes(),
+            ),
+            Method::Delete =&gt; (204, "", Vec::new()),
+            _ =&gt; method_not_allowed(),
+        };
+    }
+
+    (404, "text/plain", b"not found\n".to_vec())
+}
+
+fn method_not_allowed() -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
+    (405, "text/plain", b"method not allowed\n".to_vec())
+}
+
+fn status_reason(status: u16) -&gt; &amp;'static str {
+    match status {
+        200 =&gt; "OK",
+        201 =&gt; "Created",
+        204 =&gt; "No Content",
+        400 =&gt; "Bad Request",
+        404 =&gt; "Not Found",
+        405 =&gt; "Method Not Allowed",
+        413 =&gt; "Payload Too Large",
+        _ =&gt; "Internal Server Error",
+    }
+}
+
+fn build_response(status: u16, content_type: &amp;str, body: &amp;[u8], keep_alive: bool) -&gt; Vec&lt;u8&gt; {
+    let mut response = format!("HTTP/1.1 {} {}\r\n", status, status_reason(status));
+    response.push_str(&amp;format!("Content-Length: {}\r\n", body.len()));
+    if !content_type.is_empty() {
+        response.push_str(&amp;format!("Content-Type: {content_type}\r\n"));
+    }
+    response.push_str(if keep_alive {
+        "Connection: keep-alive\r\n"
+    } else {
+        "Connection: close\r\n"
+    });
+    response.push_str("\r\n");
+
+    let mut bytes = response.into_bytes();
+    bytes.extend_from_slice(body);
+    bytes
+}
+
+/// Serve connections forever, one thread per connection.
+pub fn serve(listener: TcpListener) {
+    for incoming in listener.incoming() {
+        match incoming {
+            Ok(stream) =&gt; {
+                thread::spawn(move || {
+                    if let Err(error) = handle_connection(stream) {
+                        eprintln!("connection error: {error}");
+                    }
+                });
+            }
+            Err(error) =&gt; eprintln!("accept error: {error}"),
+        }
+    }
+}
+
+fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
+    stream.set_nodelay(true)?;
+    let limits = Limits::default();
+    let mut buffer = Vec::new();
+    let mut chunk = [0u8; 4096];
+
+    loop {
+        match parse_request(&amp;buffer, limits) {
+            Ok(request) =&gt; {
+                let keep_alive = request.should_keep_alive();
+                let (status, content_type, body) = route(&amp;request);
+                let response = build_response(status, content_type, &amp;body, keep_alive);
+                stream.write_all(&amp;response)?;
+
+                if !keep_alive {
+                    return Ok(());
+                }
+                buffer.clear();
+            }
+            Err(ParseError::Incomplete) =&gt; {
+                let read = stream.read(&amp;mut chunk)?;
+                if read == 0 {
+                    // Peer closed mid-request.
+                    return Ok(());
+                }
+                buffer.extend_from_slice(&amp;chunk[..read]);
+            }
+            Err(error) =&gt; {
+                let response =
+                    build_response(400, "text/plain", error.to_string().as_bytes(), false);
+                stream.write_all(&amp;response)?;
+                return Ok(());
+            }
+        }
+    }
+}
+
+fn main() {
+    let address = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
+
+    let listener = TcpListener::bind(&amp;address).expect("failed to bind");
+    let local = listener
+        .local_addr()
+        .expect("failed to read local address");
+    println!("http server listening on http://{local}");
+
+    serve(listener);
+}
+
+#[cfg(test)]
+mod tests {
+    use systems_lab::problems::http_request::Version;
+
+    use super::*;
+
+    fn request(method: Method, target: &amp;str) -&gt; Request {
+        Request {
+            method,
+            target: target.to_string(),
+            version: Version::Http11,
+            headers: vec![("host".to_string(), "localhost".to_string())],
+            body: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn healthz_is_ok() {
+        let (status, content_type, body) = route(&amp;request(Method::Get, "/healthz"));
+        assert_eq!(status, 200);
+        assert_eq!(content_type, "text/plain");
+        assert_eq!(body, b"ok\n");
+    }
+
+    #[test]
+    fn lists_and_creates_workloads() {
+        let (status, _, _) = route(&amp;request(Method::Get, "/v1/gpu-workloads"));
+        assert_eq!(status, 200);
+
+        let (status, content_type, body) = route(&amp;request(Method::Post, "/v1/gpu-workloads"));
+        assert_eq!(status, 201);
+        assert_eq!(content_type, "application/json");
+        assert!(
+            String::from_utf8(body)
+                .expect("json")
+                .contains("Pending")
+        );
+    }
+
+    #[test]
+    fn gets_and_deletes_one_workload() {
+        let (status, _, body) = route(&amp;request(Method::Get, "/v1/gpu-workloads/wl-7"));
+        assert_eq!(status, 200);
+        assert!(
+            String::from_utf8(body)
+                .expect("json")
+                .contains("wl-7")
+        );
+
+        let (status, _, body) = route(&amp;request(Method::Delete, "/v1/gpu-workloads/wl-7"));
+        assert_eq!(status, 204);
+        assert!(body.is_empty());
+    }
+
+    #[test]
+    fn wrong_method_on_known_path_is_405() {
+        let (status, _, _) = route(&amp;request(Method::Put, "/healthz"));
+        assert_eq!(status, 405);
+        let (status, _, _) = route(&amp;request(Method::Put, "/v1/gpu-workloads"));
+        assert_eq!(status, 405);
+    }
+
+    #[test]
+    fn unknown_path_is_404() {
+        let (status, _, _) = route(&amp;request(Method::Get, "/nope"));
+        assert_eq!(status, 404);
+    }
+}</code></pre>
+<h2 id="214-questions-that-come-up"><a class="header" href="#214-questions-that-come-up">21.4 Questions that come up</a></h2>
+<p><strong>“How does a server know where an HTTP/1.1 request body ends?”</strong>
+<code>Transfer-Encoding: chunked</code> means read chunks until a zero-size chunk. Else <code>Content-Length</code> gives the
+count. With neither header there is no body. For responses, closing the connection can also end the body.</p>
+<p><strong>“What is request smuggling, and how do you prevent it?”</strong>
+Two servers frame the same bytes differently, so each sees a different message.
+Reject requests with both framing headers. Reject conflicting <code>Content-Length</code>s. Close the
+connection after any framing error.</p>
+<p><strong>“How do you stop a client from exhausting your server’s memory?”</strong>
+Limit header size and body size. Check the declared length before reading the body. Time out idle
+and slow connections.</p>
+<p><strong>“Why is routing a separate pure function?”</strong>
+So the rules are testable without sockets. The protocol code (framing, keep-alive) can then be changed
+without touching the application logic.</p>
+<p><strong>“What does HTTP/2 change?”</strong>
+Binary framing with explicit lengths, many concurrent streams on one connection, and header compression.
+Framing ambiguity of the HTTP/1.1 kind disappears inside HTTP/2, although it can return where a proxy
+downgrades to HTTP/1.1.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch20-sockets.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch22-async.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch20-sockets.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch22-async.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
