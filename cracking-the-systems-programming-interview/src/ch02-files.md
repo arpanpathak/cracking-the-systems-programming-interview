@@ -38,7 +38,7 @@ work. Figure 2.1 shows the steps for reading a small file.
 
 <figure>
 <img src="figures/ch02-syscall.svg" alt="The program asks the kernel through system calls; the kernel checks its page cache, reads from disk if needed, and copies bytes into the program's buffer. Opening the file returns file descriptor 3.">
-<figcaption><b>Figure 2.1</b> A read goes through the kernel. The kernel keeps recently used file data in memory, in its page cache, so a second read of the same file usually does not touch the disk.</figcaption>
+<figcaption><b>Figure 2.1</b> A read goes through the kernel. The kernel keeps recently used file data in memory, in its page cache. A second read of the same file usually does not touch the disk.</figcaption>
 </figure>
 
 The steps are:

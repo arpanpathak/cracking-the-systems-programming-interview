@@ -528,7 +528,7 @@ def code_panel(p, x, y, w, title, lines, active, size=11.2, lead=17.5, strike=No
             ty = y + 28 + i * lead + lead * 0.7
             if reveal is not None and i > reveal + 0.01 and not near:
                 body = row.strip()
-                if body:
+                if body and body.strip("{}();,") :
                     indent = text_width(row[:len(row) - len(row.lstrip())], size, True)
                     p.rect(x + 16 + indent, ty - size * 0.62, text_width(body, size, True),
                            size * 0.7, "#eef2f5", "none", 3)
@@ -641,6 +641,7 @@ def _raster(job):
         im = Image.open(dst).convert("RGB")
     if keep:
         im.save(keep, "PNG")
+        return None
     if palette_bytes is None:
         buf = io.BytesIO()
         im.save(buf, "PNG")
@@ -718,41 +719,18 @@ def render(name, tl, draw, height, tail=1.8, fade=0.6, fps=FPS, scale=SCALE, onl
         svgs.append(svg)
         waits.append(step)
 
-    # One palette for the whole animation, grown from frames spread across it,
-    # so a colour never shifts from one frame to the next.
-    picks = [svgs[int(i * (len(svgs) - 1) / 23)] for i in range(24)]
-    with ProcessPoolExecutor() as pool:
-        samples = [Image.open(io.BytesIO(b)) for b in
-                   pool.map(_raster, [(s, width // 3, px_h // 3, None) for s in picks])]
-    sheet = Image.new("RGB", (samples[0].width, samples[0].height * len(samples)))
-    for i, im in enumerate(samples):
-        sheet.paste(im, (0, i * im.height))
-    # 255 colours, not 256: the free slot is what lets the encoder mark the
-    # pixels a frame does not change as transparent, which is most of them.
-    # The flat colours are pinned first, so the page white stays white and the
-    # ink stays ink; median cut spends the rest on edges, shadows, and glows.
-    exact = [PAPER, INK, MUTED, FAINT, LINE, STAGE, TEAL, TEAL_LT, BRASS, BRASS_LT, RUST,
-             RUST_LT, NIGHT, SCREEN, GLOW, "#e6ebf0", "#fbfcfd"] + list(extra_colors)
-    exact = list(dict.fromkeys(exact))
-    grown = sheet.quantize(colors=255 - len(exact), method=Image.Quantize.MEDIANCUT,
-                           dither=Image.Dither.NONE).getpalette()[:3 * (255 - len(exact))]
-    palette = [v for c in exact for v in hex_rgb(c)] + grown
-
+    # Every distinct frame is rasterised once, in parallel, to a PNG. ffmpeg then
+    # builds both outputs from those stills: one GIF with a single palette taken
+    # from every frame and delta frames, and one MP4. Encoding the GIF in Python
+    # was the slow, single-threaded part of the old pipeline.
     stills = tempfile.mkdtemp(prefix="motion-")
     with ProcessPoolExecutor() as pool:
-        raw = list(pool.map(_raster, [(s, width, px_h, palette,
-                                        os.path.join(stills, "f%05d.png" % i))
-                                       for i, s in enumerate(svgs)], chunksize=4))
-    images = []
-    for size, data in raw:
-        im = Image.frombytes("P", size, data)
-        im.putpalette(palette)
-        images.append(im)
+        list(pool.map(_raster, [(s, width, px_h, None, os.path.join(stills, "f%05d.png" % i))
+                                for i, s in enumerate(svgs)], chunksize=4))
     # GIF delays are in centiseconds, so round each hold to a multiple of 10 ms.
     waits = [max(20, int(round(w / 10.0)) * 10) for w in waits]
     OUT.mkdir(parents=True, exist_ok=True)
-    images[0].save(OUT / name, save_all=True, append_images=images[1:], duration=waits,
-                   loop=0, optimize=True, disposal=1)
+    _gif(stills, waits, OUT / name)
     video = OUT / name.replace(".gif", ".mp4")
     _video(stills, waits, video)
     shutil.rmtree(stills, ignore_errors=True)
@@ -761,8 +739,28 @@ def render(name, tl, draw, height, tail=1.8, fade=0.6, fps=FPS, scale=SCALE, onl
         "chapters": [[round(when, 2), label] for when, label in tl.chapters],
     }) + "\n")
     print("  %s: %d frames, %.1f s, gif %.1f MB, mp4 %.1f MB" % (
-        name, len(images), total, (OUT / name).stat().st_size / 1e6, video.stat().st_size / 1e6))
+        name, len(svgs), total, (OUT / name).stat().st_size / 1e6, video.stat().st_size / 1e6))
     return OUT / name
+
+
+def _concat_list(stills, waits):
+    listing = os.path.join(stills, "frames.txt")
+    names = sorted(f for f in os.listdir(stills) if f.endswith(".png"))
+    with open(listing, "w") as fh:
+        for f, ms in zip(names, waits):
+            fh.write("file '%s'\nduration %.3f\n" % (os.path.join(stills, f), ms / 1000.0))
+        fh.write("file '%s'\n" % os.path.join(stills, names[-1]))
+    return listing
+
+
+def _gif(stills, waits, path):
+    """One palette from every frame, no dithering, and only the changed
+    rectangle stored per frame."""
+    listing = _concat_list(stills, waits)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing,
+                    "-vf", "split[a][b];[a]palettegen=max_colors=256:stats_mode=full:reserve_transparent=1[p];"
+                           "[b][p]paletteuse=dither=none:diff_mode=rectangle",
+                    "-loop", "0", str(path)], check=True)
 
 
 def _video(stills, waits, path):
@@ -771,12 +769,7 @@ def _video(stills, waits, path):
     The frames are held for the same times as in the GIF, through ffmpeg's
     concat demuxer, and resampled to a constant 20 frames a second.
     """
-    listing = os.path.join(stills, "frames.txt")
-    names = sorted(f for f in os.listdir(stills) if f.endswith(".png"))
-    with open(listing, "w") as fh:
-        for f, ms in zip(names, waits):
-            fh.write("file '%s'\nduration %.3f\n" % (os.path.join(stills, f), ms / 1000.0))
-        fh.write("file '%s'\n" % os.path.join(stills, names[-1]))
+    listing = _concat_list(stills, waits)
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
                     "-i", listing, "-vf",
                     "fps=%d,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p" % FPS,

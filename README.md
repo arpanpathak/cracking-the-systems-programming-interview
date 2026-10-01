@@ -87,7 +87,7 @@ cd cracking-the-systems-programming-interview
 make serve                       # browser edition at http://localhost:3000
 make pdf                         # -> build/cracking-the-systems-programming-interview.pdf
 make art figures animations      # redraw the plates, the diagrams, and the animations
-make lint                        # check every figure and animation for colliding labels
+make lint                        # check the figures for colliding labels, and the prose
 ```
 
 The print edition is at
@@ -95,43 +95,25 @@ The print edition is at
 
 ### Animations
 
-Each algorithmic chapter carries a looping GIF beside the listing it explains.
-A frame is one step of the algorithm, held for about four seconds, with the same
-variable names the listing uses. Between two steps the drawing cross-fades while
-the prose changes in one clean step, so a pointer glides without the sentence
-blurring.
+Each animation follows one run of the code in the listing beside it. The drawing
+moves: values travel between cells, pointers slide, threads fall asleep and wake.
+A caption under the drawing names the step, and the line of code that runs is
+highlighted in a panel below it. Code lines appear only when the run reaches
+them. Most animations end on a failing case, such as a missing wake or a wrong
+insert order, drawn in rust.
 
-Every frame is drawn by `tools/animations.py` and its three sibling modules, and
-checked by `tools/lint_animations.py` with the same rules the still figures use:
+The HTML book plays each animation as a video with pause, three speeds, a button
+for each step, and a mode that stops after each step. The GIF is the fallback.
 
 ```bash
-python3 tools/animations.py                 # every animation, about six minutes
-python3 tools/animations.py window          # one of them
-python3 tools/lint_animations.py            # label collisions, overflows, stray lines
+python3 tools/animations.py                  # every animation
+python3 tools/animations.py two-sum          # one of them
+python3 tools/preview.py out.png two-sum:12  # a still of one moment, for checking layout
+python3 tools/anim_markup.py                 # point the chapters at the new videos
 ```
 
-A frame is built from `animlib.Frame`, which lays out the title, the drawing
-area, and the foot. The builder paints only inside the drawing area, and the
-foot is measured before the canvas is created, so a long sentence in one frame
-cannot push the scoreboard off another.
-
-A sequence of values is a rail: the values above a baseline, their indexes below,
-and a short coloured bar under each station for its state. A run such as a window
-or a live range is one coloured rule spanning its stations, and a pointer is a
-small caret with a name. A cell is reserved for something that really is a cell,
-such as a grid square, a buffer slot, or a tree node.
-
-A cream band marks the step where the idea clicks. A rust band marks the case the
-algorithm has to reject: an unmatched closer, an amount no coin can make, a
-target that is absent. An algorithm shown only succeeding is an algorithm the
-reader cannot debug, so an animation with such a case shows it in a rust band. A
-progress rail at the foot says where the frame sits in the loop.
-
-GIF has 256 colours per frame, and the type is antialiased, so the palette is
-built from the figure colours rather than clustered from the pixels. Clustering
-spends its entries on whatever covers the most area, which is the flat
-background, and the blend ramp along every glyph edge gets truncated. Listing the
-ramps up front costs nothing and keeps the type crisp.
+`tools/ANIMATIONS.md` describes the engine, the drawing rules, and the pacing
+rules.
 
 ## Repository layout
 

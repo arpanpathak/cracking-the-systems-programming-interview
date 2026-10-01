@@ -19,9 +19,8 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FIGURES = ROOT / "src" / "figures"
 
-IMG = re.compile(r'<img src="figures/(?P<stem>[a-z0-9-]+)\.gif" alt="(?P<alt>[^"]*)">')
-VIDEO = re.compile(r'<video class="motion" src="figures/(?P<stem>[a-z0-9-]+)\.mp4"[^>]*>'
-                   r'<img src="figures/(?P=stem)\.gif" alt="(?P<alt>[^"]*)"></video>')
+FIGURE = re.compile(r'(<figure class="anim">\s*)(.*?)(\s*<figcaption>)', re.S)
+GIF = re.compile(r'src="figures/([a-z0-9-]+)\.gif" alt="([^"]*)"')
 
 
 def markup(stem, alt):
@@ -33,17 +32,23 @@ def markup(stem, alt):
 
 
 def main():
+    """Rebuild the media part of every animation figure from its GIF's name and
+    alt text. The whole part is regenerated, so running this twice changes
+    nothing, and a figure that was wrapped more than once is repaired."""
     changed = 0
     for page in sorted((ROOT / "src").glob("*.md")):
         text = page.read_text()
 
         def swap(m):
-            stem = m.group("stem")
+            found = GIF.search(m.group(2))
+            if not found:
+                return m.group(0)
+            stem, alt = found.groups()
             if not (FIGURES / (stem + ".mp4")).exists() or not (FIGURES / (stem + ".json")).exists():
                 return m.group(0)
-            return markup(stem, m.group("alt"))
+            return m.group(1) + markup(stem, alt) + m.group(3)
 
-        new = VIDEO.sub(swap, IMG.sub(swap, text))
+        new = FIGURE.sub(swap, text)
         if new != text:
             page.write_text(new)
             changed += 1

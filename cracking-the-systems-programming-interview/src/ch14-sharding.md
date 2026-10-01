@@ -265,8 +265,8 @@ Figure 14.5 shows the ring cut open and laid flat, before and after a third node
 </figure>
 
 <figure class="anim">
-<img src="figures/ch14-ring.gif" alt="Four frames. First four nodes and their keys. Then node c joins at position 55. Then key 50 changes owner from b to c and is highlighted. Then the summary: one key in five moved.">
-<figcaption><b>Animation 14.1</b> The ring cut open and laid flat. Each key belongs to the first node to its right. Adding c takes over only the arc that reaches back to the previous node, so the keys that move are the ones that now find c first. With a thousand nodes and a thousand keys each, <code>hash % N</code> moves almost every key when N changes. This moves about <code>1/(n+1)</code> of them.</figcaption>
+<video class="motion" src="figures/ch14-ring.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A ring from 0 to 99 with nodes a at 25, b at 60, and d at 90, and five keys colored by the node that owns them. Key 95 wraps past 99 to a. Node c joins at 45, and only key 30 changes owner, from b to c. A table then compares hash % 3 with hash % 4 for the same keys: four of the five change server." data-chapters="[[0.0, &quot;ring&quot;], [18.24, &quot;add c&quot;], [31.74, &quot;hash % N&quot;]]"><img src="figures/ch14-ring.gif" alt="A ring from 0 to 99 with nodes a at 25, b at 60, and d at 90, and five keys colored by the node that owns them. Key 95 wraps past 99 to a. Node c joins at 45, and only key 30 changes owner, from b to c. A table then compares hash % 3 with hash % 4 for the same keys: four of the five change server."></video>
+<figcaption><b>Animation 14.1</b> A key belongs to the first node clockwise from it. Adding <code>c</code> moves only the keys in the arc it takes over. With <code>hash % N</code>, going from 3 to 4 servers moves 4 of the same 5 keys.</figcaption>
 </figure>
 
 With n servers, a new server takes over about 1/(n + 1) of the keys. Going from 3 servers to 4 moves about 25% of

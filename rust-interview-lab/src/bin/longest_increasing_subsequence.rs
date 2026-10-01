@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-// TODO: Practice iterating over slice reference, BTreeSet. And also,BTreeMap...
 fn lis_len(nums: &[i32]) -> usize {
     let mut tails = BTreeSet::new();
 

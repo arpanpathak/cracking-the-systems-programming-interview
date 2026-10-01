@@ -203,8 +203,8 @@ The function returns `Option<(usize, usize)>`: `Some` with the two positions, or
 It runs in O(n) time and uses O(n) extra memory for the map.
 
 <figure class="anim">
-<img src="figures/ch03-two-sum.gif" alt="Three frames over the array 2, 7, 11, 15 with target 9. At index 0 the partner 7 is not in the map, so 2 is stored. At index 1 the partner 2 is in the map at index 0, so the answer is (0, 1).">
-<figcaption><b>Animation 3.1</b> The same trace as the table, one frame per number. The map on the right is what makes the partner lookup one step: <code>7</code> does not search the array again, it asks the map for <code>9 - 7</code>. Two of the four numbers are read before the pair is complete.</figcaption>
+<video class="motion" src="figures/ch03-two-sum.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The array 2, 7, 11, 15 with target 9, and the map seen beside it. idx points at 2; the partner 7 is not in seen, so 2 maps to 0 is stored. idx moves to 7; the partner 2 is in seen at index 0, so the function returns Some((0, 1)). A second run moves the insert above the lookup: with target 4 and the array [2], the 2 finds itself and the result is Some((0, 0))." data-chapters="[[2.4, &quot;index 0&quot;], [22.92, &quot;index 1&quot;], [41.46, &quot;insert first&quot;]]"><img src="figures/ch03-two-sum.gif" alt="The array 2, 7, 11, 15 with target 9, and the map seen beside it. idx points at 2; the partner 7 is not in seen, so 2 maps to 0 is stored. idx moves to 7; the partner 2 is in seen at index 0, so the function returns Some((0, 1)). A second run moves the insert above the lookup: with target 4 and the array [2], the 2 finds itself and the result is Some((0, 0))."></video>
+<figcaption><b>Animation 3.1</b> The trace from the table, with the code line that runs at each step. The last part moves the insert above the lookup, and the single 2 pairs with itself.</figcaption>
 </figure>
 
 <div class="callout warning" markdown="1">
@@ -236,8 +236,8 @@ stack must be empty. Figure 3.5 traces `"{[()]}"`.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-brackets.gif" alt="Eight frames over the string ( [ { } ] ). Each opener is pushed, and each closer pops the top of the stack and finds a match. The stack is empty at the end.">
-<figcaption><b>Animation 3.5</b> The same six characters, with the stack drawn below. Watch the two directions the same character can move: an opener is always pushed, and a closer always pops. That is why a count of openers cannot work, and why the last opener is the first one to be closed.</figcaption>
+<video class="motion" src="figures/ch03-brackets.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The string ( [ { } ] ) with a stack beside it. Each opener is pushed. Each closer pops the top, which matches, and the stack ends empty, so is_valid returns true. A second run on ( [ ) ]: the closer ) pops [, which does not match, so is_valid returns false." data-chapters="[[0.0, &quot;([{}])&quot;], [38.16, &quot;([)]&quot;]]"><img src="figures/ch03-brackets.gif" alt="The string ( [ { } ] ) with a stack beside it. Each opener is pushed. Each closer pops the top, which matches, and the stack ends empty, so is_valid returns true. A second run on ( [ ) ]: the closer ) pops [, which does not match, so is_valid returns false."></video>
+<figcaption><b>Animation 3.2</b> An opener is pushed, and a closer pops the top and compares it with its partner. In the second run, <code>)</code> pops <code>[</code>, so the check fails.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 3.2</b> Valid Parentheses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs">src/problems/valid_parentheses.rs</a></p>
@@ -400,8 +400,8 @@ A few details:
 - `numbers.len().saturating_sub(1)` gives 0 instead of underflowing when the slice is empty.
 
 <figure class="anim">
-<img src="figures/ch03-three-sum.gif" alt="Eight frames over the sorted array -4, -1, -1, 0, 1, 2. The fixed index i walks right; the lo and hi pointers close in on each other. Two triples are found: (-1, -1, 2) and (-1, 0, 1).">
-<figcaption><b>Animation 3.6</b> Three Sum on <code>[-4, -1, -1, 0, 1, 2]</code>. Each frame is one comparison. <code>i</code> is the fixed number, and <code>lo</code> and <code>hi</code> are the two pointers. Read the sign of the sum in the counter row: a negative sum moves <code>lo</code> right and a positive sum moves <code>hi</code> left, so the two pointers never cross without the sum being checked. The frame where <code>i</code> repeats <code>-1</code> shows the duplicate skip.</figcaption>
+<video class="motion" src="figures/ch03-three-sum.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1." data-chapters="[[2.4, &quot;i = 0&quot;], [36.6, &quot;i = 1&quot;], [67.2, &quot;i = 3&quot;]]"><img src="figures/ch03-three-sum.gif" alt="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1."></video>
+<figcaption><b>Animation 3.3</b> Three Sum on <code>[-4, -1, -1, 0, 1, 2]</code>, one comparison per step. The sign of the sum decides which pointer moves. The repeated <code>-1</code> at index 2 is skipped.</figcaption>
 </figure>
 
 ## 3.8 A window that slides along a string
@@ -423,8 +423,8 @@ To know where a character last appeared, keep a `HashMap` from each character to
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-window.gif" alt="Seven frames over the string pwwkew. end moves right one character at a time. When the second w arrives at index 2, start jumps to 2. When the third w arrives at index 5, start jumps to 3, leaving the window kew.">
-<figcaption><b>Animation 3.7</b> The same window over all seven steps. <code>end</code> moves right, and <code>start</code> moves forward only when the character arriving is already inside the window. <code>end</code> visits each index once, and <code>start</code> only moves forward, so the scan is O(n).</figcaption>
+<video class="motion" src="figures/ch03-window.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The string pwwkew with the window drawn as an outline from start to end, and the map last_seen beside it. end moves one character at a time. When the second w arrives, start moves to 2; when the third w arrives, start moves to 3, leaving the window kew, length 3. A second run on abba shows why start uses max: the last a was seen at 0, before the window, so start stays at 2." data-chapters="[[0.0, &quot;pwwkew&quot;], [49.48, &quot;abba&quot;]]"><img src="figures/ch03-window.gif" alt="The string pwwkew with the window drawn as an outline from start to end, and the map last_seen beside it. end moves one character at a time. When the second w arrives, start moves to 2; when the third w arrives, start moves to 3, leaving the window kew, length 3. A second run on abba shows why start uses max: the last a was seen at 0, before the window, so start stays at 2."></video>
+<figcaption><b>Animation 3.4</b> <code>end</code> moves right one character at a time, and <code>start</code> moves only when a repeat inside the window arrives. The run on <code>"abba"</code> shows the case that <code>max</code> handles.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 3.7</b> Longest substring without a repeated character. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs">src/problems/sliding_window.rs</a></p>
@@ -458,8 +458,8 @@ merged range, and extends it, or starts a new merged range (figure 3.8).
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-merge-intervals.gif" alt="Seven frames. The four ranges arrive unsorted, are sorted by start, then each range either extends the current merged range or is kept and replaced. The result is 1-6, 8-10, and 15-18.">
-<figcaption><b>Animation 3.8</b> Every frame names the range being compared and the range kept so far. The teal-outlined bar is the range currently being merged; the green bars below the axis have already been closed. The first frame is the unsorted input, which is why the sort has to happen before the walk.</figcaption>
+<video class="motion" src="figures/ch03-merge-intervals.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four ranges drawn as bars over a number line. They are sorted by start: 1-3, 2-6, 8-10, 15-18. Then each range is compared with the last merged range: 2-6 overlaps 1-3 and extends it to 1-6, and the other two start new merged ranges. The result is 1-6, 8-10, 15-18. A last part shows the input unsorted, where 1-3 and 2-6 would not meet." data-chapters="[[0.0, &quot;sort&quot;], [6.42, &quot;walk&quot;], [45.72, &quot;no sort&quot;]]"><img src="figures/ch03-merge-intervals.gif" alt="Four ranges drawn as bars over a number line. They are sorted by start: 1-3, 2-6, 8-10, 15-18. Then each range is compared with the last merged range: 2-6 overlaps 1-3 and extends it to 1-6, and the other two start new merged ranges. The result is 1-6, 8-10, 15-18. A last part shows the input unsorted, where 1-3 and 2-6 would not meet."></video>
+<figcaption><b>Animation 3.5</b> Sorting puts overlapping ranges next to each other, so one walk can merge them. Each step extends the last merged range or starts a new one.</figcaption>
 </figure>
 
 The file solves the problem three times: with a named struct, with plain tuples, and in place. First the
@@ -531,8 +531,8 @@ Discard the other half and repeat. Figure 3.9 finds 23 in eight values in three 
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-binary-search.gif" alt="Three frames over the array 2 5 8 12 16 23 38 56 looking for 23. First mid is index 4 holding 16, so the left half is discarded. Then mid is index 6 holding 38, so the right half is discarded. Then mid is index 5 holding 23, and the search stops.">
-<figcaption><b>Animation 3.9</b> The search for 23, one comparison per frame. The dashed box is the live range <code>lo..hi</code>. The green cell is <code>mid</code>, and the grey cells are already ruled out. Eight elements take three comparisons, and each extra comparison doubles the range that can be searched.</figcaption>
+<video class="motion" src="figures/ch03-binary-search.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The array 2 5 8 12 16 23 38 56. The live range low..high is marked under it. mid is 4, holding 16, so low moves to 5. mid is 6, holding 38, so high moves to 6. mid is 5, holding 23, the target. A second search, for 20, ends when low equals high and the range is empty." data-chapters="[[0.0, &quot;find 23&quot;], [36.12, &quot;find 20&quot;]]"><img src="figures/ch03-binary-search.gif" alt="The array 2 5 8 12 16 23 38 56. The live range low..high is marked under it. mid is 4, holding 16, so low moves to 5. mid is 6, holding 38, so high moves to 6. mid is 5, holding 23, the target. A second search, for 20, ends when low equals high and the range is empty."></video>
+<figcaption><b>Animation 3.6</b> Each comparison halves the live range <code>low..high</code>. Eight elements take three comparisons. The search for 20 ends with an empty range.</figcaption>
 </figure>
 
 The code in this section uses a **half-open range** `low..high`. `low` is the first position still in the
@@ -556,8 +556,8 @@ two halves is still sorted. You can tell which by comparing its end values. Then
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-rotated-search.gif" alt="Three frames over the array 4, 5, 6, 7, 0, 1, 2 looking for 0. The left half 4 to 7 is sorted and cannot hold 0, so lo moves to 4. Then the left half 0 to 1 is sorted and does hold 0, so hi moves to mid. Then mid lands on 0.">
-<figcaption><b>Animation 3.10</b> The whole search for 0, not just the first step. The dashed box is the live range and the green cell is <code>mid</code>. In the first frame the left half is sorted and does not hold the target, so the search moves right; in the second frame the left half <code>0..1</code> is sorted and does hold it, so the search moves left. Three comparisons again.</figcaption>
+<video class="motion" src="figures/ch03-rotated-search.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The array 4, 5, 6, 7, 0, 1, 2. For target 0: mid is 7, the left half 4 to 7 is sorted and cannot hold 0, so low moves past mid. mid is 1, the left half 0 to 1 is sorted and holds 0, so high moves to mid. mid lands on 0. A second search, for 3, ends with an empty range and None." data-chapters="[[0.0, &quot;find 0&quot;], [41.04, &quot;find 3&quot;]]"><img src="figures/ch03-rotated-search.gif" alt="The array 4, 5, 6, 7, 0, 1, 2. For target 0: mid is 7, the left half 4 to 7 is sorted and cannot hold 0, so low moves past mid. mid is 1, the left half 0 to 1 is sorted and holds 0, so high moves to mid. mid lands on 0. A second search, for 3, ends with an empty range and None."></video>
+<figcaption><b>Animation 3.7</b> At each step one half around <code>mid</code> is sorted. The search keeps that half only if the target lies inside its end values.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 3.12</b> Search in a rotated sorted array. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs">src/problems/binary_search.rs</a></p>
@@ -573,9 +573,6 @@ very large; this form cannot.
 `nums[low] <= target && target < nums[mid]`. The right-half test uses `nums[high - 1]`, the last element,
 because `high` itself is one past the end.
 
-The comments in the middle of the function are small worked examples. Working two or three by hand, as
-those comments do, is how you convince yourself that each branch is right.
-
 ## 3.11 Rotating a square grid in place
 
 **The problem.** Rotate an n × n grid a quarter turn clockwise, without a second grid.
@@ -590,8 +587,8 @@ row.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-rotate-grid.gif" alt="Nine frames on a 3 by 3 grid of 1 to 9. Three swaps above the diagonal transpose the grid; then each row is reversed. The final grid is 7,4,1 / 8,5,2 / 9,6,3.">
-<figcaption><b>Animation 3.11</b> Transpose then reverse, one swap at a time. Each frame names the two cells being exchanged, so you can see that the transpose visits only the cells above the diagonal. The last four frames reverse a whole row at once, which is what <code>row.reverse()</code> does.</figcaption>
+<video class="motion" src="figures/ch03-rotate-grid.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A 3 by 3 grid of 1 to 9. Three swaps across the diagonal transpose it: 2 with 4, 3 with 7, 6 with 8. Then each row is reversed, giving 7 4 1, 8 5 2, 9 6 3. A last part starts j at 0 instead: 2 and 4 swap, then swap back, and the transpose does nothing." data-chapters="[[0.0, &quot;transpose&quot;], [22.86, &quot;reverse rows&quot;], [39.3, &quot;j from 0&quot;]]"><img src="figures/ch03-rotate-grid.gif" alt="A 3 by 3 grid of 1 to 9. Three swaps across the diagonal transpose it: 2 with 4, 3 with 7, 6 with 8. Then each row is reversed, giving 7 4 1, 8 5 2, 9 6 3. A last part starts j at 0 instead: 2 and 4 swap, then swap back, and the transpose does nothing."></video>
+<figcaption><b>Animation 3.8</b> The transpose swaps each pair above the diagonal once, then <code>row.reverse()</code> reverses each row. Starting <code>j</code> at 0 would swap every pair twice.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 3.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rotate_matrix.rs">src/bin/rotate_matrix.rs</a></p>
@@ -639,8 +636,8 @@ Figure 3.12 shows one such jump.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch03-kmp-search.gif" alt="Fourteen frames searching for aabaaac inside aabaaabaaac. The needle sits under the haystack at the position left implies. Six characters match, then a mismatch at index 6 makes left fall back to 2 without moving right, and the needle resumes at index 4, where it matches fully.">
-<figcaption><b>Animation 3.12</b> The whole search, one comparison per frame. The <code>right</code> pointer only ever moves right; the needle row shows how far the needle is shifted, which is <code>right - left</code> before a comparison. Watch the fallback frame: <code>right</code> stays at 6 while <code>left</code> drops from 6 to 2, so the characters <code>"aa"</code> are reused instead of re-read. That single move is the whole reason KMP is O(n + m).</figcaption>
+<video class="motion" src="figures/ch03-kmp-search.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The haystack aabaaabaaac above the needle aabaaac, with the lps table below. right walks the haystack and left counts matched needle characters. Six characters match, then a mismatch at haystack index 6. left falls back to lps[5] = 2 while right stays at 6, and the needle shifts so its first two characters stay matched. The needle then matches fully at position 4." data-chapters="[[0.0, &quot;match&quot;], [36.7, &quot;fall back&quot;], [79.98, &quot;found&quot;]]"><img src="figures/ch03-kmp-search.gif" alt="The haystack aabaaabaaac above the needle aabaaac, with the lps table below. right walks the haystack and left counts matched needle characters. Six characters match, then a mismatch at haystack index 6. left falls back to lps[5] = 2 while right stays at 6, and the needle shifts so its first two characters stay matched. The needle then matches fully at position 4."></video>
+<figcaption><b>Animation 3.9</b> On a mismatch, <code>left</code> falls back to <code>lps[left - 1]</code> and <code>right</code> stays where it is. The haystack is read once, from left to right.</figcaption>
 </figure>
 
 To know how far to jump, KMP first builds a table from the needle alone. For each position i, look at the piece `needle[0..=i]`. `lps[i]` is
@@ -655,15 +652,17 @@ count. The name "lps" stands for longest proper prefix that is also a suffix. Fo
 For example, `lps[4] = 2`, because `"aabaa"` starts with `"aa"` and ends with `"aa"`.
 
 <figure class="anim">
-<img src="figures/ch03-kmp-lps.gif" alt="Eleven frames building the lps table for aabaaac. At each step the rust cell is needle[i] and the outlined cell is needle[length]. A match grows length, a mismatch falls back to lps[length - 1], and the dot in the lps row is an entry not written yet.">
-<figcaption><b>Animation 3.13</b> Building the table. The rust cell is <code>needle[i]</code> and the outlined cell is <code>needle[length]</code>, the character it is compared with. When they match, <code>length</code> grows and the green prefix is the longest one that is also a suffix. When they do not, the fallback frames show <code>length</code> dropping to <code>lps[length - 1]</code> while <code>i</code> stays put. A dot in the <code>lps</code> row is an entry the build has not written yet.</figcaption>
+<video class="motion" src="figures/ch03-kmp-lps.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The needle aabaaac with the lps row below it, filled one entry at a time. right compares needle[right] with needle[left]. A match writes lps[right] = left + 1. A mismatch with left above 0 moves left back to lps[left - 1]; a mismatch at left 0 leaves the entry at 0. The table ends as 0 1 0 1 2 2 0." data-chapters="[]"><img src="figures/ch03-kmp-lps.gif" alt="The needle aabaaac with the lps row below it, filled one entry at a time. right compares needle[right] with needle[left]. A match writes lps[right] = left + 1. A mismatch with left above 0 moves left back to lps[left - 1]; a mismatch at left 0 leaves the entry at 0. The table ends as 0 1 0 1 2 2 0."></video>
+<figcaption><b>Animation 3.10</b> <code>build_lps</code> compares the needle with itself, using the same three branches as the search. The table ends as <code>0 1 0 1 2 2 0</code>.</figcaption>
 </figure>
 
 
-<p class="listing"><b>Listing 3.14</b> The search and the table (lines 1 to 52). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
+<p class="listing"><b>Listing 3.14</b> The search and the table (lines 1 to 58). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/kmp_pattern_matching.rs:1:52}}
+{{#include ../../rust-interview-lab/src/bin/kmp_pattern_matching.rs:1:58}}
+    // ...
+}
 ```
 
 `str_str` works on bytes, from `as_bytes()`, so it can index directly. `left` counts how many needle

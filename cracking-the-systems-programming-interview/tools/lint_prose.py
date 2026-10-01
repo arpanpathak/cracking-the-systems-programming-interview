@@ -36,7 +36,15 @@ def prose_lines(text):
         if line.lstrip().startswith("```"):
             in_code = not in_code
             continue
-        if in_code or line.startswith("|") or line.lstrip().startswith("<") or "{{#include" in line:
+        if in_code or line.startswith("|") or "{{#include" in line:
+            continue
+        if line.lstrip().startswith("<"):
+            # Captions are prose too; every other HTML line is markup.
+            caption = re.search(r"<figcaption>(.*?)</figcaption>", line)
+            if caption:
+                text = re.sub(r"<b>[^<]*</b>", "", caption.group(1))
+                text = re.sub(r"<code>([^<]*)</code>", r"`\1`", text)
+                yield number, re.sub(r"<[^>]+>", "", text)
             continue
         yield number, line
 

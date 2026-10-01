@@ -9,9 +9,8 @@ An animation shows a change over time that a still figure cannot show: a message
 from one thread to another, a value that changes, a thread that stops running. Each
 animation follows one run of the program in the listing beside it.
 
-Most chapters still use the older slide animations in `animlib.py`, which swap whole
-pictures every few seconds. They are converted to the engine below one chapter at a time,
-and the author reviews each chapter before the next one starts.
+Every animation in the book uses the engine below. The earlier slide animations, which
+swapped whole pictures every few seconds, have been removed.
 
 ## 2. Pacing and reader control
 
@@ -51,7 +50,8 @@ gives that reader time and control by default.
 10. Show the first occurrence of a repeated step slowly, and later ones faster. The builders
     take a speed factor `k` for this.
 
-`tools/anim_async.py` is the reference implementation.
+`tools/anim_async.py` shows the actors (threads, wakers, messages). `tools/anim_ch03.py`
+shows the algorithm style built on `motion_kit`.
 
 ## 4. The engine: `tools/motion.py`
 
@@ -77,15 +77,33 @@ gives that reader time and control by default.
   H.264) and `<stem>.json` (duration and chapter times for the step buttons). The last
   0.6 s cross-fades into the first frame so the loop does not jump.
 - Builders register in the module's `BUILDERS`, and `animations.py` merges them into
-  `MOTION`. `make animations` runs them. `lint_animations.py` checks only the old slide
-  builders, so motion builders are kept out of `animations.BUILDERS`.
+  `MOTION`. `make animations` runs them.
+
+## 4a. Algorithm animations: `tools/motion_kit.py`
+
+An algorithm animation is written as a simulation, not as a hand-placed script. The
+builder runs the chapter's algorithm on the chapter's input and appends one step per
+thing the reader should see. Each step is a dict: `say` (the caption), optional `kind`,
+`chapter`, `dur`, and `hold`, and the state after the step. `play(steps, defaults)` turns
+the list into a timeline: numbers slide, everything else changes when the step starts.
+
+- `source(path, first, last)` reads lines from `rust-interview-lab`, so the code panel
+  always shows the listing's code. `last="}"` ends at the brace that closes the item.
+  `line_of(code, text)` finds the line to highlight.
+- `cells` draws a row of boxes with indexes; `pointer` draws a named arrow above or below
+  a cell, never on it, and stacks two pointers at one index with `slot`.
+- `kv_panel` draws a map, `stack_panel` a stack, `node` and `edge` a tree or a graph,
+  `heap_positions` a complete binary tree.
+- `layout(code_y, lines)` places the caption and the progress rail below the code panel
+  from its real height, so the three cannot overlap.
+- Do not name a state field `t`: the draw function's `s.t` is the sample time.
 
 Workflow:
 
 ```bash
-# preview single frames (seconds) while scripting; PNGs go to $MOTION_PREVIEW
-MOTION_PREVIEW=/some/scratch/dir python3 tools/anim_async.py frames poll-wake 0 5.5 13
-# render one GIF (about 3 to 5 minutes each)
+# stills of chosen moments in one contact sheet, while scripting
+python3 tools/preview.py /tmp/sheet.png two-sum:12 window:40
+# render one animation (about a minute)
 python3 tools/animations.py poll-wake
 python3 tools/anim_markup.py          # point the chapter at the new video and steps
 ```
@@ -97,37 +115,29 @@ arcs, flying objects crossing the title, captions wrapping onto a third line.
 ## 5. Problems already solved
 
 - **File size.** Anything that changes on every frame makes every frame a new image. The
-  first render was 76 MB because the progress rail crept every frame. Now the rail steps
-  twice a second, idle motion (drifting z's, a stopwatch hand) is quantised to a few
-  steps a second, and the palette has 255 colours so the encoder has a free slot for
-  "unchanged" pixels. With that, a 60 s loop is 3.5 to 8 MB at 1517 px wide. Large objects
-  that travel far and often (the task-queue tickets) cost the most.
-- **Palette.** Median cut alone turned the page white into grey. The book's flat colours
-  are pinned first (`exact` in `render`, plus `extra_colors` per animation), and pixels are
-  mapped with an exact nearest-colour search (`nearest`), because Pillow's own
-  palette conversion uses a reduced-precision cache.
+  progress rail steps twice a second, and idle motion (drifting z's, a stopwatch hand) is
+  quantised to a few steps a second, so held frames merge.
+- **Encoding speed.** Encoding the GIF in Pillow ran on one core and held every frame in
+  memory: about 20 minutes per animation. `render` now writes PNG stills in parallel and
+  lets ffmpeg build both the GIF (one palette from all frames, no dithering, changed
+  rectangles only) and the MP4. An animation takes about a minute.
 - **Whitespace.** SVG collapses leading spaces, which flattened the code panels. Text is
   written with `xml:space="preserve"`.
 - **`set` at t = 0** must take effect at t = 0 (zero-length segments count as done at their
   start). Otherwise the first frame shows the old value.
 - **Workers re-import the modules.** `render` uses a process pool, and on macOS the workers
   import the main module again. Do not edit `motion.py` or the builders while a render is
-  running. To keep working, render from a copy of the builder module:
-  `cp tools/anim_sockets.py /scratch/snap.py && PYTHONPATH=tools python3 /scratch/snap.py epoll`.
-  Several renders can run at once this way.
+  running. To keep working, render from a copy: copy `tools/` into `<tmp>/book/tools`,
+  link `<tmp>/book/src` to `src` and `<tmp>/rust-interview-lab` to the lab, and run
+  `python3 tools/animations.py` from `<tmp>/book`.
 - **Lifted arcs** have to stay below the subtitle: keep a flying object's top edge under
   y = 64.
 
 ## 6. Status
 
-| Chapter | Animations | State |
-|---|---|---|
-| 20 sockets | tcp-handshake, bdp, epoll | motion |
-| 21 http | http-framing, keep-alive | motion |
-| 22 async | poll-wake, task-queue, await, pin | motion |
-| all others | see `grep -o 'figures/[a-z0-9-]*\.gif' src/*.md` | old slides, to convert |
-
-Update this table when a chapter is converted.
+All 38 animations in chapters 3, 5, 6, 9, 11, 12, 13, 14, 16, 17, 19, 20, 21, and 22 use
+the motion engine. Chapter 21 presents its code in small excerpts, with the complete files
+at the end. The other chapters still show some long listings first.
 
 ## 7. The print edition
 

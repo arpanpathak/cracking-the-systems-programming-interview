@@ -95,8 +95,8 @@ shows the table for coins 1, 2, and 5, and how `dp[11]` is computed.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch06-coin-change.gif" alt="Twelve frames filling the table dp[0] to dp[11] for coins 1, 2, and 5. Each frame highlights the entry being computed and the earlier entry it reads. The last frame highlights the three entries that dp[11] reads and gives the answer 3.">
-<figcaption><b>Animation 6.1</b> The table being filled left to right, one amount per frame. The rust cell is the entry being computed; the cream cell is the earlier entry chosen as the best source. Nothing looks to the right, which is why one pass suffices. On the last frame all three sources of <code>dp[11]</code> are highlighted at once, so you can see the <code>min</code> over the coins.</figcaption>
+<video class="motion" src="figures/ch06-coin-change.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The table dp[0] to dp[11] for coins 1, 2, and 5, filled left to right. For each amount t, arcs connect the entries dp[t - coin] it reads to dp[t]. The first amounts are shown one coin at a time; dp[11] ends as 3. A last part shows greedy on coins 1, 3, 4 for amount 6 taking 4 + 1 + 1, three coins, where the table finds two." data-chapters="[[0.0, &quot;dp[1..2]&quot;], [30.12, &quot;dp[3..10]&quot;], [66.12, &quot;dp[11]&quot;], [89.76, &quot;greedy&quot;]]"><img src="figures/ch06-coin-change.gif" alt="The table dp[0] to dp[11] for coins 1, 2, and 5, filled left to right. For each amount t, arcs connect the entries dp[t - coin] it reads to dp[t]. The first amounts are shown one coin at a time; dp[11] ends as 3. A last part shows greedy on coins 1, 3, 4 for amount 6 taking 4 + 1 + 1, three coins, where the table finds two."></video>
+<figcaption><b>Animation 6.1</b> Each entry reads only entries to its left, so one pass fills the table. The arcs show which entries <code>dp[t]</code> reads. The last part shows greedy choosing three coins where two are enough.</figcaption>
 </figure>
 
 ### 6.1.3 The code
@@ -168,8 +168,8 @@ trying the next. Going down means adding an element; coming back up means removi
 choices is called **backtracking**.
 
 <figure class="anim">
-<img src="figures/ch06-subsets.gif" alt="Eight frames, one per recorded subset. The tree of choices for 1, 2, 3 is shown with the current path in green and the current node outlined. The recorded subsets build up in order: {}, {1}, {1,2}, {1,2,3}, {1,3}, {2}, {2,3}, {3}.">
-<figcaption><b>Animation 6.2</b> One frame per subset the program records. The green path is the branch the recursion is on, and the printed list grows in the order the recursion reaches each node. Notice that the empty subset is recorded first, at the root, before any element is added. The order is depth first: the recursion finishes <code>{1, 2, 3}</code> before it ever tries <code>{1, 3}</code>.</figcaption>
+<video class="motion" src="figures/ch06-subsets.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The tree of choices for 1, 2, 3, with the current path highlighted. The recursion records a subset at each node, pushes the next element on the way down, and pops it on the way back. The result list grows to [], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]. A last part shows the copy [2, 1] that a loop starting at 0 would record." data-chapters="[[0.0, &quot;walk&quot;], [67.44, &quot;loop from 0&quot;]]"><img src="figures/ch06-subsets.gif" alt="The tree of choices for 1, 2, 3, with the current path highlighted. The recursion records a subset at each node, pushes the next element on the way down, and pops it on the way back. The result list grows to [], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]. A last part shows the copy [2, 1] that a loop starting at 0 would record."></video>
+<figcaption><b>Animation 6.2</b> The recursion records each subset when it reaches its node, in depth-first order. Starting each loop at <code>start</code> keeps <code>[2, 1]</code> out of the result.</figcaption>
 </figure>
 
 

@@ -36,8 +36,8 @@ Picture a bucket that holds up to 5 tokens. Every request takes one token out. I
 is refused. Tokens flow back in at a steady rate, say 1 per second, until the bucket is full again (figure 19.1).
 
 <figure class="anim">
-<img src="figures/ch19-token-bucket.gif" alt="Seven frames. The bucket starts full with 5 tokens, spends them down to 0 over several calls, refuses the next call, gains 1 token after a second, and spends that one.">
-<figcaption><b>Animation 19.1</b> The bucket at capacity 5 with a refill of 1 token per second. A full cell is a token in the bucket. A burst spends tokens faster than they arrive, which is allowed up to the capacity; after that a call is refused. When a second passes, one token appears with no timer and no background thread, because the count is worked out from the clock at the start of each call.</figcaption>
+<video class="motion" src="figures/ch19-token-bucket.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it." data-chapters="[[0.0, &quot;spend&quot;], [28.5, &quot;refuse&quot;], [34.8, &quot;refill&quot;]]"><img src="figures/ch19-token-bucket.gif" alt="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it."></video>
+<figcaption><b>Animation 19.1</b> <code>try_acquire</code> adds the tokens earned since the last call, then takes one if it can. Nothing runs between calls.</figcaption>
 </figure>
 
 

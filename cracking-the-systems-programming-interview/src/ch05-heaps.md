@@ -90,8 +90,8 @@ and a parent must be at least as large as its children. Pop is also O(log n).
 Looking at the largest item without removing it is O(1): it is always at index 0.
 
 <figure class="anim">
-<img src="figures/ch05-heap-sift.gif" alt="Eight frames. A valid max-heap 9,5,8,3,2 with push(10): 10 is appended at index 5, then climbs past 8 and 9 to the root. Then pop: the root 10 leaves, the last value 8 moves to the root and sinks past 9.">
-<figcaption><b>Animation 5.4</b> Both fixes on the same heap, one swap per frame. The upper row is the array and the lower row is the same values drawn as the tree <code>BinaryHeap</code> keeps inside that array. Watch the index arithmetic in the caption: the parent of index <code>i</code> is <code>(i - 1) / 2</code>, and the children are <code>2i + 1</code> and <code>2i + 2</code>. A push walks up, a pop walks down, and each walk is one level per swap, which is why both are O(log n).</figcaption>
+<video class="motion" src="figures/ch05-heap-sift.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A max-heap 9, 5, 8, 3, 2 drawn as a tree above its array. push(10) appends 10 at index 5; it swaps with its parent 8 at index 2, then with 9 at the root. pop() takes 10 from the root, moves the last value 8 into the root, and 8 swaps with its larger child 9. A last part swaps 8 with the smaller child 5 instead, and 5 ends up as the parent of 9." data-chapters="[[0.0, &quot;push&quot;], [34.32, &quot;pop&quot;], [55.74, &quot;wrong child&quot;]]"><img src="figures/ch05-heap-sift.gif" alt="A max-heap 9, 5, 8, 3, 2 drawn as a tree above its array. push(10) appends 10 at index 5; it swaps with its parent 8 at index 2, then with 9 at the root. pop() takes 10 from the root, moves the last value 8 into the root, and 8 swaps with its larger child 9. A last part swaps 8 with the smaller child 5 instead, and 5 ends up as the parent of 9."></video>
+<figcaption><b>Animation 5.1</b> A push appends and swaps up; a pop moves the last value to the root and swaps it down with the larger child. Each value moves in the tree and in the array at the same time. The last part swaps with the smaller child and breaks the heap rule.</figcaption>
 </figure>
 
 
@@ -179,8 +179,8 @@ frequent words survive (figure 5.4).
 The program first turns the text into words, then counts them, then runs the bounded heap.
 
 <figure class="anim">
-<img src="figures/ch05-top-k.gif" alt="Five frames. The numbers 1,1,1,2,2,3 are counted as 1:3, 2:2, 3:1. A min-heap of size k = 2 takes 1:3 and 2:2, ignores 3:1, and ends holding the two most frequent values.">
-<figcaption><b>Animation 5.5</b> Counting first, then a min-heap of size k, on the sample <code>[1, 1, 1, 2, 2, 3]</code> with k = 2. The root is always the weakest entry kept, so one comparison decides whether an arriving count is worth keeping. The heap never grows past k, which is what bounds the work to O(u log k) rather than sorting all u words.</figcaption>
+<video class="motion" src="figures/ch05-top-k.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)." data-chapters="[[0.0, &quot;count&quot;], [8.16, &quot;heap&quot;]]"><img src="figures/ch05-top-k.gif" alt="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the)."></video>
+<figcaption><b>Animation 5.2</b> The bounded heap from listing 5.2 with k = 2. The top of the heap is the least frequent word kept, and it is popped whenever the heap holds k + 1 entries.</figcaption>
 </figure>
 
 

@@ -390,8 +390,8 @@ before unlocking is then visible to B after locking. With `Relaxed` in both plac
 still read an old copy of the value.
 
 <figure class="anim">
-<img src="figures/ch16-spin-lock.gif" alt="Seven frames. The atomic word holds false, thread A takes the lock with compare_exchange and enters the critical section, thread B spins and fails, A releases, and B's next exchange succeeds.">
-<figcaption><b>Animation 16.1</b> Two threads contending for one atomic word. The box shows the value the atomic holds, and the lanes show what each thread is doing. B never blocks in the kernel: it fails the exchange, loops, and tries again, which is why this is called a spin lock. The handoff happens when A's release store of <code>false</code> is read by B's acquire exchange, which is the synchronize-with pair from figure 16.4.</figcaption>
+<video class="motion" src="figures/ch16-spin-lock.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Thread A and thread B on either side of the atomic word locked. A's compare_exchange_weak changes false to true and A holds the lock. B's exchange fails, and B spins on a relaxed load. A's unlock stores false with Release; B's next exchange succeeds with Acquire." data-chapters="[[0.0, &quot;A locks&quot;], [5.0, &quot;B spins&quot;], [15.68, &quot;handoff&quot;]]"><img src="figures/ch16-spin-lock.gif" alt="Thread A and thread B on either side of the atomic word locked. A's compare_exchange_weak changes false to true and A holds the lock. B's exchange fails, and B spins on a relaxed load. A's unlock stores false with Release; B's next exchange succeeds with Acquire."></video>
+<figcaption><b>Animation 16.1</b> <code>lock</code> from listing 16.10. B stays on the CPU while it spins. The Release store in <code>unlock</code> pairs with B's Acquire exchange.</figcaption>
 </figure>
 
 
@@ -659,8 +659,8 @@ always take locks in that order. If every thread takes lock A before lock B, no 
 A, and no cycle can form.
 
 <figure class="anim">
-<img src="figures/ch16-deadlock.gif" alt="Five frames. Both mutexes start free. Thread A takes m1, thread B takes m2, A waits for m2 while holding m1, and B waits for m1 while holding m2. The last frame shows the cycle and names the fix.">
-<figcaption><b>Animation 16.2</b> The circular wait being built, one lock at a time. Each thread's panel shows what it holds and what it wants. Nothing here is a bug in either lock: each acquisition is individually correct. The deadlock comes only from the order, which is why the fix is a rule about order and not about the locks. If both threads took m1 before m2, the last two frames could not happen.</figcaption>
+<video class="motion" src="figures/ch16-deadlock.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Thread A and thread B, and two locks m1 and m2. A takes m1 and B takes m2. A waits for m2 and B waits for m1, which forms the cycle A, m2, B, m1. A second run uses one order for both threads: B waits for m1 while holding nothing, A takes m2 and finishes, then B takes both locks." data-chapters="[[0.0, &quot;opposite order&quot;], [28.64, &quot;fixed order&quot;]]"><img src="figures/ch16-deadlock.gif" alt="Thread A and thread B, and two locks m1 and m2. A takes m1 and B takes m2. A waits for m2 and B waits for m1, which forms the cycle A, m2, B, m1. A second run uses one order for both threads: B waits for m1 while holding nothing, A takes m2 and finishes, then B takes both locks."></video>
+<figcaption><b>Animation 16.2</b> Each lock is taken correctly; the opposite orders form the cycle. When both threads take <code>m1</code> first, the waiting thread holds nothing, and no cycle can form.</figcaption>
 </figure>
 
 

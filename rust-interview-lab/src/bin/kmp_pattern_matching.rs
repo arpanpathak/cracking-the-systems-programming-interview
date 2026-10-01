@@ -10,23 +10,25 @@ impl Solution {
         }
 
         let lps = Self::build_lps(needle);
-        let (mut left, mut right) = (0, 0); // left walks needle, right walks haystack
+        // left walks the needle, and right walks the haystack.
+        let (mut left, mut right) = (0, 0);
 
         while right < haystack.len() {
             if haystack[right] == needle[left] {
                 left += 1;
                 right += 1;
             } else if left > 0 {
+                // Fall back, keeping the characters that still match.
                 left = lps[left - 1];
-            }
-            // fall back
-            else {
+            } else {
+                // A mismatch at the start of the needle.
                 right += 1;
-            } // mismatch at the start
+            }
 
             if left == needle.len() {
+                // The whole needle matched.
                 return (right - left) as i32;
-            } // pattern found
+            }
         }
         -1
     }
@@ -44,8 +46,9 @@ impl Solution {
             } else if left > 0 {
                 left = lps[left - 1];
             } else {
+                // lps[right] stays 0.
                 right += 1;
-            } // lps[right] stays 0
+            }
         }
         lps
     }

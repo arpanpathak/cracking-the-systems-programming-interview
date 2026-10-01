@@ -161,8 +161,8 @@ The comments in `push` explain each decision. Figure 17.3 puts the steps of a bl
 </figure>
 
 <figure class="anim">
-<img src="figures/ch17-bounded-buffer.gif" alt="Ten frames. A three-slot buffer fills with 1, 2, 3. A producer wanting to push 4 is blocked while the buffer is full. A consumer pops 1, the producer pushes 4, and three more pops empty the buffer.">
-<figcaption><b>Animation 17.1</b> A producer and a consumer sharing three slots. The buffer row shows what is stored, and the two lanes show what each thread is doing right now. The producer is blocked exactly once, on the frame where the buffer is full, and the consumer's pop is what wakes it. That is backpressure: a fast producer cannot outrun a slow consumer, because the buffer's capacity is the limit.</figcaption>
+<video class="motion" src="figures/ch17-bounded-buffer.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A producer, a consumer, and a buffer with three slots. The producer pushes 1, 2, and 3. push(4) finds the buffer full and waits on not_full. The consumer pops 1 and calls notify_one, the producer wakes, checks again, and pushes 4. The consumer then drains the buffer." data-chapters="[[0.0, &quot;fill&quot;], [10.9, &quot;full&quot;], [27.92, &quot;drain&quot;]]"><img src="figures/ch17-bounded-buffer.gif" alt="A producer, a consumer, and a buffer with three slots. The producer pushes 1, 2, and 3. push(4) finds the buffer full and waits on not_full. The consumer pops 1 and calls notify_one, the producer wakes, checks again, and pushes 4. The consumer then drains the buffer."></video>
+<figcaption><b>Animation 17.1</b> The producer sleeps while the buffer is full and wakes when a pop makes room. A fast producer cannot get more than three items ahead of the consumer.</figcaption>
 </figure>
 
 The line `guard = self.not_full.wait(guard).unwrap();` looks odd at first. `wait` takes the guard by value,

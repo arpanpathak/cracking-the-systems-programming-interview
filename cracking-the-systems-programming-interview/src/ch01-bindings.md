@@ -82,7 +82,7 @@ one has a usable name.
 
 <figure>
 <img src="figures/ch01-slots.svg" alt="Left: a stack frame with three slots, a u32 7, a String pointing to heap bytes 7, and a usize 1; only the third has a usable name. Right: one slot holding count, shown at four moments as it changes from 0 to 3.">
-<figcaption><b>Figure 1.2</b> Shadowing creates a new slot for each binding. Mutation writes new values into the same slot. (The compiler may reuse slots it can prove are no longer used; the picture shows what the program means.)</figcaption>
+<figcaption><b>Figure 1.2</b> Shadowing creates a new slot for each binding. Mutation writes new values into the same slot. The compiler may reuse a slot it can prove is unused. The picture shows what the program means.</figcaption>
 </figure>
 
 ### 1.2.1 When shadowing helps

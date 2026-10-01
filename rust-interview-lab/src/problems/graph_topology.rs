@@ -3,7 +3,7 @@
 //! Common in scheduling problems: prerequisite graphs, pipeline
 //! stages, and build or job dependency ordering.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Vec<usize>> {
     let mut graph = vec![Vec::new(); num_nodes];

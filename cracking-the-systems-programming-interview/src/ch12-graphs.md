@@ -99,8 +99,8 @@ The top half of figure 12.3 follows the queue step by step.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch12-bfs.gif" alt="Eight frames on a six-node graph starting at node 0. Node 0 is visited, then 1 and 2 enter the queue, then 3, then 4, then 5. The queue panel shows the nodes waiting.">
-<figcaption><b>Animation 12.1</b> Breadth-first search from node 0. The rust node is the one being taken off the front of the queue now; cream nodes are waiting and green nodes are done. Because a node is marked as soon as it is queued, each node appears in the queue exactly once. The visit order is 0, 1, 2, 3, 4, 5, which is the order of distance from the start, so BFS is also how you find shortest paths in an unweighted graph.</figcaption>
+<video class="motion" src="figures/ch12-bfs.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A graph of nodes 0 to 6 with a queue and a result list below it. BFS takes 0, then pushes its neighbors 1 and 2, then takes them in order and pushes their unvisited neighbors. The result is 0, 1, 2, 3, 4, 5. Node 6 has no edges to the others and is never reached." data-chapters="[[0.0, &quot;queue&quot;], [51.84, &quot;node 6&quot;]]"><img src="figures/ch12-bfs.gif" alt="A graph of nodes 0 to 6 with a queue and a result list below it. BFS takes 0, then pushes its neighbors 1 and 2, then takes them in order and pushes their unvisited neighbors. The result is 0, 1, 2, 3, 4, 5. Node 6 has no edges to the others and is never reached."></video>
+<figcaption><b>Animation 12.1</b> <code>bfs_vec</code> from node 0. The queue hands out the oldest entry first, so nodes are visited in order of distance. Node 6 is not connected and is never reached.</figcaption>
 </figure>
 
 ### 12.3.1 BFS with numbered nodes
@@ -182,8 +182,8 @@ The neighbors are pushed in list order, so the last neighbor pushed is the first
 receives B and then C, so C is explored first. The visit order is A, C, D, B.
 
 <figure class="anim">
-<img src="figures/ch12-dfs.gif" alt="Sixteen frames on the six-node graph. The recursion visits 0, then follows the edge to 1, then to 3, then to 2, then to 4, then to 5. Each step is either a visit or a move along an edge.">
-<figcaption><b>Animation 12.2</b> Depth-first search from node 0, one visit or one edge per frame. The rust node is the one being visited now and green nodes are finished. The difference from BFS is the shape of the walk: BFS spreads out one ring at a time, while DFS goes as deep as it can before it comes back. The visit order here is 0, 1, 3, 2, 4, 5.</figcaption>
+<video class="motion" src="figures/ch12-dfs.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The same graph with a stack and a result list. dfs_vec pops the newest entry, records it if it is unvisited, and pushes all its neighbors. Entries for nodes already visited are popped and skipped. The result is 0, 2, 4, 5, 3, 1." data-chapters="[[0.0, &quot;stack&quot;]]"><img src="figures/ch12-dfs.gif" alt="The same graph with a stack and a result list. dfs_vec pops the newest entry, records it if it is unvisited, and pushes all its neighbors. Entries for nodes already visited are popped and skipped. The result is 0, 2, 4, 5, 3, 1."></video>
+<figcaption><b>Animation 12.2</b> <code>dfs_vec</code> uses the same loop as BFS with a stack. The newest entry is taken first, so the walk goes deep before it goes wide.</figcaption>
 </figure>
 
 
@@ -402,8 +402,8 @@ a connected area this way is called a **flood fill** (figure 12.5).
 </figure>
 
 <figure class="anim">
-<img src="figures/ch12-islands.gif" alt="Six frames on a small 4 by 4 grid. The scan finds land at (0,0) and flood fill marks three cells as one island, then finds land at (1,3) and flood fill marks three more cells as a second island. The counter reaches 2.">
-<figcaption><b>Animation 12.3</b> Counting islands on a smaller grid, so every cell fits on the page. The scan visits cells in reading order; when it reaches land that no fill has marked, that cell starts a new island and the fill spreads to every connected land cell before the scan continues. Water is grey, untouched land is cream, and marked land is green. The same code on the wider grid in <code>main</code> returns 3.</figcaption>
+<video class="motion" src="figures/ch12-islands.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A 4 by 4 grid of 1s and 0s. The scan reaches land at (0, 0), count becomes 1, and the flood fill colors the three connected land cells. The scan passes cells already filled. At (1, 3) count becomes 2, and the fill colors the second island of three cells." data-chapters="[[2.4, &quot;island 1&quot;], [30.18, &quot;island 2&quot;]]"><img src="figures/ch12-islands.gif" alt="A 4 by 4 grid of 1s and 0s. The scan reaches land at (0, 0), count becomes 1, and the flood fill colors the three connected land cells. The scan passes cells already filled. At (1, 3) count becomes 2, and the fill colors the second island of three cells."></video>
+<figcaption><b>Animation 12.3</b> The scan starts a new island only at land the fill has not reached. Each fill marks one whole island, so the count is the number of islands.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 12.12</b> Counting islands (lines 27 to 72). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs">src/bin/count_islands.rs</a></p>
@@ -480,8 +480,8 @@ they never enter the order. The order then comes out shorter than the number of 
 algorithm detects a cycle.
 
 <figure class="anim">
-<img src="figures/ch12-topo.gif" alt="Six frames on five nodes. The indegree of each node is shown. Node 0 has indegree 0 and is taken first, which lowers 1 and 2 to 0. Then 1, then 2, then 3, then 4. The order is 0 1 2 3 4.">
-<figcaption><b>Animation 12.4</b> Kahn's algorithm on a small dependency graph. Each node carries its current indegree, and a node turns cream the moment that indegree reaches zero. Taking a node removes its outgoing arrows, which is what lowers the targets. If the queue ever empties before every node is in the order, the remaining nodes form a cycle and no order exists, which is the check the chapter's code uses.</figcaption>
+<video class="motion" src="figures/ch12-topo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Five nodes with directed edges and each node's indegree below it. Node 0 has indegree 0 and is taken first; removing its edges brings 1 and 2 to 0. Then 1, 2, 3, and 4 follow. A last part adds an edge from 4 back to 1: after 0 and 2, no node reaches indegree 0, and the function returns None." data-chapters="[[0.0, &quot;Kahn&quot;], [61.44, &quot;cycle&quot;]]"><img src="figures/ch12-topo.gif" alt="Five nodes with directed edges and each node's indegree below it. Node 0 has indegree 0 and is taken first; removing its edges brings 1 and 2 to 0. Then 1, 2, 3, and 4 follow. A last part adds an edge from 4 back to 1: after 0 and 2, no node reaches indegree 0, and the function returns None."></video>
+<figcaption><b>Animation 12.4</b> Kahn's algorithm takes a node when nothing points into it, and removing its edges releases the next ones. With a cycle, the order stops short and the function returns <code>None</code>.</figcaption>
 </figure>
 
 
@@ -584,8 +584,8 @@ Figure 12.7 follows every step on a four-node graph.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch12-dijkstra.gif" alt="Four frames on the four-node weighted graph A, B, C, D. A settles, setting B to 4 and C to 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. D settles at 4.">
-<figcaption><b>Animation 12.5</b> Dijkstra's algorithm on the same four-node graph as figure 12.7, one settle per frame. The number beside each node is its best known distance so far, and the rust node is the one being settled. Settling is final: the closest unsettled node can never be reached more cheaply later, because every edge weight is positive. Watch B's distance fall from 4 to 3 when C is settled, which is exactly the relaxation the table records.</figcaption>
+<video class="motion" src="figures/ch12-dijkstra.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A weighted graph A, B, C, D with each node's distance and the heap of entries. A settles at 0 and pushes B at 4 and C at 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. The older entry (4, B) is popped later and skipped as stale. D settles at 4." data-chapters="[[0.0, &quot;settle&quot;]]"><img src="figures/ch12-dijkstra.gif" alt="A weighted graph A, B, C, D with each node's distance and the heap of entries. A settles at 0 and pushes B at 4 and C at 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. The older entry (4, B) is popped later and skipped as stale. D settles at 4."></video>
+<figcaption><b>Animation 12.5</b> <code>dijkstra_vec</code> settles the node with the smallest cost in the heap, then relaxes its edges. An entry whose cost is above the recorded distance is stale and skipped.</figcaption>
 </figure>
 
 Read the table row by row. Taking A records B at 4 and C at 1. Taking C finds B at 1 + 2 = 3, which beats 4, so
@@ -788,12 +788,12 @@ There are two operations:
 - `union(x, y)` finds both roots. If the roots differ, it makes one root point to the other, which joins the two
   groups.
 
-<p class="listing"><b>Listing 12.22</b> Union-find (lines 10 to 50). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
+<p class="listing"><b>Listing 12.22</b> Union-find (lines 10 to 49). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:1:1}}
 
-{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:10:50}}
+{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:10:49}}
 ```
 
 `new` makes every node its own group: `parent` is `[0, 1, 2, ...]`, built with `(0..n).collect()`.
@@ -810,10 +810,10 @@ With both tricks, `find` and `union` take nearly constant time in practice.
 
 ### 12.10.2 Kruskal's algorithm
 
-<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 52 to 66).</p>
+<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 51 to 65).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:52:66}}
+{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:51:65}}
 ```
 
 `edges.sort_by_key(|e| e.w)` sorts the edges by weight. Then each edge is offered to `union`. If `union`
@@ -833,8 +833,8 @@ Figure 12.8 follows the `parent` array through every edge of the program's graph
 0-1 comes before 2-3.
 
 <figure class="anim">
-<img src="figures/ch12-kruskal.gif" alt="Seven frames. The edges are offered cheapest first: 1-2 weight 1 is kept, 1-3 weight 2 is kept, 3-4 weight 2 is kept, 0-2 weight 3 is kept, then 0-1 and 2-3 are skipped because both ends are already connected. Total weight 8.">
-<figcaption><b>Animation 12.6</b> Kruskal's algorithm on the graph from figure 12.8, cheapest edge first. A kept edge is drawn thick and teal; the edge being tested is gold, or rust when it is skipped. The skip is the whole point of union-find: an edge is rejected only when its two endpoints already share a root, which means the edge would close a cycle. Four edges connect five nodes, and the accepted weights sum to 8.</figcaption>
+<video class="motion" src="figures/ch12-kruskal.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Five nodes with weighted edges, colored by the set each node belongs to. The edges are taken cheapest first. An edge joining two sets is kept and the sets merge. The edges 0-1 and 2-3 would close cycles and are skipped. Four edges remain, total weight 8." data-chapters="[[2.4, &quot;union-find&quot;]]"><img src="figures/ch12-kruskal.gif" alt="Five nodes with weighted edges, colored by the set each node belongs to. The edges are taken cheapest first. An edge joining two sets is kept and the sets merge. The edges 0-1 and 2-3 would close cycles and are skipped. Four edges remain, total weight 8."></video>
+<figcaption><b>Animation 12.6</b> Edges arrive cheapest first. <code>union</code> keeps an edge only when its ends are in different sets, so no kept edge closes a cycle.</figcaption>
 </figure>
 
 

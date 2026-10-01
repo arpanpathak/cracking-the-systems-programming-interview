@@ -149,8 +149,8 @@ how they remove values and answer range queries. I'll go through the first fully
 second differs.
 
 <figure class="anim">
-<img src="figures/ch11-bst.gif" alt="Ten frames. The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time, each following a path from the root. Then a search for 6 compares with 8, with 3, and with 6.">
-<figcaption><b>Animation 11.5</b> Inserting seven values, then searching for 6. The cream path is the nodes the comparison walks through, and the grey nodes have not been inserted yet. Notice that the tree is built by nothing but comparisons: no value is ever moved after it is placed, and the shape depends on the order the values arrive. A search is the same walk, stopping when the value matches.</figcaption>
+<video class="motion" src="figures/ch11-bst.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain." data-chapters="[[0.0, &quot;insert&quot;], [94.1, &quot;sorted input&quot;]]"><img src="figures/ch11-bst.gif" alt="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain."></video>
+<figcaption><b>Animation 11.1</b> Each insert is a walk from the root that ends at an empty subtree, and a search is the same walk. Sorted input produces a chain, so the shape depends on the insert order.</figcaption>
 </figure>
 
 
@@ -556,8 +556,8 @@ starting with this prefix?" by walking the prefix's characters. That makes it th
 autocompletion.
 
 <figure class="anim">
-<img src="figures/ch11-trie.gif" alt="Frames inserting cat, car, and dog one character per frame, then querying ca and cab. Nodes appear only once their edge is created. A brass ring marks a node that ends a stored word.">
-<figcaption><b>Animation 11.6</b> Building a trie from <code>"cat"</code>, <code>"car"</code>, and <code>"dog"</code>, then querying <code>"ca"</code> and <code>"cab"</code>. Each frame adds one character, and a node appears only when its edge is created, so the sharing is visible: <code>"cat"</code> and <code>"car"</code> share the three nodes <code>c</code>, <code>ca</code>. A brass ring marks a node that ends a word. The last frames show the two different answers: <code>"ca"</code> reaches a node that ends no word but has children, so it is a prefix; <code>"cab"</code> has no edge for <code>b</code>, so it is absent, not even a prefix.</figcaption>
+<video class="motion" src="figures/ch11-trie.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b." data-chapters="[[0.0, &quot;insert cat&quot;], [15.44, &quot;insert car&quot;], [32.44, &quot;insert dog&quot;], [49.44, &quot;queries&quot;]]"><img src="figures/ch11-trie.gif" alt="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b."></video>
+<figcaption><b>Animation 11.2</b> <code>insert</code> creates a node only when the character has no child yet, so words with a common start share nodes. <code>"ca"</code> is a prefix but not a word, and <code>"cab"</code> stops at a missing child.</figcaption>
 </figure>
 
 

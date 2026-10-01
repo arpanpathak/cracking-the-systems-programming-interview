@@ -44,8 +44,8 @@ Figure 13.1 follows five calls on a cache with room for two entries.
 </figure>
 
 <figure class="anim">
-<img src="figures/ch13-lru.gif" alt="Four frames on a cache with two slots. put a leaves a. put b leaves a and b. get a moves a to the most recent end. put c evicts b, the least recent, and leaves c and a.">
-<figcaption><b>Animation 13.1</b> The same four calls, one frame each. Two rules cover every case. A hit moves the entry to the most-recent end. A miss into a full cache evicts the entry at the least-recent end, which is the one that has gone unused longest.</figcaption>
+<video class="motion" src="figures/ch13-lru.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A cache with two slots, the most recent on the left. put(A, 1) and put(B, 2) fill it. get(A) moves A to the most recent end. put(C, 3) evicts B, the least recent entry, and leaves C and A. A second run without get(A) evicts A instead." data-chapters="[[0.0, &quot;with get(A)&quot;], [33.48, &quot;without get(A)&quot;]]"><img src="figures/ch13-lru.gif" alt="A cache with two slots, the most recent on the left. put(A, 1) and put(B, 2) fill it. get(A) moves A to the most recent end. put(C, 3) evicts B, the least recent entry, and leaves C and A. A second run without get(A) evicts A instead."></video>
+<figcaption><b>Animation 13.1</b> The four calls from figure 13.1. The <code>get(A)</code> decides which entry <code>put(C, 3)</code> evicts: with it, B goes; without it, A goes.</figcaption>
 </figure>
 
 The third call changes the outcome. Without `get(A)`, A would be the least recent entry, and `put(C, 3)` would

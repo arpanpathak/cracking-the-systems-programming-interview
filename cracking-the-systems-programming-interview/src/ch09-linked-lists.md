@@ -87,8 +87,8 @@ and make it the new front of `previous`. Figure 9.3 shows the state after two st
 </figure>
 
 <figure class="anim">
-<img src="figures/ch04-reverse.gif" alt="Five frames reversing the list 1 to 2 to 3 to 4. Node 1 is pointed at None, then node 2 at node 1, then node 3 at node 2, then node 4 at node 3, leaving 4 to 3 to 2 to 1 with previous on node 4.">
-<figcaption><b>Animation 9.3</b> The loop, one node per frame. Each frame saves <code>next</code>, turns the node's link around, then advances <code>previous</code> and <code>current</code>. The teal links are the ones already reversed. No node is copied and no node is allocated; the list is rearranged in place, so the extra memory is three bindings.</figcaption>
+<video class="motion" src="figures/ch04-reverse.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The list 1, 2, 3, 4 as four boxes with arrows between them, and the variables previous and current pointing at nodes. For each node, take moves the rest of the list into current, the node's link is turned back toward previous, and previous moves to the node. The list ends as 4, 3, 2, 1. A last part turns the link before taking the rest, and nodes 2, 3, and 4 are dropped." data-chapters="[[0.0, &quot;loop&quot;], [81.12, &quot;flip first&quot;]]"><img src="figures/ch04-reverse.gif" alt="The list 1, 2, 3, 4 as four boxes with arrows between them, and the variables previous and current pointing at nodes. For each node, take moves the rest of the list into current, the node's link is turned back toward previous, and previous moves to the node. The list ends as 4, 3, 2, 1. A last part turns the link before taking the rest, and nodes 2, 3, and 4 are dropped."></video>
+<figcaption><b>Animation 9.1</b> <code>reverse_list</code> one node at a time: take the rest, point the node back, move <code>previous</code> forward. No node is copied. The last part flips the link before taking the rest, and the rest of the list is dropped.</figcaption>
 </figure>
 
 First, the node type and two helpers for building and reading lists:

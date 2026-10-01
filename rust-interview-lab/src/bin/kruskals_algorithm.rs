@@ -35,7 +35,6 @@ impl DisjointSet {
             return false;
         }
 
-        // Note for self : Comparator requires a reference
         match self.rank[x].cmp(&self.rank[y]) {
             Less => self.parent[x] = y,
             Greater => self.parent[y] = x,
@@ -50,7 +49,7 @@ impl DisjointSet {
 }
 
 fn kruskals(n: usize, mut edges: Vec<Edge>) -> Vec<Edge> {
-    // Greedy algorothm, sort the edges by weight
+    // Kruskal's algorithm is greedy: it takes the cheapest edges first.
     edges.sort_by_key(|e| e.w);
 
     let mut uf = DisjointSet::new(n);
