@@ -1,0 +1,14 @@
+digraph readmmap {
+  rankdir=TB; nodesep=0.4; ranksep=0.4;
+  subgraph cluster_user { label="your process"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    buffer [label="buffer: Vec<u8>\n(a second copy)" fillcolor="#fdf6e8"];
+    mapping [label="mapping: &[u8]\n(page table entries)" fillcolor="#e3f1ea"];
+  }
+  subgraph cluster_kernel { label="kernel"; labelloc="b"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    cache [label="page cache\nthe file's pages in RAM" fillcolor="#e6ecf6"];
+  }
+  disk [label="disk" shape=cylinder];
+  disk -> cache [label=" first access only"];
+  cache -> buffer [label=" read(): copy"];
+  mapping -> cache [label=" points at the\n same frames" style=dashed];
+}

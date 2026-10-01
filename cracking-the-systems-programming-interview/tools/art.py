@@ -606,6 +606,26 @@ def machine_async(x, y):
     return out
 
 
+def machine_mmap(x, y):
+    """A cabinet of cached pages wired straight to a desk of addresses, and a chute to a cable."""
+    out = rect(x, y - 30, 130, 190, "url(#steel)", rx=4)
+    for i in range(4):
+        out += rect(x + 12, y - 18 + 44 * i, 106, 36, STEEL_PALE, rx=3)
+        out += text(x + 65, y + 6 + 44 * i, "PAGE %d" % i, 14, INK, anchor="middle", family="Menlo, monospace")
+    out += rect(x + 190, y - 10, 120, 150, INK, rx=6)
+    out += text(x + 250, y + 12, "MAPPING", 14, STEEL_LIGHT, anchor="middle", spacing=1)
+    for i in range(4):
+        yy = y + 30 + 26 * i
+        out += text(x + 250, yy + 6, "0x7f%d000" % i, 14, "#9fe3c8", anchor="middle", family="Menlo, monospace")
+        out += line(x + 118, y + 6 + 44 * i - 4, x + 196, yy, TEAL, 2, 'stroke-dasharray="6 4"')
+    out += '<path d="M %.1f %.1f l 60 0 l 20 120 l -100 0 z" fill="%s" stroke="%s" stroke-width="2.5"/>' % (x + 350, y - 20, BRASS, INK)
+    out += text(x + 390, y + 20, "SEND", 14, INK, anchor="middle", spacing=1)
+    out += text(x + 390, y + 38, "FILE", 14, INK, anchor="middle", spacing=1)
+    out += '<path d="M %.1f %.1f c 0 50 40 40 40 80" fill="none" stroke="%s" stroke-width="7"/>' % (x + 390, y + 100, INK)
+    out += arrow(x + 130, y - 22, x + 352, y - 12, RUST)
+    return out
+
+
 def machine_drill(x, y):
     """A drill press over a workpiece stamped with a problem."""
     out = rect(x + 40, y + 150, 220, 22, INK, rx=4)
@@ -663,7 +683,8 @@ CHAPTERS = [
     (20, machine_network, dict(head="tv", eyes="visor", antenna="dish", held="screwdriver", accent=TEAL), "SIGNAL", "lineman of the socket panel"),
     (21, machine_http, dict(head="dome", eyes="mono", antenna="bolt", held="clipboard", accent=BRASS), "COURIER", "reads every header before opening the parcel"),
     (22, machine_async, dict(head="tall", eyes="screen", antenna="spring", held="oilcan", accent=RUST), "FLYWHEEL", "polls every future, sleeps when none are ready"),
-    (23, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
+    (23, machine_mmap, dict(head="tall", eyes="round", antenna="twin", held="clipboard", accent=TEAL), "FOLIO", "archivist of the mapped stacks"),
+    (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
 ]
 
 APPENDICES = [

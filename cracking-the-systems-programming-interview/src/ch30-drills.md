@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch23.png" alt="Drill, the robot who is the sergeant of the timed round, beside a drill press over a workpiece stamped with a problem">
+<img class="plate" src="art/ch30.png" alt="Drill, the robot who is the sergeant of the timed round, beside a drill press over a workpiece stamped with a problem">
 
 # Drills against the clock
 
@@ -21,16 +21,16 @@ written at the length you can type under that pressure. Each group carries one t
 This chapter is a guide to using them. It maps each drill to its chapter, reads the places where the
 short form cuts a corner, and ends with a way to rehearse.
 
-## 23.1 The drills
+## 30.1 The drills
 
-<p class="listing"><b>Listing 23.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
+<p class="listing"><b>Listing 30.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs}}
 ```
 
 The module comment states the file's role in one line: the neighbouring modules are the reference
-versions, and this file is what you type. Table 23.1 pairs each drill with the chapter that explains its
+versions, and this file is what you type. Table 30.1 pairs each drill with the chapter that explains its
 full form.
 
 | Drill | Lines | Full version |
@@ -46,7 +46,7 @@ full form.
 | `parse_request_head` | 29 | chapter 21, listing 21.1 |
 | `Port` newtype and `Route` enum | 32 | chapter 1, listing 1.3; chapter 21, `route` |
 
-## 23.2 What the short forms leave out
+## 30.2 What the short forms leave out
 
 A drill is allowed to be simpler than its reference. Knowing *what* it left out is part of the answer,
 because the follow-up question is usually aimed at exactly that.
@@ -81,7 +81,7 @@ head. For a question about serving requests, chapter 21's checks are the answer.
 reads left to right as the rule. `Route::parse` matches the two fixed paths and falls back to
 `strip_prefix` for the id route, returning `None` for everything else.
 
-## 23.3 The drill that is slower than it looks
+## 30.3 The drill that is slower than it looks
 
 `parallel_sum` changed behaviour in the short form. Compare it with the reference in chapter 12:
 
@@ -115,14 +115,14 @@ The fix is one `collect()` between the two `map`s. Chapter 14 drew the same less
 thread pool. A concurrency test that checks only the answer cannot tell parallel from serial. Put a
 barrier in it, as `thread_pool_v2`'s `jobs_run_at_the_same_time` does, or time it.
 
-## 23.4 Running a round
+## 30.4 Running a round
 
 A 45-minute coding round has a shape. Planning it keeps the last ten minutes, where most of the
-signal is, from being spent debugging (figure 23.1).
+signal is, from being spent debugging (figure 30.1).
 
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
-<figcaption><b>Figure 23.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
+<figcaption><b>Figure 30.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
 </figure>
 
 - **Clarify.** Ask what the inputs are, what should happen on bad input, and what the limits are (size,
@@ -134,7 +134,7 @@ signal is, from being spent debugging (figure 23.1).
 - **Failure modes.** Say what breaks at scale and what you would change: the reference versions in this
   book are that list, written out.
 
-## 23.5 Practicing with this repository
+## 30.5 Practicing with this repository
 
 The repository is set up for the drill loop that the problem index in appendix C describes. Write a
 minimal correct version in 30 to 45 minutes, then explain its failure modes and how you would test them.
@@ -150,7 +150,7 @@ The chapters' "Questions that come up" sections are the follow-ups to rehearse. 
 this book has followed, ten merges, nine pools, six buffers, is what that loop looks like when you keep
 the drafts.
 
-## 23.6 Questions that come up
+## 30.6 Questions that come up
 
 **"Your parallel sum gives the right answer. Is it parallel?"**
 Check that all threads are spawned before any is joined. A lazy iterator that spawns and joins in one

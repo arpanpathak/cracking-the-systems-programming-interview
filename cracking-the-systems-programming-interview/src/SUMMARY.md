@@ -44,9 +44,13 @@
 - [Parsing and serving HTTP/1.1](ch21-http.md)
 - [Async Rust from the executor up](ch22-async.md)
 
-# Part 7: Compact implementations
+# Part 7: The kernel boundary
 
-- [Compact implementations](ch23-drills.md)
+- [Mapping files and copying less](ch23-mmap.md)
+
+# Part 8: Compact implementations
+
+- [Compact implementations](ch30-drills.md)
 
 ---
 

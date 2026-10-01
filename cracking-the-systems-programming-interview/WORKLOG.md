@@ -47,10 +47,14 @@ sections.
 
 ## Phase 2: new material (the eight)
 
-New parts go after Part 6. The drills chapter stays last.
+New parts go after Part 6. The drills chapter stays last: it is now ch30
+(`src/ch30-drills.md`, plate 30), leaving 23 to 29 for the seven new chapters:
+23 mmap, 24 fd table, 25 edge-triggered epoll, 26 futex, 27 TCP teardown,
+28 TLS, 29 connection pool. Part numbers in SUMMARY.md: 7 kernel boundary,
+then 8 and 9 as they are added, drills last.
 
 - [ ] Part 7, the kernel boundary
-  - [ ] mmap and zero-copy (MAP_SHARED vs MAP_PRIVATE, first-touch faults,
+  - [x] mmap and zero-copy (MAP_SHARED vs MAP_PRIVATE, first-touch faults,
         msync; sendfile vs read/write; TLS forces bytes back to user space)
   - [ ] the fd table, fork/exec, and pipes (dup2, FD_CLOEXEC, a leaked fd,
         `ls | wc -l`)
@@ -75,3 +79,5 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 ch18: lead-ins before the version 1 listing and the three short pools; 18.1 already explained the parts
 - 2026-10-01 ch10: lead-ins before eight code versions; 10.6 and 10.7 explain the strategy before the listing. 10.1-10.2 already taught the merge and the strategies.
 - 2026-10-01 ch14, ch02, ch07, ch09: a lead-in sentence before every code-first subsection (19 in all); explanations after the code were already there
+- 2026-10-01 lab: mmap_file.rs (macOS 64 first-pass faults; Linux 5, fault-around) and zero_copy.rs (Docker: read/write 8193 calls 809 MiB/s, sendfile 1 call 1318 MiB/s); commit 3b52d0b
+- 2026-10-01 ch23 Mapping files and copying less: page cache, mmap faults, shared/private, SIGBUS, sendfile, TLS; figures 23.1-23.3, animation ch23-faults (anim_kernel.py), plate FOLIO; drills renamed to ch30, Part 7 added to SUMMARY

@@ -388,7 +388,7 @@ Yes, if the guard is dropped before the next `.await`. Holding it across an `.aw
 
 </div>
 
-Chapter 23 collects compact implementations of the structures from parts 2 to 6. Each one is the shortest program that still shows the structure working, and each fits on one screen.
+Chapter 23 goes below the system calls these chapters made. It maps a file into memory and watches the page faults that load it. Then it sends a file to a socket without copying it through the program.
 
 ## Exercises
 

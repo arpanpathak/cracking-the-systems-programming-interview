@@ -1,0 +1,12 @@
+digraph sharedprivate {
+  rankdir=LR; nodesep=0.35; ranksep=0.6;
+  shared [label="MAP_SHARED mapping\nwrites HELLO" fillcolor="#e3f1ea"];
+  private [label="MAP_PRIVATE mapping\nwrites world" fillcolor="#fdf6e8"];
+  cache [label="page cache page\nHELLOaaaa..." fillcolor="#e6ecf6"];
+  copy [label="private copy\nworldaaaa...\n(this process only)" fillcolor="#fdf6e8"];
+  file [label="file on disk" shape=cylinder];
+  shared -> cache [label=" same frame"];
+  private -> cache [label=" reads, until\n the first write" style=dashed];
+  private -> copy [label=" after the first write\n (copy-on-write)"];
+  cache -> file [label=" writeback\n or msync"];
+}

@@ -1,0 +1,19 @@
+digraph copies {
+  rankdir=LR; nodesep=0.3; ranksep=0.4;
+  subgraph cluster_sendfile { label="sendfile: the bytes stay in the kernel, one system call"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    c2 [label="page cache" fillcolor="#e6ecf6"];
+    s2 [label="socket buffer" fillcolor="#e3f1ea"];
+    n2 [label="network card"];
+    c2 -> s2 [label=" kernel passes\n the pages"];
+    s2 -> n2 [label=" DMA"];
+  }
+  subgraph cluster_loop { label="read/write loop: two copies through user space, two system calls per chunk"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    c1 [label="page cache" fillcolor="#e6ecf6"];
+    u1 [label="user buffer" fillcolor="#fdf6e8"];
+    s1 [label="socket buffer" fillcolor="#e6ecf6"];
+    n1 [label="network card"];
+    c1 -> u1 [label=" read:\n copy"];
+    u1 -> s1 [label=" write:\n copy"];
+    s1 -> n1 [label=" DMA"];
+  }
+}
