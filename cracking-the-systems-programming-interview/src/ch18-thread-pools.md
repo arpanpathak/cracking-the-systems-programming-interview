@@ -58,6 +58,10 @@ jobs are taken. A worker that sees the `Err` leaves its loop, and the thread end
 
 ## 18.2 Version 1, and a bug you can measure
 
+Version 1 writes the pool of figure 18.1 directly. `new` starts the workers, `execute` sends a job, and `join`
+closes the channel and waits for every worker. Each worker locks the shared receiver to take a job. How long it
+keeps that lock decides whether the workers run at the same time.
+
 <p class="listing"><b>Listing 18.1</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool.rs">src/bin/thread_pool.rs</a></p>
 
 ```rust
@@ -287,6 +291,9 @@ Three more pools take the lessons of versions 2 and 3 in a more compact form, an
 
 ### 18.6.1 Shutdown in `Drop`, compactly
 
+This pool shuts itself down when it goes out of scope. Its `Drop` closes the channel and joins the workers, so
+the caller never calls a shutdown method.
+
 <p class="listing"><b>Listing 18.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_bruce_lee.rs">src/bin/thread_pool_bruce_lee.rs</a></p>
 
 ```rust
@@ -318,6 +325,9 @@ could take the next job before the others were scheduled. The pool does not prom
 inside `Drop`. The later versions use `let _ = worker.join();` instead.
 
 ### 18.6.2 A bounded queue and results
+
+This pool adds two features. The queue has a fixed size, so a caller that submits jobs faster than the workers
+run them has to wait. And each job's return value comes back to the caller.
 
 <p class="listing"><b>Listing 18.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs">src/bin/thread_pool_with_back_pressure.rs</a></p>
 
@@ -351,6 +361,9 @@ The results print in order because `main` calls `recv()` on the receivers in ord
 in any order.
 
 ### 18.6.3 Many producers
+
+In this pool, several threads submit jobs at the same time, each through its own clone of the `Sender`. The
+worker loop also handles a poisoned lock and a closed channel separately.
 
 <p class="listing"><b>Listing 18.14</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs">src/bin/mpmc_thread_pool_engine.rs</a></p>
 
