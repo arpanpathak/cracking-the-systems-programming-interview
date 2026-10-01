@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
+            window.path_to_searchindex_js = "searchindex-b9557c20.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -730,16 +730,16 @@ full form.</p>
 <tr><th>Drill</th><th>Lines</th><th>Full version</th></tr>
 </thead>
 <tbody>
-<tr><td><code>count_parallel</code>: <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code> counter</td><td>18</td><td>chapter 1 (<code>total_with_arc_mutex</code>), chapter 12</td></tr>
-<tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 12, <code>threads::parallel_sum</code></td></tr>
-<tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 12, listing 12.4</td></tr>
-<tr><td><code>Semaphore</code></td><td>36</td><td>chapter 12, listing 12.5</td></tr>
-<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 13, listing 13.6</td></tr>
-<tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 14, listing 14.5</td></tr>
-<tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 15, listing 15.4</td></tr>
-<tr><td><code>HashRing</code></td><td>33</td><td>chapter 10, listing 10.2</td></tr>
+<tr><td><code>count_parallel</code>: <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code> counter</td><td>18</td><td>chapter 8 (<code>total_with_arc_mutex</code>, listing 8.7), chapter 16</td></tr>
+<tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
+<tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 16, listing 16.12</td></tr>
+<tr><td><code>Semaphore</code></td><td>36</td><td>chapter 16, listing 16.15</td></tr>
+<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.16</td></tr>
+<tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 18, listing 18.7</td></tr>
+<tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 19, listing 19.9</td></tr>
+<tr><td><code>HashRing</code></td><td>33</td><td>chapter 14, listing 14.9</td></tr>
 <tr><td><code>parse_request_head</code></td><td>29</td><td>chapter 21, listing 21.1</td></tr>
-<tr><td><code>Port</code> newtype and <code>Route</code> enum</td><td>32</td><td>chapter 1, listing 1.3; chapter 21, <code>route</code></td></tr>
+<tr><td><code>Port</code> newtype and <code>Route</code> enum</td><td>32</td><td>chapter 7 (the <code>GpuCount</code> newtype, listing 7.2); chapter 21, <code>route</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -748,16 +748,16 @@ full form.</p>
 because the follow-up question is usually aimed at exactly that.</p>
 <p><strong>The spin lock uses <code>swap</code>.</strong> <code>while self.locked.swap(true, Acquire) { spin_loop() }</code> is a
 test-and-set lock: every waiting thread writes the lock’s cache line on every iteration. The reference
-version in chapter 12 uses <code>compare_exchange_weak</code> and spins on a <em>load</em>, so waiters share the line
+version in chapter 16 uses <code>compare_exchange_weak</code> and spins on a <em>load</em>, so waiters share the line
 read-only until it is released. Both are correct; the reference scales better under contention. The
 drill also omits the <code>SAFETY</code> comments, which in a real review you would add back.</p>
 <p><strong>The semaphore has no guard.</strong> <code>acquire</code> and <code>release</code> are separate calls, so a caller that panics
-between them leaks a permit. The reference returns a RAII guard. In exchange, the drill’s <code>acquire</code>
-really does hold the permit it takes, which section 12.4 found the reference’s <code>acquire</code> does not.</p>
+between them leaks a permit. The reference in section 16.5 returns a <code>SemaphoreGuard</code> whose <code>Drop</code> gives the
+permit back.</p>
 <p><strong>The thread pool receives in a let-else.</strong> <code>let Ok(job) = receiver.lock().expect(..).recv() else { return; };</code>
 is a <code>let</code> statement, so the <code>MutexGuard</code> temporary is dropped at its end, before <code>job()</code> runs. The
 pool is fully parallel, which a timing confirms: four 200 ms jobs on four workers take 205 ms. The same
-receive written as <code>while let</code> would serialize the pool (chapter 14, figure 14.2), so this is the form
+receive written as <code>while let</code> would serialize the pool (chapter 18, figure 18.2), so this is the form
 to memorize.</p>
 <p><strong>The hash ring wraps with <code>%</code>.</strong> <code>partition_point(..) % self.points.len()</code> maps an index one past the
 end back to 0 in one expression. The reference uses an <code>if</code> instead. The drill also hashes in a plainer
@@ -771,7 +771,7 @@ head. For a question about serving requests, chapter 21’s checks are the answe
 reads left to right as the rule. <code>Route::parse</code> matches the two fixed paths and falls back to
 <code>strip_prefix</code> for the id route, returning <code>None</code> for everything else.</p>
 <h2 id="303-the-drill-that-is-slower-than-it-looks"><a class="header" href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></h2>
-<p><code>parallel_sum</code> changed behaviour in the short form. Compare it with the reference in chapter 12:</p>
+<p><code>parallel_sum</code> changed behaviour in the short form. Compare it with the reference in chapter 16:</p>
 <pre><code class="language-rust">// drills.rs
 values
     .chunks(chunk_size)
@@ -791,7 +791,7 @@ sleep 200 ms shows the difference:</p>
 <pre><code class="language-text">lazy spawn/join chain, four 200 ms workers: 809.402756ms (sum 4)
 collect first, then join:              203.482125ms (sum 4)
 </code></pre>
-<p>The fix is one <code>collect()</code> between the two <code>map</code>s. Chapter 14 drew the same lesson from the
+<p>The fix is one <code>collect()</code> between the two <code>map</code>s. Chapter 18 drew the same lesson from the
 thread pool. A concurrency test that checks only the answer cannot tell parallel from serial. Put a
 barrier in it, as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code> does, or time it.</p>
 <h2 id="304-running-a-round"><a class="header" href="#304-running-a-round">30.4 Running a round</a></h2>

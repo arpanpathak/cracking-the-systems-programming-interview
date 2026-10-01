@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8d72f59b.js";
+            window.path_to_searchindex_js = "searchindex-b9557c20.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -1046,7 +1046,7 @@ fn run_list&lt;L: SinglyList&lt;u64&gt;&gt;(elements: usize) {
         with_thousands(elements as u64)
     );
 }</code></pre>
-<p>The whole file is listing 13.19. Chapter 13 adds the cache benchmarks to it, and shows it complete there.</p>
+<p>The whole file is listing 13.16. Chapter 13 adds the cache benchmarks to it, and shows it complete there.</p>
 <p><code>run_list::&lt;L: SinglyList&lt;u64&gt;&gt;</code> is <strong>generic</strong> over the list type <code>L</code>. The compiler generates a separate copy of the function for each list type. So each list is measured with
 its own code.</p>
 <p>The function follows three rules that apply to any small benchmark:</p>
