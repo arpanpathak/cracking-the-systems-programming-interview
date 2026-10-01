@@ -291,15 +291,66 @@ Chapter 19 built retries and idempotency keys on their own. Here they meet a net
 
 ### 22.7.1 A blocking client over `TcpStream`
 
-The blocking client composes its three layers in one line:
+The blocking client is built from four parts: a request type, a cache, a retry policy, and the client that joins
+them. A request is an enum, and each variant carries exactly the fields its HTTP method needs:
 
 ```rust
-self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))
+{{#include ../../rust-interview-lab/src/bin/fun_network_call.rs:1:25}}
 ```
 
-`IdemCache` is chapter 19's `Idempotent<K, V>` store under another name. `RetryPolicy::execute` retries any error with a doubling delay, `base × 2^(attempt - 1)`, capped at `max_delay`. `RequestType` is an enum whose variants carry exactly the fields each method needs: `Get` has no body, and `Post` has one. `main` reads with a `GET`, then creates an item with a `POST`.
+`RuntimeError` is a boxed error, so `?` can return any error type from `main`. `RequestHeader` is an alias for a
+list of (name, value) pairs. A `Get` has no body and a `Post` has one, so a `GET` with a body cannot be built.
 
-`send` writes the request by hand. It writes the request line, `Host`, `Connection: close`, and the caller's headers. A body adds `Content-Length`, a blank line, and then the body. `Connection: close` lets `read_to_string` work as the response reader, because the server closes the connection at the end. Chapter 17's parser is the other side of this conversation.
+The cache keeps each successful response under its idempotency key:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/fun_network_call.rs:27:54}}
+```
+
+`IdemCache` is chapter 19's `Idempotent<K, V>` store with `String` keys and values. `get_or_insert` returns the
+stored response if there is one. Otherwise it runs `f`, stores the result, and returns it. A failure is not
+stored, so a later call tries again. The lock is held while `f` runs, so two calls with one key cannot both send.
+
+The retry policy runs an operation up to `max_attempts` times:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/fun_network_call.rs:56:88}}
+```
+
+After each failure except the last, `execute` sleeps for `base × 2^(attempt - 1)`, capped at `max_delay`: 100 ms
+after the first failure, 200 ms after the second. `F` is `FnMut`, not `FnOnce`, because the loop calls it more
+than once.
+
+The client holds the server's address and one of each layer. `execute` joins the layers in one line:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/fun_network_call.rs:90:111}}
+    // ...
+}
+```
+
+The cache calls the retry policy only on a miss, and the retry policy calls `send` once per attempt.
+
+`send` writes the request by hand and reads the response:
+
+```rust
+impl HttpClient {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/fun_network_call.rs:113:147}}
+}
+```
+
+The `match` turns either variant into the same four parts: the method name, the path, the headers, and an
+optional body. The request text then follows section 21.1. It is the request line, `Host`,
+`Connection: close`, and the caller's headers. A body adds `Content-Length`, then the blank line, then the body.
+`Connection: close` lets `read_to_string` read the whole response, because the server closes the connection at
+the end. `split_once("\r\n\r\n")` drops the status line and the headers, and keeps the body.
+
+`main` reads with a `GET`, then creates an item with a `POST`. Each request has its own idempotency key:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/fun_network_call.rs:150:181}}
+```
 
 <p class="listing"><b>Listing 22.10</b> Cache, retry, and a hand-written HTTP/1.1 request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/fun_network_call.rs">src/bin/fun_network_call.rs</a></p>
 
@@ -314,36 +365,72 @@ Two gaps separate this from a client you would ship, and both are visible in the
 
 ### 22.7.2 An async client with `reqwest`
 
-The async client reads the status code and makes retry a decision about it. `RETRY` lists the statuses to retry: 429 and four 5xx codes. The `match` on the status then has three arms:
+The async client keeps the same layers, on Tokio and the `reqwest` crate. It also reads the status code, and
+decides from it whether to retry. Its settings come first:
 
 ```rust
-match status {
-    s if s.is_success() => {
-        self.store(key, &text);
-        return Ok(text);
-    }
-    s if RETRY.contains(&s) && attempt < self.cfg.max_attempts => {
-        tokio::time::sleep(delay).await;
-        delay = (delay * 2).min(self.cfg.max_delay);
-    }
-    s => return Err(format!("HTTP {s} after {attempt} attempts: {text}").into()),
+{{#include ../../rust-interview-lab/src/bin/reqwest_and_tokio.rs:1:28}}
+```
+
+`RETRY` lists the statuses to retry, where the server may succeed later: 429, Too Many Requests, and four
+5xx codes. `Config` holds the base URL, the retry settings, and a timeout. `Api` holds a `reqwest::Client`, the
+cache, and the configuration. `type Error = Box<dyn std::error::Error + Send + Sync>` lets errors cross task
+boundaries, because a `Send + Sync` error can move between Tokio's worker threads.
+
+`new` builds the HTTP client, and two helpers read and write the cache:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/reqwest_and_tokio.rs:30:54}}
+    // ...
 }
 ```
 
-`tokio::time::sleep` does not block the thread. It returns a future that registers with Tokio's timer and returns `Pending`, which is the `Delay` of section 22.4.2 done properly. Other tasks run on the same thread while this one waits.
+- `Client::builder().timeout(cfg.timeout)` bounds every request. A client without a timeout can wait forever on
+  a server that accepted the connection and never answered.
+- The cache is a `std::sync::Mutex`. That is allowed in async code because the guard is never held across an
+  `.await`: `cached` and `store` lock, act, and return. The lock is taken with
+  `unwrap_or_else(|e| e.into_inner())`, chapter 16's ignore-the-poison choice. A `HashMap` insert cannot leave
+  the map half-updated, so recovering the guard is safe here.
+
+`call` checks the cache, then sends and retries:
+
+```rust
+impl Api {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/reqwest_and_tokio.rs:56:100}}
+}
+```
+
+Each attempt builds a request with `self.http.request(method, url)`. It adds two headers, and for a body calls
+`req.json(b)`, which serializes the JSON value and sets `Content-Type`. The request carries
+`Idempotency-Key: create-demo-001`, so a server that honors the header can deduplicate a retried `POST`. The
+client-side cache gives the same guarantee within one process.
+
+`req.send().await?` sends the request and waits for the response headers. `resp.text().await?` waits for the
+body. The `match` on the status then has three arms:
+
+- A success is stored in the cache and returned.
+- A status in `RETRY`, with attempts left, sleeps and doubles the delay.
+- Anything else is returned as an error that names the status and the attempts.
+
+`tokio::time::sleep` does not block the thread. It returns a future that registers with Tokio's timer and
+returns `Pending`, which is the `Delay` of section 22.4.2 done properly. Other tasks run on the same thread while
+this one waits.
+
+`main` builds the client and makes one call:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/reqwest_and_tokio.rs:103:119}}
+```
+
+`#[tokio::main]` starts a Tokio runtime and runs `main` as its first task, so `main` can be `async`.
+`serde_json::json!` builds a JSON value from JSON-like syntax.
 
 <p class="listing"><b>Listing 22.11</b> The same layers on Tokio. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">src/bin/reqwest_and_tokio.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/reqwest_and_tokio.rs}}
 ```
-
-Several choices in this client are deliberate:
-
-- `Client::builder().timeout(cfg.timeout)` bounds every request. A client without a timeout can wait forever on a server that accepted the connection and never answered.
-- The request carries `Idempotency-Key: create-demo-001`, so a server that honors the header can safely deduplicate the retried `POST`. The client-side cache gives the same guarantee within one process.
-- The cache is a `std::sync::Mutex`. That is allowed in async code because the guard is never held across an `.await`; `cached` and `store` lock, act, and return. The lock is taken with `unwrap_or_else(|e| e.into_inner())`, chapter 16's ignore-the-poison choice. A `HashMap` insert cannot leave the map half-updated, so recovering the guard is safe here.
-- `type Error = Box<dyn std::error::Error + Send + Sync>` lets errors cross task boundaries.
 
 ### 22.7.3 The two clients side by side
 
