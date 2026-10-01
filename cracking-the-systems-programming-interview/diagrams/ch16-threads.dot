@@ -1,0 +1,14 @@
+digraph threads {
+  rankdir=LR; nodesep=0.25; ranksep=0.5;
+  subgraph cluster_p { label="one process"; fontname="Helvetica"; fontsize=10; color="#c9d4de"; style="rounded,dashed";
+    shared [label="shared by every thread\ncode, statics, heap" fillcolor="#e3f1ea"];
+    t1 [label="thread 1\nstack + registers" fillcolor="#fdf6e8"];
+    t2 [label="thread 2\nstack + registers" fillcolor="#fdf6e8"];
+    t3 [label="thread 3\nstack + registers" fillcolor="#fdf6e8"];
+  }
+  sched [label="kernel scheduler" fillcolor="#e6ecf6"];
+  c0 [label="core 0"]; c1 [label="core 1"];
+  t1 -> shared [style=dashed arrowhead=none]; t2 -> shared [style=dashed arrowhead=none]; t3 -> shared [style=dashed arrowhead=none];
+  t1 -> sched; t2 -> sched; t3 -> sched;
+  sched -> c0 [label=" runs thread 1"]; sched -> c1 [label=" runs thread 3"];
+}

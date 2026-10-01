@@ -30,7 +30,29 @@ compiler checks this with two traits, `Send` and `Sync`. The chapter starts ther
 
 ## 16.1 Starting threads
 
-### 16.1.1 `spawn` and `join`
+### 16.1.1 What a thread is
+
+A process owns memory: the program's code, its static data, and its heap. A **thread** is one path of execution
+through that code. Each thread has its own stack, which holds the local variables of the functions it is running.
+Each also has its own copy of the CPU registers, including the instruction pointer that says which instruction
+runs next. Everything else is shared. Every thread reads the same code and can reach the same heap (figure 16.1).
+
+<figure>
+<img src="figures/ch16-threads.svg" alt="One process holding three threads, each with its own stack and registers, all connected to one shared region holding code, statics, and the heap. The three threads feed the kernel scheduler, which runs thread 1 on core 0 and thread 3 on core 1.">
+<figcaption><b>Figure 16.1</b> Threads in one process. Stacks and registers are per thread; code, statics, and the heap are shared. The scheduler decides which threads run on the cores.</figcaption>
+</figure>
+
+The kernel's **scheduler** decides which threads run. A core runs one thread at a time. When there are more
+runnable threads than cores, the scheduler gives each a short slice of time. Between slices it saves one
+thread's registers and loads another's. That swap is a **context switch**, and it costs a few microseconds.
+
+A thread that waits for I/O or for a lock is not runnable. It uses no CPU time while it waits, only the memory
+of its stack.
+
+Because the heap is shared, two threads can reach the same value at the same moment. Section 16.2 shows what
+goes wrong then, and the rest of the chapter builds the tools that prevent it.
+
+### 16.1.2 `spawn` and `join`
 
 `std::thread::spawn` starts a new thread that runs a closure. It returns a `JoinHandle`. Calling `join()` on the
 handle waits for the thread to finish and returns the closure's result:
@@ -47,17 +69,17 @@ might be gone by the time the thread uses them. The compiler requires the closur
 to borrow only data that lives for the whole program. That requirement is written `'static`. To share data with
 a spawned thread, you move an `Arc` into the closure, as section 8.6 did.
 
-### 16.1.2 Scoped threads
+### 16.1.3 Scoped threads
 
 `thread::scope` removes that restriction for work that finishes before the function continues. It takes a
 closure that receives a `scope` value. Threads started with `scope.spawn` may borrow local data. The scope waits
 for every one of them before `thread::scope` returns, so the borrowed data is still alive while they run.
 
-The file `threads.rs` uses a scope to sum a slice on several threads (figure 16.1).
+The file `threads.rs` uses a scope to sum a slice on several threads (figure 16.2).
 
 <figure>
 <img src="figures/scope-chunks.svg" alt="A slice split into four chunks. Each chunk goes to a worker that sums it. The four partial sums are joined and added.">
-<figcaption><b>Figure 16.1</b> Each worker sums one chunk, borrowing it from the caller's slice.</figcaption>
+<figcaption><b>Figure 16.2</b> Each worker sums one chunk, borrowing it from the caller's slice.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 16.1</b> <code>available_workers</code> and <code>parallel_sum</code> (lines 31 to 69). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/threads.rs">src/problems/threads.rs</a></p>
@@ -87,7 +109,7 @@ waiting on any of them.
 The closure passed to `scope.spawn` is a `move` closure. It moves `chunk`, a `&[i32]`, into the thread. Moving a
 reference copies the reference, not the data.
 
-### 16.1.3 `Send` and `Sync`
+### 16.1.4 `Send` and `Sync`
 
 How does the compiler know which values may be used from another thread? Two marker traits describe it:
 
@@ -119,11 +141,11 @@ check costs nothing at run time.
 ### 16.2.1 The lost update
 
 `count += 1` looks like one step, but the CPU performs three: read the value, add one, and write the result back.
-If two threads do this at the same time, their steps can interleave (figure 16.2).
+If two threads do this at the same time, their steps can interleave (figure 16.3).
 
 <figure>
 <img src="figures/lost-update.svg" alt="Thread 1 reads 5, thread 2 reads 5, both add 1 to get 6, and both write 6. The counter ends at 6 instead of 7.">
-<figcaption><b>Figure 16.2</b> A lost update. Both threads read 5, so one of the two increments disappears.</figcaption>
+<figcaption><b>Figure 16.3</b> A lost update. Both threads read 5, so one of the two increments disappears.</figcaption>
 </figure>
 
 Safe Rust does not compile this: sharing a plain `usize` for writing between threads needs `&mut` in two places
@@ -213,7 +235,7 @@ and `i128`, once on one thread and once on several.
 
 This version divides the work by index instead of with `chunks`. Worker `i` sums the range from `i * chunk` to the
 next boundary. The last worker takes everything to the end, so the leftover elements from the integer division
-are not lost. The handles are collected before joining, for the reason in section 16.1.2.
+are not lost. The handles are collected before joining, for the reason in section 16.1.3.
 
 <p class="listing"><b>Listing 16.7</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/parallel_sum.rs">src/bin/parallel_sum.rs</a></p>
 
@@ -300,7 +322,7 @@ all checks passed
 
 <figure>
 <img src="figures/amdahl.svg" alt="Speedup curves from 1 to 16 processors for serial fractions 0, 0.05, 0.10, 0.25, and 0.50, reaching 16, 9.14, 6.40, 3.37, and 1.88 at 16 processors.">
-<figcaption><b>Figure 16.3</b> The table as curves. With 5% serial work, 16 processors give a speedup of 9.14.</figcaption>
+<figcaption><b>Figure 16.4</b> The table as curves. With 5% serial work, 16 processors give a speedup of 9.14.</figcaption>
 </figure>
 
 As `p` grows, `(1 - s) / p` shrinks toward zero, and the speedup approaches `1 / s`. A program that is 5% serial
@@ -374,11 +396,11 @@ hardware thread on the core run.
 
 ### 16.4.3 Acquire and release
 
-The orderings in `lock` and `unlock` make the lock correct (figure 16.4).
+The orderings in `lock` and `unlock` make the lock correct (figure 16.5).
 
 <figure>
 <img src="figures/acquire-release.svg" alt="Thread A locks with an Acquire compare-exchange, increments the value, and unlocks with a Release store. Thread B spins, then its Acquire compare-exchange succeeds after A's release, and it sees the increment.">
-<figcaption><b>Figure 16.4</b> The release store in <code>unlock</code> pairs with the acquire exchange in the next <code>lock</code>.</figcaption>
+<figcaption><b>Figure 16.5</b> The release store in <code>unlock</code> pairs with the acquire exchange in the next <code>lock</code>.</figcaption>
 </figure>
 
 - `unlock` stores `false` with `Release`. Every write the thread made before the store happens before the store, as far as other threads can tell.
@@ -448,14 +470,14 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 134 filtered out
 
 A lock lets one thread at a time proceed. A **semaphore** lets up to N threads proceed at once. It holds a count of
 **permits**. A thread takes a permit before it starts, and returns it when it finishes. When no permit is left,
-the next thread waits (figure 16.5).
+the next thread waits (figure 16.6).
 
 Semaphores limit how much of something runs at once. Examples are open connections to a database, requests
 to a server, and open files.
 
 <figure>
 <img src="figures/semaphore.svg" alt="A semaphore with 2 permits and 0 available. Threads 1 and 2 hold permits. Threads 3 and 4 wait on the condition variable until a release wakes one of them.">
-<figcaption><b>Figure 16.5</b> A semaphore with two permits, both taken.</figcaption>
+<figcaption><b>Figure 16.6</b> A semaphore with two permits, both taken.</figcaption>
 </figure>
 
 ### 16.5.1 Waiting without spinning
@@ -544,11 +566,11 @@ other threads.
 
 What if the thread panics between the two steps? The guard is dropped during the panic, so the lock is released.
 The data, though, stays half-changed. The standard `Mutex` records that this happened, and the mutex becomes
-**poisoned** (figure 16.6). Every later `lock()` returns `Err(PoisonError)` instead of `Ok(guard)`.
+**poisoned** (figure 16.7). Every later `lock()` returns `Err(PoisonError)` instead of `Ok(guard)`.
 
 <figure>
 <img src="figures/poison.svg" alt="A timeline: branch A locks, changes stock and cash, panics, and the guard is dropped; the mutex is poisoned; the audit thread's lock returns Err; into_inner gives it the guard to repair the data.">
-<figcaption><b>Figure 16.6</b> The sequence in <code>mutex_poisoning.rs</code>.</figcaption>
+<figcaption><b>Figure 16.7</b> The sequence in <code>mutex_poisoning.rs</code>.</figcaption>
 </figure>
 
 The error does not hide the data. `PoisonError::into_inner()` returns the guard anyway, for code that can check
@@ -611,12 +633,12 @@ two locks. Thread 1 holds lock A and waits for lock B. Thread 2 holds lock B and
 ever release what it holds.
 
 To analyze a deadlock, draw a **wait-for graph**. Each thread is a node. An edge from T0 to T1 means T0 is waiting
-for a lock that T1 holds. The threads are deadlocked exactly when the graph has a cycle (figure 16.7). Finding a
+for a lock that T1 holds. The threads are deadlocked exactly when the graph has a cycle (figure 16.8). Finding a
 cycle is the three-state DFS from section 12.6.
 
 <figure>
 <img src="figures/wait-for.svg" alt="Left: T0 waits for T1 and T2, and T1 waits for T2. There is no cycle. Right: T0 waits for T1, T1 for T2, and T2 for T0, a cycle.">
-<figcaption><b>Figure 16.7</b> The two graphs from the program. Only the right one is deadlocked.</figcaption>
+<figcaption><b>Figure 16.8</b> The two graphs from the program. Only the right one is deadlocked.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 16.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_deadlock.rs">src/bin/concurrency_deadlock.rs</a></p>
