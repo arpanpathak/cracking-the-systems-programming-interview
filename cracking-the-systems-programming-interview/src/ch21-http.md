@@ -261,8 +261,8 @@ extensions after a `;` are ignored, as the RFC permits.
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/http_request.rs:294:311}}
-    // ...
-}
+        // ...
+    }
 }
 ```
 
@@ -365,9 +365,9 @@ On `Ok`, it routes, writes the response, and either closes or clears the buffer 
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/http_server.rs:134:152}}
-    // ...
-}
-}
+            // ...
+        }
+    }
 }
 ```
 

@@ -110,7 +110,8 @@ def wrapped(src: list[str], a: int, b: int, include_line: str) -> list[str]:
         # an excerpt at the top level that stops before its closing braces
         open_braces = sum(depth_change(line) for line in src[a - 1:b])
         if open_braces > 0:
-            after = [" " * 4 + ELIDE] + ["}"] * open_braces
+            after = [" " * 4 * open_braces + ELIDE]
+            after += [" " * 4 * depth + "}" for depth in reversed(range(open_braces))]
     return before + [include_line] + after
 
 

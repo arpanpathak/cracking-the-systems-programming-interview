@@ -651,18 +651,39 @@ cycle is the three-state DFS from section 12.6.
 <figcaption><b>Figure 16.8</b> The two graphs from the program. Only the right one is deadlocked.</figcaption>
 </figure>
 
+`has_deadlock` takes the edges as `(waiter, holder)` pairs. It first turns them into an adjacency list:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/concurrency_deadlock.rs:7:20}}
+    // ...
+}
+```
+
+It finds the largest thread number with a `let ... else`, so an empty list returns `false` at once. The
+adjacency list then has one entry per thread, holding the threads it waits for.
+
+The search is the DFS of section 12.6. The three states are plain numbers: 0 for unvisited, 1 for on the
+current path, and 2 for fully explored:
+
+```rust
+fn has_deadlock(waits_for: &[(usize, usize)]) -> bool {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/concurrency_deadlock.rs:22:39}}
+}
+```
+
+`visit` returns `true` as soon as it reaches a node in state 1. That node is on the path that led here, so the
+edge closes a cycle. A node in state 2 was explored already and is known to lead to no cycle. `any` starts a
+search from every node, so a cycle among threads that no other thread waits on is found too.
+
+`main` checks three graphs. The third, `(0, 0)`, is a thread waiting for itself, as happens when a thread tries
+to lock a `Mutex` it already holds.
+
 <p class="listing"><b>Listing 16.18</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/concurrency_deadlock.rs">src/bin/concurrency_deadlock.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/concurrency_deadlock.rs}}
 ```
-
-`has_deadlock` takes the edges as `(waiter, holder)` pairs. It finds the largest thread number with a `let ...
-else`, so an empty list returns `false` at once. It then builds an adjacency list and runs the DFS.
-
-The states are plain numbers here: 0 for unvisited, 1 for on the current path, and 2 for fully explored. An edge
-back to a node in state 1 is a cycle. The third test graph, `(0, 0)`, is a thread waiting for itself, as happens
-when a thread tries to lock a `Mutex` it already holds.
 
 ```text
 $ cargo run --bin concurrency_deadlock

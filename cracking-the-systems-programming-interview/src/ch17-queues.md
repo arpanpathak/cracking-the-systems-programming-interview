@@ -372,18 +372,54 @@ consumers are still running.
 The next version is the bounded buffer written more compactly, with `wait_while` for both waits. Its `main` uses
 scoped threads, so no `Arc` is needed.
 
+The type is the same as in section 17.3. It holds a `VecDeque` behind a `Mutex`, a capacity, and one `Condvar`
+for each thing a thread can wait for:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs:1:24}}
+    // ...
+}
+```
+
+`push` waits while the queue is full. `wait_while` takes the guard and a condition, and loops for you. It sleeps
+while the condition is true, and returns the guard once it is false. The `while` loop of section 17.3 is inside
+it, so a spurious wakeup is handled the same way.
+
+```rust
+impl<T> BoundedBuffer<T> {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs:26:40}}
+    // ...
+}
+```
+
+`push` reads `self.capacity` into a local `cap` before the closure `|q| q.len() >= cap`. The closure then
+captures a `usize` instead of borrowing `self`. After pushing, `drop(queue)` releases the lock before
+`notify_one`, so the woken consumer does not wake only to wait for the lock.
+
+`pop` is the mirror image: it waits while the queue is empty, takes the front item, and wakes one producer.
+
+```rust
+impl<T> BoundedBuffer<T> {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs:42:53}}
+}
+```
+
+**MPMC** stands for multiple producers, multiple consumers. In `main`, four producers push 10 items each, and two
+consumers pop 20 each:
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs:56:83}}
+```
+
+`PER_CONSUMER` is computed from the other constants, so every pushed item is popped and every thread finishes.
+
 <p class="listing"><b>Listing 17.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs}}
 ```
-
-**MPMC** stands for multiple producers, multiple consumers. Here four producers push 10 items each, and two
-consumers pop 20 each. `PER_CONSUMER` is computed from the other constants, so every pushed item is popped and
-every thread finishes.
-
-`push` reads `self.capacity` into a local `cap` before the closure `|q| q.len() >= cap`. The closure then
-captures a `usize` instead of borrowing `self`.
 
 `let buffer = &buffer;` replaces the buffer with a reference to it. Each `move` closure then copies the reference
 into its thread. The scope guarantees that the buffer outlives all the threads.

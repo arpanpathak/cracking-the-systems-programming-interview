@@ -383,21 +383,44 @@ sorted, you know which index to move:
 Each fixed number costs one O(n) walk, and there are n fixed numbers, so the whole search is O(n²). Sorting
 costs O(n log n), which is smaller.
 
-<p class="listing"><b>Listing 3.6</b> Three Sum. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
+The function first sorts, then fixes each number in turn:
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/three_sum.rs:6:21}}
+        // ...
+    }
+}
+```
+
+- `use std::cmp::Ordering::{Equal, Greater, Less};` lets the code write `Less` instead of
+  `Ordering::Less`. The next excerpt matches on these three.
+- The `continue` skips a fixed value equal to the previous one, so the same set is not found twice.
+- `numbers.len().saturating_sub(1)` gives 0 instead of underflowing when the slice is empty.
+
+For each fixed number, `left` and `right` close in from the two ends of the rest:
+
+```rust
+pub fn three_sum(numbers: &mut [i32], target: i32) -> Vec<(i32, i32, i32)> {
+    // ...
+    for i in 0..numbers.len() {
+        // ...
+{{#include ../../rust-interview-lab/src/problems/three_sum.rs:22:43}}
+    }
+    // ...
+}
+```
+
+- The sum is computed in `i64`. Three `i32` values can add up to more than `i32` can hold. The test
+  `does_not_overflow_on_extreme_values` uses `i32::MAX` twice to check this.
+- `current_sum.cmp(&target)` returns `Less`, `Greater`, or `Equal`, and the `match` turns each into the move
+  from the list above.
+- After a match, the two inner `while` loops step `left` and `right` past values equal to the ones in the match.
+
+<p class="listing"><b>Listing 3.6</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/three_sum.rs}}
 ```
-
-A few details:
-
-- `use std::cmp::Ordering::{Equal, Greater, Less};` lets the code write `Less` instead of
-  `Ordering::Less`. `current_sum.cmp(&target)` returns one of the three.
-- Duplicate sets are skipped at each position. For the fixed number, the `continue` skips a value equal to
-  the previous one. After a match, the two inner `while` loops step `left` and `right` past equal values.
-- The sum is computed in `i64`. Three `i32` values can add up to more than `i32` can hold. The test
-  `does_not_overflow_on_extreme_values` uses `i32::MAX` twice to check this.
-- `numbers.len().saturating_sub(1)` gives 0 instead of underflowing when the slice is empty.
 
 <figure class="anim">
 <video class="motion" src="figures/ch03-three-sum.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1." data-chapters="[[2.4, &quot;i = 0&quot;], [36.6, &quot;i = 1&quot;], [67.2, &quot;i = 3&quot;]]"><img src="figures/ch03-three-sum.gif" alt="The sorted array -4, -1, -1, 0, 1, 2. The pointer i fixes one number; left and right start at the ends of the rest. Each step shows the sum: a sum below 0 moves left right, a sum above 0 moves right left. The triples (-1, -1, 2) and (-1, 0, 1) are recorded, and i = 2 is skipped because it repeats -1."></video>

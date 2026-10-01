@@ -499,20 +499,49 @@ algorithm detects a cycle.
 
 ### 12.8.1 Kahn's algorithm on numbered nodes
 
+The input is a node count and a slice of `(from, to)` edges. The first step builds the adjacency list and
+counts each node's indegree at the same time:
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/graph_topology.rs:6:15}}
+    // ...
+}
+```
+
+The starting queue comes from one iterator chain:
+
+```rust
+pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Vec<usize>> {
+    // ...
+{{#include ../../rust-interview-lab/src/problems/graph_topology.rs:17:20}}
+    // ...
+}
+```
+
+`(0..num_nodes)` produces every node number. `.filter(|&n| indegree[n] == 0)` keeps the nodes with no
+prerequisites, and `.collect()` builds the `VecDeque`.
+
+The loop is Kahn's algorithm itself:
+
+```rust
+pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Vec<usize>> {
+    // ...
+{{#include ../../rust-interview-lab/src/problems/graph_topology.rs:22:33}}
+}
+```
+
+Each node taken from the queue goes into `order`. Removing it removes its outgoing edges, so each neighbor's
+indegree drops by one. A neighbor whose indegree reaches 0 has no prerequisites left, and joins the queue.
+
+The last line returns the answer. `bool::then_some(order)` gives `Some(order)` if the condition is true, and
+`None` if it is false. So the function returns `None` exactly when a cycle kept some nodes out of the order.
+The nodes on a cycle never reach indegree 0.
+
 <p class="listing"><b>Listing 12.14</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">src/problems/graph_topology.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/graph_topology.rs}}
 ```
-
-The input is a node count and a slice of `(from, to)` edges. The first loop builds the adjacency list and
-counts each node's indegree at the same time.
-
-The starting queue comes from one iterator chain. `(0..num_nodes)` produces every node number. `.filter(|&n|
-indegree[n] == 0)` keeps the nodes with no prerequisites, and `.collect()` builds the `VecDeque`.
-
-The last line returns the answer. `bool::then_some(order)` gives `Some(order)` if the condition is true, and
-`None` if it is false. So the function returns `None` exactly when a cycle kept some nodes out of the order.
 
 The tests check positions rather than one exact order. A graph usually has several valid topological orders, and
 the tests only require that each edge's source comes before its target.
