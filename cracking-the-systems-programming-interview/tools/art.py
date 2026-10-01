@@ -275,7 +275,7 @@ def machine_bindings(x, y):
         out += rect(x + 8, dy, 344, 54, CREAM, rx=6)
         out += rect(x + 20, dy + 12, 92, 30, "url(#brass)", rx=4) + text(x + 66, dy + 34, name, 18, INK, family="Menlo, monospace", anchor="middle")
         out += text(x + 140, dy + 36, "= " + value, 22, TEAL, family="Menlo, monospace")
-        out += text(x + 340, dy + 34, "LET" if locked else "LET MUT", 15, RUST if not locked else STEEL, anchor="end", spacing=1.5)
+        out += text(x + 340, dy + 34, "LET" if locked else "LET MUT", 15, STEEL, anchor="end", spacing=1.5)
     return out
 
 
@@ -286,7 +286,7 @@ def machine_iterators(x, y):
         out += box(x + 4 + 40 * i, y + 38, 32, 30, STEEL_PALE, value, 15)
     out += rect(x + 176, y - 30, 60, 70, "url(#steel)", rx=6) + text(x + 206, y + 12, "MAP", 18, INK, anchor="middle")
     out += line(x + 206, y + 40, x + 206, y + 66, INK, 5)
-    out += rect(x + 254, y + 8, 12, 62, RUST, rx=3) + text(x + 260, y - 4, "FILTER", 15, RUST, anchor="middle")
+    out += rect(x + 254, y + 8, 12, 62, RUST, rx=3) + text(x + 274, y + 4, "FILTER", 13, STEEL, spacing=1)
     out += rect(x + 300, y + 90, 76, 60, "url(#brass)", rx=6) + text(x + 338, y + 128, "COLLECT", 13, INK, anchor="middle")
     out += arrow(x + 360, y + 76, x + 344, y + 92, TEAL, 3)
     return out
@@ -302,7 +302,7 @@ def machine_heap(x, y):
         for k, label in enumerate(crates):
             fill = "url(#brass)" if r == 0 else (CREAM if r == 1 else STEEL_PALE)
             out += box(left + k * 66, y - 26 + r * 60, 56, 50, fill, label, 20)
-    out += text(x + 262, y - 2, "min on top", 16, TEAL)
+    out += text(x + 262, y - 2, "min on top", 15, STEEL)
     return out
 
 
@@ -342,13 +342,15 @@ def machine_files(x, y):
     """A filing cabinet, a stack of pages, and a paper feed."""
     out = rect(x, y - 30, 140, 200, "url(#steel)", rx=4)
     for i in range(3):
-        out += rect(x + 12, y - 18 + 64 * i, 116, 54, STEEL_PALE, rx=3)
-        out += rect(x + 50, y + 2 + 64 * i, 40, 10, INK, rx=4)
-        out += text(x + 70, y - 2 + 64 * i, ("/etc", "/var", "/home")[i], 16, INK, anchor="middle", family="Menlo, monospace")
+        top = y - 18 + 64 * i
+        out += rect(x + 12, top, 116, 54, STEEL_PALE, rx=3)
+        out += rect(x + 38, top + 7, 64, 20, CREAM, STEEL, 1.5, rx=2)
+        out += text(x + 70, top + 22, ("/etc", "/var", "/home")[i], 14, INK, anchor="middle", family="Menlo, monospace")
+        out += rect(x + 52, top + 36, 36, 8, INK, rx=4)
     for i in range(5):
         out += rect(x + 190 + i * 6, y + 90 - i * 8, 90, 70, CREAM, rx=2)
-    out += "".join(line(x + 232, y + 72 + 10 * k, x + 305, y + 72 + 10 * k, STEEL, 2) for k in range(4))
-    out += text(x + 262, y + 62, "PAGE 3", 16, RUST, anchor="middle")
+    out += text(x + 259, y + 78, "PAGE 3", 14, STEEL, anchor="middle", spacing=1)
+    out += "".join(line(x + 228, y + 90 + 9 * k, x + 290, y + 90 + 9 * k, STEEL_LIGHT, 2) for k in range(4))
     out += arrow(x + 150, y + 40, x + 196, y + 60, RUST)
     out += rect(x + 320, y - 10, 70, 180, INK, rx=6) + text(x + 355, y + 30, "OFFSET", 15, CREAM, anchor="middle")
     out += text(x + 355, y + 58, "4096", 24, "#9fe3c8", anchor="middle")
@@ -365,7 +367,7 @@ def machine_arrays(x, y):
     out += text(x + 180, y - 22, "HASH", 22, INK, anchor="middle", spacing=2)
     out += arrow(x + 180, y + 14, x + 212, y + 84, RUST, 3)
     # The label ends before the arrow starts, so the shaft does not cross the text.
-    out += text(x + 44, y - 46, '"gpu"', 18, TEAL, family="Menlo, monospace")
+    out += text(x + 44, y - 46, '"gpu"', 18, STEEL, family="Menlo, monospace")
     out += arrow(x + 108, y - 52, x + 132, y - 36, TEAL)
     return out
 
@@ -411,7 +413,8 @@ def machine_tree(x, y):
             out += line(px, py, cx, cy, INK, 12) + line(px, py, cx, cy, STEEL_LIGHT, 7)
     for key, (cx, cy) in nodes.items():
         out += gear(cx, cy, 20, 10, "url(#brass)" if key == 1 else "url(#steel)", hole=CREAM, rotate=key * 7)
-        out += text(cx, cy + 6, str([0, 8, 4, 12, 2, 6, 10, 14][key]), 16, INK, anchor="middle")
+        out += circle(cx, cy, 12, CREAM, INK, 1.5)
+        out += text(cx, cy + 5, str([0, 8, 4, 12, 2, 6, 10, 14][key]), 13, INK, anchor="middle", family="Menlo, monospace")
     return out
 
 
@@ -426,7 +429,8 @@ def machine_graph(x, y):
         out += circle((ax + bx) / 2, (ay + by) / 2, 13, CREAM, INK, 2) + text((ax + bx) / 2, (ay + by) / 2 + 6, w, 16, INK, anchor="middle")
     for i, (cx, cy) in enumerate(pos):
         out += circle(cx, cy, 22, "url(#copper)" if i in (0, 4) else "url(#steel)")
-        out += line(cx - 12, cy, cx + 12, cy, INK, 4) + text(cx, cy - 30, "ABCDE"[i], 20, INK, anchor="middle")
+        dx, dy = ((-30, -14), (0, -32), (0, 46), (0, -32), (30, -14))[i]
+        out += line(cx - 12, cy, cx + 12, cy, INK, 4) + text(cx + dx, cy + dy, "ABCDE"[i], 18, INK, anchor="middle")
     return out
 
 
@@ -452,7 +456,7 @@ def machine_lru(x, y):
     out += text(x + 125, y - 52, "MRU  ...  LRU", 16, INK, anchor="middle", spacing=2)
     out += '<path d="M %.1f %.1f l 120 60" stroke="%s" stroke-width="10" fill="none"/>' % (x + 250, y + 90, INK)
     out += box(x + 330, y + 120, 50, 50, "#fbe3d6", "k5", 18)
-    out += text(x + 355, y + 100, "EVICT", 18, RUST, anchor="middle", spacing=1)
+    out += text(x + 355, y + 100, "EVICT", 16, STEEL, anchor="middle", spacing=1)
     return out
 
 
@@ -540,14 +544,14 @@ def machine_bucket(x, y):
     out = line(x + 40, y - 70, x + 190, y - 70, INK, 12) + line(x + 40, y - 70, x + 190, y - 70, STEEL_LIGHT, 7)
     out += line(x + 190, y - 70, x + 190, y - 30, INK, 12) + line(x + 190, y - 70, x + 190, y - 30, STEEL_LIGHT, 7)
     out += circle(x + 110, y - 70, 18, "url(#copper)") + line(x + 98, y - 70, x + 122, y - 70, INK, 4)
-    out += text(x + 110, y - 98, "REFILL / s", 16, INK, anchor="middle", spacing=1)
+    out += text(x + 206, y - 64, "REFILL / s", 14, STEEL, spacing=1)
     out += '<path d="M %.1f %.1f l 20 150 h 120 l 20 -150 z" fill="url(#steel)" stroke="%s" stroke-width="3"/>' % (x + 110, y - 20, INK)
     for k, (tx, ty) in enumerate(((150, 110), (190, 110), (230, 110), (170, 84), (210, 84), (190, 58))):
         out += circle(x + tx, y + ty, 15, "url(#brass)") + text(x + tx, y + ty + 5, "T", 14, INK, anchor="middle")
     out += circle(x + 190, y - 12, 8, "url(#brass)")
     out += line(x + 270, y + 110, x + 330, y + 110, INK, 12)
     out += circle(x + 352, y + 110, 15, "url(#brass)") + circle(x + 390, y + 110, 15, "url(#brass)")
-    out += text(x + 370, y + 150, "429 when empty", 16, RUST, anchor="middle", family="Menlo, monospace")
+    out += text(x + 370, y + 150, "429 when empty", 14, STEEL, anchor="middle", family="Menlo, monospace")
     return out
 
 
@@ -583,9 +587,9 @@ def machine_http(x, y):
     for k, label in enumerate(("200", "404", "400", "413")):
         out += rect(x + 184 + 56 * k, y + 130, 46, 40, CREAM if k else "#e8f5e9", rx=3)
         out += text(x + 207 + 56 * k, y + 157, label, 16, TEAL if k == 0 else RUST, anchor="middle")
-    out += rect(x + 300, y - 40, 110, 70, CREAM, rx=4)
-    out += text(x + 312, y - 16, "Host:", 14, INK, family="Menlo, monospace") + text(x + 312, y + 4, "Content-", 14, INK, family="Menlo, monospace")
-    out += text(x + 312, y + 22, " Length: 42", 14, INK, family="Menlo, monospace")
+    out += rect(x + 268, y - 44, 166, 58, CREAM, STEEL, 1.5, rx=4)
+    out += text(x + 280, y - 22, "Host: lab", 13, INK, family="Menlo, monospace")
+    out += text(x + 280, y - 2, "Content-Length: 42", 13, INK, family="Menlo, monospace")
     return out
 
 
@@ -659,7 +663,7 @@ def machine_signal(x, y):
         out += text(cx + 27, y + 122, "0x%X" % (10 + k), 14, INK, anchor="middle", family="Menlo, monospace")
         out += circle(cx + 12, y + 142, 7, INK) + circle(cx + 42, y + 142, 7, INK)
     out += line(x + 120, y + 130, x + 120, y + 160, TEAL, 3) + circle(x + 120, y + 128, 5, TEAL)
-    out += text(x + 120, y + 112, "EPOLLET", 15, TEAL, anchor="middle", spacing=1)
+    out += text(x + 120, y + 112, "EPOLLET", 14, STEEL, anchor="middle", spacing=1)
     return out
 
 
