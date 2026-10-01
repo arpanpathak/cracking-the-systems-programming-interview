@@ -58,9 +58,8 @@ impl Api {
         path: &str,
         body: Option<&Value>,
     ) -> Result<String, Error> {
-        match self.cached(key) {
-            Some(hit) => return Ok(hit),
-            None => {}
+        if let Some(hit) = self.cached(key) {
+            return Ok(hit);
         }
 
         let url = format!("{}{}", self.cfg.base, path);

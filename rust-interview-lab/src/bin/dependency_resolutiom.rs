@@ -62,7 +62,5 @@ fn main() {
         },
     ];
 
-    let coned2 = courses.clone();
-
     println!("{:?}", topo_sort(&courses));
 }

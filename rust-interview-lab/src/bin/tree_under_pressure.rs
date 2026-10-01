@@ -69,4 +69,9 @@ fn main() {
     for level in levels {
         println!("{:?}", level);
     }
+
+    println!("one queue, one level per round:");
+    for level in level_order_readable(&root) {
+        println!("{:?}", level);
+    }
 }

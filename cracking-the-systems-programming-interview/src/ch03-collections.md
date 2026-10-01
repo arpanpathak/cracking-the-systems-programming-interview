@@ -597,7 +597,7 @@ row.
 {{#include ../../rust-interview-lab/src/bin/rotate_matrix.rs}}
 ```
 
-The grid is a `Vec<Vec<i32>>`, a vector of rows. The transpose loop starts `j` at `i + 1`, so it visits only
+The grid is a `Vec<Vec<i32>>`, a vector of rows. `rotate` takes it as `&mut [Vec<i32>]`, a mutable slice of rows, because it changes cells but never adds or removes a row. The transpose loop starts `j` at `i + 1`, so it visits only
 the cells above the diagonal and swaps each pair once. Visiting every cell would swap each pair twice and
 undo the work.
 

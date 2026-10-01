@@ -22,6 +22,8 @@ fn imperative_numbers_map(slice: &[i32]) -> HashMap<i32, i32> {
     map
 }
 
+// The lifetime could be elided. It is written out because section 4.7 reads it.
+#[allow(clippy::needless_lifetimes)]
 fn struct_slice_to_map<'a>(slice: &'a [User]) -> HashMap<u32, &'a User> {
     let mut map = HashMap::new();
     for user in slice {
@@ -39,7 +41,7 @@ fn ref_slice_to_map<'a>(slice: &[&'a User]) -> HashMap<u32, &'a User> {
 }
 
 fn main() {
-    let vv = vec![1, 2, 3, 4, 5, 6];
+    let vv = [1, 2, 3, 4, 5, 6];
 
     let filtered: Vec<i32> = vv
         .iter()

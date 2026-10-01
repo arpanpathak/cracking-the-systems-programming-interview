@@ -459,9 +459,13 @@ matches, and runs the `else` block, which must leave the loop or the function, i
 {{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs}}
 ```
 
-`main` calls the first version, `level_order`. It prints the tree with `{:#?}`, then the levels:
+`main` prints the tree with `{:#?}`, then the levels from each version. Both give the same three levels:
 
 ```text
+["root"]
+["branch_a", "branch_b"]
+["leaf_1", "leaf_2", "leaf_3"]
+one queue, one level per round:
 ["root"]
 ["branch_a", "branch_b"]
 ["leaf_1", "leaf_2", "leaf_3"]

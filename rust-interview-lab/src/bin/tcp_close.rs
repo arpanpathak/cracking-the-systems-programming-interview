@@ -188,7 +188,7 @@ fn main() -> std::io::Result<()> {
         println!("  {step:<38} {:<12} {}", state(c, s)?, state(s, c)?);
         Ok(())
     };
-    println!("  {:<38} {:<12} {}", "step", "client", "server");
+    println!("  {:<38} {:<12} server", "step", "client");
     show("connected")?;
     client.shutdown(Shutdown::Write)?;
     show("client shutdown(Write): FIN sent")?;

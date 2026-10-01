@@ -1,4 +1,4 @@
-fn rotate(m: &mut Vec<Vec<i32>>) {
+fn rotate(m: &mut [Vec<i32>]) {
     let n = m.len();
 
     for i in 0..n {

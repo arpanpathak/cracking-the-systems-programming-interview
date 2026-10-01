@@ -89,7 +89,7 @@ rest. The result is a number from 0 to 7 (figure 14.2).
 `hash % 8` would give the same answer. The `&` is one simple CPU instruction, while `%` is a division, which
 takes more time. The difference is small, but this code runs on every call.
 
-<p class="listing"><b>Listing 14.2</b> Picking a shard (lines 45 to 50).</p>
+<p class="listing"><b>Listing 14.2</b> Picking a shard (lines 45 to 48).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
@@ -97,13 +97,12 @@ where
     K: Hash + Eq,
 {
     // ...
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:45:50}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:45:48}}
     // ...
 }
 ```
 
-The method creates a hasher, feeds the key into it with `key.hash(&mut hasher)`, and reads the result with
-`finish()`. It returns a reference to the chosen shard's `Mutex`.
+`hash_one` hashes the key with the cache's `RandomState` and returns a `u64`. The mask keeps its low bits as the shard index. It returns a reference to the chosen shard's `Mutex`.
 
 The cache keeps one `RandomState` for its whole life. `RandomState::new()` picks random secret keys for the hash
 function when the cache is created. Every lookup in the same cache uses the same keys, so a key always maps to the
@@ -116,7 +115,7 @@ to the same place and slow the map down.
 
 A single-key operation touches one shard only. It hashes the key, locks that shard, and leaves every other shard free for other threads.
 
-<p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 52 to 82).</p>
+<p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 50 to 80).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
@@ -124,7 +123,7 @@ where
     K: Hash + Eq,
 {
     // ...
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:52:82}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:50:80}}
     // ...
 }
 ```
@@ -174,7 +173,7 @@ blocks forever or panics. A thread waiting forever for a lock is called a **dead
 
 Some operations need every shard: the total size, and clearing the cache. They visit the shards one at a time.
 
-<p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 98 to 116).</p>
+<p class="listing"><b>Listing 14.4</b> <code>len</code> and <code>clear</code> (lines 96 to 114).</p>
 
 ```rust
 impl<K, V> ShardedCache<K, V>
@@ -182,7 +181,7 @@ where
     K: Hash + Eq,
 {
     // ...
-{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:98:116}}
+{{#include ../../rust-interview-lab/src/problems/sharded_cache.rs:96:114}}
     // ...
 }
 ```

@@ -1,11 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Default)]
-struct Connection {
-    to: String,
-}
-
-#[derive(Default)]
 struct Graph {
     ids: HashMap<String, usize>,
     adj: Vec<Vec<usize>>,

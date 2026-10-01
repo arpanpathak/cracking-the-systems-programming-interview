@@ -10,7 +10,7 @@
 
 use std::{
     collections::{HashMap, hash_map::RandomState},
-    hash::{BuildHasher, Hash, Hasher},
+    hash::{BuildHasher, Hash},
     sync::Mutex,
 };
 
@@ -43,9 +43,7 @@ where
     }
 
     fn shard(&self, key: &K) -> &Mutex<HashMap<K, V>> {
-        let mut hasher = self.hasher.build_hasher();
-        key.hash(&mut hasher);
-        let index = (hasher.finish() as usize) & self.mask;
+        let index = (self.hasher.hash_one(key) as usize) & self.mask;
         &self.shards[index]
     }
 

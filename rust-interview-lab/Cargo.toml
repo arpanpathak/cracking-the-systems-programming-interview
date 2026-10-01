@@ -43,3 +43,10 @@ path = "benchmarking_examples/list_enum.rs"
 [[bin]]
 name = "list_drop"
 path = "benchmarking_examples/list_drop.rs"
+
+# Two lints are off for the whole crate, because the book prints this code.
+# A `Default` impl beside every `new` adds lines that teach nothing, and the
+# grid algorithms read more clearly with indexes than with zipped iterators.
+[lints.clippy]
+new_without_default = "allow"
+needless_range_loop = "allow"

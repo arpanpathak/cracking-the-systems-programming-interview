@@ -45,15 +45,7 @@ fn merge_k_slice(lists: &mut [List]) -> List {
     }
 }
 
-// Helper: build a list from a Vec
-// fn from_vec(v: Vec<i32>) -> List {
-//     let mut head = None;
-//     for val in v.into_iter().rev() {
-//         head = Some(Box::new(ListNode { val, next: head }));
-//     }
-//     head
-// }
-
+// Helper: build a list from a Vec, front to back
 fn from_vec(v: Vec<i32>) -> List {
     let mut head = None;
     let mut tail = &mut head; // points to the empty slot at the end
@@ -90,10 +82,11 @@ fn main() {
     println!("{:?}", to_vec(&merge_k(vec![None, None]))); // []
     println!("{:?}", to_vec(&merge_k(vec![from_vec(vec![7])]))); // [7]
 
-    let v = [1, 2, 3, 4, 5];
-
-    match v {
-        [1, ..] => println!("it starts with one thing...."),
-        [_, ..] => println!("I dunno why!"),
-    }
+    // The same lists, merged by splitting a slice instead of the vector
+    let mut lists = [
+        from_vec(vec![1, 4, 5]),
+        from_vec(vec![1, 3, 4]),
+        from_vec(vec![2, 6]),
+    ];
+    println!("{:?}", to_vec(&merge_k_slice(&mut lists))); // [1, 1, 2, 3, 4, 4, 5, 6]
 }

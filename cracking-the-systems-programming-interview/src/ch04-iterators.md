@@ -212,10 +212,10 @@ user, in a `HashMap<u32, &User>`, and leave the users where they are. Figure 4.6
 The map of references is cheaper. It also depends on the users staying alive while the map is used. The
 function's signature states that dependency with a lifetime.
 
-<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 25 to 31).</p>
+<p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 27 to 33).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:25:31}}
+{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:27:33}}
 ```
 
 Read the signature the way section 4.6 showed. For some lifetime `'a`, the input is a slice of users valid
@@ -231,10 +231,10 @@ stores that reference. No `User` is cloned.
 The second function takes a different input. Instead of a slice of users, it takes a slice of references to
 users.
 
-<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 33 to 39).</p>
+<p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 35 to 41).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:33:39}}
+{{#include ../../rust-interview-lab/src/bin/lifetime_reference_drill.rs:35:41}}
 ```
 
 The type `&[&'a User]` has two references in it:

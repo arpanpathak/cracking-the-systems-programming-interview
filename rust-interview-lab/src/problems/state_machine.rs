@@ -121,7 +121,7 @@ mod tests {
                 .can_transition_to(WorkloadState::Running)
                 .is_err()
         );
-        assert!(WorkloadState::Terminating.is_terminal() == false);
+        assert!(!WorkloadState::Terminating.is_terminal());
         assert!(WorkloadState::Terminated.is_terminal());
     }
 

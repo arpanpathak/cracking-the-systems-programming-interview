@@ -98,12 +98,12 @@ where
             return;
         }
 
-        if self.map.len() >= self.cap {
-            if let Some(victim) = self.tail.clone() {
-                let old_key = victim.borrow().key.clone();
-                self.map.remove(&old_key);
-                self.detach(&victim);
-            }
+        if self.map.len() >= self.cap
+            && let Some(victim) = self.tail.clone()
+        {
+            let old_key = victim.borrow().key.clone();
+            self.map.remove(&old_key);
+            self.detach(&victim);
         }
 
         let node = Rc::new(RefCell::new(Node {

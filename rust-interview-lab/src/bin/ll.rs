@@ -96,7 +96,7 @@ impl<T> LinkedList<T> {
     // pop_front
     // --------------------------------------------------------------------
     pub fn pop_front(&mut self) -> Option<T> {
-        self.head.take().and_then(|old_head| {
+        self.head.take().map(|old_head| {
             // Take ownership of the next node (if any).
             let next = old_head.borrow_mut().next.take();
 
@@ -120,7 +120,7 @@ impl<T> LinkedList<T> {
                 .ok()
                 .unwrap()
                 .into_inner();
-            Some(node.data)
+            node.data
         })
     }
 
@@ -128,7 +128,7 @@ impl<T> LinkedList<T> {
     // pop_back
     // --------------------------------------------------------------------
     pub fn pop_back(&mut self) -> Option<T> {
-        self.tail.take().and_then(|old_tail| {
+        self.tail.take().map(|old_tail| {
             // Get the previous node (upgrade the weak reference).
             let prev = old_tail
                 .borrow_mut()
@@ -152,7 +152,7 @@ impl<T> LinkedList<T> {
                 .ok()
                 .unwrap()
                 .into_inner();
-            Some(node.data)
+            node.data
         })
     }
 

@@ -297,7 +297,7 @@ The blocking client composes its three layers in one line:
 self.cache.get_or_insert(key, || self.retry.execute(|| self.send(req)))
 ```
 
-`IdemCache` is chapter 19's `Idempotent<K, V>` store under another name. `RetryPolicy::execute` retries any error with a doubling delay, `base × 2^(attempt - 1)`, capped at `max_delay`. `RequestType` is an enum whose variants carry exactly the fields each method needs.
+`IdemCache` is chapter 19's `Idempotent<K, V>` store under another name. `RetryPolicy::execute` retries any error with a doubling delay, `base × 2^(attempt - 1)`, capped at `max_delay`. `RequestType` is an enum whose variants carry exactly the fields each method needs: `Get` has no body, and `Post` has one. `main` reads with a `GET`, then creates an item with a `POST`.
 
 `send` writes the request by hand. It writes the request line, `Host`, `Connection: close`, and the caller's headers. A body adds `Content-Length`, a blank line, and then the body. `Connection: close` lets `read_to_string` work as the response reader, because the server closes the connection at the end. Chapter 17's parser is the other side of this conversation.
 

@@ -32,6 +32,11 @@ where
     /// How many entries are cached.
     fn len(&self) -> usize;
 
+    /// Whether the cache holds no entries.
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// The variant's name, for benchmark output.
     fn variant() -> &'static str;
 }

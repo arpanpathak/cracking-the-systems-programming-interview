@@ -8,30 +8,23 @@ use std::{
 
 type RuntimeError = Box<dyn std::error::Error>;
 
-/// header repsesents vec![(key, value)];
+/// Request headers, as (name, value) pairs.
 type RequestHeader = Vec<(String, String)>;
+
+/// A request, with exactly the fields each method needs.
 enum RequestType {
-    GET {
+    Get {
         path: String,
-        headers: Vec<(String, String)>,
+        headers: RequestHeader,
     },
-    OPTION {
+    Post {
         path: String,
-        headers: Vec<(String, String)>,
-    },
-    POST {
-        path: String,
-        headers: Vec<(String, String)>,
-        body: String,
-    },
-    PUT {
-        path: String,
-        headers: Vec<(String, String)>,
+        headers: RequestHeader,
         body: String,
     },
 }
 
-/// An idempotency cache store to store requests if it's succeeded!
+/// Successful responses, stored by idempotency key.
 struct IdemCache {
     store: Mutex<HashMap<String, String>>,
 }
@@ -91,8 +84,7 @@ impl RetryPolicy {
     }
 }
 
-/// -- Build a HTTP client with those strategies
-
+/// An HTTP/1.1 client with a response cache and a retry policy.
 struct HttpClient {
     host: String,
     port: u16,
@@ -117,18 +109,12 @@ impl HttpClient {
 
     fn send(&self, req: &RequestType) -> Result<String, RuntimeError> {
         let (method, path, headers, body) = match req {
-            RequestType::GET { path, headers } => ("GET", path, headers, None),
-            RequestType::OPTION { path, headers } => ("OPTIONS", path, headers, None),
-            RequestType::POST {
+            RequestType::Get { path, headers } => ("GET", path, headers, None),
+            RequestType::Post {
                 path,
                 headers,
                 body,
             } => ("POST", path, headers, Some(body)),
-            RequestType::PUT {
-                path,
-                headers,
-                body,
-            } => ("PUT", path, headers, Some(body)),
         };
 
         let mut raw = format!(
@@ -163,7 +149,7 @@ impl HttpClient {
 fn create_item(client: &HttpClient, item_name: &str) -> Result<String, RuntimeError> {
     client.execute(
         "create-demo-001",
-        &RequestType::POST {
+        &RequestType::Post {
             path: "/post".into(),
             headers: vec![
                 ("Content-Type".into(), "application/json".into()),
@@ -174,8 +160,19 @@ fn create_item(client: &HttpClient, item_name: &str) -> Result<String, RuntimeEr
     )
 }
 
+fn read_items(client: &HttpClient) -> Result<String, RuntimeError> {
+    client.execute(
+        "read-demo-001",
+        &RequestType::Get {
+            path: "/get".into(),
+            headers: vec![("Accept".into(), "application/json".into())],
+        },
+    )
+}
+
 fn main() -> Result<(), RuntimeError> {
     let client = HttpClient::new("httpbin.org", 80);
+    println!("read:\n{}", read_items(&client)?);
     println!("created:\n{}", create_item(&client, "demo")?);
     Ok(())
 }

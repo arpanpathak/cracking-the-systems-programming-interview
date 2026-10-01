@@ -18,10 +18,10 @@ impl MedianFinder {
             self.high.push(Reverse(val));
         }
 
-        if self.high.len() > self.low.len() {
-            if let Some(Reverse(val)) = self.high.pop() {
-                self.low.push(val);
-            }
+        if self.high.len() > self.low.len()
+            && let Some(Reverse(val)) = self.high.pop()
+        {
+            self.low.push(val);
         }
     }
 

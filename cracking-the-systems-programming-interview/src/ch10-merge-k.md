@@ -322,18 +322,17 @@ This version uses standard traits in place of hand-written helpers:
 - `impl From<Vec<i32>> for NodeLink` builds a list from a vector. It walks the vector backward with `rev()` and
   uses `fold` to wrap each value around the list built so far. `main` calls it as `vec![1, 4, 5].into()`.
 
-<p class="listing"><b>Listing 10.14</b> The interval loop and a recursive merge (lines 26 to 63).</p>
+<p class="listing"><b>Listing 10.14</b> The interval loop and a recursive merge (lines 26 to 59).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:26:63}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:26:59}}
 ```
 
 `std::mem::take(&mut lists[i + interval])` moves the right list out and leaves the default, an empty list, in
 its place. It takes the right list before the left, which avoids the double borrow as listing 10.4 did.
 `lists.swap_remove(0)` removes position 0 by moving the last element into it, which takes O(1).
 
-`merge` is recursive. It moves both nodes out of their boxes with `match (*l1, *l2)`. Then it builds the output
-node around a recursive call that merges the rest. The code reads almost like a definition of merging. It has two costs. It allocates a new `Box` for every output node. And it recurses once per output node, so
+`merge` is recursive, and takes both lists as `ListNode` values. The caller moves them out of their boxes with `*left` and `*right`. `merge` keeps the smaller front node, merges the rest into `rest`, and boxes only the result. The list it did not take from passes to the recursive call unboxed. The code reads almost like a definition of merging. It has two costs. It allocates a new `Box` for every output node. And it recurses once per output node, so
 a long result uses a deep stack, as chapter 9's recursive drop did.
 
 <p class="listing"><b>Listing 10.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
@@ -435,10 +434,10 @@ allocates a new vector at every level of the recursion.
 <p class="listing"><b>Listing 10.20</b> Building a list front to back (lines 49 to 68).</p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:49:67}}
+{{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:48:59}}
 ```
 
-The commented-out `from_vec` builds the list backward, as `from_slice` did in chapter 9. The active one builds it forward, with a slot pointer like listing 10.6. `tail = &mut
+`from_vec` builds the list front to back, with a slot pointer like listing 10.6. `tail = &mut
 tail.insert(node).next` fills the empty slot and moves `tail` to the new node's `next` slot.
 
 <p class="listing"><b>Listing 10.21</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
@@ -447,7 +446,8 @@ tail.insert(node).next` fills the empty slot and moves `tail` to the new node's 
 {{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs}}
 ```
 
-`main` ends with a slice pattern, `[1, ..]`, which matches any array whose first element is 1.
+`main` merges the sample lists with `merge_k`, tries three edge cases, then merges the same lists again
+with `merge_k_slice`. Both versions give the same result.
 
 ```text
 $ cargo run --bin merrgemerge_k_sorted_recursion
@@ -455,7 +455,7 @@ $ cargo run --bin merrgemerge_k_sorted_recursion
 []
 []
 [7]
-it starts with one thing....
+[1, 1, 2, 3, 4, 4, 5, 6]
 ```
 
 The last version keeps only the slice-based recursion:
