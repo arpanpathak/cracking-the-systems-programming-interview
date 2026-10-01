@@ -1,18 +1,17 @@
 digraph workload {
-  rankdir=LR;
+  layout=neato; splines=curved; overlap=false;
   node [shape=box];
-  Pending [fillcolor="#fdf1e4"];
-  Terminated [fillcolor="#e3f1ea" peripheries=2];
-  Failed [fillcolor="#fbe3d6" peripheries=2];
-  Pending -> Provisioning;
-  Provisioning -> Running;
-  Running -> Terminating;
-  Terminating -> Terminated;
+  Pending [fillcolor="#fdf1e4" pos="0,0!"];
+  Provisioning [pos="2.1,0!"];
+  Running [pos="4.2,0!"];
+  Terminating [pos="6.1,0!"];
+  Terminated [fillcolor="#e3f1ea" peripheries=2 pos="8.1,0!"];
+  Failed [fillcolor="#fbe3d6" peripheries=2 pos="3.1,1.7!"];
+  Pending -> Provisioning; Provisioning -> Running; Running -> Terminating; Terminating -> Terminated;
   Pending -> Failed [color="#d9622b"];
   Provisioning -> Failed [color="#d9622b"];
   Running -> Failed [color="#d9622b"];
   Terminating -> Failed [color="#d9622b"];
-  Failed -> Pending [style=dashed label=" retry" fontcolor="#2f7f86" color="#2f7f86"];
-  Failed -> Provisioning [style=dashed label=" retry" fontcolor="#2f7f86" color="#2f7f86"];
-  {rank=same; Terminated; Failed}
+  Failed -> Pending [style=dashed label="retry" fontcolor="#2f7f86" color="#2f7f86"];
+  Failed -> Provisioning [style=dashed label="retry" fontcolor="#2f7f86" color="#2f7f86"];
 }

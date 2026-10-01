@@ -9,5 +9,5 @@ digraph models {
     ep [label="epoll_wait(epfd, 64 events, 100 ms)" fillcolor="#e3f1ea"];
     a [label="listen fd readable:\naccept4 until EAGAIN"]; r [label="client readable:\nread until EAGAIN,\nappend to out"]; w [label="client writable:\nflush out from out_pos"];
     u [label="EPOLLOUT only while\noutput is pending"];
-    ep -> a; ep -> r; ep -> w; r -> u; w -> u; u -> ep [style=dashed]; a -> ep [style=dashed]; }
+    ep -> a; ep -> r; ep -> w; r -> u; w -> u; u -> ep [style=dashed label=" back to epoll_wait"]; }
 }

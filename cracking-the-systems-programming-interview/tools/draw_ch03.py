@@ -3,19 +3,21 @@ from svgkit import *
 
 OUT = "src/figures/"
 
-# Vec layout
-f = Figure(700, 200)
+# Vec layout: the heap block sits under the stack fields, so ptr points straight down at [0]
+f = Figure(700, 250)
 f.text(20, 22, "let mut v: Vec<i32> = Vec::with_capacity(6);  then push 10, 20, 30, 40", 12, mono=True)
 f.text(20, 52, "stack", 11, MUTED)
 f.cell(20, 60, 90, 34, "ptr"); f.cell(110, 60, 70, 34, "len 4"); f.cell(180, 60, 70, 34, "cap 6")
-f.text(20, 112, "24 bytes: three 8-byte numbers", 10, MUTED)
-f.text(330, 52, "heap: one block for 6 i32 values (4 bytes each)", 11, MUTED)
+f.text(270, 82, "24 bytes: three 8-byte numbers", 10, MUTED)
+HEAP_X, HEAP_Y = 37, 146
+f.text(HEAP_X + 6 * 56 + 14, HEAP_Y + 22, "heap: one block for 6 i32 values", 11, MUTED)
+f.text(HEAP_X + 6 * 56 + 14, HEAP_Y + 37, "(4 bytes each)", 11, MUTED)
 for i, v in enumerate(["10", "20", "30", "40", "", ""]):
-    f.cell(330 + i * 56, 60, 56, 34, v, GREEN if v else GREY, dash=not v)
-    f.text(330 + i * 56 + 28, 112, f"[{i}]", 10, MUTED, anchor="middle")
-f.arrow(65, 94, 330, 88, TEAL)
-f.text(330, 140, "v[2] is at address ptr + 2 × 4 bytes, so reading it is one step,", 11)
-f.text(330, 156, "however long the vector is. Indexes 4 and 5 are reserved, not in use.", 11)
+    f.cell(HEAP_X + i * 56, HEAP_Y, 56, 34, v, GREEN if v else GREY, dash=not v)
+    f.text(HEAP_X + i * 56 + 28, HEAP_Y + 52, f"[{i}]", 10, MUTED, anchor="middle")
+f.link((20, 60, 90, 34), (HEAP_X, HEAP_Y, 56, 34), color=TEAL)
+f.text(20, 222, "v[2] is at address ptr + 2 × 4 bytes, so reading it is one step, however long the", 11)
+f.text(20, 238, "vector is. Indexes 4 and 5 are reserved, not in use.", 11)
 f.save(OUT + "ch03-vec-layout.svg")
 
 # Vec growth

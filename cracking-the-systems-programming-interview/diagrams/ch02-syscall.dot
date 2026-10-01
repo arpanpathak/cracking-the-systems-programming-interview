@@ -1,6 +1,6 @@
 digraph sys {
-  rankdir=LR; nodesep=0.3; ranksep=0.5;
-  node [fontsize=10 shape=box];
+  rankdir=LR; nodesep=0.5; ranksep=0.7;
+  node [fontsize=11 shape=box];
   subgraph cluster_user { label="your process (user space)"; style="rounded"; color="#2f7f86"; fontname="Helvetica";
     code [label="fs::read_to_string(\"hello.txt\")" fontname="Menlo" fillcolor="#e3f1ea"];
     fdt [label="file descriptor 3\n(a small number that\nnames the open file)" fontname="Helvetica"]; }
@@ -8,7 +8,9 @@ digraph sys {
     sc [label="system calls:\nopen, read, close" fillcolor="#fdf6e8"];
     pc [label="page cache\n(recently used file data\nkept in memory)"]; }
   disk [label="disk" shape=cylinder fillcolor="#eef3f7"];
-  code -> sc [label=" 1. request"]; sc -> pc [label=" 2. look up"]; pc -> disk [label=" 3. read if not cached" style=dashed];
-  sc -> fdt [label=" open returns" constraint=false style=dotted];
-  pc -> code [label=" 4. bytes copied into\n your buffer" color="#2f7f86" constraint=false];
+  code -> sc [label=" 1. request"];
+  sc -> pc [label=" 2. look up"];
+  pc -> disk [label=" 3. read if not cached" style=dashed];
+  fdt -> sc [dir=back style=dotted label=" open returns"];
+  code -> pc [dir=back color="#2f7f86" fontcolor="#2f7f86" label=" 4. bytes copied\n into your buffer"];
 }

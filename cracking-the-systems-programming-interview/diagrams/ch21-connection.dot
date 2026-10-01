@@ -7,6 +7,6 @@ digraph conn {
   rd [label="read more bytes\n(0 bytes: peer left)"];
   bad [label="400 with the error text,\nConnection: close" fillcolor="#fbe3d6"];
   p -> ok [label=" Ok"]; ok -> ka; ka -> clr [label=" yes"]; clr -> p; ka -> close [label=" no"];
-  p -> rd [label=" Incomplete"]; rd -> p;
+  p -> rd [dir=both label=" Incomplete: read, then parse again"];
   p -> bad [label=" other Err"]; bad -> close;
 }

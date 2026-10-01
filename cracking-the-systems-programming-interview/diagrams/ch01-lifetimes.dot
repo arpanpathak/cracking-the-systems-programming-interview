@@ -1,10 +1,5 @@
 digraph lifetimes {
-  rankdir=LR;
-  compound=true;
-  subgraph cluster_users {
-    label="users: &'a [User]   (lives for 'a)"; style="rounded,filled"; fillcolor="#fdf6e8"; color="#c89b3c"; fontname="Menlo";
-    u1 [label="User 101\nAlice"]; u2 [label="User 102\nBob"]; u3 [label="User 103\nCharlie"];
-  }
+  rankdir=LR; nodesep=0.35; ranksep=1.2;
   subgraph cluster_refs {
     label="user_refs: &[&'a User]   (a short-lived slice)"; style="rounded,filled"; fillcolor="#eef3f7"; color="#5b6b7c"; fontname="Menlo";
     r1 [label="&User"]; r2 [label="&User"];
@@ -13,6 +8,12 @@ digraph lifetimes {
     label="HashMap<u32, &'a User>"; style="rounded,filled"; fillcolor="#e3f1ea"; color="#2f7f86"; fontname="Menlo";
     k1 [label="101 ->"]; k2 [label="102 ->"];
   }
-  r1 -> u1 [color="#5b6b7c"]; r2 -> u2 [color="#5b6b7c"];
-  k1 -> u1 [color="#2f7f86" penwidth=2]; k2 -> u2 [color="#2f7f86" penwidth=2];
+  subgraph cluster_users {
+    label="users: &'a [User]   (lives for 'a)"; style="rounded,filled"; fillcolor="#fdf6e8"; color="#c89b3c"; fontname="Menlo";
+    u1 [label="User 101\nAlice"]; u2 [label="User 102\nBob"]; u3 [label="User 103\nCharlie"];
+    { rank=same; u1; u2; u3; }
+    u1 -> u2 -> u3 [style=invis];
+  }
+  r1 -> u1:w [color="#5b6b7c"]; r2 -> u2:w [color="#5b6b7c"];
+  k1 -> u1:w [color="#2f7f86" penwidth=2]; k2 -> u2:w [color="#2f7f86" penwidth=2];
 }

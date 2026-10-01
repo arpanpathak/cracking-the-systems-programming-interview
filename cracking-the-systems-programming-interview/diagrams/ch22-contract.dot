@@ -13,7 +13,8 @@ digraph contract {
   poll -> pending [label=" not finished"];
   pending -> armed [label=" obligation"];
   armed -> park;
-  park -> wake -> poll;
+  park -> wake;
+  poll -> wake [dir=back color="#2f7f86" label=" poll again" fontcolor="#2f7f86"];
   pending -> hang [label=" waker dropped", color="#d9622b", fontcolor="#d9622b", style=dashed];
   {rank=same; pending; hang;}
 }

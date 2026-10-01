@@ -8,7 +8,7 @@ digraph threads {
   }
   sched [label="kernel scheduler" fillcolor="#e6ecf6"];
   c0 [label="core 0"]; c1 [label="core 1"];
-  t1 -> shared [style=dashed arrowhead=none]; t2 -> shared [style=dashed arrowhead=none]; t3 -> shared [style=dashed arrowhead=none];
+  shared -> t1 [style=dashed dir=none]; shared -> t2 [style=dashed dir=none]; shared -> t3 [style=dashed dir=none];
   t1 -> sched; t2 -> sched; t3 -> sched;
   sched -> c0 [label=" runs thread 1"]; sched -> c1 [label=" runs thread 3"];
 }

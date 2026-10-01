@@ -104,10 +104,11 @@ fields = [("strong count", 8), ("weak count", 8), ("RefCell borrow flag", 8), ("
 for j, (name, size) in enumerate(fields):
     f.cell(20, 138 + j * 20, 170, 20, f"{name}  {size}", CREAM if j < 3 else PALE, size=9)
 f.text(200, 152, "Rc and RefCell", 9, BRASS); f.text(200, 164, "bookkeeping", 9, BRASS)
-for i, (x, y) in enumerate([(300, 150), (440, 200), (360, 250), (560, 160), (620, 230)]):
-    f.cell(x, y, 60, 26, f"node", PALE, size=10)
-f.arrow(360, 163, 440, 205); f.arrow(500, 213, 420, 255); f.arrow(420, 263, 560, 173)
-f.arrow(590, 186, 620, 235)
+spots = [(290, 150), (400, 236), (500, 150), (600, 236), (680, 150)]
+for x, y in spots:
+    f.cell(x, y, 60, 26, "node", PALE, size=10)
+for (x1, y1), (x2, y2) in zip(spots, spots[1:]):
+    f.link((x1, y1, 60, 26), (x2, y2, 60, 26))
 f.text(300, 292, "Blocks sit wherever the allocator put them. A miss frees one and allocates another.", 10, MUTED)
 f.save(OUT + "lru-rc-layout.svg")
 

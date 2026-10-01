@@ -1,10 +1,12 @@
 digraph layout {
-  rankdir=LR; nodesep=0.2; ranksep=0.6;
+  rankdir=LR; nodesep=0.3; ranksep=0.9;
   node [fontsize=10];
-  subgraph cluster_copy { label="HashMap<u32, User>: each entry is a copy"; style="rounded"; color="#d9622b"; fontname="Menlo";
-    m1 [shape=record label="{101|User \{ id, name: String \} (clone)}|{102|User \{ id, name: String \} (clone)}" fillcolor="#fbe3d6"]; }
   subgraph cluster_ref { label="HashMap<u32, &'a User>: each entry is a pointer"; style="rounded"; color="#2f7f86"; fontname="Menlo";
     m2 [shape=record label="{101|<p1>&User}|{102|<p2>&User}" fillcolor="#e3f1ea"]; }
-  users [shape=record label="{users: [User] (owned, lives for 'a)|<u1>User 101 \"Alice\"|<u2>User 102 \"Bob\"|User 103 \"Charlie\"}" fillcolor="#fdf6e8"];
-  m2:p1 -> users:u1 [color="#2f7f86"]; m2:p2 -> users:u2 [color="#2f7f86"];
+  users [shape=record label="users: [User] (owned, lives for 'a)|<u1>User 101 \"Alice\"|<u2>User 102 \"Bob\"|<u3>User 103 \"Charlie\"" fillcolor="#fdf6e8"];
+  subgraph cluster_copy { label="HashMap<u32, User>: each entry is a copy"; style="rounded"; color="#d9622b"; fontname="Menlo";
+    m1 [shape=record label="{101|User \{ id, name: String \} (clone)}|{102|User \{ id, name: String \} (clone)}" fillcolor="#fbe3d6"]; }
+  m2:p1:e -> users:u1:w [color="#2f7f86"];
+  m2:p2:e -> users:u2:w [color="#2f7f86"];
+  users:u3 -> m1 [style=invis];
 }

@@ -1,5 +1,7 @@
 # Work log: depth pass and systems backlog
 
+A new session starts with `START_HERE.md`: a prompt to paste, the rules, the standards, and the checks.
+
 This file is the plan and the running log for the current round of work. If a
 session is interrupted, read this file first, then continue from the first
 unchecked item. Update it after every finished item, and commit with it.
@@ -240,3 +242,45 @@ shows a leaked guard (`mem::forget`) in place of a Relaxed release:
 **One animation per snippet.** Each code block that introduces behaviour gets a short animation after it. One
 animation per section is not enough. ch09 now has eight: build, reverse, remove, replace, layouts, drop, doubly, and
 pop_back. Apply the same rule to the chapters in the depth table above.
+
+## Arrows in figures (audit, 2026-10-01)
+
+The user reported arrows that were misaligned across the book. The ch03 Vec figure was one: its pointer left
+the bottom of `ptr` at a slant, cut under `len` and `cap`, and hit the heap block at an odd angle.
+
+**Causes.**
+- Hand-drawn figures placed arrows with raw `f.arrow(x1, y1, x2, y2)` coordinates: 83 arrows in 16
+  scripts, and none used `f.link`, which runs edge to edge.
+- Graphviz figures with `rankdir=LR` laid records sideways, so edges looped around them. `constraint=false`
+  back edges swept across the whole diagram.
+
+**Fixed.**
+- Hand-drawn figures, all now using `f.link` or rerouted:
+  - `ch03-vec-layout`: the heap block now sits under the stack fields, so `ptr` points straight down at `[0]`.
+  - `lru-rc-layout`: nodes zigzag, so no link crosses a node.
+  - `syscall`: arrows meet box edges.
+  - `graph-layout`: the pointer reaches the row-0 box; row labels moved to the right of each row.
+  - `iter-dangling`: the error box moved under the code it covered.
+- Graphviz figures:
+  - `ch01-borrow-layout` and `ch01-lifetimes`: vertical records, straight edges into port edges.
+  - `ch02-syscall`, `ch22-contract`, `ch29-pool`: back edges drawn as forward edges with `dir=back`.
+  - `ch01-state-machine`: pinned with `layout=neato`.
+  - `ch16-threads`: shared memory on the left, scheduler on the right.
+  - `ch20-models`: a duplicate return edge removed.
+  - `ch21-connection`: two parallel edges merged into one double-headed edge.
+
+**New check.** `tools/lint_arrows.py` flags arrows that are slightly skewed, that float short of a box, that
+are buried inside one, or that cross an unrelated box. The remaining hits are deliberate: arrows between
+before and after panels, and arrows that point at a text label.
+
+**Still to do.**
+- The other 78 raw `f.arrow` calls pass the linter but should move to `f.link` when their chapters are
+  revisited.
+- Several Graphviz files are no longer used by any chapter. They are drafts:
+  - ch04: `ch04-doubly`;
+  - ch05: `ch05-interval`, `ch05-tail`;
+  - ch06 and ch07: `ch06-serialize`, `ch06-trie`, `ch07-sample`;
+  - ch08 and ch09: `ch08-jobs`, `ch08-subsets`, `ch09-arena`, `ch09-generations`;
+  - ch12 to ch14: `ch12-poison`, `ch13-condvars`, `ch14-pool`.
+
+  Delete them, or fix them before reuse.

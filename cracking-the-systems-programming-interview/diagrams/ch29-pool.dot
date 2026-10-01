@@ -15,12 +15,12 @@ digraph pool {
   idle -> fresh;
   fresh -> guard [label=" yes"];
   fresh -> drop1 [label=" no"];
-  drop1 -> idle [label=" try the next" style=dashed constraint=false];
+  idle -> drop1 [dir=back label=" try the next" style=dashed];
   idle -> room [label=" empty"];
   room -> connect [label=" yes"];
   connect -> guard;
   room -> wait [label=" no"];
-  wait -> get [label=" woken" style=dashed constraint=false];
+  get -> wait [dir=back label=" woken" style=dashed];
   wait -> err [label=" deadline"];
   guard -> back [label=" ok"];
   guard -> discard [label=" after an error"];

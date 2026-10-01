@@ -64,12 +64,12 @@ f.text(20, 50, "index form: Vec<Vec<(usize, u32)>>, A=0, B=1, C=2, D=3", 11, MUT
 f.text(20, 76, "stack", 10, MUTED)
 f.cell(20, 82, 46, 24, "ptr", CREAM, size=10); f.cell(66, 82, 40, 24, "4", CREAM, size=10); f.cell(106, 82, 40, 24, "4", CREAM, size=10)
 f.text(66, 120, "len, cap", 9, MUTED)
-f.line(43, 106, 43, 140); f.line(43, 140, 160, 140); f.line(160, 140, 160, 94); f.arrow(160, 94, 178, 94)
+f.line(43, 106, 43, 140); f.line(43, 140, 160, 140); f.line(160, 140, 160, 94); f.arrow(160, 94, 197, 94)
 rows = [["(1,1)", "(2,4)"], ["(2,2)", "(3,5)"], ["(3,1)"], []]
 f.text(200, 76, "heap: one Vec header per node", 10, MUTED)
 for i, row in enumerate(rows):
     y = 82 + i * 30
-    f.text(192, y + 16, str(i), 10, MUTED, mono=True, anchor="end")
+    f.text(486, y + 16, "index %d: %s" % (i, "ABCD"[i]), 10, MUTED, mono=True)
     f.cell(200, y, 46, 24, "ptr", PALE, size=10); f.cell(246, y, 30, 24, str(len(row)), PALE, size=10)
     f.cell(276, y, 30, 24, str(len(row)), PALE, size=10)
     if row:
