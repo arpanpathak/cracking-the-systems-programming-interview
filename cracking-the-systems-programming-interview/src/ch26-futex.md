@@ -92,7 +92,8 @@ mod linux {
 ```
 
 As with the spin lock in chapter 16, the `unsafe impl Sync` promises that the lock hands out `value` to one
-thread at a time. `lock` tries the uncontended path first:
+thread at a time. `lock` returns a `Guard`, which section 26.2.2 shows below: it gives access to the value,
+and unlocks when it is dropped. `lock` tries the uncontended path first:
 
 ```rust
 mod linux {

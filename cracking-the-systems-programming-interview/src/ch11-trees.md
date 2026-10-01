@@ -487,10 +487,12 @@ tree: read a value and a count, then read that many subtrees.
 <figcaption><b>Figure 11.6</b> Each node is written as its value and its number of children, in pre-order.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 11.18</b> Writing the pairs (lines 30 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
+<p class="listing"><b>Listing 11.18</b> The tree type, and writing the pairs (lines 1 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:1:1}}
+
+{{#include ../../rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs:3:7}}
 
 impl<T> TreeNode<T> {
     // ...
@@ -498,6 +500,9 @@ impl<T> TreeNode<T> {
     // ...
 }
 ```
+
+`TreeNode<T>` is the same shape as in section 11.4: a value and a `Vec` of child nodes. A node can have any
+number of children.
 
 `serialize` walks the tree in pre-order without recursion, using a `Vec` as a **stack**: the last item pushed
 is the first popped. It pushes the children in reverse order, with `iter().rev()`, so that the first child is on

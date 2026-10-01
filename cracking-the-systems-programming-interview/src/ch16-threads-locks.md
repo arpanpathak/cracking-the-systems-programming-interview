@@ -495,18 +495,23 @@ The check in step 4 is needed for two reasons. Another thread may have taken the
 sometimes wake up with no notification at all, which is called a **spurious wakeup**. So the wait always sits in a
 `while` loop, not an `if`.
 
-<p class="listing"><b>Listing 16.13</b> The state and <code>acquire_guard</code> (lines 13 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">src/problems/semaphore.rs</a></p>
+<p class="listing"><b>Listing 16.13</b> The state, the guard, and <code>acquire_guard</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">src/problems/semaphore.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:10:13}}
 
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:15:23}}
 
+{{#include ../../rust-interview-lab/src/problems/semaphore.rs:111:120}}
+
 impl Semaphore {
 {{#include ../../rust-interview-lab/src/problems/semaphore.rs:26:53}}
     // ...
 }
 ```
+
+`acquire_guard` returns a `SemaphoreGuard`. The guard holds only a reference to its semaphore, and its `Drop` calls `release`. A permit goes back even if
+the holder returns early or panics.
 
 `acquire_guard` follows the four steps. `self.released.wait(state)` takes the guard, sleeps, and returns a new
 guard when the thread wakes. When the loop ends, a permit is free and the thread holds the mutex, so it takes the
@@ -576,13 +581,18 @@ The data, though, stays half-changed. The standard `Mutex` records that this hap
 The error does not hide the data. `PoisonError::into_inner()` returns the guard anyway, for code that can check
 and repair the data.
 
-<p class="listing"><b>Listing 16.16</b> The recovery function (lines 54 to 82). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs">src/bin/mutex_poisoning.rs</a></p>
+<p class="listing"><b>Listing 16.16</b> The ledger and the recovery function. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mutex_poisoning.rs">src/bin/mutex_poisoning.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mutex_poisoning.rs:27:31}}
 
+{{#include ../../rust-interview-lab/src/bin/mutex_poisoning.rs:33:41}}
+
 {{#include ../../rust-interview-lab/src/bin/mutex_poisoning.rs:54:82}}
 ```
+
+`Ledger` is the shared state: the cash, the stock value, a transaction counter, and a flag that says whether
+the books balance. A panic between two of its updates leaves them inconsistent.
 
 `recover_ledger` receives the `PoisonError` and takes the guard out of it. It holds the lock while it corrects the
 ledger. It returns a clone of the corrected data, and the guard is dropped at the end of the function.

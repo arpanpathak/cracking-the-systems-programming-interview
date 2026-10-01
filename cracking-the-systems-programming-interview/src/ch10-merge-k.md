@@ -77,14 +77,18 @@ In each round, the list at position `i` absorbs the list at `i + interval`. The 
 The first version implements pairwise rounds with a growing `interval`, as in figure 10.3. Its merge builds the
 output after a placeholder node, called a dummy head, so that the first real node needs no special case.
 
-<p class="listing"><b>Listing 10.1</b> The interval loop (lines 17 to 34). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
+<p class="listing"><b>Listing 10.1</b> The node type and the interval loop (lines 1 to 34). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
 
 ```rust
-impl MergeKSorted {
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:17:34}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:1:34}}
     // ...
 }
 ```
+
+`ListNode` is the node from chapter 9: a value, `data`, and `next`, an `Option<Box<ListNode>>` that is
+`None` at the end of the list. `OptionalLink<T>` is a **type alias**, a second name for `Option<Box<T>>`,
+so signatures stay short. `MergeKSorted` is an empty struct. It holds no data, and only groups the functions
+under one name.
 
 The two `while` loops follow figure 10.3. The outer one doubles `interval`. The inner one steps `i` by
 `interval * 2`, merging `i` with `i + interval`.
@@ -149,7 +153,9 @@ $ cargo run --bin merge_k_sorted_lists_divide
 This version moves the right-hand list out of the vector before the call. With only one list still inside the
 vector, the merge needs only one mutable borrow of it.
 
-<p class="listing"><b>Listing 10.4</b> The loop and the merge (lines 19 to 55). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
+It uses the same `MergeKSorted`, `ListNode`, and `OptionalLink` as listing 10.1.
+
+<p class="listing"><b>Listing 10.4</b> The loop and the merge (lines 16 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs:16:56}}
@@ -180,13 +186,14 @@ loop body always takes from `left`.
 This version moves both lists out of the vector and passes them by value, so nothing is borrowed during the
 merge. It also drops the dummy node and tracks the empty slot where the next node belongs.
 
-<p class="listing"><b>Listing 10.6</b> The loop and the merge (lines 8 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
+<p class="listing"><b>Listing 10.6</b> The node type, the loop, and the merge (lines 1 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs:8:43}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs:1:43}}
 ```
 
-This version changes two things.
+This file names its link type `Link`, an alias for `Option<Box<ListNode>>`, and uses free functions
+instead of methods on an empty struct. The algorithm changes in two ways.
 
 First, `merge_two` takes both lists by value, not by reference. The loop moves both out of the vector with
 `take()` before the call, so nothing is borrowed at all.
@@ -219,13 +226,14 @@ consuming it.
 This version keeps the owned merge and brings back the dummy head. One standard-library method attaches a node and
 moves the tail onto it in a single step.
 
-<p class="listing"><b>Listing 10.8</b> The merge and the loop (lines 8 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
+<p class="listing"><b>Listing 10.8</b> The node type, the merge, and the loop (lines 1 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs:8:45}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs:1:45}}
 ```
 
-This version keeps the owned `merge_two` from listing 10.6 and brings back the dummy head. It shortens the tail
+Here the node is `Node`, with an `i32` value named `val`, and the link alias is `NodeLink`. This version keeps
+the owned `merge_two` from listing 10.6 and brings back the dummy head. It shortens the tail
 bookkeeping with one method:
 
 ```rust
@@ -409,12 +417,13 @@ sorted files read line by line.
 The last two versions do pairwise merging from the top down. They split the lists into two halves, merge each
 half recursively, and merge the two results.
 
-<p class="listing"><b>Listing 10.18</b> A recursive two-list merge (lines 9 to 22). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
+<p class="listing"><b>Listing 10.18</b> The node type and a recursive two-list merge (lines 1 to 21). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:9:21}}
+{{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:1:21}}
 ```
 
+`List` is an alias for `Option<Box<ListNode>>`, so a whole list is one value that is `None` when empty.
 The first arm, `(None, rest) | (rest, None) => rest`, handles an empty list on either side: the other list is
 the answer. In the second arm, `mem::swap` makes `a` the list with the smaller front. Then `a`'s node stays at
 the front, and its `next` becomes the merge of the rest of `a` with `b`. No node is allocated; the boxes move.

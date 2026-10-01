@@ -204,6 +204,27 @@ Retrying well takes three decisions:
 
 ### 19.2.1 Which errors to retry
 
+The retry code works with `ApiError`, the error enum from section 7.7. Here it is again. Each variant is one
+way a call to a service can fail, and carries the data that failure needs:
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/state_machine.rs:58:78}}
+    // ...
+}
+```
+
+- `InvalidRequest` and `NotFound` describe a request that is wrong. Sending it again gives the same answer.
+- `Unauthorized` needs new credentials, not a second try.
+- `RateLimited` says the server is busy, and carries how long it asked the client to wait.
+- `Server` is a failure on the server's side, with the HTTP status code.
+
+The enum's own method, `is_retryable`, already answers the first question for each variant. `matches!` tests a
+value against a pattern and returns `true` or `false`. It returns `true` for `RateLimited`, and for `Server` with a
+status from 500 to 599.
+
+The retry code should not be tied to `ApiError`, though. It should work with any error that can answer the
+question. That is a job for a trait:
+
 <p class="listing"><b>Listing 19.6</b> The <code>Retryable</code> trait (lines 22 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
 ```rust
@@ -216,9 +237,8 @@ Retrying well takes three decisions:
 so each error type must decide. `retry_after` has a default body that returns `None`, so an error type only needs
 to implement it if the server can send a hint.
 
-The trait is implemented for `ApiError`, the error enum from section 7.7. Its `is_retryable` method returns `true`
-for a rate limit and for server errors with a status from 500 to 599. `retry_after` returns the delay carried by a
-`RateLimited` error. That delay usually comes from the HTTP header `Retry-After`, which a server sends to say when
+The trait is implemented for `ApiError`. Its `is_retryable` passes the question to the enum's own method.
+`retry_after` returns the delay carried by a `RateLimited` error. That delay usually comes from the HTTP header `Retry-After`, which a server sends to say when
 to try again.
 
 The line `ApiError::is_retryable(self)` calls the enum's own method, not the trait's. Both have the same name. The

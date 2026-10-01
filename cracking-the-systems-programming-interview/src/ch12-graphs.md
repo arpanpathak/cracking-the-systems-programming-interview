@@ -690,13 +690,17 @@ $ cargo run --bin dijkstra
 The first print shows the graph and is cut short here. A `HashMap` does not keep its entries in any order. The lines of both prints can come out in a different
 order on your machine.
 
-<p class="listing"><b>Listing 12.19</b> Borrowing nodes instead of cloning them (lines 15 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
+<p class="listing"><b>Listing 12.19</b> The graph types, and borrowing nodes instead of cloning them (lines 1 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:1:5}}
+{{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:1:13}}
 
 {{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:15:47}}
 ```
+
+The types are generic over `Node`, the type that names a node, such as `&str` or `u32`. An `Edge<Node>` holds
+the node it leads to and a weight. `AdjMap<Node>` is an alias for the adjacency map: each node, and the list
+of edges that leave it.
 
 This version stores references to nodes, `&'a Node`, in `dist` and in the heap, so `Node` does not need `Clone`.
 With `String` nodes, that saves an allocation per clone.
@@ -810,11 +814,16 @@ With both tricks, `find` and `union` take nearly constant time in practice.
 
 ### 12.10.2 Kruskal's algorithm
 
-<p class="listing"><b>Listing 12.23</b> Kruskal's algorithm (lines 51 to 65).</p>
+<p class="listing"><b>Listing 12.23</b> The edge type and Kruskal's algorithm (lines 3 to 65).</p>
 
 ```rust
+{{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:3:8}}
+
 {{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:51:65}}
 ```
+
+An `Edge` joins nodes `u` and `v`, numbered from 0, with weight `w`. The graph is undirected, so the
+order of `u` and `v` does not matter.
 
 `edges.sort_by_key(|e| e.w)` sorts the edges by weight. Then each edge is offered to `union`. If `union`
 returns `true`, the edge joined two groups, and it goes into the tree. The edge is moved into `mst`, not copied,

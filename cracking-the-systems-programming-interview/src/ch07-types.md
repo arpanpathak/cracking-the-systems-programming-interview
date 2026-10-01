@@ -109,7 +109,8 @@ Here is the type:
 - `pub const MIN: u32 = 1;` and `MAX` are **associated constants**, constants that belong to the type. You
   refer to them as `GpuCount::MIN`, or `Self::MIN` inside the `impl`.
 - `new` is the gate. `(Self::MIN..=Self::MAX)` is the range 1 to 64, including both ends, and `.contains(&value)`
-  checks the value. If it is in range, `new` returns `Ok(Self(value))`. If not, it returns an error.
+  checks the value. If it is in range, `new` returns `Ok(Self(value))`. If not, it returns
+  `Err(GpuCountError(value))`, an error that carries the rejected value. Section 7.3 shows that type.
 - `get` returns the number inside. It takes `self` by value, which is fine because `GpuCount` is `Copy`.
 
 The long `#[derive(...)]` line gives `GpuCount` the same abilities as the `u32` inside it. You can print it,
@@ -200,11 +201,31 @@ In memory, every `Command` takes the same space, enough for its largest variant,
 <figcaption><b>Figure 7.2</b> A <code>Command</code> is 32 bytes. Rust also records which variant a value is. Here it stores that in bit patterns the <code>String</code> never uses, so no extra byte is needed.</figcaption>
 </figure>
 
-### 7.5.2 Parsing a line of text
+### 7.5.2 The parser's errors and helper
+
+Before the parser, here is what it returns when a line is wrong. Each way a line can be malformed gets its own error variant, so the caller learns exactly what failed.
+
+<p class="listing"><b>Listing 7.6</b> <code>CommandError</code> and <code>argument</code> (lines 119 to 148).</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:119:148}}
+```
+
+`CommandError` lists every way parsing can fail, and its `Display` writes a message for each. Because the
+errors are enum variants, a caller can `match` on them and react differently to each. A CLI could print usage
+help for `MissingArgument` and the allowed range for `InvalidGpuCount`. With a plain `String` error, the
+caller would have to read the message text to tell the cases apart.
+
+`argument` takes the next word from the iterator, or fails with the argument's name. Look at its first
+parameter, `&mut impl Iterator<Item = &'a str>`. It borrows the caller's iterator mutably, so that each call
+consumes one more word. The lifetime `'a`, which you met in chapter 4, says the returned `&str` points into
+the original line. So no text is copied until `parse` decides to keep it with `to_string()`.
+
+### 7.5.3 Parsing a line of text
 
 Parsing turns one line of text into a `Command`, or into an error that says what was wrong with the line.
 
-<p class="listing"><b>Listing 7.6</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 117).</p>
+<p class="listing"><b>Listing 7.7</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 117).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:79:117}}
@@ -234,26 +255,6 @@ Steps 6 and 7 can fail for different reasons, but both failures are reported the
 
 `verb` goes the other way, from a command to its name. The patterns `Self::Get { .. }` match a variant and
 ignore its fields.
-
-### 7.5.3 The parser's errors and helper
-
-Each way a line can be malformed gets its own error variant, so the caller learns exactly what failed.
-
-<p class="listing"><b>Listing 7.7</b> <code>CommandError</code> and <code>argument</code> (lines 119 to 148).</p>
-
-```rust
-{{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:119:148}}
-```
-
-`CommandError` lists every way parsing can fail, and its `Display` writes a message for each. Because the
-errors are enum variants, a caller can `match` on them and react differently to each. A CLI could print usage
-help for `MissingArgument` and the allowed range for `InvalidGpuCount`. With a plain `String` error, the
-caller would have to read the message text to tell the cases apart.
-
-`argument` takes the next word from the iterator, or fails with the argument's name. Look at its first
-parameter, `&mut impl Iterator<Item = &'a str>`. It borrows the caller's iterator mutably, so that each call
-consumes one more word. The lifetime `'a`, which you met in chapter 4, says the returned `&str` points into
-the original line. So no text is copied until `parse` decides to keep it with `to_string()`.
 
 ### 7.5.4 Adding up without an index
 
