@@ -38,8 +38,8 @@ pub struct SingleFlight<K, V> {
 }
 
 /// The claim of the caller that is running the work for `key`. If it is
-/// dropped before `complete`, by an early return or a panic, it clears the
-/// `InProgress` mark and wakes the waiters, so one of them can run the work.
+/// dropped while it still holds the key, after an error or a panic, it clears
+/// the `InProgress` mark and wakes the waiters, so one of them can run the work.
 struct Claim<'a, K: Eq + Hash, V> {
     flight: &'a SingleFlight<K, V>,
     key: Option<K>,
