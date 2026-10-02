@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-988f97c5.js";
+            window.path_to_searchindex_js = "searchindex-9b0c6522.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -577,6 +577,13 @@ shared references, used only to read the two front values.</p>
 <p><code>tail.next.insert(node)</code> attaches the node at the end of the output, as in listing 10.5, and returns a reference to
 it. That node is the new <code>tail</code>.</p>
 <p>When the loop ends, one list is empty. <code>left.or(right)</code> returns the other one, and <code>tail.next</code> takes it whole.</p>
+<p>Animation 10.3 runs <code>merge_two</code> one line at a time on the lists of the trace below. The table beside the lists
+shows what each variable owns or borrows after every line. The last part reads <code>l</code> after the swap, which does not
+compile.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch10-merge-trace.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Rows for left, right, node, and the output, which starts at a dummy node; a table of the variables left, right, l, r, node, dummy, and tail with what each owns or borrows; and the code of merge_two with the running line highlighted. Each pass shows while let binding l and r as shared borrows of the two front nodes, the comparison where those borrows end, the swap when the right front is smaller, left.unwrap moving the whole list into node so that left is moved out, node.next.take returning the rest to left, and insert moving the node to the end of the output while tail moves on. After four passes, left.or(right) attaches 5 and dummy.next returns 1, 2, 3, 4, 5. Last, a loop that reads l after the swap fails with error E0506, cannot assign to left because it is borrowed, and E0505, cannot move out of left because it is borrowed." data-chapters="[[0.0, &quot;set up&quot;], [17.59, &quot;pass 1&quot;], [57.67, &quot;pass 2&quot;], [100.87, &quot;pass 3&quot;], [133.99, &quot;pass 4&quot;], [175.03, &quot;the end&quot;], [204.55, &quot;l after the swap&quot;]]"><img src="figures/ch10-merge-trace.gif" alt="Rows for left, right, node, and the output, which starts at a dummy node; a table of the variables left, right, l, r, node, dummy, and tail with what each owns or borrows; and the code of merge_two with the running line highlighted. Each pass shows while let binding l and r as shared borrows of the two front nodes, the comparison where those borrows end, the swap when the right front is smaller, left.unwrap moving the whole list into node so that left is moved out, node.next.take returning the rest to left, and insert moving the node to the end of the output while tail moves on. After four passes, left.or(right) attaches 5 and dummy.next returns 1, 2, 3, 4, 5. Last, a loop that reads l after the swap fails with error E0506, cannot assign to left because it is borrowed, and E0505, cannot move out of left because it is borrowed."></video>
+<figcaption><b>Animation 10.3</b> <code>merge_two</code> line by line. <code>l</code> and <code>r</code> borrow the front nodes until the comparison. <code>unwrap</code> moves the list into <code>node</code>, and <code>take</code> returns the rest to <code>left</code>. <code>tail</code> is the only mutable reference. Reading <code>l</code> after the swap does not compile.</figcaption>
+</figure>
 <p>Trace the merge of 1 → 4 with 2 → 3 → 5:</p>
 <div class="table-wrapper">
 <table>
@@ -617,10 +624,10 @@ fn merge_k(mut lists: Vec&lt;Link&gt;) -&gt; Link {
 }</code></pre>
 <p><code>merge_k</code> is the loop of listing 10.1. <code>lists[i].take()</code> moves each list out of its slot and leaves <code>None</code>, so
 <code>merge_two</code> receives two owned lists.</p>
-<p>Animation 10.3 runs the merge of the trace. The last part leaves out the line after the loop.</p>
+<p>Animation 10.4 runs the merge of the trace. The last part leaves out the line after the loop.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch10-merge-owned.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Rows for left and right, and an output row that starts at a dummy node, with a tail marker at its end. Each pass compares the two front nodes; when right&#39;s front is smaller, the two rows trade places. Then the front node of left moves to the end of the output, and the rest of its list stays in left. After pass 4, left is empty and the loop ends; left.or(right) attaches the remaining 5, and the output reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped." data-chapters="[[0.0, &quot;merge&quot;], [30.16, &quot;no or&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Rows for left and right, and an output row that starts at a dummy node, with a tail marker at its end. Each pass compares the two front nodes; when right&#39;s front is smaller, the two rows trade places. Then the front node of left moves to the end of the output, and the rest of its list stays in left. After pass 4, left is empty and the loop ends; left.or(right) attaches the remaining 5, and the output reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped."></video>
-<figcaption><b>Animation 10.3</b> When the right front is smaller, the two lists swap, so <code>left</code> always holds the next node. When one list runs out, <code>or</code> attaches the other. Without that line, the nodes left in <code>right</code> are dropped.</figcaption>
+<figcaption><b>Animation 10.4</b> When the right front is smaller, the two lists swap, so <code>left</code> always holds the next node. When one list runs out, <code>or</code> attaches the other. Without that line, the nodes left in <code>right</code> are dropped.</figcaption>
 </figure>
 <pre><code class="language-text">$ cargo run --bin merge_k_sorted_lists_owned
 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
