@@ -138,7 +138,7 @@ arcs, flying objects crossing the title, captions wrapping onto a third line.
 
 ## 6. Status
 
-All 73 animations, in every chapter from 1 to 29, use the motion engine. Chapter 21 presents its code in small excerpts, with the complete files
+All 74 animations, in every chapter from 1 to 29, use the motion engine. Chapter 21 presents its code in small excerpts, with the complete files
 at the end. The other chapters still show some long listings first.
 
 ## 7. The print edition
