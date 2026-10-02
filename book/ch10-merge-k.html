@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9b0c6522.js";
+            window.path_to_searchindex_js = "searchindex-bcf183b2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -1016,7 +1016,7 @@ beyond the input <code>Vec</code> and the nodes. The stack column is the deepest
 <tr><td><code>merge_k_sorted_lists_swap</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>right list taken first, <code>&amp;mut</code> tail</td></tr>
 <tr><td><code>merge_k_sorted_lists_simple</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>none</td><td>owned lists, <code>&amp;mut</code> tail slot</td></tr>
 <tr><td><code>merge_k_sorted_list_zero_copy</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>owned lists, <code>Option::insert</code></td></tr>
-<tr><td><code>merge_k_sorted_lists_owned</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>lists swapped by value, <code>Option::insert</code></td></tr>
+<tr><td><code>merge_k_sorted_lists_owned</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>lists swapped by value, so <code>tail</code> is the only <code>&amp;mut</code> (section 10.4.4)</td></tr>
 <tr><td><code>merge_k_sorted_lists_enum</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one box per node per round</td><td>custom <code>take</code>, <code>&amp;mut</code> tail</td></tr>
 <tr><td><code>merge_k_sorted_list_easy</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(N)</td><td>one box per node per round</td><td>recursive merge on owned values</td></tr>
 <tr><td><code>merge_k_sorted_lists_pairs</code></td><td>queue of lists</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>owned lists, <code>Option::insert</code></td></tr>
