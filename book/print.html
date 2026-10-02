@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-49604075.js";
+            window.path_to_searchindex_js = "searchindex-d105c260.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -7783,9 +7783,11 @@ push and pop times with the <code>Rc</code> version.</li>
 
 <p>Chapter 9 built singly linked lists and moved their nodes between owners with <code>take</code>. This chapter applies those skills to one problem. You have k linked lists, each already sorted, and you
 want one sorted list that contains all their nodes.</p>
-<p>The problem is small, but it has several good solutions, and they differ in interesting ways. Some are faster
-than others. Some move nodes; others allocate new ones. Some fight the borrow checker, and some avoid the
-fight. This chapter walks through eleven solutions, grouped by the strategy they use.</p>
+<p>Each solution in this chapter makes two choices. The first is the strategy: the order in which lists are merged.
+It sets the running time. The second is how a merge moves nodes in Rust. It can keep a <code>&amp;mut</code> pointer to the
+end of the output, pass owned values, or allocate new nodes. That choice sets the memory, and how much borrowing
+the code needs. The chapter goes through eleven solutions, grouped by strategy. Section 10.9 lists the time and
+memory of each one.</p>
 <p>Two letters appear throughout. <strong>k</strong> is the number of lists. <strong>N</strong> is the total number of nodes across all of
 them.</p>
 <h2 id="101-merging-two-sorted-lists"><a class="header" href="#101-merging-two-sorted-lists">10.1 Merging two sorted lists</a></h2>
@@ -8129,14 +8131,15 @@ lists.</p>
 </code></pre>
 <p>The empty line is the output for no lists.</p>
 <h3 id="1044-owned-values-only-build-the-result-backward"><a class="header" href="#1044-owned-values-only-build-the-result-backward">10.4.4 Owned values only: build the result backward</a></h3>
-<p>Every version so far keeps a pointer to the end of the output, so it can attach the next node there. In Rust
-that pointer is a <code>&amp;mut</code> into the list, and most of the borrowing work in this chapter comes from it.</p>
-<p>You can merge with no pointer into a list at all. Picture two stacks of numbered cards, smallest on top. You take
-the smaller top card and put it on your own pile. Each card goes on top of the pile, so when both stacks are empty,
-your pile holds every card with the largest on top. One flip puts the pile in order.</p>
-<p>In list terms, putting a card on the pile is a push at the front, the cheapest list operation. The flip is the
-reversal from section 9.3. Both work on owned values only: no <code>&amp;mut</code> cursor, no <code>as_ref</code>, no dummy node.</p>
-<p class="listing"><b>Listing 10.8</b> The node type and <code>merge_two</code> (lines 9 to 42). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+<p>Every merge so far keeps a pointer to the end of the output, so it can attach the next node there. That pointer is
+a <code>&amp;mut</code> into the list, and most of the borrowing work in this chapter comes from it.</p>
+<p>A merge can also work with owned values only. Picture two stacks of numbered cards, smallest on top. Keep one
+rule: the stack you call <code>a</code> is the one whose top card comes next. If the other stack’s top card is smaller, the
+two stacks trade names. Then move the top card of <code>a</code> onto your pile. When both stacks are empty, the pile holds
+every card with the largest on top, and one flip puts it in order.</p>
+<p>In list terms, moving a card onto the pile is a push at the front of a list. The flip is the reversal from
+section 9.3.</p>
+<p class="listing"><b>Listing 10.8</b> The node type, <code>goes_first</code>, and <code>merge_two</code> (lines 9 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
 <pre><code class="language-rust">type Link = Option&lt;Box&lt;Node&gt;&gt;;
 
@@ -8145,100 +8148,93 @@ struct Node {
     next: Link,
 }
 
-/// Merge two sorted lists into one, moving their nodes.
-fn merge_two(mut left: Link, mut right: Link) -&gt; Link {
-    // The merged nodes so far, largest first. Each new node goes on the front.
-    let mut reversed: Link = None;
+/// Whether list `x` should give the next node before list `y`.
+fn goes_first(x: &amp;Link, y: &amp;Link) -&gt; bool {
+    match (x, y) {
+        (Some(x), Some(y)) =&gt; x.val &lt; y.val,
+        (Some(_), None) =&gt; true,
+        _ =&gt; false,
+    }
+}
+
+/// Merge two sorted lists. O(n) time, O(1) extra memory.
+fn merge_two(mut a: Link, mut b: Link) -&gt; Link {
+    let mut pile = None; // merged nodes so far, largest on top
     loop {
-        // Take the smaller front node, and hand back both remaining lists.
-        let mut node;
-        (node, left, right) = match (left, right) {
-            (Some(mut l), Some(r)) if l.val &lt;= r.val =&gt; {
-                let rest = l.next.take();
-                (l, rest, Some(r))
-            }
-            (l, Some(mut r)) =&gt; {
-                let rest = r.next.take();
-                (r, l, rest)
-            }
-            (Some(mut l), None) =&gt; {
-                let rest = l.next.take();
-                (l, rest, None)
-            }
-            (None, None) =&gt; break,
-        };
+        if goes_first(&amp;b, &amp;a) {
+            (a, b) = (b, a);
+        }
+        let Some(mut node) = a else { break };
+        a = node.next; // a keeps the rest of its list
+        node.next = pile; // the node goes on top of the pile
+        pile = Some(node);
+    }
+    reverse(pile)
+}</code></pre>
+<p><code>goes_first</code> compares the two front nodes, and a list with a node goes before an empty one. It only reads the
+lists, so it takes shared references.</p>
+<p>Each pass of the loop in <code>merge_two</code> does three things:</p>
+<ol>
+<li><code>(a, b) = (b, a)</code> swaps the two lists when <code>b</code> is ahead. The tuple assignment moves both <code>Option</code> values, and
+no node moves.</li>
+<li><code>let Some(mut node) = a else { break };</code> takes the front node of <code>a</code>, by value. If <code>a</code> is empty, <code>b</code> is empty
+too: the swap would have moved any remaining list into <code>a</code>. So the loop ends.</li>
+<li><code>a = node.next;</code> moves the rest of the list out of the node and back into <code>a</code>. Then <code>node.next = pile;</code> and
+<code>pile = Some(node);</code> put the node on top of the pile.</li>
+</ol>
+<p>Step 3 moves a field out of <code>node</code> and assigns it again before <code>node</code> is used as a whole. Rust allows that for a
+<code>Box</code>, so the merge needs no <code>take</code> and no reference into a list.</p>
+<p class="listing"><b>Listing 10.8</b> <code>reverse</code>, the reversal of listing 9.2 (lines 40 to 49). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+
+<pre><code class="language-rust">/// Reverse a list, as in chapter 9.
+fn reverse(mut list: Link) -&gt; Link {
+    let mut reversed = None;
+    while let Some(mut node) = list {
+        list = node.next;
         node.next = reversed;
         reversed = Some(node);
     }
-    reverse(reversed)
-}</code></pre>
-<p><code>match (left, right)</code> takes both lists by value. Each arm hands back three things: the node it took, and the two
-lists that remain. <code>(node, left, right) = match ...</code> assigns all three at once. <code>node</code> was declared on the line before,
-and <code>left</code> and <code>right</code> are the function’s own parameters.</p>
-<p>The order of the arms is the merge rule:</p>
-<ol>
-<li>Both lists have a front node, and the left one is not larger. The left node is taken. <code>&lt;=</code> takes from the left
-on a tie, so equal values keep their input order. A merge with that property is called <strong>stable</strong>.</li>
-<li>The right list has a node, and the left list is empty or its front is larger. The right node is taken.</li>
-<li>Only the left list has nodes left. Its node is taken.</li>
-<li>Both lists are <code>None</code>. The loop ends.</li>
-</ol>
-<p><code>l.next.take()</code> unhooks the node from the rest of its list, and the rest becomes the new list. After the
-<code>match</code>, <code>node.next = reversed; reversed = Some(node);</code> puts the node on the front of the pile.</p>
-<p class="listing"><b>Listing 10.8</b> <code>reverse</code>, the reversal of listing 9.2 (lines 44 to 53). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
-
-<pre><code class="language-rust">/// Reverse a list in place, as in chapter 9.
-fn reverse(mut current: Link) -&gt; Link {
-    let mut previous = None;
-    while let Some(mut node) = current {
-        current = node.next.take();
-        node.next = previous;
-        previous = Some(node);
-    }
-    previous
+    reversed
 }</code></pre>
 <p>Trace the merge of 1 → 4 with 2 → 3 → 5:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Step</th><th>Arm</th><th>Node taken</th><th><code>reversed</code></th></tr>
+<tr><th>Pass</th><th><code>a</code></th><th><code>b</code></th><th>Swap?</th><th>Node to the pile</th><th><code>pile</code></th></tr>
 </thead>
 <tbody>
-<tr><td>1</td><td>1: 1 &lt;= 2</td><td>1</td><td>1</td></tr>
-<tr><td>2</td><td>2: 4 &gt; 2</td><td>2</td><td>2 → 1</td></tr>
-<tr><td>3</td><td>2: 4 &gt; 3</td><td>3</td><td>3 → 2 → 1</td></tr>
-<tr><td>4</td><td>1: 4 &lt;= 5</td><td>4</td><td>4 → 3 → 2 → 1</td></tr>
-<tr><td>5</td><td>2: left is empty</td><td>5</td><td>5 → 4 → 3 → 2 → 1</td></tr>
-<tr><td>6</td><td>4: both empty</td><td></td><td><code>reverse</code> gives 1 → 2 → 3 → 4 → 5</td></tr>
+<tr><td>1</td><td>1 → 4</td><td>2 → 3 → 5</td><td>no: 1 &lt; 2</td><td>1</td><td>1</td></tr>
+<tr><td>2</td><td>4</td><td>2 → 3 → 5</td><td>yes: 2 &lt; 4</td><td>2</td><td>2 → 1</td></tr>
+<tr><td>3</td><td>3 → 5</td><td>4</td><td>no: 3 &lt; 4</td><td>3</td><td>3 → 2 → 1</td></tr>
+<tr><td>4</td><td>5</td><td>4</td><td>yes: 4 &lt; 5</td><td>4</td><td>4 → 3 → 2 → 1</td></tr>
+<tr><td>5</td><td>None</td><td>5</td><td>yes: <code>a</code> is empty</td><td>5</td><td>5 → 4 → 3 → 2 → 1</td></tr>
+<tr><td>6</td><td>None</td><td>None</td><td>no</td><td>the loop ends</td><td><code>reverse</code> gives 1 → 2 → 3 → 4 → 5</td></tr>
 </tbody>
 </table>
 </div>
-<p>Each node moves twice: once onto the pile, and once in the reversal. The merge is still O(n) for n nodes, it uses
-O(1) extra memory, and it allocates nothing.</p>
-<p class="listing"><b>Listing 10.8</b> <code>merge_k</code> (lines 55 to 68). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+<p>Each node moves twice: onto the pile, and then in the reversal. A merge of n nodes is O(n) time and O(1) extra
+memory, and it allocates nothing.</p>
+<p class="listing"><b>Listing 10.8</b> <code>merge_k</code> (lines 51 to 62). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
-<pre><code class="language-rust">/// Merge k sorted lists. Round 1 merges neighbours 1 apart, round 2 lists 2
-/// apart, and so on, so every node moves about log2(k) times.
+<pre><code class="language-rust">/// Merge k sorted lists in place. Round 1 merges lists 1 apart, round 2 lists
+/// 2 apart, and so on: O(N log k) time, O(1) extra memory.
 fn merge_k(mut lists: Vec&lt;Link&gt;) -&gt; Link {
     let mut gap = 1;
     while gap &lt; lists.len() {
-        for i in (0..lists.len() - gap).step_by(gap * 2) {
-            let left = lists[i].take();
-            let right = lists[i + gap].take();
-            lists[i] = merge_two(left, right);
+        for i in (0..lists.len() - gap).step_by(2 * gap) {
+            lists[i] = merge_two(lists[i].take(), lists[i + gap].take());
         }
         gap *= 2;
     }
     lists.into_iter().next().flatten()
 }</code></pre>
-<p><code>merge_k</code> is the interval loop of figure 10.3, on owned lists. <code>lists[i].take()</code> moves a list out of its slot in
-the <code>Vec</code> and leaves <code>None</code> there. After the last round, the merged list is in <code>lists[0]</code>.
-<code>lists.into_iter().next()</code> returns <code>None</code> for an empty <code>Vec</code>, and <code>flatten</code> turns the <code>Option&lt;Link&gt;</code> into one
-<code>Link</code>.</p>
+<p><code>merge_k</code> is the interval loop of figure 10.3. <code>lists[i].take()</code> moves a list out of its slot in the <code>Vec</code> and
+leaves <code>None</code> there. After the last round, the merged list is in <code>lists[0]</code>. <code>lists.into_iter().next()</code> returns
+<code>None</code> for an empty <code>Vec</code>, and <code>flatten</code> turns the <code>Option&lt;Link&gt;</code> into one <code>Link</code>.</p>
 <p>Animation 10.3 merges the two lists of the trace, then reverses the pile. The last part leaves out the reversal.</p>
 <figure class="anim">
-<video class="motion" src="figures/ch10-merge-owned.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two input rows, left holding 1 and 4 and right holding 2, 3, and 5, a row named reversed, and a row for the result. Each step lifts the smaller front node out of its list and puts it on the front of reversed: 1, then 2, 3, 4, and 5, so reversed reads 5, 4, 3, 2, 1. Then reverse moves the nodes one by one to the front of the result, which reads 1, 2, 3, 4, 5. Last, with the call to reverse struck out, the caller gets 5, 4, 3, 2, 1 and the next round of merge_k produces a list out of order." data-chapters="[[0.0, &quot;merge&quot;], [29.13, &quot;reverse&quot;], [48.13, &quot;no reverse&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Two input rows, left holding 1 and 4 and right holding 2, 3, and 5, a row named reversed, and a row for the result. Each step lifts the smaller front node out of its list and puts it on the front of reversed: 1, then 2, 3, 4, and 5, so reversed reads 5, 4, 3, 2, 1. Then reverse moves the nodes one by one to the front of the result, which reads 1, 2, 3, 4, 5. Last, with the call to reverse struck out, the caller gets 5, 4, 3, 2, 1 and the next round of merge_k produces a list out of order."></video>
-<figcaption><b>Animation 10.3</b> Each smaller front node goes onto the front of a pile, then one reversal puts the pile in order. Every node is moved, never copied. Without the reversal, the list comes out largest first.</figcaption>
+<video class="motion" src="figures/ch10-merge-owned.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two lists, a holding 1 and 4 and b holding 2, 3, and 5, a pile, and a row for the result. Each pass checks goes_first; when b is ahead, the two lists trade rows. Then the front node of a lifts out and moves onto the front of the pile: 1, 2, 3, 4, and 5, so the pile reads 5, 4, 3, 2, 1. reverse then moves the nodes one by one to the front of the result, which reads 1, 2, 3, 4, 5. Last, with the call to reverse struck out, the caller gets 5, 4, 3, 2, 1, and the next round of merge_k produces a list out of order." data-chapters="[[0.0, &quot;merge&quot;], [41.08, &quot;reverse&quot;], [59.59, &quot;no reverse&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Two lists, a holding 1 and 4 and b holding 2, 3, and 5, a pile, and a row for the result. Each pass checks goes_first; when b is ahead, the two lists trade rows. Then the front node of a lifts out and moves onto the front of the pile: 1, 2, 3, 4, and 5, so the pile reads 5, 4, 3, 2, 1. reverse then moves the nodes one by one to the front of the result, which reads 1, 2, 3, 4, 5. Last, with the call to reverse struck out, the caller gets 5, 4, 3, 2, 1, and the next round of merge_k produces a list out of order."></video>
+<figcaption><b>Animation 10.3</b> When <code>b</code> is ahead, the lists swap. Then the front node of <code>a</code> moves onto the pile, and one reversal puts the pile in order. Without the reversal, the list comes out largest first.</figcaption>
 </figure>
 <pre><code class="language-text">$ cargo run --bin merge_k_sorted_lists_owned
 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -8615,29 +8611,42 @@ Merged list:
 <p>Both recursive merges recurse once for each node of their output. For short lists that is fine. For lists with
 hundreds of thousands of nodes, the iterative merges of sections 10.3 and 10.4 are safer.</p>
 <h2 id="109-the-eleven-versions-side-by-side"><a class="header" href="#109-the-eleven-versions-side-by-side">10.9 The eleven versions side by side</a></h2>
+<p>In the table, N is the total number of nodes and k the number of lists. The extra memory column counts memory
+beyond the input <code>Vec</code> and the nodes. The stack column is the deepest the call stack goes, in frames.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Program</th><th>Strategy</th><th>Moves or allocates nodes</th><th>Borrowing technique</th></tr>
+<tr><th>Program</th><th>Strategy</th><th>Time</th><th>Extra memory</th><th>Stack</th><th>Allocations</th><th>How a merge moves nodes</th></tr>
 </thead>
 <tbody>
-<tr><td><code>merge_k_sorted_lists_divide</code></td><td>interval rounds</td><td>moves</td><td><code>split_at_mut</code></td></tr>
-<tr><td><code>merge_k_sorted_lists_swap</code></td><td>interval rounds</td><td>moves</td><td>take the right list first</td></tr>
-<tr><td><code>merge_k_sorted_lists_simple</code></td><td>interval rounds</td><td>moves</td><td>owned lists, tail slot</td></tr>
-<tr><td><code>merge_k_sorted_list_zero_copy</code></td><td>interval rounds</td><td>moves</td><td>owned lists, <code>insert</code></td></tr>
-<tr><td><code>merge_k_sorted_lists_owned</code></td><td>interval rounds</td><td>moves</td><td>owned values only: push front, then reverse</td></tr>
-<tr><td><code>merge_k_sorted_lists_enum</code></td><td>interval rounds</td><td>allocates per node</td><td>custom <code>take</code></td></tr>
-<tr><td><code>merge_k_sorted_list_easy</code></td><td>interval rounds</td><td>allocates per node</td><td><code>mem::take</code>, recursive merge</td></tr>
-<tr><td><code>merge_k_sorted_lists_pairs</code></td><td>queue of lists</td><td>moves</td><td>owned lists</td></tr>
-<tr><td><code>merge_k_sorted_lists_heap</code></td><td>heap of heads</td><td>moves</td><td>list numbers in the heap</td></tr>
-<tr><td><code>merrgemerge_k_sorted_recursion</code></td><td>recursive halves</td><td>moves</td><td><code>split_off</code>, then <code>split_at_mut</code></td></tr>
-<tr><td><code>mergek_sortes_list_chrush_lee</code></td><td>recursive halves</td><td>moves</td><td><code>split_at_mut</code></td></tr>
+<tr><td><code>merge_k_sorted_lists_divide</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td><code>split_at_mut</code>, <code>&amp;mut</code> tail</td></tr>
+<tr><td><code>merge_k_sorted_lists_swap</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>right list taken first, <code>&amp;mut</code> tail</td></tr>
+<tr><td><code>merge_k_sorted_lists_simple</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>none</td><td>owned lists, <code>&amp;mut</code> tail slot</td></tr>
+<tr><td><code>merge_k_sorted_list_zero_copy</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>owned lists, <code>Option::insert</code></td></tr>
+<tr><td><code>merge_k_sorted_lists_owned</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>none</td><td>owned values only: a pile, then a reversal</td></tr>
+<tr><td><code>merge_k_sorted_lists_enum</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one box per node per round</td><td>custom <code>take</code>, <code>&amp;mut</code> tail</td></tr>
+<tr><td><code>merge_k_sorted_list_easy</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(N)</td><td>one box per node per round</td><td>recursive merge on owned values</td></tr>
+<tr><td><code>merge_k_sorted_lists_pairs</code></td><td>queue of lists</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>owned lists, <code>Option::insert</code></td></tr>
+<tr><td><code>merge_k_sorted_lists_heap</code></td><td>heap of heads</td><td>O(N log k)</td><td>O(k)</td><td>O(1)</td><td>none</td><td>list numbers in the heap</td></tr>
+<tr><td><code>merrgemerge_k_sorted_recursion</code></td><td>recursive halves</td><td>O(N log k)</td><td>O(k)</td><td>O(N)</td><td>a <code>Vec</code> per split</td><td><code>split_off</code>, recursive merge</td></tr>
+<tr><td><code>mergek_sortes_list_chrush_lee</code></td><td>recursive halves</td><td>O(N log k)</td><td>O(1)</td><td>O(N)</td><td>none</td><td><code>split_at_mut</code>, recursive merge</td></tr>
 </tbody>
 </table>
 </div>
-<p>All except the first strategy of figure 10.2 run in O(N log k). The differences are in memory. Some versions move nodes and some reallocate them. The recursive merges use
-stack in proportion to the output. And the extra memory ranges from O(1) for the interval loop to O(k) for
-the queue and the heap.</p>
+<p>Read the columns this way:</p>
+<ul>
+<li><strong>Time.</strong> Every version merges in rounds or halves, so each node moves about log2 k times: O(N log k). The
+“one at a time” strategy of figure 10.2 would be O(kN). No version here uses it.</li>
+<li><strong>Extra memory.</strong> The heap holds one entry per list: O(k). <code>split_off</code> makes a new <code>Vec</code> for each right half,
+so the recursion holds O(k) of them. The queue reuses the input <code>Vec</code>’s buffer: <code>VecDeque::from</code> a <code>Vec</code> does not
+reallocate.</li>
+<li><strong>Stack.</strong> A recursive merge makes one call per node of its output. The last merge outputs all N nodes, so the
+stack reaches O(N) frames. Section 9.6 showed where that ends: a list of a few hundred thousand nodes overflows
+the main thread’s stack.</li>
+<li><strong>Allocations.</strong> A dummy node costs one allocation per merge, k - 1 in total. The enum versions free a box and
+allocate a new one for every node they move, about N log k in all. The tail-slot and owned versions allocate
+nothing.</li>
+</ul>
 <h2 id="1010-the-complete-files"><a class="header" href="#1010-the-complete-files">10.10 The complete files</a></h2>
 <p>Each file below is shown whole, in the order the chapter used it.</p>
 <p class="listing"><b>Listing 10.19</b> First version: <code>split_at_mut</code> and a dummy head. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
@@ -9075,13 +9084,13 @@ fn main() {
 }</code></pre>
 <p class="listing"><b>Listing 10.23</b> Owned values only: push to the front, then reverse. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
-<pre><code class="language-rust">//! Merge k sorted lists with owned values only.
+<pre><code class="language-rust">//! Merge k sorted lists by moving owned nodes.
 //!
-//! Every step moves a whole `Box&lt;Node&gt;` from one owner to another, so no node is
-//! copied or allocated. There is no `&amp;mut` cursor into a list and no `as_ref`:
-//! the merge pushes each smaller front node onto the front of the result, which
-//! leaves the result reversed, and one pass of `reverse` puts it in order.
-//! The k lists are merged in place, in rounds that double the gap.
+//! `merge_two` keeps one rule: `a` is the list whose front node comes next. It
+//! moves that node onto a pile, swaps the two lists when `b` is now ahead, and
+//! reverses the pile at the end. No node is copied or allocated, and nothing
+//! holds a `&amp;mut` into a list. `merge_k` merges the lists in place, in rounds
+//! that double the gap between partners.
 
 type Link = Option&lt;Box&lt;Node&gt;&gt;;
 
@@ -9090,54 +9099,48 @@ struct Node {
     next: Link,
 }
 
-/// Merge two sorted lists into one, moving their nodes.
-fn merge_two(mut left: Link, mut right: Link) -&gt; Link {
-    // The merged nodes so far, largest first. Each new node goes on the front.
-    let mut reversed: Link = None;
+/// Whether list `x` should give the next node before list `y`.
+fn goes_first(x: &amp;Link, y: &amp;Link) -&gt; bool {
+    match (x, y) {
+        (Some(x), Some(y)) =&gt; x.val &lt; y.val,
+        (Some(_), None) =&gt; true,
+        _ =&gt; false,
+    }
+}
+
+/// Merge two sorted lists. O(n) time, O(1) extra memory.
+fn merge_two(mut a: Link, mut b: Link) -&gt; Link {
+    let mut pile = None; // merged nodes so far, largest on top
     loop {
-        // Take the smaller front node, and hand back both remaining lists.
-        let mut node;
-        (node, left, right) = match (left, right) {
-            (Some(mut l), Some(r)) if l.val &lt;= r.val =&gt; {
-                let rest = l.next.take();
-                (l, rest, Some(r))
-            }
-            (l, Some(mut r)) =&gt; {
-                let rest = r.next.take();
-                (r, l, rest)
-            }
-            (Some(mut l), None) =&gt; {
-                let rest = l.next.take();
-                (l, rest, None)
-            }
-            (None, None) =&gt; break,
-        };
+        if goes_first(&amp;b, &amp;a) {
+            (a, b) = (b, a);
+        }
+        let Some(mut node) = a else { break };
+        a = node.next; // a keeps the rest of its list
+        node.next = pile; // the node goes on top of the pile
+        pile = Some(node);
+    }
+    reverse(pile)
+}
+
+/// Reverse a list, as in chapter 9.
+fn reverse(mut list: Link) -&gt; Link {
+    let mut reversed = None;
+    while let Some(mut node) = list {
+        list = node.next;
         node.next = reversed;
         reversed = Some(node);
     }
-    reverse(reversed)
+    reversed
 }
 
-/// Reverse a list in place, as in chapter 9.
-fn reverse(mut current: Link) -&gt; Link {
-    let mut previous = None;
-    while let Some(mut node) = current {
-        current = node.next.take();
-        node.next = previous;
-        previous = Some(node);
-    }
-    previous
-}
-
-/// Merge k sorted lists. Round 1 merges neighbours 1 apart, round 2 lists 2
-/// apart, and so on, so every node moves about log2(k) times.
+/// Merge k sorted lists in place. Round 1 merges lists 1 apart, round 2 lists
+/// 2 apart, and so on: O(N log k) time, O(1) extra memory.
 fn merge_k(mut lists: Vec&lt;Link&gt;) -&gt; Link {
     let mut gap = 1;
     while gap &lt; lists.len() {
-        for i in (0..lists.len() - gap).step_by(gap * 2) {
-            let left = lists[i].take();
-            let right = lists[i + gap].take();
-            lists[i] = merge_two(left, right);
+        for i in (0..lists.len() - gap).step_by(2 * gap) {
+            lists[i] = merge_two(lists[i].take(), lists[i + gap].take());
         }
         gap *= 2;
     }
