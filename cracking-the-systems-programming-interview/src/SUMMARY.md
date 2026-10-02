@@ -68,3 +68,4 @@
 
 [Appendix A. The Rust cheat sheet](appendix-a-cheatsheet.md)
 [Appendix B. The benchmark report](appendix-d-benchmark-report.md)
+[Appendix C. Merging k sorted lists, the long version](appendix-c-merge-k-long.md)

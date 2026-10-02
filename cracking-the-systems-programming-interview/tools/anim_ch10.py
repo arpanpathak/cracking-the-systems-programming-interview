@@ -21,6 +21,10 @@ MERGE_K = Panel("src/bin/merge_k_sorted_list_zero_copy.rs",
                 ["while gap < list_count {", "let left = lists[index].take();",
                  "let right = lists[index + gap].take();", "lists[index] = merge_two(left, right);",
                  "index += gap * 2;", "gap *= 2;"])
+MERGE_GAP = Panel("src/bin/merge_k_sorted_lists_owned.rs",
+                  [("while gap < size {", "}")],
+                  ["while gap < size {", "lists[i] = merge_two(", "lists[i] = merge_two(",
+                   "lists[i] = merge_two(", "i += gap * 2;", "gap *= 2;"])
 
 # ------------------------------------------------- 10.1: merging two lists
 
@@ -152,7 +156,7 @@ def merge_two():
 BAR_X0, BAR_GAP, BAR_Y, UNIT = 70, 90, 250, 7
 
 
-def merge_rounds():
+def merge_rounds(panel=MERGE_K):
     tl = Timeline(caption="", kind="step", code=-1.0, mode="pairwise",
                   sizes="3,3,3,3,3,3,3,3", moves=0.0, arc_u=0.0, arc_a=0.0, arc_from=1,
                   arc_to=0, gap=0, ring=-1)
@@ -230,12 +234,12 @@ def merge_rounds():
             x, y = bezier(a, ((a[0] + b[0]) / 2, 74), b, s.arc_u)
             pill(p, x, y, "merge", BRASS, BRASS_LT, 10, opacity=s.arc_a, shadow=None)
 
-        MERGE_K.draw(p, 26, 290, W - 52, "merge_k: pairwise rounds", s, t, size=10.6,
+        panel.draw(p, 26, 290, W - 52, "merge_k: pairwise rounds", s, t, size=10.6,
                      lead=14.5, tint=TEAL, opacity=1.0 if s.mode == "pairwise" else 0.4)
         caption(p, tl, t, CAP)
         progress(p, tl, t, total, RAIL)
 
-    CAP, RAIL, height = layout(290, len(MERGE_K), 14.5)
+    CAP, RAIL, height = layout(290, len(panel), 14.5)
     return tl, draw, height
 
 
@@ -249,7 +253,13 @@ def build_merge_rounds(only=None):
     return render("ch10-merge-rounds.gif", tl, draw, height, only=only)
 
 
+def build_merge_gap(only=None):
+    tl, draw, height = merge_rounds(MERGE_GAP)
+    return render("ch10-merge-gap.gif", tl, draw, height, only=only)
+
+
 BUILDERS = {
     "merge-two": build_merge_two,
     "merge-rounds": build_merge_rounds,
+    "merge-gap": build_merge_gap,
 }
