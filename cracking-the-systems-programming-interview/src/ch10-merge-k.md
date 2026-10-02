@@ -14,8 +14,8 @@ This chapter covers
 
 </div>
 
-Chapter 9 built singly linked lists and moved their nodes between owners with `take`. This chapter applies those skills to one problem. You have k linked lists, each already sorted, and you
-want one sorted list that contains all their nodes.
+Chapter 9 built singly linked lists and moved their nodes between owners with `take`. Here you have k linked
+lists, each already sorted, and you want one sorted list that contains all their nodes.
 
 Section 10.2 compares three orders of merging. Sections 10.3 to 10.8 implement them in eleven programs, and
 section 10.9 lists the time and memory each program needs.
@@ -25,7 +25,7 @@ them.
 
 ## 10.1 Merging two sorted lists
 
-Everything in this chapter is built on merging two sorted lists, so start there. Compare the front nodes of the
+Every program in this chapter merges two sorted lists at a time. Compare the front nodes of the
 two lists. Move the smaller one to the end of the output. Repeat until one list is empty, then attach the
 other list whole. Figure 10.1 works through an example.
 
