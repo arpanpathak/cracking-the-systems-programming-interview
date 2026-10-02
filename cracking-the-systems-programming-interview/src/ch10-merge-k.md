@@ -10,7 +10,7 @@ This chapter covers
 - Three strategies for merging many lists, and why two of them are much faster than the third
 - Borrowing two elements of one `Vec` at the same time, and ways to avoid needing to
 - The dummy head, the tail pointer, and `Option::insert`
-- Ten implementations of the same task, compared
+- Eleven implementations of the same task, compared
 
 </div>
 
@@ -19,7 +19,7 @@ want one sorted list that contains all their nodes.
 
 The problem is small, but it has several good solutions, and they differ in interesting ways. Some are faster
 than others. Some move nodes; others allocate new ones. Some fight the borrow checker, and some avoid the
-fight. This chapter walks through ten solutions, grouped by the strategy they use.
+fight. This chapter walks through eleven solutions, grouped by the strategy they use.
 
 Two letters appear throughout. **k** is the number of lists. **N** is the total number of nodes across all of
 them.
@@ -38,7 +38,7 @@ other list whole. Figure 10.1 works through an example.
 With linked lists, "move a node to the output" does not copy the value. It detaches the node from the front of
 its list and links it to the end of the output. No memory is allocated.
 
-Animation 10.1 runs that merge with the code of listing 10.8, one node at a time. The output starts at a
+Animation 10.1 runs that merge with the code of listing 10.5, one node at a time. The output starts at a
 **dummy** node, a placeholder whose `next` will hold the real first node. `tail` always points at the last node
 of the output.
 
@@ -77,7 +77,7 @@ Animation 10.2 counts node moves for eight lists of three nodes: pairwise rounds
 For 100 lists of 10,000 nodes each, N is a million. O(kN) is about 100 million steps. O(N log k) is about 7
 million.
 
-The pairwise strategy has a compact in-place form that most of the ten versions use. It keeps the lists in a
+The pairwise strategy has a compact in-place form that most of the eleven versions use. It keeps the lists in a
 `Vec` and merges positions that are a growing **interval** apart (figure 10.3).
 
 <figure>
@@ -147,11 +147,7 @@ the output is empty, so `tail` points at `dummy`. Each pass of the loop:
 When one list runs out, `left.take().or(right.take())` attaches whichever one is left. The merged list starts at
 `dummy.next`.
 
-<p class="listing"><b>Listing 10.3</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs}}
-```
+The complete program is listing 10.19 at the end of the chapter.
 
 The tests check three lists, an empty input with empty lists inside it, and an odd number of lists.
 
@@ -171,7 +167,7 @@ vector, the merge needs only one mutable borrow of it.
 
 It uses the same `MergeKSorted`, `ListNode`, and `OptionalLink` as listing 10.1.
 
-<p class="listing"><b>Listing 10.4</b> The loop and the merge (lines 16 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
+<p class="listing"><b>Listing 10.3</b> The loop and the merge (lines 16 to 56). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs:16:56}}
@@ -191,18 +187,14 @@ The merge changes too. Instead of choosing which list to take from, it makes sur
 smaller front. When the right front is smaller, `std::mem::swap(left, right)` exchanges the two lists. Then the
 loop body always takes from `left`.
 
-<p class="listing"><b>Listing 10.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs}}
-```
+The complete program is listing 10.20 at the end of the chapter.
 
 ### 10.4.2 Merge owned lists, with no dummy node
 
 This version moves both lists out of the vector and passes them by value, so nothing is borrowed during the
 merge. It also drops the dummy node and tracks the empty slot where the next node belongs.
 
-<p class="listing"><b>Listing 10.6</b> The node type, the loop, and the merge (lines 1 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
+<p class="listing"><b>Listing 10.4</b> The node type, the loop, and the merge (lines 1 to 43). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs:1:43}}
@@ -228,11 +220,7 @@ After the swap has put the smaller front in `left`, the whole left list is place
 moves to the `next` slot of the list's first node. Finally `tail.take()` cuts everything after that first node
 back off into `left`. One node has moved to the output.
 
-<p class="listing"><b>Listing 10.7</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs}}
-```
+The complete program is listing 10.21 at the end of the chapter.
 
 `to_vec` takes `&Link` and follows the nodes with `list = &node.next`, so the tests can read a list without
 consuming it.
@@ -242,14 +230,14 @@ consuming it.
 This version keeps the owned merge and brings back the dummy head. One standard-library method attaches a node and
 moves the tail onto it in a single step.
 
-<p class="listing"><b>Listing 10.8</b> The node type, the merge, and the loop (lines 1 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
+<p class="listing"><b>Listing 10.5</b> The node type, the merge, and the loop (lines 1 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs:1:45}}
 ```
 
 Here the node is `Node`, with an `i32` value named `val`, and the link alias is `NodeLink`. This version keeps
-the owned `merge_two` from listing 10.6 and brings back the dummy head. It shortens the tail
+the owned `merge_two` from listing 10.4 and brings back the dummy head. It shortens the tail
 bookkeeping with one method:
 
 ```rust
@@ -263,11 +251,7 @@ Every node in the output is a box that was in the input, moved by pointer. The o
 node, once per `merge_two` call. The single `unwrap` has a comment saying why it cannot fail. The `while let` has already checked that both
 lists have a front node.
 
-<p class="listing"><b>Listing 10.9</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs}}
-```
+The complete program is listing 10.22 at the end of the chapter.
 
 `main` tries four cases: four lists including an empty one, duplicates across lists, no lists at all, and five
 lists.
@@ -282,6 +266,86 @@ $ cargo run --bin merge_k_sorted_list_zero_copy
 
 The empty line is the output for no lists.
 
+### 10.4.4 Owned values only: build the result backward
+
+Every version so far keeps a pointer to the end of the output, so it can attach the next node there. In Rust
+that pointer is a `&mut` into the list, and most of the borrowing work in this chapter comes from it.
+
+You can merge with no pointer into a list at all. Picture two stacks of numbered cards, smallest on top. You take
+the smaller top card and put it on your own pile. Each card goes on top of the pile, so when both stacks are empty,
+your pile holds every card with the largest on top. One flip puts the pile in order.
+
+In list terms, putting a card on the pile is a push at the front, the cheapest list operation. The flip is the
+reversal from section 9.3. Both work on owned values only: no `&mut` cursor, no `as_ref`, no dummy node.
+
+<p class="listing"><b>Listing 10.8</b> The node type and <code>merge_two</code> (lines 9 to 42). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs:9:42}}
+```
+
+`match (left, right)` takes both lists by value. Each arm hands back three things: the node it took, and the two
+lists that remain. `(node, left, right) = match ...` assigns all three at once. `node` was declared on the line before,
+and `left` and `right` are the function's own parameters.
+
+The order of the arms is the merge rule:
+
+1. Both lists have a front node, and the left one is not larger. The left node is taken. `<=` takes from the left
+   on a tie, so equal values keep their input order. A merge with that property is called **stable**.
+2. The right list has a node, and the left list is empty or its front is larger. The right node is taken.
+3. Only the left list has nodes left. Its node is taken.
+4. Both lists are `None`. The loop ends.
+
+`l.next.take()` unhooks the node from the rest of its list, and the rest becomes the new list. After the
+`match`, `node.next = reversed; reversed = Some(node);` puts the node on the front of the pile.
+
+<p class="listing"><b>Listing 10.8</b> <code>reverse</code>, the reversal of listing 9.2 (lines 44 to 53). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs:44:53}}
+```
+
+Trace the merge of 1 → 4 with 2 → 3 → 5:
+
+| Step | Arm | Node taken | `reversed` |
+|---|---|---|---|
+| 1 | 1: 1 <= 2 | 1 | 1 |
+| 2 | 2: 4 > 2 | 2 | 2 → 1 |
+| 3 | 2: 4 > 3 | 3 | 3 → 2 → 1 |
+| 4 | 1: 4 <= 5 | 4 | 4 → 3 → 2 → 1 |
+| 5 | 2: left is empty | 5 | 5 → 4 → 3 → 2 → 1 |
+| 6 | 4: both empty | | `reverse` gives 1 → 2 → 3 → 4 → 5 |
+
+Each node moves twice: once onto the pile, and once in the reversal. The merge is still O(n) for n nodes, it uses
+O(1) extra memory, and it allocates nothing.
+
+<p class="listing"><b>Listing 10.8</b> <code>merge_k</code> (lines 55 to 68). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs:55:68}}
+```
+
+`merge_k` is the interval loop of figure 10.3, on owned lists. `lists[i].take()` moves a list out of its slot in
+the `Vec` and leaves `None` there. After the last round, the merged list is in `lists[0]`.
+`lists.into_iter().next()` returns `None` for an empty `Vec`, and `flatten` turns the `Option<Link>` into one
+`Link`.
+
+Animation 10.3 merges the two lists of the trace, then reverses the pile. The last part leaves out the reversal.
+
+<figure class="anim">
+<video class="motion" src="figures/ch10-merge-owned.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Two input rows, left holding 1 and 4 and right holding 2, 3, and 5, a row named reversed, and a row for the result. Each step lifts the smaller front node out of its list and puts it on the front of reversed: 1, then 2, 3, 4, and 5, so reversed reads 5, 4, 3, 2, 1. Then reverse moves the nodes one by one to the front of the result, which reads 1, 2, 3, 4, 5. Last, with the call to reverse struck out, the caller gets 5, 4, 3, 2, 1 and the next round of merge_k produces a list out of order." data-chapters="[[0.0, &quot;merge&quot;], [29.13, &quot;reverse&quot;], [48.13, &quot;no reverse&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Two input rows, left holding 1 and 4 and right holding 2, 3, and 5, a row named reversed, and a row for the result. Each step lifts the smaller front node out of its list and puts it on the front of reversed: 1, then 2, 3, 4, and 5, so reversed reads 5, 4, 3, 2, 1. Then reverse moves the nodes one by one to the front of the result, which reads 1, 2, 3, 4, 5. Last, with the call to reverse struck out, the caller gets 5, 4, 3, 2, 1 and the next round of merge_k produces a list out of order."></video>
+<figcaption><b>Animation 10.3</b> Each smaller front node goes onto the front of a pile, then one reversal puts the pile in order. Every node is moved, never copied. Without the reversal, the list comes out largest first.</figcaption>
+</figure>
+
+```text
+$ cargo run --bin merge_k_sorted_lists_owned
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+[1, 1, 1, 3, 5]
+[]
+```
+
+The complete program is listing 10.23 at the end of the chapter.
+
 ## 10.5 The same merge on an enum node
 
 Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape.
@@ -291,7 +355,7 @@ Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape
 The node can also be an enum, as in chapter 9. A list is either `Empty`, or a `Node` with a value and the rest of
 the list. This version gives that enum a `take` method so the merge reads like the `Option` versions.
 
-<p class="listing"><b>Listing 10.10</b> The node type (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs">src/bin/merge_k_sorted_lists_enum.rs</a></p>
+<p class="listing"><b>Listing 10.9</b> The node type (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs">src/bin/merge_k_sorted_lists_enum.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs:1:14}}
@@ -300,7 +364,7 @@ the list. This version gives that enum a `take` method so the merge reads like t
 `use ListNode::{Empty, Node};` lets the code write `Empty` instead of `ListNode::Empty`. The enum gets its own
 `take`, built on `mem::replace`, so it can be used like `Option::take`.
 
-<p class="listing"><b>Listing 10.11</b> The merge (lines 38 to 76).</p>
+<p class="listing"><b>Listing 10.10</b> The merge (lines 38 to 76).</p>
 
 ```rust
 impl MergeKSorted {
@@ -322,18 +386,14 @@ With `Option<Box<Node>>`, a node's box moves from the input to the output. Here,
 rest of the input out of its box, and that box is freed. The output node is a new `Node` with a new `Box`
 holding a new `Empty`. So this version allocates once for every node it outputs.
 
-<p class="listing"><b>Listing 10.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs">src/bin/merge_k_sorted_lists_enum.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs}}
-```
+The complete program is listing 10.24 at the end of the chapter.
 
 ### 10.5.2 An enum with standard traits and a recursive merge
 
 This version uses the same enum shape but derives `Default`, so the standard `std::mem::take` works on it. Its
 two-list merge is recursive.
 
-<p class="listing"><b>Listing 10.13</b> The type and its conversions (lines 1 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
+<p class="listing"><b>Listing 10.11</b> The type and its conversions (lines 1 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:1:24}}
@@ -346,24 +406,20 @@ This version uses standard traits in place of hand-written helpers:
 - `impl From<Vec<i32>> for NodeLink` builds a list from a vector. It walks the vector backward with `rev()` and
   uses `fold` to wrap each value around the list built so far. `main` calls it as `vec![1, 4, 5].into()`.
 
-<p class="listing"><b>Listing 10.14</b> The interval loop and a recursive merge (lines 26 to 59).</p>
+<p class="listing"><b>Listing 10.12</b> The interval loop and a recursive merge (lines 26 to 59).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs:26:59}}
 ```
 
 `std::mem::take(&mut lists[i + interval])` moves the right list out and leaves the default, an empty list, in
-its place. It takes the right list before the left, which avoids the double borrow as listing 10.4 did.
+its place. It takes the right list before the left, which avoids the double borrow as listing 10.3 did.
 `lists.swap_remove(0)` removes position 0 by moving the last element into it, which takes O(1).
 
 `merge` is recursive, and takes both lists as `ListNode` values. The caller moves them out of their boxes with `*left` and `*right`. `merge` keeps the smaller front node, merges the rest into `rest`, and boxes only the result. The list it did not take from passes to the recursive call unboxed. The code reads almost like a definition of merging. It has two costs. It allocates a new `Box` for every output node. And it recurses once per output node, so
 a long result uses a deep stack, as chapter 9's recursive drop did.
 
-<p class="listing"><b>Listing 10.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs}}
-```
+The complete program is listing 10.25 at the end of the chapter.
 
 The program prints the result with `{:#?}`, which shows the nesting of the enum directly:
 
@@ -390,10 +446,10 @@ This file declares its own copy of the node type, with `Link` as the alias for a
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs:1:8}}
 ```
 
-<p class="listing"><b>Listing 10.16</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs">src/bin/merge_k_sorted_lists_pairs.rs</a></p>
+<p class="listing"><b>Listing 10.13</b> <code>merge_k_lists</code> (lines 10 to 18). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs">src/bin/merge_k_sorted_lists_pairs.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs:10:18}}
 ```
 
 
@@ -415,10 +471,10 @@ This is the third strategy from figure 10.2. The heap does not hold nodes. It ho
 number)`, wrapped in `Reverse` to make it a min-heap, as in chapter 5. Storing the list number instead of the
 node keeps the nodes in their lists, and avoids needing an ordering on nodes.
 
-<p class="listing"><b>Listing 10.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs">src/bin/merge_k_sorted_lists_heap.rs</a></p>
+<p class="listing"><b>Listing 10.14</b> <code>merge_k_lists</code> (lines 10 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs">src/bin/merge_k_sorted_lists_heap.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs}}
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs:10:33}}
 ```
 
 
@@ -439,7 +495,7 @@ sorted files read line by line.
 The last two versions do pairwise merging from the top down. They split the lists into two halves, merge each
 half recursively, and merge the two results.
 
-<p class="listing"><b>Listing 10.18</b> The node type and a recursive two-list merge (lines 1 to 21). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
+<p class="listing"><b>Listing 10.15</b> The node type and a recursive two-list merge (lines 1 to 21). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:1:21}}
@@ -450,7 +506,7 @@ The first arm, `(None, rest) | (rest, None) => rest`, handles an empty list on e
 the answer. In the second arm, `mem::swap` makes `a` the list with the smaller front. Then `a`'s node stays at
 the front, and its `next` becomes the merge of the rest of `a` with `b`. No node is allocated; the boxes move.
 
-<p class="listing"><b>Listing 10.19</b> Two ways to split the lists (lines 24 to 47).</p>
+<p class="listing"><b>Listing 10.16</b> Two ways to split the lists (lines 24 to 47).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:24:46}}
@@ -462,20 +518,16 @@ allocates a new vector at every level of the recursion.
 `merge_k_slice` works on a slice, `&mut [List]`, and splits it with `split_at_mut`, the method from section
 10.3. Splitting a slice only creates two views of the same memory, so this version allocates nothing to split.
 
-<p class="listing"><b>Listing 10.20</b> Building a list front to back (lines 49 to 68).</p>
+<p class="listing"><b>Listing 10.17</b> Building a list front to back (lines 49 to 68).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs:48:59}}
 ```
 
-`from_vec` builds the list front to back, with a slot pointer like listing 10.6. `tail = &mut
+`from_vec` builds the list front to back, with a slot pointer like listing 10.4. `tail = &mut
 tail.insert(node).next` fills the empty slot and moves `tail` to the new node's `next` slot.
 
-<p class="listing"><b>Listing 10.21</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
-
-```rust
-{{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs}}
-```
+The complete program is listing 10.28 at the end of the chapter.
 
 `main` merges the sample lists with `merge_k`, tries three edge cases, then merges the same lists again
 with `merge_k_slice`. Both versions give the same result.
@@ -497,10 +549,10 @@ Its node holds an `i32` named `val`, and `List` is the alias for a whole list:
 {{#include ../../rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs:1:9}}
 ```
 
-<p class="listing"><b>Listing 10.22</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs">src/bin/mergek_sortes_list_chrush_lee.rs</a></p>
+<p class="listing"><b>Listing 10.18</b> The merge and the recursion on a slice (lines 11 to 34). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs">src/bin/mergek_sortes_list_chrush_lee.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs}}
+{{#include ../../rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs:11:34}}
 ```
 
 `create_list` builds front to back with the slot pointer, advancing it with `if let Some(node) = tail`.
@@ -520,7 +572,7 @@ Merged list:
 Both recursive merges recurse once for each node of their output. For short lists that is fine. For lists with
 hundreds of thousands of nodes, the iterative merges of sections 10.3 and 10.4 are safer.
 
-## 10.9 The ten versions side by side
+## 10.9 The eleven versions side by side
 
 | Program | Strategy | Moves or allocates nodes | Borrowing technique |
 |---|---|---|---|
@@ -528,6 +580,7 @@ hundreds of thousands of nodes, the iterative merges of sections 10.3 and 10.4 a
 | `merge_k_sorted_lists_swap` | interval rounds | moves | take the right list first |
 | `merge_k_sorted_lists_simple` | interval rounds | moves | owned lists, tail slot |
 | `merge_k_sorted_list_zero_copy` | interval rounds | moves | owned lists, `insert` |
+| `merge_k_sorted_lists_owned` | interval rounds | moves | owned values only: push front, then reverse |
 | `merge_k_sorted_lists_enum` | interval rounds | allocates per node | custom `take` |
 | `merge_k_sorted_list_easy` | interval rounds | allocates per node | `mem::take`, recursive merge |
 | `merge_k_sorted_lists_pairs` | queue of lists | moves | owned lists |
@@ -538,6 +591,76 @@ hundreds of thousands of nodes, the iterative merges of sections 10.3 and 10.4 a
 All except the first strategy of figure 10.2 run in O(N log k). The differences are in memory. Some versions move nodes and some reallocate them. The recursive merges use
 stack in proportion to the output. And the extra memory ranges from O(1) for the interval loop to O(k) for
 the queue and the heap.
+
+## 10.10 The complete files
+
+Each file below is shown whole, in the order the chapter used it.
+
+<p class="listing"><b>Listing 10.19</b> First version: <code>split_at_mut</code> and a dummy head. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs">src/bin/merge_k_sorted_lists_divide.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs}}
+```
+
+<p class="listing"><b>Listing 10.20</b> Take the right list out first. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs">src/bin/merge_k_sorted_lists_swap.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs}}
+```
+
+<p class="listing"><b>Listing 10.21</b> Owned lists, no dummy node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs">src/bin/merge_k_sorted_lists_simple.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_simple.rs}}
+```
+
+<p class="listing"><b>Listing 10.22</b> The shortest form, with <code>Option::insert</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs">src/bin/merge_k_sorted_list_zero_copy.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_zero_copy.rs}}
+```
+
+<p class="listing"><b>Listing 10.23</b> Owned values only: push to the front, then reverse. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs}}
+```
+
+<p class="listing"><b>Listing 10.24</b> An enum node with its own <code>take</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs">src/bin/merge_k_sorted_lists_enum.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_enum.rs}}
+```
+
+<p class="listing"><b>Listing 10.25</b> An enum with standard traits and a recursive merge. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs">src/bin/merge_k_sorted_list_easy.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_list_easy.rs}}
+```
+
+<p class="listing"><b>Listing 10.26</b> A queue of lists. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs">src/bin/merge_k_sorted_lists_pairs.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_pairs.rs}}
+```
+
+<p class="listing"><b>Listing 10.27</b> A heap of list heads. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs">src/bin/merge_k_sorted_lists_heap.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs}}
+```
+
+<p class="listing"><b>Listing 10.28</b> Recursion on halves, two ways to split. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs">src/bin/merrgemerge_k_sorted_recursion.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/merrgemerge_k_sorted_recursion.rs}}
+```
+
+<p class="listing"><b>Listing 10.29</b> Recursion on a slice. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs">src/bin/mergek_sortes_list_chrush_lee.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/mergek_sortes_list_chrush_lee.rs}}
+```
 
 <div class="summary" markdown="1">
 
@@ -561,8 +684,8 @@ each node has one child per letter.
 
 ## Exercises
 
-1. Write the "one at a time" merge and time it against listing 10.9 on 200 lists of 5,000 nodes each.
-2. Make `merge_two` from listing 10.8 generic over any `T: Ord`.
+1. Write the "one at a time" merge and time it against listing 10.22 on 200 lists of 5,000 nodes each.
+2. Make `merge_two` from listing 10.5 generic over any `T: Ord`.
 3. Write a k-way merge of sorted text files with the heap strategy, keeping only one line per file in memory.
 4. Count allocations in listings 10.9 and 10.12 with a custom global allocator that increments a counter, and
    confirm the difference described in section 10.5.1.

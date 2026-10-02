@@ -147,7 +147,7 @@ minimal correct version in 30 to 45 minutes, then explain its failure modes and 
 5. Say the failure modes out loud, as if to a reviewer.
 
 The chapters' "Questions that come up" sections are the follow-ups to rehearse. The history
-this book has followed, ten merges, nine pools, six buffers, is what that loop looks like when you keep
+this book has followed, eleven merges, nine pools, six buffers, is what that loop looks like when you keep
 the drafts.
 
 ## 30.6 Questions that come up

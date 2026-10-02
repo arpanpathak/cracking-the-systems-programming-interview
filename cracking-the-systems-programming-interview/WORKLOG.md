@@ -165,7 +165,7 @@ A chapter meets the bar when it has:
 The numbers below were measured on 2026-10-01: prose words, animations, and whole-file includes
 mid-chapter. Re-measure with the script in the log before starting.
 
-Priority order: ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
+Priority order: ch14, ch04, ch02, ch11, ch12, then the rest.
 
 | Ch | Animations | Gap against the bar | Suggested work |
 |---|---|---|---|
@@ -178,7 +178,7 @@ Priority order: ch10, ch14, ch04, ch02, ch11, ch12, then the rest.
 | 07 types | parse-trace | (c) adt_idioms at 236 lines and state_machine shown whole | Excerpt them. A state-machine animation in which an invalid transition does not compile (the typestate fail case) |
 | 08 pointers | rc-refcell, weak-parent | (c) smart_pointers at 165 lines | Excerpt it. A `Box` on the heap against the stack size, as a small figure |
 | 09 linked lists | reverse, list-replace, list-drop, list-doubly | Done 2026-10-01: treasure-hunt intuition, push/pop with `replace` (fail: E0507), drop as a growing stack (fail: overflow at 262,144 frames) against the loop, strong counts in the doubly list (fail: strong prev leaks); excerpts first, complete files in 9.9 | Reference for list-shaped chapters |
-| **10 merge-k** | merge-two, merge-rounds | (c) 10 whole files, about 5 code blocks in a row; the heap version has no motion | A heap-of-heads animation (pop the smallest, push its next); excerpts; collapse near-duplicate variants into a comparison table |
+| 10 merge-k | merge-two, merge-rounds, merge-owned | Done 2026-10-01: new owned-values version (push to the front, then reverse; no &mut cursor, no as_ref), section 10.4.4 with a trace and an animation (fail: no reverse); excerpts in place for the queue, heap, and slice versions; complete files in 10.10 | A heap-of-heads animation is still open |
 | 11 trees | bst, trie | (c) binary_tree at 147 lines and test_tree; no traversal motion | An in-order, pre-order, and post-order traversal robot with a visit stack; a delete-with-two-children case |
 | 12 graphs | 6 | (c) about 11 whole files mid-chapter | Excerpts only |
 | 13 LRU | shelf, stamps, touch, put | Done 2026-10-01. The first arena animation changed numbers inside fixed boxes and was rejected as static. touch and put now lift the node out, re-route the arrows, and carry it to the front over a fixed Vec row | Reference: operations must move on screen |

@@ -727,7 +727,7 @@ Each file below is shown whole, in the order the chapter used it.
 
 </div>
 
-Chapter 10 uses the singly linked list from section 9.3 to merge many sorted lists into one, and compares ten
+Chapter 10 uses the singly linked list from section 9.3 to merge many sorted lists into one, and compares eleven
 ways of doing it.
 
 ## Exercises
