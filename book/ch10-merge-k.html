@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8aa1379a.js";
+            window.path_to_searchindex_js = "searchindex-0b0b536a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -191,14 +191,14 @@
 </ul>
 </div>
 
-<p>Chapter 9 built singly linked lists and moved their nodes between owners with <code>take</code>. This chapter applies those skills to one problem. You have k linked lists, each already sorted, and you
-want one sorted list that contains all their nodes.</p>
+<p>Chapter 9 built singly linked lists and moved their nodes between owners with <code>take</code>. Here you have k linked
+lists, each already sorted, and you want one sorted list that contains all their nodes.</p>
 <p>Section 10.2 compares three orders of merging. Sections 10.3 to 10.8 implement them in eleven programs, and
 section 10.9 lists the time and memory each program needs.</p>
 <p>Two letters appear throughout. <strong>k</strong> is the number of lists. <strong>N</strong> is the total number of nodes across all of
 them.</p>
 <h2 id="101-merging-two-sorted-lists"><a class="header" href="#101-merging-two-sorted-lists">10.1 Merging two sorted lists</a></h2>
-<p>Everything in this chapter is built on merging two sorted lists, so start there. Compare the front nodes of the
+<p>Every program in this chapter merges two sorted lists at a time. Compare the front nodes of the
 two lists. Move the smaller one to the end of the output. Repeat until one list is empty, then attach the
 other list whole. Figure 10.1 works through an example.</p>
 <figure>
