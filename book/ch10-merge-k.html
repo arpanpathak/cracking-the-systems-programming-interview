@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-0b0b536a.js";
+            window.path_to_searchindex_js = "searchindex-988f97c5.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-0ec47a42.js"></script>
@@ -537,10 +537,12 @@ lists.</p>
 1 2 3 4 5 8 9
 </code></pre>
 <p>The empty line is the output for no lists.</p>
-<h3 id="1044-both-lists-in-one-tuple"><a class="header" href="#1044-both-lists-in-one-tuple">10.4.4 Both lists in one tuple</a></h3>
-<p>Listings 10.4 and 10.5 reach the smaller front node through <code>&amp;mut</code> borrows of the two lists, and need an <code>unwrap</code>
-to take it. This version moves the two lists instead of borrowing them.</p>
-<p class="listing"><b>Listing 10.8</b> The node type and <code>merge_two</code> (lines 6 to 29). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+<h3 id="1044-swap-the-lists-by-value"><a class="header" href="#1044-swap-the-lists-by-value">10.4.4 Swap the lists by value</a></h3>
+<p>Listing 10.5 picks the smaller list with <code>&amp;mut left</code> or <code>&amp;mut right</code>, and keeps a third mutable reference, <code>tail</code>.
+This version swaps the two lists by value instead, so that <code>left</code> always holds the smaller front node. The only
+mutable reference left is <code>tail</code>, which makes the loop easier to read: there is one borrow to follow instead of
+three.</p>
+<p class="listing"><b>Listing 10.8</b> The node type and <code>merge_two</code> (lines 4 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
 <pre><code class="language-rust">type Link = Option&lt;Box&lt;Node&gt;&gt;;
 
@@ -550,51 +552,49 @@ struct Node {
 }
 
 /// Merge two sorted lists. O(n) time, O(1) extra memory.
-fn merge_two(left: Link, right: Link) -&gt; Link {
-    let mut head = None;
-    let mut tail = &amp;mut head;
-    let mut lists = (left, right);
-    while let (Some(left), Some(right)) = lists {
-        let (mut smaller, larger) = if left.val &lt;= right.val {
-            (left, right)
-        } else {
-            (right, left)
-        };
-        lists = (smaller.next.take(), Some(larger));
-        tail = &amp;mut tail.insert(smaller).next;
+fn merge_two(mut left: Link, mut right: Link) -&gt; Link {
+    let mut dummy = Box::new(Node { val: 0, next: None });
+    let mut tail = &amp;mut dummy;
+
+    while let (Some(l), Some(r)) = (&amp;left, &amp;right) {
+        if r.val &lt; l.val {
+            (left, right) = (right, left); // left now holds the smaller front
+        }
+        let mut node = left.unwrap(); // safe: checked by while let
+        left = node.next.take();
+        tail = tail.next.insert(node);
     }
-    *tail = lists.0.or(lists.1);
-    head
+
+    tail.next = left.or(right);
+    dummy.next
 }</code></pre>
-<p><code>lists</code> holds both lists. <code>while let (Some(left), Some(right)) = lists</code> moves them out of the tuple when both
-have a node. If either list is empty, the pattern does not match, nothing moves, and the loop ends.</p>
-<p>The <code>if</code> compares the two front values and names the lists <code>smaller</code> and <code>larger</code>. Both names own their lists, so
-the comparison borrows nothing.</p>
-<p><code>smaller.next.take()</code> cuts the front node off its list. The rest of that list and all of <code>larger</code> go back into
-<code>lists</code> for the next pass.</p>
-<p><code>tail.insert(smaller)</code> attaches the node at the end of the output. <code>insert</code> stores the node in the <code>Option</code> and
-returns a reference to it, and its <code>next</code> field is the new end. <code>insert</code> cannot fail, so the loop needs no
-<code>unwrap</code>.</p>
-<p>After the loop, at most one list has nodes left. <code>lists.0.or(lists.1)</code> returns that list, or <code>None</code>, and
-<code>*tail = ...</code> attaches it in one step.</p>
+<p><code>while let (Some(l), Some(r)) = (&amp;left, &amp;right)</code> runs while both lists have a node. <code>&amp;left</code> and <code>&amp;right</code> are
+shared references, used only to read the two front values.</p>
+<p>If the right front is smaller, <code>(left, right) = (right, left)</code> swaps the two lists. The assignment moves the two
+<code>Option</code> values; no node moves, and no reference is taken. After it, the smaller front node is always in <code>left</code>.</p>
+<p><code>left.unwrap()</code> moves that list out of <code>left</code>. It cannot fail, because the <code>while let</code> checked that
+<code>left</code> is <code>Some</code>. <code>node.next.take()</code> cuts the front node off, and the rest of the list goes back into <code>left</code>.</p>
+<p><code>tail.next.insert(node)</code> attaches the node at the end of the output, as in listing 10.5, and returns a reference to
+it. That node is the new <code>tail</code>.</p>
+<p>When the loop ends, one list is empty. <code>left.or(right)</code> returns the other one, and <code>tail.next</code> takes it whole.</p>
 <p>Trace the merge of 1 → 4 with 2 → 3 → 5:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Pass</th><th><code>lists</code> at the start</th><th>Node moved</th><th>Output</th></tr>
+<tr><th>Pass</th><th><code>left</code></th><th><code>right</code></th><th>Swap?</th><th>Node moved</th><th>Output after <code>dummy</code></th></tr>
 </thead>
 <tbody>
-<tr><td>1</td><td>(1 → 4, 2 → 3 → 5)</td><td>1</td><td>1</td></tr>
-<tr><td>2</td><td>(4, 2 → 3 → 5)</td><td>2</td><td>1 → 2</td></tr>
-<tr><td>3</td><td>(3 → 5, 4)</td><td>3</td><td>1 → 2 → 3</td></tr>
-<tr><td>4</td><td>(5, 4)</td><td>4</td><td>1 → 2 → 3 → 4</td></tr>
-<tr><td>5</td><td>(None, 5)</td><td>the loop ends; <code>or</code> attaches 5</td><td>1 → 2 → 3 → 4 → 5</td></tr>
+<tr><td>1</td><td>1 → 4</td><td>2 → 3 → 5</td><td>no</td><td>1</td><td>1</td></tr>
+<tr><td>2</td><td>4</td><td>2 → 3 → 5</td><td>yes: 2 &lt; 4</td><td>2</td><td>1 → 2</td></tr>
+<tr><td>3</td><td>3 → 5</td><td>4</td><td>no</td><td>3</td><td>1 → 2 → 3</td></tr>
+<tr><td>4</td><td>5</td><td>4</td><td>yes: 4 &lt; 5</td><td>4</td><td>1 → 2 → 3 → 4</td></tr>
+<tr><td>5</td><td>None</td><td>5</td><td>the loop ends; <code>or</code> attaches 5</td><td></td><td>1 → 2 → 3 → 4 → 5</td></tr>
 </tbody>
 </table>
 </div>
-<p>Each pass moves one node, so merging n nodes takes O(n) time. The merge uses O(1) extra memory and allocates
-nothing.</p>
-<p class="listing"><b>Listing 10.8</b> <code>merge_k</code> (lines 31 to 49). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+<p>Each pass moves one node, so merging n nodes takes O(n) time. The merge uses O(1) extra memory, and allocates
+only the dummy node.</p>
+<p class="listing"><b>Listing 10.8</b> <code>merge_k</code> (lines 29 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
 <pre><code class="language-rust">/// Merge k sorted lists in place: round 1 merges lists 1 apart, round 2 lists
 /// 2 apart, and so on. O(N log k) time, O(1) extra memory.
@@ -619,8 +619,8 @@ fn merge_k(mut lists: Vec&lt;Link&gt;) -&gt; Link {
 <code>merge_two</code> receives two owned lists.</p>
 <p>Animation 10.3 runs the merge of the trace. The last part leaves out the line after the loop.</p>
 <figure class="anim">
-<video class="motion" src="figures/ch10-merge-owned.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two rows hold the tuple lists: lists.0 and lists.1, and a third row is the output with a tail marker at its end. Each pass compares the two front nodes, moves the smaller one to the end of the output, and puts the rest of its list and the other list back into the tuple, so the rows can trade places. After pass 4, lists.0 is empty and the loop ends; or attaches the remaining 5 to the output, which reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped." data-chapters="[[0.0, &quot;merge&quot;], [37.03, &quot;no or&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Two rows hold the tuple lists: lists.0 and lists.1, and a third row is the output with a tail marker at its end. Each pass compares the two front nodes, moves the smaller one to the end of the output, and puts the rest of its list and the other list back into the tuple, so the rows can trade places. After pass 4, lists.0 is empty and the loop ends; or attaches the remaining 5 to the output, which reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped."></video>
-<figcaption><b>Animation 10.3</b> Each pass moves the smaller front node to the end of the output. When one list runs out, <code>or</code> attaches the other. Without that line, the nodes left in the other list are dropped.</figcaption>
+<video class="motion" src="figures/ch10-merge-owned.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Rows for left and right, and an output row that starts at a dummy node, with a tail marker at its end. Each pass compares the two front nodes; when right&#39;s front is smaller, the two rows trade places. Then the front node of left moves to the end of the output, and the rest of its list stays in left. After pass 4, left is empty and the loop ends; left.or(right) attaches the remaining 5, and the output reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped." data-chapters="[[0.0, &quot;merge&quot;], [30.16, &quot;no or&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Rows for left and right, and an output row that starts at a dummy node, with a tail marker at its end. Each pass compares the two front nodes; when right&#39;s front is smaller, the two rows trade places. Then the front node of left moves to the end of the output, and the rest of its list stays in left. After pass 4, left is empty and the loop ends; left.or(right) attaches the remaining 5, and the output reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped."></video>
+<figcaption><b>Animation 10.3</b> When the right front is smaller, the two lists swap, so <code>left</code> always holds the next node. When one list runs out, <code>or</code> attaches the other. Without that line, the nodes left in <code>right</code> are dropped.</figcaption>
 </figure>
 <pre><code class="language-text">$ cargo run --bin merge_k_sorted_lists_owned
 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -1009,7 +1009,7 @@ beyond the input <code>Vec</code> and the nodes. The stack column is the deepest
 <tr><td><code>merge_k_sorted_lists_swap</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>right list taken first, <code>&amp;mut</code> tail</td></tr>
 <tr><td><code>merge_k_sorted_lists_simple</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>none</td><td>owned lists, <code>&amp;mut</code> tail slot</td></tr>
 <tr><td><code>merge_k_sorted_list_zero_copy</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>owned lists, <code>Option::insert</code></td></tr>
-<tr><td><code>merge_k_sorted_lists_owned</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>none</td><td>both lists in a tuple, <code>Option::insert</code></td></tr>
+<tr><td><code>merge_k_sorted_lists_owned</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>lists swapped by value, <code>Option::insert</code></td></tr>
 <tr><td><code>merge_k_sorted_lists_enum</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one box per node per round</td><td>custom <code>take</code>, <code>&amp;mut</code> tail</td></tr>
 <tr><td><code>merge_k_sorted_list_easy</code></td><td>interval rounds</td><td>O(N log k)</td><td>O(1)</td><td>O(N)</td><td>one box per node per round</td><td>recursive merge on owned values</td></tr>
 <tr><td><code>merge_k_sorted_lists_pairs</code></td><td>queue of lists</td><td>O(N log k)</td><td>O(1)</td><td>O(1)</td><td>one dummy node per merge</td><td>owned lists, <code>Option::insert</code></td></tr>
@@ -1029,7 +1029,7 @@ reallocate.</li>
 stack reaches O(N) frames. In section 9.6, a recursive drop overflowed the 8 MiB main-thread stack between
 260,000 and 270,000 nodes.</li>
 <li><strong>Allocations.</strong> A dummy node costs one allocation per merge, k - 1 in total. The enum versions free a box and
-allocate a new one for every node they move, about N log k in all. The tail-slot and tuple versions allocate
+allocate a new one for every node they move, about N log k in all. The tail-slot version allocates
 nothing.</li>
 </ul>
 <h2 id="1010-the-complete-files"><a class="header" href="#1010-the-complete-files">10.10 The complete files</a></h2>
@@ -1467,12 +1467,10 @@ fn main() {
     ];
     print(&amp;merge_k(five)); // 1 2 3 4 5 8 9
 }</code></pre>
-<p class="listing"><b>Listing 10.23</b> Both lists in one tuple. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
+<p class="listing"><b>Listing 10.23</b> The lists swapped by value. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
-<pre><code class="language-rust">//! Merge k sorted lists: the gap loop, with a short iterative merge.
-//!
-//! `merge_two` keeps both lists in one tuple. Each pass moves the smaller front
-//! node to the end of the output and puts the two remaining lists back.
+<pre><code class="language-rust">//! Merge k sorted lists: the gap loop, and a merge that swaps the two lists by
+//! value so that `left` always holds the smaller front node.
 
 type Link = Option&lt;Box&lt;Node&gt;&gt;;
 
@@ -1482,21 +1480,21 @@ struct Node {
 }
 
 /// Merge two sorted lists. O(n) time, O(1) extra memory.
-fn merge_two(left: Link, right: Link) -&gt; Link {
-    let mut head = None;
-    let mut tail = &amp;mut head;
-    let mut lists = (left, right);
-    while let (Some(left), Some(right)) = lists {
-        let (mut smaller, larger) = if left.val &lt;= right.val {
-            (left, right)
-        } else {
-            (right, left)
-        };
-        lists = (smaller.next.take(), Some(larger));
-        tail = &amp;mut tail.insert(smaller).next;
+fn merge_two(mut left: Link, mut right: Link) -&gt; Link {
+    let mut dummy = Box::new(Node { val: 0, next: None });
+    let mut tail = &amp;mut dummy;
+
+    while let (Some(l), Some(r)) = (&amp;left, &amp;right) {
+        if r.val &lt; l.val {
+            (left, right) = (right, left); // left now holds the smaller front
+        }
+        let mut node = left.unwrap(); // safe: checked by while let
+        left = node.next.take();
+        tail = tail.next.insert(node);
     }
-    *tail = lists.0.or(lists.1);
-    head
+
+    tail.next = left.or(right);
+    dummy.next
 }
 
 /// Merge k sorted lists in place: round 1 merges lists 1 apart, round 2 lists
