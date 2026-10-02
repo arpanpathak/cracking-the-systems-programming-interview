@@ -5,28 +5,10 @@
 
 from motion import (BRASS, BRASS_LT, FAINT, INK, LINE, MUTED, PAPER, RUST, RUST_LT, TEAL,
                     TEAL_LT, W, caption, code_panel, progress, render, title_block)
-from motion_kit import NAVY, layout, line_of, play, source
+from motion_kit import NAVY, arrow, layout, line_of, play, source
 
 XS = [170, 330, 490, 650]
 NODE_Y = 170
-
-
-def arrow(p, x1, x2, y, color, dash=None, below=False, opacity=1.0):
-    """A link from one node to the node at x2, drawn as an arc above (forward)
-    or below (reversed) the row."""
-    if opacity <= 0.01:
-        return
-    dy = 52 if below else -52
-    y0 = y + (24 if below else -24)
-    mid = (x1 + x2) / 2
-    tip_y = y0
-    with p.group(opacity=opacity):
-        p.path("M %.1f %.1f Q %.1f %.1f %.1f %.1f" % (x1, y0, mid, y0 + dy, x2, tip_y), "none", color, 2.4,
-               dash=dash)
-        d = 1 if x2 > x1 else -1
-        p.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f Z" % (x2, tip_y, x2 - 9 * d, tip_y + (8 if below else -8) - 3,
-                                                          x2 - 3 * d, tip_y + (14 if below else -14)),
-               color, "none")
 
 
 def reverse():
@@ -68,6 +50,7 @@ def reverse():
 
     def draw(p, s, total):
         t = s.t
+        half_w = 34
         for k in range(4):
             x = XS[k]
             lost = s.lost > 0.5 and k > 0
@@ -75,35 +58,38 @@ def reverse():
             done = s.prev >= k - 0.01 and s.prev >= 0 and s.lost < 0.5
             fill = RUST_LT if lost else (BRASS_LT if in_hand else (TEAL_LT if done else PAPER))
             edge_c = RUST if lost else (BRASS if in_hand else (TEAL if done else NAVY))
-            p.rect(x - 34, NODE_Y - 24, 68, 48, fill, edge_c, 10, 1.8)
+            p.rect(x - half_w, NODE_Y - 24, 2 * half_w, 48, fill, edge_c, 10, 1.8)
             p.text(x, NODE_Y + 8, str(k + 1), 22, INK, 700, "middle", mono=True)
             link = s["link%d" % k]
             if link == "r":
-                arrow(p, x + 20, XS[k + 1] - 20, NODE_Y, MUTED)
+                arrow(p, x + half_w + 4, NODE_Y - 8, XS[k + 1] - half_w - 4, NODE_Y - 8, MUTED)
             elif link == "l":
-                arrow(p, x - 20, XS[k - 1] + 20, NODE_Y, TEAL, below=True)
+                arrow(p, x - half_w - 4, NODE_Y + 8, XS[k - 1] + half_w + 4, NODE_Y + 8, TEAL)
             elif link == "none":
-                p.text(x + 46, NODE_Y + 5, "→ None", 12, FAINT, 600, mono=True) if k == 3 or s.lost > 0.5 else \
-                    p.text(x, NODE_Y + 50, "next: None", 11.5, TEAL, 600, "middle", mono=True)
+                if k == 0 and s.lost < 0.5:
+                    arrow(p, x - half_w - 4, NODE_Y + 8, x - half_w - 34, NODE_Y + 8, TEAL)
+                    p.text(x - half_w - 40, NODE_Y + 13, "None", 12, TEAL, 600, "end", mono=True)
+                else:
+                    arrow(p, x + half_w + 4, NODE_Y - 8, x + half_w + 34, NODE_Y - 8, FAINT)
+                    p.text(x + half_w + 40, NODE_Y - 3, "None", 12, FAINT, 600, mono=True)
         if s.lost > 0.5:
-            p.text((XS[1] + XS[3]) / 2, NODE_Y - 70, "nothing owns 2 → 3 → 4", 13, RUST, 700, "middle")
+            p.text((XS[1] + XS[3]) / 2, NODE_Y - 52, "nothing owns 2 -> 3 -> 4", 13, RUST, 700,
+                   "middle")
 
-        def var(name, at, color, y):
-            if at < -0.5:
-                p.text(70, y, "%s = None" % name, 13, color, 700, mono=True)
-                return
-            if at > 3.5:
-                p.text(70, y, "%s = None" % name, 13, color, 700, mono=True)
+        def pointer(name, at, color, y):
+            """A variable as a tag under the node it owns, or `= None`."""
+            if at < -0.5 or at > 3.5:
+                p.text(40, y + 4, "%s = None" % name, 13, color, 700, mono=True)
                 return
             x = XS[0] + (XS[1] - XS[0]) * at
-            p.text(70, y, name, 13, color, 700, mono=True)
-            p.line(70 + len(name) * 8 + 6, y - 4, x - 10, y - 4, color, 1.6, dash="4 4")
-            p.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f Z" % (x - 4, y - 4, x - 13, y - 9, x - 13, y + 1), color, "none")
-        var("previous", s.prev, TEAL, 290)
-        var("current", s.cur, NAVY, 318)
+            arrow(p, x, y - 14, x, NODE_Y + 30, color, 1.8, head=9)
+            p.text(x, y + 4, name, 13, color, 700, "middle", mono=True)
+        pointer("previous", s.prev, TEAL, NODE_Y + 74)
+        pointer("current", s.cur, NAVY, NODE_Y + 122)
         if s.nodev >= 0:
             x = XS[0] + (XS[1] - XS[0]) * s.nodev
-            p.text(x, NODE_Y - 44, "node", 13, BRASS, 700, "middle", mono=True)
+            p.text(x, NODE_Y - 62, "node", 13, BRASS, 700, "middle", mono=True)
+            arrow(p, x, NODE_Y - 56, x, NODE_Y - 30, BRASS, 1.8, head=9)
         title_block(p, "Reversing a linked list in place",
                     "Each step moves one node from current to the front of previous.")
         code_panel(p, 26, CODE_Y, W - 52, "reverse_list", code, s.code, size=11.0, lead=15.6,

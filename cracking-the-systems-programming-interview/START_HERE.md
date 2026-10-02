@@ -71,6 +71,8 @@ Read `tools/ANIMATIONS.md`. In short:
 - **Code panels show real code** through `motion_kit.Panel` or `Panels`: contiguous ranges of the lab file,
   indentation kept, gaps marked `// ...`. Never `lines_containing` or hand-typed code, except a
   counterfactual variant written in full and titled as one.
+- Draw every arrow with `motion_kit.arrow`. Its head is a true triangle along the shaft, and the shaft stops at
+  the head's base. A pointer from a variable ends at the node it holds, never in empty space.
 - Robots stand for threads, callers, and owners. Narration is paced for reading. Captions follow the
   writing standard.
 

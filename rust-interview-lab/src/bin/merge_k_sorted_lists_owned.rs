@@ -1,10 +1,10 @@
-//! Merge k sorted lists with owned values only.
+//! Merge k sorted lists by moving owned nodes.
 //!
-//! Every step moves a whole `Box<Node>` from one owner to another, so no node is
-//! copied or allocated. There is no `&mut` cursor into a list and no `as_ref`:
-//! the merge pushes each smaller front node onto the front of the result, which
-//! leaves the result reversed, and one pass of `reverse` puts it in order.
-//! The k lists are merged in place, in rounds that double the gap.
+//! `merge_two` keeps one rule: `a` is the list whose front node comes next. It
+//! moves that node onto a pile, swaps the two lists when `b` is now ahead, and
+//! reverses the pile at the end. No node is copied or allocated, and nothing
+//! holds a `&mut` into a list. `merge_k` merges the lists in place, in rounds
+//! that double the gap between partners.
 
 type Link = Option<Box<Node>>;
 
@@ -13,54 +13,48 @@ struct Node {
     next: Link,
 }
 
-/// Merge two sorted lists into one, moving their nodes.
-fn merge_two(mut left: Link, mut right: Link) -> Link {
-    // The merged nodes so far, largest first. Each new node goes on the front.
-    let mut reversed: Link = None;
+/// Whether list `x` should give the next node before list `y`.
+fn goes_first(x: &Link, y: &Link) -> bool {
+    match (x, y) {
+        (Some(x), Some(y)) => x.val < y.val,
+        (Some(_), None) => true,
+        _ => false,
+    }
+}
+
+/// Merge two sorted lists. O(n) time, O(1) extra memory.
+fn merge_two(mut a: Link, mut b: Link) -> Link {
+    let mut pile = None; // merged nodes so far, largest on top
     loop {
-        // Take the smaller front node, and hand back both remaining lists.
-        let mut node;
-        (node, left, right) = match (left, right) {
-            (Some(mut l), Some(r)) if l.val <= r.val => {
-                let rest = l.next.take();
-                (l, rest, Some(r))
-            }
-            (l, Some(mut r)) => {
-                let rest = r.next.take();
-                (r, l, rest)
-            }
-            (Some(mut l), None) => {
-                let rest = l.next.take();
-                (l, rest, None)
-            }
-            (None, None) => break,
-        };
+        if goes_first(&b, &a) {
+            (a, b) = (b, a);
+        }
+        let Some(mut node) = a else { break };
+        a = node.next; // a keeps the rest of its list
+        node.next = pile; // the node goes on top of the pile
+        pile = Some(node);
+    }
+    reverse(pile)
+}
+
+/// Reverse a list, as in chapter 9.
+fn reverse(mut list: Link) -> Link {
+    let mut reversed = None;
+    while let Some(mut node) = list {
+        list = node.next;
         node.next = reversed;
         reversed = Some(node);
     }
-    reverse(reversed)
+    reversed
 }
 
-/// Reverse a list in place, as in chapter 9.
-fn reverse(mut current: Link) -> Link {
-    let mut previous = None;
-    while let Some(mut node) = current {
-        current = node.next.take();
-        node.next = previous;
-        previous = Some(node);
-    }
-    previous
-}
-
-/// Merge k sorted lists. Round 1 merges neighbours 1 apart, round 2 lists 2
-/// apart, and so on, so every node moves about log2(k) times.
+/// Merge k sorted lists in place. Round 1 merges lists 1 apart, round 2 lists
+/// 2 apart, and so on: O(N log k) time, O(1) extra memory.
 fn merge_k(mut lists: Vec<Link>) -> Link {
     let mut gap = 1;
     while gap < lists.len() {
-        for i in (0..lists.len() - gap).step_by(gap * 2) {
-            let left = lists[i].take();
-            let right = lists[i + gap].take();
-            lists[i] = merge_two(left, right);
+        for i in (0..lists.len() - gap).step_by(2 * gap) {
+            lists[i] = merge_two(lists[i].take(), lists[i + gap].take());
         }
         gap *= 2;
     }

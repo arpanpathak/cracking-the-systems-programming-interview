@@ -26,6 +26,8 @@ BANNED = [
     "at its core", "in essence", "essentially", "boils down", "the magic", "superpower",
     "rewrite the rules", "cannot be overstated", "a must", "paradigm", "holistic", "synergy",
     "dive into", "embark", "journey", "realm", "plethora", "myriad", "it depends",
+    "interesting", "several good", "differ in ways", "fight the borrow checker",
+    "avoid the fight",
 ]
 MAX_WORDS = 24
 

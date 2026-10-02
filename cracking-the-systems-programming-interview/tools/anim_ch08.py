@@ -4,6 +4,7 @@
 """
 
 from motion_kit import Panel, layout
+from motion_kit import arrow as kit_arrow
 from motion import *  # noqa: F401,F403
 from motion import Timeline, render
 
@@ -30,8 +31,8 @@ def stack_var(p, y, name, alpha=1.0, color=TEAL):
 
 
 def arrow(p, a, b, color, dashed=False, alpha=1.0):
-    p.line(a[0], a[1], b[0], b[1], color, 1.5, dash="5 4" if dashed else None, opacity=alpha)
-    p.circle(b[0], b[1], 3.5, color, opacity=alpha)
+    kit_arrow(p, a[0], a[1], b[0], b[1], color, 1.6, head=9.0, dash="5 4" if dashed else None,
+              opacity=alpha)
 
 
 # ---------------------------------------------------------- 8.4: Rc and RefCell

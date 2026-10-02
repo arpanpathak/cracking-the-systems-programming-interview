@@ -238,6 +238,35 @@ class Panels:
                                    reveal=False, **kw)
 
 
+def arrow(p, x1, y1, x2, y2, color=None, width=2.0, head=10.0, dash=None, opacity=1.0,
+          bend=0.0):
+    """An arrow from (x1, y1) to (x2, y2) whose head is a true triangle.
+
+    The head points along the shaft at the tip, so a bent arrow (`bend` pixels
+    off the straight line, positive is downward) still ends in a clean point.
+    The shaft stops at the base of the head, so the tip is sharp.
+    """
+    from motion import INK
+    color = color or INK
+    if opacity <= 0.01:
+        return
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2 + bend
+    # direction at the tip: from the control point to the tip
+    dx, dy = (x2 - cx, y2 - cy) if bend else (x2 - x1, y2 - y1)
+    n = max(1e-6, (dx * dx + dy * dy) ** 0.5)
+    ux, uy = dx / n, dy / n
+    bx, by = x2 - ux * head, y2 - uy * head          # base of the head
+    half = head * 0.48
+    with p.group(opacity=opacity):
+        if bend:
+            p.path("M %.1f %.1f Q %.1f %.1f %.1f %.1f" % (x1, y1, cx, cy, bx, by), "none",
+                   color, width, dash=dash)
+        else:
+            p.line(x1, y1, bx, by, color, width, dash=dash)
+        p.path("M %.1f %.1f L %.1f %.1f L %.1f %.1f Z" % (
+            x2, y2, bx - uy * half, by + ux * half, bx + uy * half, by - ux * half), color, "none")
+
+
 # ------------------------------------------------------------------ layout
 
 
