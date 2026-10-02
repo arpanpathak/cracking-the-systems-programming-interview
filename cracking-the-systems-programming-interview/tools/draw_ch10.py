@@ -25,31 +25,41 @@ f = Figure(760, 330)
 f.text(20, 22, "Three ways to merge k = 4 lists", 12, bold=True)
 # one at a time
 f.text(20, 50, "1. One at a time: O(kN)", 11, RUST, bold=True)
-labels = ["L1", "L1+L2", "L1+L2+L3", "all 4"]
-for i, l in enumerate(labels):
-    f.cell(20 + i * 150, 60, 110 + i * 10, 28, l, PINK if i else PALE, size=10)
-    if i < 3:
-        f.arrow(130 + i * 160, 74, 168 + i * 150, 74, RUST)
+row, x = [], 20
+for i, l in enumerate(["L1", "L1+L2", "L1+L2+L3", "all 4"]):
+    box = (x, 60, 100 + i * 12, 28)
+    f.cell(*box, l, PINK if i else PALE, size=10)
+    row.append(box)
+    x += box[2] + 58
+for a, b in zip(row, row[1:]):
+    f.link(a, b, color=RUST, width=1.4)
 f.text(20, 104, "The growing result is walked again at every step.", 10, RUST)
 # pairwise
 f.text(20, 136, "2. Pairwise rounds: O(N log k)", 11, TEAL, bold=True)
-for i, l in enumerate(["L1", "L2", "L3", "L4"]):
-    f.cell(20 + i * 70, 146, 60, 26, l, PALE, size=10)
-f.cell(50, 196, 80, 26, "L1+L2", GREEN, size=10); f.cell(190, 196, 80, 26, "L3+L4", GREEN, size=10)
-f.cell(110, 240, 100, 26, "all 4", GREEN, size=10)
-for x1, x2 in [(50, 90), (120, 90), (190, 230), (260, 230)]:
-    f.arrow(x1, 172, x2, 194, TEAL, 1.2)
-f.arrow(90, 222, 150, 238, TEAL, 1.2); f.arrow(230, 222, 170, 238, TEAL, 1.2)
-f.text(20, 290, "Each node takes part in one merge per round;", 10, TEAL)
-f.text(20, 304, "there are log2 k rounds.", 10, TEAL)
+leaves = [(20 + i * 80, 146, 60, 26) for i in range(4)]
+for box, l in zip(leaves, ["L1", "L2", "L3", "L4"]):
+    f.cell(*box, l, PALE, size=10)
+pairs = [(50, 200, 80, 26), (210, 200, 80, 26)]
+for box, l in zip(pairs, ["L1+L2", "L3+L4"]):
+    f.cell(*box, l, GREEN, size=10)
+top = (130, 254, 80, 26)
+f.cell(*top, "all 4", GREEN, size=10)
+for i, leaf in enumerate(leaves):
+    f.link(leaf, pairs[i // 2], color=TEAL, width=1.3, gap=3)
+for pair in pairs:
+    f.link(pair, top, color=TEAL, width=1.3, gap=3)
+f.text(20, 304, "Each node takes part in one merge per round; there are log2 k rounds.", 10, TEAL)
 # heap
-f.text(400, 136, "3. A heap of the k heads: O(N log k)", 11, BRASS, bold=True)
+f.text(420, 136, "3. A heap of the k heads: O(N log k)", 11, BRASS, bold=True)
+heap = (580, 146, 90, 128)
+f.cell(*heap, "min-heap", CREAM, size=11)
 for i, l in enumerate(["head of L1", "head of L2", "head of L3", "head of L4"]):
-    f.cell(400, 146 + i * 34, 100, 26, l, PALE, size=10)
-    f.arrow(500, 159 + i * 34, 548, 210, BRASS, 1.2)
-f.cell(550, 194, 110, 34, "min-heap", CREAM, size=11)
-f.arrow(660, 211, 700, 211, BRASS); f.text(704, 215, "output", 10)
-f.text(400, 304, "Pop the smallest head, push that list's next node.", 10, BRASS)
+    y = 146 + i * 34
+    f.cell(420, y, 100, 26, l, PALE, size=10)
+    f.arrow(524, y + 13, 574, y + 13, BRASS, 1.3)
+f.arrow(674, 210, 712, 210, BRASS, 1.4)
+f.text(716, 214, "output", 10)
+f.text(420, 304, "Pop the smallest head, push that list's next node.", 10, BRASS)
 f.save(OUT + "merge-strategies.svg")
 
 # interval rounds on 5 lists
