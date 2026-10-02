@@ -1,4 +1,4 @@
-"""Merging two lists held in one tuple (ch10-merge-k.md, section 10.4.4).
+"""Merging two lists by swapping them by value (ch10-merge-k.md, section 10.4.4).
 
     python3 tools/animations.py merge-owned
 """
@@ -8,11 +8,11 @@ from motion import Timeline, render
 from motion_kit import Panel, arrow, layout
 
 MERGE = Panel("src/bin/merge_k_sorted_lists_owned.rs",
-              [("fn merge_two(left: Link, right: Link) -> Link {", "}")],
-              ["while let (Some(left), Some(right)) = lists {",
-               "let (mut smaller, larger) = if left.val <= right.val {",
-               "lists = (smaller.next.take(), Some(larger));",
-               "tail = &mut tail.insert(smaller).next;", "*tail = lists.0.or(lists.1);", ("head", 2)])
+              [("fn merge_two(mut left: Link, mut right: Link) -> Link {", "}")],
+              ["while let (Some(l), Some(r)) = (&left, &right) {", "if r.val < l.val {",
+               "(left, right) = (right, left);", "let mut node = left.unwrap();",
+               "left = node.next.take();", "tail = tail.next.insert(node);",
+               "tail.next = left.or(right);", "dummy.next"])
 ROWS = {"0": 118, "1": 182, "out": 270}
 X0, STEP = 220, 66
 VALUES = ["1", "4", "2", "3", "5"]
@@ -44,80 +44,78 @@ def merge_owned():
     def merge(k, notes, attach=True):
         n = 0
         while rows["0"] and rows["1"]:
-            a, b = rows["0"][0], rows["1"][0]
             tl.set(code=0.0)
             tl.wait(0.35 * k)
-            small = "0" if int(a) <= int(b) else "1"
-            v = rows[small][0]
-            tl.set(code=1.0, hot=v)
-            if ("pick", n) in notes:
-                tl.say(*notes[("pick", n)])
-            tl.wait(0.6 * k)
-            # the front node goes to the end of the output
-            rows[small].pop(0)
+            tl.set(code=1.0)
+            if ("cmp", n) in notes:
+                tl.say(*notes[("cmp", n)])
+            tl.wait(0.4 * k)
+            if int(rows["1"][0]) < int(rows["0"][0]):
+                rows["0"], rows["1"] = rows["1"], rows["0"]
+                tl.set(code=2.0)
+                if ("swap", n) in notes:
+                    tl.say(*notes[("swap", n)])
+                sync(0.7 * k)
+                tl.wait(0.4 * k)
+            v = rows["0"][0]
+            tl.set(code=3.0, hot=v)
+            tl.wait(0.5 * k)
+            rows["0"].pop(0)
             rows["out"].append(v)
-            tl.set(code=3.0)
+            tl.set(code=4.0)
             sync(0.6 * k)
-            # the rest of the smaller list, then the larger list, go back into the tuple
-            rest, larger = rows[small], rows["1" if small == "0" else "0"]
-            rows["0"], rows["1"] = rest, larger
-            tl.set(code=2.0, hot="")
-            if ("back", n) in notes:
-                tl.say(*notes[("back", n)])
-            sync(0.5 * k)
+            tl.set(code=5.0, hot="")
             tl.wait(0.4 * k)
             n += 1
             k = max(0.6, k * 0.8)
         tl.set(code=0.0)
         tl.wait(0.5)
         if attach:
-            tl.set(code=4.0)
+            tl.set(code=6.0)
             left = rows["0"] or rows["1"]
             rows["out"] += left
             rows["0"], rows["1"] = [], []
             sync(0.7)
-            tl.set(code=5.0)
+            tl.set(code=7.0)
         else:
-            tl.set(code=4.0)
+            tl.set(code=6.0)
             tl.to(0.5, gone=1.0)
 
     sync()
     tl.chapter("merge")
-    tl.say("lists is a tuple of two sorted lists. The output starts empty, and tail is its end.")
+    tl.say("Two sorted lists, left and right. The output starts at dummy, and tail is its end.")
     tl.wait(1.4)
     merge(1.4, {
-        ("pick", 0): ("Both lists have a node, so the pattern matches. 1 <= 2, so smaller is the "
-                      "first list.",),
-        ("back", 0): ("1 went to the end of the output. The rest of its list, 4, and the whole "
-                      "larger list go back into the tuple.",),
-        ("pick", 1): ("4 > 2, so this time smaller is the second list.",),
-        ("back", 1): ("The rest of the smaller list goes back first, so the two rows trade "
-                      "places.",),
+        ("cmp", 0): ("Both lists have a node. 2 is not smaller than 1, so left already holds the "
+                     "smaller front.",),
+        ("cmp", 1): ("Now 2 < 4: right holds the smaller front.",),
+        ("swap", 1): ("(left, right) = (right, left) swaps the two lists by value. No node moves, "
+                      "and no reference is taken.",),
     })
-    tl.say("lists.0 is empty, so the pattern fails and nothing moves. or picks the list that "
-           "is left, 5, and tail attaches it.", "insight")
+    tl.say("left is empty, so the loop ends. left.or(right) is the list that is left, 5, and "
+           "tail.next takes it whole.", "insight")
     tl.wait(2.2)
 
     tl.chapter("no or")
     tl.say("Now leave out the line after the loop.", "fail")
     tl.wait(0.8)
     rows.update({"0": ["1", "4"], "1": ["2", "3", "5"], "out": []})
-    sync(0.6, code=-1.0, strike=4.0, gone=0.0)
+    sync(0.6, code=-1.0, strike=6.0, gone=0.0)
     tl.wait(0.4)
     merge(0.5, {}, attach=False)
-    tl.say("The output stops at 4. Node 5 stays in lists, and is dropped when merge_two "
+    tl.say("The output stops at 4. Node 5 stays in right, and is dropped when merge_two "
            "returns.", "fail")
     tl.wait(2.2)
 
     def draw(p, s, total):
         t = s.t
-        title_block(p, "Merging two lists held in one tuple",
-                    "Each pass moves the smaller front node to the end of the output.")
+        title_block(p, "Merging two lists, swapping them by value",
+                    "left always holds the smaller front node. It moves to the end of the output.")
         layout_rows = {}
         for part in s.rows.split(";"):
             name, vals = part.split(":")
             layout_rows[name] = [v for v in vals.split(",") if v]
-        labels = {"0": "lists.0", "1": "lists.1", "out": "output"}
+        labels = {"0": "left", "1": "right", "out": "output"}
         for name, y in ROWS.items():
             p.text(26, y + 5, labels[name], 13, INK if name != "out" else TEAL, 700, mono=True)
             vals = layout_rows.get(name, [])
@@ -127,9 +125,14 @@ def merge_owned():
                 if abs(ay - by) < 1 and abs(bx - ax - STEP) < 1:
                     arrow(p, ax + 25, ay, bx - 25, by, TEAL if name == "out" else MUTED, 1.8,
                           head=8)
-            if not vals:
+            if not vals and name != "out":
                 p.text(X0 - 20, y + 5, "None", 12, FAINT, 700, mono=True)
         out = layout_rows.get("out", [])
+        dx = X0 - 78
+        p.rect(dx - 30, ROWS["out"] - 18, 60, 36, STAGE, FAINT, 7, 1.3, dash="4 4")
+        p.text(dx, ROWS["out"] + 5, "dummy", 11, MUTED, 700, "middle", mono=True)
+        if out:
+            arrow(p, dx + 31, ROWS["out"], X0 - 25, ROWS["out"], TEAL, 1.8, head=8)
         tx = X0 + len(out) * STEP
         p.text(tx, ROWS["out"] + 44, "tail", 12, TEAL, 700, "middle", mono=True)
         arrow(p, tx, ROWS["out"] + 30, tx, ROWS["out"] + 8, TEAL, 1.6, head=8)

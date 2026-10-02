@@ -1,7 +1,5 @@
-//! Merge k sorted lists: the gap loop, with a short iterative merge.
-//!
-//! `merge_two` keeps both lists in one tuple. Each pass moves the smaller front
-//! node to the end of the output and puts the two remaining lists back.
+//! Merge k sorted lists: the gap loop, and a merge that swaps the two lists by
+//! value so that `left` always holds the smaller front node.
 
 type Link = Option<Box<Node>>;
 
@@ -11,21 +9,21 @@ struct Node {
 }
 
 /// Merge two sorted lists. O(n) time, O(1) extra memory.
-fn merge_two(left: Link, right: Link) -> Link {
-    let mut head = None;
-    let mut tail = &mut head;
-    let mut lists = (left, right);
-    while let (Some(left), Some(right)) = lists {
-        let (mut smaller, larger) = if left.val <= right.val {
-            (left, right)
-        } else {
-            (right, left)
-        };
-        lists = (smaller.next.take(), Some(larger));
-        tail = &mut tail.insert(smaller).next;
+fn merge_two(mut left: Link, mut right: Link) -> Link {
+    let mut dummy = Box::new(Node { val: 0, next: None });
+    let mut tail = &mut dummy;
+
+    while let (Some(l), Some(r)) = (&left, &right) {
+        if r.val < l.val {
+            (left, right) = (right, left); // left now holds the smaller front
+        }
+        let mut node = left.unwrap(); // safe: checked by while let
+        left = node.next.take();
+        tail = tail.next.insert(node);
     }
-    *tail = lists.0.or(lists.1);
-    head
+
+    tail.next = left.or(right);
+    dummy.next
 }
 
 /// Merge k sorted lists in place: round 1 merges lists 1 apart, round 2 lists
