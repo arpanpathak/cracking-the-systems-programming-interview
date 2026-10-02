@@ -576,7 +576,7 @@ beyond the input `Vec` and the nodes. The stack column is the deepest the call s
 | `merge_k_sorted_lists_swap` | interval rounds | O(N log k) | O(1) | O(1) | one dummy node per merge | right list taken first, `&mut` tail |
 | `merge_k_sorted_lists_simple` | interval rounds | O(N log k) | O(1) | O(1) | none | owned lists, `&mut` tail slot |
 | `merge_k_sorted_list_zero_copy` | interval rounds | O(N log k) | O(1) | O(1) | one dummy node per merge | owned lists, `Option::insert` |
-| `merge_k_sorted_lists_owned` | interval rounds | O(N log k) | O(1) | O(1) | one dummy node per merge | lists swapped by value, `Option::insert` |
+| `merge_k_sorted_lists_owned` | interval rounds | O(N log k) | O(1) | O(1) | one dummy node per merge | lists swapped by value, so `tail` is the only `&mut` (section 10.4.4) |
 | `merge_k_sorted_lists_enum` | interval rounds | O(N log k) | O(1) | O(1) | one box per node per round | custom `take`, `&mut` tail |
 | `merge_k_sorted_list_easy` | interval rounds | O(N log k) | O(1) | O(N) | one box per node per round | recursive merge on owned values |
 | `merge_k_sorted_lists_pairs` | queue of lists | O(N log k) | O(1) | O(1) | one dummy node per merge | owned lists, `Option::insert` |
