@@ -14,7 +14,8 @@ what it found.
 
 The book starts with small things and builds up. The first chapters cover bindings, files, and
 collections. The middle chapters build data structures and look at how they use memory. The later
-chapters add threads, and then the network. In each chapter I introduce an idea in plain terms and work
+chapters add threads and the network, then the kernel boundary and production networking. In each
+chapter I introduce an idea in plain terms and work
 through a small example by hand. Only then do I show the code, a few lines at a time. Each chapter ends
 with the complete program.
 
@@ -49,7 +50,7 @@ After working through the book, you will be able to
 
 ## How this book is organized
 
-The book has seven parts. Each part builds on the ones before it.
+The book has ten parts. Each part builds on the ones before it.
 
 **Part 1, First steps**
 
@@ -62,13 +63,14 @@ The book has seven parts. Each part builds on the ones before it.
 - Chapter 3 solves problems with vectors, strings, and hash maps.
 - Chapter 4 explains iterators and references, and introduces lifetimes.
 - Chapter 5 uses heaps and sorted collections.
-- Chapter 6 covers recursion and dynamic programming.
+- Chapter 6 covers recursion and dynamic programming, and ends with jobs that also need a GPU's memory
+  and cores.
 
 **Part 3, Modeling data and ownership**
 
 - Chapter 7 builds types that reject invalid values, with structs, enums, and error types.
 - Chapter 8 covers the pointer types `Box`, `Rc`, `RefCell`, `Weak`, `Arc`, and `Cow`.
-- Chapter 9 builds linked lists.
+- Chapter 9 builds linked lists, and measures four ways to store one.
 - Chapter 10 merges many sorted lists into one.
 - Chapter 11 covers trees and tries.
 - Chapter 12 covers graphs.
@@ -92,12 +94,34 @@ The book has seven parts. Each part builds on the ones before it.
 - Chapter 21 parses and serves HTTP/1.1.
 - Chapter 22 builds an async executor and two HTTP clients.
 
-**Part 7, Compact implementations**
+**Part 7, The kernel boundary**
 
-- Chapter 23 compares short versions of earlier programs with their full versions.
+- Chapter 23 maps files into memory, weighs `mmap` against `read`, and sends a file to a socket with
+  `sendfile`.
+- Chapter 24 opens the file descriptor table, and builds `ls | wc -l` from `pipe`, `fork`, `dup2`, and
+  `execvp`.
+- Chapter 25 covers edge-triggered epoll, the stall a missed edge leaves behind, and the modes that let
+  several threads share one listener.
 
-Appendix A lists common Rust compile errors and their fixes. Appendix B is the report on the benchmarks in
-chapters 9 and 13.
+**Part 8, Under the locks**
+
+- Chapter 26 builds a futex-backed mutex, counts its system calls, and runs two litmus tests on memory
+  ordering.
+
+**Part 9, Production networking**
+
+- Chapter 27 follows a TCP connection as it closes, and the states a busy server leaves behind.
+- Chapter 28 adds TLS and mutual TLS, with certificates made at startup.
+- Chapter 29 builds a client connection pool with a hard limit and a reused connection.
+
+**Part 10, Compact implementations**
+
+- Chapter 30 gives ten short implementations, each sized to type in a live round, and points at the
+  chapter that holds its full version.
+
+Appendix A is the Rust cheat sheet: the compile errors and idioms that cost the most time. Appendix B is
+the full benchmark report. Appendix C is the long version of chapter 10, kept for readers who want every
+borrow trick.
 
 ## Conventions
 
