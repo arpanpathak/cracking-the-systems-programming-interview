@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c37c4165.js";
+            window.path_to_searchindex_js = "searchindex-410cd733.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-34d6c47e.js"></script>
@@ -211,6 +211,12 @@ keys land in the same shard.</p>
 <img src="figures/shard-locks.svg" alt="Left: one Mutex HashMap; thread 1 holds the lock and threads 2 to 4 wait. Right: eight shards; threads 1, 2, and 3 work in shards 0, 3, and 6 at the same time, and the other shards are idle.">
 <figcaption><b>Figure 14.1</b> One lock for everything, against one lock per shard.</figcaption>
 </figure>
+<p>Animation 14.1 sends one key and value from each thread into the map. Under the single lock the pairs go in one
+at a time and stay. Under eight shards they go in together, each into the shard that owns its key.</p>
+<figure class="anim">
+<video class="motion" src="figures/ch14-shard-lock.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four threads, A to D, each holding a key and value pair. Under one Mutex the pairs k1 to 11, k2 to 12, k3 to 13, and k4 to 14 enter the map one at a time and stay there, over four time units. Under eight shards the same four pairs enter shards 1, 3, 6, and 4 at the same time, in one time unit. In the last part every key hashes to shard 0, so all four pairs queue into that one shard." data-chapters="[[0.0, &quot;one lock&quot;], [22.77, &quot;eight shards&quot;], [41.25, &quot;skew&quot;]]"><img src="figures/ch14-shard-lock.gif" alt="Four threads, A to D, each holding a key and value pair. Under one Mutex the pairs k1 to 11, k2 to 12, k3 to 13, and k4 to 14 enter the map one at a time and stay there, over four time units. Under eight shards the same four pairs enter shards 1, 3, 6, and 4 at the same time, in one time unit. In the last part every key hashes to shard 0, so all four pairs queue into that one shard."></video>
+<figcaption><b>Animation 14.1</b> One lock serializes the four inserts; eight shards take them at once. A hash that sends every key to shard 0 brings the queue back.</figcaption>
+</figure>
 <h3 id="1411-the-type"><a class="header" href="#1411-the-type">14.1.1 The type</a></h3>
 <p>The cache holds a list of shards, each a <code>HashMap</code> behind its own <code>Mutex</code>. It also holds the hasher that decides which shard a key belongs to.</p>
 <p class="listing"><b>Listing 14.1</b> The type and the constructor (lines 16 to 42). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sharded_cache.rs">src/problems/sharded_cache.rs</a></p>
@@ -290,6 +296,37 @@ function when the cache is created. Every lookup in the same cache uses the same
 same shard. A different cache, or the same program run again, would place the keys differently.</p>
 <p><code>HashMap</code> uses <code>RandomState</code> for the same reason. Random keys stop an attacker from choosing inputs that all hash
 to the same place and slow the map down.</p>
+<div class="callout warning" markdown="1">
+<p><strong>WARNING:</strong> the mask reads the low three bits of the hash and nothing else. A hash whose low bits repeat sends
+every key to one shard. That shard then carries the traffic of the whole map, its lock serializes every call, and
+the seven other shards sit idle. The work looks sharded and behaves like the single map of section 14.1.</p>
+<p>Three short hashes show how this happens. Each one takes the low three bits at the end, the mask for eight shards.</p>
+<pre><code class="language-rust">// 1. The bytes added up. Every order of the same bytes gives one number.
+fn hash_sum(bytes: &amp;[u8]) -&gt; u64 {
+    bytes.iter().map(|b| u64::from(*b)).sum()
+}
+
+// 2. The first byte only. Every key with the same first letter collides.
+fn hash_first(bytes: &amp;[u8]) -&gt; u64 {
+    u64::from(bytes.first().copied().unwrap_or(0))
+}
+
+// 3. The key itself, for a numeric key. The low bits repeat every eight.
+fn hash_identity(key: u64) -&gt; u64 {
+    key
+}</code></pre>
+<p>The keys <code>"ab"</code> and <code>"ba"</code> hold the same two bytes, so <code>hash_sum</code> returns 195 for both. The mask computes
+195 &amp; 7 = 3, so both keys land in shard 3. The keys <code>"abc"</code> and <code>"cab"</code> both return 294, so both land in shard 6.
+Under <code>hash_first</code>, the keys <code>"user-1"</code>, <code>"user-2"</code>, and <code>"user-3"</code> all begin with <code>u</code>, which is 117, so all
+three land in shard 5. Under <code>hash_identity</code>, the keys 1000, 1008, 1016, and 1024 are all multiples of 8. Their
+low three bits are 0, so all four land in shard 0.</p>
+<p>The repair is a hash that mixes the whole key, not a piece of it. SipHash, which <code>RandomState</code> uses, flips about
+half of the output bits when one input bit changes. Keys that arrive from outside, such as user names or header
+values, are chosen by whoever sends them. A weak hash lets that caller fill one shard on purpose, and one busy
+shard can take the whole service down. Use a reviewed hash, and keep the hash seed secret where the input is
+untrusted. Animation 14.1 ends on this case: every key gives index 0, and the four pairs queue on one shard.</p>
+</div>
+
 <h3 id="1413-each-method-locks-one-shard"><a class="header" href="#1413-each-method-locks-one-shard">14.1.3 Each method locks one shard</a></h3>
 <p>A single-key operation touches one shard only. It hashes the key, locks that shard, and leaves every other shard free for other threads.</p>
 <p class="listing"><b>Listing 14.3</b> <code>insert</code>, <code>get</code>, and <code>with</code> (lines 50 to 80).</p>
@@ -644,10 +681,16 @@ server, the shares even out (figure 14.4).</p>
 <img src="figures/ring-add.svg" alt="Before: points a, b, a, b, a on a line, with the keys in each gap going to the next point to the right. After: two c points are added. Only the keys between an a point and a new c point move, from b to c.">
 <figcaption><b>Figure 14.5</b> Adding node c. The keys that move all move to c. None moves between a and b.</figcaption>
 </figure>
+<p>Animation 14.2 follows the join through the whole system. It shows the ring, the keys each node holds, the key
+that moves, and the clients that learn about it.</p>
 <figure class="anim">
-<video class="motion" src="figures/ch14-ring.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A ring from 0 to 99 with nodes a at 25, b at 60, and d at 90, and five keys colored by the node that owns them. Key 95 wraps past 99 to a. Node c joins at 45, and only key 30 changes owner, from b to c. A table then compares hash % 3 with hash % 4 for the same keys: four of the five change server." data-chapters="[[0.0, &quot;ring&quot;], [18.24, &quot;add c&quot;], [31.74, &quot;hash % N&quot;]]"><img src="figures/ch14-ring.gif" alt="A ring from 0 to 99 with nodes a at 25, b at 60, and d at 90, and five keys colored by the node that owns them. Key 95 wraps past 99 to a. Node c joins at 45, and only key 30 changes owner, from b to c. A table then compares hash % 3 with hash % 4 for the same keys: four of the five change server."></video>
-<figcaption><b>Animation 14.1</b> A key belongs to the first node clockwise from it. Adding <code>c</code> moves only the keys in the arc it takes over. With <code>hash % N</code>, going from 3 to 4 servers moves 4 of the same 5 keys.</figcaption>
+<video class="motion" src="figures/ch14-ring.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A ring of 100 points with node a at 20 and node b at 70, and the keys k10, k30, k50, k85, and k95 drawn inside it. Node a holds k10, k85, and k95, and node b holds k30 and k50. Node c joins at point 45 and takes over the arc from 20 to 45, so k30 moves from node b to node c. An event carries the new ring to both clients, which add c to their copy. In the last part client 2 keeps the old copy, sends k30 to node b, and misses." data-chapters="[[0.0, &quot;the ring&quot;], [16.5, &quot;c joins&quot;], [24.26, &quot;keys move&quot;], [41.06, &quot;clients update&quot;], [52.82, &quot;stale ring&quot;]]"><img src="figures/ch14-ring.gif" alt="A ring of 100 points with node a at 20 and node b at 70, and the keys k10, k30, k50, k85, and k95 drawn inside it. Node a holds k10, k85, and k95, and node b holds k30 and k50. Node c joins at point 45 and takes over the arc from 20 to 45, so k30 moves from node b to node c. An event carries the new ring to both clients, which add c to their copy. In the last part client 2 keeps the old copy, sends k30 to node b, and misses."></video>
+<figcaption><b>Animation 14.2</b> Each node holds the keys it owns, and each client holds a copy of the ring. Adding <code>c</code> moves one key from <code>b</code> to <code>c</code>. An event carries the new ring to every client; a client that misses it asks the wrong node.</figcaption>
 </figure>
+<p>Each node keeps the keys it owns. A join moves the keys in the new arc from the old owner to the new one.
+Every client also keeps a <code>ConsistentHash</code> of its own and computes the owner locally, so no lookup needs a central
+directory. When a node joins or leaves, each client has to learn the new ring. Until it does, it sends keys to the
+old owner. A client that still points <code>k30</code> at node b asks a node that has given that key up.</p>
 <p>With n servers, a new server takes over about 1/(n + 1) of the keys. Going from 3 servers to 4 moves about 25% of
 the keys, where <code>hash % N</code> moved 75%.</p>
 <h3 id="1423-the-ring-as-a-sorted-vec"><a class="header" href="#1423-the-ring-as-a-sorted-vec">14.2.3 The ring as a sorted <code>Vec</code></a></h3>

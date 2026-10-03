@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c37c4165.js";
+            window.path_to_searchindex_js = "searchindex-410cd733.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-34d6c47e.js"></script>
@@ -390,8 +390,8 @@ node keeps the nodes in their lists, and avoids needing an ordering on nodes.</p
 <li>Attaches the taken node to the output with <code>tail.next.insert(node)</code>, as in listing 10.1.</li>
 </ol>
 <p>When two fronts have equal values, the pairs compare by list number, so the lower-numbered list goes first.</p>
-<p>The heap needs only the current front of each list. That makes this strategy the right one when the lists are too large to hold in memory, such as k
-sorted files read line by line.</p>
+<p>The heap needs only the current front of each list. That makes this strategy the right one when the lists are too
+large to hold in memory. One example is k sorted files read line by line.</p>
 <pre><code class="language-text">$ cargo run --bin merge_k_sorted_lists_heap
 1 1 2 3 4 4 5 6
 </code></pre>
