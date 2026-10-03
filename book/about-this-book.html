@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-410cd733.js";
+            window.path_to_searchindex_js = "searchindex-f2511fee.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-34d6c47e.js"></script>
@@ -190,7 +190,8 @@ memory and threads before the program runs. When the compiler rejects a program 
 what it found.</p>
 <p>The book starts with small things and builds up. The first chapters cover bindings, files, and
 collections. The middle chapters build data structures and look at how they use memory. The later
-chapters add threads, and then the network. In each chapter I introduce an idea in plain terms and work
+chapters add threads and the network, then the kernel boundary and production networking. In each
+chapter I introduce an idea in plain terms and work
 through a small example by hand. Only then do I show the code, a few lines at a time. Each chapter ends
 with the complete program.</p>
 <p>Some programs appear in more than one version. When an early version has a problem, I show how the
@@ -217,7 +218,7 @@ detail, such as a cache line or a page fault, it explains that detail first.</p>
 <li>explain how an async executor runs a <code>Future</code> to completion</li>
 </ul>
 <h2 id="how-this-book-is-organized"><a class="header" href="#how-this-book-is-organized">How this book is organized</a></h2>
-<p>The book has seven parts. Each part builds on the ones before it.</p>
+<p>The book has ten parts. Each part builds on the ones before it.</p>
 <p><strong>Part 1, First steps</strong></p>
 <ul>
 <li>Chapter 1 covers bindings, shadowing, functions, recursion, and loops, and times three ways of
@@ -229,13 +230,14 @@ computing Fibonacci numbers.</li>
 <li>Chapter 3 solves problems with vectors, strings, and hash maps.</li>
 <li>Chapter 4 explains iterators and references, and introduces lifetimes.</li>
 <li>Chapter 5 uses heaps and sorted collections.</li>
-<li>Chapter 6 covers recursion and dynamic programming.</li>
+<li>Chapter 6 covers recursion and dynamic programming, and ends with jobs that also need a GPU’s memory
+and cores.</li>
 </ul>
 <p><strong>Part 3, Modeling data and ownership</strong></p>
 <ul>
 <li>Chapter 7 builds types that reject invalid values, with structs, enums, and error types.</li>
 <li>Chapter 8 covers the pointer types <code>Box</code>, <code>Rc</code>, <code>RefCell</code>, <code>Weak</code>, <code>Arc</code>, and <code>Cow</code>.</li>
-<li>Chapter 9 builds linked lists.</li>
+<li>Chapter 9 builds linked lists, and measures four ways to store one.</li>
 <li>Chapter 10 merges many sorted lists into one.</li>
 <li>Chapter 11 covers trees and tries.</li>
 <li>Chapter 12 covers graphs.</li>
@@ -259,12 +261,34 @@ computing Fibonacci numbers.</li>
 <li>Chapter 21 parses and serves HTTP/1.1.</li>
 <li>Chapter 22 builds an async executor and two HTTP clients.</li>
 </ul>
-<p><strong>Part 7, Compact implementations</strong></p>
+<p><strong>Part 7, The kernel boundary</strong></p>
 <ul>
-<li>Chapter 23 compares short versions of earlier programs with their full versions.</li>
+<li>Chapter 23 maps files into memory, weighs <code>mmap</code> against <code>read</code>, and sends a file to a socket with
+<code>sendfile</code>.</li>
+<li>Chapter 24 opens the file descriptor table, and builds <code>ls | wc -l</code> from <code>pipe</code>, <code>fork</code>, <code>dup2</code>, and
+<code>execvp</code>.</li>
+<li>Chapter 25 covers edge-triggered epoll, the stall a missed edge leaves behind, and the modes that let
+several threads share one listener.</li>
 </ul>
-<p>Appendix A lists common Rust compile errors and their fixes. Appendix B is the report on the benchmarks in
-chapters 9 and 13.</p>
+<p><strong>Part 8, Under the locks</strong></p>
+<ul>
+<li>Chapter 26 builds a futex-backed mutex, counts its system calls, and runs two litmus tests on memory
+ordering.</li>
+</ul>
+<p><strong>Part 9, Production networking</strong></p>
+<ul>
+<li>Chapter 27 follows a TCP connection as it closes, and the states a busy server leaves behind.</li>
+<li>Chapter 28 adds TLS and mutual TLS, with certificates made at startup.</li>
+<li>Chapter 29 builds a client connection pool with a hard limit and a reused connection.</li>
+</ul>
+<p><strong>Part 10, Compact implementations</strong></p>
+<ul>
+<li>Chapter 30 gives ten short implementations, each sized to type in a live round, and points at the
+chapter that holds its full version.</li>
+</ul>
+<p>Appendix A is the Rust cheat sheet: the compile errors and idioms that cost the most time. Appendix B is
+the full benchmark report. Appendix C is the long version of chapter 10, kept for readers who want every
+borrow trick.</p>
 <h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <p>Code in the text looks like <code>this</code>. Programs are introduced in numbered listings, usually a few lines at a
 time. Each caption names the source file and the lines it shows. At the end of each chapter, the complete
