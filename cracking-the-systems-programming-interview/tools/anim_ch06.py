@@ -4,7 +4,7 @@
 """
 
 from motion import (BRASS, BRASS_LT, FAINT, INK, LINE, MUTED, PAPER, RUST, RUST_LT, TEAL,
-                    TEAL_LT, W, bezier, caption, chip, clamp, code_panel, lerp, mix, pill,
+                    TEAL_LT, W, bezier, caption, chip, clamp, code_panel, focus, lerp, mix, pill,
                     progress, render, scoreboard, title_block)
 from motion_kit import (NAVY, Panels, arrow, cells, edge, layout, line_of, node, play, row_xs,
                         source)
@@ -248,16 +248,18 @@ GPU_CODE = Panels("src/bin/gpu_job_schedule.rs",
 def gpu_jobs():
     code = GPU_CODE
     empty_dp = ",".join(["-"] * 5)
-    steps = [dict(chapter="the jobs", job=-1.0, gpu=-1.0, dp=empty_dp, prev_v="-,-,-,-",
-                  compat="", probe=-1.0, skip_from=-1.0, take_from=-1.0, winner="", nofit=0.0,
-                  strike=-1.0, best="", split=0.0, code=-1.0,
-                  say="Four jobs. Each has a start, an end, a memory need, a core need, and a "
-                      "profit.")]
+    steps = [dict(chapter="the jobs", job="-1", gpu=-1.0, dp=empty_dp, prev_v="-,-,-,-",
+                  compat="", probe=-1.0, skip_from="-1", take_from="-1", winner="", nofit=0.0,
+                  strike="-1", best="", split=0.0, code=-1.0,
+                  say="Four jobs, out of order. Each has a start, an end, a memory need, a core "
+                      "need, and a profit.")]
     steps.append(dict(say="gpu 0 has 80 GB and 108 cores. gpu 1 has 16 GB and 40 cores."))
+    steps.append(dict(chapter="sort", code=-1.0, pos0=0.0, pos1=1.0, pos2=2.0, pos3=3.0,
+                      dur=1.3, events=("sort",),
+                      say="Sort by end time: A ends at 3, B at 4, C at 5, and D at 6."))
 
     steps.append(dict(chapter="prev", code=0.0,
-                      say="Sort the jobs by end time. For each job, count the jobs that finish by "
-                          "the time it starts."))
+                      say="Now count, for each job, the jobs that finish by the time it starts."))
     shown = ["-"] * 4
     for i, (name, start, end, mem, cores, profit) in enumerate(JOBS):
         earlier = [j for j in range(i) if JOBS[j][2] <= start]
@@ -293,10 +295,8 @@ def gpu_jobs():
             skip, take = values[i], values[PREV[i]] + profit
             win = "take" if take > skip else "skip"
             filled[i + 1] = str(max(skip, take))
-            verb = "takes %d" % take if win == "take" else "keeps %d" % skip
             steps.append(dict(
-                say="%s fits. Skip keeps dp[%d] = %d. Take is dp[%d] + %d = %d. The table %s." % (
-                    job, i, skip, PREV[i], profit, take, verb),
+                say="%s fits gpu %d. The larger of skip and take fills dp[%d]." % (job, g, i + 1),
                 dp=",".join(filled), job=str(i), skip_from=str(i), take_from=str(PREV[i]),
                 winner=win, nofit=0.0, code=4.0, dur=0.5, events=("fly",), fly_job=str(i)))
         steps.append(dict(say="%s ends at %d." % (name, values[-1]), kind="insight", code=5.0,
@@ -325,7 +325,8 @@ def gpu_jobs():
     steps = [{k: v for k, v in st.items() if v is not None} for st in steps]
     tl = play(steps, dict(job="-1", gpu=-1.0, dp=empty_dp, prev_v="-,-,-,-", compat="", probe=-1.0,
                           skip_from="-1", take_from="-1", winner="", nofit=0.0, strike="-1",
-                          best="", split=0.0, code=-1.0, fly_job=""))
+                          best="", split=0.0, code=-1.0, fly_job="",
+                          pos0=1.0, pos1=3.0, pos2=0.0, pos3=2.0))
 
     def draw(p, s, total):
         t = s.t
@@ -359,8 +360,11 @@ def gpu_jobs():
         compat = {int(v) for v in s.compat.split(",") if v != ""}
         prevs = s.prev_v.split(",")
         chosen = SPLIT_JOBS[0] + SPLIT_JOBS[1]
-        for i, (name, start, end, mem, cores, profit) in enumerate(JOBS):
-            y = ROW_Y + i * ROW_H
+        pos = [float(s.pos0), float(s.pos1), float(s.pos2), float(s.pos3)]
+        for i in sorted(range(4), key=lambda k: pos[k]):
+            name, start, end, mem, cores, profit = JOBS[i]
+            y = ROW_Y + pos[i] * ROW_H
+            lifted = abs(pos[i] - round(pos[i])) > 0.05
             here = int(s.job) == i
             keep = i in compat
             no_fit = small > 0.5 and not FITS_SMALL[i]
@@ -379,13 +383,16 @@ def gpu_jobs():
             if here and split < 0.5:
                 p.rect(18, y - 3, W - 36, ROW_H + 6, BRASS_LT, "none", 8, opacity=0.65 * op)
                 p.rect(18, y - 3, 4, ROW_H + 6, BRASS, "none", 2, opacity=op)
-            p.text(26, y + 16, name, 15, BRASS if here else INK, 700, mono=True, opacity=op)
-            p.text(52, y + 16, "%d GB, %d cores, profit %d" % (mem, cores, profit), 10, MUTED,
+            if lifted:
+                focus(p, 18, y - 3, W - 36, ROW_H + 6, 0.85, BRASS, pad=2)
+            p.text(22, y + 16, str(i), 12, BRASS if here else FAINT, 700, mono=True, opacity=op)
+            p.text(40, y + 16, name, 15, BRASS if here else INK, 700, mono=True, opacity=op)
+            p.text(56, y + 16, "%d GB, %d cores, profit %d" % (mem, cores, profit), 10, MUTED,
                    600, mono=True, opacity=op)
             p.text(job_x(start) - 10, y + 16, "prev %s" % prevs[i], 10,
                    TEAL if prevs[i] != "-" else FAINT, 700, "end", mono=True, opacity=op)
             p.rect(job_x(start), y, job_x(end) - job_x(start), BAR_H, fill, line_c, 7, 1.8,
-                   opacity=op)
+                   opacity=op, shadow="lift" if lifted else None)
             p.text(job_x(start) + 8, y + 16, "%d-%d" % (start, end), 9.5, MUTED, 600, mono=True,
                    opacity=op)
             p.text(job_x(end) - 8, y + 16, "profit %d" % profit, 11, ink, 700, "end", mono=True,
@@ -403,11 +410,6 @@ def gpu_jobs():
             edgec.append(BRASS if tgt == k else (TEAL if done else LINE))
         cells(p, xs, DP_Y, dp, cell=DP_CELL, fills=fills, edges=edgec, size=18,
               index_labels=["dp[%d]" % k for k in range(5)], opacity=1 - split)
-        if int(s.skip_from) >= 0 or int(s.take_from) >= 0:
-            p.text(xs[0] - DP_CELL / 2 - 14, DP_Y + 16, "skip", 11, TEAL, 700, "end", mono=True,
-                   opacity=1 - split)
-            p.text(xs[0] - DP_CELL / 2 - 14, DP_Y + 36, "take", 11, BRASS, 700, "end", mono=True,
-                   opacity=1 - split)
         if 0 <= tgt < 5 and split < 0.5:
             if int(s.skip_from) >= 0:
                 cell_arrow(p, xs, int(s.skip_from), tgt, TEAL, -26, dx=-12,
@@ -422,6 +424,45 @@ def gpu_jobs():
                     hx, hy = xs[tgt] + 12, DP_Y - 6
                     p.line(hx - 7, hy - 7, hx + 7, hy + 7, RUST, 2.2)
                     p.line(hx - 7, hy + 7, hx + 7, hy - 7, RUST, 2.2)
+
+        # the arithmetic for the job being scanned, in one place
+        if int(s.job) >= 0 and split < 0.5:
+            i = int(s.job)
+            name, start, end, mem, cores, profit = JOBS[i]
+            prev = PREV[i]
+            skip_val = dp[i]
+            take_val = str(int(dp[prev]) + profit) if dp[prev] != "-" else "?"
+            result = dp[i + 1]
+            nofit = s.nofit > 0.5
+            win_skip = s.winner == "skip" or nofit
+            win_take = s.winner == "take" and not nofit
+            p.rect(596, 294, 212, 108, "#fbfcfd", LINE, 8, 1.4)
+            p.text(608, 315, "job %d  %s" % (i, name), 12.5, INK, 700, mono=True)
+            p.text(800, 315, "no fit" if nofit else "fits", 11, RUST if nofit else TEAL, 700,
+                   "end", mono=True)
+            if win_skip:
+                p.rect(600, 322, 204, 20, TEAL_LT, "none", 5)
+            if win_take:
+                p.rect(600, 344, 204, 20, BRASS_LT, "none", 5)
+            p.text(608, 338, "skip", 11, TEAL if win_skip else MUTED, 700 if win_skip else 400,
+                   mono=True)
+            p.text(646, 338, "dp[%d] = %s" % (i, skip_val), 11, TEAL if win_skip else MUTED,
+                   700 if win_skip else 400, mono=True)
+            p.text(608, 360, "take", 11, BRASS if win_take else MUTED, 700 if win_take else 400,
+                   mono=True)
+            if nofit:
+                p.text(646, 360, "dp[%d] + %d = ?" % (prev, profit), 11, MUTED, 400, mono=True)
+                p.line(644, 356, 776, 356, RUST, 1.8)
+            else:
+                p.text(646, 360, "dp[%d] + %d = %s" % (prev, profit, take_val), 11,
+                       BRASS if win_take else MUTED, 700 if win_take else 400, mono=True)
+            p.rect(600, 372, 204, 22, BRASS_LT, "none", 5)
+            if nofit:
+                p.text(608, 388, "dp[%d] = dp[%d] = %s" % (i + 1, i, result), 11.5, INK, 700,
+                       mono=True)
+            else:
+                p.text(608, 388, "dp[%d] = max(%s, %s) = %s" % (i + 1, skip_val, take_val, result),
+                       11.5, INK, 700, mono=True)
 
         age = s.timeline.age("fly", t)
         if s.fly_job and age is not None and age < 0.6:
