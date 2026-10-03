@@ -105,6 +105,7 @@ Newest entry last. One line per finished step: date, item, commit.
 - 2026-10-01 all 46 animations re-rendered with the new code reveal
 
 - 2026-10-01 ch19 section 19.4 single flight: concept, figure 19.6, excerpts, measured (1 execution for 8 callers; 103 ms vs 417 ms one-lock), panic case, animation ch19-single-flight, listing 19.12; exercise 4 replaced
+- 2026-10-02 ch06 section 6.5: jobs that also need memory and cores, from a reader-supplied program. The lab gains `src/bin/gpu_job_schedule.rs` (range `.contains` in the fit test, `if`/`else` instead of a bool `match`, `partition_point` for prev, five tests, nightly fmt, clippy clean, prints 120); the chapter gains the fit test, the code, the two hand traces, the honest note that one GPU at a time earns 120 where sharing the jobs out earns 130, a summary bullet and exercise 5; Animation 6.3 (gpu-jobs) draws the skip and take arrows into each dp cell, highlights the job being scanned, blocks C and D on gpu 1, strikes the fit test, and shows the 130 split with each job's profit
 
 ## Phase 3: depth pass (requested 2026-10-01)
 
@@ -174,7 +175,7 @@ Priority order: ch14, ch04, ch02, ch11, ch12, then the rest.
 | 03 collections | 10 | (c) about 10 whole files; three_sum and the others were noted earlier | Excerpts only; motion is already rich |
 | 04 iterators | lazy-chain | (a) about 260 words before code; (b) no motion for `collect`, `fold`, or `zip` | An adapter-pipeline robot line with `fold` accumulating; the fail case is a chain with no consumer that does nothing |
 | 05 heaps | heap-sift, top-k | (c) median_finder at 138 lines | A two-heaps animation for the median: balance and rebalance |
-| 06 DP | coin-change, subsets | Fine. Job scheduling has no motion | Optional: a deadline-slots animation |
+| 06 DP | coin-change, subsets, gpu-jobs | Fine. Section 6.5 (2026-10-02) adds the GPU job problem and its animation | Optional: a deadline-slots animation |
 | 07 types | parse-trace | (c) adt_idioms at 236 lines and state_machine shown whole | Excerpt them. A state-machine animation in which an invalid transition does not compile (the typestate fail case) |
 | 08 pointers | rc-refcell, weak-parent | (c) smart_pointers at 165 lines | Excerpt it. A `Box` on the heap against the stack size, as a small figure |
 | 09 linked lists | reverse, list-replace, list-drop, list-doubly | Done 2026-10-01: treasure-hunt intuition, push/pop with `replace` (fail: E0507), drop as a growing stack (fail: overflow at 262,144 frames) against the loop, strong counts in the doubly list (fail: strong prev leaks); excerpts first, complete files in 9.9 | Reference for list-shaped chapters |

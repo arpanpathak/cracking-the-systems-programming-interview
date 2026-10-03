@@ -4,8 +4,10 @@
 """
 
 from motion import (BRASS, BRASS_LT, FAINT, INK, LINE, MUTED, PAPER, RUST, RUST_LT, TEAL,
-                    TEAL_LT, W, caption, code_panel, progress, render, title_block)
-from motion_kit import NAVY, cells, edge, layout, line_of, node, play, row_xs, source
+                    TEAL_LT, W, bezier, caption, chip, clamp, code_panel, lerp, mix, pill,
+                    progress, render, scoreboard, title_block)
+from motion_kit import (NAVY, Panels, arrow, cells, edge, layout, line_of, node, play, row_xs,
+                        source)
 
 INF = "∞"
 
@@ -202,6 +204,274 @@ def subsets():
     return tl, draw, height
 
 
+# ---------------------------------------------- jobs that need memory and cores
+
+JOBS = [("A", 1, 3, 12, 20, 50), ("B", 2, 4, 8, 10, 10), ("C", 3, 5, 40, 60, 40),
+        ("D", 3, 6, 60, 90, 70)]
+PREV = [0, 0, 1, 1]
+CARDS = [("gpu 0", 80, 108), ("gpu 1", 16, 40)]
+FITS_SMALL = [True, True, False, False]
+X0, XSTEP = 190, 82
+ROW_Y, ROW_H, BAR_H = 140, 32, 22
+AXIS_Y, CARD_Y, CARD_H = 266, 64, 54
+DP_Y, DP_CELL, DP_GAP = 320, 60, 10
+LANE_Y = [304, 346]
+CODE_Y, CODE_LEAD = 410, 14.4
+SPLIT_JOBS = {0: ["A", "D"], 1: ["B"]}
+SPLIT_SUM = {0: 120, 1: 10}
+
+
+def job_x(t):
+    return X0 + t * XSTEP
+
+
+def cell_arrow(p, xs, src, tgt, color, bend, dash=None, opacity=1.0, dx=0.0):
+    """An arrow from the top of cell `src` into the top of cell `tgt`."""
+    arrow(p, xs[src] + dx, DP_Y - 6, xs[tgt] + dx, DP_Y - 2, color=color, width=2.4, head=11,
+          bend=bend, dash=dash, opacity=opacity)
+
+
+GPU_CODE = Panels("src/bin/gpu_job_schedule.rs",
+                  [[("let prev: Vec<usize> = jobs", ".collect();")],
+                   [("let pick_jobs_dp = |gpu: &Gpu| {", "}")],
+                   [("gpus.iter()", ".unwrap_or(0)")]],
+                  ["prev: the jobs that finish in time", "dp: one pass per GPU",
+                   "the best GPU wins"],
+                  ["let prev: Vec<usize> = jobs",
+                   "jobs.partition_point(|earlier| earlier.end <= job.start)",
+                   "for index in 0..jobs.len() {",
+                   "if gpu.fits(job) {",
+                   "dp[index].max(dp[prev[index]] + job.profit)",
+                   "gpus.iter()"])
+
+
+def gpu_jobs():
+    code = GPU_CODE
+    empty_dp = ",".join(["-"] * 5)
+    steps = [dict(chapter="the jobs", job=-1.0, gpu=-1.0, dp=empty_dp, prev_v="-,-,-,-",
+                  compat="", probe=-1.0, skip_from=-1.0, take_from=-1.0, winner="", nofit=0.0,
+                  strike=-1.0, best="", split=0.0, code=-1.0,
+                  say="Four jobs. Each has a start, an end, a memory need, a core need, and a "
+                      "profit.")]
+    steps.append(dict(say="gpu 0 has 80 GB and 108 cores. gpu 1 has 16 GB and 40 cores."))
+
+    steps.append(dict(chapter="prev", code=0.0,
+                      say="Sort the jobs by end time. For each job, count the jobs that finish by "
+                          "the time it starts."))
+    shown = ["-"] * 4
+    for i, (name, start, end, mem, cores, profit) in enumerate(JOBS):
+        earlier = [j for j in range(i) if JOBS[j][2] <= start]
+        shown[i] = str(len(earlier))
+        if earlier:
+            say = "%s starts at %d. %s ends by then, so prev = %d." % (
+                name, start, " and ".join(JOBS[j][0] for j in earlier), len(earlier))
+        else:
+            say = "%s starts at %d. No earlier job ends by then, so prev = 0." % (name, start)
+        steps.append(dict(say=say, probe=float(start), job=str(i),
+                          compat=",".join(str(j) for j in earlier), prev_v=",".join(shown),
+                          code=1.0, dur=0.5))
+    steps.append(dict(say="The jobs are sorted by end, so the ones that finish in time are a "
+                          "prefix, and one search finds its length.", kind="insight", probe=-1.0,
+                      job="-1", compat="", code=1.0, hold=1.2))
+
+    for g, values in ((0, [0, 50, 50, 90, 120]), (1, [0, 50, 50, 50, 50])):
+        name = CARDS[g][0]
+        steps.append(dict(chapter=name, code=2.0, gpu=float(g), job="-1", dp=empty_dp,
+                          skip_from="-1", take_from="-1", winner="", nofit=0.0,
+                          say="Now the same table for %s." % name))
+        filled = ["0"] + ["-"] * 4
+        for i, (job, start, end, mem, cores, profit) in enumerate(JOBS):
+            if g == 1 and not FITS_SMALL[i]:
+                filled[i + 1] = filled[i]
+                steps.append(dict(
+                    say="%s needs %d GB and %d cores. %s has %d GB and %d cores, so %s does not "
+                        "fit, and dp[%d] copies %s." % (job, mem, cores, name, CARDS[g][1],
+                                                        CARDS[g][2], job, i + 1, filled[i]),
+                    dp=",".join(filled), job=str(i), skip_from=str(i),
+                    take_from=str(PREV[i]), winner="skip", nofit=1.0, code=3.0, dur=0.5))
+                continue
+            skip, take = values[i], values[PREV[i]] + profit
+            win = "take" if take > skip else "skip"
+            filled[i + 1] = str(max(skip, take))
+            verb = "takes %d" % take if win == "take" else "keeps %d" % skip
+            steps.append(dict(
+                say="%s fits. Skip keeps dp[%d] = %d. Take is dp[%d] + %d = %d. The table %s." % (
+                    job, i, skip, PREV[i], profit, take, verb),
+                dp=",".join(filled), job=str(i), skip_from=str(i), take_from=str(PREV[i]),
+                winner=win, nofit=0.0, code=4.0, dur=0.5, events=("fly",), fly_job=str(i)))
+        steps.append(dict(say="%s ends at %d." % (name, values[-1]), kind="insight", code=5.0,
+                          job="-1", skip_from="-1", take_from="-1", winner="", nofit=0.0,
+                          best=str(values[-1]), hold=1.2))
+
+    steps.append(dict(chapter="the fit test", kind="fail", gpu=1.0, job="2", code=3.0, strike="3",
+                      skip_from="2", take_from="1", winner="take", nofit=0.0, dp="0,50,50,90,-",
+                      say="Strike the fit test. gpu 1 now takes C, which needs 40 GB it does not "
+                          "have.", hold=1.0))
+    steps.append(dict(say="Then D, which needs 60 GB. gpu 1 reports 120.", kind="fail", job="3",
+                      skip_from="3", take_from="1", winner="take", dp="0,50,50,90,120", hold=1.2))
+    steps.append(dict(say="gpu 1 has 16 GB, so that schedule is not real. The fit test keeps the "
+                          "table to jobs the GPU can run.", kind="fail", strike="-1", job="-1",
+                      skip_from="-1", take_from="-1", dp="0,50,50,50,50", hold=1.4))
+
+    steps.append(dict(chapter="share", gpu=-1.0, job="-1", code=5.0, best="120",
+                      say="With the fit test back, the best single GPU earns 120 while the other "
+                          "one runs nothing.", kind="insight", hold=1.2))
+    steps.append(dict(say="Share the jobs. A and D on gpu 0 earn 50 + 70 = 120, and B on gpu 1 "
+                          "earns 10.", split=1.0, best="130", events=("fly",), fly_job="1",
+                      hold=1.8))
+    steps.append(dict(say="The total is 130. One table per GPU cannot choose this split.",
+                      split=1.0, hold=2.2))
+
+    steps = [{k: v for k, v in st.items() if v is not None} for st in steps]
+    tl = play(steps, dict(job="-1", gpu=-1.0, dp=empty_dp, prev_v="-,-,-,-", compat="", probe=-1.0,
+                          skip_from="-1", take_from="-1", winner="", nofit=0.0, strike="-1",
+                          best="", split=0.0, code=-1.0, fly_job=""))
+
+    def draw(p, s, total):
+        t = s.t
+        title_block(p, "Jobs that need memory and cores",
+                    "One GPU runs one job at a time, and a job fits only when the GPU has its "
+                    "memory and its cores.")
+        scoreboard(p, [("best", s.best or "-", TEAL)])
+        split = clamp(s.split)
+
+        for i, (name, mem, cores) in enumerate(CARDS):
+            x = 30 + i * 400
+            on = abs(s.gpu - i) < 0.5
+            p.rect(x, CARD_Y, 380, CARD_H, BRASS_LT if on else PAPER, BRASS if on else LINE, 10,
+                   2.2 if on else 1.4)
+            p.text(x + 14, CARD_Y + 22, name, 13.5, INK, 700, mono=True)
+            p.text(x + 88, CARD_Y + 22, "%d GB, %d cores" % (mem, cores), 11.5, MUTED, 600)
+            if split > 0.5:
+                runs = " + ".join("%s %d" % (jb[0], jb[5]) for jb in JOBS
+                                  if jb[0] in SPLIT_JOBS[i])
+                p.text(x + 14, CARD_Y + 44, "%s = %d" % (runs, SPLIT_SUM[i]), 11, BRASS, 700,
+                       mono=True)
+
+        p.line(job_x(0), AXIS_Y, job_x(7), AXIS_Y, LINE, 2)
+        for k in range(8):
+            p.line(job_x(k), AXIS_Y, job_x(k), AXIS_Y + 6, LINE, 1.5)
+            p.text(job_x(k), AXIS_Y + 20, str(k), 10, FAINT, 600, "middle", mono=True)
+        if s.probe >= 0:
+            p.line(job_x(s.probe), AXIS_Y - 132, job_x(s.probe), AXIS_Y + 4, BRASS, 2, dash="6 5")
+
+        small = clamp(s.gpu)
+        compat = {int(v) for v in s.compat.split(",") if v != ""}
+        prevs = s.prev_v.split(",")
+        chosen = SPLIT_JOBS[0] + SPLIT_JOBS[1]
+        for i, (name, start, end, mem, cores, profit) in enumerate(JOBS):
+            y = ROW_Y + i * ROW_H
+            here = int(s.job) == i
+            keep = i in compat
+            no_fit = small > 0.5 and not FITS_SMALL[i]
+            if no_fit:
+                fill, line_c, ink = RUST_LT, RUST, RUST
+            elif split > 0.5 and name in chosen:
+                tint = BRASS if name in SPLIT_JOBS[0] else TEAL
+                fill, line_c, ink = mix(tint, PAPER, 0.86), tint, INK
+            elif here:
+                fill, line_c, ink = BRASS_LT, BRASS, INK
+            elif keep:
+                fill, line_c, ink = TEAL_LT, TEAL, INK
+            else:
+                fill, line_c, ink = PAPER, LINE, INK
+            op = 1.0 if split < 0.5 or name in chosen else 0.35
+            if here and split < 0.5:
+                p.rect(18, y - 3, W - 36, ROW_H + 6, BRASS_LT, "none", 8, opacity=0.65 * op)
+                p.rect(18, y - 3, 4, ROW_H + 6, BRASS, "none", 2, opacity=op)
+            p.text(26, y + 16, name, 15, BRASS if here else INK, 700, mono=True, opacity=op)
+            p.text(52, y + 16, "%d GB, %d cores, profit %d" % (mem, cores, profit), 10, MUTED,
+                   600, mono=True, opacity=op)
+            p.text(job_x(start) - 10, y + 16, "prev %s" % prevs[i], 10,
+                   TEAL if prevs[i] != "-" else FAINT, 700, "end", mono=True, opacity=op)
+            p.rect(job_x(start), y, job_x(end) - job_x(start), BAR_H, fill, line_c, 7, 1.8,
+                   opacity=op)
+            p.text(job_x(start) + 8, y + 16, "%d-%d" % (start, end), 9.5, MUTED, 600, mono=True,
+                   opacity=op)
+            p.text(job_x(end) - 8, y + 16, "profit %d" % profit, 11, ink, 700, "end", mono=True,
+                   opacity=op)
+            if no_fit:
+                chip(p, job_x(end) + 34, y + 11, "no fit", RUST, RUST_LT, 10, opacity=small)
+
+        dp = s.dp.split(",")
+        xs = row_xs(5, DP_CELL, DP_GAP)
+        tgt = int(s.job) + 1 if int(s.job) >= 0 else -1
+        fills, edgec = [], []
+        for k in range(5):
+            done = dp[k] != "-"
+            fills.append(BRASS_LT if tgt == k else (TEAL_LT if done else PAPER))
+            edgec.append(BRASS if tgt == k else (TEAL if done else LINE))
+        cells(p, xs, DP_Y, dp, cell=DP_CELL, fills=fills, edges=edgec, size=18,
+              index_labels=["dp[%d]" % k for k in range(5)], opacity=1 - split)
+        if int(s.skip_from) >= 0 or int(s.take_from) >= 0:
+            p.text(xs[0] - DP_CELL / 2 - 14, DP_Y + 16, "skip", 11, TEAL, 700, "end", mono=True,
+                   opacity=1 - split)
+            p.text(xs[0] - DP_CELL / 2 - 14, DP_Y + 36, "take", 11, BRASS, 700, "end", mono=True,
+                   opacity=1 - split)
+        if 0 <= tgt < 5 and split < 0.5:
+            if int(s.skip_from) >= 0:
+                cell_arrow(p, xs, int(s.skip_from), tgt, TEAL, -26, dx=-12,
+                           opacity=0.25 if s.winner == "take" else 1.0)
+            if int(s.take_from) >= 0:
+                nofit = s.nofit > 0.5
+                col = RUST if nofit else BRASS
+                cell_arrow(p, xs, int(s.take_from), tgt, col, -48, dx=12,
+                           dash="5 4" if nofit else None,
+                           opacity=0.25 if (s.winner == "skip" and not nofit) else 1.0)
+                if nofit:
+                    hx, hy = xs[tgt] + 12, DP_Y - 6
+                    p.line(hx - 7, hy - 7, hx + 7, hy + 7, RUST, 2.2)
+                    p.line(hx - 7, hy + 7, hx + 7, hy - 7, RUST, 2.2)
+
+        age = s.timeline.age("fly", t)
+        if s.fly_job and age is not None and age < 0.6:
+            i = int(s.fly_job)
+            u = clamp(age / 0.6)
+            if split > 0.5:
+                p0 = (job_x(JOBS[i][2]), ROW_Y + i * ROW_H + BAR_H / 2)
+                p2 = (596, CARD_Y + CARD_H / 2)
+                p1 = ((p0[0] + p2[0]) / 2, 150)
+                x, y = bezier(p0, p1, p2, u)
+                pill(p, x, y, JOBS[i][0], TEAL, TEAL_LT, 11)
+            elif 0 <= tgt < 5:
+                take = s.winner == "take"
+                src = int(s.take_from if take else s.skip_from)
+                bend = -48 if take else -26
+                col = BRASS if take else TEAL
+                light = BRASS_LT if take else TEAL_LT
+                label = "+%d" % JOBS[int(s.job)][5] if take else dp[tgt]
+                p0 = (xs[src], DP_Y - 6)
+                p2 = (xs[tgt], DP_Y - 2)
+                p1 = ((p0[0] + p2[0]) / 2, DP_Y - 6 + bend)
+                x, y = bezier(p0, p1, p2, u)
+                pill(p, x, y, label, col, light, 11)
+
+        if split > 0.01:
+            with p.group(opacity=split):
+                for g in (0, 1):
+                    y = LANE_Y[g]
+                    col = BRASS if g == 0 else TEAL
+                    p.text(X0 - 16, y + 20, CARDS[g][0], 12, INK, 700, "end", mono=True)
+                    p.rect(X0, y, job_x(7) - X0, 30, "#fbfcfd", LINE, 8, 1.4)
+                    for jb in JOBS:
+                        name, start, end, mem, cores, profit = jb
+                        if name not in SPLIT_JOBS[g]:
+                            continue
+                        p.rect(job_x(start) + 2, y + 3, job_x(end) - job_x(start) - 4, 24,
+                               mix(col, PAPER, 0.8), col, 6, 1.6)
+                        p.text(job_x(start) + 10, y + 20, "%s %d" % (name, profit), 11, INK, 700,
+                               mono=True)
+                    p.text(job_x(7) + 6, y + 20, "= %d" % SPLIT_SUM[g], 12, col, 700, mono=True)
+
+        code.draw(p, 26, CODE_Y, W - 52, s, t, size=10.4, lead=CODE_LEAD,
+                  strike=float(s.strike) if float(s.strike) >= 0 else None)
+        caption(p, tl, t, CAP)
+        progress(p, tl, t, total, RAIL)
+
+    CAP, RAIL, height = layout(CODE_Y, len(code), CODE_LEAD)
+    return tl, draw, height
+
+
 def build(name, fn, extra=()):
     def run(only=None):
         tl, draw, height = fn()
@@ -212,4 +482,5 @@ def build(name, fn, extra=()):
 BUILDERS = {
     "coin-change": build("ch06-coin-change.gif", coin_change, (NAVY,)),
     "subsets": build("ch06-subsets.gif", subsets, (NAVY,)),
+    "gpu-jobs": build("ch06-gpu-jobs.gif", gpu_jobs, (NAVY,)),
 }

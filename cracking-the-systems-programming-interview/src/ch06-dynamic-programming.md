@@ -343,6 +343,114 @@ $ cargo run --bin job_scheduling_with_profit_and_deadline
 120
 ```
 
+## 6.5 Jobs that also need memory and cores
+
+**The problem.** A cluster holds several GPUs. Each GPU has a fixed amount of memory and a fixed
+number of cores. Each job needs some of both, and it runs only on a GPU that has enough of each. A
+GPU runs one job at a time, as in section 6.4.
+
+The program below answers a narrow question: which single GPU gives the best schedule? Section 6.5.4
+measures what that leaves unused.
+
+The sample cluster has two GPUs and the four jobs from section 6.4, with a memory need and a core
+need added.
+
+| job | time | memory | cores | profit |
+|---|---|---|---|---|
+| A | [1, 3) | 12 GB | 20 | 50 |
+| B | [2, 4) | 8 GB | 10 | 10 |
+| C | [3, 5) | 40 GB | 60 | 40 |
+| D | [3, 6) | 60 GB | 90 | 70 |
+
+gpu 0 has 80 GB and 108 cores, so all four jobs fit there. Only A and B fit on gpu 1, which has 16 GB
+and 40 cores.
+
+### 6.5.1 The fit test, and the same table
+
+The new step is one boolean. A job fits a GPU when the GPU has at least its memory and at least its
+cores.
+
+The rest is the table from section 6.4. Sort the jobs by end time and find each job's compatible
+prefix `prev`. Then fill `dp` with the better of skipping the job and taking it on top of `dp[prev]`.
+
+The fit test changes one line of that loop. A job that does not fit is skipped, as if it were not in
+the list at all. Its entry in `dp` copies the entry before it.
+
+### 6.5.2 The code
+
+A job carries its two resource needs beside its time and its profit. A GPU carries the same two
+numbers, and one method answers whether a job fits.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/gpu_job_schedule.rs:7:27}}
+```
+
+<p class="listing"><b>Listing 6.6</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/gpu_job_schedule.rs">src/bin/gpu_job_schedule.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/gpu_job_schedule.rs}}
+```
+
+`max_profit` builds `prev` once and then reuses a single `dp` vector for each GPU. The closure
+`pick_jobs_dp` fills the table for one GPU and returns its last entry. `gpus.iter().map(pick_jobs_dp)`
+runs that closure for every GPU, and `.max()` keeps the best result.
+
+Reusing `dp` is safe. The loop writes `dp[i + 1]` from `dp[i]` and `dp[prev[i]]`. Both indexes are at
+most `i`, so it reads values this pass has already written. Every pass overwrites all of `dp` except
+`dp[0]`, which stays 0.
+
+Animation 6.3 draws both candidates for each cell, then strikes the fit test and shares the jobs out.
+
+<figure class="anim">
+<video class="motion" src="figures/ch06-gpu-jobs.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four jobs, A to D, as bars on a timeline above a row of five dp cells. Two cards show gpu 0 with 80 GB and 108 cores, and gpu 1 with 16 GB and 40 cores. For each job in end order, two arrows enter the next cell: skip from dp[i], and take from dp[prev] with the job's profit. The larger value wins. On gpu 1 the fit test blocks C and D. Striking that line lets gpu 1 take them and read 120, a schedule it cannot run. The last part shares the jobs out, A and D on gpu 0 for 120 and B on gpu 1 for 10, for 130." data-chapters="[[0.0, &quot;the jobs&quot;], [7.62, &quot;prev&quot;], [40.68, &quot;gpu 0&quot;], [77.12, &quot;gpu 1&quot;], [113.2, &quot;the fit test&quot;], [125.5, &quot;share&quot;]]"><img src="figures/ch06-gpu-jobs.gif" alt="Four jobs, A to D, as bars on a timeline above a row of five dp cells. Two cards show gpu 0 with 80 GB and 108 cores, and gpu 1 with 16 GB and 40 cores. For each job in end order, two arrows enter the next cell: skip from dp[i], and take from dp[prev] with the job's profit. The larger value wins. On gpu 1 the fit test blocks C and D. Striking that line lets gpu 1 take them and read 120, a schedule it cannot run. The last part shares the jobs out, A and D on gpu 0 for 120 and B on gpu 1 for 10, for 130."></video>
+<figcaption><b>Animation 6.3</b> Each cell takes the better of skipping the job and adding its profit to <code>dp[prev]</code>. The fit test decides which jobs a GPU may take; striking it makes gpu 1 take work it cannot run. The last part shares the jobs out for 130.</figcaption>
+</figure>
+
+### 6.5.3 Two tables
+
+gpu 0 has enough of both for every job, so its table is the one from section 6.4.
+
+| i | job | fits | prev | skip `dp[i]` | take `dp[prev]` + profit | `dp[i+1]` |
+|---|---|---|---|---|---|---|
+| 0 | A | yes | 0 | 0 | 0 + 50 = 50 | 50 |
+| 1 | B | yes | 0 | 50 | 0 + 10 = 10 | 50 |
+| 2 | C | yes | 1 | 50 | 50 + 40 = 90 | 90 |
+| 3 | D | yes | 1 | 90 | 50 + 70 = 120 | **120** |
+
+gpu 1 fails the fit test for C and D, so both are skipped and the table stops at 50.
+
+| i | job | fits | prev | skip `dp[i]` | take | `dp[i+1]` |
+|---|---|---|---|---|---|---|
+| 0 | A | yes | 0 | 0 | 0 + 50 = 50 | 50 |
+| 1 | B | yes | 0 | 50 | 0 + 10 = 10 | 50 |
+| 2 | C | no | 1 | 50 | no fit | 50 |
+| 3 | D | no | 1 | 50 | no fit | **50** |
+
+The answer is `max(120, 50) = 120`.
+
+```text
+$ cargo run --bin gpu_job_schedule
+120
+```
+
+Sorting costs O(n log n), and each job finds its compatible prefix with one binary search. Each GPU
+then fills its table in O(n), and the same `dp` is reused, so memory is O(n).
+
+### 6.5.4 What one GPU at a time costs
+
+`max` returns one GPU's schedule. The other GPU runs nothing in that answer, even when it has room.
+
+The two schedules cannot be added, because they overlap. The best schedule for gpu 1 is A alone,
+which earns 50. That A is already part of the 120 on gpu 0, so adding the two totals counts A twice.
+
+Sharing the jobs out does better. Put A and D on gpu 0, and B on gpu 1. Neither GPU runs two
+overlapping jobs, and the total is 120 + 10 = 130.
+
+Finding that split is a different problem. It has to decide which GPU runs each job. A table per GPU
+cannot express that choice, because the GPUs are not independent. With many jobs and many GPUs the
+search grows quickly, and production schedulers use heuristics, bin packing, or an integer program
+instead.
+
 <div class="summary" markdown="1">
 
 ## Summary
@@ -357,6 +465,10 @@ $ cargo run --bin job_scheduling_with_profit_and_deadline
   for O(n log n).
 - Weighted job scheduling sorts by end time, uses `partition_point` to find compatible jobs, and fills a
   table of best profits.
+- A memory and a core need cost one boolean in that loop. A job that does not fit is skipped, and one `dp`
+  vector serves every GPU.
+- The best single GPU is not the same as the best use of all the GPUs. On the sample data, sharing the jobs
+  out earns 130 where one GPU earns 120.
 
 </div>
 
@@ -372,3 +484,5 @@ structs, enums, and error types.
 3. Generate all subsets without recursion. Count a number `mask` from 0 to 2ⁿ − 1, and include element i
    when bit i of `mask` is set.
 4. Extend `max_profit` to return which jobs it chose, not only the total.
+5. Change `max_profit` so the jobs may be split across the GPUs. Work out the best total for the two GPUs
+   and four jobs in section 6.5 by hand. Then explain why one table per GPU cannot find it.
