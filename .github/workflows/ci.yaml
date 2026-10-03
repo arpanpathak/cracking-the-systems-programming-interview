@@ -58,4 +58,13 @@ jobs:
             sleep 1
           done
           kubectl apply -f config/samples/gpucloud_v1_gpuworkload_kind.yaml
+          # The controller creates the Deployment after it reconciles, so wait for
+          # it to exist: rollout status on a missing object fails at once, and
+          # --timeout does not cover it.
+          for i in $(seq 1 60); do
+            if kubectl get deployment triton-kind-gpu >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
           kubectl rollout status deployment/triton-kind-gpu --timeout=180s
