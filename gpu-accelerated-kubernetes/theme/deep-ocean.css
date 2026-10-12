@@ -268,11 +268,10 @@ p.listing:has(> b) a { font-family: var(--code-face); font-size: 1.25rem; float:
 /* The summary at the end of a chapter. */
 .summary { border-top: 3px solid var(--ocean-selection, var(--rule)); margin-top: 2.6em; }
 
-/* Phones and narrow windows. A diagram is drawn about 1,000 px wide, and
-   shrinking it to a 360 px column makes its labels unreadable. Below 760 px a
-   diagram, an animation or a wide table keeps a readable size and scrolls
-   sideways inside its own strip, while the page itself stays the width of the
-   screen. */
+/* Phones and narrow windows. Every diagram and animation scales to the width of
+   the screen, edge to edge, and nothing scrolls sideways except a wide table
+   or a long line of code inside its own box. A tap opens a diagram full
+   screen (theme/figures.js), turned to use the long side of the phone. */
 @media (max-width: 760px) {
     .content { padding: 0.8em 1.6rem 4em; }
 
@@ -285,49 +284,33 @@ p.listing:has(> b) a { font-family: var(--code-face); font-size: 1.25rem; float:
 
     pre { font-size: 1.25rem; padding: 0.9em 1em; border-radius: 6px; }
 
-    figure {
+    figure,
+    figure:has(> img[src$=".svg"]) {
         margin: 1.8em -1.6rem;
-        padding: 0 1.6rem 0.4em;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        text-align: left;
-        container-type: inline-size;   /* lets the caption measure the strip, not the picture */
     }
-    figure:has(> img[src$=".svg"]) { margin-inline: -1.6rem; }
-    figure > img[src$=".svg"] {
-        width: 900px;
-        max-width: none;
-        border-radius: 10px;
-        box-shadow: 0 1px 2px rgba(20, 28, 40, 0.08), 0 4px 14px rgba(20, 28, 40, 0.10);
-    }
+    figure > img[src$=".svg"],
     figure.anim video.motion,
     figure.anim > img {
-        width: 720px;
-        max-width: none;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
     }
-
-    /* The caption and the player's buttons stay in view while the picture scrolls. */
     figcaption,
     .motion-bar {
-        position: sticky;
-        left: 0;
-        width: calc(100vw - 3.2rem - 32px);   /* for browsers without container units */
-        width: calc(100cqw - 3.2rem);
-        max-width: none;
-        box-sizing: border-box;
-        margin-inline: 0;
+        margin-inline: 1.6rem;
         text-align: left;
     }
-    figcaption::before {
-        content: "Swipe sideways to see all of it. ";
-        display: block;
-        font-size: 0.85em;
+    figure:has(> img[src$=".svg"]) figcaption::after {
+        content: " Tap the picture to enlarge it.";
         opacity: 0.75;
     }
     .motion-bar { font-size: 1.3rem; gap: 0.35em 0.6em; }
     .motion-bar button { padding: 0.35em 0.8em; }
 
-    /* A table keeps its columns and scrolls, in place of breaking words. */
+    /* A table keeps its columns and scrolls inside its own box. */
     .table-wrapper { margin-inline: -1.6rem; padding-inline: 1.6rem; }
     .content table { font-size: 0.88em; min-width: 30em; }
     .content table th, .content table td { padding: 0.45em 0.7em; }
@@ -337,4 +320,40 @@ p.listing:has(> b) a { font-family: var(--code-face); font-size: 1.25rem; float:
     p.listing:has(> b) a { float: none; display: block; margin-top: 0.2em; overflow-wrap: anywhere; }
     .covers { padding: 0.3em 0.9em 0.4em; }
     .callout { padding: 0.4em 0.9em 0.1em; }
+}
+
+/* The full-screen view of a diagram. */
+.figure-zoom {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(9, 11, 16, 0.94);
+    cursor: zoom-out;
+    overflow: auto;
+    touch-action: pinch-zoom;
+}
+.figure-zoom img {
+    max-width: 96vw;
+    max-height: 94vh;
+    border-radius: 10px;
+    background: #fbfaf6;
+}
+/* On an upright phone a wide diagram is turned a quarter, so its long side
+   runs down the screen. */
+.figure-zoom.turned img {
+    transform: rotate(90deg);
+    width: 94vh;
+    max-width: none;
+    max-height: 96vw;
+}
+.figure-zoom::after {
+    content: "Tap to close";
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    color: #a6accd;
+    font-size: 1.3rem;
 }
