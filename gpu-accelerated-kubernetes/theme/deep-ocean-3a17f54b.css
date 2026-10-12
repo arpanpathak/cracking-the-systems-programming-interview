@@ -267,3 +267,74 @@ p.listing:has(> b) a { font-family: var(--code-face); font-size: 1.25rem; float:
 
 /* The summary at the end of a chapter. */
 .summary { border-top: 3px solid var(--ocean-selection, var(--rule)); margin-top: 2.6em; }
+
+/* Phones and narrow windows. A diagram is drawn about 1,000 px wide, and
+   shrinking it to a 360 px column makes its labels unreadable. Below 760 px a
+   diagram, an animation or a wide table keeps a readable size and scrolls
+   sideways inside its own strip, while the page itself stays the width of the
+   screen. */
+@media (max-width: 760px) {
+    .content { padding: 0.8em 1.6rem 4em; }
+
+    h1 { font-size: 2.7rem; margin-block: 0.3em 0.7em; }
+    h2 { font-size: 2.15rem; margin-block: 1.8em 0.6em; }
+    h3 { font-size: 1.85rem; }
+
+    /* A long piece of inline code wraps where it has to. */
+    :not(pre) > code { white-space: normal; overflow-wrap: anywhere; }
+
+    pre { font-size: 1.25rem; padding: 0.9em 1em; border-radius: 6px; }
+
+    figure {
+        margin: 1.8em -1.6rem;
+        padding: 0 1.6rem 0.4em;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        text-align: left;
+        container-type: inline-size;   /* lets the caption measure the strip, not the picture */
+    }
+    figure:has(> img[src$=".svg"]) { margin-inline: -1.6rem; }
+    figure > img[src$=".svg"] {
+        width: 900px;
+        max-width: none;
+        border-radius: 10px;
+        box-shadow: 0 1px 2px rgba(20, 28, 40, 0.08), 0 4px 14px rgba(20, 28, 40, 0.10);
+    }
+    figure.anim video.motion,
+    figure.anim > img {
+        width: 720px;
+        max-width: none;
+    }
+
+    /* The caption and the player's buttons stay in view while the picture scrolls. */
+    figcaption,
+    .motion-bar {
+        position: sticky;
+        left: 0;
+        width: calc(100vw - 3.2rem - 32px);   /* for browsers without container units */
+        width: calc(100cqw - 3.2rem);
+        max-width: none;
+        box-sizing: border-box;
+        margin-inline: 0;
+        text-align: left;
+    }
+    figcaption::before {
+        content: "Swipe sideways to see all of it. ";
+        display: block;
+        font-size: 0.85em;
+        opacity: 0.75;
+    }
+    .motion-bar { font-size: 1.3rem; gap: 0.35em 0.6em; }
+    .motion-bar button { padding: 0.35em 0.8em; }
+
+    /* A table keeps its columns and scrolls, in place of breaking words. */
+    .table-wrapper { margin-inline: -1.6rem; padding-inline: 1.6rem; }
+    .content table { font-size: 0.88em; min-width: 30em; }
+    .content table th, .content table td { padding: 0.45em 0.7em; }
+    .lld { padding: 0.4em 0.9em 0.3em; overflow-x: auto; }
+    .lld table { min-width: 34em; }
+
+    p.listing:has(> b) a { float: none; display: block; margin-top: 0.2em; overflow-wrap: anywhere; }
+    .covers { padding: 0.3em 0.9em 0.4em; }
+    .callout { padding: 0.4em 0.9em 0.1em; }
+}
