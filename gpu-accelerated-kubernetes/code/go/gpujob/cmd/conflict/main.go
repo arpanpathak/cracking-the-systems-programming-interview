@@ -34,36 +34,49 @@ func main() {
 	}
 }
 
+// ANCHOR: run
 // run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+
 	if err != nil {
 		return err
 	}
 
 	var first gpujobv1.GpuJob
+
 	if err := c.Get(ctx, job, &first); err != nil {
 		return err
 	}
+
 	second := first.DeepCopy()
 	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
 
 	first.Spec.GPUs++
+
 	if err := c.Update(ctx, &first); err != nil {
 		return err
 	}
+
 	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
 
 	second.Spec.GPUs += 2
 	err = c.Update(ctx, second)
 	var status *apierrors.StatusError
+
 	if errors.As(err, &status) && status.ErrStatus.Code == http.StatusConflict {
 		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+
 		return nil
 	}
+
 	return fmt.Errorf("unexpected result: %v", err)
 }
+
+// ANCHOR_END: run

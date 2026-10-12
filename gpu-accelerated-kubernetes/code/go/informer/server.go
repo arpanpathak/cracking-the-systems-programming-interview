@@ -12,6 +12,7 @@ import (
 	"sync"
 )
 
+// ANCHOR: objects
 // Spec is the part of an object that a user writes: the desired state.
 type Spec struct {
 	// GPUs is the number of GPUs the job asks for.
@@ -76,6 +77,9 @@ var (
 	ErrUnreachable = errors.New("server unreachable")
 )
 
+// ANCHOR_END: objects
+
+// ANCHOR: server
 // APIServer stores objects and streams their changes to watchers. Its methods
 // are safe for concurrent use.
 type APIServer struct {
@@ -100,6 +104,9 @@ func NewAPIServer() *APIServer {
 	return &APIServer{objects: map[string]Object{}}
 }
 
+// ANCHOR_END: server
+
+// ANCHOR: writes
 // Update creates or replaces an object and returns ErrConflict if the write's
 // condition fails. A non-zero o.ResourceVersion is a condition: the caller read
 // the object at that version and wants the write applied only if the object is
@@ -108,17 +115,22 @@ func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, exists := s.objects[o.Name]
+
 	if o.ResourceVersion != 0 && o.ResourceVersion != current.ResourceVersion {
 		return ErrConflict
 	}
+
 	eventType := Modified
+
 	if !exists {
 		eventType = Added
 	}
+
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
 	s.publish(Event{eventType, o})
+
 	return nil
 }
 
@@ -127,9 +139,11 @@ func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	o, exists := s.objects[name]
+
 	if !exists {
 		return
 	}
+
 	delete(s.objects, name)
 	s.version++
 	o.ResourceVersion = s.version
@@ -140,17 +154,22 @@ func (s *APIServer) Delete(name string) {
 // The caller must hold s.mu.
 func (s *APIServer) publish(e Event) {
 	s.history = append(s.history, e)
+
 	for _, w := range s.watches {
 		w <- e
 	}
 }
 
+// ANCHOR_END: writes
+
+// ANCHOR: listwatch
 // List returns every object, sorted by name, and the version at which the
 // snapshot was taken.
 func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
 }
 
@@ -159,22 +178,30 @@ func (s *APIServer) List() ([]Object, int) {
 func (s *APIServer) Watch(version int) (<-chan Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch {
 	case s.unreachable:
 		return nil, ErrUnreachable
 	case version < s.compacted:
 		return nil, ErrGone
 	}
+
 	w := make(chan Event, 1024)
+
 	for _, e := range s.history {
 		if e.Object.ResourceVersion > version {
 			w <- e
 		}
 	}
+
 	s.watches = append(s.watches, w)
+
 	return w, nil
 }
 
+// ANCHOR_END: listwatch
+
+// ANCHOR: faults
 // Compact discards the event history, as etcd discards old versions.
 func (s *APIServer) Compact() {
 	s.mu.Lock()
@@ -210,5 +237,8 @@ func (s *APIServer) dropWatches() {
 	for _, w := range s.watches {
 		close(w)
 	}
+
 	s.watches = nil
 }
+
+// ANCHOR_END: faults

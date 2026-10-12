@@ -19,6 +19,7 @@ import (
 	gpujobv1 "gpuk8s/gpujob/api/v1"
 )
 
+// ANCHOR: describe
 // namespace is the namespace whose jobs the program watches.
 const namespace = "default"
 
@@ -28,9 +29,13 @@ func describe(obj any) string {
 	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
+
 	job := obj.(*gpujobv1.GpuJob)
+
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
+
+// ANCHOR_END: describe
 
 // main starts an informer for GpuJob objects and prints one line per event.
 func main() {
@@ -40,24 +45,31 @@ func main() {
 	}
 }
 
+// ANCHOR: run
 // run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
 		Scheme:            scheme,
 		DefaultNamespaces: map[string]cache.Config{namespace: {}},
 	})
+
 	if err != nil {
 		return err
 	}
+
 	ctx := ctrl.SetupSignalHandler()
 	informer, err := informers.GetInformer(ctx, &gpujobv1.GpuJob{})
+
 	if err != nil {
 		return err
 	}
+
 	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj any, isInInitialList bool) {
 			if isInInitialList {
@@ -69,16 +81,22 @@ func run() error {
 		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
 		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
 	})
+
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("list started")
 	go informers.Start(ctx)
+
 	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
 		return fmt.Errorf("informer did not sync")
 	}
+
 	fmt.Println("list complete, watching")
 	<-ctx.Done()
+
 	return nil
 }
+
+// ANCHOR_END: run

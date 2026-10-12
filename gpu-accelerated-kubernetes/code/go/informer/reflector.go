@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// ANCHOR: run
 // Reflector copies the server's objects into a cache and queues the name of
 // every object that changes.
 type Reflector struct {
@@ -29,19 +30,26 @@ func (r *Reflector) Run() {
 	}
 }
 
+// ANCHOR_END: run
+
+// ANCHOR: watch
 // watchFrom applies events from version onward, reopens the watch after each
 // disconnect, and returns when the server reports that the history is gone.
 func (r *Reflector) watchFrom(version int) {
 	for {
 		w, err := r.server.Watch(version)
+
 		if errors.Is(err, ErrGone) {
 			logf("reflector: watch from version %d: %v", version, err)
+
 			return
 		}
+
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
 			continue
 		}
+
 		for e := range w {
 			// Update the cache before queueing the name, so that a worker
 			// that takes the name reads the object as of this event.
@@ -49,6 +57,9 @@ func (r *Reflector) watchFrom(version int) {
 			r.queue.Add(e.Object.Name)
 			version = e.Object.ResourceVersion
 		}
+
 		logf("reflector: watch closed, resuming from version %d", version)
 	}
 }
+
+// ANCHOR_END: watch

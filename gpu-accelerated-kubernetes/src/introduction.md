@@ -48,6 +48,13 @@ a pod has been given a GPU, the runtime adds the GPU's device files and the driv
 libraries to the container just before it starts, so that a program inside it can use the
 GPU.
 
+Figure I.1 follows one request for a GPU past both pieces.
+
+<figure>
+<img src="figures/gpu-request.svg" alt="A pod whose limits ask for nvidia.com/gpu: 1 goes to the scheduler, which picks a machine that advertises a free unit. On that machine the kubelet starts the pod's containers, the device plugin reports the number of GPUs to the kubelet, and the GPU container runtime adds the GPU's device files and driver libraries to the container.">
+<figcaption><b>Figure I.1</b> A pod asks for one GPU, the scheduler finds a machine that advertises one, and the two vendor pieces on that machine count the GPUs and open one to the container.</figcaption>
+</figure>
+
 We develop and test every example on a single-node cluster created with kind, a tool that
 runs Kubernetes nodes as Docker containers. Appendix A shows how we build that cluster and
 install both pieces on it.
@@ -95,9 +102,43 @@ that file on GitHub.
 - [`code/jetson-gpu`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu) holds the script, manifests, and test program for the kind cluster in
   Appendix A.
 
+Every program has the same name in both trees. From chapter 3 on, each is one directory under
+`code/go`, run with `go run ./<name>`, and one package under `code/rust`, run with
+`cargo run -p <name>`:
+
+| Chapter | Programs |
+|---|---|
+| 1. Keeping a local copy of the cluster | `informer` |
+| 1.1 A GPU job controller on a real cluster | `gpujob` |
+| 2. What one GPU means | `gpuusage`, and the CUDA programs `gpu_info` and `gpu_load` |
+| 3. Knowing which machines are alive | `heartbeats`, `phi`, `leaseagent`, `leasewatch` |
+| 4. A control plane for a fleet of hosts | `fleethealth`, `fencing` |
+| 5. Kubernetes in a new cloud account | `provisioner` |
+| 6. Virtual machines on Kubernetes | `migration` |
+| 7. Collective communication and training failures | `allreduce` |
+| 8. Placing jobs on GPUs | `gangsched` |
+| 9. Counting across replicas | `counter` |
+| 10. A content-addressed artifact store | `cas` |
+| 11. A command-line tool for Windows, macOS, and Linux | `gpuctl` |
+
+The programs of chapters 4 to 10 are models: they need no cluster, finish in well under a
+second, and print the same output in Go and in Rust. The output shown in each chapter is
+included from `code/output`, where a run of the program wrote it.
+
+Each chapter introduces its programs in the same order. It starts from the problem and a
+small example worked by hand, draws the design, and states the types and the rules they
+keep in a box headed "Low-level design". The code then appears in short parts, each next to
+the text that explains it, and the complete program is printed at the end of the chapter.
+
 The Go module declares Go 1.26, and the Rust programs need Rust 1.89 or later, the
 minimum version of the kube crate. The controllers need a Kubernetes cluster in the
 current kubeconfig context.
+
+The diagrams are drawn by `tools/draw_figures.py` and the animations by
+`tools/animations.py`; `make figures` and `make animations` run them, and their output in
+`src/figures` is part of the repository. The book's build removes the `ANCHOR` comments
+that mark the parts of each program, with `tools/strip_anchors.py`, so Python 3 has to be
+installed.
 
 To read the book in a browser, install mdBook and run:
 

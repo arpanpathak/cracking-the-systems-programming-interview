@@ -1,0 +1,28 @@
+one number per replica:
+  shelf records 300 GPU-seconds
+  desk  records 120 GPU-seconds
+  bench records 40 GPU-seconds
+  after synchronising, every replica says 300; the jobs used 460
+one entry per replica, merged by taking the larger:
+  the bench is cut off; shelf and desk exchange counters
+  shelf holds [360 120 0] = 480
+  desk  holds [300 120 0] = 420
+  bench holds [0 0 65] = 65
+  the network heals; counters are exchanged in no particular order, some twice
+  shelf holds [360 120 65] = 545
+  desk  holds [360 120 65] = 545
+  bench holds [360 120 65] = 545
+a count that goes down as well:
+  started [3 2 0], ended [1 0 1]: 3 GPUs in use
+a quota checked against each replica's own count:
+  both replicas see 4 of 6 in use; then they lose contact
+  shelf admits a 2-GPU job: by its count, 6 of 6 are in use
+  desk  admits a 2-GPU job: by its count, 6 of 6 are in use
+  after they merge: 8 of 6 in use
+a quota divided into shares:
+  shares [4 2 0], in use [3 1 0]; then the replicas lose contact
+  shelf refuses a 2-GPU job: its share has 1 left
+  desk  refuses a 2-GPU job: its share has 1 left
+  contact returns; desk gives its unused GPU to shelf
+  shelf admits a 2-GPU job
+  shares [5 1 0], in use [5 1 0]: 6 of 6

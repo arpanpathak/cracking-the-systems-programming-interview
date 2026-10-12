@@ -43,6 +43,7 @@ fn sleep_ms(ms: u64) {
     thread::sleep(Duration::from_millis(ms));
 }
 
+// ANCHOR: main
 fn main() {
     START.get_or_init(Instant::now);
     let server = Arc::new(ApiServer::default());
@@ -70,6 +71,7 @@ fn main() {
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
+
     for gpus in 2..=6 {
         server
             .update(Object::new("job-a", gpus))
@@ -78,6 +80,7 @@ fn main() {
             sleep_ms(5); // the controller starts on the first edit
         }
     }
+
     sleep_ms(150);
 
     log!("--- the watch connection drops");
@@ -96,3 +99,4 @@ fn main() {
     let objects: Vec<String> = list.iter().map(ToString::to_string).collect();
     log!("final state at version {version}: [{}]", objects.join(" "));
 }
+// ANCHOR_END: main

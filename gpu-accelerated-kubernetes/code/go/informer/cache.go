@@ -4,6 +4,7 @@ package main
 
 import "sync"
 
+// ANCHOR: cache
 // Cache is the client's copy of the server's objects, kept current by a
 // Reflector. Its methods are safe for concurrent use.
 type Cache struct {
@@ -23,6 +24,7 @@ func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	o, ok := c.objects[name]
+
 	return o, ok
 }
 
@@ -30,13 +32,19 @@ func (c *Cache) Get(name string) (Object, bool) {
 func (c *Cache) Apply(e Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if e.Type == Deleted {
 		delete(c.objects, e.Object.Name)
+
 		return
 	}
+
 	c.objects[e.Object.Name] = e.Object
 }
 
+// ANCHOR_END: cache
+
+// ANCHOR: replace
 // Replace installs the result of a fresh list and returns the names of the
 // objects that changed, including objects that disappeared while the client
 // was not watching.
@@ -46,6 +54,7 @@ func (c *Cache) Replace(list []Object) []string {
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
 	var changed []string
+
 	for _, o := range list {
 		c.objects[o.Name] = o
 		// A name missing from old reads as version 0, so it counts as changed.
@@ -53,10 +62,14 @@ func (c *Cache) Replace(list []Object) []string {
 			changed = append(changed, o.Name)
 		}
 	}
+
 	for name := range old {
 		if _, ok := c.objects[name]; !ok {
 			changed = append(changed, name)
 		}
 	}
+
 	return changed
 }
+
+// ANCHOR_END: replace

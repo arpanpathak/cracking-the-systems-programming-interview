@@ -6,6 +6,7 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
+// ANCHOR: objects
 /// The part of an object that a user writes: the desired state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Spec {
@@ -98,7 +99,9 @@ impl fmt::Display for ApiError {
         })
     }
 }
+// ANCHOR_END: objects
 
+// ANCHOR: server
 /// Everything the server stores, kept behind one lock.
 #[derive(Default)]
 struct State {
@@ -138,7 +141,11 @@ impl ApiServer {
     fn state(&self) -> std::sync::MutexGuard<'_, State> {
         self.state.lock().expect("server lock poisoned")
     }
+}
+// ANCHOR_END: server
 
+// ANCHOR: writes
+impl ApiServer {
     /// Creates or replaces an object. A non-zero `resource_version` is a
     /// condition: the caller read the object at that version and wants the
     /// write applied only if the object is still at it. Zero writes
@@ -147,9 +154,11 @@ impl ApiServer {
         let mut state = self.state();
         let current = state.objects.get(&object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
+
         if object.resource_version != 0 && object.resource_version != current_version {
             return Err(ApiError::Conflict);
         }
+
         let kind = if current.is_some() {
             EventType::Modified
         } else {
@@ -159,6 +168,7 @@ impl ApiServer {
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
         state.publish(Event { kind, object });
+
         Ok(())
     }
 
@@ -175,13 +185,18 @@ impl ApiServer {
             object,
         });
     }
+}
+// ANCHOR_END: writes
 
+// ANCHOR: listwatch
+impl ApiServer {
     /// Returns every object, sorted by name, and the version at which the
     /// snapshot was taken.
     pub fn list(&self) -> (Vec<Object>, u64) {
         let state = self.state();
         let mut objects: Vec<Object> = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&b.name));
+
         (objects, state.version)
     }
 
@@ -189,22 +204,32 @@ impl ApiServer {
     /// `version` and then every new event, until the server drops the watch.
     pub fn watch(&self, version: u64) -> Result<Receiver<Event>, ApiError> {
         let mut state = self.state();
+
         if state.unreachable {
             return Err(ApiError::Unreachable);
         }
+
         if version < state.compacted {
             return Err(ApiError::Gone);
         }
+
         let (sender, receiver) = channel();
+
         for event in &state.history {
             if event.object.resource_version > version {
                 sender.send(event.clone()).expect("receiver is held here");
             }
         }
+
         state.watches.push(sender);
+
         Ok(receiver)
     }
+}
+// ANCHOR_END: listwatch
 
+// ANCHOR: faults
+impl ApiServer {
     /// Discards the event history, as etcd discards old versions.
     pub fn compact(&self) {
         let mut state = self.state();
@@ -229,3 +254,4 @@ impl ApiServer {
         self.state().unreachable = false;
     }
 }
+// ANCHOR_END: faults

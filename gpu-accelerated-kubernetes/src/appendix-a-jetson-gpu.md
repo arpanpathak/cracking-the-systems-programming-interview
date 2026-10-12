@@ -175,6 +175,13 @@ nvidia-container-runtime: sees the variable, reads the CSV lists,
 runc: creates the container
 ```
 
+Figure A.1 draws the same path, with the CSV lists that the runtime reads beside it.
+
+<figure>
+<img src="figures/gpu-container-path.svg" alt="A pod with a limit of nvidia.com/gpu: 1 reaches the kubelet on its node. The kubelet calls Allocate on the NVIDIA device plugin, which answers with the environment variable NVIDIA_VISIBLE_DEVICES. containerd writes the OCI runtime specification and hands it to nvidia-container-runtime, which sees the variable, reads the CSV lists, adds the device files and library mounts, and calls runc. runc creates a container that has /dev/nvhost-gpu and libcuda.so.">
+<figcaption><b>Figure A.1</b> A GPU request on a Jetson node, from the pod's limit to a container that holds the GPU's device files and driver library.</figcaption>
+</figure>
+
 For this path to work, containerd must call the NVIDIA runtime for every container, since
 it cannot know in advance which ones will carry the variable. The plugin's README says so
 directly: it requires "nvidia-container-runtime configured as the default low-level
@@ -228,11 +235,12 @@ pieces by hand.
 Our script, `enable-gpu-in-kind.sh`, copies the files the node lacks and then configures
 containerd:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/enable-gpu-in-kind.sh">code/jetson-gpu/enable-gpu-in-kind.sh</a></p>
+<p class="listing"><b>Listing A.1</b> Giving the kind node the driver and the runtime. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/enable-gpu-in-kind.sh">code/jetson-gpu/enable-gpu-in-kind.sh</a></p>
 
 ```bash
 {{#include ../code/jetson-gpu/enable-gpu-in-kind.sh}}
 ```
+
 
 The script builds its list of files from the CSV lists themselves, so it copies exactly
 what the runtime will later try to mount. It skips the `dev` lines, because the device
@@ -303,11 +311,12 @@ gpu-lab-control-plane   Ready    control-plane   30s   v1.37.0
 The device plugin runs as a *DaemonSet*, a Kubernetes workload that runs one pod on every
 node, which is exactly what a per-machine agent needs:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/device-plugin.yaml">code/jetson-gpu/device-plugin.yaml</a></p>
+<p class="listing"><b>Listing A.2</b> The device plugin. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/device-plugin.yaml">code/jetson-gpu/device-plugin.yaml</a></p>
 
 ```yaml
 {{#include ../code/jetson-gpu/device-plugin.yaml}}
 ```
+
 
 The plugin needs to read the same CSV lists and driver files as the runtime, so it mounts
 the node's whole root filesystem, read-only, at `/driver-root` inside its own container.
@@ -357,11 +366,19 @@ adds two vectors of a million elements on the GPU and prints the device it ran o
 GPU is visible, or the result is wrong, it exits with a non-zero status, so Kubernetes
 marks the pod as failed.
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu_check.cu">code/jetson-gpu/gpu_check.cu</a></p>
+<p class="listing"><b>Listing A.3</b> The kernel: one addition per thread. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu_check.cu">code/jetson-gpu/gpu_check.cu</a></p>
 
 ```cpp
-{{#include ../code/jetson-gpu/gpu_check.cu}}
+{{#include ../code/jetson-gpu/gpu_check.cu:kernel}}
 ```
+
+
+<p class="listing"><b>Listing A.4</b> Allocating, launching, and checking the result. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu_check.cu">code/jetson-gpu/gpu_check.cu</a></p>
+
+```cpp
+{{#include ../code/jetson-gpu/gpu_check.cu:main}}
+```
+
 
 We build it on the board with the CUDA compiler from JetPack. `-arch=sm_87` targets the
 Orin's GPU, whose *compute capability*, NVIDIA's version number for a GPU's feature set, is
@@ -379,11 +396,12 @@ kernel: no error, out[0] = 3.0, out[n-1] = 3.0
 The image only has to hold the program and the C++ standard library that Ubuntu
 provides:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/Dockerfile">code/jetson-gpu/Dockerfile</a></p>
+<p class="listing"><b>Listing A.5</b> The image for the test program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/Dockerfile">code/jetson-gpu/Dockerfile</a></p>
 
 ```dockerfile
 {{#include ../code/jetson-gpu/Dockerfile}}
 ```
+
 
 A kind node has its own image store and cannot see the images in the host's Docker, so we
 build the image and then copy it into the node:
@@ -396,17 +414,19 @@ $ kind load docker-image gpu-check:1 --name gpu-lab
 We run the image in two pods. The first asks for a GPU and the second does not, so the
 second one tells us whether containers that did not ask for a GPU really stay without one.
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-check-pod.yaml">code/jetson-gpu/gpu-check-pod.yaml</a></p>
+<p class="listing"><b>Listing A.6</b> A pod that runs `gpu_check` with one GPU. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-check-pod.yaml">code/jetson-gpu/gpu-check-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/jetson-gpu/gpu-check-pod.yaml}}
 ```
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/no-gpu-pod.yaml">code/jetson-gpu/no-gpu-pod.yaml</a></p>
+
+<p class="listing"><b>Listing A.7</b> The same program in a pod that asks for no GPU. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/no-gpu-pod.yaml">code/jetson-gpu/no-gpu-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/jetson-gpu/no-gpu-pod.yaml}}
 ```
+
 
 `imagePullPolicy: Never` tells the kubelet to use the image that `kind load` placed on the
 node and not to look for it in a registry.
@@ -433,11 +453,12 @@ We can also look inside a GPU container while it runs, to see every piece of the
 work. This pod asks for a GPU and then just sleeps for five minutes, which gives us time to
 look around inside it:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-env-pod.yaml">code/jetson-gpu/gpu-env-pod.yaml</a></p>
+<p class="listing"><b>Listing A.8</b> A pod that sets the variable itself. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-env-pod.yaml">code/jetson-gpu/gpu-env-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/jetson-gpu/gpu-env-pod.yaml}}
 ```
+
 
 We start it, wait until it is running, and look at its environment, its device files,
 and its driver libraries:
@@ -506,6 +527,15 @@ is holding the GPU.
 the `kindest/node` image, without any of our changes. Run the script and apply the
 DaemonSet again. Restarting the node's container, or Docker itself, keeps the changes,
 since they live in the container's filesystem.
+
+## The complete test program
+
+<p class="listing"><b>Listing A.9</b> `gpu_check`, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu_check.cu">code/jetson-gpu/gpu_check.cu</a></p>
+
+```cpp
+{{#include ../code/jetson-gpu/gpu_check.cu}}
+```
+
 
 ## References
 

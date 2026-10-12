@@ -1,0 +1,30 @@
+create calls without a client token:
+  pass 1
+    thor-1   is machine m-01
+    thor-2   is machine m-02
+    thor-3   create failed: timed out
+    spark-1  is machine m-04
+    spark-2  is machine m-05
+  pass 2
+    thor-3   is machine m-06
+    thor-4   is machine m-07
+    thor-5   create failed: quota exceeded
+  pass 3
+    thor-5   create failed: quota exceeded
+  thor  wanted 5, controller owns 4, provider holds 5
+  spark wanted 2, controller owns 2, provider holds 2
+  machine m-03 (Jetson AGX Thor) is running and belongs to no pool
+create calls with the slot name as the client token:
+  pass 1
+    thor-1   is machine m-01
+    thor-2   is machine m-02
+    thor-3   create failed: timed out
+    spark-1  is machine m-04
+    spark-2  is machine m-05
+  pass 2
+    thor-3   is machine m-03
+    thor-4   is machine m-06
+    thor-5   is machine m-07
+    every pool is full
+  thor  wanted 5, controller owns 5, provider holds 5
+  spark wanted 2, controller owns 2, provider holds 2

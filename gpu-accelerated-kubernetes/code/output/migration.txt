@@ -1,0 +1,47 @@
+16 GB inference VM (0.2 GB/s changed) over 1 GbE:
+  round  1:  16.00 GB sent in  128.0 s,  16.00 GB changed meanwhile
+  does not converge: memory changes as fast as the link carries it
+16 GB inference VM (0.2 GB/s changed) over one 25 GbE lane:
+  round  1:  16.00 GB sent in    5.1 s,   1.02 GB changed meanwhile
+  round  2:   1.02 GB sent in    0.3 s,   0.07 GB changed meanwhile
+  round  3: VM paused, 0.07 GB sent in 0.02 s
+  done in 5.5 s; the VM was paused for 21 ms
+100 GB training VM (4 GB/s changed) over one 25 GbE lane:
+  round  1: 100.00 GB sent in   32.0 s, 100.00 GB changed meanwhile
+  does not converge: memory changes as fast as the link carries it
+100 GB training VM (4 GB/s changed) over one 25 GbE lane, with throttling:
+  round  1: 100.00 GB sent in   32.0 s, 100.00 GB changed meanwhile
+            no progress: guest slowed to 80% of full speed
+  round  2: 100.00 GB sent in   32.0 s, 100.00 GB changed meanwhile
+            no progress: guest slowed to 60% of full speed
+  round  3: 100.00 GB sent in   32.0 s,  76.80 GB changed meanwhile
+  round  4:  76.80 GB sent in   24.6 s,  58.98 GB changed meanwhile
+  round  5:  58.98 GB sent in   18.9 s,  45.30 GB changed meanwhile
+  round  6:  45.30 GB sent in   14.5 s,  34.79 GB changed meanwhile
+  round  7:  34.79 GB sent in   11.1 s,  26.72 GB changed meanwhile
+  round  8:  26.72 GB sent in    8.5 s,  20.52 GB changed meanwhile
+  round  9:  20.52 GB sent in    6.6 s,  15.76 GB changed meanwhile
+  round 10:  15.76 GB sent in    5.0 s,  12.10 GB changed meanwhile
+  round 11:  12.10 GB sent in    3.9 s,   9.30 GB changed meanwhile
+  round 12:   9.30 GB sent in    3.0 s,   7.14 GB changed meanwhile
+  round 13:   7.14 GB sent in    2.3 s,   5.48 GB changed meanwhile
+  round 14:   5.48 GB sent in    1.8 s,   4.21 GB changed meanwhile
+  round 15:   4.21 GB sent in    1.3 s,   3.23 GB changed meanwhile
+  round 16:   3.23 GB sent in    1.0 s,   2.48 GB changed meanwhile
+  round 17:   2.48 GB sent in    0.8 s,   1.91 GB changed meanwhile
+  round 18:   1.91 GB sent in    0.6 s,   1.46 GB changed meanwhile
+  round 19:   1.46 GB sent in    0.5 s,   1.12 GB changed meanwhile
+  round 20:   1.12 GB sent in    0.4 s,   0.86 GB changed meanwhile
+  round 21: VM paused, 0.86 GB sent in 0.28 s
+  done in 201.0 s; the VM was paused for 276 ms
+100 GB training VM (4 GB/s changed) over four bonded 25 GbE lanes:
+  round  1: 100.00 GB sent in    8.0 s,  32.00 GB changed meanwhile
+  round  2:  32.00 GB sent in    2.6 s,  10.24 GB changed meanwhile
+  round  3:  10.24 GB sent in    0.8 s,   3.28 GB changed meanwhile
+  round  4: VM paused, 3.28 GB sent in 0.26 s
+  done in 11.6 s; the VM was paused for 262 ms
+100 GB training VM (4 GB/s changed) over the Sparks' 200 GbE cable:
+  round  1: 100.00 GB sent in    4.0 s,  16.00 GB changed meanwhile
+  round  2:  16.00 GB sent in    0.6 s,   2.56 GB changed meanwhile
+  round  3: VM paused, 2.56 GB sent in 0.10 s
+  done in 4.7 s; the VM was paused for 102 ms

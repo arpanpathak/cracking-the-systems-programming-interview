@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+// ANCHOR: run
 /// Copies the server's objects into a cache and queues the name of every
 /// object that changes.
 pub struct Reflector {
@@ -34,7 +35,11 @@ impl Reflector {
             self.watch_from(version);
         }
     }
+}
+// ANCHOR_END: run
 
+// ANCHOR: watch
+impl Reflector {
     /// Applies events from `version` onward, reopens the watch after each
     /// disconnect, and returns when the server reports that the history is gone.
     fn watch_from(&self, mut version: u64) {
@@ -46,6 +51,7 @@ impl Reflector {
                         "reflector: watch from version {version}: {}",
                         ApiError::Gone
                     );
+
                     return;
                 }
                 Err(_) => {
@@ -53,6 +59,7 @@ impl Reflector {
                     continue;
                 }
             };
+
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
@@ -61,7 +68,9 @@ impl Reflector {
                 self.cache.apply(event);
                 self.queue.add([name]);
             }
+
             log!("reflector: watch closed, resuming from version {version}");
         }
     }
 }
+// ANCHOR_END: watch

@@ -1,0 +1,284 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1064 428" width="1064" height="428" role="img" aria-label="The GPU of the Jetson Orin NX drawn from the output of gpu_info: eight streaming multiprocessors, each with 128 CUDA cores, room for 1,536 resident threads, 65,536 registers and 164 KiB of shared memory and L1 cache. All eight share a 2,048 KiB L2 cache. Device memory is the board&#x27;s 15.3 GiB of LPDDR5, which the CPU also uses. Two copy engines move data while kernels run.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1064" height="428" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">What one nvidia.com/gpu unit contains on our cluster</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Eight streaming multiprocessors, one L2 cache, and memory that the CPU uses too.</text>
+  <rect x="32" y="104" width="700" height="300" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="326.9" height="22" rx="11" fill="#1B2430"/>
+  <text x="213.5" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">THE ORIN&#x27;S GPU, AS GPU_INFO REPORTS IT</text>
+  <rect x="56.0" y="132.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="68.0" y="152.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 0</text>
+  <rect x="68.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="79.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="90.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="101.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="112.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="123.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="134.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="145.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="68.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="79.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="90.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="101.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="112.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="123.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="134.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="145.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="68.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="79.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="90.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="101.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="112.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="123.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="134.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="145.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="162.0" y="160.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="222.0" y="132.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="234.0" y="152.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 1</text>
+  <rect x="234.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="245.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="256.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="267.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="278.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="289.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="300.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="311.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="234.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="245.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="256.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="267.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="278.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="289.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="300.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="311.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="234.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="245.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="256.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="267.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="278.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="289.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="300.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="311.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="328.0" y="160.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="388.0" y="132.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="400.0" y="152.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 2</text>
+  <rect x="400.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="411.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="422.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="433.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="444.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="455.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="466.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="477.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="400.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="411.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="422.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="433.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="444.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="455.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="466.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="477.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="400.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="411.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="422.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="433.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="444.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="455.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="466.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="477.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="494.0" y="160.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="554.0" y="132.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="566.0" y="152.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 3</text>
+  <rect x="566.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="577.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="588.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="599.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="610.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="621.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="632.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="643.0" y="160.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="566.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="577.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="588.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="599.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="610.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="621.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="632.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="643.0" y="171.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="566.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="577.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="588.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="599.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="610.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="621.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="632.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="643.0" y="182.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="660.0" y="160.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="56.0" y="216.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="68.0" y="236.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 4</text>
+  <rect x="68.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="79.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="90.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="101.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="112.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="123.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="134.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="145.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="68.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="79.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="90.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="101.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="112.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="123.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="134.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="145.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="68.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="79.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="90.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="101.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="112.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="123.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="134.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="145.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="162.0" y="244.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="222.0" y="216.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="234.0" y="236.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 5</text>
+  <rect x="234.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="245.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="256.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="267.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="278.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="289.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="300.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="311.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="234.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="245.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="256.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="267.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="278.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="289.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="300.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="311.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="234.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="245.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="256.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="267.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="278.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="289.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="300.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="311.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="328.0" y="244.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="388.0" y="216.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="400.0" y="236.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 6</text>
+  <rect x="400.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="411.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="422.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="433.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="444.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="455.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="466.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="477.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="400.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="411.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="422.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="433.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="444.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="455.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="466.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="477.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="400.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="411.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="422.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="433.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="444.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="455.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="466.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="477.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="494.0" y="244.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="554.0" y="216.0" width="150.0" height="68.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="566.0" y="236.0" class="pill" text-anchor="start" style="fill:#5E9400" xml:space="preserve">SM 7</text>
+  <rect x="566.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="577.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="588.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="599.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="610.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="621.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="632.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="643.0" y="244.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="566.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="577.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="588.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="599.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="610.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="621.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="632.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="643.0" y="255.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="566.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="577.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="588.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="599.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="610.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="621.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="632.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="643.0" y="266.0" width="8.0" height="8.0" rx="2" fill="#EEF6DC" stroke="#5E9400" stroke-width="0.8"/>
+  <rect x="660.0" y="244.0" width="32.0" height="30.0" rx="4" fill="#FBF1DC" stroke="#B7791F" stroke-width="0.9"/>
+  <rect x="56.0" y="306.0" width="652.0" height="30.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="382.0" y="326.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">L2 cache, 2,048 KiB, shared by all eight SMs</text>
+  <rect x="56.0" y="348.0" width="652.0" height="38.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="382.0" y="372.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">device memory: the board&#x27;s 15.3 GiB of LPDDR5, shared with the CPU</text>
+  <rect x="772" y="120" width="260" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M784,120.7 H778 V183.3 H784 A11.3,11.3 0 0 1 772.7,172 V132 A11.3,11.3 0 0 1 784,120.7 Z" fill="#5E9400"/>
+  <rect x="788" y="136.0" width="32" height="32" rx="8" fill="#EEF6DC"/>
+  <g transform="translate(794.0,142.0) scale(0.8333)"><path d="M8 2h2v3h4V2h2v3h2a1 1 0 0 1 1 1v2h3v2h-3v4h3v2h-3v2a1 1 0 0 1-1 1h-2v3h-2v-3h-4v3H8v-3H6a1 1 0 0 1-1-1v-2H2v-2h3v-4H2V8h3V6a1 1 0 0 1 1-1h2zM7 7v10h10V7zm2.5 2.5h5v5h-5z" fill="#5E9400" fill-rule="evenodd"/></g>
+  <text x="830.0" y="148.0" class="name" text-anchor="start" xml:space="preserve">One SM</text>
+  <text x="830.0" y="166.0" class="sub" text-anchor="start" xml:space="preserve">128 CUDA cores, Tensor Cores</text>
+  <text x="784.0" y="208.0" class="note" text-anchor="start" xml:space="preserve">holds 1,536 threads at once,</text>
+  <text x="784.0" y="225.0" class="note" text-anchor="start" xml:space="preserve">in warps of 32</text>
+  <text x="784.0" y="242.0" class="note" text-anchor="start" xml:space="preserve"></text>
+  <text x="784.0" y="259.0" class="note" text-anchor="start" xml:space="preserve">65,536 registers</text>
+  <text x="784.0" y="276.0" class="note" text-anchor="start" xml:space="preserve"></text>
+  <text x="784.0" y="293.0" class="note" text-anchor="start" xml:space="preserve">164 KiB of shared memory</text>
+  <text x="784.0" y="310.0" class="note" text-anchor="start" xml:space="preserve">and L1 cache (the amber block)</text>
+  <rect x="772" y="340" width="260" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M784,340.7 H778 V403.3 H784 A11.3,11.3 0 0 1 772.7,392 V352 A11.3,11.3 0 0 1 784,340.7 Z" fill="#7A4FD0"/>
+  <rect x="788" y="356.0" width="32" height="32" rx="8" fill="#F0EAFB"/>
+  <g transform="translate(794.0,362.0) scale(0.8333)"><path d="M7 4 2 9l5 5v-3.5h9V8H7zm10 6v3.5H8V16h9v3.5l5-5z" fill="#7A4FD0" fill-rule="evenodd"/></g>
+  <text x="830.0" y="368.0" class="name" text-anchor="start" xml:space="preserve">2 copy engines</text>
+  <text x="830.0" y="386.0" class="sub" text-anchor="start" xml:space="preserve">move data while kernels run</text>
+</svg>

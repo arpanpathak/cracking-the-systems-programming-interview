@@ -1,0 +1,23 @@
+one pod at a time, two jobs of five workers:
+  train-a  holds 4 of 5 GPUs: orin-nx-1 spark-2 thor-2 thor-4
+  train-b  holds 4 of 5 GPUs: spark-1 thor-1 thor-3 thor-5
+  8 of 8 GPUs are held and 0 jobs are running
+whole jobs at a time:
+  train-a  runs on thor-1 thor-2 thor-3 thor-4 thor-5
+           over the 25 GbE switch: 7.2 s for each all-reduce
+  train-b  waits: it needs 5 GPUs and 3 are free
+  train-a  finishes
+  train-b  runs on thor-1 thor-2 thor-3 thor-4 thor-5
+           over the 25 GbE switch: 7.2 s for each all-reduce
+three jobs, on the first free machines:
+  pair     runs on orin-nx-1 spark-1
+           over the 1 GbE house network: 112.0 s for each all-reduce
+  quad     runs on spark-2 thor-1 thor-2 thor-3
+           over the 1 GbE house network: 168.0 s for each all-reduce
+  single   runs on thor-4
+the same three jobs, placed by topology:
+  pair     runs on spark-1 spark-2
+           over the 200 GbE cable: 0.6 s for each all-reduce
+  quad     runs on thor-1 thor-2 thor-3 thor-4
+           over the 25 GbE switch: 6.7 s for each all-reduce
+  single   runs on orin-nx-1

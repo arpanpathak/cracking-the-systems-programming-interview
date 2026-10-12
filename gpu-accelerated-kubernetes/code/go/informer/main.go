@@ -23,6 +23,7 @@ func logf(format string, args ...any) {
 	log.Printf("%4dms  %s", time.Since(start).Milliseconds(), fmt.Sprintf(format, args...))
 }
 
+// ANCHOR: main
 func main() {
 	log.SetFlags(0)
 	server := NewAPIServer()
@@ -36,12 +37,15 @@ func main() {
 	time.Sleep(100 * time.Millisecond)
 
 	logf("--- job-a is edited five times in a burst")
+
 	for gpus := 2; gpus <= 6; gpus++ {
 		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+
 		if gpus == 2 {
 			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
 		}
 	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	logf("--- the watch connection drops")
@@ -59,3 +63,5 @@ func main() {
 	list, version := server.List()
 	logf("final state at version %d: %v", version, list)
 }
+
+// ANCHOR_END: main

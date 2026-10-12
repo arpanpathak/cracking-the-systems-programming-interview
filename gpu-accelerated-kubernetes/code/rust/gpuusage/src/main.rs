@@ -13,6 +13,7 @@ use kube::{Api, Client, ResourceExt};
 use std::collections::BTreeMap;
 use std::error::Error;
 
+// ANCHOR: count
 /// The extended resource that the NVIDIA device plugin advertises.
 const GPU: &str = "nvidia.com/gpu";
 
@@ -40,9 +41,11 @@ fn pod_gpus(pod: &Pod) -> i64 {
 /// succeeded or failed gives them back.
 fn holding_node(pod: &Pod) -> Option<&str> {
     let phase = pod.status.as_ref().and_then(|s| s.phase.as_deref());
+
     if matches!(phase, Some("Succeeded" | "Failed")) {
         return None;
     }
+
     pod.spec.as_ref()?.node_name.as_deref()
 }
 
@@ -53,7 +56,9 @@ fn gpu_units(resources: Option<&BTreeMap<String, Quantity>>) -> i64 {
         .and_then(|q| q.0.parse().ok())
         .unwrap_or(0)
 }
+// ANCHOR_END: count
 
+// ANCHOR: report
 /// Lists every node and every pod, groups the GPU-holding pods by node, and
 /// prints one table row per node followed by the pods that hold its units.
 #[tokio::main]
@@ -65,6 +70,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pods = Api::<Pod>::all(client).list(&ListParams::default()).await?;
 
     let mut holders: BTreeMap<String, Vec<Holder>> = BTreeMap::new();
+
     for pod in &pods {
         let units = pod_gpus(pod);
         if let Some(node) = holding_node(pod)
@@ -82,6 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "{:<23}{:<10}{:<13}{:<8}FREE",
         "NODE", "CAPACITY", "ALLOCATABLE", "IN USE"
     );
+
     for node in &nodes {
         let name = node.name_any();
         let in_use: i64 = holders
@@ -99,11 +106,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             allocatable - in_use
         );
     }
+
     for (node, list) in &mut holders {
         list.sort_by(|a, b| a.pod.cmp(&b.pod));
+
         for h in list.iter() {
             println!("  {} holds {} on {node}", h.pod, h.units);
         }
     }
+
     Ok(())
 }
+// ANCHOR_END: report

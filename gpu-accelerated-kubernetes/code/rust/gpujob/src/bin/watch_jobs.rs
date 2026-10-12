@@ -12,6 +12,7 @@ use kube::{Api, Client, ResourceExt};
 /// Formats a job as its name, GPU count, and resource version.
 fn describe(job: &GpuJob) -> String {
     let version = job.resource_version().unwrap_or_default();
+
     format!("{} gpus={} v{version}", job.name_any(), job.spec.gpus)
 }
 
@@ -20,6 +21,7 @@ fn describe(job: &GpuJob) -> String {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let jobs: Api<GpuJob> = Api::default_namespaced(Client::try_default().await?);
     let mut events = std::pin::pin!(watcher(jobs, watcher::Config::default()));
+
     while let Some(event) = events.try_next().await? {
         match event {
             Event::Init => println!("list started"),
@@ -29,5 +31,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Event::Delete(job) => println!("  deleted  {}", describe(&job)),
         }
     }
+
     Ok(())
 }
