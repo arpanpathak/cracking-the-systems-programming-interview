@@ -62,6 +62,17 @@
     stepLabel.appendChild(document.createTextNode(" pause after each step"));
     if (chapters.length > 1) { bar.appendChild(stepLabel); }
 
+    // Full screen: the browser's own player turns with the phone, so an
+    // animation can be watched in landscape at the full width of the screen.
+    var full = button("Full screen", "Watch this animation full screen", function () {
+        if (video.requestFullscreen) {
+            video.requestFullscreen();
+        } else if (video.webkitEnterFullscreen) {
+            video.webkitEnterFullscreen();
+        }
+    });
+    bar.appendChild(full);
+
     video.insertAdjacentElement("afterend", bar);
 
     function mark(group, chosen) {
