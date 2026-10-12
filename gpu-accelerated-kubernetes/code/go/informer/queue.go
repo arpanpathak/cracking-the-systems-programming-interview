@@ -4,6 +4,7 @@ package main
 
 import "sync"
 
+// ANCHOR: state
 // WorkQueue stores the names of objects that need reconciling. A name waits
 // in the queue at most once, and a name that a worker holds is handed to no
 // other worker until the first calls Done.
@@ -27,6 +28,9 @@ func NewWorkQueue() *WorkQueue {
 	return q
 }
 
+// ANCHOR_END: state
+
+// ANCHOR: ops
 // Add marks each name as needing processing. A name that is already pending
 // is left where it is. A name that a worker holds is queued again by Done.
 func (q *WorkQueue) Add(names ...string) {
@@ -69,3 +73,5 @@ func (q *WorkQueue) Done(name string) {
 		q.cond.Signal()
 	}
 }
+
+// ANCHOR_END: ops

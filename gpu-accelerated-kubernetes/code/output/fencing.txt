@@ -1,0 +1,20 @@
+a store that accepts every write:
+  control plane: job assigned to thor-1 with epoch 1
+  thor-1 writes step 1000 with epoch 1: stored
+  thor-1 loses its link and keeps training; its Lease expires
+  control plane: job assigned to thor-2 with epoch 2
+  thor-2 resumes from step 1000
+  thor-2 writes step 2000 with epoch 2: stored
+  thor-1's link returns; it still holds epoch 1
+  thor-1 writes step 1500 with epoch 1: stored
+  a restart now resumes from step 1500, written by thor-1
+a store that checks the epoch:
+  control plane: job assigned to thor-1 with epoch 1
+  thor-1 writes step 1000 with epoch 1: stored
+  thor-1 loses its link and keeps training; its Lease expires
+  control plane: job assigned to thor-2 with epoch 2
+  thor-2 resumes from step 1000
+  thor-2 writes step 2000 with epoch 2: stored
+  thor-1's link returns; it still holds epoch 1
+  thor-1 writes step 1500 with epoch 1: refused, fenced: a newer assignment has written
+  a restart now resumes from step 2000, written by thor-2

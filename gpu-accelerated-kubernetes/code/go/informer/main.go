@@ -23,6 +23,7 @@ func logf(format string, args ...any) {
 	log.Printf("%4dms  %s", time.Since(start).Milliseconds(), fmt.Sprintf(format, args...))
 }
 
+// ANCHOR: main
 func main() {
 	log.SetFlags(0)
 	server := NewAPIServer()
@@ -59,3 +60,5 @@ func main() {
 	list, version := server.List()
 	logf("final state at version %d: %v", version, list)
 }
+
+// ANCHOR_END: main

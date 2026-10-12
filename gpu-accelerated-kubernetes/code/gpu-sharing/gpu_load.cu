@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cuda_runtime.h>
 
+// ANCHOR: kernel
 // kBlocks and kThreads give 262,144 threads per launch, enough to occupy every
 // SM of the GPU many times over.
 constexpr int kBlocks = 1024;
@@ -41,7 +42,9 @@ __global__ void spin(float *out, int iterations) {
     }
     out[i] = x;
 }
+// ANCHOR_END: kernel
 
+// ANCHOR: main
 // main runs the measurement and prints "<name>: <result>, <milliseconds> ms",
 // where name is the first argument. It exits with status 1 if the GPU reported
 // an error.
@@ -62,3 +65,4 @@ int main(int argc, char **argv) {
     cudaFree(out);
     return err == cudaSuccess ? 0 : 1;
 }
+// ANCHOR_END: main

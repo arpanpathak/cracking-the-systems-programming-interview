@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1138 410" width="1138" height="410" role="img" aria-label="A GpuJob named train, with image gpu-check:1 and gpus 1, is applied with kubectl to the API server, which serves the gpujobs.gpucloud.dev kind once the CRD is installed. The gpujob-controller watches jobs and the pods they own. On each reconcile it applies a pod named train, whose owner reference names the job and whose limits ask for nvidia.com/gpu: 1, and it writes the job&#x27;s phase through the status subresource. The scheduler and the kubelet place and start the pod, and its program runs on the GPU.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1138" height="410" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">One GpuJob, the pod the controller keeps for it, and the two writes of a reconcile</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The controller applies the pod and writes the job&#x27;s status. Every other arrow is Kubernetes at work.</text>
+  <path d="M42,112 H240 L258,130 V292 A10,10 0 0 1 248,302 H42 A10,10 0 0 1 32,292 V122 A10,10 0 0 1 42,112 Z" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M240,112 V130 H258 Z" fill="#EAF1FD" stroke="#D5DBE3" stroke-width="1.3" stroke-linejoin="round"/>
+  <rect x="48" y="128" width="4" height="14" rx="2" fill="#2F6FDB"/>
+  <text x="60.0" y="139.5" class="tab" text-anchor="start" style="fill:#2F6FDB" xml:space="preserve">GPUJOB train</text>
+  <text x="48.0" y="168.0" class="mono" text-anchor="start" xml:space="preserve">spec:</text>
+  <text x="48.0" y="186.0" class="mono" text-anchor="start" xml:space="preserve">  image: gpu-check:1</text>
+  <text x="48.0" y="204.0" class="mono strong" text-anchor="start" xml:space="preserve">  gpus: 1</text>
+  <text x="48.0" y="222.0" class="mono dim" text-anchor="start" xml:space="preserve">status:</text>
+  <text x="48.0" y="240.0" class="mono dim" text-anchor="start" xml:space="preserve">  phase: Running</text>
+  <text x="48.0" y="258.0" class="mono dim" text-anchor="start" xml:space="preserve">  observedGeneration: 1</text>
+  <text x="48.0" y="286.0" class="note" text-anchor="start" style="fill:#2F6FDB" xml:space="preserve">kubectl apply</text>
+  <rect x="338" y="120" width="260" height="70" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M350,120.7 H344 V189.3 H350 A11.3,11.3 0 0 1 338.7,178 V132 A11.3,11.3 0 0 1 350,120.7 Z" fill="#1F8A70"/>
+  <rect x="354" y="139.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(360.0,145.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="396.0" y="142.0" class="name" text-anchor="start" xml:space="preserve">API server</text>
+  <text x="396.0" y="160.0" class="sub" text-anchor="start" xml:space="preserve">serves gpujobs.gpucloud.dev</text>
+  <text x="396.0" y="178.0" class="sub" text-anchor="start" xml:space="preserve">once the CRD is installed</text>
+  <path class="wire" d="M258,155 L338,155" marker-end="url(#head)"/>
+  <rect x="338" y="300" width="260" height="70" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M350,300.7 H344 V369.3 H350 A11.3,11.3 0 0 1 338.7,358 V312 A11.3,11.3 0 0 1 350,300.7 Z" fill="#1F8A70"/>
+  <rect x="354" y="319.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(360.0,325.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="396.0" y="322.0" class="name" text-anchor="start" xml:space="preserve">gpujob-controller</text>
+  <text x="396.0" y="340.0" class="sub" text-anchor="start" xml:space="preserve">queues a job when the job</text>
+  <text x="396.0" y="358.0" class="sub" text-anchor="start" xml:space="preserve">or the pod it owns changes</text>
+  <path class="wire" d="M420,190 L420,300" marker-end="url(#head)"/>
+  <rect x="396.5" y="236.0" width="47.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="420.0" y="248.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">watch</text>
+  <path class="wire" d="M540,300 L540,190" marker-end="url(#head)"/>
+  <rect x="509.9" y="236.0" width="60.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="540.0" y="248.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">/status</text>
+  <path d="M700,112 H898 L916,130 V252 A10,10 0 0 1 906,262 H700 A10,10 0 0 1 690,252 V122 A10,10 0 0 1 700,112 Z" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M898,112 V130 H916 Z" fill="#E4F4EF" stroke="#D5DBE3" stroke-width="1.3" stroke-linejoin="round"/>
+  <rect x="706" y="128" width="4" height="14" rx="2" fill="#1F8A70"/>
+  <text x="718.0" y="139.5" class="tab" text-anchor="start" style="fill:#1F8A70" xml:space="preserve">POD train</text>
+  <text x="706.0" y="168.0" class="mono" text-anchor="start" xml:space="preserve">ownerReferences:</text>
+  <text x="706.0" y="186.0" class="mono" text-anchor="start" xml:space="preserve">  GpuJob/train</text>
+  <text x="706.0" y="204.0" class="mono strong" text-anchor="start" xml:space="preserve">nvidia.com/gpu: 1</text>
+  <text x="706.0" y="246.0" class="note" text-anchor="start" style="fill:#1F8A70" xml:space="preserve">applied on every reconcile</text>
+  <path class="wire" d="M598,335 L631,335 Q640,335 640,326 L640,196 Q640,187 649,187 L690,187" marker-end="url(#head)"/>
+  <rect x="616.5" y="252.0" width="47.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="640.0" y="264.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">apply</text>
+  <rect x="690" y="300" width="226" height="70" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M702,300.7 H696 V369.3 H702 A11.3,11.3 0 0 1 690.7,358 V312 A11.3,11.3 0 0 1 702,300.7 Z" fill="#1F8A70"/>
+  <text x="710.0" y="322.0" class="name" text-anchor="start" xml:space="preserve">Scheduler, kubelet</text>
+  <text x="710.0" y="340.0" class="sub" text-anchor="start" xml:space="preserve">place the pod and</text>
+  <text x="710.0" y="358.0" class="sub" text-anchor="start" xml:space="preserve">start its container</text>
+  <path class="wire" d="M803,262 L803,300" marker-end="url(#head)"/>
+  <rect x="956" y="300" width="150" height="70" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M968,300.7 H962 V369.3 H968 A11.3,11.3 0 0 1 956.7,358 V312 A11.3,11.3 0 0 1 968,300.7 Z" fill="#5E9400"/>
+  <text x="976.0" y="322.0" class="name" text-anchor="start" xml:space="preserve">GPU</text>
+  <text x="976.0" y="340.0" class="sub" text-anchor="start" xml:space="preserve">gpu-check</text>
+  <text x="976.0" y="358.0" class="sub" text-anchor="start" xml:space="preserve">adds two vectors</text>
+  <path class="wire" d="M916,335 L956,335" marker-end="url(#head)"/>
+  <text x="956.0" y="140.0" class="note" text-anchor="start" xml:space="preserve">The pod&#x27;s owner</text>
+  <text x="956.0" y="157.0" class="note" text-anchor="start" xml:space="preserve">reference names</text>
+  <text x="956.0" y="174.0" class="note" text-anchor="start" xml:space="preserve">the job, so a pod</text>
+  <text x="956.0" y="191.0" class="note" text-anchor="start" xml:space="preserve">event queues</text>
+  <text x="956.0" y="208.0" class="note" text-anchor="start" xml:space="preserve">its job.</text>
+</svg>

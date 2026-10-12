@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1042 400" width="1042" height="400" role="img" aria-label="A timeline with two lanes. thor-1 holds epoch 1 and saves step 1000, then loses its link and keeps training. thor-2 is assigned the job with epoch 2, resumes from step 1000, and saves step 2000. When thor-1&#x27;s link returns it tries to save step 1500 with epoch 1, and the store, which has accepted epoch 2, refuses the write.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1042" height="400" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Fencing: the store refuses a writer that has been replaced</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Each assignment carries a higher epoch, and the store remembers the highest one it has accepted.</text>
+  <text x="32.0" y="150.0" class="name" text-anchor="start" xml:space="preserve">thor-1</text>
+  <text x="32.0" y="168.0" class="sub" text-anchor="start" xml:space="preserve">epoch 1</text>
+  <text x="32.0" y="262.0" class="name" text-anchor="start" xml:space="preserve">thor-2</text>
+  <text x="32.0" y="280.0" class="sub" text-anchor="start" xml:space="preserve">epoch 2</text>
+  <path class="wire idle" d="M120,156 H1010"/>
+  <path class="wire idle" d="M120,268 H1010"/>
+  <rect x="130" y="126" width="180" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M142,126.7 H136 V185.3 H142 A11.3,11.3 0 0 1 130.7,174 V138 A11.3,11.3 0 0 1 142,126.7 Z" fill="#2E8B3D"/>
+  <text x="150.0" y="152.0" class="name" text-anchor="start" xml:space="preserve">save step 1000</text>
+  <text x="150.0" y="170.0" class="sub" text-anchor="start" xml:space="preserve">epoch 1: stored</text>
+  <rect x="340.0" y="128.0" width="370.0" height="56.0" rx="10" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <text x="525.0" y="152.0" class="note" text-anchor="middle" xml:space="preserve">link lost; the job keeps training</text>
+  <text x="525.0" y="170.0" class="note" text-anchor="middle" xml:space="preserve">the Lease expires</text>
+  <rect x="770" y="126" width="230" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M782,126.7 H776 V185.3 H782 A11.3,11.3 0 0 1 770.7,174 V138 A11.3,11.3 0 0 1 782,126.7 Z" fill="#CF4526"/>
+  <text x="790.0" y="152.0" class="name" text-anchor="start" xml:space="preserve">save step 1500</text>
+  <text x="790.0" y="170.0" class="sub" text-anchor="start" xml:space="preserve">epoch 1: refused by the store</text>
+  <rect x="400" y="238" width="180" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M412,238.7 H406 V297.3 H412 A11.3,11.3 0 0 1 400.7,286 V250 A11.3,11.3 0 0 1 412,238.7 Z" fill="#1F8A70"/>
+  <text x="420.0" y="264.0" class="name" text-anchor="start" xml:space="preserve">resume from 1000</text>
+  <text x="420.0" y="282.0" class="sub" text-anchor="start" xml:space="preserve">assigned with epoch 2</text>
+  <rect x="600" y="238" width="180" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M612,238.7 H606 V297.3 H612 A11.3,11.3 0 0 1 600.7,286 V250 A11.3,11.3 0 0 1 612,238.7 Z" fill="#2E8B3D"/>
+  <text x="620.0" y="264.0" class="name" text-anchor="start" xml:space="preserve">save step 2000</text>
+  <text x="620.0" y="282.0" class="sub" text-anchor="start" xml:space="preserve">epoch 2: stored</text>
+  <text x="32.0" y="356.0" class="name" text-anchor="start" xml:space="preserve">store</text>
+  <text x="32.0" y="374.0" class="sub" text-anchor="start" xml:space="preserve">highest epoch</text>
+  <rect x="130.0" y="340.0" width="560.0" height="34.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="410.0" y="362.0" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">1</text>
+  <rect x="690.0" y="340.0" width="320.0" height="34.0" rx="8" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="850.0" y="362.0" class="pill" text-anchor="middle" style="fill:#1F8A70" xml:space="preserve">2: a write with epoch 1 is refused</text>
+  <path class="wire" d="M690,298 L690,340" marker-end="url(#head)"/>
+  <path class="wire danger" d="M885,186 V340" marker-end="url(#head-danger)"/>
+  <text x="895.0" y="300.0" class="pill" text-anchor="start" style="fill:#CF4526" xml:space="preserve">refused</text>
+</svg>

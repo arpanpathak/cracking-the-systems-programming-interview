@@ -4,6 +4,7 @@ package main
 
 import "time"
 
+// ANCHOR: run
 // Controller makes each object's status agree with its spec.
 type Controller struct {
 	// server receives the controller's status writes.
@@ -27,6 +28,9 @@ func (c *Controller) Run() {
 	}
 }
 
+// ANCHOR_END: run
+
+// ANCHOR: reconcile
 // reconcile reads the named object from the cache and, if its status differs
 // from its spec, writes a new status conditioned on the version it read.
 func (c *Controller) reconcile(name string) error {
@@ -47,3 +51,5 @@ func (c *Controller) reconcile(name string) error {
 	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
 	return nil
 }
+
+// ANCHOR_END: reconcile

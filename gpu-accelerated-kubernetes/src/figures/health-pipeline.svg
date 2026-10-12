@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1112 462" width="1112" height="462" role="img" aria-label="A GPU machine reports an error. On the fast path the device plugin marks the GPU unhealthy, the kubelet offers one GPU fewer, and the scheduler stops placing pods on it. On the slow path the report reaches a health service that counts by job, machine and link and sends a verdict to a remediation controller, which acts through the Kubernetes API.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1112" height="462" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">One report, two paths</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Signals travel up from the machine. Decisions travel back down through the Kubernetes API.</text>
+  <rect x="32" y="104" width="330" height="290" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="130.3" height="22" rx="11" fill="#1B2430"/>
+  <text x="115.1" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">A GPU MACHINE</text>
+  <rect x="52" y="132" width="290" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M64,132.7 H58 V191.3 H64 A11.3,11.3 0 0 1 52.7,180 V144 A11.3,11.3 0 0 1 64,132.7 Z" fill="#5E9400"/>
+  <rect x="68" y="146.0" width="32" height="32" rx="8" fill="#EEF6DC"/>
+  <g transform="translate(74.0,152.0) scale(0.8333)"><path d="M8 2h2v3h4V2h2v3h2a1 1 0 0 1 1 1v2h3v2h-3v4h3v2h-3v2a1 1 0 0 1-1 1h-2v3h-2v-3h-4v3H8v-3H6a1 1 0 0 1-1-1v-2H2v-2h3v-4H2V8h3V6a1 1 0 0 1 1-1h2zM7 7v10h10V7zm2.5 2.5h5v5h-5z" fill="#5E9400" fill-rule="evenodd"/></g>
+  <text x="110.0" y="158.0" class="name" text-anchor="start" xml:space="preserve">GPU and driver</text>
+  <text x="110.0" y="176.0" class="sub" text-anchor="start" xml:space="preserve">reports an error</text>
+  <rect x="52" y="222" width="290" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M64,222.7 H58 V281.3 H64 A11.3,11.3 0 0 1 52.7,270 V234 A11.3,11.3 0 0 1 64,222.7 Z" fill="#7A4FD0"/>
+  <rect x="68" y="236.0" width="32" height="32" rx="8" fill="#F0EAFB"/>
+  <g transform="translate(74.0,242.0) scale(0.8333)"><path d="M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z" fill="#76B900" fill-rule="evenodd"/></g>
+  <text x="110.0" y="248.0" class="name" text-anchor="start" xml:space="preserve">Device plugin</text>
+  <text x="110.0" y="266.0" class="sub" text-anchor="start" xml:space="preserve">marks the GPU unhealthy</text>
+  <rect x="52" y="312" width="290" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M64,312.7 H58 V371.3 H64 A11.3,11.3 0 0 1 52.7,360 V324 A11.3,11.3 0 0 1 64,312.7 Z" fill="#1F8A70"/>
+  <rect x="68" y="326.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(74.0,332.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="110.0" y="338.0" class="name" text-anchor="start" xml:space="preserve">kubelet</text>
+  <text x="110.0" y="356.0" class="sub" text-anchor="start" xml:space="preserve">offers one GPU fewer</text>
+  <path class="wire" d="M120,192 L120,222" marker-end="url(#head)"/>
+  <path class="wire" d="M120,282 L120,312" marker-end="url(#head)"/>
+  <rect x="440" y="312" width="240" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M452,312.7 H446 V371.3 H452 A11.3,11.3 0 0 1 440.7,360 V324 A11.3,11.3 0 0 1 452,312.7 Z" fill="#1F8A70"/>
+  <text x="460.0" y="338.0" class="name" text-anchor="start" xml:space="preserve">Scheduler</text>
+  <text x="460.0" y="356.0" class="sub" text-anchor="start" xml:space="preserve">places no pod on that GPU</text>
+  <path class="wire" d="M342,342 L440,342" marker-end="url(#head)"/>
+  <rect x="360.9" y="333.0" width="60.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="391.0" y="345.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">seconds</text>
+  <rect x="440" y="130" width="240" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M452,130.7 H446 V193.3 H452 A11.3,11.3 0 0 1 440.7,182 V142 A11.3,11.3 0 0 1 452,130.7 Z" fill="#1F8A70"/>
+  <rect x="456" y="146.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(462.0,152.0) scale(0.8333)"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.7 4.8-1.8 1.8-4.8-4.7A7.5 7.5 0 1 1 10.5 3zm0 2.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="498.0" y="158.0" class="name" text-anchor="start" xml:space="preserve">Health service</text>
+  <text x="498.0" y="176.0" class="sub" text-anchor="start" xml:space="preserve">counts the reports</text>
+  <path class="wire" d="M342,162 L440,162" marker-end="url(#head)"/>
+  <rect x="364.2" y="153.0" width="53.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="391.0" y="165.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">report</text>
+  <rect x="780" y="130" width="300" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M792,130.7 H786 V193.3 H792 A11.3,11.3 0 0 1 780.7,182 V142 A11.3,11.3 0 0 1 792,130.7 Z" fill="#1F8A70"/>
+  <rect x="796" y="146.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(802.0,152.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="838.0" y="158.0" class="name" text-anchor="start" xml:space="preserve">Remediation controller</text>
+  <text x="838.0" y="176.0" class="sub" text-anchor="start" xml:space="preserve">moves one machine one step</text>
+  <path class="wire" d="M680,162 L780,162" marker-end="url(#head)"/>
+  <rect x="699.9" y="153.0" width="60.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="730.0" y="165.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">verdict</text>
+  <rect x="780" y="312" width="300" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M792,312.7 H786 V371.3 H792 A11.3,11.3 0 0 1 780.7,360 V324 A11.3,11.3 0 0 1 792,312.7 Z" fill="#CF4526"/>
+  <rect x="796" y="326.0" width="32" height="32" rx="8" fill="#FCEBE6"/>
+  <g transform="translate(802.0,332.0) scale(0.8333)"><path d="M12 2 2 7l10 5 10-5zm-7.8 8.6L2 11.7l10 5 10-5-2.2-1.1L12 14.5zm0 4.7L2 16.4l10 5 10-5-2.2-1.1L12 19.2z" fill="#CF4526" fill-rule="evenodd"/></g>
+  <text x="838.0" y="338.0" class="name" text-anchor="start" xml:space="preserve">Kubernetes API</text>
+  <text x="838.0" y="356.0" class="sub" text-anchor="start" xml:space="preserve">cordon, evict, repair, burn-in</text>
+  <path class="wire" d="M930,194 L930,312" marker-end="url(#head)"/>
+  <rect x="909.8" y="244.0" width="40.4" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="930.0" y="256.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">acts</text>
+  <path class="wire" d="M930,372 L930,421 Q930,430 921,430 L206,430 Q197,430 197,421 L197,394" marker-end="url(#head)"/>
+  <rect x="408.0" y="421.0" width="311.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="563.5" y="433.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">changes reach the machine through the kubelet</text>
+  <text x="560.0" y="232.0" class="note" text-anchor="middle" xml:space="preserve">the slow path: a decision about the whole machine</text>
+  <text x="560.0" y="292.0" class="note" text-anchor="middle" xml:space="preserve">the fast path: no new work on a broken GPU</text>
+</svg>

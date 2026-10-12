@@ -1,0 +1,12 @@
+[package]
+name = "leasewatch"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+futures = "0.3"
+jiff = "0.2"
+k8s-openapi = { version = "0.28", features = ["v1_36"] }
+kube = { version = "4.2", features = ["runtime"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }

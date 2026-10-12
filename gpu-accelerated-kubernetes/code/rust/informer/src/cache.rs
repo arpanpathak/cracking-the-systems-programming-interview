@@ -4,6 +4,7 @@ use crate::server::{Event, EventType, Object};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+// ANCHOR: cache
 /// The client's copy of the server's objects, kept current by a
 /// [`Reflector`](crate::reflector::Reflector). Its methods are safe to call
 /// from several threads.
@@ -30,7 +31,11 @@ impl Cache {
             }
         };
     }
+}
+// ANCHOR_END: cache
 
+// ANCHOR: replace
+impl Cache {
     /// Installs the result of a fresh list and returns the names of the
     /// objects that changed, including objects that disappeared while the
     /// client was not watching.
@@ -53,3 +58,4 @@ impl Cache {
         changed
     }
 }
+// ANCHOR_END: replace

@@ -24,6 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// ANCHOR: count
 // gpu is the extended resource that the NVIDIA device plugin advertises.
 const gpu corev1.ResourceName = "nvidia.com/gpu"
 
@@ -55,6 +56,8 @@ func holdsResources(pod *corev1.Pod) bool {
 	return pod.Spec.NodeName != "" && !finished
 }
 
+// ANCHOR_END: count
+
 // main runs the report and exits with status 1 on any error.
 func main() {
 	if err := run(context.Background()); err != nil {
@@ -63,6 +66,7 @@ func main() {
 	}
 }
 
+// ANCHOR: report
 // run lists every node and every pod, groups the GPU-holding pods by node,
 // and prints one table row per node followed by the pods that hold its units.
 func run(ctx context.Context) error {
@@ -113,3 +117,5 @@ func run(ctx context.Context) error {
 	}
 	return nil
 }
+
+// ANCHOR_END: report

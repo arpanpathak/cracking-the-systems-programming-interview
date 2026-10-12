@@ -1,0 +1,11 @@
+push llm:v1: 8 chunks, 8 new; manifest sha256:eea2b9042521
+push llm:v2: 8 chunks, 2 new; manifest sha256:7df8dd2bef7e
+the registry holds 12 blobs and 83152 bytes for 131072 bytes of artifacts
+thor-1 pulls llm:v1: 8 chunks fetched, 65536 bytes
+thor-1 pulls llm:v2: 2 chunks fetched, 16384 bytes
+one bit flips in a chunk stored on thor-1:
+  read llm:v1: chunk 3: sha256:156fd5154cde: contents do not match the digest
+  thor-1 drops the chunk and pulls llm:v1 again: 1 chunk fetched, 8192 bytes
+  read llm:v1: 65536 bytes, digest sha256:a6a98d7f309f
+the tag llm:v1 is deleted from the registry:
+  collected 3 blobs, 17000 bytes; 9 blobs and 66152 bytes remain

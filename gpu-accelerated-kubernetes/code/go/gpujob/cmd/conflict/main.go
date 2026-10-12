@@ -34,6 +34,7 @@ func main() {
 	}
 }
 
+// ANCHOR: run
 // run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
 	scheme := runtime.NewScheme()
@@ -67,3 +68,5 @@ func run(ctx context.Context) error {
 	}
 	return fmt.Errorf("unexpected result: %v", err)
 }
+
+// ANCHOR_END: run

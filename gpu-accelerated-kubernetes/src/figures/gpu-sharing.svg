@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1090 440" width="1090" height="440" role="img" aria-label="Four pictures of one GPU, with its SMs on the vertical axis and time on the horizontal axis. Whole GPU: pod A fills the picture; memory and faults are isolated. Time-slicing: pods A, B and C take turns in vertical stripes, each stripe covering every SM; neither memory nor faults are isolated. MPS: A, B and C run at the same time in horizontal bands separated by dotted lines; memory is isolated by limits and faults partly. MIG: A, B and C run in horizontal bands separated by solid walls; memory and faults are isolated.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1090" height="440" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Four ways to hand out one GPU</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Whole, by turns, side by side, or cut into hardware partitions.</text>
+  <text x="32.0" y="112.0" class="name" text-anchor="start" xml:space="preserve">Whole GPU</text>
+  <text x="32.0" y="130.0" class="sub" text-anchor="start" xml:space="preserve">one pod holds the device</text>
+  <rect x="66.0" y="150.0" width="196.0" height="132.0" rx="6" fill="#F1F4F7" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="58.0" y="220.0" class="note" text-anchor="end" xml:space="preserve">SMs</text>
+  <text x="164.0" y="300.0" class="note" text-anchor="middle" xml:space="preserve">time</text>
+  <rect x="67.5" y="151.5" width="193.0" height="129.0" rx="3" fill="#2F6FDB" fill-opacity="0.82"/>
+  <text x="164.0" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">A</text>
+  <text x="32.0" y="332.0" class="note" text-anchor="start" xml:space="preserve">memory isolated</text>
+  <rect x="228.2" y="319" width="33.8" height="18" rx="9" fill="#E7F5E9"/>
+  <text x="245.1" y="331.6" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">yes</text>
+  <text x="32.0" y="358.0" class="note" text-anchor="start" xml:space="preserve">faults isolated</text>
+  <rect x="228.2" y="345" width="33.8" height="18" rx="9" fill="#E7F5E9"/>
+  <text x="245.1" y="357.6" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">yes</text>
+  <text x="294.0" y="112.0" class="name" text-anchor="start" xml:space="preserve">Time-slicing</text>
+  <text x="294.0" y="130.0" class="sub" text-anchor="start" xml:space="preserve">pods take turns on all SMs</text>
+  <rect x="328.0" y="150.0" width="196.0" height="132.0" rx="6" fill="#F1F4F7" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="320.0" y="220.0" class="note" text-anchor="end" xml:space="preserve">SMs</text>
+  <text x="426.0" y="300.0" class="note" text-anchor="middle" xml:space="preserve">time</text>
+  <rect x="329.5" y="151.5" width="29.7" height="129.0" rx="3" fill="#2F6FDB" fill-opacity="0.82"/>
+  <text x="344.3" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">A</text>
+  <rect x="362.2" y="151.5" width="29.7" height="129.0" rx="3" fill="#B7791F" fill-opacity="0.82"/>
+  <text x="377.0" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">B</text>
+  <rect x="394.8" y="151.5" width="29.7" height="129.0" rx="3" fill="#7A4FD0" fill-opacity="0.82"/>
+  <text x="409.7" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">C</text>
+  <rect x="427.5" y="151.5" width="29.7" height="129.0" rx="3" fill="#2F6FDB" fill-opacity="0.82"/>
+  <text x="442.3" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">A</text>
+  <rect x="460.2" y="151.5" width="29.7" height="129.0" rx="3" fill="#B7791F" fill-opacity="0.82"/>
+  <text x="475.0" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">B</text>
+  <rect x="492.8" y="151.5" width="29.7" height="129.0" rx="3" fill="#7A4FD0" fill-opacity="0.82"/>
+  <text x="507.7" y="220.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">C</text>
+  <text x="294.0" y="332.0" class="note" text-anchor="start" xml:space="preserve">memory isolated</text>
+  <rect x="496.8" y="319" width="27.2" height="18" rx="9" fill="#FCEBE6"/>
+  <text x="510.4" y="331.6" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">no</text>
+  <text x="294.0" y="358.0" class="note" text-anchor="start" xml:space="preserve">faults isolated</text>
+  <rect x="496.8" y="345" width="27.2" height="18" rx="9" fill="#FCEBE6"/>
+  <text x="510.4" y="357.6" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">no</text>
+  <text x="556.0" y="112.0" class="name" text-anchor="start" xml:space="preserve">MPS</text>
+  <text x="556.0" y="130.0" class="sub" text-anchor="start" xml:space="preserve">kernels run side by side</text>
+  <rect x="590.0" y="150.0" width="196.0" height="132.0" rx="6" fill="#F1F4F7" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="582.0" y="220.0" class="note" text-anchor="end" xml:space="preserve">SMs</text>
+  <text x="688.0" y="300.0" class="note" text-anchor="middle" xml:space="preserve">time</text>
+  <rect x="591.5" y="151.5" width="193.0" height="63.0" rx="3" fill="#2F6FDB" fill-opacity="0.82"/>
+  <text x="688.0" y="187.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">A</text>
+  <rect x="591.5" y="217.5" width="193.0" height="36.6" rx="3" fill="#B7791F" fill-opacity="0.82"/>
+  <text x="688.0" y="239.8" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">B</text>
+  <rect x="591.5" y="257.1" width="193.0" height="23.4" rx="3" fill="#7A4FD0" fill-opacity="0.82"/>
+  <text x="688.0" y="272.8" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">C</text>
+  <path class="wire idle" d="M590,216.0 H786"/>
+  <path class="wire idle" d="M590,255.6 H786"/>
+  <text x="556.0" y="332.0" class="note" text-anchor="start" xml:space="preserve">memory isolated</text>
+  <rect x="712.6" y="319" width="73.4" height="18" rx="9" fill="#FBF1DC"/>
+  <text x="749.3" y="331.6" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">by limits</text>
+  <text x="556.0" y="358.0" class="note" text-anchor="start" xml:space="preserve">faults isolated</text>
+  <rect x="732.4" y="345" width="53.6" height="18" rx="9" fill="#FBF1DC"/>
+  <text x="759.2" y="357.6" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">partly</text>
+  <text x="818.0" y="112.0" class="name" text-anchor="start" xml:space="preserve">MIG</text>
+  <text x="818.0" y="130.0" class="sub" text-anchor="start" xml:space="preserve">hardware partitions</text>
+  <rect x="852.0" y="150.0" width="196.0" height="132.0" rx="6" fill="#F1F4F7" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="844.0" y="220.0" class="note" text-anchor="end" xml:space="preserve">SMs</text>
+  <text x="950.0" y="300.0" class="note" text-anchor="middle" xml:space="preserve">time</text>
+  <rect x="856.0" y="154.0" width="188.0" height="48.6" rx="5" fill="#2F6FDB" fill-opacity="0.82"/>
+  <text x="950.0" y="182.3" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">A</text>
+  <rect x="856.0" y="210.6" width="188.0" height="29.7" rx="5" fill="#B7791F" fill-opacity="0.82"/>
+  <text x="950.0" y="229.4" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">B</text>
+  <rect x="856.0" y="248.3" width="188.0" height="29.7" rx="5" fill="#7A4FD0" fill-opacity="0.82"/>
+  <text x="950.0" y="267.1" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">C</text>
+  <path d="M852,206.6 H1048" stroke="#1B2430" stroke-width="3"/>
+  <path d="M852,244.3 H1048" stroke="#1B2430" stroke-width="3"/>
+  <text x="818.0" y="332.0" class="note" text-anchor="start" xml:space="preserve">memory isolated</text>
+  <rect x="1014.2" y="319" width="33.8" height="18" rx="9" fill="#E7F5E9"/>
+  <text x="1031.1" y="331.6" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">yes</text>
+  <text x="818.0" y="358.0" class="note" text-anchor="start" xml:space="preserve">faults isolated</text>
+  <rect x="1014.2" y="345" width="33.8" height="18" rx="9" fill="#E7F5E9"/>
+  <text x="1031.1" y="357.6" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">yes</text>
+  <text x="32.0" y="400.0" class="note" text-anchor="start" xml:space="preserve">Each picture is one GPU: its SMs from top to bottom, and time from left to right. A colour is the pod whose kernels run there.</text>
+  <text x="32.0" y="417.0" class="note" text-anchor="start" xml:space="preserve">MPS divides by limits that an administrator sets (dotted). MIG divides by hardware, memory and cache included (solid).</text>
+</svg>

@@ -1,0 +1,19 @@
+ring all-reduce over 5 workers, 5 chunks each:
+  thor-1 starts with 1 11 21 31 41     and ends with 15 65 115 165 215
+  thor-2 starts with 2 12 22 32 42     and ends with 15 65 115 165 215
+  thor-3 starts with 3 13 23 33 43     and ends with 15 65 115 165 215
+  thor-4 starts with 4 14 24 34 44     and ends with 15 65 115 165 215
+  thor-5 starts with 5 15 25 35 45     and ends with 15 65 115 165 215
+  each worker sent 8 chunks, 1.6 times its gradient; 40 messages in all
+the same step, with thor-3 failing after 2 of its 8 exchanges:
+  thor-1 stopped after 4 of 8: no chunk from thor-5 within 100ms
+  thor-2 stopped after 5 of 8: no chunk from thor-1 within 100ms
+  thor-3 stopped after 2 of 8: failed
+  thor-4 stopped after 2 of 8: no chunk from thor-3 within 100ms
+  thor-5 stopped after 3 of 8: no chunk from thor-4 within 100ms
+checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:
+  machines  job fails every  checkpoint every  time lost
+         1       720.0 hours        268 minutes       0.6%
+         5       144.0 hours        120 minutes       1.4%
+        64        11.2 hours         34 minutes       5.0%
+       512         1.4 hours         12 minutes      14.1%

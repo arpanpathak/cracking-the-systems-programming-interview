@@ -10,6 +10,7 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// ANCHOR: spec
 /// A request to run one container with a number of GPUs.
 ///
 /// The `CustomResource` derive generates the `GpuJob` type, which holds this
@@ -37,7 +38,9 @@ pub struct GpuJobSpec {
     #[schemars(with = "i32", range(min = 0))]
     pub gpus: u32,
 }
+// ANCHOR_END: spec
 
+// ANCHOR: status
 /// The state of a job as the controller last observed it.
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -65,7 +68,9 @@ pub enum Phase {
     /// The container exited with a non-zero status.
     Failed,
 }
+// ANCHOR_END: status
 
+// ANCHOR: frompod
 impl GpuJobStatus {
     /// Derives a job's status from its pod. `generation` is the job's
     /// `metadata.generation`, recorded as the generation this status describes.
@@ -92,3 +97,4 @@ impl GpuJobStatus {
         }
     }
 }
+// ANCHOR_END: frompod

@@ -4,6 +4,7 @@ package main
 
 import "sync"
 
+// ANCHOR: cache
 // Cache is the client's copy of the server's objects, kept current by a
 // Reflector. Its methods are safe for concurrent use.
 type Cache struct {
@@ -37,6 +38,9 @@ func (c *Cache) Apply(e Event) {
 	c.objects[e.Object.Name] = e.Object
 }
 
+// ANCHOR_END: cache
+
+// ANCHOR: replace
 // Replace installs the result of a fresh list and returns the names of the
 // objects that changed, including objects that disappeared while the client
 // was not watching.
@@ -60,3 +64,5 @@ func (c *Cache) Replace(list []Object) []string {
 	}
 	return changed
 }
+
+// ANCHOR_END: replace

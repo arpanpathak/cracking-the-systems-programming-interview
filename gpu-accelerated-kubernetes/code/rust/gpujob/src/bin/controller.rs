@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+// ANCHOR: pod
 /// The field manager name under which the controller writes with server-side apply.
 const MANAGER: &str = "gpujob-controller";
 
@@ -76,7 +77,9 @@ fn pod_gpus(pod: &Pod) -> Option<u32> {
     let limits = container.resources.as_ref()?.limits.as_ref()?;
     limits.get(GPU)?.0.parse().ok()
 }
+// ANCHOR_END: pod
 
+// ANCHOR: reconcile
 /// Makes the cluster match one job: ensures its pod exists with the requested
 /// GPUs, and writes the pod's progress into the job's status.
 async fn reconcile(job: Arc<GpuJob>, ctx: Arc<Context>) -> Result<Action, Error> {
@@ -122,7 +125,9 @@ fn error_policy(job: Arc<GpuJob>, error: &Error, _ctx: Arc<Context>) -> Action {
     tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
     Action::requeue(Duration::from_secs(5))
 }
+// ANCHOR_END: reconcile
 
+// ANCHOR: main
 /// Starts the controller and runs it until Ctrl-C.
 #[tokio::main]
 async fn main() -> Result<(), kube::Error> {
@@ -147,3 +152,4 @@ async fn main() -> Result<(), kube::Error> {
         .await;
     Ok(())
 }
+// ANCHOR_END: main

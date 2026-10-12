@@ -43,6 +43,7 @@ fn sleep_ms(ms: u64) {
     thread::sleep(Duration::from_millis(ms));
 }
 
+// ANCHOR: main
 fn main() {
     START.get_or_init(Instant::now);
     let server = Arc::new(ApiServer::default());
@@ -96,3 +97,4 @@ fn main() {
     let objects: Vec<String> = list.iter().map(ToString::to_string).collect();
     log!("final state at version {version}: [{}]", objects.join(" "));
 }
+// ANCHOR_END: main

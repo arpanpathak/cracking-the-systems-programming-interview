@@ -3,6 +3,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::sync::{Condvar, Mutex, MutexGuard};
 
+// ANCHOR: state
 /// The queue's data, kept behind one lock.
 #[derive(Default)]
 struct State {
@@ -30,7 +31,11 @@ impl WorkQueue {
     fn state(&self) -> MutexGuard<'_, State> {
         self.state.lock().expect("queue lock poisoned")
     }
+}
+// ANCHOR_END: state
 
+// ANCHOR: ops
+impl WorkQueue {
     /// Marks each name as needing processing. A name that is already pending
     /// is left where it is. A name that a worker holds is queued again by `done`.
     pub fn add(&self, names: impl IntoIterator<Item = String>) {
@@ -70,3 +75,4 @@ impl WorkQueue {
         }
     }
 }
+// ANCHOR_END: ops

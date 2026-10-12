@@ -28,6 +28,7 @@ import (
 	gpujobv1 "gpuk8s/gpujob/api/v1"
 )
 
+// ANCHOR: pod
 // manager is the field manager name under which the controller writes with
 // server-side apply.
 const manager = "gpujob-controller"
@@ -74,6 +75,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	return int32(quantity.Value()), ok
 }
 
+// ANCHOR_END: pod
+
+// ANCHOR: reconcile
 // GpuJobReconciler makes the cluster match each GpuJob.
 type GpuJobReconciler struct {
 	// Client reads objects from the manager's cache and writes to the API server.
@@ -128,6 +132,9 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 
+// ANCHOR_END: reconcile
+
+// ANCHOR: main
 // main builds a manager, registers the reconciler, and runs until Ctrl-C.
 func main() {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true))) // readable console output
@@ -166,3 +173,5 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// ANCHOR_END: main

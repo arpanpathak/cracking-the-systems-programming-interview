@@ -19,6 +19,7 @@ import (
 	gpujobv1 "gpuk8s/gpujob/api/v1"
 )
 
+// ANCHOR: describe
 // namespace is the namespace whose jobs the program watches.
 const namespace = "default"
 
@@ -32,6 +33,8 @@ func describe(obj any) string {
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
 
+// ANCHOR_END: describe
+
 // main starts an informer for GpuJob objects and prints one line per event.
 func main() {
 	if err := run(); err != nil {
@@ -40,6 +43,7 @@ func main() {
 	}
 }
 
+// ANCHOR: run
 // run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
@@ -82,3 +86,5 @@ func run() error {
 	<-ctx.Done()
 	return nil
 }
+
+// ANCHOR_END: run

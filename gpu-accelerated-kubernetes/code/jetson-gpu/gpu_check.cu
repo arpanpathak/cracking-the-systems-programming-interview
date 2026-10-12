@@ -25,6 +25,7 @@ constexpr int kElements = 1 << 20;
 // kThreads is the number of threads in each block of the add kernel.
 constexpr int kThreads = 256;
 
+// ANCHOR: kernel
 // add writes a[i] + b[i] to out[i]. Each thread handles one element, and
 // threads past the end of the vectors do nothing.
 __global__ void add(const float *a, const float *b, float *out, int n) {
@@ -33,7 +34,9 @@ __global__ void add(const float *a, const float *b, float *out, int n) {
         out[i] = a[i] + b[i];
     }
 }
+// ANCHOR_END: kernel
 
+// ANCHOR: main
 // main prints the device, runs the addition, and prints the kernel's status
 // with the first and last results. It exits with status 1 if no GPU is
 // visible, the kernel failed, or the result is wrong.
@@ -66,3 +69,4 @@ int main() {
     cudaFree(out);
     return ok ? 0 : 1;
 }
+// ANCHOR_END: main

@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1012 404" width="1012" height="404" role="img" aria-label="The command line gpuctl nodes -o json enters the function run, which reads the kubeconfig for the server address and credentials and asks the API server for the list of nodes. It writes the result to standard output, messages to standard error, and returns an exit status of 0, 1 or 2.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1012" height="404" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">One command through gpuctl</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Arguments go in. The result, the messages, and the status come out on three separate channels.</text>
+  <path d="M42,120 H244 L262,138 V206 A10,10 0 0 1 252,216 H42 A10,10 0 0 1 32,206 V130 A10,10 0 0 1 42,120 Z" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M244,120 V138 H262 Z" fill="#EAF1FD" stroke="#D5DBE3" stroke-width="1.3" stroke-linejoin="round"/>
+  <rect x="48" y="136" width="4" height="14" rx="2" fill="#2F6FDB"/>
+  <text x="60.0" y="147.5" class="tab" text-anchor="start" style="fill:#2F6FDB" xml:space="preserve">COMMAND LINE</text>
+  <text x="48.0" y="176.0" class="mono strong" text-anchor="start" xml:space="preserve">gpuctl nodes -o json</text>
+  <text x="48.0" y="200.0" class="note" text-anchor="start" style="fill:#2F6FDB" xml:space="preserve">typed, or run by a script</text>
+  <rect x="340" y="126" width="220" height="84" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M352,126.7 H346 V209.3 H352 A11.3,11.3 0 0 1 340.7,198 V138 A11.3,11.3 0 0 1 352,126.7 Z" fill="#1F8A70"/>
+  <rect x="356" y="152.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(362.0,158.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="398.0" y="155.0" class="name" text-anchor="start" xml:space="preserve">run(args)</text>
+  <text x="398.0" y="173.0" class="sub" text-anchor="start" xml:space="preserve">chooses the command,</text>
+  <text x="398.0" y="191.0" class="sub" text-anchor="start" xml:space="preserve">returns the status</text>
+  <path class="wire" d="M262,168 L340,168" marker-end="url(#head)"/>
+  <path d="M350,280 H542 L560,298 V366 A10,10 0 0 1 550,376 H350 A10,10 0 0 1 340,366 V290 A10,10 0 0 1 350,280 Z" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M542,280 V298 H560 Z" fill="#FBF1DC" stroke="#D5DBE3" stroke-width="1.3" stroke-linejoin="round"/>
+  <rect x="356" y="296" width="4" height="14" rx="2" fill="#B7791F"/>
+  <text x="368.0" y="307.5" class="tab" text-anchor="start" style="fill:#B7791F" xml:space="preserve">KUBECONFIG</text>
+  <text x="356.0" y="336.0" class="mono" text-anchor="start" xml:space="preserve">server address</text>
+  <text x="356.0" y="354.0" class="mono" text-anchor="start" xml:space="preserve">credentials</text>
+  <path class="wire" d="M450,280 L450,210" marker-end="url(#head)"/>
+  <rect x="660" y="300" width="230" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M672,300.7 H666 V363.3 H672 A11.3,11.3 0 0 1 660.7,352 V312 A11.3,11.3 0 0 1 672,300.7 Z" fill="#1F8A70"/>
+  <rect x="676" y="316.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(682.0,322.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="718.0" y="328.0" class="name" text-anchor="start" xml:space="preserve">API server</text>
+  <text x="718.0" y="346.0" class="sub" text-anchor="start" xml:space="preserve">one list of Node objects</text>
+  <path class="wire" d="M520,210 L520,241 Q520,250 529,250 L766,250 Q775,250 775,259 L775,300" marker-end="url(#head)"/>
+  <rect x="607.5" y="241.0" width="80.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="647.5" y="253.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">list nodes</text>
+  <rect x="660" y="104" width="320" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M672,104.7 H666 V155.3 H672 A11.3,11.3 0 0 1 660.7,144 V116 A11.3,11.3 0 0 1 672,104.7 Z" fill="#2E8B3D"/>
+  <text x="680.0" y="126.0" class="name" text-anchor="start" xml:space="preserve">Standard output</text>
+  <text x="680.0" y="144.0" class="sub" text-anchor="start" xml:space="preserve">the result, and nothing else</text>
+  <rect x="660" y="166" width="320" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M672,166.7 H666 V217.3 H672 A11.3,11.3 0 0 1 660.7,206 V178 A11.3,11.3 0 0 1 672,166.7 Z" fill="#B7791F"/>
+  <text x="680.0" y="188.0" class="name" text-anchor="start" xml:space="preserve">Standard error</text>
+  <text x="680.0" y="206.0" class="sub" text-anchor="start" xml:space="preserve">messages for a person</text>
+  <path class="wire" d="M560,150 L601,150 Q610,150 610,141 L610,139 Q610,130 619,130 L660,130" marker-end="url(#head)"/>
+  <path class="wire" d="M560,186 L601,186 Q610,186 610.0,189.0 L610.0,189.0 Q610,192 619,192 L660,192" marker-end="url(#head)"/>
+  <rect x="32" y="290" width="230" height="76" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,290.7 H38 V365.3 H44 A11.3,11.3 0 0 1 32.7,354 V302 A11.3,11.3 0 0 1 44,290.7 Z" fill="#7A4FD0"/>
+  <text x="52.0" y="315.0" class="name" text-anchor="start" xml:space="preserve">Exit status</text>
+  <text x="52.0" y="333.0" class="sub" text-anchor="start" xml:space="preserve">0 success, 1 the command</text>
+  <text x="52.0" y="351.0" class="sub" text-anchor="start" xml:space="preserve">failed, 2 wrong command line</text>
+  <path class="wire" d="M340,196 L309,196 Q300,196 300,205 L300,319 Q300,328 291,328 L262,328" marker-end="url(#head)"/>
+</svg>

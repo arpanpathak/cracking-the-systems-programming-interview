@@ -13,23 +13,24 @@
 
 # Control planes and clusters
 
-- [A control plane for a fleet of hosts]()
-- [Kubernetes in a new cloud account]()
-- [Virtual machines on Kubernetes]()
+- [Knowing which machines are alive](03-liveness.md)
+- [A control plane for a fleet of hosts](04-fleet-control-plane.md)
+- [Kubernetes in a new cloud account](05-new-cloud-account.md)
+- [Virtual machines on Kubernetes](06-virtual-machines.md)
 
 # GPU workloads
 
-- [Collective communication and training failures]()
-- [Placing jobs on GPUs]()
+- [Collective communication and training failures](07-collective-communication.md)
+- [Placing jobs on GPUs](08-placing-jobs.md)
 
 # Distributed state
 
-- [Counting across replicas]()
-- [A content-addressed artifact store]()
+- [Counting across replicas](09-counting-across-replicas.md)
+- [A content-addressed artifact store](10-artifact-store.md)
 
 # Client tools
 
-- [A command-line tool for Windows, macOS, and Linux]()
+- [A command-line tool for Windows, macOS, and Linux](11-command-line-tool.md)
 
 ---
 

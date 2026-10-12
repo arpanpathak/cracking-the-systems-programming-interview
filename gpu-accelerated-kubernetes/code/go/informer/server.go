@@ -12,6 +12,7 @@ import (
 	"sync"
 )
 
+// ANCHOR: objects
 // Spec is the part of an object that a user writes: the desired state.
 type Spec struct {
 	// GPUs is the number of GPUs the job asks for.
@@ -76,6 +77,9 @@ var (
 	ErrUnreachable = errors.New("server unreachable")
 )
 
+// ANCHOR_END: objects
+
+// ANCHOR: server
 // APIServer stores objects and streams their changes to watchers. Its methods
 // are safe for concurrent use.
 type APIServer struct {
@@ -100,6 +104,9 @@ func NewAPIServer() *APIServer {
 	return &APIServer{objects: map[string]Object{}}
 }
 
+// ANCHOR_END: server
+
+// ANCHOR: writes
 // Update creates or replaces an object and returns ErrConflict if the write's
 // condition fails. A non-zero o.ResourceVersion is a condition: the caller read
 // the object at that version and wants the write applied only if the object is
@@ -145,6 +152,9 @@ func (s *APIServer) publish(e Event) {
 	}
 }
 
+// ANCHOR_END: writes
+
+// ANCHOR: listwatch
 // List returns every object, sorted by name, and the version at which the
 // snapshot was taken.
 func (s *APIServer) List() ([]Object, int) {
@@ -175,6 +185,9 @@ func (s *APIServer) Watch(version int) (<-chan Event, error) {
 	return w, nil
 }
 
+// ANCHOR_END: listwatch
+
+// ANCHOR: faults
 // Compact discards the event history, as etcd discards old versions.
 func (s *APIServer) Compact() {
 	s.mu.Lock()
@@ -212,3 +225,5 @@ func (s *APIServer) dropWatches() {
 	}
 	s.watches = nil
 }
+
+// ANCHOR_END: faults

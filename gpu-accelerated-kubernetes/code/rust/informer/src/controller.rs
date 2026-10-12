@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+// ANCHOR: run
 /// Makes each object's status agree with its spec.
 pub struct Controller {
     /// Receives the controller's status writes.
@@ -31,7 +32,11 @@ impl Controller {
             }
         }
     }
+}
+// ANCHOR_END: run
 
+// ANCHOR: reconcile
+impl Controller {
     /// Reads the named object from the cache and, if its status differs from
     /// its spec, writes a new status conditioned on the version it read.
     fn reconcile(&self, name: &str) -> Result<(), ApiError> {
@@ -57,3 +62,4 @@ impl Controller {
         }
     }
 }
+// ANCHOR_END: reconcile

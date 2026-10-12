@@ -1,0 +1,26 @@
+$ gpuctl nodes
+NAME                   GPUS  ARCH   OS     KUBELET
+gpu-lab-control-plane  1     arm64  linux  v1.37.0
+$ gpuctl nodes -o json
+[
+  {
+    "name": "gpu-lab-control-plane",
+    "gpus": 1,
+    "arch": "arm64",
+    "os": "linux",
+    "kubelet": "v1.37.0"
+  }
+]
+$ gpuctl config
+config file  /home/jetson/.config/gpuctl/config.toml
+kubeconfig   /home/jetson/.kube/config
+$ gpuctl version
+gpuctl 0.1.0 linux/arm64
+$ gpuctl pods
+gpuctl: unknown command "pods"
+usage:
+  gpuctl nodes [-o table|json]
+  gpuctl config
+  gpuctl version
+$ echo $?
+2

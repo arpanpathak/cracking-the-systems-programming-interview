@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1092 426" width="1092" height="426" role="img" aria-label="Three lease agents, gpu-host-a and gpu-host-c written in Go and gpu-host-b written in Rust, each apply their own Lease in the fleet namespace every two seconds. The Lease for gpu-host-b holds holderIdentity gpu-host-b, leaseDurationSeconds 6, a renewTime written with the host&#x27;s clock, and an acquireTime. Two watchers, one in Go with an informer cache and one in Rust with a watcher stream into a store, watch the Leases and check them once a second against their own clocks.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1092" height="426" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Agents renew, watchers observe, and the Lease is the contract between them</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A Go watcher reads a Lease that a Rust agent wrote, and the other way round.</text>
+  <rect x="32" y="120" width="230" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,120.7 H38 V179.3 H44 A11.3,11.3 0 0 1 32.7,168 V132 A11.3,11.3 0 0 1 44,120.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="146.0" class="name" text-anchor="start" xml:space="preserve">leaseagent gpu-host-a</text>
+  <text x="52.0" y="164.0" class="sub" text-anchor="start" xml:space="preserve">Go, client-go</text>
+  <rect x="32" y="204" width="230" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,204.7 H38 V263.3 H44 A11.3,11.3 0 0 1 32.7,252 V216 A11.3,11.3 0 0 1 44,204.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="230.0" class="name" text-anchor="start" xml:space="preserve">leaseagent gpu-host-b</text>
+  <text x="52.0" y="248.0" class="sub" text-anchor="start" xml:space="preserve">Rust, kube-rs</text>
+  <rect x="32" y="288" width="230" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,288.7 H38 V347.3 H44 A11.3,11.3 0 0 1 32.7,336 V300 A11.3,11.3 0 0 1 44,288.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="314.0" class="name" text-anchor="start" xml:space="preserve">leaseagent gpu-host-c</text>
+  <text x="52.0" y="332.0" class="sub" text-anchor="start" xml:space="preserve">Go, client-go</text>
+  <rect x="360" y="104" width="310" height="262" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="378" y="93" width="240.4" height="22" rx="11" fill="#1B2430"/>
+  <text x="498.2" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">API SERVER, NAMESPACE FLEET</text>
+  <path d="M394,132 H628 L646,150 V334 A10,10 0 0 1 636,344 H394 A10,10 0 0 1 384,334 V142 A10,10 0 0 1 394,132 Z" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M628,132 V150 H646 Z" fill="#FBF1DC" stroke="#D5DBE3" stroke-width="1.3" stroke-linejoin="round"/>
+  <rect x="400" y="148" width="4" height="14" rx="2" fill="#B7791F"/>
+  <text x="412.0" y="159.5" class="tab" text-anchor="start" style="fill:#B7791F" xml:space="preserve">LEASE gpu-host-b</text>
+  <text x="400.0" y="188.0" class="mono" text-anchor="start" xml:space="preserve">holderIdentity: gpu-host-b</text>
+  <text x="400.0" y="206.0" class="mono" text-anchor="start" xml:space="preserve">leaseDurationSeconds: 6</text>
+  <text x="400.0" y="224.0" class="mono strong" text-anchor="start" xml:space="preserve">renewTime: 01:31:24.5</text>
+  <text x="400.0" y="242.0" class="mono dim" text-anchor="start" xml:space="preserve">acquireTime: 01:31:16.5</text>
+  <text x="400.0" y="311.0" class="note" text-anchor="start" style="fill:#B7791F" xml:space="preserve">one Lease for each host;</text>
+  <text x="400.0" y="328.0" class="note" text-anchor="start" style="fill:#B7791F" xml:space="preserve">renewTime is the host&#x27;s own clock</text>
+  <path class="wire" d="M262,150 L301,150 Q310,150 310,159 L310,213 Q310,222 319,222 L384,222"/>
+  <path class="wire" d="M262,318 L301,318 Q310,318 310,309 L310,259 Q310,250 319,250 L384,250"/>
+  <path class="wire" d="M262,236 L384,236" marker-end="url(#head)"/>
+  <rect x="283.0" y="227.0" width="80.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="323.0" y="239.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">apply, 2 s</text>
+  <rect x="770" y="132" width="290" height="76" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M782,132.7 H776 V207.3 H782 A11.3,11.3 0 0 1 770.7,196 V144 A11.3,11.3 0 0 1 782,132.7 Z" fill="#1F8A70"/>
+  <rect x="786" y="154.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(792.0,160.0) scale(0.8333)"><path d="M12 5c5 0 8.5 3.5 10 7-1.5 3.5-5 7-10 7S3.5 15.5 2 12c1.5-3.5 5-7 10-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="828.0" y="157.0" class="name" text-anchor="start" xml:space="preserve">leasewatch</text>
+  <text x="828.0" y="175.0" class="sub" text-anchor="start" xml:space="preserve">Go: informer cache and lister,</text>
+  <text x="828.0" y="193.0" class="sub" text-anchor="start" xml:space="preserve">read once a second</text>
+  <rect x="770" y="264" width="290" height="76" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M782,264.7 H776 V339.3 H782 A11.3,11.3 0 0 1 770.7,328 V276 A11.3,11.3 0 0 1 782,264.7 Z" fill="#1F8A70"/>
+  <rect x="786" y="286.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(792.0,292.0) scale(0.8333)"><path d="M12 5c5 0 8.5 3.5 10 7-1.5 3.5-5 7-10 7S3.5 15.5 2 12c1.5-3.5 5-7 10-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="828.0" y="289.0" class="name" text-anchor="start" xml:space="preserve">leasewatch</text>
+  <text x="828.0" y="307.0" class="sub" text-anchor="start" xml:space="preserve">Rust: watcher stream and a store,</text>
+  <text x="828.0" y="325.0" class="sub" text-anchor="start" xml:space="preserve">read once a second</text>
+  <path class="wire" d="M670,170 L770,170" marker-end="url(#head)"/>
+  <rect x="696.5" y="161.0" width="47.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="720.0" y="173.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">watch</text>
+  <path class="wire" d="M670,302 L770,302" marker-end="url(#head)"/>
+  <rect x="696.5" y="293.0" width="47.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="720.0" y="305.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">watch</text>
+  <text x="32.0" y="402.0" class="note" text-anchor="start" xml:space="preserve">A watcher notes its own clock when it sees renewTime change, and reports the host as expired when six seconds pass on that clock with no change.</text>
+</svg>

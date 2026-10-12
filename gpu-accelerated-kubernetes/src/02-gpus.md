@@ -8,6 +8,19 @@ time-slicing, the Multi-Process Service, Multi-Instance GPU, virtual GPUs, and D
 Resource Allocation. We will try time-slicing on our own cluster and measure what it
 does.
 
+<div class="covers">
+
+This chapter covers
+
+- streaming multiprocessors, warps, and the levels of GPU memory
+- the properties of the GPU in our cluster, read with a CUDA program
+- what a pod receives with one `nvidia.com/gpu` unit
+- time-slicing, measured with three pods on one GPU
+- MPS, MIG, vGPU, and Dynamic Resource Allocation
+- which method suits which kind of workload
+
+</div>
+
 ## The programs in this chapter
 
 We use four programs, two that run on the GPU and two that look at the cluster.
@@ -71,20 +84,22 @@ with it.
 The CUDA runtime reports most of these properties through `cudaGetDeviceProperties`.
 This program prints them, along with the current free and total device memory:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_info.cu">code/gpu-sharing/gpu_info.cu</a></p>
+<p class="listing"><b>Listing 2.1</b> Reading the GPU's properties. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_info.cu">code/gpu-sharing/gpu_info.cu</a></p>
 
 ```cpp
 {{#include ../code/gpu-sharing/gpu_info.cu}}
 ```
 
+
 The image for this chapter holds `gpu_info` and a second program, `gpu_load`, which we
 use later:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/Dockerfile">code/gpu-sharing/Dockerfile</a></p>
+<p class="listing"><b>Listing 2.2</b> The image that holds both CUDA programs. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/Dockerfile">code/gpu-sharing/Dockerfile</a></p>
 
 ```dockerfile
 {{#include ../code/gpu-sharing/Dockerfile}}
 ```
+
 
 ```console
 $ cd code/gpu-sharing
@@ -96,11 +111,12 @@ $ kind load docker-image gpu-sharing:1 --name gpu-lab
 
 We run it in a pod that asks for one GPU:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-info-pod.yaml">code/gpu-sharing/gpu-info-pod.yaml</a></p>
+<p class="listing"><b>Listing 2.3</b> A pod that runs `gpu_info` with one GPU. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-info-pod.yaml">code/gpu-sharing/gpu-info-pod.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/gpu-info-pod.yaml}}
 ```
+
 
 ```console
 $ kubectl apply -f gpu-info-pod.yaml
@@ -126,12 +142,63 @@ hold 1,536 threads at once, 12,288 for the whole GPU. All SMs share a 2 MiB L2 c
 two copy engines move data. For comparison, a data center H100 SXM5 has 132 SMs and
 80 GB of HBM3 memory.
 
+Figure 2.1 draws those numbers as one picture.
+
+<figure>
+<img src="figures/gpu-anatomy.svg" alt="The GPU of the Jetson Orin NX: eight streaming multiprocessors, each with 128 CUDA cores, room for 1,536 resident threads, 65,536 registers and 164 KiB of shared memory and L1 cache. All eight share a 2,048 KiB L2 cache. Device memory is the board's 15.3 GiB of LPDDR5, which the CPU also uses. Two copy engines move data while kernels run.">
+<figcaption><b>Figure 2.1</b> The GPU in our cluster, drawn from the output of <code>gpu_info</code>. One <code>nvidia.com/gpu</code> unit is all of it.</figcaption>
+</figure>
+
 The memory lines show what "integrated" means in practice. The GPU's device memory is
 the board's 15.3 GiB of LPDDR5, the same memory the operating system and every CPU
 program use. Only 1.8 GiB was free when the pod ran, because other programs on the board
 were using the rest. On a discrete GPU, device memory belongs to the GPU alone; on an
 integrated GPU, the amount available to a kernel depends on everything else running on
 the machine.
+
+## The same measurement on a Thor
+
+We also have a Jetson AGX Thor developer kit on the network. It runs Jetson Linux R39.2.1
+with CUDA 13.2 and has no Kubernetes on it, so we compile `gpu_info` on the board and run
+it directly:
+
+```console
+$ /usr/local/cuda/bin/nvcc -O2 -cudart static -o gpu_info gpu_info.cu
+$ ./gpu_info
+device                      NVIDIA Thor
+compute capability          11.0
+integrated with the CPU     yes
+streaming multiprocessors   20
+max resident threads/SM     1536
+registers per SM            65536
+shared memory per SM        228 KiB
+L2 cache                    32768 KiB
+device memory (total)       122.8 GiB
+device memory (free now)    44.8 GiB
+copy engines                2
+concurrent kernels          yes
+managed memory              yes
+```
+
+The program is the same source file, and the two boards answer differently in four lines:
+
+| | Jetson Orin NX | Jetson AGX Thor |
+|---|---|---|
+| compute capability | 8.7 | 11.0 |
+| streaming multiprocessors | 8 | 20 |
+| shared memory per SM | 164 KiB | 228 KiB |
+| L2 cache | 2,048 KiB | 32,768 KiB |
+| device memory | 15.3 GiB | 122.8 GiB |
+
+Twenty SMs with 128 CUDA cores each give the 2,560 cores in NVIDIA's specification for
+the Thor. The L2 cache is sixteen times as large, and the device memory is eight times
+as large. It is again the board's own memory: 44.8 GiB were free when we ran the program,
+because two other programs on the Thor, a model server among them, held 24 GiB and 39 GiB
+at the time.
+
+Both boards would advertise the same thing to a Kubernetes scheduler: `nvidia.com/gpu: 1`.
+A job that needs 60 GiB of device memory fits on one of them, and the count alone does
+not say which. Chapter 5 returns to this with node labels.
 
 ## What one unit gives a pod
 
@@ -142,21 +209,54 @@ cannot ask for half a GPU, and the node never hands out more units than it adver
 
 `gpuusage` shows the same accounting that the scheduler does. It sums the GPU limits of
 every pod that is bound to a node and has not finished, and compares the sum with the
-node's allocatable units. The Go version uses client-go's typed clientset:
+node's allocatable units. The Go version uses client-go's typed clientset, and the Rust version uses kube-rs.
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
+<div class="lld">
+
+Low-level design: `gpuusage`
+
+| Part | Does | Rule it keeps |
+|---|---|---|
+| counting one pod | adds up the `nvidia.com/gpu` limits of the pod's containers | a pod counts from the moment it is bound to a node until it succeeds or fails |
+| the report | lists nodes and pods with one request each, groups the pods that hold GPUs by node, and prints one row per node | in use plus free equals allocatable |
+
+</div>
+
+The first part decides what one pod holds.
+
+<p class="listing"><b>Listing 2.4</b> What one pod holds, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
 ```go
-{{#include ../code/go/gpuusage/main.go}}
+{{#include ../code/go/gpuusage/main.go:count}}
 ```
 
-The Rust version uses kube-rs:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
+
+<p class="listing"><b>Listing 2.5</b> What one pod holds, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 ```rust
-{{#include ../code/rust/gpuusage/src/main.rs}}
+{{#include ../code/rust/gpuusage/src/main.rs:count}}
 ```
+
+
+
+The second part asks the API server and prints the table.
+
+<p class="listing"><b>Listing 2.6</b> Listing, grouping, and printing, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
+
+```go
+{{#include ../code/go/gpuusage/main.go:report}}
+```
+
+
+
+<p class="listing"><b>Listing 2.7</b> Listing, grouping, and printing, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/gpuusage/src/main.rs:report}}
+```
+
+
 
 Both programs list the nodes and the pods with one request each, keep the pods that hold
 GPU units, and group them by node. A pod counts from the moment the scheduler binds it to
@@ -196,19 +296,28 @@ We can measure the effect. `gpu_load` launches a kernel ten times, each launch k
 1,024 blocks of 256 threads busy with 200,000 multiply-adds per thread, and prints how
 long the work took:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_load.cu">code/gpu-sharing/gpu_load.cu</a></p>
+<p class="listing"><b>Listing 2.8</b> The sizes, and the kernel that keeps one thread busy. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_load.cu">code/gpu-sharing/gpu_load.cu</a></p>
 
 ```cpp
-{{#include ../code/gpu-sharing/gpu_load.cu}}
+{{#include ../code/gpu-sharing/gpu_load.cu:kernel}}
 ```
+
+
+<p class="listing"><b>Listing 2.9</b> Launching the kernel ten times and timing it. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_load.cu">code/gpu-sharing/gpu_load.cu</a></p>
+
+```cpp
+{{#include ../code/gpu-sharing/gpu_load.cu:main}}
+```
+
 
 A Job runs four copies of it at once, each asking for one `nvidia.com/gpu`:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-load-job.yaml">code/gpu-sharing/gpu-load-job.yaml</a></p>
+<p class="listing"><b>Listing 2.10</b> A Job that runs four copies of `gpu_load`. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-load-job.yaml">code/gpu-sharing/gpu-load-job.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/gpu-load-job.yaml}}
 ```
+
 
 With the device plugin as configured in Appendix A, the node advertises one unit. Three
 of the four pods wait in Pending while the first runs:
@@ -241,20 +350,22 @@ milliseconds of GPU time:
 Time-slicing is switched on through the device plugin's configuration file. This
 ConfigMap advertises each GPU as four replicas:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/time-slicing-config.yaml">code/gpu-sharing/time-slicing-config.yaml</a></p>
+<p class="listing"><b>Listing 2.11</b> The time-slicing configuration. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/time-slicing-config.yaml">code/gpu-sharing/time-slicing-config.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/time-slicing-config.yaml}}
 ```
 
+
 The plugin reads the file named by its `CONFIG_FILE` setting. This manifest is the
 plugin from Appendix A with the ConfigMap mounted and `CONFIG_FILE` set:
 
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/device-plugin-time-sliced.yaml">code/gpu-sharing/device-plugin-time-sliced.yaml</a></p>
+<p class="listing"><b>Listing 2.12</b> The device plugin, reading that configuration. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/device-plugin-time-sliced.yaml">code/gpu-sharing/device-plugin-time-sliced.yaml</a></p>
 
 ```yaml
 {{#include ../code/gpu-sharing/device-plugin-time-sliced.yaml}}
 ```
+
 
 ```console
 $ kubectl apply -f time-slicing-config.yaml -f device-plugin-time-sliced.yaml
@@ -294,6 +405,25 @@ as it took alone. The four pods took turns on the same 8 SMs. Time-slicing added
 compute: it changed how many pods can hold the GPU at once and how long each one waits.
 Together, the four runs occupied the GPU for about 2.3 seconds, close to the
 4 × 620 = 2,480 milliseconds they needed one after another.
+
+The Thor shows the same behaviour with different numbers. We ran `gpu_load` there
+directly on the host, first alone and then as three processes started together:
+
+```console
+$ ./gpu_load thor-alone
+thor-alone: no error, 160 ms
+$ ./gpu_load copy-1 & ./gpu_load copy-2 & ./gpu_load copy-3 & wait
+copy-3: no error, 467 ms
+copy-2: no error, 477 ms
+copy-1: no error, 479 ms
+```
+
+Alone, the work that takes the Orin NX about 620 milliseconds takes the Thor 160. Three
+runs gave 190, 160, and 159 milliseconds, the first including the start-up of the CUDA
+context. With three processes on the GPU at once, each took about 475 milliseconds,
+which is three times 160. No device plugin was involved here. The driver switched between
+the three processes' CUDA contexts by itself. Time-slicing in Kubernetes relies on that
+switching and adds the extra units that the scheduler counts.
 
 The scheduler now believes the node has four GPUs. A pod that asks for two replicas gets
 two units of the same GPU and no more of its time; the plugin's `failRequestsGreaterThanOne`
@@ -406,6 +536,15 @@ yet officially supported." Our cluster therefore stays with the device plugin.
 
 ## Choosing a method
 
+
+Figure 2.2 draws the four ways of handing out a GPU to containers as pictures of one GPU over
+time, and the table after it adds vGPU.
+
+<figure>
+<img src="figures/gpu-sharing.svg" alt="Four pictures of one GPU, with its SMs on the vertical axis and time on the horizontal axis. Whole GPU: pod A fills the picture. Time-slicing: pods A, B and C take turns in vertical stripes that each cover every SM. MPS: A, B and C run at the same time in horizontal bands separated by dotted limits. MIG: A, B and C run in horizontal bands separated by solid hardware walls. Memory and faults are isolated for the whole GPU and for MIG, isolated by limits and partly for MPS, and shared for time-slicing.">
+<figcaption><b>Figure 2.2</b> One GPU handed out whole, by turns, side by side, and in hardware partitions.</figcaption>
+</figure>
+
 ```text
 method          what a pod gets                 memory isolated   faults isolated
 --------------  ------------------------------  ----------------  ---------------
@@ -421,6 +560,32 @@ light, trusted workloads that tolerate each other. MPS suits many small inferenc
 processes that each use part of the SMs. MIG suits multi-tenant clusters that need
 guaranteed memory and bandwidth for each tenant. vGPU suits workloads that must run in
 virtual machines.
+
+## The complete programs
+
+<p class="listing"><b>Listing 2.13</b> `gpu_load`, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu_load.cu">code/gpu-sharing/gpu_load.cu</a></p>
+
+```cpp
+{{#include ../code/gpu-sharing/gpu_load.cu}}
+```
+
+
+
+<p class="listing"><b>Listing 2.14</b> `gpuusage`, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
+
+```go
+{{#include ../code/go/gpuusage/main.go}}
+```
+
+
+
+<p class="listing"><b>Listing 2.15</b> `gpuusage`, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/gpuusage/src/main.rs}}
+```
+
+
 
 ## References
 

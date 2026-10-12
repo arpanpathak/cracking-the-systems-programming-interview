@@ -1,0 +1,36 @@
+  14s  job finetune-7b faulted on 3 machines: the job is at fault, no machine is drained
+  20s  spark-1    Healthy     -> Cordoned    uncorrectable ECC
+  20s  spark-1    Cordoned    -> Draining    jobs told to checkpoint
+  24s  spark-1    Draining    -> Remediating reset the GPU
+  27s  spark-1    Remediating -> Validating  burn-in after reset the GPU
+  30s  spark-1    Validating  -> Healthy     burn-in passed
+  40s  thor-4     Healthy     -> Cordoned    GPU off the bus
+  40s  thor-4     Cordoned    -> Draining    jobs told to checkpoint
+  44s  thor-4     Draining    -> Remediating reset the GPU
+  47s  thor-4     Remediating -> Validating  burn-in after reset the GPU
+  50s  thor-4     Validating  -> Remediating burn-in failed; reboot
+  53s  thor-4     Remediating -> Validating  burn-in after reboot
+  56s  thor-4     Validating  -> Remediating burn-in failed; reimage
+  59s  thor-4     Remediating -> Validating  burn-in after reimage
+  61s  3 machines on switch-25g flapped together: the link is at fault, no machine is drained
+  62s  thor-4     Validating  -> Quarantined burn-in failed after every action; ticket opened
+  80s  spark-2    Healthy     -> Cordoned    GPU off the bus
+  80s  orin-nx-1  Healthy     -> Cordoned    uncorrectable ECC
+  80s  spark-2    Cordoned    -> Draining    jobs told to checkpoint
+  81s  orin-nx-1  blocked: 2 machines are already out of service
+  84s  spark-2    Draining    -> Remediating reset the GPU
+  87s  spark-2    Remediating -> Validating  burn-in after reset the GPU
+  90s  spark-2    Validating  -> Healthy     burn-in passed
+  90s  orin-nx-1  Cordoned    -> Draining    jobs told to checkpoint
+  94s  orin-nx-1  Draining    -> Remediating reset the GPU
+  97s  orin-nx-1  Remediating -> Validating  burn-in after reset the GPU
+ 100s  orin-nx-1  Validating  -> Healthy     burn-in passed
+final states:
+  thor-1     Jetson AGX Thor  Healthy
+  thor-2     Jetson AGX Thor  Healthy
+  thor-3     Jetson AGX Thor  Healthy
+  thor-4     Jetson AGX Thor  Quarantined
+  thor-5     Jetson AGX Thor  Healthy
+  spark-1    DGX Spark        Healthy
+  spark-2    DGX Spark        Healthy
+  orin-nx-1  Jetson Orin NX   Healthy

@@ -6,6 +6,7 @@ use std::fmt;
 use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
+// ANCHOR: objects
 /// The part of an object that a user writes: the desired state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Spec {
@@ -98,7 +99,9 @@ impl fmt::Display for ApiError {
         })
     }
 }
+// ANCHOR_END: objects
 
+// ANCHOR: server
 /// Everything the server stores, kept behind one lock.
 #[derive(Default)]
 struct State {
@@ -138,7 +141,11 @@ impl ApiServer {
     fn state(&self) -> std::sync::MutexGuard<'_, State> {
         self.state.lock().expect("server lock poisoned")
     }
+}
+// ANCHOR_END: server
 
+// ANCHOR: writes
+impl ApiServer {
     /// Creates or replaces an object. A non-zero `resource_version` is a
     /// condition: the caller read the object at that version and wants the
     /// write applied only if the object is still at it. Zero writes
@@ -175,7 +182,11 @@ impl ApiServer {
             object,
         });
     }
+}
+// ANCHOR_END: writes
 
+// ANCHOR: listwatch
+impl ApiServer {
     /// Returns every object, sorted by name, and the version at which the
     /// snapshot was taken.
     pub fn list(&self) -> (Vec<Object>, u64) {
@@ -204,7 +215,11 @@ impl ApiServer {
         state.watches.push(sender);
         Ok(receiver)
     }
+}
+// ANCHOR_END: listwatch
 
+// ANCHOR: faults
+impl ApiServer {
     /// Discards the event history, as etcd discards old versions.
     pub fn compact(&self) {
         let mut state = self.state();
@@ -229,3 +244,4 @@ impl ApiServer {
         self.state().unreachable = false;
     }
 }
+// ANCHOR_END: faults

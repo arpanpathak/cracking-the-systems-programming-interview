@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// ANCHOR: run
 // Reflector copies the server's objects into a cache and queues the name of
 // every object that changes.
 type Reflector struct {
@@ -29,6 +30,9 @@ func (r *Reflector) Run() {
 	}
 }
 
+// ANCHOR_END: run
+
+// ANCHOR: watch
 // watchFrom applies events from version onward, reopens the watch after each
 // disconnect, and returns when the server reports that the history is gone.
 func (r *Reflector) watchFrom(version int) {
@@ -52,3 +56,5 @@ func (r *Reflector) watchFrom(version int) {
 		logf("reflector: watch closed, resuming from version %d", version)
 	}
 }
+
+// ANCHOR_END: watch

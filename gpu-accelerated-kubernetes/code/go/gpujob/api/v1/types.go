@@ -5,6 +5,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ANCHOR: spec
+
 // GpuJobSpec is a request to run one container with a number of GPUs.
 type GpuJobSpec struct {
 	// Container image to run.
@@ -33,6 +35,10 @@ const (
 	PhaseFailed Phase = "Failed"
 )
 
+// ANCHOR_END: spec
+
+// ANCHOR: status
+
 // GpuJobStatus is the state of a job as the controller last observed it.
 type GpuJobStatus struct {
 	// Progress of the job's pod.
@@ -44,6 +50,10 @@ type GpuJobStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
+
+// ANCHOR_END: status
+
+// ANCHOR: object
 
 // GpuJob runs one container with a number of GPUs.
 //
@@ -78,6 +88,10 @@ func init() {
 	SchemeBuilder.Register(&GpuJob{}, &GpuJobList{})
 }
 
+// ANCHOR_END: object
+
+// ANCHOR: frompod
+
 // StatusFromPod derives a job's status from its pod. generation is the job's
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
@@ -98,3 +112,5 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	}
 	return status
 }
+
+// ANCHOR_END: frompod

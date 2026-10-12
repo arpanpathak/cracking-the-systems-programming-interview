@@ -13,6 +13,7 @@ use kube::{Api, Client, ResourceExt};
 use std::collections::BTreeMap;
 use std::error::Error;
 
+// ANCHOR: count
 /// The extended resource that the NVIDIA device plugin advertises.
 const GPU: &str = "nvidia.com/gpu";
 
@@ -53,7 +54,9 @@ fn gpu_units(resources: Option<&BTreeMap<String, Quantity>>) -> i64 {
         .and_then(|q| q.0.parse().ok())
         .unwrap_or(0)
 }
+// ANCHOR_END: count
 
+// ANCHOR: report
 /// Lists every node and every pod, groups the GPU-holding pods by node, and
 /// prints one table row per node followed by the pods that hold its units.
 #[tokio::main]
@@ -107,3 +110,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
     Ok(())
 }
+// ANCHOR_END: report
