@@ -32,11 +32,13 @@ async fn main() -> Result<(), kube::Error> {
     );
 
     second.spec.gpus += 2;
+
     match jobs.replace(JOB, &PostParams::default(), &second).await {
         Err(kube::Error::Api(status)) if status.code == 409 => {
             println!("second write refused: {} {}", status.code, status.message);
         }
         other => println!("unexpected: {other:?}"),
     }
+
     Ok(())
 }

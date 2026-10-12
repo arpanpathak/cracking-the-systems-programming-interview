@@ -43,6 +43,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: leaseagent <host>")
 		os.Exit(2)
 	}
+
 	if err := run(os.Args[1]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -54,9 +55,11 @@ func main() {
 // A renewal that fails is reported and retried at the next tick.
 func run(host string) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -64,6 +67,7 @@ func run(host string) error {
 	acquired := metav1.NewMicroTime(time.Now())
 	ticker := time.NewTicker(renewEvery)
 	defer ticker.Stop()
+
 	for {
 		now := metav1.NewMicroTime(time.Now())
 		lease := coordinationv1ac.Lease(host, namespace).
@@ -73,6 +77,7 @@ func run(host string) error {
 				WithAcquireTime(acquired).
 				WithRenewTime(now))
 		_, err := leases.Apply(ctx, lease, metav1.ApplyOptions{FieldManager: fieldManager, Force: true})
+
 		switch {
 		case ctx.Err() != nil:
 			return nil
@@ -81,6 +86,7 @@ func run(host string) error {
 		default:
 			fmt.Printf("%s %s renewed\n", now.Format(time.TimeOnly), host)
 		}
+
 		select {
 		case <-ctx.Done():
 			return nil

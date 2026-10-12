@@ -70,6 +70,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let params = PatchParams::apply(FIELD_MANAGER).force();
     let acquired = Timestamp::now();
     let mut ticker = tokio::time::interval(RENEW_EVERY);
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => return Ok(()),

@@ -27,9 +27,11 @@ impl Digest {
     /// Computes the name of some bytes.
     fn of(data: &[u8]) -> Self {
         let mut name = String::from("sha256:");
+
         for byte in Sha256::digest(data) {
             write!(name, "{byte:02x}").expect("writing to a String");
         }
+
         Digest(name)
     }
 
@@ -74,10 +76,13 @@ impl Store {
     /// store already holds are not stored a second time.
     fn put(&mut self, data: &[u8]) -> (Digest, bool) {
         let d = Digest::of(data);
+
         if self.blobs.contains_key(&d) {
             return (d, false);
         }
+
         self.blobs.insert(d.clone(), data.to_vec());
+
         (d, true)
     }
 
@@ -90,6 +95,7 @@ impl Store {
         if Digest::of(data) != *d {
             return Err(StoreError::Corrupt(d.short().to_owned()));
         }
+
         Ok(data)
     }
 }
@@ -104,14 +110,17 @@ impl Store {
     fn push(&mut self, tag: &'static str, artifact: &[u8]) -> (Digest, usize, usize) {
         let mut lines = String::new();
         let (mut chunks, mut added) = (0, 0);
+
         for chunk in artifact.chunks(CHUNK_SIZE) {
             let (d, fresh) = self.put(chunk);
             added += usize::from(fresh);
             chunks += 1;
             writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
         }
+
         let (manifest, _) = self.put(lines.as_bytes());
         self.tags.insert(tag, manifest.clone());
+
         (manifest, chunks, added)
     }
 
@@ -135,28 +144,34 @@ impl Store {
     fn pull(&mut self, remote: &Store, tag: &'static str) -> Result<(usize, usize), StoreError> {
         let manifest = &remote.tags[tag];
         let (mut fetched, mut bytes) = (0, 0);
+
         for d in remote.chunks_of(manifest)? {
             if self.blobs.contains_key(&d) {
                 continue;
             }
+
             let data = remote.get(&d)?;
             fetched += 1;
             bytes += data.len();
             self.blobs.insert(d, data.to_vec());
         }
+
         self.blobs
             .insert(manifest.clone(), remote.get(manifest)?.to_vec());
         self.tags.insert(tag, manifest.clone());
+
         Ok((fetched, bytes))
     }
 
     /// Reassembles a tagged artifact, verifying every chunk on the way.
     fn read(&self, tag: &str) -> Result<Vec<u8>, StoreError> {
         let mut artifact = Vec::new();
+
         for (i, d) in self.chunks_of(&self.tags[tag])?.iter().enumerate() {
             let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
             artifact.extend_from_slice(data);
         }
+
         Ok(artifact)
     }
 }
@@ -169,13 +184,16 @@ impl Store {
     /// rest. Returns the number of blobs and bytes removed.
     fn collect(&mut self) -> (usize, usize) {
         let mut live = BTreeSet::new();
+
         for manifest in self.tags.values() {
             live.extend(self.chunks_of(manifest).unwrap_or_default());
             live.insert(manifest.clone());
         }
+
         let (before, bytes_before) = self.size();
         self.blobs.retain(|d, _| live.contains(d));
         let (after, bytes_after) = self.size();
+
         (before - after, bytes_before - bytes_after)
     }
 }
@@ -236,9 +254,11 @@ fn main() -> Result<(), StoreError> {
     println!("one bit flips in a chunk stored on thor-1:");
     let fourth = node.chunks_of(&node.tags["llm:v1"])?[3].clone();
     node.blobs.get_mut(&fourth).expect("the chunk was pulled")[100] ^= 1;
+
     if let Err(e) = node.read("llm:v1") {
         println!("  read llm:v1: {e}");
     }
+
     // The bad chunk is dropped and pulled again, by name, from the registry.
     node.blobs.remove(&fourth);
     let (fetched, n) = node.pull(&registry, "llm:v1")?;
@@ -255,6 +275,7 @@ fn main() -> Result<(), StoreError> {
     let (removed, n) = registry.collect();
     let (blobs, bytes) = registry.size();
     println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+
     Ok(())
 }
 // ANCHOR_END: main

@@ -91,9 +91,11 @@ impl PnCounter {
 /// larger of two numbers.
 fn one_number() {
     let adds = [300, 120, 40];
+
     for (name, n) in NAMES.iter().zip(adds) {
         println!("  {name:<5} records {n} GPU-seconds");
     }
+
     let largest = adds.iter().max().expect("three replicas");
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
@@ -110,23 +112,28 @@ fn show(replica: usize, c: GCounter) {
 /// partition that cuts the bench off from the other two.
 fn grow_only() {
     let mut at = [GCounter::default(); REPLICAS];
+
     for (r, n) in [300, 120, 40].into_iter().enumerate() {
         at[r].add(r, n);
     }
+
     println!("  the bench is cut off; shelf and desk exchange counters");
     at[SHELF].merge(at[DESK]);
     at[DESK].merge(at[SHELF]);
     at[SHELF].add(SHELF, 60);
     at[BENCH].add(BENCH, 25);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
+
     println!("  the network heals; counters are exchanged in no particular order, some twice");
     at[DESK].merge(at[BENCH]);
     at[SHELF].merge(at[DESK]);
     at[BENCH].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
@@ -142,14 +149,21 @@ fn up_and_down() {
     at[DESK].add(DESK, 2); // two start on the Sparks
     at[SHELF].add(SHELF, -1); // one Thor job ends
     at[BENCH].add(BENCH, -1); // the bench replica hears that a Spark job ended
+
     for r in 0..REPLICAS {
         for other in 0..REPLICAS {
             let theirs = at[other];
             at[r].merge(theirs);
         }
     }
+
     let c = at[BENCH];
-    println!("  started {}, ended {}: {} GPUs in use", row(c.up.0), row(c.down.0), c.value());
+    println!(
+        "  started {}, ended {}: {} GPUs in use",
+        row(c.up.0),
+        row(c.down.0),
+        c.value()
+    );
 }
 // ANCHOR_END: updown
 
@@ -166,16 +180,28 @@ fn shared_limit() {
     let (shelf, desk) = (at[SHELF], at[DESK]);
     at[SHELF].merge(desk);
     at[DESK].merge(shelf);
-    println!("  both replicas see {} of {QUOTA} in use; then they lose contact", at[SHELF].value());
+    println!(
+        "  both replicas see {} of {QUOTA} in use; then they lose contact",
+        at[SHELF].value()
+    );
+
     for r in [SHELF, DESK] {
         if at[r].value() + 2 <= QUOTA {
             at[r].add(r, 2);
-            println!("  {:<5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use", NAMES[r], at[r].value());
+            println!(
+                "  {:<5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use",
+                NAMES[r],
+                at[r].value()
+            );
         }
     }
+
     let desk = at[DESK];
     at[SHELF].merge(desk);
-    println!("  after they merge: {} of {QUOTA} in use", at[SHELF].value());
+    println!(
+        "  after they merge: {} of {QUOTA} in use",
+        at[SHELF].value()
+    );
 }
 
 /// Gives each replica a share of the quota. A replica admits a job only from
@@ -184,13 +210,23 @@ fn shared_limit() {
 fn allowances() {
     let mut share = [4, 2, 0];
     let mut used = [3, 1, 0];
-    println!("  shares {}, in use {}; then the replicas lose contact", row(share), row(used));
+    println!(
+        "  shares {}, in use {}; then the replicas lose contact",
+        row(share),
+        row(used)
+    );
     let admit = |share: &[i64; REPLICAS], used: &mut [i64; REPLICAS], r: usize, gpus: i64| {
         let left = share[r] - used[r];
+
         if left < gpus {
-            println!("  {:<5} refuses a {gpus}-GPU job: its share has {left} left", NAMES[r]);
+            println!(
+                "  {:<5} refuses a {gpus}-GPU job: its share has {left} left",
+                NAMES[r]
+            );
+
             return;
         }
+
         used[r] += gpus;
         println!("  {:<5} admits a {gpus}-GPU job", NAMES[r]);
     };
@@ -200,7 +236,12 @@ fn allowances() {
     share[DESK] -= 1;
     share[SHELF] += 1;
     admit(&share, &mut used, SHELF, 2);
-    println!("  shares {}, in use {}: {} of {QUOTA}", row(share), row(used), used.iter().sum::<i64>());
+    println!(
+        "  shares {}, in use {}: {} of {QUOTA}",
+        row(share),
+        row(used),
+        used.iter().sum::<i64>()
+    );
 }
 // ANCHOR_END: quota
 

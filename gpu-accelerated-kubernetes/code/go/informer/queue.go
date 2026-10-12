@@ -25,6 +25,7 @@ type WorkQueue struct {
 func NewWorkQueue() *WorkQueue {
 	q := &WorkQueue{dirty: map[string]bool{}, processing: map[string]bool{}}
 	q.cond = sync.NewCond(&q.mu)
+
 	return q
 }
 
@@ -36,11 +37,14 @@ func NewWorkQueue() *WorkQueue {
 func (q *WorkQueue) Add(names ...string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for _, name := range names {
 		if q.dirty[name] {
 			continue
 		}
+
 		q.dirty[name] = true
+
 		if !q.processing[name] {
 			q.queue = append(q.queue, name)
 			q.cond.Signal()
@@ -52,13 +56,16 @@ func (q *WorkQueue) Add(names ...string) {
 func (q *WorkQueue) Get() string {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for len(q.queue) == 0 {
 		q.cond.Wait()
 	}
+
 	name := q.queue[0]
 	q.queue = q.queue[1:]
 	delete(q.dirty, name)
 	q.processing[name] = true
+
 	return name
 }
 
@@ -68,6 +75,7 @@ func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	delete(q.processing, name)
+
 	if q.dirty[name] {
 		q.queue = append(q.queue, name)
 		q.cond.Signal()

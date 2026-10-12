@@ -67,8 +67,10 @@ def list_watch():
     write(3, a="spec 1  status 1  v3")
     write(4, b="spec 8  status 8  v4")
     tl.say("A user edits job-a five times. Events 5 to 9 arrive, then the status write as event 10.")
+
     for n in range(5):
         write(5 + n, a="spec %d  status 1  v%d" % (2 + n, 5 + n), k=0.55 if n else 1.0)
+
     write(10, a="spec 6  status 6  v10")
     tl.say("The cache now equals the server, and the reflector remembers 10, the last event it applied.",
            "insight")
@@ -123,12 +125,14 @@ def list_watch():
         panel(p, sx, top, pw, ph, "API server")
         p.text(sx + pw - 12, top + 19, "version %d" % round(s.sver), 12, INK, 700, "end", mono=True)
         panel(p, cx, top, pw, ph, "reflector and cache")
+
         if s.resume:
             p.text(cx + pw - 12, top + 19, "applied up to %s" % s.resume, 12, TEAL, 700, "end", mono=True)
 
         def row(x, y, name, body, opacity, edge=LINE, fill=PAPER):
             if opacity <= 0.01:
                 return
+
             with p.group(opacity=opacity):
                 p.rect(x + 12, y, pw - 24, 30, fill, edge, 6, 1.2)
                 p.text(x + 22, y + 20, name, 12, INK, 700, mono=True)
@@ -138,26 +142,33 @@ def list_watch():
         row(sx, top + 68, "job-b", s.sb, s.sb_a)
         row(cx, top + 32, "job-a", s.ca, s.ca_a)
         row(cx, top + 68, "job-b", s.cb, s.cb_a, mix_edge(s.stale), mix_fill(s.stale))
+
         if s.stale > 0.5 and s.cb_a > 0.5:
             p.text(cx + pw - 22, top + 115, "deleted on the server", 10.5, RUST, 600, "end")
+
         focus(p, cx + 12, top + 68, pw - 24, 30, s.mark, BRASS, 5)
 
         # The server's record of recent events, oldest on the left.
         p.text(sx + 12, top + 132, "recent events", 10.5, MUTED, 600)
         newest = int(round(s.sver))
+
         for k, version in enumerate(range(max(1, newest - 7), newest + 1)):
             gone = version <= s.compacted + 0.5
             x = sx + 12 + k * 34
             p.rect(x, top + 142, 30, 26, "#eef2f5" if gone else TEAL_LT, FAINT if gone else TEAL, 5, 1.1)
             p.text(x + 15, top + 160, str(version), 11.5, FAINT if gone else INK, 700, "middle", mono=True)
+
             if gone:
                 p.line(x + 5, top + 163, x + 25, top + 147, FAINT, 1.3)
+
         if s.compacted > 0.5:
             p.text(sx + 12, top + 184, "compacted through %d" % round(s.compacted), 10.5, RUST, 600)
+
 
         # The connection, and whatever is travelling along it.
         y = top + 96
         x0, x1 = sx + pw + 8, cx - 8
+
         if s.cut == "partition":
             p.line(x0, y, x1, y, RUST, 2.0, dash="3 7", opacity=0.9)
             p.text((x0 + x1) / 2, y - 12, "no route", 11, RUST, 700, "middle")
@@ -166,8 +177,10 @@ def list_watch():
             p.text((x0 + x1) / 2, y - 12, "watch open", 11, TEAL, 600, "middle", opacity=s.link)
         else:
             p.line(x0, y, x1, y, FAINT, 1.6, dash="5 6")
+
             if s.cut == "drop":
                 p.text((x0 + x1) / 2, y - 12, "watch closed", 11, MUTED, 600, "middle")
+
         if s.fly_a > 0.01:
             a, b = (x0 + 30, x1 - 30) if s.fly_dir > 0 else (x1 - 30, x0 + 30)
             color, fill = {"ask": (NIGHT, NIGHT_LT), "gone": (RUST, RUST_LT)}.get(s.fly_kind, (TEAL, TEAL_LT))
@@ -220,9 +233,11 @@ def work_queue():
     tl.set(mark="dirty", spec="3")
     tl.to(0.5, dirty=1.0, held=1.0)
     tl.say("Three more edits, three more Add calls. The name is already dirty, so nothing changes.")
+
     for spec in ("4", "5", "6"):
         tl.set(call="Add(job-a)", spec=spec)
         tl.wait(0.7)
+
     tl.chapter("Done")
     tl.say("Done(job-a). The worker hands the name back. It is still dirty, so it goes onto ready again.")
     call("Done(job-a)")
@@ -263,22 +278,27 @@ def work_queue():
         title_block(p, "A queue of names",
                     "One name, five edits. The sets decide when a worker may take the name.")
         scoreboard(p, [("spec.GPUs", s.spec, INK), ("reconciles", int(round(s.reconciles)), TEAL)])
+
         if s.call:
             p.text(26, 92, "call", 11, MUTED, 600)
             chip(p, 62, 88, s.call, NIGHT, NIGHT_LT, 12.5, anchor="start")
 
         boxes = [("ready", "ready, a list", 26, s.ready), ("dirty", "dirty, a set", 290, s.dirty),
                  ("proc", "processing, a set", 554, s.proc)]
+
         for key, title, x, held in boxes:
             bare = s.mode == "bare" and key == "proc"
             panel(p, x, 112, 240, 78, title, RUST if bare else LINE, "#fdf3ee" if bare else "#fbfcfd")
+
             if bare:
                 p.line(x + 12, 128, x + 12 + 118, 128, RUST, 1.6)
                 p.text(x + 120, 160, "removed", 12, RUST, 700, "middle")
             elif held > 0.01:
                 chip(p, x + 120, 158, "job-a", TEAL, TEAL_LT, 13, opacity=clamp(held))
+
             if s.mark == key and not bare:
                 focus(p, x, 112, 240, 78, 1.0, BRASS, 4)
+
         if s.held > 0.5:
             p.text(410, 206, "held back: a worker has it", 11, BRASS, 700, "middle")
 
@@ -286,14 +306,18 @@ def work_queue():
         x1 = 300 if two else 410
         robot(p, x1, 330, TEAL, 1.0, s.w1, "worker 1" if two else "worker",
               "reconcile(job-a)" if s.w1 > 0.5 else "waiting in Get()")
+
         if s.w1 > 0.5:
             chip(p, x1 + 78, 262, "job-a", TEAL, TEAL_LT, 12)
+
         if two:
             with p.group(opacity=clamp(s.w2_show)):
                 robot(p, 540, 330, RUST, 1.0, s.w2, "worker 2",
                       "reconcile(job-a)" if s.w2 > 0.5 else "waiting in Get()")
+
                 if s.w2 > 0.5:
                     chip(p, 618, 262, "job-a", RUST, RUST_LT, 12)
+
         caption(p, tl, t, 396)
         progress(p, tl, t, total, 486)
 
@@ -360,6 +384,7 @@ def lease_expiry():
            "fail")
     tl.to(0.6, skew=8.0)
     tl.set(renew="18:31:08", silence=8.0)
+
     for second in (18, 20):
         tl.also(0.9, linear, clock=float(second))
         tl.wait(0.9)
@@ -368,6 +393,7 @@ def lease_expiry():
         tl.to(0.4, in_out, fly_u=1.0)
         tl.to(0.08, fly_a=0.0)
         tl.set(renew="18:31:%02d" % (second - 8))
+
     tl.say("Each renewTime is already eight seconds old on the watcher's clock. A healthy host looks expired.",
            "fail")
     tl.set(state="expired")
@@ -384,8 +410,10 @@ def lease_expiry():
         robot(p, 120, 250, TEAL if s.alive > 0.5 else "#8a97a5", s.alive, s.alive, "leaseagent",
               "gpu-host-b")
         zzz(p, 150, 150, t, 0.0)
+
         if s.alive < 0.5:
             p.text(120, 124, "killed", 12, RUST, 700, "middle")
+
         if s.skew > 0.5:
             p.text(120, 124, "its clock: 18:31:%02d" % int(s.clock - s.skew), 11.5, RUST, 700, "middle",
                    mono=True)
@@ -393,12 +421,15 @@ def lease_expiry():
         panel(p, 262, 96, 250, 150, "Lease fleet/gpu-host-b")
         rows = [("holderIdentity", "gpu-host-b", MUTED), ("leaseDurationSeconds", "6", MUTED),
                 ("renewTime", s.renew, INK)]
+
         for k, (name, value, color) in enumerate(rows):
             y = 142 + k * 30
             p.text(274, y, name, 11, MUTED, 500, mono=True)
             p.text(500, y, value, 11.5, color, 700, "end", mono=True)
+
         started, _ = s.timeline.changed("renew", t)
         focus(p, 268, 188, 238, 26, clamp(1 - (t - started) / 0.6) if started > 0 else 0.0, TEAL, 2)
+
         if s.fly_a > 0.01:
             pill(p, lerp(196, 262, s.fly_u), 200, "renew", TEAL, TEAL_LT, 10.5, opacity=s.fly_a, shadow=None)
 
@@ -407,20 +438,24 @@ def lease_expiry():
               "compares the clocks" if compare else "counts on its own clock")
         panel(p, 548, 96, 104, 150, "it noted" if not compare else "it computes",
               RUST if expired else LINE, "#fdf3ee" if expired else "#fbfcfd")
+
         if compare:
             p.text(600, 146, "now -", 11, MUTED, 500, "middle", mono=True)
             p.text(600, 164, "renewTime", 11, MUTED, 500, "middle", mono=True)
         else:
             p.text(600, 146, "change at", 11, MUTED, 500, "middle")
             p.text(600, 164, s.seen, 11.5, INK, 700, "middle", mono=True)
+
         p.text(600, 204, "%d s" % int(s.silence), 20, RUST if s.silence > 6 else INK, 700, "middle",
                mono=True)
         p.text(600, 226, "of 6 s", 10.5, MUTED, 500, "middle")
         meter(p, 262, 276, 250, s.silence / 6.0, RUST if s.silence > 6 else TEAL, "seconds without a renewal",
               "%d of 6" % min(int(s.silence), 99))
+
         if s.flash > 0.01:
             chip(p, 728, 104, "expired" if not compare else "expired (wrongly)", RUST, RUST_LT, 12,
                  opacity=clamp(s.flash))
+
         caption(p, tl, t, 318)
         progress(p, tl, t, total, 408)
 
@@ -468,9 +503,11 @@ def ring_allreduce():
     tl.wait(1.0)
     tl.chapter("phase 2")
     tl.say("Four more exchanges carry each finished chunk around the ring. A receiver stores it and passes it on.")
+
     for k, src in enumerate((4, 0, 1, 2)):
         hop(src, "15", 0.8 if k else 1.2)
         tl.set(**{"v%d" % ((src + 1) % n): "15"}, exchange=5.0 + k)
+
     tl.say("Eight exchanges, and every worker holds the sum. Each sent 8 chunks: 1.6 gradients' worth.", "insight")
     tl.wait(1.4)
 
@@ -479,12 +516,14 @@ def ring_allreduce():
     reset = {"c%d" % k: 0.0 for k in range(n)}
     tl.set(mode="fail", exchange=0.0, done=-1.0, **reset)
     tl.wait(0.8)
+
     for count in (1.0, 2.0):
         tl.set(du=0.0)
         tl.to(0.1, da=0.7)
         tl.to(0.7, in_out, du=1.0)
         tl.to(0.1, da=0.0)
         tl.set(**{"c%d" % k: count for k in range(n)})
+
     tl.say("thor-3 fails after two exchanges. thor-4 has sent its third chunk and waits for one from thor-3.",
            "fail")
     tl.set(s2="failed")
@@ -506,33 +545,42 @@ def ring_allreduce():
         failing = s.mode == "fail"
         title_block(p, "A ring all-reduce over five Thors",
                     "Each exchange: send one chunk to the right, receive one from the left.")
+
         if not failing:
             scoreboard(p, [("exchanges", int(round(s.exchange)), TEAL)])
+
         for k in range(n):
             (x, y), (nx, ny) = spots[k], spots[(k + 1) % n]
             dead = failing and s["s%d" % k] == "failed"
             p.line(x, y, nx, ny, FAINT if not dead else RUST, 1.6, dash="4 6" if dead else None)
+
             if s.da > 0.01 and not (failing and s["s%d" % k] != "ok"):
                 p.circle(lerp(x, nx, s.du), lerp(y, ny, s.du), 5, FAINT, opacity=s.da)
+
         if s.pa > 0.01:
             src = int(round(s.pfrom))
             (x, y), (nx, ny) = spots[src], spots[(src + 1) % n]
             pill(p, lerp(x, nx, s.pu), lerp(y, ny, s.pu), s.plabel, BRASS, BRASS_LT, 13, opacity=s.pa)
+
         for k in range(n):
             x, y = spots[k]
             state = s["s%d" % k]
             edge, fill = {"failed": (RUST, RUST_LT), "stuck": (BRASS, BRASS_LT)}.get(state, (TEAL, TEAL_LT))
+
             if not failing and int(round(s.done)) == k:
                 edge, fill = BRASS, BRASS_LT
+
             p.rect(x - 46, y - 26, 92, 52, fill, edge, 10, 1.8)
             p.text(x, y - 6, "thor-%d" % (k + 1), 11.5, INK, 600, "middle")
             value = ("%d of 8" % int(round(s["c%d" % k]))) if failing else s["v%d" % k]
             p.text(x, y + 15, value, 14, edge if failing else INK, 700, "middle", mono=True)
 
         panel(p, 500, 96, 294, 268, "what each worker holds" if not failing else "why each worker stopped")
+
         for k in range(n):
             y = 136 + k * 44
             p.text(514, y, "thor-%d" % (k + 1), 12, INK, 700, mono=True)
+
             if failing:
                 state = s["s%d" % k]
                 body = {"failed": "failed", "stuck": "no chunk from thor-%d" % ((k - 1) % n + 1)}.get(state, "running")
@@ -544,6 +592,7 @@ def ring_allreduce():
                 finished = s["v%d" % k] == "15"
                 p.text(576, y + 16, "the finished sum" if finished else "a partial sum", 10.5,
                        TEAL if finished else MUTED, 500)
+
         caption(p, tl, t, 396)
         progress(p, tl, t, total, 486)
 
@@ -628,13 +677,16 @@ def fleet_repair():
         out = int(round(s.out))
         scoreboard(p, [("second", int(s.clock), INK), ("out of service", "%d of 2" % out, RUST if out >= 2 else TEAL)])
         x0, colw, top, rowh = 26, 128, 84, 30
+
         for c, name in enumerate(columns):
             holds = c >= 2
             p.rect(x0 + c * colw, top, colw - 6, 26 + rowh * len(machines) + 6, "#fbfcfd" if not holds else "#fdf7f1",
                    LINE, 8, 1.2)
             p.text(x0 + c * colw + (colw - 6) / 2, top + 18, name, 11, MUTED if not holds else RUST, 700, "middle")
+
         p.text(x0 + 2 * colw, top + 26 + rowh * len(machines) + 22, "these four columns each hold a budget slot", 10.5,
                RUST, 500)
+
         for k, name in enumerate(machines):
             col = s["p%d" % k]
             x = x0 + col * colw + 8
@@ -643,10 +695,13 @@ def fleet_repair():
             edge, fill = {0: (TEAL, TEAL_LT), 1: (MUTED, STAGE), 5: (RUST, RUST_LT)}.get(near, (BRASS, BRASS_LT))
             p.rect(x, y, colw - 22, rowh - 6, fill, edge, 7, 1.5)
             p.text(x + (colw - 22) / 2, y + 16.5, name, 11.5, INK, 600, "middle", mono=True)
+
             if name == "thor-4" and s.rung and near in (3, 4):
                 p.text(x + colw - 14, y + 16.5, s.rung, 10.5, RUST, 600)
+
             if name == "orin-nx-1" and s.blocked > 0.01:
                 p.text(x + colw - 14, y + 16.5, "blocked: the budget is spent", 10.5, RUST, 600, opacity=clamp(s.blocked))
+
         caption(p, tl, t, 396)
         progress(p, tl, t, total, 486)
 
@@ -668,11 +723,13 @@ def lost_reply():
         tl.to(0.1, fly_a=1.0)
         tl.to(0.6 * k, in_out, fly_u=1.0)
         tl.to(0.1, fly_a=0.0)
+
         return reply, lose
 
     def answer(reply, lose=False, kind="ok", k=1.0):
         tl.set(fly_label=reply, fly_kind=kind, fly_dir=-1.0, fly_u=0.0, lost=0.0)
         tl.to(0.1, fly_a=1.0)
+
         if lose:
             tl.to(0.35 * k, in_out, fly_u=0.5)
             tl.to(0.3, lost=1.0, fly_a=0.0)
@@ -733,9 +790,11 @@ def lost_reply():
         robot(p, 120, 262, TEAL, 1.0, 1.0, "controller", "filling " + s.slot)
         panel(p, 520, 92, 274, 232, "provider: Jetson AGX Thor, quota 5")
         names = ids[s.mode]
+
         for k in range(5):
             y = 124 + k * 38
             p.rect(534, y, 246, 30, "#f3f6f9", LINE, 6, 1.0)
+
             if k < made:
                 orphan = s.mode == "plain" and k == 2 and s.orphan > 0.5
                 edge, fill = (RUST, RUST_LT) if orphan else (TEAL, TEAL_LT)
@@ -743,19 +802,24 @@ def lost_reply():
                 p.text(546, y + 20, names[k], 12, INK, 700, mono=True)
                 note = "no owner" if orphan else ("token thor-%d" % (k + 1) if s.mode == "token" else "")
                 p.text(770, y + 20, note, 10.5, edge, 600, "end")
+
         if s.refused > 0.01:
             p.text(657, 340, "quota exceeded", 12, RUST, 700, "middle", opacity=clamp(s.refused))
+
         x0, x1 = 196, 510
         p.line(x0, 214, x1, 214, FAINT, 1.4, dash="5 6")
+
         if s.fly_a > 0.01 or s.lost > 0.01:
             a, b = (x0 + 60, x1 - 70) if s.fly_dir > 0 else (x1 - 70, x0 + 60)
             color, fill = {"ask": (NIGHT, NIGHT_LT), "bad": (RUST, RUST_LT)}.get(s.fly_kind, (TEAL, TEAL_LT))
             x = lerp(a, b, s.fly_u)
             pill(p, x, 214, s.fly_label, color, fill, 10.5, opacity=s.fly_a, shadow=None)
+
             if s.lost > 0.01:
                 p.text(x, 190, "reply lost", 12, RUST, 700, "middle", opacity=clamp(s.lost))
                 p.line(x - 9, 205, x + 9, 223, RUST, 2.6, opacity=clamp(s.lost))
                 p.line(x - 9, 223, x + 9, 205, RUST, 2.6, opacity=clamp(s.lost))
+
         caption(p, tl, t, 372)
         progress(p, tl, t, total, 462)
 
@@ -827,8 +891,10 @@ def pre_copy():
                                              (420, s.dirty, "changed during this round", RUST, RUST_LT)):
             p.rect(x, base - 100 * scale, 150, 100 * scale, "#f6f8fa", LINE, 6, 1.0)
             h = clamp(value / 100.0) * 100 * scale
+
             if h > 0.5:
                 p.rect(x, base - h, 150, h, fill, color, 6, 1.6)
+
             p.text(x + 75, base - h - 8 if h < 180 else base - h + 22, "%.2f GB" % value, 14, INK, 700, "middle",
                    mono=True)
             p.text(x + 75, base + 20, label, 11.5, MUTED, 600, "middle")
@@ -837,11 +903,14 @@ def pre_copy():
         chip(p, 690, 150, "VM paused" if paused else "VM running", RUST if paused else TEAL,
              RUST_LT if paused else TEAL_LT, 13)
         p.text(690, 190, "guest at %d%% speed" % int(round(s.speed)), 11.5, MUTED if s.speed > 99 else RUST, 600, "middle")
+
         if s.verdict:
             good = s.verdict.startswith("moved")
             p.text(690, 240, s.verdict.split(", ")[0], 12.5, TEAL if good else RUST, 700, "middle")
+
             if ", " in s.verdict:
                 p.text(690, 260, s.verdict.split(", ")[1], 12.5, TEAL, 700, "middle")
+
         caption(p, tl, t, 372)
         progress(p, tl, t, total, 462)
 
@@ -872,9 +941,11 @@ def gang_placement():
     tl.chapter("one pod at a time")
     tl.say("Eight machines, one GPU each. Two jobs arrive, and each needs five workers. Pods are placed in turn.")
     tl.wait(0.6)
+
     for a, b in zip(["orin-nx-1", "spark-2", "thor-2", "thor-4"], ["spark-1", "thor-1", "thor-3", "thor-5"]):
         give("train-a", [a], 0.4)
         give("train-b", [b], 0.4)
+
     tl.set(note_a="train-a holds 4 of 5", note_b="train-b holds 4 of 5", note_c="0 jobs are running")
     tl.say("Each job holds four GPUs and waits for a fifth. All eight are taken and no training happens.", "fail")
     tl.wait(1.8)
@@ -918,10 +989,12 @@ def gang_placement():
                     "A job runs when all of its workers have a machine, at the speed of their slowest link.")
         groups = [("bench, 1 GbE", 26, 1), ("desk, 200 GbE cable", 134, 2), ("shelf, 25 GbE switch", 332, 5)]
         k = 0
+
         for label, x, count in groups:
             width = count * 90 + 10
             p.rect(x, 96, width, 150, "#fbfcfd", LINE, 10, 1.2)
             p.text(x + 10, 114, label, 10.5, MUTED, 700)
+
             for i in range(count):
                 owner = s["o%d" % k]
                 edge, fill = colours.get(owner, (FAINT, "#f3f6f9"))
@@ -930,10 +1003,13 @@ def gang_placement():
                 p.text(bx + 41, 150, FLEET[k], 11, INK, 700, "middle", mono=True)
                 p.text(bx + 41, 196, owner or "free", 12, edge if owner else FAINT, 700, "middle")
                 k += 1
+
         p.text(410, 260, "between groups: the 1 GbE house network", 10.5, MUTED, 500, "middle")
+
         for row, note in enumerate((s.note_a, s.note_b, s.note_c)):
             if note:
                 p.text(26, 290 + row * 22, note, 12.5, INK, 600, mono=True)
+
         caption(p, tl, t, 372)
         progress(p, tl, t, total, 462)
 
@@ -947,9 +1023,11 @@ def gcounter_merge():
     counters through a partition and an untidy recovery."""
     rows = {"shelf": [0, 0, 0], "desk": [0, 0, 0], "bench": [0, 0, 0]}
     initial = {}
+
     for name in rows:
         for i in range(3):
             initial["%s%d" % (name, i)] = 0.0
+
     tl = Timeline(caption="", kind="step", cut=0.0, fly_u=0.0, fly_a=0.0, fly_from=0.0, fly_to=1.0, mark="", **initial)
     order = ["shelf", "desk", "bench"]
 
@@ -997,29 +1075,36 @@ def gcounter_merge():
         t = s.t
         title_block(p, "Three grow-only counters", "A merge keeps the larger value of each entry, so it can be repeated and reordered.")
         ys = {"shelf": 118, "desk": 196, "bench": 274}
+
         for name in order:
             y = ys[name]
             hot = s.mark == name
             p.rect(150, y, 520, 58, "#fbfcfd", BRASS if hot else LINE, 10, 2.0 if hot else 1.2)
             p.text(40, y + 36, name, 15, INK, 700)
             total_value = 0
+
             for i, owner in enumerate(order):
                 value = int(round(s["%s%d" % (name, i)]))
                 total_value += value
                 own = owner == name
                 p.rect(166 + i * 112, y + 11, 100, 36, TEAL_LT if own else "#f3f6f9", TEAL if own else LINE, 7, 1.3)
                 p.text(216 + i * 112, y + 35, str(value), 15, INK, 700, "middle", mono=True)
+
             p.text(166 + 3 * 112 + 6, y + 35, "=", 15, MUTED, 600, mono=True)
             p.text(650, y + 35, str(total_value), 16, INK, 700, "end", mono=True)
+
         for i, owner in enumerate(order):
             p.text(216 + i * 112, 108, owner + "'s entry", 10.5, MUTED, 600, "middle")
+
         if s.cut > 0.01:
             p.line(26, 264, 794, 264, RUST, 2.0, dash="3 7", opacity=clamp(s.cut))
             p.text(790, 258, "no route to the bench", 11, RUST, 700, "end", opacity=clamp(s.cut))
+
         if s.fly_a > 0.01:
             y0 = [ys[n] for n in order][int(round(s.fly_from))] + 29
             y1 = [ys[n] for n in order][int(round(s.fly_to))] + 29
             pill(p, 730, lerp(y0, y1, s.fly_u), "row", NIGHT, NIGHT_LT, 11, opacity=s.fly_a, shadow=None)
+
         caption(p, tl, t, 352)
         progress(p, tl, t, total, 442)
 
@@ -1089,29 +1174,38 @@ def cas_chunks():
 
         def grid(x, y, title, prefix, damaged):
             panel(p, x, y, 360, 126, title)
+
             for k in range(10):
                 bx, by = x + 14 + (k % 5) * 68, y + 32 + (k // 5) * 44
                 held = s["%s%d" % (prefix, k)]
                 p.rect(bx, by, 60, 36, "#f3f6f9", LINE, 6, 1.0)
+
                 if held > 0.01:
                     shared = k < 6
                     edge, fill = (TEAL, TEAL_LT) if shared else ((NIGHT, NIGHT_LT) if k < 8 else (BRASS, BRASS_LT))
+
                     if damaged and k == 3 and s.bad > 0.5:
                         edge, fill = RUST, RUST_LT
+
                     if prefix == "r" and k in (6, 7) and s.swept > 0.5:
                         edge, fill = RUST, RUST_LT
+
                     p.rect(bx, by, 60, 36, fill, edge, 6, 1.5, opacity=clamp(held))
                     p.text(bx + 30, by + 23, "chunk %d" % k, 10.5, INK, 700, "middle", opacity=clamp(held))
 
         grid(26, 92, "registry", "r", False)
         grid(434, 92, "thor-1", "n", True)
+
         for x, a, b in ((26, s.tag1, s.tag2), (434, s.node1, s.node2)):
             if a > 0.01:
                 chip(p, x + 70, 240, "llm:v1: chunks 0 to 7", NIGHT, NIGHT_LT, 11, opacity=clamp(a))
+
             if b > 0.01:
                 chip(p, x + 250, 240, "llm:v2: 0 to 5, 8, 9", BRASS, BRASS_LT, 11, opacity=clamp(b))
+
         if s.stat:
             p.text(26, 290, s.stat, 13, INK, 700, mono=True)
+
         caption(p, tl, t, 322)
         progress(p, tl, t, total, 412)
 
@@ -1159,10 +1253,12 @@ def cli_channels():
         p.text(40, 128, "$ " + s.command if s.command else "$", 13.5, INK, 700, mono=True)
         boxes = [("out", "standard output: the result", 150, s.out, TEAL, TEAL_LT),
                  ("err", "standard error: messages for a person", 222, s.err, BRASS, BRASS_LT)]
+
         for key, title, y, body, edge, fill in boxes:
             hot = s.hot == key and body
             panel(p, 26, y, 600, 62, title, edge if hot else LINE, fill if hot else "#fbfcfd")
             p.text(40, y + 45, body or "(empty)", 12, INK if body else FAINT, 600 if body else 400, mono=True)
+
         code = s.status
         edge, fill = {"0": (TEAL, TEAL_LT), "1": (BRASS, BRASS_LT), "2": (RUST, RUST_LT)}.get(code, (LINE, "#fbfcfd"))
         panel(p, 646, 150, 148, 134, "exit status", edge, fill)
@@ -1178,6 +1274,7 @@ def cli_channels():
 def build(name, script):
     def run(only=None):
         tl, draw, height = script()
+
         return render(name + ".gif", tl, draw, height, only=only)
     return run
 
@@ -1200,13 +1297,18 @@ MOTION = {
 def main(argv):
     names = argv or list(MOTION)
     unknown = [n for n in names if n not in MOTION]
+
     if unknown:
         print("unknown animation(s): %s" % ", ".join(unknown), file=sys.stderr)
         print("available: %s" % ", ".join(MOTION), file=sys.stderr)
+
         return 2
+
     for name in names:
         MOTION[name]()
+
     print("wrote %d animation(s) to %s" % (len(names), OUT))
+
     return 0
 
 

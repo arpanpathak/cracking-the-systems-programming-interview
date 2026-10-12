@@ -46,9 +46,11 @@ func NewDetector(window int, first float64) *Detector {
 // Heartbeat records a heartbeat that arrived at time now.
 func (d *Detector) Heartbeat(now float64) {
 	d.intervals = append(d.intervals, now-d.last)
+
 	if len(d.intervals) > d.window {
 		d.intervals = d.intervals[1:]
 	}
+
 	d.last = now
 }
 
@@ -61,14 +63,18 @@ func (d *Detector) Heartbeat(now float64) {
 // means 1%, and phi 3 means 0.1%.
 func (d *Detector) Phi(now float64) float64 {
 	var mean float64
+
 	for _, gap := range d.intervals {
 		mean += gap
 	}
+
 	mean /= float64(len(d.intervals))
 	var variance float64
+
 	for _, gap := range d.intervals {
 		variance += (gap - mean) * (gap - mean)
 	}
+
 	stdDev := math.Max(math.Sqrt(variance/float64(len(d.intervals))), minStdDev)
 
 	// The probability that a gap is longer than the current silence, from a
@@ -77,9 +83,11 @@ func (d *Detector) Phi(now float64) float64 {
 	y := (silence - mean) / stdDev
 	e := math.Exp(-y * (1.5976 + 0.070566*y*y))
 	pLater := 1 - 1/(1+e)
+
 	if silence > mean {
 		pLater = e / (1 + e)
 	}
+
 	return -math.Log10(pLater)
 }
 
@@ -101,16 +109,21 @@ func main() {
 	for _, host := range hosts {
 		detector := NewDetector(100, 0)
 		var now float64
+
 		for _, gap := range host.gaps {
 			now += gap
 			detector.Heartbeat(now)
 		}
+
 		fmt.Printf("%s host, silent for:\n", host.name)
+
 		for _, silence := range []float64{1.0, 1.5, 2.0, 2.5, 3.0, 4.0} {
 			verdict := "alive"
+
 			if silence > timeout {
 				verdict = "dead"
 			}
+
 			fmt.Printf("  %.1fs  phi = %6.2f   %.0fs timeout says %s\n",
 				silence, detector.Phi(now+silence), timeout, verdict)
 		}

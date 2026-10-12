@@ -68,6 +68,7 @@ fn check(seen: &mut HashMap<String, Observation>, lease: &Lease, now: Instant) {
         Some(obs) if obs.renew_time != renew.0 => {
             obs.renew_time = renew.0;
             obs.observed_at = now;
+
             if obs.expired {
                 obs.expired = false;
                 println!("{stamp} {name} renewing again");
@@ -100,12 +101,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut seen = HashMap::new();
     let mut ticker = tokio::time::interval(CHECK_EVERY);
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => return Ok(()),
             _ = ticker.tick() => {}
         }
         let now = Instant::now();
+
         for lease in store.state() {
             check(&mut seen, &lease, now);
         }

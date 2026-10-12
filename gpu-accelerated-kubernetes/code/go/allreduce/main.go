@@ -72,6 +72,7 @@ func (w *Worker) Run(n int) (int, error) {
 		if step == w.failAfter {
 			return step, errFailed
 		}
+
 		// The chunk to send moves one place back around the gradient each
 		// step, so after the first step it is the chunk just received.
 		chunk := mod(w.id-step, n)
@@ -89,6 +90,7 @@ func (w *Worker) Run(n int) (int, error) {
 			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
 		}
 	}
+
 	return 2 * (n - 1), nil
 }
 
@@ -108,30 +110,39 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	// Each link holds every message a worker can send in one step, so a send
 	// goes through even when the receiver has stopped.
 	links := make([]chan message, n)
+
 	for i := range links {
 		links[i] = make(chan message, 2*(n-1))
 	}
+
 	workers := make([]*Worker, n)
+
 	for i := range workers {
 		gradient := make([]int, n)
+
 		for chunk := range gradient {
 			gradient[chunk] = i + 1 + 10*chunk
 		}
+
 		workers[i] = &Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
 	}
+
 	if failing >= 0 {
 		workers[failing].failAfter = failAfter
 	}
 
 	results := make([]result, n)
 	var wg sync.WaitGroup
+
 	for i, w := range workers {
 		wg.Go(func() {
 			steps, err := w.Run(n)
 			results[i] = result{steps, err}
 		})
 	}
+
 	wg.Wait()
+
 	return workers, results
 }
 
@@ -166,25 +177,31 @@ func main() {
 
 	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
 	workers, _ := ring(n, -1, 0)
+
 	for i := range n {
 		own := make([]int, n)
+
 		for chunk := range own {
 			own[chunk] = i + 1 + 10*chunk
 		}
+
 		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
 	}
+
 	sent := 2 * (n - 1)
 	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
 		sent, float64(sent)/n, sent*n)
 
 	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
 	_, results := ring(n, 2, 2)
+
 	for i, r := range results {
 		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
 	}
 
 	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
 	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+
 	for _, machines := range []int{1, 5, 64, 512} {
 		jobMTBF := machineMTBF / float64(machines)
 		every := interval(jobMTBF)

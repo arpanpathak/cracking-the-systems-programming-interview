@@ -52,6 +52,7 @@ fn config_file() -> Option<PathBuf> {
             _ => env::home_dir()?.join(".config"),
         }
     };
+
     Some(dir.join("gpuctl").join("config.toml"))
 }
 
@@ -81,7 +82,9 @@ struct NodeInfo {
 /// prints.
 async fn list_nodes() -> Result<Vec<NodeInfo>, kube::Error> {
     let client = Client::try_default().await?;
-    let nodes = Api::<Node>::all(client).list(&ListParams::default()).await?;
+    let nodes = Api::<Node>::all(client)
+        .list(&ListParams::default())
+        .await?;
     Ok(nodes
         .into_iter()
         .map(|node| {
@@ -108,20 +111,33 @@ async fn list_nodes() -> Result<Vec<NodeInfo>, kube::Error> {
 fn print_nodes(rows: &[NodeInfo], json: bool) -> serde_json::Result<()> {
     if json {
         println!("{}", serde_json::to_string_pretty(rows)?);
+
         return Ok(());
     }
+
     let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
     let table: Vec<[String; 5]> = std::iter::once(header)
         .chain(rows.iter().map(|r| {
-            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+            [
+                r.name.clone(),
+                r.gpus.to_string(),
+                r.arch.clone(),
+                r.os.clone(),
+                r.kubelet.clone(),
+            ]
         }))
         .collect();
     // Each column is as wide as its longest cell, plus two spaces.
-    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    let widths: [usize; 5] =
+        std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+
     for row in &table {
-        let line: String = (0..5).map(|col| format!("{:<width$}", row[col], width = widths[col] + 2)).collect();
+        let line: String = (0..5)
+            .map(|col| format!("{:<width$}", row[col], width = widths[col] + 2))
+            .collect();
         println!("{}", line.trim_end());
     }
+
     Ok(())
 }
 // ANCHOR_END: output
@@ -134,6 +150,7 @@ fn platform() -> String {
         "x86_64" => "amd64",
         other => other,
     };
+
     format!("{}/{arch}", env::consts::OS)
 }
 
@@ -141,14 +158,20 @@ fn platform() -> String {
 /// Carries out one command line and returns the exit status.
 async fn run(args: &[String]) -> ExitCode {
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
+
     match args.as_slice() {
         ["version"] => println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
         ["config"] => {
             let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
                 eprintln!("gpuctl: cannot find the home directory");
+
                 return ExitCode::FAILURE;
             };
-            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+            println!(
+                "config file  {}\nkubeconfig   {}",
+                file.display(),
+                kube.display()
+            );
         }
         ["nodes"] | ["nodes", "-o", "table" | "json"] => {
             let json = args.last() == Some(&"json");
@@ -156,29 +179,36 @@ async fn run(args: &[String]) -> ExitCode {
                 Ok(rows) => rows,
                 Err(e) => {
                     eprintln!("gpuctl: {e}");
+
                     return ExitCode::FAILURE;
                 }
             };
+
             if let Err(e) = print_nodes(&rows, json) {
                 eprintln!("gpuctl: {e}");
+
                 return ExitCode::FAILURE;
             }
         }
         [] | ["nodes", ..] => {
             eprint!("{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
         [other, ..] => {
             eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
     }
+
     ExitCode::SUCCESS
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
+
     run(&args).await
 }
 // ANCHOR_END: run

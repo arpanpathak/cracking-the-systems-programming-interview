@@ -136,9 +136,11 @@ type Plane struct {
 // NewPlane returns a plane in which every machine is Healthy.
 func NewPlane(burnIn map[string]int) *Plane {
 	p := &Plane{jobNodes: map[string]map[string]bool{}, blamed: map[string]bool{}, burnIn: burnIn}
+
 	for _, n := range fleet {
 		p.records = append(p.records, &record{node: n, faultJobs: map[string]bool{}, lastFlap: -1})
 	}
+
 	return p
 }
 
@@ -149,6 +151,7 @@ func (p *Plane) find(name string) *record {
 			return r
 		}
 	}
+
 	panic("unknown node " + name)
 }
 
@@ -166,15 +169,19 @@ func (p *Plane) move(now int, r *record, to State, why string) {
 // within five seconds of each other.
 func (p *Plane) Observe(s Signal) {
 	r := p.find(s.Node)
+
 	switch s.Kind {
 	case MemoryECC, OffBus:
 		p.condemn(s.At, r, s.Kind.String())
 	case AppFault:
 		r.faultJobs[s.Job] = true
+
 		if p.jobNodes[s.Job] == nil {
 			p.jobNodes[s.Job] = map[string]bool{}
 		}
+
 		p.jobNodes[s.Job][s.Node] = true
+
 		switch {
 		case len(p.jobNodes[s.Job]) >= blameAfter && !p.blamed[s.Job]:
 			p.blamed[s.Job] = true
@@ -186,11 +193,13 @@ func (p *Plane) Observe(s Signal) {
 	case LinkFlap:
 		r.lastFlap = s.At
 		together := 0
+
 		for _, other := range p.records {
 			if other.node.Link == r.node.Link && other.lastFlap >= 0 && s.At-other.lastFlap <= fabricWindow {
 				together++
 			}
 		}
+
 		if together >= fabricAfter && !p.blamed[r.node.Link] {
 			p.blamed[r.node.Link] = true
 			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
@@ -215,11 +224,13 @@ func (p *Plane) condemn(now int, r *record, why string) {
 // every machine that is draining, under repair, in burn-in, or quarantined.
 func (p *Plane) outOfService() int {
 	n := 0
+
 	for _, r := range p.records {
 		if r.state >= Draining {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -233,6 +244,7 @@ func (p *Plane) outOfService() int {
 func (p *Plane) Step(now int) {
 	for _, r := range p.records {
 		waited := now - r.since
+
 		switch {
 		case r.state == Cordoned && p.outOfService() < budget:
 			p.move(now, r, Draining, "jobs told to checkpoint")
@@ -255,13 +267,18 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	if p.burnIn[r.node.Name] == 0 {
 		r.faultJobs = map[string]bool{}
 		p.move(now, r, Healthy, "burn-in passed")
+
 		return
 	}
+
 	p.burnIn[r.node.Name]--
+
 	if r.step+1 == len(ladder) {
 		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+
 		return
 	}
+
 	r.step++
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
@@ -293,13 +310,17 @@ func main() {
 	// thor-4 fails every burn-in; every other machine passes its first.
 	p := NewPlane(map[string]int{"thor-4": len(ladder)})
 	next := 0
+
 	for now := 0; now <= duration; now++ {
 		for ; next < len(script) && script[next].At == now; next++ {
 			p.Observe(script[next])
 		}
+
 		p.Step(now)
 	}
+
 	fmt.Println("final states:")
+
 	for _, r := range p.records {
 		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
 	}

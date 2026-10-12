@@ -55,27 +55,44 @@ fn migrate(vm: &Vm, link: &Link, throttle: bool) {
     let mut remaining = vm.memory_gb; // memory still to be sent
     let mut slowed = 0.0; // fraction by which the guest is slowed
     let mut elapsed = 0.0;
+
     for round in 1..=MAX_ROUNDS {
         if remaining <= link.gbps * MAX_PAUSE_SECONDS {
             let pause = remaining / link.gbps;
             println!("  round {round:2}: VM paused, {remaining:.2} GB sent in {pause:.2} s");
-            println!("  done in {:.1} s; the VM was paused for {:.0} ms", elapsed + pause, pause * 1000.0);
+            println!(
+                "  done in {:.1} s; the VM was paused for {:.0} ms",
+                elapsed + pause,
+                pause * 1000.0
+            );
+
             return;
         }
+
         let seconds = remaining / link.gbps;
         let dirtied = (vm.dirty_gbps * (1.0 - slowed) * seconds).min(vm.memory_gb);
-        println!("  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile");
+        println!(
+            "  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile"
+        );
         elapsed += seconds;
+
         if dirtied >= remaining {
             if !throttle || slowed >= MAX_THROTTLE {
                 println!("  does not converge: memory changes as fast as the link carries it");
+
                 return;
             }
+
             slowed += THROTTLE_STEP;
-            println!("            no progress: guest slowed to {:.0}% of full speed", (1.0 - slowed) * 100.0);
+            println!(
+                "            no progress: guest slowed to {:.0}% of full speed",
+                (1.0 - slowed) * 100.0
+            );
         }
+
         remaining = dirtied;
     }
+
     println!("  gave up after {MAX_ROUNDS} rounds");
 }
 // ANCHOR_END: migrate
@@ -84,14 +101,34 @@ fn migrate(vm: &Vm, link: &Link, throttle: bool) {
 fn main() {
     // An inference VM sized for the Orin NX, and a training VM sized for a
     // Thor or a Spark.
-    let inference = Vm { name: "16 GB inference VM (0.2 GB/s changed)", memory_gb: 16.0, dirty_gbps: 0.2 };
-    let training = Vm { name: "100 GB training VM (4 GB/s changed)", memory_gb: 100.0, dirty_gbps: 4.0 };
+    let inference = Vm {
+        name: "16 GB inference VM (0.2 GB/s changed)",
+        memory_gb: 16.0,
+        dirty_gbps: 0.2,
+    };
+    let training = Vm {
+        name: "100 GB training VM (4 GB/s changed)",
+        memory_gb: 100.0,
+        dirty_gbps: 4.0,
+    };
 
     // The links in the fleet, in gigabytes per second.
-    let orin = Link { name: "1 GbE", gbps: 0.125 };
-    let lane = Link { name: "one 25 GbE lane", gbps: 3.125 };
-    let bonded = Link { name: "four bonded 25 GbE lanes", gbps: 12.5 };
-    let spark = Link { name: "the Sparks' 200 GbE cable", gbps: 25.0 };
+    let orin = Link {
+        name: "1 GbE",
+        gbps: 0.125,
+    };
+    let lane = Link {
+        name: "one 25 GbE lane",
+        gbps: 3.125,
+    };
+    let bonded = Link {
+        name: "four bonded 25 GbE lanes",
+        gbps: 12.5,
+    };
+    let spark = Link {
+        name: "the Sparks' 200 GbE cable",
+        gbps: 25.0,
+    };
 
     migrate(&inference, &orin, false);
     migrate(&inference, &lane, false);

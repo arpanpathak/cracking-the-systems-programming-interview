@@ -61,9 +61,11 @@ func main() {
 // list, and then checks every Lease in its cache once per checkEvery.
 func run() error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -75,15 +77,20 @@ func run() error {
 	seen := map[string]*observation{}
 	ticker := time.NewTicker(checkEvery)
 	defer ticker.Stop()
+
 	for {
 		leases, err := lister.List(labels.Everything())
+
 		if err != nil {
 			return err
 		}
+
 		now := time.Now()
+
 		for _, lease := range leases {
 			check(seen, lease, now)
 		}
+
 		select {
 		case <-ctx.Done():
 			return nil
@@ -101,17 +108,20 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	if lease.Spec.RenewTime == nil || lease.Spec.LeaseDurationSeconds == nil {
 		return
 	}
+
 	renew := lease.Spec.RenewTime.Time
 	duration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
 	stamp := now.Format(time.TimeOnly)
 
 	obs, known := seen[lease.Name]
+
 	switch {
 	case !known:
 		seen[lease.Name] = &observation{renewTime: renew, observedAt: now}
 		fmt.Printf("%s %s seen, lease duration %s\n", stamp, lease.Name, duration)
 	case !renew.Equal(obs.renewTime):
 		obs.renewTime, obs.observedAt = renew, now
+
 		if obs.expired {
 			obs.expired = false
 			fmt.Printf("%s %s renewing again\n", stamp, lease.Name)

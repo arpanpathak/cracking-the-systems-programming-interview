@@ -96,6 +96,7 @@ func init() {
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		status.Phase = PhaseRunning
@@ -104,12 +105,14 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	case corev1.PodFailed:
 		status.Phase = PhaseFailed
 	}
+
 	// A pod that cannot be placed explains why in its PodScheduled condition.
 	for _, c := range pod.Status.Conditions {
 		if c.Type == corev1.PodScheduled && c.Status == corev1.ConditionFalse {
 			status.Message = c.Message
 		}
 	}
+
 	return status
 }
 

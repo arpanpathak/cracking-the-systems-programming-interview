@@ -51,6 +51,7 @@ func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
 	if len(job.Spec.Command) > 0 {
 		container.WithCommand(job.Spec.Command...)
 	}
+
 	owner := metav1ac.OwnerReference().
 		WithAPIVersion(gpujobv1.GroupVersion.String()).
 		WithKind("GpuJob").
@@ -71,7 +72,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	if len(pod.Spec.Containers) == 0 {
 		return 0, false
 	}
+
 	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+
 	return int32(quantity.Value()), ok
 }
 
@@ -90,6 +93,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
 
 	var job gpujobv1.GpuJob
+
 	if err := r.Get(ctx, req.NamespacedName, &job); err != nil {
 		// A job deleted since it was queued needs nothing: its pod goes with it.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -99,13 +103,16 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// for a different number of GPUs, delete the pod and come back after it is gone.
 	var pod corev1.Pod
 	err := r.Get(ctx, req.NamespacedName, &pod)
+
 	switch {
 	case err == nil:
 		if gpus, ok := podGPUs(&pod); !ok || gpus != job.Spec.GPUs {
 			log.Info("GPU count changed, replacing pod")
+
 			if err := r.Delete(ctx, &pod); client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, err
 			}
+
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 	case !apierrors.IsNotFound(err):
@@ -120,14 +127,17 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// yields the Pending phase, and the pod's creation event triggers the
 	// reconcile that reports its real progress.
 	status := gpujobv1.StatusFromPod(&pod, job.Generation)
+
 	if job.Status != status {
 		log.Info("status changed", "phase", status.Phase, "message", status.Message)
 		patch := client.MergeFrom(job.DeepCopy())
 		job.Status = status
+
 		if err := r.Status().Patch(ctx, &job, patch); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	// Changes to the pod trigger the next reconcile through Owns.
 	return ctrl.Result{}, nil
 }
@@ -141,10 +151,12 @@ func main() {
 	setup := ctrl.Log.WithName("setup")
 
 	scheme := runtime.NewScheme()
+
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering built-in types")
 		os.Exit(1)
 	}
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering GpuJob")
 		os.Exit(1)
@@ -154,6 +166,7 @@ func main() {
 		Scheme:  scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
 	})
+
 	if err != nil {
 		setup.Error(err, "creating manager")
 		os.Exit(1)

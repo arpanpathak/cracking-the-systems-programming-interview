@@ -22,17 +22,20 @@ FIGURES = {}
 def figure(draw):
     """Registers `draw` under its name, with underscores written as hyphens."""
     FIGURES[draw.__name__.replace("_", "-")] = draw
+
     return draw
 
 
 def lines(x, y, rows, cls="note", anchor="start", lead=17):
     """Plain lines of text, one under the other."""
+
     return "\n".join(text(x, y + lead * row, body, cls, anchor) for row, body in enumerate(rows))
 
 
 def box(x, y, w, h, fill, stroke=EDGE, rx=8, width=1.3, dash=None):
     """A plain rectangle, for the pictures figkit has no part for."""
     dashed = f' stroke-dasharray="{dash}"' if dash else ""
+
     return (f'  <rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{rx}" fill="{fill}"'
             f' stroke="{stroke}" stroke-width="{width}"{dashed}/>')
 
@@ -135,6 +138,7 @@ def gpujob_controller():
 def gpu_anatomy():
     green, tint = KINDS["model"]
     parts = [zone(32, 104, 700, 300, "the Orin's GPU, as gpu_info reports it")]
+
     for k in range(8):
         x, y = 56 + (k % 4) * 166, 132 + (k // 4) * 84
         parts += [box(x, y, 150, 68, CARD, EDGE, 10),
@@ -142,6 +146,7 @@ def gpu_anatomy():
         parts += [box(x + 12 + col * 11, y + 28 + row * 11, 8, 8, tint, green, 2, 0.8)
                   for row in range(3) for col in range(8)]
         parts.append(box(x + 106, y + 28, 32, 30, KINDS["store"][1], KINDS["store"][0], 4, 0.9))
+
     parts += [
         box(56, 306, 652, 30, KINDS["store"][1], KINDS["store"][0], 8),
         text(382, 326, "L2 cache, 2,048 KiB, shared by all eight SMs", "pill", "middle", KINDS["store"][0]),
@@ -172,6 +177,7 @@ def gpu_sharing():
         ("MIG", "hardware partitions", ("yes", "yes")),
     ]
     parts = []
+
     for k, (name, sub, (memory, faults)) in enumerate(panels):
         x = 32 + k * 262
         gx, gy, gw, gh = x + 34, 150, 196, 132
@@ -179,6 +185,7 @@ def gpu_sharing():
                   box(gx, gy, gw, gh, "#F1F4F7", EDGE, 6),
                   text(gx - 8, gy + gh / 2 + 4, "SMs", "note", "end"),
                   text(gx + gw / 2, gy + gh + 18, "time", "note", "middle")]
+
         if k == 0:
             cells = [(0, 0, gw, gh, 0)]
         elif k == 1:
@@ -187,19 +194,24 @@ def gpu_sharing():
             cells = [(0, 0, gw, gh * 0.5, 0), (0, gh * 0.5, gw, gh * 0.3, 1), (0, gh * 0.8, gw, gh * 0.2, 2)]
         else:
             cells = [(0, 0, gw, gh * 3 / 7, 0), (0, gh * 3 / 7, gw, gh * 2 / 7, 1), (0, gh * 5 / 7, gw, gh * 2 / 7, 2)]
+
         for cx, cy, cw, ch, who in cells:
             label, colour = pods[who]
             inset = 4 if k == 3 else 1.5
             parts += [f'  <rect x="{gx + cx + inset:.1f}" y="{gy + cy + inset:.1f}" width="{cw - 2 * inset:.1f}"'
                       f' height="{ch - 2 * inset:.1f}" rx="{5 if k == 3 else 3}" fill="{colour}" fill-opacity="0.82"/>',
                       text(gx + cx + cw / 2, gy + cy + ch / 2 + 4, label, "pill", "middle", "#FFFFFF")]
+
         if k == 2:
             parts += [f'  <path class="wire idle" d="M{gx},{gy + gh * share:.1f} H{gx + gw}"/>' for share in (0.5, 0.8)]
+
         if k == 3:
             parts += [f'  <path d="M{gx},{gy + gh * share:.1f} H{gx + gw}" stroke="{INK}" stroke-width="3"/>' for share in (3 / 7, 5 / 7)]
+
         for row, (what, answer) in enumerate((("memory isolated", memory), ("faults isolated", faults))):
             kind = {"yes": "good", "no": "danger"}.get(answer, "store")
             parts += [text(x, 332 + row * 26, what, "note"), tag(x + 230, 319 + row * 26, answer, kind, anchor="end")]
+
     parts.append(lines(32, 400, ["Each picture is one GPU: its SMs from top to bottom, and time from left to right. "
                                  "A colour is the pod whose kernels run there.",
                                  "MPS divides by limits that an administrator sets (dotted). "
@@ -319,10 +331,12 @@ def fleet_map():
         zone(32, 104, 572, 300, "shelf: five Jetson AGX Thor"),
         card(52, 132, 532, 56, "outside", "25 GbE switch", ["one lane of 25 GbE to each Thor"], glyph="swap"),
     ]
+
     for k in range(5):
         x = 52 + k * 109
         parts += [card(x, 250, 96, 64, "model", "thor-%d" % (k + 1), ["128 GB"]),
                   wire([(x + 48, 250), (x + 48, 188)], arrow=False)]
+
     parts += [
         lines(52, 346, ["each: 14 cores, one GPU, 128 GB shared by CPU and GPU,", "273 GB/s of memory bandwidth, 40 to 130 W"]),
         zone(636, 104, 280, 300, "desk: two DGX Sparks"),
@@ -376,11 +390,14 @@ def node_lifecycle():
               ("store", "Draining", ["jobs checkpoint", "and leave"]), ("client", "Remediating", ["one repair", "action runs"]),
               ("outside", "Validating", ["burn-in test"]), ("danger", "Quarantined", ["a person", "takes over"])]
     parts = []
+
     for k, (kind, name, sub) in enumerate(states):
         x = 32 + k * 184
         parts.append(card(x, 150, 160, 70, kind, name, sub))
+
         if k:
             parts.append(wire([(x - 24, 185), (x, 185)]))
+
     parts += [
         wire([(848, 220), (848, 296), (112, 296), (112, 220)], label="burn-in passed"),
         wire([(808, 150), (808, 110), (664, 110), (664, 150)], label="failed"),
@@ -463,6 +480,7 @@ def lost_reply():
              "The account holds m-03 and m-06. The controller owns m-06, and m-03 runs with no owner."),
             (300, "WITH THE SLOT NAME AS THE TOKEN", "create a Thor, token thor-3", "m-03, already there", "good",
              "The account holds m-03, and the controller owns it.")]
+
     for y, heading, ask, answer, kind, result in rows:
         parts += [
             text(32, y - 10, heading, "tab"),
@@ -474,6 +492,7 @@ def lost_reply():
             wire([(800, y + 98), (232, y + 98)], label=answer),
             text(32, y + 140, result, "note", fill=KINDS[kind][0]),
         ]
+
     save(OUT / "lost-reply.svg", 1052, 466,
          "Two sequences between a controller and a provider. Without a token, the first create makes machine m-03 "
          "and its reply is lost; the retry makes a second machine, m-06, and m-03 runs with no owner. With the "
@@ -514,14 +533,17 @@ def pre_copy():
               (10.24, "round 3", "0.8 s, VM running", blue), (3.28, "round 4", "0.26 s, VM paused", red)]
     base, scale = 340, 2.0
     parts = [f'  <path class="wire idle" d="M100,{base} H960"/>']
+
     for k, (gb, name, time, colour) in enumerate(rounds):
         x, h = 130 + k * 210, max(gb * scale, 6)
         parts += [box(x, base - h, 130, h, colour, colour, 6, 0),
                   text(x + 65, base - h - 10, ("%g GB" % gb), "name", "middle"),
                   text(x + 65, base + 22, name, "pill", "middle", colour),
                   text(x + 65, base + 40, time, "note", "middle")]
+
         if k:
             parts.append(text(x - 40, base - 60, "× 0.32", "pill", "middle", MUTED))
+
     parts += [f'  <path class="wire danger" d="M740,{base - 7.5} H960" />',
               text(960, base - 66, "the dashed line is 3.75 GB:", "note", "end", red),
               text(960, base - 50, "what a pause of 0.3 s can carry", "note", "end", red)]
@@ -547,15 +569,19 @@ def allreduce_shapes():
 
     parts = [text(250, 112, "A COORDINATOR", "tab", "middle"), text(780, 112, "A RING", "tab", "middle")]
     star = spots(250, 290, 140)
+
     for x, y in star:
         parts.append(f'  <path class="wire" d="M{x:.1f},{y:.1f} L250,290"/>')
+
     for k, (x, y) in enumerate(star):
         parts += node(x, y, "thor-%d" % (k + 1), grey)
+
     parts += node(250, 290, "coordinator", red)
     parts += [text(250, 468, "the coordinator's link: 5 gradients in, 5 out", "note", "middle", red[0]),
               text(250, 486, "every other link: 1 in, 1 out", "note", "middle")]
 
     ring = spots(780, 290, 140)
+
     for k, (x, y) in enumerate(ring):
         nx, ny = ring[(k + 1) % 5]
         dx, dy = nx - x, ny - y
@@ -563,8 +589,10 @@ def allreduce_shapes():
         ax, ay = x + dx / length * 52, y + dy / length * 30
         bx, by = nx - dx / length * 52, ny - dy / length * 30
         parts.append(f'  <path class="wire" d="M{ax:.1f},{ay:.1f} L{bx:.1f},{by:.1f}" marker-end="url(#head)"/>')
+
     for k, (x, y) in enumerate(ring):
         parts += node(x, y, "thor-%d" % (k + 1), green)
+
     parts += [text(780, 286, "8 exchanges,", "note", "middle"), text(780, 304, "one chunk each", "note", "middle"),
               text(780, 468, "every link: 1.6 gradients, in one direction", "note", "middle", green[0]),
               text(780, 486, "no link carries more than another", "note", "middle")]
@@ -581,6 +609,7 @@ MACHINES = ["orin-nx-1", "spark-1", "spark-2", "thor-1", "thor-2", "thor-3", "th
 def machine_row(x, y, owners, colours):
     """Eight machine boxes in name order, each tinted by the job that holds it."""
     parts = []
+
     for k, name in enumerate(MACHINES):
         owner = owners[k]
         accent, tint = colours.get(owner, KINDS["idle"])
@@ -588,6 +617,7 @@ def machine_row(x, y, owners, colours):
         parts += [box(bx, y, 100, 50, tint, accent, 9, 1.4),
                   text(bx + 50, y + 21, name, "pill", "middle", INK),
                   text(bx + 50, y + 38, owner or "free", "pill", "middle", accent)]
+
     return parts
 
 
@@ -622,12 +652,15 @@ def fleet_topology():
         wire([(318, 232), (318, 166)], arrow=False), wire([(776, 232), (776, 166)], arrow=False),
         wire([(1090, 232), (1090, 166)], arrow=False),
     ]
+
     for k in range(5):
         x = 52 + k * 109
         parts += [card(x, 344, 96, 56, "model", "thor-%d" % (k + 1), ["1 GPU"]), wire([(x + 48, 344), (x + 48, 310)], arrow=False)]
+
     for k in range(2):
         x = 656 + k * 126
         parts += [card(x, 344, 114, 56, "model", "spark-%d" % (k + 1), ["1 GPU"]), wire([(x + 57, 344), (x + 57, 310)], arrow=False)]
+
     parts += [card(964, 300, 128, 60, "client", "orin-nx-1", ["1 GPU"])]
     save(OUT / "fleet-topology.svg", 1140, 446,
          "A tree of links. The 1 GbE house network at the top reaches every machine and is the only path between "
@@ -645,17 +678,21 @@ def gcounter():
                ("the network heals; rows are exchanged in any order",
                 [("360  120  65", "545"), ("360  120  65", "545"), ("360  120  65", "545")], False)]
     parts = [text(250 + k * 270, 112, name, "name", "middle") for k, name in enumerate(("shelf", "desk", "bench"))]
+
     for row, (label, cells, cut) in enumerate(moments):
         y = 132 + row * 96
         parts.append(text(32, y + 64, label, "note"))
+
         for k, (vector, value) in enumerate(cells):
             x = 140 + k * 270
             kind = KINDS["good"] if row == 2 else KINDS["service"]
             parts += [box(x, y, 220, 44, kind[1], kind[0], 9, 1.4),
                       text(x + 16, y + 28, vector, "mono strong"),
                       text(x + 204, y + 28, "= " + value, "pill", "end", kind[0])]
+
         if cut:
             parts += [f'  <path class="wire danger" d="M655,{y - 8} V{y + 52}"/>', text(662, y - 2, "no route", "pill", fill=red)]
+
     save(OUT / "gcounter.svg", 950, 424,
          "Three replicas at three moments. First each holds only its own reports: 300, 120 and 40. During a "
          "partition that cuts off the bench, the shelf holds 360, 120, 0, the desk 300, 120, 0 and the bench "
@@ -668,13 +705,16 @@ def gcounter():
 def quota_shares():
     def shares(y, layout, note, colour):
         parts = []
+
         for k, (owner, used) in enumerate(layout):
             accent, tint = KINDS["client"] if owner == "shelf" else KINDS["store"]
             x = 140 + k * 92
             parts += [box(x, y, 80, 50, accent if used else tint, accent, 9, 1.4),
                       text(x + 40, y + 22, owner, "pill", "middle", "#FFFFFF" if used else accent),
                       text(x + 40, y + 39, "in use" if used else "free", "pill", "middle", "#FFFFFF" if used else accent)]
+
         parts.append(text(710, y + 30, note, "note", fill=colour))
+
         return parts
 
     parts = [text(32, 150, "apart", "name")]
@@ -702,17 +742,22 @@ def artifact_chunks():
         sheet(250, 284, 200, 100, "store", "MANIFEST of v2", [("", "8 lines: a digest"), ("", "and a size each")]),
         wire([(182, 148), (250, 148)]), wire([(182, 328), (250, 328)]),
     ]
+
     for k in range(10):
         kind = green if k < 6 else (blue if k < 8 else amber)
         owner = "both" if k < 6 else ("v1 only" if k < 8 else "v2 only")
         x = 520 + (k % 5) * 100
         y = 150 if k < 5 else 250
+
         if k >= 6:
             x, y = 520 + (k - 6) * 100 + (0 if k < 8 else 100), 350
+
         if k == 5:
             x, y = 520, 250
+
         parts += [box(x, y, 88, 50, kind[1], kind[0], 9, 1.4), text(x + 44, y + 22, "chunk", "pill", "middle", INK),
                   text(x + 44, y + 39, owner, "pill", "middle", kind[0])]
+
     parts += [
         wire([(450, 148), (485, 148), (485, 175), (520, 175)]),
         wire([(450, 328), (485, 328), (485, 275), (520, 275)]),
@@ -759,10 +804,12 @@ def cross_build():
     ]
     targets = [("Linux, arm64", "ELF", "model"), ("Linux, amd64", "ELF", "model"),
                ("macOS, arm64", "Mach-O", "outside"), ("Windows, amd64", "PE", "store")]
+
     for k, (system, fmt, kind) in enumerate(targets):
         y = 104 + k * 76
         parts += [card(700, y, 300, 60, kind, system, ["file format: " + fmt], glyph="terminal"),
                   wire([(580, 232), (640, 232), (640, y + 30), (700, y + 30)])]
+
     save(OUT / "cross-build.svg", 1032, 430,
          "One source tree on the Jetson, a Linux arm64 machine, is compiled into four executables: ELF for Linux "
          "on arm64, ELF for Linux on amd64, Mach-O for macOS on arm64, and PE for Windows on amd64.",

@@ -80,6 +80,7 @@ impl Registry {
         self.heartbeats += 1;
         let entry = &mut self.hosts[host];
         entry.last_seen = now;
+
         if entry.state != State::Up {
             entry.state = State::Up;
             self.writes.push(Transition {
@@ -94,6 +95,7 @@ impl Registry {
     fn sweep(&mut self, now: u32) {
         for (host, entry) in self.hosts.iter_mut().enumerate() {
             let next = state_after(now - entry.last_seen);
+
             if next != entry.state {
                 entry.state = next;
                 self.writes.push(Transition {
@@ -129,16 +131,20 @@ fn sends_heartbeat(host: usize, now: u32) -> bool {
 /// Runs the simulation and prints the registry's work.
 fn main() {
     let mut registry = Registry::new(HOST_COUNT);
+
     for now in 0..DURATION {
         for host in 0..HOST_COUNT {
             if sends_heartbeat(host, now) {
                 registry.heartbeat(now, host);
             }
         }
+
         registry.sweep(now);
     }
+
     println!("heartbeats handled in memory: {}", registry.heartbeats);
     println!("durable writes:               {}", registry.writes.len());
+
     for w in &registry.writes {
         println!("  second {:2}  host {:2} -> {:?}", w.at, w.host, w.state);
     }

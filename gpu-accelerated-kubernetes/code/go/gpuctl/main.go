@@ -56,9 +56,11 @@ const usage = `usage:
 // settings.
 func configFile() (string, error) {
 	dir, err := os.UserConfigDir()
+
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "gpuctl", "config.toml"), nil
 }
 
@@ -86,18 +88,25 @@ type NodeInfo struct {
 func listNodes(ctx context.Context) ([]NodeInfo, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+
 	if err != nil {
 		return nil, err
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		return nil, err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return nil, err
 	}
+
 	rows := make([]NodeInfo, 0, len(nodes.Items))
+
 	for _, n := range nodes.Items {
 		gpus := n.Status.Allocatable["nvidia.com/gpu"]
 		rows = append(rows, NodeInfo{
@@ -108,6 +117,7 @@ func listNodes(ctx context.Context) ([]NodeInfo, error) {
 			Kubelet: n.Status.NodeInfo.KubeletVersion,
 		})
 	}
+
 	return rows, nil
 }
 
@@ -119,13 +129,17 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 	if format == "json" {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(rows)
 	}
+
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+
 	for _, r := range rows {
 		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
 	}
+
 	return table.Flush()
 }
 
@@ -138,38 +152,51 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 func run(args []string, out, errOut io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(errOut, usage)
+
 		return exitUsage
 	}
+
 	switch args[0] {
 	case "version":
 		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
 	case "config":
 		file, err := configFile()
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
+
 		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
 	case "nodes":
 		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		format := flags.String("o", "table", "output format: table or json")
+
 		if err := flags.Parse(args[1:]); err != nil || (*format != "table" && *format != "json") {
 			fmt.Fprint(errOut, usage)
+
 			return exitUsage
 		}
+
 		rows, err := listNodes(context.Background())
+
 		if err == nil {
 			err = printNodes(out, rows, *format)
 		}
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
 	default:
 		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+
 		return exitUsage
 	}
+
 	return exitOK
 }
 

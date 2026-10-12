@@ -44,9 +44,11 @@ func (c *GCounter) Merge(other GCounter) {
 // Value is the count: the sum of every replica's entry.
 func (c GCounter) Value() int {
 	total := 0
+
 	for _, n := range c {
 		total += n
 	}
+
 	return total
 }
 
@@ -86,11 +88,13 @@ func oneNumber() {
 	totals := [replicas]int{}
 	adds := [replicas]int{300, 120, 40}
 	sum := 0
+
 	for r, n := range adds {
 		totals[r] += n
 		sum += n
 		fmt.Printf("  %-5s records %d GPU-seconds\n", names[r], n)
 	}
+
 	largest := max(totals[shelf], totals[desk], totals[bench])
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
@@ -107,23 +111,28 @@ func show(replica int, c GCounter) {
 // partition that cuts the bench off from the other two.
 func growOnly() {
 	var at [replicas]GCounter
+
 	for r, n := range [replicas]int{300, 120, 40} {
 		at[r].Add(r, n)
 	}
+
 	fmt.Println("  the bench is cut off; shelf and desk exchange counters")
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	at[shelf].Add(shelf, 60)
 	at[bench].Add(bench, 25)
+
 	for r := range at {
 		show(r, at[r])
 	}
+
 	fmt.Println("  the network heals; counters are exchanged in no particular order, some twice")
 	at[desk].Merge(at[bench])
 	at[shelf].Merge(at[desk])
 	at[bench].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
+
 	for r := range at {
 		show(r, at[r])
 	}
@@ -140,11 +149,13 @@ func upAndDown() {
 	at[desk].Add(desk, 2)    // two start on the Sparks
 	at[shelf].Add(shelf, -1) // one Thor job ends
 	at[bench].Add(bench, -1) // the bench replica hears that a Spark job ended
+
 	for r := range at {
 		for other := range at {
 			at[r].Merge(at[other])
 		}
 	}
+
 	c := at[bench]
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
@@ -164,12 +175,14 @@ func sharedLimit() {
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	fmt.Printf("  both replicas see %d of %d in use; then they lose contact\n", at[shelf].Value(), quota)
+
 	for _, r := range []int{shelf, desk} {
 		if at[r].Value()+2 <= quota {
 			at[r].Add(r, 2)
 			fmt.Printf("  %-5s admits a 2-GPU job: by its count, %d of %d are in use\n", names[r], at[r].Value(), quota)
 		}
 	}
+
 	at[shelf].Merge(at[desk])
 	fmt.Printf("  after they merge: %d of %d in use\n", at[shelf].Value(), quota)
 }
@@ -184,8 +197,10 @@ func allowances() {
 	admit := func(r, gpus int) {
 		if left := share[r] - used[r]; left < gpus {
 			fmt.Printf("  %-5s refuses a %d-GPU job: its share has %d left\n", names[r], gpus, left)
+
 			return
 		}
+
 		used[r] += gpus
 		fmt.Printf("  %-5s admits a %d-GPU job\n", names[r], gpus)
 	}

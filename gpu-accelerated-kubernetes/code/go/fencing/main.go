@@ -49,7 +49,9 @@ func (s *Store) Write(c Checkpoint) error {
 	if s.Fencing && c.Epoch < s.latest.Epoch {
 		return ErrFenced
 	}
+
 	s.latest = c
+
 	return nil
 }
 
@@ -66,6 +68,7 @@ type ControlPlane struct {
 func (c *ControlPlane) Assign(host string) int {
 	c.epoch++
 	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+
 	return c.epoch
 }
 
@@ -75,10 +78,13 @@ func (c *ControlPlane) Assign(host string) int {
 // save writes one checkpoint and prints what the store answered.
 func save(s *Store, host string, epoch, step int) {
 	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+
 	if err != nil {
 		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+
 		return
 	}
+
 	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
 }
 

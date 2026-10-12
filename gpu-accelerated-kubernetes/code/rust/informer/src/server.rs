@@ -154,9 +154,11 @@ impl ApiServer {
         let mut state = self.state();
         let current = state.objects.get(&object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
+
         if object.resource_version != 0 && object.resource_version != current_version {
             return Err(ApiError::Conflict);
         }
+
         let kind = if current.is_some() {
             EventType::Modified
         } else {
@@ -166,6 +168,7 @@ impl ApiServer {
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
         state.publish(Event { kind, object });
+
         Ok(())
     }
 
@@ -193,6 +196,7 @@ impl ApiServer {
         let state = self.state();
         let mut objects: Vec<Object> = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&b.name));
+
         (objects, state.version)
     }
 
@@ -200,19 +204,25 @@ impl ApiServer {
     /// `version` and then every new event, until the server drops the watch.
     pub fn watch(&self, version: u64) -> Result<Receiver<Event>, ApiError> {
         let mut state = self.state();
+
         if state.unreachable {
             return Err(ApiError::Unreachable);
         }
+
         if version < state.compacted {
             return Err(ApiError::Gone);
         }
+
         let (sender, receiver) = channel();
+
         for event in &state.history {
             if event.object.resource_version > version {
                 sender.send(event.clone()).expect("receiver is held here");
             }
         }
+
         state.watches.push(sender);
+
         Ok(receiver)
     }
 }

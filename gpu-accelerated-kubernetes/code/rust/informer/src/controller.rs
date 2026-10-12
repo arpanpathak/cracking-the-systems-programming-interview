@@ -27,6 +27,7 @@ impl Controller {
             let name = self.queue.get();
             let result = self.reconcile(&name);
             self.queue.done(&name);
+
             if result.is_err() {
                 self.queue.add([name]); // client-go requeues with a backoff
             }
@@ -42,21 +43,27 @@ impl Controller {
     fn reconcile(&self, name: &str) -> Result<(), ApiError> {
         let Some(mut object) = self.cache.get(name) else {
             log!("reconcile {name}: deleted, releasing its GPUs");
+
             return Ok(());
         };
+
         if object.status.gpus == object.spec.gpus {
             return Ok(());
         }
+
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
+
         match self.server.update(object.clone()) {
             Ok(()) => {
                 log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+
                 Ok(())
             }
             Err(error) => {
                 log!("reconcile {name}: write at version {version}: {error}");
+
                 Err(error)
             }
         }

@@ -65,23 +65,32 @@ impl Worker {
             if self.fail_after == Some(step) {
                 return (self, step, Some("failed".to_owned()));
             }
+
             // The chunk to send moves one place back around the gradient each
             // step, so after the first step it is the chunk just received.
             // Adding 2n keeps the subtraction from going below zero.
             let chunk = (self.id + 2 * n - step) % n;
             // The right-hand neighbour may have stopped; its channel still accepts.
-            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let _ = self.out.send(Message {
+                chunk,
+                value: self.gradient[chunk],
+            });
             let reducing = step < n - 1;
 
             match self.inbox.recv_timeout(PATIENCE) {
                 Ok(m) if reducing => self.gradient[m.chunk] += m.value,
                 Ok(m) => self.gradient[m.chunk] = m.value,
                 Err(_) => {
-                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    let why = format!(
+                        "no chunk from {} within {PATIENCE:?}",
+                        name((self.id + n - 1) % n)
+                    );
+
                     return (self, step, Some(why));
                 }
             }
         }
+
         (self, 2 * (n - 1), None)
     }
 }
@@ -102,12 +111,21 @@ fn ring(n: usize, failing: Option<(usize, usize)>) -> Vec<(Worker, usize, Option
             gradient: own_gradient(id, n),
             inbox,
             out: senders[(id + 1) % n].clone(),
-            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+            fail_after: failing
+                .filter(|(who, _)| *who == id)
+                .map(|(_, after)| after),
         })
         .collect();
 
-    let handles: Vec<_> = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
-    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+    let handles: Vec<_> = workers
+        .into_iter()
+        .map(|w| thread::spawn(move || w.run(n)))
+        .collect();
+
+    handles
+        .into_iter()
+        .map(|h| h.join().expect("a worker panicked"))
+        .collect()
 }
 // ANCHOR_END: ring
 
@@ -118,7 +136,11 @@ fn own_gradient(id: usize, n: usize) -> Vec<i64> {
 
 /// Formats a gradient as its values separated by spaces.
 fn show(gradient: &[i64]) -> String {
-    gradient.iter().map(i64::to_string).collect::<Vec<_>>().join(" ")
+    gradient
+        .iter()
+        .map(i64::to_string)
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 // ANCHOR: checkpoint
@@ -140,6 +162,7 @@ fn main() {
     const N: usize = 5;
 
     println!("ring all-reduce over {N} workers, {N} chunks each:");
+
     for (worker, _, _) in ring(N, None) {
         println!(
             "  {} starts with {:<17} and ends with {}",
@@ -148,6 +171,7 @@ fn main() {
             show(&worker.gradient)
         );
     }
+
     let sent = 2 * (N - 1);
     println!(
         "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
@@ -155,14 +179,24 @@ fn main() {
         sent * N
     );
 
-    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    println!(
+        "the same step, with {} failing after 2 of its {sent} exchanges:",
+        name(2)
+    );
+
     for (worker, steps, why) in ring(N, Some((2, 2))) {
         let why = why.unwrap_or_else(|| "finished".to_owned());
-        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+        println!(
+            "  {} stopped after {steps} of {sent}: {why}",
+            name(worker.id)
+        );
     }
 
-    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!(
+        "checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:"
+    );
     println!("  machines  job fails every  checkpoint every  time lost");
+
     for machines in [1, 5, 64, 512] {
         let job_mtbf = MACHINE_MTBF / f64::from(machines);
         let every = interval(job_mtbf);

@@ -40,10 +40,12 @@ impl WorkQueue {
     /// is left where it is. A name that a worker holds is queued again by `done`.
     pub fn add(&self, names: impl IntoIterator<Item = String>) {
         let mut state = self.state();
+
         for name in names {
             if !state.dirty.insert(name.clone()) {
                 continue;
             }
+
             if !state.processing.contains(&name) {
                 state.ready.push_back(name);
                 self.ready.notify_one();
@@ -54,12 +56,15 @@ impl WorkQueue {
     /// Blocks until a name is ready and hands it to the caller.
     pub fn get(&self) -> String {
         let mut state = self.state();
+
         loop {
             if let Some(name) = state.ready.pop_front() {
                 state.dirty.remove(&name);
                 state.processing.insert(name.clone());
+
                 return name;
             }
+
             state = self.ready.wait(state).expect("queue lock poisoned");
         }
     }
@@ -69,6 +74,7 @@ impl WorkQueue {
     pub fn done(&self, name: &str) {
         let mut state = self.state();
         state.processing.remove(name);
+
         if state.dirty.contains(name) {
             state.ready.push_back(name.to_string());
             self.ready.notify_one();

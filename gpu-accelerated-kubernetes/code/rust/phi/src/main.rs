@@ -45,9 +45,11 @@ impl Detector {
     /// Records a heartbeat that arrived at time `now`.
     fn heartbeat(&mut self, now: f64) {
         self.intervals.push_back(now - self.last);
+
         if self.intervals.len() > self.window {
             self.intervals.pop_front();
         }
+
         self.last = now;
     }
 }
@@ -81,6 +83,7 @@ impl Detector {
         } else {
             1.0 - 1.0 / (1.0 + e)
         };
+
         -p_later.log10()
     }
 }
@@ -105,11 +108,14 @@ fn main() {
     for (name, gaps) in HOSTS {
         let mut detector = Detector::new(100, 0.0);
         let mut now = 0.0;
+
         for gap in gaps {
             now += gap;
             detector.heartbeat(now);
         }
+
         println!("{name} host, silent for:");
+
         for silence in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0] {
             let verdict = if silence > TIMEOUT { "dead" } else { "alive" };
             println!(

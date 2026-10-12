@@ -235,6 +235,7 @@ impl Plane {
     /// within five seconds of each other.
     fn observe(&mut self, s: &Signal) {
         let index = self.find(s.node);
+
         match s.kind {
             Kind::MemoryEcc | Kind::OffBus => self.condemn(s.at, index, &s.kind.to_string()),
             Kind::AppFault => {
@@ -242,6 +243,7 @@ impl Plane {
                 let nodes = self.job_nodes.entry(s.job).or_default();
                 nodes.insert(s.node);
                 let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+
                 if machines >= BLAME_AFTER && self.blamed.insert(s.job) {
                     println!(
                         "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
@@ -308,6 +310,7 @@ impl Plane {
                 (r.state, r.step, r.node.name)
             };
             let waited = now - self.records[index].since;
+
             match state {
                 State::Cordoned if self.out_of_service() < BUDGET => {
                     self.transition(now, index, State::Draining, "jobs told to checkpoint");
@@ -336,17 +339,23 @@ impl Plane {
     fn finish_burn_in(&mut self, now: u32, index: usize) {
         let name = self.records[index].node.name;
         let failures = self.burn_in.entry(name).or_default();
+
         if *failures == 0 {
             self.records[index].fault_jobs.clear();
             self.transition(now, index, State::Healthy, "burn-in passed");
+
             return;
         }
+
         *failures -= 1;
+
         if self.records[index].step + 1 == LADDER.len() {
             let why = "burn-in failed after every action; ticket opened";
             self.transition(now, index, State::Quarantined, why);
+
             return;
         }
+
         self.records[index].step += 1;
         let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
         self.transition(now, index, State::Remediating, &why);
@@ -434,13 +443,17 @@ fn main() {
     // thor-4 fails every burn-in; every other machine passes its first.
     let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
     let mut signals = SCRIPT.iter().peekable();
+
     for now in 0..=DURATION {
         while let Some(signal) = signals.next_if(|s| s.at == now) {
             plane.observe(signal);
         }
+
         plane.step(now);
     }
+
     println!("final states:");
+
     for r in &plane.records {
         println!("  {:<10} {:<16} {}", r.node.name, r.node.model, r.state);
     }

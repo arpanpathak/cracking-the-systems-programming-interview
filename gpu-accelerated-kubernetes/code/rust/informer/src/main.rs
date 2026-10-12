@@ -71,6 +71,7 @@ fn main() {
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
+
     for gpus in 2..=6 {
         server
             .update(Object::new("job-a", gpus))
@@ -79,6 +80,7 @@ fn main() {
             sleep_ms(5); // the controller starts on the first edit
         }
     }
+
     sleep_ms(150);
 
     log!("--- the watch connection drops");

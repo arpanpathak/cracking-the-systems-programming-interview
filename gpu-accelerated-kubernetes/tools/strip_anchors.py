@@ -24,10 +24,12 @@ LEADING_BLANK = re.compile(r"(^```\w[^\n]*\n)(?:[ \t]*\n)+", re.M)
 
 def strip(node):
     """Removes anchor lines from every chapter under `node`."""
+
     if isinstance(node, dict):
         if isinstance(node.get("content"), str):
             content = ANCHOR.sub("", node["content"])
             node["content"] = LEADING_BLANK.sub(r"\1", TRAILING_BLANK.sub(r"\n\1", content))
+
         for value in node.values():
             strip(value)
     elif isinstance(node, list):
@@ -38,6 +40,7 @@ def strip(node):
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "supports":
         sys.exit(0)
+
     _context, book = json.load(sys.stdin)
     strip(book)
     json.dump(book, sys.stdout)

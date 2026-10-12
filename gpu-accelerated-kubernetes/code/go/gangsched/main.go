@@ -67,20 +67,24 @@ type Job struct {
 // free returns the machines whose GPU nobody holds, in name order.
 func free(fleet []*Node) []*Node {
 	var out []*Node
+
 	for _, n := range fleet {
 		if n.Job == "" {
 			out = append(out, n)
 		}
 	}
+
 	return out
 }
 
 // names joins the names of some machines with spaces.
 func names(nodes []*Node) string {
 	parts := make([]string, len(nodes))
+
 	for i, n := range nodes {
 		parts[i] = n.Name
 	}
+
 	return strings.Join(parts, " ")
 }
 
@@ -90,10 +94,13 @@ func names(nodes []*Node) string {
 // ended up holding.
 func podAtATime(fleet []*Node, jobs []Job) {
 	held := map[string][]*Node{}
+
 	for progress := true; progress; {
 		progress = false
+
 		for _, job := range jobs {
 			open := free(fleet)
+
 			if len(held[job.Name]) < job.Workers && len(open) > 0 {
 				open[0].Job = job.Name
 				held[job.Name] = append(held[job.Name], open[0])
@@ -101,13 +108,17 @@ func podAtATime(fleet []*Node, jobs []Job) {
 			}
 		}
 	}
+
 	running := 0
+
 	for _, job := range jobs {
 		fmt.Printf("  %-8s holds %d of %d GPUs: %s\n", job.Name, len(held[job.Name]), job.Workers, names(held[job.Name]))
+
 		if len(held[job.Name]) == job.Workers {
 			running++
 		}
 	}
+
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 
@@ -123,6 +134,7 @@ func firstFree(open []*Node, workers int) []*Node {
 	if len(open) < workers {
 		return nil
 	}
+
 	return open[:workers]
 }
 
@@ -133,22 +145,29 @@ func firstFree(open []*Node, workers int) []*Node {
 func byTopology(open []*Node, workers int) []*Node {
 	byDomain := map[string][]*Node{}
 	var order []string
+
 	for _, n := range open {
 		if byDomain[n.Domain] == nil {
 			order = append(order, n.Domain)
 		}
+
 		byDomain[n.Domain] = append(byDomain[n.Domain], n)
 	}
+
 	best := ""
+
 	for _, domain := range order {
 		size := len(byDomain[domain])
+
 		if size >= workers && (best == "" || size < len(byDomain[best])) {
 			best = domain
 		}
 	}
+
 	if best == "" {
 		return firstFree(open, workers)
 	}
+
 	return byDomain[best][:workers]
 }
 
@@ -166,6 +185,7 @@ func slowest(nodes []*Node) Link {
 			return houseNetwork
 		}
 	}
+
 	return links[nodes[0].Domain]
 }
 
@@ -173,6 +193,7 @@ func slowest(nodes []*Node) Link {
 // 2(n-1)/n gradients over the slowest link.
 func exchangeSeconds(nodes []*Node) float64 {
 	n := float64(len(nodes))
+
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 
@@ -185,17 +206,23 @@ func exchangeSeconds(nodes []*Node) float64 {
 func admit(fleet []*Node, job Job, place placer) bool {
 	open := free(fleet)
 	nodes := place(open, job.Workers)
+
 	if nodes == nil {
 		fmt.Printf("  %-8s waits: it needs %d GPUs and %d are free\n", job.Name, job.Workers, len(open))
+
 		return false
 	}
+
 	for _, n := range nodes {
 		n.Job = job.Name
 	}
+
 	fmt.Printf("  %-8s runs on %s\n", job.Name, names(nodes))
+
 	if len(nodes) > 1 {
 		fmt.Printf("           over %s: %.1f s for each all-reduce\n", slowest(nodes).Label, exchangeSeconds(nodes))
 	}
+
 	return true
 }
 
@@ -206,6 +233,7 @@ func release(fleet []*Node, job string) {
 			n.Job = ""
 		}
 	}
+
 	fmt.Printf("  %-8s finishes\n", job)
 }
 
@@ -228,11 +256,14 @@ func main() {
 	three := []Job{{"pair", 2}, {"quad", 4}, {"single", 1}}
 	fmt.Println("three jobs, on the first free machines:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, firstFree)
 	}
+
 	fmt.Println("the same three jobs, placed by topology:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, byTopology)
 	}

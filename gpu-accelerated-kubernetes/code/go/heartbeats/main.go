@@ -82,6 +82,7 @@ func (r *Registry) Heartbeat(now, host int) {
 	r.heartbeats++
 	e := &r.hosts[host]
 	e.lastSeen = now
+
 	if e.state != Up {
 		e.state = Up
 		r.writes = append(r.writes, Transition{now, host, Up})
@@ -92,6 +93,7 @@ func (r *Registry) Heartbeat(now, host int) {
 func (r *Registry) Sweep(now int) {
 	for host := range r.hosts {
 		e := &r.hosts[host]
+
 		if next := stateAfter(now - e.lastSeen); next != e.state {
 			e.state = next
 			r.writes = append(r.writes, Transition{now, host, next})
@@ -131,16 +133,20 @@ func sendsHeartbeat(host, now int) bool {
 // main runs the simulation and prints the registry's work.
 func main() {
 	registry := NewRegistry(hostCount)
+
 	for now := 0; now < duration; now++ {
 		for host := 0; host < hostCount; host++ {
 			if sendsHeartbeat(host, now) {
 				registry.Heartbeat(now, host)
 			}
 		}
+
 		registry.Sweep(now)
 	}
+
 	fmt.Printf("heartbeats handled in memory: %d\n", registry.heartbeats)
 	fmt.Printf("durable writes:               %d\n", len(registry.writes))
+
 	for _, w := range registry.writes {
 		fmt.Printf("  second %2d  host %2d -> %s\n", w.At, w.Host, w.State)
 	}

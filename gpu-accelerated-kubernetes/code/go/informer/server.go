@@ -115,17 +115,22 @@ func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, exists := s.objects[o.Name]
+
 	if o.ResourceVersion != 0 && o.ResourceVersion != current.ResourceVersion {
 		return ErrConflict
 	}
+
 	eventType := Modified
+
 	if !exists {
 		eventType = Added
 	}
+
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
 	s.publish(Event{eventType, o})
+
 	return nil
 }
 
@@ -134,9 +139,11 @@ func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	o, exists := s.objects[name]
+
 	if !exists {
 		return
 	}
+
 	delete(s.objects, name)
 	s.version++
 	o.ResourceVersion = s.version
@@ -147,6 +154,7 @@ func (s *APIServer) Delete(name string) {
 // The caller must hold s.mu.
 func (s *APIServer) publish(e Event) {
 	s.history = append(s.history, e)
+
 	for _, w := range s.watches {
 		w <- e
 	}
@@ -161,6 +169,7 @@ func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
 }
 
@@ -169,19 +178,24 @@ func (s *APIServer) List() ([]Object, int) {
 func (s *APIServer) Watch(version int) (<-chan Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch {
 	case s.unreachable:
 		return nil, ErrUnreachable
 	case version < s.compacted:
 		return nil, ErrGone
 	}
+
 	w := make(chan Event, 1024)
+
 	for _, e := range s.history {
 		if e.Object.ResourceVersion > version {
 			w <- e
 		}
 	}
+
 	s.watches = append(s.watches, w)
+
 	return w, nil
 }
 
@@ -223,6 +237,7 @@ func (s *APIServer) dropWatches() {
 	for _, w := range s.watches {
 		close(w)
 	}
+
 	s.watches = nil
 }
 

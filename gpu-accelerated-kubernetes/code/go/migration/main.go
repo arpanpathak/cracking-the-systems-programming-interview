@@ -55,36 +55,46 @@ const (
 // guest whenever a round leaves as much memory to send as it started with.
 func Migrate(vm VM, link Link, throttle bool) {
 	fmt.Printf("%s over %s", vm.Name, link.Name)
+
 	if throttle {
 		fmt.Print(", with throttling")
 	}
+
 	fmt.Println(":")
 
 	remaining := vm.MemoryGB // memory still to be sent
 	slowed := 0.0            // fraction by which the guest is slowed
 	elapsed := 0.0
+
 	for round := 1; round <= maxRounds; round++ {
 		if remaining <= link.GBps*maxPauseSeconds {
 			pause := remaining / link.GBps
 			fmt.Printf("  round %2d: VM paused, %.2f GB sent in %.2f s\n", round, remaining, pause)
 			fmt.Printf("  done in %.1f s; the VM was paused for %.0f ms\n", elapsed+pause, pause*1000)
+
 			return
 		}
+
 		seconds := remaining / link.GBps
 		dirtied := min(vm.DirtyGBps*(1-slowed)*seconds, vm.MemoryGB)
 		fmt.Printf("  round %2d: %6.2f GB sent in %6.1f s, %6.2f GB changed meanwhile\n",
 			round, remaining, seconds, dirtied)
 		elapsed += seconds
+
 		if dirtied >= remaining {
 			if !throttle || slowed >= maxThrottle {
 				fmt.Println("  does not converge: memory changes as fast as the link carries it")
+
 				return
 			}
+
 			slowed += throttleStep
 			fmt.Printf("            no progress: guest slowed to %.0f%% of full speed\n", (1-slowed)*100)
 		}
+
 		remaining = dirtied
 	}
+
 	fmt.Printf("  gave up after %d rounds\n", maxRounds)
 }
 

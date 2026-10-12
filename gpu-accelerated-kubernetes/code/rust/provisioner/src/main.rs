@@ -69,22 +69,29 @@ impl Provider {
     fn create(&mut self, model: &'static str, token: Option<&str>) -> Result<Machine, CreateError> {
         self.calls += 1;
         if let Some(token) = token
-            && let Some(existing) = self.machines.iter().find(|m| m.token.as_deref() == Some(token))
+            && let Some(existing) = self
+                .machines
+                .iter()
+                .find(|m| m.token.as_deref() == Some(token))
         {
             return Ok(existing.clone());
         }
+
         if self.count(model) >= self.quota[model] {
             return Err(CreateError::Quota);
         }
+
         let machine = Machine {
             id: format!("m-{:02}", self.machines.len() + 1),
             model,
             token: token.map(str::to_owned),
         };
         self.machines.push(machine.clone());
+
         if self.calls == self.lose_reply {
             return Err(CreateError::Timeout);
         }
+
         Ok(machine)
     }
 }
@@ -115,9 +122,11 @@ impl Controller {
     /// call that fails. It returns true when the pool is full.
     fn reconcile(&mut self, pool: &Pool) -> bool {
         let owned = self.owned.entry(pool.name).or_default();
+
         while owned.len() < pool.want {
             let slot = format!("{}-{}", pool.name, owned.len() + 1);
             let token = self.tokens.then_some(slot.as_str());
+
             match self.provider.create(pool.model, token) {
                 Ok(machine) => {
                     println!("    {slot:<8} is machine {}", machine.id);
@@ -125,10 +134,12 @@ impl Controller {
                 }
                 Err(e) => {
                     println!("    {slot:<8} create failed: {e}");
+
                     return false;
                 }
             }
         }
+
         true
     }
 }
@@ -137,8 +148,16 @@ impl Controller {
 // ANCHOR: run
 /// The fleet we ask for: the Thors on the shelf and the two Sparks.
 const POOLS: [Pool; 2] = [
-    Pool { name: "thor", model: "Jetson AGX Thor", want: 5 },
-    Pool { name: "spark", model: "DGX Spark", want: 2 },
+    Pool {
+        name: "thor",
+        model: "Jetson AGX Thor",
+        want: 5,
+    },
+    Pool {
+        name: "spark",
+        model: "DGX Spark",
+        want: 2,
+    },
 ];
 
 /// Reconciles every pool for three passes and then compares what the
@@ -150,19 +169,28 @@ fn run(tokens: bool) {
         calls: 0,
         lose_reply: 3,
     };
-    let mut c = Controller { provider, tokens, owned: BTreeMap::new() };
+    let mut c = Controller {
+        provider,
+        tokens,
+        owned: BTreeMap::new(),
+    };
+
     for pass in 1..=3 {
         println!("  pass {pass}");
         let mut full = true;
+
         for pool in &POOLS {
             full = c.reconcile(pool) && full;
         }
+
         if full {
             println!("    every pool is full");
             break;
         }
     }
+
     let mut known = BTreeSet::new();
+
     for pool in &POOLS {
         let owned = &c.owned[pool.name];
         known.extend(owned.iter().map(|m| m.id.as_str()));
@@ -174,8 +202,17 @@ fn run(tokens: bool) {
             c.provider.count(pool.model)
         );
     }
-    for m in c.provider.machines.iter().filter(|m| !known.contains(m.id.as_str())) {
-        println!("  machine {} ({}) is running and belongs to no pool", m.id, m.model);
+
+    for m in c
+        .provider
+        .machines
+        .iter()
+        .filter(|m| !known.contains(m.id.as_str()))
+    {
+        println!(
+            "  machine {} ({}) is running and belongs to no pool",
+            m.id, m.model
+        );
     }
 }
 

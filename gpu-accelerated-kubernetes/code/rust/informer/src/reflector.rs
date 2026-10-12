@@ -51,6 +51,7 @@ impl Reflector {
                         "reflector: watch from version {version}: {}",
                         ApiError::Gone
                     );
+
                     return;
                 }
                 Err(_) => {
@@ -58,6 +59,7 @@ impl Reflector {
                     continue;
                 }
             };
+
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
@@ -66,6 +68,7 @@ impl Reflector {
                 self.cache.apply(event);
                 self.queue.add([name]);
             }
+
             log!("reflector: watch closed, resuming from version {version}");
         }
     }

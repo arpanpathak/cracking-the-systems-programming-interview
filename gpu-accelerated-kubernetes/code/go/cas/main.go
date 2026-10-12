@@ -27,6 +27,7 @@ type Digest string
 // digestOf computes the name of some bytes.
 func digestOf(data []byte) Digest {
 	sum := sha256.Sum256(data)
+
 	return Digest("sha256:" + hex.EncodeToString(sum[:]))
 }
 
@@ -50,10 +51,13 @@ func NewStore() *Store {
 // store already holds are not stored a second time.
 func (s *Store) Put(data []byte) (Digest, bool) {
 	d := digestOf(data)
+
 	if _, held := s.blobs[d]; held {
 		return d, false
 	}
+
 	s.blobs[d] = data
+
 	return d, true
 }
 
@@ -63,12 +67,15 @@ var ErrCorrupt = errors.New("contents do not match the digest")
 // Get returns a blob after checking that its bytes still hash to its name.
 func (s *Store) Get(d Digest) ([]byte, error) {
 	data, held := s.blobs[d]
+
 	if !held {
 		return nil, fmt.Errorf("%s: not found", d.short())
 	}
+
 	if digestOf(data) != d {
 		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
 	}
+
 	return data, nil
 }
 
@@ -83,31 +90,40 @@ const chunkSize = 8 * 1024
 // manifest. It returns how many chunks were new to the store.
 func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
 	var lines strings.Builder
+
 	for start := 0; start < len(artifact); start += chunkSize {
 		chunk := artifact[start:min(start+chunkSize, len(artifact))]
 		d, fresh := s.Put(chunk)
+
 		if fresh {
 			added++
 		}
+
 		chunks++
 		fmt.Fprintf(&lines, "%s %d\n", d, len(chunk))
 	}
+
 	manifest, _ = s.Put([]byte(lines.String()))
 	s.tags[tag] = manifest
+
 	return manifest, chunks, added
 }
 
 // chunksOf reads a manifest and returns the digests it lists.
 func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	data, err := s.Get(manifest)
+
 	if err != nil {
 		return nil, err
 	}
+
 	var out []Digest
+
 	for line := range strings.Lines(string(data)) {
 		digest, _, _ := strings.Cut(line, " ")
 		out = append(out, Digest(digest))
 	}
+
 	return out, nil
 }
 
@@ -120,41 +136,54 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
 	manifest := remote.tags[tag]
 	chunks, err := remote.chunksOf(manifest)
+
 	if err != nil {
 		return 0, 0, err
 	}
+
 	for _, d := range chunks {
 		if _, held := s.blobs[d]; held {
 			continue
 		}
+
 		data, err := remote.Get(d)
+
 		if err != nil {
 			return fetched, bytes, err
 		}
+
 		s.blobs[d] = data
 		fetched++
 		bytes += len(data)
 	}
+
 	data, _ := remote.Get(manifest)
 	s.blobs[manifest] = data
 	s.tags[tag] = manifest
+
 	return fetched, bytes, nil
 }
 
 // Read reassembles a tagged artifact, verifying every chunk on the way.
 func (s *Store) Read(tag string) ([]byte, error) {
 	chunks, err := s.chunksOf(s.tags[tag])
+
 	if err != nil {
 		return nil, err
 	}
+
 	var artifact []byte
+
 	for i, d := range chunks {
 		data, err := s.Get(d)
+
 		if err != nil {
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
 		}
+
 		artifact = append(artifact, data...)
 	}
+
 	return artifact, nil
 }
 
@@ -166,13 +195,16 @@ func (s *Store) Read(tag string) ([]byte, error) {
 // the rest. It returns the number of blobs and bytes removed.
 func (s *Store) Collect() (removed, bytes int) {
 	live := map[Digest]bool{}
+
 	for _, manifest := range s.tags {
 		live[manifest] = true
 		chunks, _ := s.chunksOf(manifest)
+
 		for _, d := range chunks {
 			live[d] = true
 		}
 	}
+
 	for d, data := range s.blobs {
 		if !live[d] {
 			removed++
@@ -180,6 +212,7 @@ func (s *Store) Collect() (removed, bytes int) {
 			delete(s.blobs, d)
 		}
 	}
+
 	return removed, bytes
 }
 
@@ -190,6 +223,7 @@ func (s *Store) size() (blobs, bytes int) {
 	for _, data := range s.blobs {
 		bytes += len(data)
 	}
+
 	return len(s.blobs), bytes
 }
 
@@ -198,10 +232,12 @@ func (s *Store) size() (blobs, bytes int) {
 func weights(n int, seed uint32) []byte {
 	out := make([]byte, n)
 	x := seed
+
 	for i := range out {
 		x = x*1664525 + 1013904223
 		out[i] = byte(x >> 24)
 	}
+
 	return out
 }
 
@@ -231,13 +267,16 @@ func main() {
 	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
 	damaged[100] ^= 1
 	node.blobs[chunkList[3]] = damaged
+
 	if _, err := node.Read("llm:v1"); err != nil {
 		fmt.Printf("  read llm:v1: %v\n", err)
 	}
+
 	// The bad chunk is dropped and pulled again, by name, from the registry.
 	delete(node.blobs, chunkList[3])
 	fetched, n, _ = node.Pull(registry, "llm:v1")
 	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+
 	if got, err := node.Read("llm:v1"); err == nil {
 		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
 	}

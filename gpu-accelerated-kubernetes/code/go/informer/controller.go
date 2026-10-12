@@ -22,6 +22,7 @@ func (c *Controller) Run() {
 		name := c.queue.Get()
 		err := c.reconcile(name)
 		c.queue.Done(name)
+
 		if err != nil {
 			c.queue.Add(name) // client-go requeues with a backoff
 		}
@@ -35,20 +36,28 @@ func (c *Controller) Run() {
 // from its spec, writes a new status conditioned on the version it read.
 func (c *Controller) reconcile(name string) error {
 	o, ok := c.cache.Get(name)
+
 	if !ok {
 		logf("reconcile %s: deleted, releasing its GPUs", name)
+
 		return nil
 	}
+
 	if o.Status.GPUs == o.Spec.GPUs {
 		return nil
 	}
+
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
 	o.Status.GPUs = o.Spec.GPUs
+
 	if err := c.server.Update(o); err != nil {
 		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
+
 		return err
 	}
+
 	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+
 	return nil
 }
 

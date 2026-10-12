@@ -52,11 +52,13 @@ type Provider struct {
 // count returns how many machines of a model exist.
 func (p *Provider) count(model string) int {
 	n := 0
+
 	for _, m := range p.machines {
 		if m.Model == model {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -64,6 +66,7 @@ func (p *Provider) count(model string) int {
 // existing machine returns that machine and creates nothing.
 func (p *Provider) Create(model, token string) (Machine, error) {
 	p.calls++
+
 	if token != "" {
 		for _, m := range p.machines {
 			if m.Token == token {
@@ -71,14 +74,18 @@ func (p *Provider) Create(model, token string) (Machine, error) {
 			}
 		}
 	}
+
 	if p.count(model) >= p.quota[model] {
 		return Machine{}, ErrQuota
 	}
+
 	m := Machine{ID: fmt.Sprintf("m-%02d", len(p.machines)+1), Model: model, Token: token}
 	p.machines = append(p.machines, m)
+
 	if p.calls == p.loseReply {
 		return Machine{}, ErrTimeout
 	}
+
 	return m, nil
 }
 
@@ -110,17 +117,23 @@ func (c *Controller) Reconcile(pool Pool) bool {
 	for len(c.owned[pool.Name]) < pool.Want {
 		slot := fmt.Sprintf("%s-%d", pool.Name, len(c.owned[pool.Name])+1)
 		token := ""
+
 		if c.tokens {
 			token = slot
 		}
+
 		m, err := c.provider.Create(pool.Model, token)
+
 		if err != nil {
 			fmt.Printf("    %-8s create failed: %v\n", slot, err)
+
 			return false
 		}
+
 		fmt.Printf("    %-8s is machine %s\n", slot, m.ID)
 		c.owned[pool.Name] = append(c.owned[pool.Name], m)
 	}
+
 	return true
 }
 
@@ -138,25 +151,32 @@ var pools = []Pool{
 func run(tokens bool) {
 	provider := &Provider{quota: map[string]int{"Jetson AGX Thor": 5, "DGX Spark": 2}, loseReply: 3}
 	c := &Controller{provider: provider, tokens: tokens, owned: map[string][]Machine{}}
+
 	for pass := 1; pass <= 3; pass++ {
 		fmt.Printf("  pass %d\n", pass)
 		full := true
+
 		for _, pool := range pools {
 			full = c.Reconcile(pool) && full
 		}
+
 		if full {
 			fmt.Println("    every pool is full")
 			break
 		}
 	}
+
 	known := map[string]bool{}
+
 	for _, pool := range pools {
 		for _, m := range c.owned[pool.Name] {
 			known[m.ID] = true
 		}
+
 		fmt.Printf("  %-5s wanted %d, controller owns %d, provider holds %d\n",
 			pool.Name, pool.Want, len(c.owned[pool.Name]), provider.count(pool.Model))
 	}
+
 	for _, m := range provider.machines {
 		if !known[m.ID] {
 			fmt.Printf("  machine %s (%s) is running and belongs to no pool\n", m.ID, m.Model)
