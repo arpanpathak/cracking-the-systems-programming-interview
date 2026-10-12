@@ -1,0 +1,1157 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>A command-line tool for Windows, macOS, and Linux - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/11-command-line-tool.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="11-a-command-line-tool-for-windows-macos-and-linux"><a class="header" href="#11-a-command-line-tool-for-windows-macos-and-linux">11. A command-line tool for Windows, macOS, and Linux</a></h1>
+<p>Everything we have built so far runs inside the cluster or next to it, on Linux. The
+people who use the cluster sit somewhere else. A researcher submits jobs from a MacBook,
+an operator checks nodes from a Windows laptop, and a build pipeline does both from a
+Linux container. What they all run is a command-line tool, and it is the one piece of a
+GPU platform that has to work on three operating systems.</p>
+<p>In this chapter, we will write that tool. <code>gpuctl</code> is small: it lists the nodes of a
+cluster with their GPUs, reports where it keeps its files, and prints its version. We
+will first decide how a command-line tool should behave so that both people and scripts
+can use it, then write it in Go and in Rust, and then build it for the three systems
+from our Jetson and see where each language makes that easy and where it does not.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what a command line promises: output, messages, and an exit status</li>
+<li>where a tool’s files belong on Linux, macOS, and Windows</li>
+<li>reading the cluster’s nodes with client-go and with kube-rs</li>
+<li>a table for people and JSON for programs, from the same data</li>
+<li>building for three operating systems from one machine with Go</li>
+<li>what stops the same build in Rust, and how projects get around it</li>
+</ul>
+</div>
+
+<h2 id="what-a-command-line-promises"><a class="header" href="#what-a-command-line-promises">What a command line promises</a></h2>
+<p>A command-line tool has two kinds of user. A person reads what it prints. A script runs
+it, captures what it prints, and decides what to do next. A tool that serves both keeps
+three channels apart.</p>
+<ul>
+<li><em>Standard output</em> carries the result and nothing else. A script that runs
+<code>gpuctl nodes -o json</code> and feeds the output to another program must receive only
+JSON, with no progress messages or warnings mixed in.</li>
+<li><em>Standard error</em> carries everything meant for a person: errors, warnings, and help
+text shown after a mistake.</li>
+<li>The <em>exit status</em> is a small number the tool returns to whatever started it. By
+convention 0 means success. A script checks the status before it trusts the output.</li>
+</ul>
+<p><code>gpuctl</code> uses three statuses. 0 is success. 1 means the command was understood and
+failed, for example because the cluster could not be reached. 2 means the command line
+itself was wrong. The distinction lets a script retry a failure of the first kind and
+stop at once on the second, since a mistyped command stays mistyped on the next
+attempt.</p>
+<p>Figure 11.1 shows the tool’s shape.</p>
+<figure>
+<img src="figures/cli-anatomy.svg" alt="The command line gpuctl nodes -o json enters the function run. Run reads the kubeconfig file to find the cluster, asks the API server for the list of nodes, and writes to three places: the result to standard output, messages to standard error, and an exit status of 0, 1 or 2 to the caller.">
+<figcaption><b>Figure 11.1</b> One command through gpuctl: arguments in, and three separate channels out.</figcaption>
+</figure>
+<div class="lld">
+<p>Low-level design: <code>gpuctl</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Prints to standard output</th><th>Fails with</th></tr>
+</thead>
+<tbody>
+<tr><td><code>gpuctl nodes [-o table|json]</code></td><td>one row per node: name, GPUs, architecture, operating system, kubelet version</td><td>1 if the cluster cannot be reached</td></tr>
+<tr><td><code>gpuctl config</code></td><td>the paths of its configuration file and of the kubeconfig</td><td>1 if the home directory is unknown</td></tr>
+<tr><td><code>gpuctl version</code></td><td>the version and the platform</td><td></td></tr>
+<tr><td>anything else</td><td>nothing; the usage text goes to standard error</td><td>2</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>configFile()</code>, <code>kubeconfig()</code></td><td>work out the two paths for the operating system the tool runs on</td></tr>
+<tr><td><code>listNodes()</code></td><td>one list request to the API server, reduced to the fields printed</td></tr>
+<tr><td><code>printNodes(rows, format)</code></td><td>writes a table or JSON</td></tr>
+<tr><td><code>run(args)</code></td><td>chooses the command and returns the exit status</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="where-a-tools-files-live"><a class="header" href="#where-a-tools-files-live">Where a tool’s files live</a></h2>
+<p>A tool that remembers settings needs a place to keep them, and each operating system
+has its own rule for where that is.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>System</th><th>Directory for a user’s settings</th><th>Example for gpuctl</th></tr>
+</thead>
+<tbody>
+<tr><td>Linux</td><td><code>$XDG_CONFIG_HOME</code>, or <code>~/.config</code> if it is unset</td><td><code>/home/ana/.config/gpuctl/config.toml</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support</code></td><td><code>/Users/ana/Library/Application Support/gpuctl/config.toml</code></td></tr>
+<tr><td>Windows</td><td>the folder named by <code>%AppData%</code></td><td><code>C:\Users\ana\AppData\Roaming\gpuctl\config.toml</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Two details in this table catch programs that were written on one system and run on
+another. The directory differs, so a path built by joining the home directory and
+<code>.config</code> is wrong on two of the three. And the separator between the parts of a path
+differs: Windows uses a backslash. Both languages provide a path type that joins parts
+with the right separator, <code>filepath.Join</code> in Go and <code>PathBuf::join</code> in Rust, and a
+portable program builds every path with it and writes no separator of its own.</p>
+<p>Go’s standard library knows the table: <code>os.UserConfigDir</code> returns the right directory
+on each system. Rust’s standard library has no such function, so the Rust version
+writes the three cases out. <code>cfg!(windows)</code> and <code>cfg!(target_os = "macos")</code> are decided
+when the program is compiled, so each build contains only its own case.</p>
+<p class="listing"><b>Listing 11.1</b> The configuration file and the kubeconfig, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
+
+<pre><code class="language-go">// configFile returns the path of gpuctl's own configuration file. The
+// directory is the one each operating system sets aside for a user's
+// settings.
+func configFile() (string, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "gpuctl", "config.toml"), nil
+}
+
+// kubeconfig returns the file that names the cluster and the credentials:
+// the KUBECONFIG environment variable if it is set, and .kube/config in the
+// user's home directory otherwise.
+func kubeconfig() string {
+	return clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
+}
+</code></pre>
+<p class="listing"><b>Listing 11.2</b> The configuration file and the kubeconfig, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Returns the path of gpuctl's own configuration file. The directory is the
+/// one each operating system sets aside for a user's settings.
+fn config_file() -&gt; Option&lt;PathBuf&gt; {
+    let dir = if cfg!(windows) {
+        PathBuf::from(env::var_os("AppData")?)
+    } else if cfg!(target_os = "macos") {
+        env::home_dir()?.join("Library").join("Application Support")
+    } else {
+        match env::var_os("XDG_CONFIG_HOME") {
+            Some(dir) if !dir.is_empty() =&gt; PathBuf::from(dir),
+            _ =&gt; env::home_dir()?.join(".config"),
+        }
+    };
+    Some(dir.join("gpuctl").join("config.toml"))
+}
+
+/// Returns the file that names the cluster and the credentials: the
+/// KUBECONFIG environment variable if it is set, and .kube/config in the
+/// user's home directory otherwise.
+fn kubeconfig() -&gt; Option&lt;PathBuf&gt; {
+    match env::var_os("KUBECONFIG") {
+        Some(path) if !path.is_empty() =&gt; Some(PathBuf::from(path)),
+        _ =&gt; Some(env::home_dir()?.join(".kube").join("config")),
+    }
+}</code></pre>
+<p>The second path is the <em>kubeconfig</em>, the file from which kubectl and every other client
+reads the address of the API server and the user’s credentials. Its location follows
+one rule on all three systems: the <code>KUBECONFIG</code> environment variable if it is set, and
+<code>.kube/config</code> under the home directory otherwise. <code>gpuctl</code> reads the same file, so it
+talks to whichever cluster kubectl talks to. The Go version asks client-go’s loading
+rules for the path. The Rust version applies the rule itself.</p>
+<h2 id="reading-the-nodes"><a class="header" href="#reading-the-nodes">Reading the nodes</a></h2>
+<p><code>gpuctl nodes</code> makes one request, a list of Node objects, which we met in chapter 1,
+and keeps five fields of each: the name, the allocatable <code>nvidia.com/gpu</code> count from
+chapter 5, and the architecture, operating system, and kubelet version that the kubelet
+reports about its machine.</p>
+<p class="listing"><b>Listing 11.3</b> Listing the nodes and keeping five fields, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
+
+<pre><code class="language-go">// NodeInfo is one row of "gpuctl nodes".
+type NodeInfo struct {
+	Name    string `json:"name"`
+	GPUs    int64  `json:"gpus"`
+	Arch    string `json:"arch"`
+	OS      string `json:"os"`
+	Kubelet string `json:"kubelet"`
+}
+
+// listNodes asks the API server for every node and keeps the fields the
+// command prints.
+func listNodes(ctx context.Context) ([]NodeInfo, error) {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]NodeInfo, 0, len(nodes.Items))
+	for _, n := range nodes.Items {
+		gpus := n.Status.Allocatable["nvidia.com/gpu"]
+		rows = append(rows, NodeInfo{
+			Name:    n.Name,
+			GPUs:    gpus.Value(),
+			Arch:    n.Status.NodeInfo.Architecture,
+			OS:      n.Status.NodeInfo.OperatingSystem,
+			Kubelet: n.Status.NodeInfo.KubeletVersion,
+		})
+	}
+	return rows, nil
+}
+</code></pre>
+<p class="listing"><b>Listing 11.4</b> Listing the nodes and keeping five fields, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// One row of "gpuctl nodes".
+#[derive(Serialize)]
+struct NodeInfo {
+    name: String,
+    gpus: i64,
+    arch: String,
+    os: String,
+    kubelet: String,
+}
+
+/// Asks the API server for every node and keeps the fields the command
+/// prints.
+async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
+    let client = Client::try_default().await?;
+    let nodes = Api::&lt;Node&gt;::all(client).list(&amp;ListParams::default()).await?;
+    Ok(nodes
+        .into_iter()
+        .map(|node| {
+            let status = node.status.unwrap_or_default();
+            let info = status.node_info.unwrap_or_default();
+            let gpus = status
+                .allocatable
+                .and_then(|resources| resources.get("nvidia.com/gpu")?.0.parse().ok())
+                .unwrap_or(0);
+            NodeInfo {
+                name: node.metadata.name.unwrap_or_default(),
+                gpus,
+                arch: info.architecture,
+                os: info.operating_system,
+                kubelet: info.kubelet_version,
+            }
+        })
+        .collect())
+}</code></pre>
+<p>The Go version builds its client from the kubeconfig with <code>clientcmd</code>, the package of
+client-go that implements the loading rule. Earlier programs used controller-runtime’s
+<code>GetConfigOrDie</code> for this. A command-line tool wants the error back as a value, so that
+it can print it and choose the exit status. In the Rust version, <code>Client::try_default</code>
+does the same loading and returns a <code>Result</code>.</p>
+<p>Kubernetes stores a resource amount as a <em>quantity</em>, a number with an optional unit
+suffix such as <code>16031232Ki</code>. A GPU count is a plain whole number. The Go version reads
+it with the quantity’s <code>Value</code> method. In <code>k8s-openapi</code> a quantity is a wrapper around
+the string the API server sent, so the Rust version parses that string as an integer,
+and a node with no GPUs, which has no such entry at all, counts as zero.</p>
+<h2 id="one-result-two-forms"><a class="header" href="#one-result-two-forms">One result, two forms</a></h2>
+<p>The rows are printed in one of two forms, chosen by the <code>-o</code> flag.</p>
+<p class="listing"><b>Listing 11.5</b> A table or JSON, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
+
+<pre><code class="language-go">// printNodes writes the rows as a table for a person or as JSON for a program.
+func printNodes(out io.Writer, rows []NodeInfo, format string) error {
+	if format == "json" {
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		return enc.Encode(rows)
+	}
+	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+	for _, r := range rows {
+		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
+	}
+	return table.Flush()
+}
+</code></pre>
+<p class="listing"><b>Listing 11.6</b> A table or JSON, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes the rows as a table for a person or as JSON for a program.
+fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()&gt; {
+    if json {
+        println!("{}", serde_json::to_string_pretty(rows)?);
+        return Ok(());
+    }
+    let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
+    let table: Vec&lt;[String; 5]&gt; = std::iter::once(header)
+        .chain(rows.iter().map(|r| {
+            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+        }))
+        .collect();
+    // Each column is as wide as its longest cell, plus two spaces.
+    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    for row in &amp;table {
+        let line: String = (0..5).map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2)).collect();
+        println!("{}", line.trim_end());
+    }
+    Ok(())
+}</code></pre>
+<p>The table is for reading. Its columns are padded so that they line up, which Go’s
+<code>text/tabwriter</code> does from tab-separated cells and the Rust version does by measuring
+each column’s widest cell.</p>
+<p>The JSON is for programs, and it is part of the tool’s interface in a way the table is
+not. A script that reads <code>gpus</code> from each object keeps working when a later version
+adds a column to the table or changes its spacing. For that reason the field names are
+written out in both versions, as struct tags in Go and as the field names of a
+<code>Serialize</code> struct in Rust, and they would not be renamed lightly.</p>
+<h2 id="commands-and-exit-statuses"><a class="header" href="#commands-and-exit-statuses">Commands and exit statuses</a></h2>
+<p><code>run</code> ties the pieces together. It looks at the first argument, carries out the
+command, and returns the status. Every path through it ends in one of the three
+statuses, and every message for a person goes to standard error.</p>
+<p class="listing"><b>Listing 11.7</b> Choosing the command and returning the status, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
+
+<pre><code class="language-go">// Exit statuses. A script that calls gpuctl tells a failed command from a
+// mistyped one by the status alone.
+const (
+	exitOK      = 0
+	exitFailure = 1
+	exitUsage   = 2
+)
+
+const usage = `usage:
+  gpuctl nodes [-o table|json]
+  gpuctl config
+  gpuctl version
+`
+</code></pre>
+<p class="listing"><b>Listing 11.8</b> Choosing the command and returning the status, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The exit status for a command line that is wrong. A script that calls
+/// gpuctl tells a failed command from a mistyped one by the status alone:
+/// success is 0 and failure is 1, which `ExitCode` already names.
+const EXIT_USAGE: u8 = 2;
+
+const USAGE: &amp;str = "usage:
+  gpuctl nodes [-o table|json]
+  gpuctl config
+  gpuctl version
+";</code></pre>
+<p class="listing"><b>Listing 11.9</b> The run function and main, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
+
+<pre><code class="language-go">// run carries out one command line and returns the exit status. It takes its
+// arguments and its two output streams as parameters, so a test can call it
+// without starting a process.
+func run(args []string, out, errOut io.Writer) int {
+	if len(args) == 0 {
+		fmt.Fprint(errOut, usage)
+		return exitUsage
+	}
+	switch args[0] {
+	case "version":
+		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
+	case "config":
+		file, err := configFile()
+		if err != nil {
+			fmt.Fprintln(errOut, "gpuctl:", err)
+			return exitFailure
+		}
+		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
+	case "nodes":
+		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		format := flags.String("o", "table", "output format: table or json")
+		if err := flags.Parse(args[1:]); err != nil || (*format != "table" &amp;&amp; *format != "json") {
+			fmt.Fprint(errOut, usage)
+			return exitUsage
+		}
+		rows, err := listNodes(context.Background())
+		if err == nil {
+			err = printNodes(out, rows, *format)
+		}
+		if err != nil {
+			fmt.Fprintln(errOut, "gpuctl:", err)
+			return exitFailure
+		}
+	default:
+		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+		return exitUsage
+	}
+	return exitOK
+}
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+</code></pre>
+<p class="listing"><b>Listing 11.10</b> The run function and main, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Carries out one command line and returns the exit status.
+async fn run(args: &amp;[String]) -&gt; ExitCode {
+    let args: Vec&lt;&amp;str&gt; = args.iter().map(String::as_str).collect();
+    match args.as_slice() {
+        ["version"] =&gt; println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
+        ["config"] =&gt; {
+            let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
+                eprintln!("gpuctl: cannot find the home directory");
+                return ExitCode::FAILURE;
+            };
+            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+        }
+        ["nodes"] | ["nodes", "-o", "table" | "json"] =&gt; {
+            let json = args.last() == Some(&amp;"json");
+            let rows = match list_nodes().await {
+                Ok(rows) =&gt; rows,
+                Err(e) =&gt; {
+                    eprintln!("gpuctl: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            if let Err(e) = print_nodes(&amp;rows, json) {
+                eprintln!("gpuctl: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+        [] | ["nodes", ..] =&gt; {
+            eprint!("{USAGE}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+        [other, ..] =&gt; {
+            eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+#[tokio::main]
+async fn main() -&gt; ExitCode {
+    let args: Vec&lt;String&gt; = env::args().skip(1).collect();
+    run(&amp;args).await
+}</code></pre>
+<p>The Go version parses the <code>-o</code> flag with the standard <code>flag</code> package and tells it to
+stay silent, so that <code>run</code> prints one consistent usage text for every kind of mistake.
+The Rust version matches the whole argument list against patterns. The pattern
+<code>["nodes", "-o", "table" | "json"]</code> accepts exactly the two valid forms, and any other
+list that starts with <code>nodes</code> falls through to the usage arm.</p>
+<p>Here is the tool on our cluster. Both versions print exactly this:</p>
+<pre><code class="language-console">$ gpuctl nodes
+NAME                   GPUS  ARCH   OS     KUBELET
+gpu-lab-control-plane  1     arm64  linux  v1.37.0
+$ gpuctl nodes -o json
+[
+  {
+    "name": "gpu-lab-control-plane",
+    "gpus": 1,
+    "arch": "arm64",
+    "os": "linux",
+    "kubelet": "v1.37.0"
+  }
+]
+$ gpuctl config
+config file  /home/jetson/.config/gpuctl/config.toml
+kubeconfig   /home/jetson/.kube/config
+$ gpuctl version
+gpuctl 0.1.0 linux/arm64
+$ gpuctl pods
+gpuctl: unknown command "pods"
+usage:
+  gpuctl nodes [-o table|json]
+  gpuctl config
+  gpuctl version
+$ echo $?
+2
+</code></pre>
+<p>The table and the JSON hold the same row: our one node, with its one GPU, on <code>arm64</code>.
+The unknown command prints its message and the usage text on standard error and exits
+with 2. When the cluster cannot be reached, each version prints the error its client
+library produced and exits with 1. The Go version prints:</p>
+<pre><code class="language-console">$ KUBECONFIG=/nonexistent gpuctl nodes
+gpuctl: invalid configuration: no configuration has been provided, try setting KUBERNETES_MASTER environment variable
+$ echo $?
+1
+</code></pre>
+<p>Animation 11.1 shows three of these runs, each with its two streams and its status.</p>
+<figure class="anim">
+<video class="motion" src="figures/cli-channels.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A command line above two boxes, standard output and standard error, and a box for the exit status. gpuctl nodes -o json writes JSON to standard output, nothing to standard error, and exits with 0. gpuctl pods writes nothing to standard output, an unknown-command message and the usage text to standard error, and exits with 2. gpuctl nodes with a kubeconfig that does not exist writes an error to standard error and exits with 1." data-chapters="[[0.0, &quot;success&quot;], [7.62, &quot;wrong command&quot;], [20.22, &quot;no cluster&quot;]]"><img src="figures/cli-channels.gif" alt="A command line above two boxes, standard output and standard error, and a box for the exit status. gpuctl nodes -o json writes JSON to standard output, nothing to standard error, and exits with 0. gpuctl pods writes nothing to standard output, an unknown-command message and the usage text to standard error, and exits with 2. gpuctl nodes with a kubeconfig that does not exist writes an error to standard error and exits with 1."></video>
+<figcaption><b>Animation 11.1</b> Three runs of <code>gpuctl</code>: a success, a wrong command line, and a failure.</figcaption>
+</figure>
+<h2 id="building-for-three-systems"><a class="header" href="#building-for-three-systems">Building for three systems</a></h2>
+<p>A program that runs on our Jetson is a file of ARM machine code in the format Linux
+loads, called ELF. A Windows laptop with an Intel processor needs different machine
+code in a different format, PE, and a MacBook needs ARM code in a third, Mach-O.
+Producing a program for a system other than the one the compiler runs on is called
+<em>cross-compilation</em>. Figure 11.2 shows what we are after.</p>
+<figure>
+<img src="figures/cross-build.svg" alt="One source tree on the Jetson, a Linux arm64 machine, is built into four files: an ELF executable for Linux on arm64, an ELF executable for Linux on amd64, a Mach-O executable for macOS on arm64, and a PE executable for Windows on amd64.">
+<figcaption><b>Figure 11.2</b> One source, four binaries. Each operating system loads its own file format, and each processor runs its own machine code.</figcaption>
+</figure>
+<h3 id="in-go"><a class="header" href="#in-go">In Go</a></h3>
+<p>The Go compiler and linker are written in Go and contain the code generators for every
+platform Go supports. Two environment variables select the target: <code>GOOS</code> names the
+operating system and <code>GOARCH</code> the processor. On our Jetson:</p>
+<pre><code class="language-console">$ GOOS=windows GOARCH=amd64 go build -o gpuctl-windows-amd64 ./gpuctl
+$ GOOS=darwin  GOARCH=arm64 go build -o gpuctl-darwin-arm64  ./gpuctl
+$ GOOS=linux   GOARCH=amd64 go build -o gpuctl-linux-amd64   ./gpuctl
+$ file gpuctl-*
+gpuctl-darwin-arm64:  Mach-O 64-bit arm64 executable, flags:&lt;|DYLDLINK|PIE&gt;
+gpuctl-linux-amd64:   ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked
+gpuctl-windows-amd64: PE32+ executable (console) x86-64, for MS Windows
+</code></pre>
+<p>Three commands on an ARM Linux board produced programs for Windows, macOS, and Intel
+Linux. Each file is between 37 and 39 MB and needs nothing else installed: the Go runtime and
+all of client-go are inside it. This works because <code>gpuctl</code> and everything it imports
+are written in Go. A Go program that calls C code through cgo loses this property and
+needs a C compiler for each target.</p>
+<h3 id="in-rust"><a class="header" href="#in-rust">In Rust</a></h3>
+<p>Rust selects a target with a <em>target triple</em>, such as <code>x86_64-unknown-linux-gnu</code> or
+<code>aarch64-apple-darwin</code>, and <code>rustup target add</code> installs the standard library for one.
+Our Jetson has these installed:</p>
+<pre><code class="language-console">$ rustup target list --installed
+aarch64-apple-darwin
+aarch64-unknown-linux-gnu
+x86_64-unknown-linux-gnu
+</code></pre>
+<p>The Rust compiler can generate code for all three. The build stops for another reason:</p>
+<pre><code class="language-console">$ cargo check -p gpuctl --target x86_64-unknown-linux-gnu
+warning: ring@0.17.14: Compiler family detection failed due to error: ToolNotFound:
+failed to find tool "x86_64-linux-gnu-gcc": No such file or directory (os error 2)
+error: failed to run custom build command for `ring v0.17.14`
+</code></pre>
+<p><code>ring</code> is the cryptography library that kube-rs uses, through its TLS library, for its
+encrypted connection to the API server. Parts of it are written in C and assembly, and
+its build compiles them with a C compiler for the target. Our board has a C compiler
+for ARM Linux and none for Intel Linux or for macOS. The same would happen at the last
+step of any Rust build for another system: Rust calls the target system’s linker to
+produce the final file, and that linker has to be installed.</p>
+<p>So cross-compiling Rust means supplying a C toolchain for each target. Projects handle
+this in one of two ways. Most build each target on a machine that runs it: a pipeline
+with one Linux, one macOS, and one Windows runner, each running a plain <code>cargo build --release</code> and uploading its binary. Others install cross toolchains, either one by one
+or through a tool such as <code>cross</code>, which runs the build inside a container image that
+has the right toolchain for the target.</p>
+<p>A Rust program with no C in its dependencies gets further. <code>fleethealth</code> from chapter 4
+uses only the standard library, and <code>cargo check -p fleethealth --target aarch64-apple-darwin</code> passes on our Jetson, which shows that the compiler itself has no
+difficulty with the target. The difficulty belongs to one dependency with C in it, the
+same condition under which Go’s cross-compilation stops working.</p>
+<div class="callout">
+<p><strong>Two names for one processor.</strong> <code>gpuctl version</code> prints <code>linux/arm64</code> from both
+versions, and the Rust version has to translate to do so. Go and Kubernetes call the
+64-bit ARM architecture <code>arm64</code> and the 64-bit Intel one <code>amd64</code>. Rust and the Linux
+kernel call them <code>aarch64</code> and <code>x86_64</code>. Tools that download a binary for the current
+machine have to map between the two spellings, and a release that names its files by
+one convention is found by scripts that expect the other only if someone wrote that
+mapping down.</p>
+</div>
+
+<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<p class="listing"><b>Listing 11.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
+
+<pre><code class="language-go">// Command gpuctl is a small command-line client for a GPU cluster, written to
+// build and behave the same on Linux, macOS, and Windows.
+//
+//	gpuctl nodes [-o table|json]   list the cluster's nodes and their GPUs
+//	gpuctl config                  print where gpuctl looks for its files
+//	gpuctl version                 print the version and the platform
+//
+// Data goes to standard output and messages to standard error. The exit
+// status is 0 on success, 1 when a command fails, and 2 when the command line
+// is wrong.
+//
+// Run it from code/go with:
+//
+//	go run ./gpuctl nodes
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"runtime"
+	"text/tabwriter"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+)
+
+// version is the tool's version, printed by "gpuctl version".
+const version = "0.1.0"
+
+// Exit statuses. A script that calls gpuctl tells a failed command from a
+// mistyped one by the status alone.
+const (
+	exitOK      = 0
+	exitFailure = 1
+	exitUsage   = 2
+)
+
+const usage = `usage:
+  gpuctl nodes [-o table|json]
+  gpuctl config
+  gpuctl version
+`
+
+
+// configFile returns the path of gpuctl's own configuration file. The
+// directory is the one each operating system sets aside for a user's
+// settings.
+func configFile() (string, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "gpuctl", "config.toml"), nil
+}
+
+// kubeconfig returns the file that names the cluster and the credentials:
+// the KUBECONFIG environment variable if it is set, and .kube/config in the
+// user's home directory otherwise.
+func kubeconfig() string {
+	return clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
+}
+
+
+// NodeInfo is one row of "gpuctl nodes".
+type NodeInfo struct {
+	Name    string `json:"name"`
+	GPUs    int64  `json:"gpus"`
+	Arch    string `json:"arch"`
+	OS      string `json:"os"`
+	Kubelet string `json:"kubelet"`
+}
+
+// listNodes asks the API server for every node and keeps the fields the
+// command prints.
+func listNodes(ctx context.Context) ([]NodeInfo, error) {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]NodeInfo, 0, len(nodes.Items))
+	for _, n := range nodes.Items {
+		gpus := n.Status.Allocatable["nvidia.com/gpu"]
+		rows = append(rows, NodeInfo{
+			Name:    n.Name,
+			GPUs:    gpus.Value(),
+			Arch:    n.Status.NodeInfo.Architecture,
+			OS:      n.Status.NodeInfo.OperatingSystem,
+			Kubelet: n.Status.NodeInfo.KubeletVersion,
+		})
+	}
+	return rows, nil
+}
+
+
+// printNodes writes the rows as a table for a person or as JSON for a program.
+func printNodes(out io.Writer, rows []NodeInfo, format string) error {
+	if format == "json" {
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		return enc.Encode(rows)
+	}
+	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+	for _, r := range rows {
+		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
+	}
+	return table.Flush()
+}
+
+
+// run carries out one command line and returns the exit status. It takes its
+// arguments and its two output streams as parameters, so a test can call it
+// without starting a process.
+func run(args []string, out, errOut io.Writer) int {
+	if len(args) == 0 {
+		fmt.Fprint(errOut, usage)
+		return exitUsage
+	}
+	switch args[0] {
+	case "version":
+		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
+	case "config":
+		file, err := configFile()
+		if err != nil {
+			fmt.Fprintln(errOut, "gpuctl:", err)
+			return exitFailure
+		}
+		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
+	case "nodes":
+		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		format := flags.String("o", "table", "output format: table or json")
+		if err := flags.Parse(args[1:]); err != nil || (*format != "table" &amp;&amp; *format != "json") {
+			fmt.Fprint(errOut, usage)
+			return exitUsage
+		}
+		rows, err := listNodes(context.Background())
+		if err == nil {
+			err = printNodes(out, rows, *format)
+		}
+		if err != nil {
+			fmt.Fprintln(errOut, "gpuctl:", err)
+			return exitFailure
+		}
+	default:
+		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+		return exitUsage
+	}
+	return exitOK
+}
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+</code></pre>
+<p class="listing"><b>Listing 11.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! A small command-line client for a GPU cluster, written to build and behave
+//! the same on Linux, macOS, and Windows.
+//!
+//! ```text
+//! gpuctl nodes [-o table|json]   list the cluster's nodes and their GPUs
+//! gpuctl config                  print where gpuctl looks for its files
+//! gpuctl version                 print the version and the platform
+//! ```
+//!
+//! Data goes to standard output and messages to standard error. The exit
+//! status is 0 on success, 1 when a command fails, and 2 when the command line
+//! is wrong.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p gpuctl -- nodes
+//! ```
+
+use std::env;
+use std::path::PathBuf;
+use std::process::ExitCode;
+
+use k8s_openapi::api::core::v1::Node;
+use kube::{Api, Client, api::ListParams};
+use serde::Serialize;
+
+/// The exit status for a command line that is wrong. A script that calls
+/// gpuctl tells a failed command from a mistyped one by the status alone:
+/// success is 0 and failure is 1, which `ExitCode` already names.
+const EXIT_USAGE: u8 = 2;
+
+const USAGE: &amp;str = "usage:
+  gpuctl nodes [-o table|json]
+  gpuctl config
+  gpuctl version
+";
+
+/// Returns the path of gpuctl's own configuration file. The directory is the
+/// one each operating system sets aside for a user's settings.
+fn config_file() -&gt; Option&lt;PathBuf&gt; {
+    let dir = if cfg!(windows) {
+        PathBuf::from(env::var_os("AppData")?)
+    } else if cfg!(target_os = "macos") {
+        env::home_dir()?.join("Library").join("Application Support")
+    } else {
+        match env::var_os("XDG_CONFIG_HOME") {
+            Some(dir) if !dir.is_empty() =&gt; PathBuf::from(dir),
+            _ =&gt; env::home_dir()?.join(".config"),
+        }
+    };
+    Some(dir.join("gpuctl").join("config.toml"))
+}
+
+/// Returns the file that names the cluster and the credentials: the
+/// KUBECONFIG environment variable if it is set, and .kube/config in the
+/// user's home directory otherwise.
+fn kubeconfig() -&gt; Option&lt;PathBuf&gt; {
+    match env::var_os("KUBECONFIG") {
+        Some(path) if !path.is_empty() =&gt; Some(PathBuf::from(path)),
+        _ =&gt; Some(env::home_dir()?.join(".kube").join("config")),
+    }
+}
+
+/// One row of "gpuctl nodes".
+#[derive(Serialize)]
+struct NodeInfo {
+    name: String,
+    gpus: i64,
+    arch: String,
+    os: String,
+    kubelet: String,
+}
+
+/// Asks the API server for every node and keeps the fields the command
+/// prints.
+async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
+    let client = Client::try_default().await?;
+    let nodes = Api::&lt;Node&gt;::all(client).list(&amp;ListParams::default()).await?;
+    Ok(nodes
+        .into_iter()
+        .map(|node| {
+            let status = node.status.unwrap_or_default();
+            let info = status.node_info.unwrap_or_default();
+            let gpus = status
+                .allocatable
+                .and_then(|resources| resources.get("nvidia.com/gpu")?.0.parse().ok())
+                .unwrap_or(0);
+            NodeInfo {
+                name: node.metadata.name.unwrap_or_default(),
+                gpus,
+                arch: info.architecture,
+                os: info.operating_system,
+                kubelet: info.kubelet_version,
+            }
+        })
+        .collect())
+}
+
+/// Writes the rows as a table for a person or as JSON for a program.
+fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()&gt; {
+    if json {
+        println!("{}", serde_json::to_string_pretty(rows)?);
+        return Ok(());
+    }
+    let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
+    let table: Vec&lt;[String; 5]&gt; = std::iter::once(header)
+        .chain(rows.iter().map(|r| {
+            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+        }))
+        .collect();
+    // Each column is as wide as its longest cell, plus two spaces.
+    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    for row in &amp;table {
+        let line: String = (0..5).map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2)).collect();
+        println!("{}", line.trim_end());
+    }
+    Ok(())
+}
+
+/// Returns the platform in the form Go prints it, such as `linux/arm64`.
+/// Rust calls the architectures `aarch64` and `x86_64`.
+fn platform() -&gt; String {
+    let arch = match env::consts::ARCH {
+        "aarch64" =&gt; "arm64",
+        "x86_64" =&gt; "amd64",
+        other =&gt; other,
+    };
+    format!("{}/{arch}", env::consts::OS)
+}
+
+/// Carries out one command line and returns the exit status.
+async fn run(args: &amp;[String]) -&gt; ExitCode {
+    let args: Vec&lt;&amp;str&gt; = args.iter().map(String::as_str).collect();
+    match args.as_slice() {
+        ["version"] =&gt; println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
+        ["config"] =&gt; {
+            let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
+                eprintln!("gpuctl: cannot find the home directory");
+                return ExitCode::FAILURE;
+            };
+            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+        }
+        ["nodes"] | ["nodes", "-o", "table" | "json"] =&gt; {
+            let json = args.last() == Some(&amp;"json");
+            let rows = match list_nodes().await {
+                Ok(rows) =&gt; rows,
+                Err(e) =&gt; {
+                    eprintln!("gpuctl: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            if let Err(e) = print_nodes(&amp;rows, json) {
+                eprintln!("gpuctl: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+        [] | ["nodes", ..] =&gt; {
+            eprint!("{USAGE}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+        [other, ..] =&gt; {
+            eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+#[tokio::main]
+async fn main() -&gt; ExitCode {
+    let args: Vec&lt;String&gt; = env::args().skip(1).collect();
+    run(&amp;args).await
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A command-line tool writes its result to standard output, its messages to standard
+error, and reports success or the kind of failure in its exit status.</li>
+<li>A user’s settings live in a different directory on Linux, macOS, and Windows, and
+paths are joined with the path type of the language, which supplies the separator.</li>
+<li>The kubeconfig is found by one rule on every system, and a tool that follows it talks
+to the same cluster as kubectl.</li>
+<li>A table serves a reader, and JSON with stable field names serves scripts.</li>
+<li>Go cross-compiles a pure Go program with two environment variables. A Rust program
+cross-compiles when a C toolchain and linker for the target are present, and projects
+usually build each target on its own operating system.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Go, <code>os.UserConfigDir</code>: <a href="https://pkg.go.dev/os#UserConfigDir">https://pkg.go.dev/os#UserConfigDir</a></li>
+<li>Go, Installing Go from source, the list of <code>GOOS</code> and <code>GOARCH</code> values:
+<a href="https://go.dev/doc/install/source#environment">https://go.dev/doc/install/source#environment</a></li>
+<li>The rustc book, Platform support:
+<a href="https://doc.rust-lang.org/rustc/platform-support.html">https://doc.rust-lang.org/rustc/platform-support.html</a></li>
+<li>The Cargo book, <code>cargo build --target</code>:
+<a href="https://doc.rust-lang.org/cargo/commands/cargo-build.html">https://doc.rust-lang.org/cargo/commands/cargo-build.html</a></li>
+<li>Kubernetes, Organizing cluster access using kubeconfig files:
+<a href="https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/">https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/</a></li>
+<li>XDG Base Directory Specification:
+<a href="https://specifications.freedesktop.org/basedir-spec/latest/">https://specifications.freedesktop.org/basedir-spec/latest/</a></li>
+<li><code>cross</code>, zero-setup cross compilation for Rust: <a href="https://github.com/cross-rs/cross">https://github.com/cross-rs/cross</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="10-artifact-store.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="appendix-a-jetson-gpu.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="10-artifact-store.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="appendix-a-jetson-gpu.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

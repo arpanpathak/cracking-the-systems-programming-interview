@@ -1,0 +1,1422 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>A content-addressed artifact store - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/10-artifact-store.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="10-a-content-addressed-artifact-store"><a class="header" href="#10-a-content-addressed-artifact-store">10. A content-addressed artifact store</a></h1>
+<p>Before a job can run on a machine, the machine needs two large things: the container
+image with the job’s programs, and usually a model’s weights. A Thor or a Spark has room
+for a model of a hundred gigabytes, and a training run produces a new version of such a
+model every few hours. Something has to hold all of these versions, deliver them to the
+machines, and do so without copying a hundred gigabytes every time one layer of a model
+changes.</p>
+<p>In this chapter, we will build the storage scheme that container registries and model
+stores share. We will first see what is wrong with naming a file by a name someone
+chose, and what changes when a file is named by its own contents. Then we will write
+<code>cas</code>, in Go and in Rust, a store that keeps artifacts as chunks named by their hashes,
+and use it to push two versions of a model, pull one to a machine that already has the
+other, detect a corrupted chunk and repair it, and reclaim space.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>names that people choose, and what they fail to promise</li>
+<li>a digest: a name computed from the contents</li>
+<li>the same scheme in the containerd on our own node</li>
+<li>chunks and manifests: an artifact as a list of digests</li>
+<li>pushing a second version that shares most of its chunks with the first</li>
+<li>pulling only what a machine lacks, and verifying every byte that arrives</li>
+<li>garbage collection: removing what no tag leads to</li>
+</ul>
+</div>
+
+<h2 id="what-a-chosen-name-does-not-promise"><a class="header" href="#what-a-chosen-name-does-not-promise">What a chosen name does not promise</a></h2>
+<p>Suppose we store model weights in files named by hand: <code>llm-v1.bin</code>, <code>llm-v2.bin</code>, and
+<code>llm-latest.bin</code>. A machine that is told to load <code>llm-latest.bin</code> and has a file of that
+name faces three questions that the name cannot answer.</p>
+<ul>
+<li><em>Is it the right version?</em> <code>latest</code> pointed at one model yesterday and points at
+another today. Two machines in the same training job can hold different files under
+the same name, and the job’s results depend on which machine a worker landed on.</li>
+<li><em>Is it intact?</em> A file that was cut short by a full disk or changed by a failing
+memory chip still has its name.</li>
+<li><em>Do I already have it?</em> If <code>llm-v2.bin</code> is <code>llm-v1.bin</code> with one layer retrained, the
+two files are almost the same bytes, and nothing in their names says so. The machine
+downloads all of it.</li>
+</ul>
+<p>All three come from one cause: the name and the contents are unrelated, so knowing one
+tells us nothing about the other.</p>
+<h2 id="a-name-computed-from-the-contents"><a class="header" href="#a-name-computed-from-the-contents">A name computed from the contents</a></h2>
+<p>A <em>cryptographic hash function</em> takes any sequence of bytes and computes a short,
+fixed-size value from it. SHA-256, the one we will use, produces 256 bits, written as 64
+hexadecimal digits. Two properties make it useful here. The same bytes always give the
+same value. And although different inputs that give the same value must exist, nobody
+knows how to find two, so in practice a value identifies one particular sequence of
+bytes. The value is called a <em>digest</em>.</p>
+<p>A <em>content-addressed store</em> uses the digest as the name. To store a blob of bytes, we
+compute its digest and file the blob under it. To fetch a blob, we ask for a digest.
+This one change answers all three questions.</p>
+<ul>
+<li>A digest names exactly one sequence of bytes, for ever. Two machines that load the
+same digest load the same model.</li>
+<li>Anyone who receives a blob can compute its digest and compare it with the name they
+asked for. A blob that was cut short or altered does not match.</li>
+<li>Two blobs with the same contents have the same name, so storing the second one is a
+lookup that finds the first. A machine that is asked for a digest it holds has nothing
+to download.</li>
+</ul>
+<h3 id="the-same-scheme-on-our-node"><a class="header" href="#the-same-scheme-on-our-node">The same scheme on our node</a></h3>
+<p>The container images on our cluster are stored this way already. containerd keeps the
+parts of every image in a directory of files named by their SHA-256 digests. On our
+kind node:</p>
+<pre><code class="language-console">$ docker exec gpu-lab-control-plane sh -c \
+    'ls /var/lib/containerd/io.containerd.content.v1.content/blobs/sha256 | head -3'
+0286df745178d6f77c036891bed8ddc93a624c1fa9c054d134674a096ee882e6
+069d1e267530c2e681fbd4d481553b4d05f98082b18fafac86e7f12996dddd0b
+0771a8a05619f4bb6f4c8484f942f509b21a04ebe56ee26d17a3006e250bfd46
+$ docker exec gpu-lab-control-plane sh -c \
+    'ls /var/lib/containerd/io.containerd.content.v1.content/blobs/sha256 | wc -l'
+168
+</code></pre>
+<p>The node holds 168 blobs. The images we built in earlier chapters appear with the first
+digits of their digests when we list them:</p>
+<pre><code class="language-console">$ docker exec gpu-lab-control-plane crictl images --digests | grep -E 'IMAGE|gpu-'
+IMAGE                            TAG   DIGEST          IMAGE ID        SIZE
+docker.io/library/gpu-check      1     3714eb7096522   07ee9035514b4   73.3MB
+docker.io/library/gpu-sharing    1     413391f612a31   4212abdefc4b5   74.3MB
+</code></pre>
+<p><code>gpu-check</code> and <code>gpu-sharing</code> were built from the same base image, so most of their
+73 MB are the same blobs, stored once. A pod’s spec can name an image by its digest,
+<code>gpu-check@sha256:...</code>, and the kubelet then runs exactly those bytes on every node.</p>
+<h2 id="chunks-and-manifests"><a class="header" href="#chunks-and-manifests">Chunks and manifests</a></h2>
+<p>Naming a whole 100 GB file by one digest answers the first two questions and does little
+for the third: change one byte and the digest changes, and the whole file is a new blob.
+To share the unchanged parts between versions, we store a large artifact in pieces.</p>
+<ul>
+<li>The artifact is cut into <em>chunks</em> of a fixed size. Each chunk is a blob, stored under
+its own digest.</li>
+<li>A <em>manifest</em> is a small text file that lists the chunks’ digests in order. It is a
+blob too, and its digest names the whole artifact: a different chunk anywhere gives a
+different line in the manifest and so a different manifest digest.</li>
+<li>A <em>tag</em> is a name a person chose, such as <code>llm:v2</code>, that points at a manifest’s
+digest. Tags are the only part of the store that can change.</li>
+</ul>
+<p>Figure 10.1 shows two versions of a model stored this way.</p>
+<figure>
+<img src="figures/artifact-chunks.svg" alt="Two tags, llm:v1 and llm:v2, each point at a manifest. The manifest of v1 lists eight chunks. The manifest of v2 lists eight chunks as well: its first six are the same six blobs that v1 lists, and its last two are new. The store holds ten chunks and two manifests for two artifacts of eight chunks each.">
+<figcaption><b>Figure 10.1</b> Two versions of a model. The manifests differ, and six of the eight chunks are stored once and listed by both.</figcaption>
+</figure>
+<p>Version 2 is version 1 with its last quarter retrained. Its first six chunks have the
+same bytes as version 1’s, therefore the same digests, therefore they are the same
+blobs. Pushing version 2 stores two new chunks and one new manifest.</p>
+<p>Container images have had this shape for years. An image is a manifest that lists
+<em>layers</em>, each layer is a blob named by its digest, and two images built from the same
+base share the base’s layers. The format is standardised as the OCI image
+specification, and registries that store images this way are now also used to store
+model weights as <em>OCI artifacts</em>.</p>
+<div class="lld">
+<p>Low-level design: <code>cas</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Digest</code></td><td><code>sha256:</code> and 64 hex digits</td><td>computed from the bytes it names</td></tr>
+<tr><td><code>Store</code></td><td>blobs by digest, and tags by name</td><td>a blob’s bytes hash to its key; only tags are ever reassigned</td></tr>
+<tr><td>manifest (a blob)</td><td>one line per chunk: digest and size</td><td>lists the chunks in order</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Put(bytes)</code></td><td>stores a blob under its digest, once</td></tr>
+<tr><td><code>Get(digest)</code></td><td>returns a blob after hashing it again and comparing</td></tr>
+<tr><td><code>Push(tag, artifact)</code></td><td>chunks the artifact, stores chunks and manifest, points the tag at the manifest</td></tr>
+<tr><td><code>Pull(remote, tag)</code></td><td>copies the manifest and whichever of its chunks are missing here</td></tr>
+<tr><td><code>Read(tag)</code></td><td>reassembles an artifact, verifying each chunk</td></tr>
+<tr><td><code>Collect()</code></td><td>removes every blob that no tag leads to</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="building-cas"><a class="header" href="#building-cas">Building <code>cas</code></a></h2>
+<p>Our store keeps its blobs in memory, in a map from digest to bytes, so that the program
+has no files to clean up. A store on disk is the same map with one file per blob, in a
+directory layout like the one containerd showed us.</p>
+<h3 id="blobs-by-digest"><a class="header" href="#blobs-by-digest">Blobs by digest</a></h3>
+<p><code>Put</code> computes the digest, and stores the bytes only if that digest is not already a
+key. <code>Get</code> does more than a lookup: it hashes the bytes again and compares the result
+with the name it was asked for. Every read is therefore a check of the data.</p>
+<p class="listing"><b>Listing 10.1</b> Digests, the store, and verified reads, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
+
+<pre><code class="language-go">// Digest names a blob: "sha256:" followed by the hash of its bytes in hex.
+type Digest string
+
+// digestOf computes the name of some bytes.
+func digestOf(data []byte) Digest {
+	sum := sha256.Sum256(data)
+	return Digest("sha256:" + hex.EncodeToString(sum[:]))
+}
+
+// short returns the first twelve hex digits, for printing.
+func (d Digest) short() string { return string(d)[:19] }
+
+// Store holds blobs by digest and tags by name.
+type Store struct {
+	// blobs maps each digest to the bytes it names.
+	blobs map[Digest][]byte
+	// tags maps a name people use, such as "llm:v1", to a manifest's digest.
+	tags map[string]Digest
+}
+
+// NewStore returns an empty store.
+func NewStore() *Store {
+	return &amp;Store{blobs: map[Digest][]byte{}, tags: map[string]Digest{}}
+}
+
+// Put stores a blob and returns its digest and whether it was new. Bytes the
+// store already holds are not stored a second time.
+func (s *Store) Put(data []byte) (Digest, bool) {
+	d := digestOf(data)
+	if _, held := s.blobs[d]; held {
+		return d, false
+	}
+	s.blobs[d] = data
+	return d, true
+}
+
+// ErrCorrupt is returned when a blob's bytes no longer match its name.
+var ErrCorrupt = errors.New("contents do not match the digest")
+
+// Get returns a blob after checking that its bytes still hash to its name.
+func (s *Store) Get(d Digest) ([]byte, error) {
+	data, held := s.blobs[d]
+	if !held {
+		return nil, fmt.Errorf("%s: not found", d.short())
+	}
+	if digestOf(data) != d {
+		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
+	}
+	return data, nil
+}
+</code></pre>
+<p class="listing"><b>Listing 10.2</b> Digests, the store, and verified reads, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Names a blob: "sha256:" followed by the hash of its bytes in hex.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Digest(String);
+
+impl Digest {
+    /// Computes the name of some bytes.
+    fn of(data: &amp;[u8]) -&gt; Self {
+        let mut name = String::from("sha256:");
+        for byte in Sha256::digest(data) {
+            write!(name, "{byte:02x}").expect("writing to a String");
+        }
+        Digest(name)
+    }
+
+    /// Returns the first twelve hex digits, for printing.
+    fn short(&amp;self) -&gt; &amp;str {
+        &amp;self.0[..19]
+    }
+}
+
+/// The ways reading from a store can fail.
+#[derive(Debug)]
+enum StoreError {
+    /// The store holds no blob of this name.
+    NotFound(String),
+    /// A blob's bytes no longer match its name.
+    Corrupt(String),
+    /// A chunk of an artifact could not be read.
+    Chunk(usize, Box&lt;StoreError&gt;),
+}
+
+impl std::fmt::Display for StoreError {
+    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+        match self {
+            StoreError::NotFound(d) =&gt; write!(f, "{d}: not found"),
+            StoreError::Corrupt(d) =&gt; write!(f, "{d}: contents do not match the digest"),
+            StoreError::Chunk(i, e) =&gt; write!(f, "chunk {i}: {e}"),
+        }
+    }
+}
+
+/// Holds blobs by digest and tags by name.
+#[derive(Default)]
+struct Store {
+    /// Maps each digest to the bytes it names.
+    blobs: BTreeMap&lt;Digest, Vec&lt;u8&gt;&gt;,
+    /// Maps a name people use, such as "llm:v1", to a manifest's digest.
+    tags: BTreeMap&lt;&amp;'static str, Digest&gt;,
+}
+
+impl Store {
+    /// Stores a blob and returns its digest and whether it was new. Bytes the
+    /// store already holds are not stored a second time.
+    fn put(&amp;mut self, data: &amp;[u8]) -&gt; (Digest, bool) {
+        let d = Digest::of(data);
+        if self.blobs.contains_key(&amp;d) {
+            return (d, false);
+        }
+        self.blobs.insert(d.clone(), data.to_vec());
+        (d, true)
+    }
+
+    /// Returns a blob after checking that its bytes still hash to its name.
+    fn get(&amp;self, d: &amp;Digest) -&gt; Result&lt;&amp;[u8], StoreError&gt; {
+        let data = self
+            .blobs
+            .get(d)
+            .ok_or_else(|| StoreError::NotFound(d.short().to_owned()))?;
+        if Digest::of(data) != *d {
+            return Err(StoreError::Corrupt(d.short().to_owned()));
+        }
+        Ok(data)
+    }
+}</code></pre>
+<p>The Go standard library includes SHA-256 in <code>crypto/sha256</code>. Rust’s standard library has
+no hash functions of this kind, and the Rust version uses the <code>sha2</code> crate. The two
+programs print the same digests, which is itself a check: both computed the same
+function over the same bytes.</p>
+<h3 id="pushing-an-artifact"><a class="header" href="#pushing-an-artifact">Pushing an artifact</a></h3>
+<p><code>Push</code> walks the artifact in steps of the chunk size, stores each chunk with <code>Put</code>, and
+writes one line of the manifest for it. It counts how many chunks <code>Put</code> reported as new,
+which is the amount of data a push to a remote registry would have to send. The
+manifest is then stored like any other blob, and the tag is pointed at it.</p>
+<p class="listing"><b>Listing 10.3</b> Chunking an artifact and writing its manifest, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
+
+<pre><code class="language-go">// chunkSize is the size of the pieces an artifact is cut into.
+const chunkSize = 8 * 1024
+
+// Push cuts an artifact into chunks, stores each chunk, stores a manifest
+// that lists the chunks' digests in order, and points the tag at the
+// manifest. It returns how many chunks were new to the store.
+func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
+	var lines strings.Builder
+	for start := 0; start &lt; len(artifact); start += chunkSize {
+		chunk := artifact[start:min(start+chunkSize, len(artifact))]
+		d, fresh := s.Put(chunk)
+		if fresh {
+			added++
+		}
+		chunks++
+		fmt.Fprintf(&amp;lines, "%s %d\n", d, len(chunk))
+	}
+	manifest, _ = s.Put([]byte(lines.String()))
+	s.tags[tag] = manifest
+	return manifest, chunks, added
+}
+
+// chunksOf reads a manifest and returns the digests it lists.
+func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
+	data, err := s.Get(manifest)
+	if err != nil {
+		return nil, err
+	}
+	var out []Digest
+	for line := range strings.Lines(string(data)) {
+		digest, _, _ := strings.Cut(line, " ")
+		out = append(out, Digest(digest))
+	}
+	return out, nil
+}
+</code></pre>
+<p class="listing"><b>Listing 10.4</b> Chunking an artifact and writing its manifest, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Store {
+    /// Cuts an artifact into chunks, stores each chunk, stores a manifest that
+    /// lists the chunks' digests in order, and points the tag at the manifest.
+    /// Returns the manifest's digest, the number of chunks, and how many were
+    /// new to the store.
+    fn push(&amp;mut self, tag: &amp;'static str, artifact: &amp;[u8]) -&gt; (Digest, usize, usize) {
+        let mut lines = String::new();
+        let (mut chunks, mut added) = (0, 0);
+        for chunk in artifact.chunks(CHUNK_SIZE) {
+            let (d, fresh) = self.put(chunk);
+            added += usize::from(fresh);
+            chunks += 1;
+            writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
+        }
+        let (manifest, _) = self.put(lines.as_bytes());
+        self.tags.insert(tag, manifest.clone());
+        (manifest, chunks, added)
+    }
+
+    /// Reads a manifest and returns the digests it lists.
+    fn chunks_of(&amp;self, manifest: &amp;Digest) -&gt; Result&lt;Vec&lt;Digest&gt;, StoreError&gt; {
+        let text = String::from_utf8_lossy(self.get(manifest)?);
+        Ok(text
+            .lines()
+            .filter_map(|line| line.split(' ').next())
+            .map(|d| Digest(d.to_owned()))
+            .collect())
+    }
+}</code></pre>
+<p>Our chunks are 8 KiB so that the example stays small. Real stores use chunks of a few
+megabytes: large enough that the list of digests stays short, small enough that a
+change touches few of them.</p>
+<h3 id="pulling-and-reading"><a class="header" href="#pulling-and-reading">Pulling and reading</a></h3>
+<p><code>Pull</code> is how a machine gets an artifact. It reads the manifest from the remote store,
+and for each chunk it lists, fetches the chunk only if the local store has no blob of
+that name. <code>Read</code> reassembles the artifact from local chunks, and since it goes through
+<code>Get</code>, a damaged chunk stops the read with an error that says which chunk it was.</p>
+<p class="listing"><b>Listing 10.5</b> Fetching what is missing, and reading with verification, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
+
+<pre><code class="language-go">// Pull copies a tagged artifact from a remote store into this one, fetching
+// only the chunks this store does not hold. It returns the number of chunks
+// and bytes fetched.
+func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
+	manifest := remote.tags[tag]
+	chunks, err := remote.chunksOf(manifest)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, d := range chunks {
+		if _, held := s.blobs[d]; held {
+			continue
+		}
+		data, err := remote.Get(d)
+		if err != nil {
+			return fetched, bytes, err
+		}
+		s.blobs[d] = data
+		fetched++
+		bytes += len(data)
+	}
+	data, _ := remote.Get(manifest)
+	s.blobs[manifest] = data
+	s.tags[tag] = manifest
+	return fetched, bytes, nil
+}
+
+// Read reassembles a tagged artifact, verifying every chunk on the way.
+func (s *Store) Read(tag string) ([]byte, error) {
+	chunks, err := s.chunksOf(s.tags[tag])
+	if err != nil {
+		return nil, err
+	}
+	var artifact []byte
+	for i, d := range chunks {
+		data, err := s.Get(d)
+		if err != nil {
+			return nil, fmt.Errorf("chunk %d: %w", i, err)
+		}
+		artifact = append(artifact, data...)
+	}
+	return artifact, nil
+}
+</code></pre>
+<p class="listing"><b>Listing 10.6</b> Fetching what is missing, and reading with verification, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Store {
+    /// Copies a tagged artifact from a remote store into this one, fetching
+    /// only the chunks this store does not hold. Returns the number of chunks
+    /// and bytes fetched.
+    fn pull(&amp;mut self, remote: &amp;Store, tag: &amp;'static str) -&gt; Result&lt;(usize, usize), StoreError&gt; {
+        let manifest = &amp;remote.tags[tag];
+        let (mut fetched, mut bytes) = (0, 0);
+        for d in remote.chunks_of(manifest)? {
+            if self.blobs.contains_key(&amp;d) {
+                continue;
+            }
+            let data = remote.get(&amp;d)?;
+            fetched += 1;
+            bytes += data.len();
+            self.blobs.insert(d, data.to_vec());
+        }
+        self.blobs
+            .insert(manifest.clone(), remote.get(manifest)?.to_vec());
+        self.tags.insert(tag, manifest.clone());
+        Ok((fetched, bytes))
+    }
+
+    /// Reassembles a tagged artifact, verifying every chunk on the way.
+    fn read(&amp;self, tag: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, StoreError&gt; {
+        let mut artifact = Vec::new();
+        for (i, d) in self.chunks_of(&amp;self.tags[tag])?.iter().enumerate() {
+            let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
+            artifact.extend_from_slice(data);
+        }
+        Ok(artifact)
+    }
+}</code></pre>
+<h3 id="reclaiming-space"><a class="header" href="#reclaiming-space">Reclaiming space</a></h3>
+<p>A content-addressed store grows with every push, and blobs cannot be deleted one
+artifact at a time, because a chunk may be listed by several manifests. The store
+removes blobs by <em>garbage collection</em> in two phases. The <em>mark</em> phase starts from the
+tags, which are the only names people use, and notes every manifest they point at and
+every chunk those manifests list. The <em>sweep</em> phase removes every blob that was not
+noted.</p>
+<p class="listing"><b>Listing 10.7</b> Mark from the tags, then sweep, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
+
+<pre><code class="language-go">// Collect removes every blob that no tag leads to. It first marks the
+// manifests the tags name and the chunks those manifests list, then sweeps
+// the rest. It returns the number of blobs and bytes removed.
+func (s *Store) Collect() (removed, bytes int) {
+	live := map[Digest]bool{}
+	for _, manifest := range s.tags {
+		live[manifest] = true
+		chunks, _ := s.chunksOf(manifest)
+		for _, d := range chunks {
+			live[d] = true
+		}
+	}
+	for d, data := range s.blobs {
+		if !live[d] {
+			removed++
+			bytes += len(data)
+			delete(s.blobs, d)
+		}
+	}
+	return removed, bytes
+}
+</code></pre>
+<p class="listing"><b>Listing 10.8</b> Mark from the tags, then sweep, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Store {
+    /// Removes every blob that no tag leads to. It first marks the manifests
+    /// the tags name and the chunks those manifests list, then sweeps the
+    /// rest. Returns the number of blobs and bytes removed.
+    fn collect(&amp;mut self) -&gt; (usize, usize) {
+        let mut live = BTreeSet::new();
+        for manifest in self.tags.values() {
+            live.extend(self.chunks_of(manifest).unwrap_or_default());
+            live.insert(manifest.clone());
+        }
+        let (before, bytes_before) = self.size();
+        self.blobs.retain(|d, _| live.contains(d));
+        let (after, bytes_after) = self.size();
+        (before - after, bytes_before - bytes_after)
+    }
+}</code></pre>
+<h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<p>The model’s weights are 64 KiB from a fixed pseudo-random sequence, which stand in for
+gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
+<p class="listing"><b>Listing 10.9</b> Two versions, a pull, a damaged chunk, and a collection, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
+
+<pre><code class="language-go">func main() {
+	// Version 1 is 64 KiB. Version 2 is a fine-tuned copy: the first three
+	// quarters are unchanged and the last quarter is new.
+	v1 := weights(64*1024, 1)
+	v2 := append(append([]byte{}, v1[:48*1024]...), weights(16*1024, 2)...)
+
+	registry := NewStore()
+	m1, chunks, added := registry.Push("llm:v1", v1)
+	fmt.Printf("push llm:v1: %d chunks, %d new; manifest %s\n", chunks, added, m1.short())
+	m2, chunks, added := registry.Push("llm:v2", v2)
+	fmt.Printf("push llm:v2: %d chunks, %d new; manifest %s\n", chunks, added, m2.short())
+	blobs, bytes := registry.size()
+	fmt.Printf("the registry holds %d blobs and %d bytes for %d bytes of artifacts\n", blobs, bytes, len(v1)+len(v2))
+
+	node := NewStore()
+	fetched, n, _ := node.Pull(registry, "llm:v1")
+	fmt.Printf("thor-1 pulls llm:v1: %d chunks fetched, %d bytes\n", fetched, n)
+	fetched, n, _ = node.Pull(registry, "llm:v2")
+	fmt.Printf("thor-1 pulls llm:v2: %d chunks fetched, %d bytes\n", fetched, n)
+
+	fmt.Println("one bit flips in a chunk stored on thor-1:")
+	chunkList, _ := node.chunksOf(node.tags["llm:v1"])
+	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
+	damaged[100] ^= 1
+	node.blobs[chunkList[3]] = damaged
+	if _, err := node.Read("llm:v1"); err != nil {
+		fmt.Printf("  read llm:v1: %v\n", err)
+	}
+	// The bad chunk is dropped and pulled again, by name, from the registry.
+	delete(node.blobs, chunkList[3])
+	fetched, n, _ = node.Pull(registry, "llm:v1")
+	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+	if got, err := node.Read("llm:v1"); err == nil {
+		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
+	}
+
+	fmt.Println("the tag llm:v1 is deleted from the registry:")
+	delete(registry.tags, "llm:v1")
+	removed, n := registry.Collect()
+	blobs, bytes = registry.size()
+	fmt.Printf("  collected %d blobs, %d bytes; %d blobs and %d bytes remain\n", removed, n, blobs, bytes)
+}
+</code></pre>
+<p class="listing"><b>Listing 10.10</b> Two versions, a pull, a damaged chunk, and a collection, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn main() -&gt; Result&lt;(), StoreError&gt; {
+    // Version 1 is 64 KiB. Version 2 is a fine-tuned copy: the first three
+    // quarters are unchanged and the last quarter is new.
+    let v1 = weights(64 * 1024, 1);
+    let v2 = [&amp;v1[..48 * 1024], &amp;weights(16 * 1024, 2)].concat();
+
+    let mut registry = Store::default();
+    let (m1, chunks, added) = registry.push("llm:v1", &amp;v1);
+    println!(
+        "push llm:v1: {chunks} chunks, {added} new; manifest {}",
+        m1.short()
+    );
+    let (m2, chunks, added) = registry.push("llm:v2", &amp;v2);
+    println!(
+        "push llm:v2: {chunks} chunks, {added} new; manifest {}",
+        m2.short()
+    );
+    let (blobs, bytes) = registry.size();
+    println!(
+        "the registry holds {blobs} blobs and {bytes} bytes for {} bytes of artifacts",
+        v1.len() + v2.len()
+    );
+
+    let mut node = Store::default();
+    let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
+    println!("thor-1 pulls llm:v1: {fetched} chunks fetched, {n} bytes");
+    let (fetched, n) = node.pull(&amp;registry, "llm:v2")?;
+    println!("thor-1 pulls llm:v2: {fetched} chunks fetched, {n} bytes");
+
+    println!("one bit flips in a chunk stored on thor-1:");
+    let fourth = node.chunks_of(&amp;node.tags["llm:v1"])?[3].clone();
+    node.blobs.get_mut(&amp;fourth).expect("the chunk was pulled")[100] ^= 1;
+    if let Err(e) = node.read("llm:v1") {
+        println!("  read llm:v1: {e}");
+    }
+    // The bad chunk is dropped and pulled again, by name, from the registry.
+    node.blobs.remove(&amp;fourth);
+    let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
+    println!("  thor-1 drops the chunk and pulls llm:v1 again: {fetched} chunk fetched, {n} bytes");
+    let got = node.read("llm:v1")?;
+    println!(
+        "  read llm:v1: {} bytes, digest {}",
+        got.len(),
+        Digest::of(&amp;got).short()
+    );
+
+    println!("the tag llm:v1 is deleted from the registry:");
+    registry.tags.remove("llm:v1");
+    let (removed, n) = registry.collect();
+    let (blobs, bytes) = registry.size();
+    println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+    Ok(())
+}</code></pre>
+<pre><code class="language-console">$ go run ./cas
+push llm:v1: 8 chunks, 8 new; manifest sha256:eea2b9042521
+push llm:v2: 8 chunks, 2 new; manifest sha256:7df8dd2bef7e
+the registry holds 12 blobs and 83152 bytes for 131072 bytes of artifacts
+thor-1 pulls llm:v1: 8 chunks fetched, 65536 bytes
+thor-1 pulls llm:v2: 2 chunks fetched, 16384 bytes
+one bit flips in a chunk stored on thor-1:
+  read llm:v1: chunk 3: sha256:156fd5154cde: contents do not match the digest
+  thor-1 drops the chunk and pulls llm:v1 again: 1 chunk fetched, 8192 bytes
+  read llm:v1: 65536 bytes, digest sha256:a6a98d7f309f
+the tag llm:v1 is deleted from the registry:
+  collected 3 blobs, 17000 bytes; 9 blobs and 66152 bytes remain
+</code></pre>
+<p>Pushing <code>llm:v1</code> stores eight chunks. Pushing <code>llm:v2</code> cuts the new artifact into eight
+chunks as well and finds six of them already in the store, so it adds two. The registry
+holds 12 blobs, ten chunks and two manifests, in 83,152 bytes, for two artifacts that
+total 131,072 bytes.</p>
+<p><code>thor-1</code> starts empty and fetches all eight chunks of version 1. For version 2 it
+fetches two chunks, 16,384 bytes, a quarter of the artifact. On a 100 GB model with the
+same proportion changed, that is 25 GB where a store of whole files would send 100, and
+at the 3.125 GB per second of one 25 GbE lane it is 8 seconds where the whole file
+takes 32.</p>
+<p>Then one bit of one chunk on <code>thor-1</code> flips. The next read of <code>llm:v1</code> stops at chunk 3
+and names the digest whose contents no longer match. The repair is as local as the
+damage: the machine drops that one blob and pulls again, the pull finds seven chunks
+present and one missing, and 8,192 bytes come from the registry. The digest printed for
+the reassembled artifact, <code>sha256:a6a98d7f309f</code>, is the digest of the whole 64 KiB of
+version 1.</p>
+<p>Finally the tag <code>llm:v1</code> is deleted. Collection marks the manifest of version 2 and its
+eight chunks, and sweeps three blobs: the manifest of version 1 and the two chunks that
+only version 1 listed. The six shared chunks stay, because version 2 still leads to
+them.</p>
+<p>Animation 10.1 plays the run, with the registry’s chunks on the left and those on <code>thor-1</code>
+on the right.</p>
+<figure class="anim">
+<video class="motion" src="figures/cas-chunks.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two grids of ten chunk slots, one for the registry and one for thor-1. Pushing version 1 fills chunks 0 to 7 in the registry, and pushing version 2 adds only chunks 8 and 9. thor-1 pulls version 1 and receives eight chunks, then pulls version 2 and receives two. Chunk 3 on thor-1 turns red when one bit flips; it is dropped and fetched again. When the tag for version 1 is deleted, the registry sweeps chunks 6 and 7 and keeps the six shared chunks." data-chapters="[[0.0, &quot;push&quot;], [10.5, &quot;pull&quot;], [21.54, &quot;damage&quot;], [34.62, &quot;collect&quot;]]"><img src="figures/cas-chunks.gif" alt="Two grids of ten chunk slots, one for the registry and one for thor-1. Pushing version 1 fills chunks 0 to 7 in the registry, and pushing version 2 adds only chunks 8 and 9. thor-1 pulls version 1 and receives eight chunks, then pulls version 2 and receives two. Chunk 3 on thor-1 turns red when one bit flips; it is dropped and fetched again. When the tag for version 1 is deleted, the registry sweeps chunks 6 and 7 and keeps the six shared chunks."></video>
+<figcaption><b>Animation 10.1</b> Two pushes, two pulls, a repair of one chunk, and a collection.</figcaption>
+</figure>
+<div class="callout warning">
+<p><strong>Collection and pushes at the same time.</strong> A push stores chunks first and the manifest
+and tag last. A collection that runs between those steps sees chunks that no tag leads
+to yet and removes them, and the push then completes with a manifest that lists missing
+chunks. Real registries prevent this either by stopping pushes during a collection or
+by sweeping only blobs older than some age, long enough for any push in progress to
+finish.</p>
+</div>
+
+<h2 id="what-the-control-plane-gains"><a class="header" href="#what-the-control-plane-gains">What the control plane gains</a></h2>
+<p>Content addressing is useful to every part of the system built in the earlier chapters.</p>
+<p>A <code>GpuJob</code> that names its image and its model by digest runs the same bytes on every
+worker of a gang, which chapter 7’s synchronous step depends on. The checkpoint store of
+chapter 4 can be one of these: a checkpoint is an artifact, its chunks that did not
+change since the last checkpoint are not written again, and the epoch check sits on the
+tag, which is the only thing that is overwritten. And a machine that returns from a
+reimage, the last rung of chapter 4’s ladder, refills its local store by pulling, and
+the verification on every chunk doubles as a test of its new disk.</p>
+<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<p class="listing"><b>Listing 10.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
+
+<pre><code class="language-go">// Command cas builds a small content-addressed store for model artifacts and
+// runs it through the situations such a store exists for.
+//
+// A blob is stored under the SHA-256 digest of its bytes. An artifact is cut
+// into chunks, each chunk is a blob, and a manifest lists the chunks. The
+// program pushes two versions of a model that differ in their last quarter,
+// pulls the second to a machine that has the first, corrupts one stored
+// chunk, and removes what nothing refers to any more.
+//
+// Run it from code/go with:
+//
+//	go run ./cas
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"strings"
+)
+
+// Digest names a blob: "sha256:" followed by the hash of its bytes in hex.
+type Digest string
+
+// digestOf computes the name of some bytes.
+func digestOf(data []byte) Digest {
+	sum := sha256.Sum256(data)
+	return Digest("sha256:" + hex.EncodeToString(sum[:]))
+}
+
+// short returns the first twelve hex digits, for printing.
+func (d Digest) short() string { return string(d)[:19] }
+
+// Store holds blobs by digest and tags by name.
+type Store struct {
+	// blobs maps each digest to the bytes it names.
+	blobs map[Digest][]byte
+	// tags maps a name people use, such as "llm:v1", to a manifest's digest.
+	tags map[string]Digest
+}
+
+// NewStore returns an empty store.
+func NewStore() *Store {
+	return &amp;Store{blobs: map[Digest][]byte{}, tags: map[string]Digest{}}
+}
+
+// Put stores a blob and returns its digest and whether it was new. Bytes the
+// store already holds are not stored a second time.
+func (s *Store) Put(data []byte) (Digest, bool) {
+	d := digestOf(data)
+	if _, held := s.blobs[d]; held {
+		return d, false
+	}
+	s.blobs[d] = data
+	return d, true
+}
+
+// ErrCorrupt is returned when a blob's bytes no longer match its name.
+var ErrCorrupt = errors.New("contents do not match the digest")
+
+// Get returns a blob after checking that its bytes still hash to its name.
+func (s *Store) Get(d Digest) ([]byte, error) {
+	data, held := s.blobs[d]
+	if !held {
+		return nil, fmt.Errorf("%s: not found", d.short())
+	}
+	if digestOf(data) != d {
+		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
+	}
+	return data, nil
+}
+
+
+// chunkSize is the size of the pieces an artifact is cut into.
+const chunkSize = 8 * 1024
+
+// Push cuts an artifact into chunks, stores each chunk, stores a manifest
+// that lists the chunks' digests in order, and points the tag at the
+// manifest. It returns how many chunks were new to the store.
+func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
+	var lines strings.Builder
+	for start := 0; start &lt; len(artifact); start += chunkSize {
+		chunk := artifact[start:min(start+chunkSize, len(artifact))]
+		d, fresh := s.Put(chunk)
+		if fresh {
+			added++
+		}
+		chunks++
+		fmt.Fprintf(&amp;lines, "%s %d\n", d, len(chunk))
+	}
+	manifest, _ = s.Put([]byte(lines.String()))
+	s.tags[tag] = manifest
+	return manifest, chunks, added
+}
+
+// chunksOf reads a manifest and returns the digests it lists.
+func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
+	data, err := s.Get(manifest)
+	if err != nil {
+		return nil, err
+	}
+	var out []Digest
+	for line := range strings.Lines(string(data)) {
+		digest, _, _ := strings.Cut(line, " ")
+		out = append(out, Digest(digest))
+	}
+	return out, nil
+}
+
+
+// Pull copies a tagged artifact from a remote store into this one, fetching
+// only the chunks this store does not hold. It returns the number of chunks
+// and bytes fetched.
+func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
+	manifest := remote.tags[tag]
+	chunks, err := remote.chunksOf(manifest)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, d := range chunks {
+		if _, held := s.blobs[d]; held {
+			continue
+		}
+		data, err := remote.Get(d)
+		if err != nil {
+			return fetched, bytes, err
+		}
+		s.blobs[d] = data
+		fetched++
+		bytes += len(data)
+	}
+	data, _ := remote.Get(manifest)
+	s.blobs[manifest] = data
+	s.tags[tag] = manifest
+	return fetched, bytes, nil
+}
+
+// Read reassembles a tagged artifact, verifying every chunk on the way.
+func (s *Store) Read(tag string) ([]byte, error) {
+	chunks, err := s.chunksOf(s.tags[tag])
+	if err != nil {
+		return nil, err
+	}
+	var artifact []byte
+	for i, d := range chunks {
+		data, err := s.Get(d)
+		if err != nil {
+			return nil, fmt.Errorf("chunk %d: %w", i, err)
+		}
+		artifact = append(artifact, data...)
+	}
+	return artifact, nil
+}
+
+
+// Collect removes every blob that no tag leads to. It first marks the
+// manifests the tags name and the chunks those manifests list, then sweeps
+// the rest. It returns the number of blobs and bytes removed.
+func (s *Store) Collect() (removed, bytes int) {
+	live := map[Digest]bool{}
+	for _, manifest := range s.tags {
+		live[manifest] = true
+		chunks, _ := s.chunksOf(manifest)
+		for _, d := range chunks {
+			live[d] = true
+		}
+	}
+	for d, data := range s.blobs {
+		if !live[d] {
+			removed++
+			bytes += len(data)
+			delete(s.blobs, d)
+		}
+	}
+	return removed, bytes
+}
+
+
+// size returns the number of blobs in a store and their total size.
+func (s *Store) size() (blobs, bytes int) {
+	for _, data := range s.blobs {
+		bytes += len(data)
+	}
+	return len(s.blobs), bytes
+}
+
+// weights returns n bytes that stand for a model's weights. The bytes come
+// from a fixed sequence, so every run and both languages produce the same.
+func weights(n int, seed uint32) []byte {
+	out := make([]byte, n)
+	x := seed
+	for i := range out {
+		x = x*1664525 + 1013904223
+		out[i] = byte(x &gt;&gt; 24)
+	}
+	return out
+}
+
+func main() {
+	// Version 1 is 64 KiB. Version 2 is a fine-tuned copy: the first three
+	// quarters are unchanged and the last quarter is new.
+	v1 := weights(64*1024, 1)
+	v2 := append(append([]byte{}, v1[:48*1024]...), weights(16*1024, 2)...)
+
+	registry := NewStore()
+	m1, chunks, added := registry.Push("llm:v1", v1)
+	fmt.Printf("push llm:v1: %d chunks, %d new; manifest %s\n", chunks, added, m1.short())
+	m2, chunks, added := registry.Push("llm:v2", v2)
+	fmt.Printf("push llm:v2: %d chunks, %d new; manifest %s\n", chunks, added, m2.short())
+	blobs, bytes := registry.size()
+	fmt.Printf("the registry holds %d blobs and %d bytes for %d bytes of artifacts\n", blobs, bytes, len(v1)+len(v2))
+
+	node := NewStore()
+	fetched, n, _ := node.Pull(registry, "llm:v1")
+	fmt.Printf("thor-1 pulls llm:v1: %d chunks fetched, %d bytes\n", fetched, n)
+	fetched, n, _ = node.Pull(registry, "llm:v2")
+	fmt.Printf("thor-1 pulls llm:v2: %d chunks fetched, %d bytes\n", fetched, n)
+
+	fmt.Println("one bit flips in a chunk stored on thor-1:")
+	chunkList, _ := node.chunksOf(node.tags["llm:v1"])
+	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
+	damaged[100] ^= 1
+	node.blobs[chunkList[3]] = damaged
+	if _, err := node.Read("llm:v1"); err != nil {
+		fmt.Printf("  read llm:v1: %v\n", err)
+	}
+	// The bad chunk is dropped and pulled again, by name, from the registry.
+	delete(node.blobs, chunkList[3])
+	fetched, n, _ = node.Pull(registry, "llm:v1")
+	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+	if got, err := node.Read("llm:v1"); err == nil {
+		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
+	}
+
+	fmt.Println("the tag llm:v1 is deleted from the registry:")
+	delete(registry.tags, "llm:v1")
+	removed, n := registry.Collect()
+	blobs, bytes = registry.size()
+	fmt.Printf("  collected %d blobs, %d bytes; %d blobs and %d bytes remain\n", removed, n, blobs, bytes)
+}
+</code></pre>
+<p class="listing"><b>Listing 10.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Builds a small content-addressed store for model artifacts and runs it
+//! through the situations such a store exists for.
+//!
+//! A blob is stored under the SHA-256 digest of its bytes. An artifact is cut
+//! into chunks, each chunk is a blob, and a manifest lists the chunks. The
+//! program pushes two versions of a model that differ in their last quarter,
+//! pulls the second to a machine that has the first, corrupts one stored
+//! chunk, and removes what nothing refers to any more.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p cas
+//! ```
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
+
+use sha2::{Digest as _, Sha256};
+
+/// Names a blob: "sha256:" followed by the hash of its bytes in hex.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Digest(String);
+
+impl Digest {
+    /// Computes the name of some bytes.
+    fn of(data: &amp;[u8]) -&gt; Self {
+        let mut name = String::from("sha256:");
+        for byte in Sha256::digest(data) {
+            write!(name, "{byte:02x}").expect("writing to a String");
+        }
+        Digest(name)
+    }
+
+    /// Returns the first twelve hex digits, for printing.
+    fn short(&amp;self) -&gt; &amp;str {
+        &amp;self.0[..19]
+    }
+}
+
+/// The ways reading from a store can fail.
+#[derive(Debug)]
+enum StoreError {
+    /// The store holds no blob of this name.
+    NotFound(String),
+    /// A blob's bytes no longer match its name.
+    Corrupt(String),
+    /// A chunk of an artifact could not be read.
+    Chunk(usize, Box&lt;StoreError&gt;),
+}
+
+impl std::fmt::Display for StoreError {
+    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+        match self {
+            StoreError::NotFound(d) =&gt; write!(f, "{d}: not found"),
+            StoreError::Corrupt(d) =&gt; write!(f, "{d}: contents do not match the digest"),
+            StoreError::Chunk(i, e) =&gt; write!(f, "chunk {i}: {e}"),
+        }
+    }
+}
+
+/// Holds blobs by digest and tags by name.
+#[derive(Default)]
+struct Store {
+    /// Maps each digest to the bytes it names.
+    blobs: BTreeMap&lt;Digest, Vec&lt;u8&gt;&gt;,
+    /// Maps a name people use, such as "llm:v1", to a manifest's digest.
+    tags: BTreeMap&lt;&amp;'static str, Digest&gt;,
+}
+
+impl Store {
+    /// Stores a blob and returns its digest and whether it was new. Bytes the
+    /// store already holds are not stored a second time.
+    fn put(&amp;mut self, data: &amp;[u8]) -&gt; (Digest, bool) {
+        let d = Digest::of(data);
+        if self.blobs.contains_key(&amp;d) {
+            return (d, false);
+        }
+        self.blobs.insert(d.clone(), data.to_vec());
+        (d, true)
+    }
+
+    /// Returns a blob after checking that its bytes still hash to its name.
+    fn get(&amp;self, d: &amp;Digest) -&gt; Result&lt;&amp;[u8], StoreError&gt; {
+        let data = self
+            .blobs
+            .get(d)
+            .ok_or_else(|| StoreError::NotFound(d.short().to_owned()))?;
+        if Digest::of(data) != *d {
+            return Err(StoreError::Corrupt(d.short().to_owned()));
+        }
+        Ok(data)
+    }
+}
+
+impl Store {
+    /// Cuts an artifact into chunks, stores each chunk, stores a manifest that
+    /// lists the chunks' digests in order, and points the tag at the manifest.
+    /// Returns the manifest's digest, the number of chunks, and how many were
+    /// new to the store.
+    fn push(&amp;mut self, tag: &amp;'static str, artifact: &amp;[u8]) -&gt; (Digest, usize, usize) {
+        let mut lines = String::new();
+        let (mut chunks, mut added) = (0, 0);
+        for chunk in artifact.chunks(CHUNK_SIZE) {
+            let (d, fresh) = self.put(chunk);
+            added += usize::from(fresh);
+            chunks += 1;
+            writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
+        }
+        let (manifest, _) = self.put(lines.as_bytes());
+        self.tags.insert(tag, manifest.clone());
+        (manifest, chunks, added)
+    }
+
+    /// Reads a manifest and returns the digests it lists.
+    fn chunks_of(&amp;self, manifest: &amp;Digest) -&gt; Result&lt;Vec&lt;Digest&gt;, StoreError&gt; {
+        let text = String::from_utf8_lossy(self.get(manifest)?);
+        Ok(text
+            .lines()
+            .filter_map(|line| line.split(' ').next())
+            .map(|d| Digest(d.to_owned()))
+            .collect())
+    }
+}
+
+impl Store {
+    /// Copies a tagged artifact from a remote store into this one, fetching
+    /// only the chunks this store does not hold. Returns the number of chunks
+    /// and bytes fetched.
+    fn pull(&amp;mut self, remote: &amp;Store, tag: &amp;'static str) -&gt; Result&lt;(usize, usize), StoreError&gt; {
+        let manifest = &amp;remote.tags[tag];
+        let (mut fetched, mut bytes) = (0, 0);
+        for d in remote.chunks_of(manifest)? {
+            if self.blobs.contains_key(&amp;d) {
+                continue;
+            }
+            let data = remote.get(&amp;d)?;
+            fetched += 1;
+            bytes += data.len();
+            self.blobs.insert(d, data.to_vec());
+        }
+        self.blobs
+            .insert(manifest.clone(), remote.get(manifest)?.to_vec());
+        self.tags.insert(tag, manifest.clone());
+        Ok((fetched, bytes))
+    }
+
+    /// Reassembles a tagged artifact, verifying every chunk on the way.
+    fn read(&amp;self, tag: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, StoreError&gt; {
+        let mut artifact = Vec::new();
+        for (i, d) in self.chunks_of(&amp;self.tags[tag])?.iter().enumerate() {
+            let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
+            artifact.extend_from_slice(data);
+        }
+        Ok(artifact)
+    }
+}
+
+impl Store {
+    /// Removes every blob that no tag leads to. It first marks the manifests
+    /// the tags name and the chunks those manifests list, then sweeps the
+    /// rest. Returns the number of blobs and bytes removed.
+    fn collect(&amp;mut self) -&gt; (usize, usize) {
+        let mut live = BTreeSet::new();
+        for manifest in self.tags.values() {
+            live.extend(self.chunks_of(manifest).unwrap_or_default());
+            live.insert(manifest.clone());
+        }
+        let (before, bytes_before) = self.size();
+        self.blobs.retain(|d, _| live.contains(d));
+        let (after, bytes_after) = self.size();
+        (before - after, bytes_before - bytes_after)
+    }
+}
+
+impl Store {
+    /// Returns the number of blobs in the store and their total size.
+    fn size(&amp;self) -&gt; (usize, usize) {
+        (self.blobs.len(), self.blobs.values().map(Vec::len).sum())
+    }
+}
+
+/// The size of the pieces an artifact is cut into.
+const CHUNK_SIZE: usize = 8 * 1024;
+
+/// Returns n bytes that stand for a model's weights. The bytes come from a
+/// fixed sequence, so every run and both languages produce the same.
+fn weights(n: usize, seed: u32) -&gt; Vec&lt;u8&gt; {
+    let mut x = seed;
+    (0..n)
+        .map(|_| {
+            x = x.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            (x &gt;&gt; 24) as u8
+        })
+        .collect()
+}
+
+fn main() -&gt; Result&lt;(), StoreError&gt; {
+    // Version 1 is 64 KiB. Version 2 is a fine-tuned copy: the first three
+    // quarters are unchanged and the last quarter is new.
+    let v1 = weights(64 * 1024, 1);
+    let v2 = [&amp;v1[..48 * 1024], &amp;weights(16 * 1024, 2)].concat();
+
+    let mut registry = Store::default();
+    let (m1, chunks, added) = registry.push("llm:v1", &amp;v1);
+    println!(
+        "push llm:v1: {chunks} chunks, {added} new; manifest {}",
+        m1.short()
+    );
+    let (m2, chunks, added) = registry.push("llm:v2", &amp;v2);
+    println!(
+        "push llm:v2: {chunks} chunks, {added} new; manifest {}",
+        m2.short()
+    );
+    let (blobs, bytes) = registry.size();
+    println!(
+        "the registry holds {blobs} blobs and {bytes} bytes for {} bytes of artifacts",
+        v1.len() + v2.len()
+    );
+
+    let mut node = Store::default();
+    let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
+    println!("thor-1 pulls llm:v1: {fetched} chunks fetched, {n} bytes");
+    let (fetched, n) = node.pull(&amp;registry, "llm:v2")?;
+    println!("thor-1 pulls llm:v2: {fetched} chunks fetched, {n} bytes");
+
+    println!("one bit flips in a chunk stored on thor-1:");
+    let fourth = node.chunks_of(&amp;node.tags["llm:v1"])?[3].clone();
+    node.blobs.get_mut(&amp;fourth).expect("the chunk was pulled")[100] ^= 1;
+    if let Err(e) = node.read("llm:v1") {
+        println!("  read llm:v1: {e}");
+    }
+    // The bad chunk is dropped and pulled again, by name, from the registry.
+    node.blobs.remove(&amp;fourth);
+    let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
+    println!("  thor-1 drops the chunk and pulls llm:v1 again: {fetched} chunk fetched, {n} bytes");
+    let got = node.read("llm:v1")?;
+    println!(
+        "  read llm:v1: {} bytes, digest {}",
+        got.len(),
+        Digest::of(&amp;got).short()
+    );
+
+    println!("the tag llm:v1 is deleted from the registry:");
+    registry.tags.remove("llm:v1");
+    let (removed, n) = registry.collect();
+    let (blobs, bytes) = registry.size();
+    println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A name that a person chooses says nothing about the bytes behind it. A digest is
+computed from the bytes, so it identifies them, lets any reader verify them, and makes
+identical data one blob.</li>
+<li>containerd stores container images as blobs named by SHA-256 digest, and an image can
+be run by digest.</li>
+<li>A large artifact is stored as chunks and a manifest that lists their digests. Versions
+that share data share chunks.</li>
+<li>A pull fetches only the chunks a machine lacks, and every read verifies what it
+returns.</li>
+<li>Space is reclaimed by marking everything the tags lead to and sweeping the rest.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Open Container Initiative, Image Format Specification:
+<a href="https://github.com/opencontainers/image-spec/blob/main/spec.md">https://github.com/opencontainers/image-spec/blob/main/spec.md</a></li>
+<li>Open Container Initiative, Distribution Specification:
+<a href="https://github.com/opencontainers/distribution-spec/blob/main/spec.md">https://github.com/opencontainers/distribution-spec/blob/main/spec.md</a></li>
+<li>containerd, Content flow:
+<a href="https://github.com/containerd/containerd/blob/main/docs/content-flow.md">https://github.com/containerd/containerd/blob/main/docs/content-flow.md</a></li>
+<li>Kubernetes, Images:
+<a href="https://kubernetes.io/docs/concepts/containers/images/">https://kubernetes.io/docs/concepts/containers/images/</a></li>
+<li>NIST, FIPS 180-4, Secure Hash Standard:
+<a href="https://csrc.nist.gov/pubs/fips/180-4/upd1/final">https://csrc.nist.gov/pubs/fips/180-4/upd1/final</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="09-counting-across-replicas.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="11-command-line-tool.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="09-counting-across-replicas.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="11-command-line-tool.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

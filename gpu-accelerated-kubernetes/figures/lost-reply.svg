@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1052 466" width="1052" height="466" role="img" aria-label="Two sequences between a controller and a provider. Without a token, the first create makes machine m-03 and its reply is lost; the retry makes a second machine, m-06, and m-03 runs with no owner. With the slot name thor-3 as a client token, the retry returns m-03 and creates nothing.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1052" height="466" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A create call whose reply is lost</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The controller cannot tell a lost request from a lost reply, so its retry has to be safe in both cases.</text>
+  <text x="32.0" y="100.0" class="tab" text-anchor="start" xml:space="preserve">WITHOUT A CLIENT TOKEN</text>
+  <rect x="32" y="110" width="200" height="116" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,110.7 H38 V225.3 H44 A11.3,11.3 0 0 1 32.7,214 V122 A11.3,11.3 0 0 1 44,110.7 Z" fill="#1F8A70"/>
+  <text x="52.0" y="164.0" class="name" text-anchor="start" xml:space="preserve">Controller</text>
+  <text x="52.0" y="182.0" class="sub" text-anchor="start" xml:space="preserve">filling slot thor-3</text>
+  <rect x="800" y="110" width="220" height="116" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M812,110.7 H806 V225.3 H812 A11.3,11.3 0 0 1 800.7,214 V122 A11.3,11.3 0 0 1 812,110.7 Z" fill="#7A4FD0"/>
+  <text x="820.0" y="164.0" class="name" text-anchor="start" xml:space="preserve">Provider</text>
+  <text x="820.0" y="182.0" class="sub" text-anchor="start" xml:space="preserve">quota: five Thors</text>
+  <path class="wire" d="M232,128 L800,128" marker-end="url(#head)"/>
+  <rect x="466.1" y="119.0" width="99.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="516.0" y="131.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">create a Thor</text>
+  <path class="wire danger" d="M800,154 L232,154" marker-end="url(#head-danger)"/>
+  <rect x="406.7" y="145.0" width="218.6" height="18" rx="9" fill="#FBFAF6" stroke="#CF4526" stroke-width="1"/>
+  <text x="516.0" y="157.8" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">m-03 created; the reply is lost</text>
+  <path class="wire" d="M232,182 L800,182" marker-end="url(#head)"/>
+  <rect x="443.0" y="173.0" width="146.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="516.0" y="185.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">create a Thor, again</text>
+  <path class="wire" d="M800,208 L232,208" marker-end="url(#head)"/>
+  <rect x="469.4" y="199.0" width="93.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="516.0" y="211.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">m-06 created</text>
+  <text x="32.0" y="250.0" class="note" text-anchor="start" style="fill:#CF4526" xml:space="preserve">The account holds m-03 and m-06. The controller owns m-06, and m-03 runs with no owner.</text>
+  <text x="32.0" y="290.0" class="tab" text-anchor="start" xml:space="preserve">WITH THE SLOT NAME AS THE TOKEN</text>
+  <rect x="32" y="300" width="200" height="116" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,300.7 H38 V415.3 H44 A11.3,11.3 0 0 1 32.7,404 V312 A11.3,11.3 0 0 1 44,300.7 Z" fill="#1F8A70"/>
+  <text x="52.0" y="354.0" class="name" text-anchor="start" xml:space="preserve">Controller</text>
+  <text x="52.0" y="372.0" class="sub" text-anchor="start" xml:space="preserve">filling slot thor-3</text>
+  <rect x="800" y="300" width="220" height="116" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M812,300.7 H806 V415.3 H812 A11.3,11.3 0 0 1 800.7,404 V312 A11.3,11.3 0 0 1 812,300.7 Z" fill="#7A4FD0"/>
+  <text x="820.0" y="354.0" class="name" text-anchor="start" xml:space="preserve">Provider</text>
+  <text x="820.0" y="372.0" class="sub" text-anchor="start" xml:space="preserve">quota: five Thors</text>
+  <path class="wire" d="M232,318 L800,318" marker-end="url(#head)"/>
+  <rect x="419.9" y="309.0" width="192.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="516.0" y="321.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">create a Thor, token thor-3</text>
+  <path class="wire danger" d="M800,344 L232,344" marker-end="url(#head-danger)"/>
+  <rect x="406.7" y="335.0" width="218.6" height="18" rx="9" fill="#FBFAF6" stroke="#CF4526" stroke-width="1"/>
+  <text x="516.0" y="347.8" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">m-03 created; the reply is lost</text>
+  <path class="wire" d="M232,372 L800,372" marker-end="url(#head)"/>
+  <rect x="396.8" y="363.0" width="238.4" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="516.0" y="375.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">create a Thor, token thor-3, again</text>
+  <path class="wire" d="M800,398 L232,398" marker-end="url(#head)"/>
+  <rect x="446.3" y="389.0" width="139.4" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="516.0" y="401.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">m-03, already there</text>
+  <text x="32.0" y="440.0" class="note" text-anchor="start" style="fill:#2E8B3D" xml:space="preserve">The account holds m-03, and the controller owns it.</text>
+</svg>

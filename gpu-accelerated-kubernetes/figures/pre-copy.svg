@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 404" width="1000" height="404" role="img" aria-label="Four bars for the migration of a 100 GB VM that dirties 4 GB per second over a link of 12.5 GB per second. Round 1 sends 100 GB in 8.0 seconds, round 2 sends 32 GB in 2.6 seconds, round 3 sends 10.24 GB in 0.8 seconds, and in round 4 the VM is paused while the last 3.28 GB are sent in 0.26 seconds. Each bar is 0.32 times the one before.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="404" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Pre-copy: a 100 GB VM over four bonded 25 GbE lanes</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Each round sends what the VM dirtied during the round before. The VM is paused for the last one only.</text>
+  <path class="wire idle" d="M100,340 H960"/>
+  <rect x="130.0" y="140.0" width="130.0" height="200.0" rx="6" fill="#2F6FDB" stroke="#2F6FDB" stroke-width="0"/>
+  <text x="195.0" y="130.0" class="name" text-anchor="middle" xml:space="preserve">100 GB</text>
+  <text x="195.0" y="362.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">round 1</text>
+  <text x="195.0" y="380.0" class="note" text-anchor="middle" xml:space="preserve">8.0 s, VM running</text>
+  <rect x="340.0" y="276.0" width="130.0" height="64.0" rx="6" fill="#2F6FDB" stroke="#2F6FDB" stroke-width="0"/>
+  <text x="405.0" y="266.0" class="name" text-anchor="middle" xml:space="preserve">32 GB</text>
+  <text x="405.0" y="362.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">round 2</text>
+  <text x="405.0" y="380.0" class="note" text-anchor="middle" xml:space="preserve">2.6 s, VM running</text>
+  <text x="300.0" y="280.0" class="pill" text-anchor="middle" style="fill:#5D6B7A" xml:space="preserve">× 0.32</text>
+  <rect x="550.0" y="319.5" width="130.0" height="20.5" rx="6" fill="#2F6FDB" stroke="#2F6FDB" stroke-width="0"/>
+  <text x="615.0" y="309.5" class="name" text-anchor="middle" xml:space="preserve">10.24 GB</text>
+  <text x="615.0" y="362.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">round 3</text>
+  <text x="615.0" y="380.0" class="note" text-anchor="middle" xml:space="preserve">0.8 s, VM running</text>
+  <text x="510.0" y="280.0" class="pill" text-anchor="middle" style="fill:#5D6B7A" xml:space="preserve">× 0.32</text>
+  <rect x="760.0" y="333.4" width="130.0" height="6.6" rx="6" fill="#CF4526" stroke="#CF4526" stroke-width="0"/>
+  <text x="825.0" y="323.4" class="name" text-anchor="middle" xml:space="preserve">3.28 GB</text>
+  <text x="825.0" y="362.0" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">round 4</text>
+  <text x="825.0" y="380.0" class="note" text-anchor="middle" xml:space="preserve">0.26 s, VM paused</text>
+  <text x="720.0" y="280.0" class="pill" text-anchor="middle" style="fill:#5D6B7A" xml:space="preserve">× 0.32</text>
+  <path class="wire danger" d="M740,332.5 H960" />
+  <text x="960.0" y="274.0" class="note" text-anchor="end" style="fill:#CF4526" xml:space="preserve">the dashed line is 3.75 GB:</text>
+  <text x="960.0" y="290.0" class="note" text-anchor="end" style="fill:#CF4526" xml:space="preserve">what a pause of 0.3 s can carry</text>
+</svg>

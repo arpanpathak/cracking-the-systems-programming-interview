@@ -1,0 +1,269 @@
+/* The dark edition and the figure styles, taken from the Thor Thunder Tigress
+   Platform book. The dark theme is Material Deep Ocean with the stock purple
+   (#C792EA) remapped to ocean blue (#82AAFF); it replaces mdBook's "navy"
+   theme, which book.toml names as the preferred dark theme. The light edition
+   keeps the typography in custom.css. */
+
+html.navy {
+    --ocean-bg: #0F111A;
+    --ocean-bg-deep: #090B10;
+    --ocean-panel: #1A1C25;
+    --ocean-selection: #1F2233;
+    --ocean-border: #3B3F51;
+    --ocean-disabled: #464B5D;
+    --ocean-fg: #A6ACCD;
+    --ocean-text: #EEFFFF;
+    --ocean-muted: #8F93A2;
+    --ocean-accent: #84FFFF;
+    --ocean-blue: #82AAFF;
+    --ocean-cyan: #89DDFF;
+    --ocean-green: #C3E88D;
+    --ocean-yellow: #FFCB6B;
+    --ocean-orange: #F78C6C;
+    --ocean-red: #F07178;
+
+    --bg: var(--ocean-bg);
+    --fg: var(--ocean-fg);
+
+    --sidebar-bg: var(--ocean-bg-deep);
+    --sidebar-fg: var(--ocean-muted);
+    --sidebar-non-existant: var(--ocean-disabled);
+    --sidebar-active: var(--ocean-accent);
+    --sidebar-spacer: var(--ocean-selection);
+    --sidebar-header-border-color: var(--ocean-blue);
+
+    --scrollbar: var(--ocean-border);
+    --icons: var(--ocean-muted);
+    --icons-hover: var(--ocean-accent);
+    --links: var(--ocean-cyan);
+    --inline-code-color: var(--ocean-yellow);
+
+    --theme-popup-bg: var(--ocean-panel);
+    --theme-popup-border: var(--ocean-border);
+    --theme-hover: var(--ocean-selection);
+
+    --quote-bg: var(--ocean-panel);
+    --quote-border: var(--ocean-blue);
+    --warning-border: var(--ocean-orange);
+
+    --table-border-color: var(--ocean-border);
+    --table-header-bg: var(--ocean-selection);
+    --table-alternate-bg: #13151F;
+
+    --searchbar-border-color: var(--ocean-border);
+    --searchbar-bg: var(--ocean-panel);
+    --searchbar-fg: var(--ocean-text);
+    --searchbar-shadow-color: transparent;
+    --searchresults-header-fg: var(--ocean-muted);
+    --searchresults-border-color: var(--ocean-border);
+    --searchresults-li-bg: var(--ocean-panel);
+    --search-mark-bg: var(--ocean-yellow);
+
+    --footnote-highlight: var(--ocean-blue);
+    --blockquote-note-color: var(--ocean-blue);
+    --blockquote-tip-color: var(--ocean-green);
+    --blockquote-important-color: var(--ocean-cyan);
+    --blockquote-warning-color: var(--ocean-yellow);
+    --blockquote-caution-color: var(--ocean-red);
+}
+
+html.navy .content h1,
+html.navy .content h2,
+html.navy .content h3 {
+    color: var(--ocean-text);
+}
+
+html.navy .content h2 {
+    border-bottom: 1px solid var(--ocean-selection);
+    padding-bottom: 0.2em;
+}
+
+html.navy .content strong {
+    color: var(--ocean-text);
+}
+
+/* Code blocks and the highlight.js token colours of Material Deep Ocean. */
+html.navy pre,
+html.navy pre > .hljs {
+    background: var(--ocean-bg-deep);
+    border: 1px solid var(--ocean-selection);
+    border-radius: 6px;
+}
+html.navy .hljs { color: var(--ocean-fg); }
+html.navy .hljs-comment,
+html.navy .hljs-quote { color: var(--ocean-disabled); font-style: italic; }
+html.navy .hljs-keyword,
+html.navy .hljs-selector-tag,
+html.navy .hljs-type,
+html.navy .hljs-built_in { color: var(--ocean-blue); font-style: italic; }
+html.navy .hljs-string,
+html.navy .hljs-regexp,
+html.navy .hljs-addition { color: var(--ocean-green); }
+html.navy .hljs-number,
+html.navy .hljs-literal,
+html.navy .hljs-symbol { color: var(--ocean-orange); }
+html.navy .hljs-title,
+html.navy .hljs-title.function_,
+html.navy .hljs-section { color: var(--ocean-blue); }
+html.navy .hljs-attr,
+html.navy .hljs-attribute,
+html.navy .hljs-variable,
+html.navy .hljs-template-variable { color: var(--ocean-yellow); }
+html.navy .hljs-meta,
+html.navy .hljs-punctuation,
+html.navy .hljs-operator { color: var(--ocean-cyan); }
+html.navy .hljs-deletion { color: var(--ocean-red); }
+
+/* The "This chapter covers" box, as in the systems programming book. */
+.covers {
+    background: var(--ocean-panel, var(--quote-bg));
+    border-left: 3px solid var(--ocean-accent, var(--links));
+    border-radius: 6px;
+    padding: 0.4em 1.2em 0.6em;
+    margin: 1.4em 0;
+}
+.covers > p:first-child {
+    font-weight: bold;
+    color: var(--ocean-accent, inherit);
+    margin-bottom: 0.3em;
+}
+
+/* Figures. Screenshots keep a thin frame; diagrams carry their own paper. */
+figure { margin: 2.4em 0; text-align: center; }
+figure img {
+    max-width: 100%;
+    border: 1px solid var(--ocean-selection, var(--table-border-color));
+    border-radius: 8px;
+}
+
+/* Diagrams are drawn about 1000 px wide and the text column is 750 px, so a
+   diagram runs wider than the text, by the same amount on each side, as far
+   as the window allows. 440 px is the sidebar plus room for the page arrows.
+   On a narrow window the amount is zero and the diagram fits the column. */
+figure:has(> img[src$=".svg"]) {
+    margin-inline: calc(-1 * max(0px, (min(1060px, 100vw - 440px) - 100%) / 2));
+}
+figure > img[src$=".svg"] {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(20, 28, 40, 0.08), 0 10px 30px rgba(20, 28, 40, 0.12);
+}
+html.navy figure > img[src$=".svg"],
+html.coal figure > img[src$=".svg"],
+html.ayu figure > img[src$=".svg"] {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10), 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
+figcaption {
+    margin: 1em auto 0;
+    max-width: 46em;
+    font-size: 0.9em;
+    line-height: 1.5;
+    color: var(--ocean-muted, var(--fg));
+}
+figcaption b { color: var(--ocean-accent, inherit); margin-right: 0.4em; }
+
+/* An animated figure. A still figure's caption reads "Figure N"; an animation's
+   reads "Animation N". The animations are videos with controls a reader can
+   use to take them at their own pace: pause, a slower speed, a jump to any
+   step, and a mode that stops at the end of each step (theme/anim.js). */
+figure.anim { margin: 2.4em 0 2.8em; }
+
+figure.anim video.motion,
+figure.anim > img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--ocean-selection, var(--table-border-color));
+    border-radius: 10px;
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.motion-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 0.9em;
+    margin: 0.7em 0 0.2em;
+    font-size: 1.35rem;
+    text-align: left;
+}
+
+.motion-group { display: inline-flex; flex-wrap: wrap; gap: 0.3em; }
+
+.motion-bar button {
+    font: inherit;
+    padding: 0.25em 0.8em;
+    border: 1px solid var(--ocean-border, #c9d4de);
+    border-radius: 999px;
+    background: var(--ocean-panel, #f6f8fa);
+    color: var(--ocean-fg, #1f2328);
+    cursor: pointer;
+}
+
+.motion-bar button:hover { border-color: var(--ocean-accent, #0b5cad); }
+.motion-bar button:focus-visible { outline: 2px solid var(--ocean-yellow, #c89b3c); outline-offset: 2px; }
+
+.motion-bar button[aria-pressed="true"],
+.motion-bar button[aria-current="step"] {
+    background: var(--ocean-selection, #e3f1ea);
+    border-color: var(--ocean-accent, #2f7f86);
+    color: var(--ocean-text, #1d4f54);
+    font-weight: 600;
+}
+
+.motion-bar .motion-play { min-width: 6.5em; font-weight: 600; }
+.motion-stepwise { color: var(--ocean-muted, #57606a); cursor: pointer; }
+
+/* A numbered listing. The caption sits on the left above the code, and the link
+   to the source file follows it. Listings without a number keep the layout in
+   custom.css. */
+p.listing:has(> b) {
+    text-align: left;
+    font-family: var(--text-face);
+    font-size: 1.4rem;
+    margin-block: 1.4em 0.3em;
+    padding-bottom: 0.3em;
+    border-bottom: 2px solid var(--ocean-selection, var(--rule));
+}
+p.listing > b { color: var(--ocean-accent, var(--accent)); margin-right: 0.5em; }
+p.listing:has(> b) a { font-family: var(--code-face); font-size: 1.25rem; float: right; }
+
+/* The low-level design box: the types, the operations and the rules a program
+   keeps, stated before any of its code is shown. */
+.lld {
+    border: 1px solid var(--ocean-border, #cfd8e3);
+    border-top: 4px solid var(--ocean-blue, #0b5cad);
+    border-radius: 8px;
+    background: var(--ocean-panel, #f6f9fc);
+    padding: 0.5em 1.3em 0.4em;
+    margin: 1.6em 0;
+    font-size: 0.95em;
+}
+.lld > p:first-child {
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.82em;
+    color: var(--ocean-blue, #0b5cad);
+    margin-bottom: 0.4em;
+}
+.lld table { margin-block: 0.6em; font-size: 0.95em; width: 100%; }
+
+/* Side notes. */
+.callout {
+    border-left: 4px solid var(--ocean-blue, #0b5cad);
+    background: var(--ocean-panel, #f6f8fa);
+    border-radius: 6px;
+    padding: 0.5em 1.2em 0.1em;
+    margin: 1.4em 0;
+    font-size: 0.95em;
+}
+.callout.tip { border-left-color: var(--ocean-green, #2e8b3d); }
+.callout.warning { border-left-color: var(--ocean-orange, #cf4526); }
+
+/* The summary at the end of a chapter. */
+.summary { border-top: 3px solid var(--ocean-selection, var(--rule)); margin-top: 2.6em; }

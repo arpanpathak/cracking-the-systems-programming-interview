@@ -1,0 +1,2347 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Knowing which machines are alive - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/03-liveness.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="3-knowing-which-machines-are-alive"><a class="header" href="#3-knowing-which-machines-are-alive">3. Knowing which machines are alive</a></h1>
+<p>A training job can run on a machine for hours or days. If that machine loses power, or its
+network cable is pulled, the job stops, and nothing on the machine can report the failure.
+The control plane has to notice on its own, so that it can restart the job somewhere else.</p>
+<p>In this chapter, we will learn how a control plane decides which machines are alive. We
+will first build intuition by reasoning about heartbeats and timeouts, and quickly
+prototype a liveness registry and a failure detector from scratch. Then we will use the
+Lease objects that Kubernetes itself uses to track its nodes: we will write an agent that
+renews a Lease for a host and a watcher that notices when the renewals stop, and run both
+on our cluster.</p>
+<p>As before, every program is written in Go and in Rust. The two models, <code>heartbeats</code> and
+<code>phi</code>, use only the standard library. The two Kubernetes programs, <code>leaseagent</code> and
+<code>leasewatch</code>, use client-go and kube-rs. The Go programs are in <code>code/go</code>, and we run them
+with <code>go run ./&lt;name&gt;</code>; the Rust programs are packages in the workspace in <code>code/rust</code>, and
+we run them with <code>cargo run -p &lt;name&gt;</code>.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>heartbeats, timeouts, and the three causes of silence</li>
+<li>a registry that handles 600,000 heartbeats with four database writes</li>
+<li>the phi accrual detector, which sets a timeout from each host’s own history</li>
+<li>Lease objects, and how Kubernetes uses them to track its nodes</li>
+<li>a lease agent and a lease watcher, each in Go and in Rust, on a real cluster</li>
+<li>measuring silence on one clock</li>
+</ul>
+</div>
+
+<h2 id="heartbeats-and-timeouts"><a class="header" href="#heartbeats-and-timeouts">Heartbeats and timeouts</a></h2>
+<p>A machine that has crashed cannot announce that it has crashed. The only evidence the
+control plane gets is silence. So each machine runs a small agent that sends a message, a
+<em>heartbeat</em>, at a fixed interval, and the control plane treats a long enough silence as a
+failure.</p>
+<p>The difficulty is that silence has more than one cause. The machine may be dead, or it may
+be alive but overloaded, or the network between it and the control plane may be broken
+while the machine keeps running its job. From the control plane’s side, the three look the
+same. Every failure detector therefore makes a bet on how long a silence has to last before
+it is more likely to mean death than delay, and the bet has a cost in both directions. A
+short timeout declares healthy machines dead, and their jobs are restarted for nothing,
+sometimes while the original copy is still running. A long timeout leaves the jobs of truly
+dead machines stopped for longer.</p>
+<h2 id="keeping-heartbeats-out-of-the-database"><a class="header" href="#keeping-heartbeats-out-of-the-database">Keeping heartbeats out of the database</a></h2>
+<p>The control plane has to remember the last heartbeat of every machine. The obvious place
+for that is its database, and the obvious design writes every heartbeat there. A fleet of
+10,000 hosts sending one heartbeat a second would then make 10,000 writes a second. In a
+replicated store such as etcd, every write is sent to a majority of the replicas and
+flushed to disk before it is acknowledged, and a steady stream of 10,000 writes a second
+would leave little capacity for the writes that matter, such as creating jobs.</p>
+<p>Most heartbeats carry no news: they say that a host that was alive is still alive. The
+registry can keep the time of each host’s last heartbeat in memory and write to the
+database only when a host changes state. Our model uses three states. A host is <em>Up</em> while
+heartbeats arrive. It becomes <em>Suspect</em> after 3 seconds of silence, which lets the control
+plane stop placing new work on it without yet giving up on the work it has. It becomes
+<em>Dead</em> after 10 seconds, at which point its jobs would be restarted elsewhere.</p>
+<p>The model simulates 10,000 hosts for 60 seconds, without real time passing. Host 42
+crashes at second 20, and host 7 misses four heartbeats, from second 30 to second 33.</p>
+<div class="lld">
+<p>Low-level design: <code>heartbeats</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>State</code></td><td>Up, Suspect, or Dead</td><td>decided by the length of a host’s silence</td></tr>
+<tr><td><code>entry</code></td><td>a host’s last-seen second and its state</td><td>lives in memory only</td></tr>
+<tr><td><code>Transition</code></td><td>the second, the host, and the state it entered</td><td>one per durable write</td></tr>
+<tr><td><code>Registry</code></td><td>an entry per host, a count of heartbeats, the list of writes</td><td>a write happens only when a state changes</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Heartbeat(now, host)</code></td><td>updates the last-seen second; writes only if the host was not Up</td></tr>
+<tr><td><code>Sweep(now)</code></td><td>recomputes every host’s state from its silence; writes the ones that changed</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The types come first. A host’s record is two fields, and a <code>Transition</code> is the only thing
+the registry writes to the database.</p>
+<p class="listing"><b>Listing 3.1</b> The states, the thresholds, and the registry's records, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
+
+<pre><code class="language-go">// State is what the registry believes about a host.
+type State int
+
+// The states a host moves through.
+const (
+	Up      State = iota // heartbeats are arriving
+	Suspect              // heartbeats stopped recently; the host may be slow
+	Dead                 // heartbeats stopped long enough to give up on the host
+)
+
+// String returns the state's name for the log.
+func (s State) String() string {
+	return [...]string{"Up", "Suspect", "Dead"}[s]
+}
+
+// Thresholds and the size of the simulation, in seconds and hosts.
+const (
+	suspectAfter = 3      // seconds without a heartbeat before a host is Suspect
+	deadAfter    = 10     // seconds without a heartbeat before a host is Dead
+	hostCount    = 10_000 // hosts in the fleet
+	duration     = 60     // seconds simulated
+)
+
+// entry is the registry's in-memory record of one host.
+type entry struct {
+	// lastSeen is the second of the host's most recent heartbeat.
+	lastSeen int
+	// state is the host's current state.
+	state State
+}
+
+// Transition is one durable write: a host entering a new state.
+type Transition struct {
+	// At is the second at which the sweep or heartbeat noticed the change.
+	At int
+	// Host is the host's number.
+	Host int
+	// State is the state the host entered.
+	State State
+}
+
+// Registry holds the liveness of every host.
+type Registry struct {
+	// hosts is indexed by host number.
+	hosts []entry
+	// heartbeats counts the heartbeats handled in memory.
+	heartbeats int
+	// writes lists the durable writes, in order.
+	writes []Transition
+}
+</code></pre>
+<p class="listing"><b>Listing 3.2</b> The states, the thresholds, and the registry's records, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Seconds without a heartbeat before a host is Suspect.
+const SUSPECT_AFTER: u32 = 3;
+/// Seconds without a heartbeat before a host is Dead.
+const DEAD_AFTER: u32 = 10;
+/// Hosts in the fleet.
+const HOST_COUNT: usize = 10_000;
+/// Seconds simulated.
+const DURATION: u32 = 60;
+
+/// What the registry believes about a host.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum State {
+    /// Heartbeats are arriving.
+    #[default]
+    Up,
+    /// Heartbeats stopped recently; the host may be slow.
+    Suspect,
+    /// Heartbeats stopped long enough to give up on the host.
+    Dead,
+}
+
+/// The registry's in-memory record of one host.
+#[derive(Clone, Copy, Default)]
+struct Entry {
+    /// The second of the host's most recent heartbeat.
+    last_seen: u32,
+    /// The host's current state.
+    state: State,
+}
+
+/// One durable write: a host entering a new state.
+struct Transition {
+    /// The second at which the sweep or heartbeat noticed the change.
+    at: u32,
+    /// The host's number.
+    host: usize,
+    /// The state the host entered.
+    state: State,
+}
+
+/// Holds the liveness of every host.
+struct Registry {
+    /// Indexed by host number.
+    hosts: Vec&lt;Entry&gt;,
+    /// Counts the heartbeats handled in memory.
+    heartbeats: usize,
+    /// The durable writes, in order.
+    writes: Vec&lt;Transition&gt;,
+}</code></pre>
+<p>The registry has one operation for an arriving heartbeat and one for the sweep, and a small
+function that turns a length of silence into a state.</p>
+<p class="listing"><b>Listing 3.3</b> A heartbeat, the sweep, and the rule from silence to state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
+
+<pre><code class="language-go">// NewRegistry returns a registry in which every host is Up, as it would be
+// after the hosts registered.
+func NewRegistry(n int) *Registry {
+	return &amp;Registry{hosts: make([]entry, n)}
+}
+
+// Heartbeat records a heartbeat from host at second now. Only a host that was
+// not Up costs a durable write.
+func (r *Registry) Heartbeat(now, host int) {
+	r.heartbeats++
+	e := &amp;r.hosts[host]
+	e.lastSeen = now
+	if e.state != Up {
+		e.state = Up
+		r.writes = append(r.writes, Transition{now, host, Up})
+	}
+}
+
+// Sweep re-evaluates every host at second now and records each change of state.
+func (r *Registry) Sweep(now int) {
+	for host := range r.hosts {
+		e := &amp;r.hosts[host]
+		if next := stateAfter(now - e.lastSeen); next != e.state {
+			e.state = next
+			r.writes = append(r.writes, Transition{now, host, next})
+		}
+	}
+}
+
+// stateAfter returns the state of a host that has been silent for the given
+// number of seconds.
+func stateAfter(silent int) State {
+	switch {
+	case silent &gt;= deadAfter:
+		return Dead
+	case silent &gt;= suspectAfter:
+		return Suspect
+	default:
+		return Up
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.4</b> A heartbeat, the sweep, and the rule from silence to state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Registry {
+    /// Returns a registry in which every host is Up, as it would be after the
+    /// hosts registered.
+    fn new(n: usize) -&gt; Self {
+        Self {
+            hosts: vec![Entry::default(); n],
+            heartbeats: 0,
+            writes: Vec::new(),
+        }
+    }
+
+    /// Records a heartbeat from `host` at second `now`. Only a host that was
+    /// not Up costs a durable write.
+    fn heartbeat(&amp;mut self, now: u32, host: usize) {
+        self.heartbeats += 1;
+        let entry = &amp;mut self.hosts[host];
+        entry.last_seen = now;
+        if entry.state != State::Up {
+            entry.state = State::Up;
+            self.writes.push(Transition {
+                at: now,
+                host,
+                state: State::Up,
+            });
+        }
+    }
+
+    /// Re-evaluates every host at second `now` and records each change of state.
+    fn sweep(&amp;mut self, now: u32) {
+        for (host, entry) in self.hosts.iter_mut().enumerate() {
+            let next = state_after(now - entry.last_seen);
+            if next != entry.state {
+                entry.state = next;
+                self.writes.push(Transition {
+                    at: now,
+                    host,
+                    state: next,
+                });
+            }
+        }
+    }
+}
+
+/// Returns the state of a host that has been silent for `silent` seconds.
+fn state_after(silent: u32) -&gt; State {
+    match silent {
+        s if s &gt;= DEAD_AFTER =&gt; State::Dead,
+        s if s &gt;= SUSPECT_AFTER =&gt; State::Suspect,
+        _ =&gt; State::Up,
+    }
+}</code></pre>
+<p>The run feeds the registry one heartbeat from every host each second, except from the two
+hosts that the scenario silences.</p>
+<p class="listing"><b>Listing 3.5</b> The simulated fleet and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
+
+<pre><code class="language-go">// sendsHeartbeat reports whether host sends a heartbeat at second now in the
+// simulation.
+func sendsHeartbeat(host, now int) bool {
+	switch host {
+	case 42:
+		return now &lt; 20 // crashes at second 20
+	case 7:
+		return now &lt; 30 || now &gt;= 34 // silent from second 30 to 33
+	default:
+		return true
+	}
+}
+
+// main runs the simulation and prints the registry's work.
+func main() {
+	registry := NewRegistry(hostCount)
+	for now := 0; now &lt; duration; now++ {
+		for host := 0; host &lt; hostCount; host++ {
+			if sendsHeartbeat(host, now) {
+				registry.Heartbeat(now, host)
+			}
+		}
+		registry.Sweep(now)
+	}
+	fmt.Printf("heartbeats handled in memory: %d\n", registry.heartbeats)
+	fmt.Printf("durable writes:               %d\n", len(registry.writes))
+	for _, w := range registry.writes {
+		fmt.Printf("  second %2d  host %2d -&gt; %s\n", w.At, w.Host, w.State)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.6</b> The simulated fleet and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Reports whether `host` sends a heartbeat at second `now` in the simulation.
+fn sends_heartbeat(host: usize, now: u32) -&gt; bool {
+    match host {
+        42 =&gt; now &lt; 20,                // crashes at second 20
+        7 =&gt; !(30..34).contains(&amp;now), // silent from second 30 to 33
+        _ =&gt; true,
+    }
+}
+
+/// Runs the simulation and prints the registry's work.
+fn main() {
+    let mut registry = Registry::new(HOST_COUNT);
+    for now in 0..DURATION {
+        for host in 0..HOST_COUNT {
+            if sends_heartbeat(host, now) {
+                registry.heartbeat(now, host);
+            }
+        }
+        registry.sweep(now);
+    }
+    println!("heartbeats handled in memory: {}", registry.heartbeats);
+    println!("durable writes:               {}", registry.writes.len());
+    for w in &amp;registry.writes {
+        println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
+    }
+}</code></pre>
+<p><code>Heartbeat</code> updates the host’s last-seen time in memory and writes to the database only
+when the host was not Up. <code>Sweep</code> runs once a second, computes each host’s state from the
+length of its silence, and writes only the hosts whose state changed. A heartbeat from a
+Suspect or Dead host brings it back at once; the sweep is what moves hosts the other way.</p>
+<p>Both versions print the same result:</p>
+<pre><code class="language-console">$ go run ./heartbeats
+heartbeats handled in memory: 599956
+durable writes:               4
+  second 22  host 42 -&gt; Suspect
+  second 29  host 42 -&gt; Dead
+  second 32  host  7 -&gt; Suspect
+  second 34  host  7 -&gt; Up
+</code></pre>
+<p>The registry handled almost 600,000 heartbeats and made four writes. Host 42 sent its last
+heartbeat at second 19; it became Suspect at second 22 and Dead at second 29. Host 7 became
+Suspect at second 32, three seconds after its last heartbeat at second 29, and came back Up
+with its heartbeat at second 34, before it reached the Dead threshold.</p>
+<p>Figure 3.1 shows the two paths, and the three states with the silences that separate them.</p>
+<figure>
+<img src="figures/liveness-registry.svg" alt="Ten thousand hosts each send one heartbeat a second to the registry, which keeps every host&#39;s last-seen time in memory and sweeps once a second. In 60 seconds it handles 599,956 heartbeats and writes to the database four times. A host is Up while heartbeats arrive, Suspect after 3 seconds of silence, and Dead after 10. A heartbeat from a Suspect or a Dead host returns it to Up.">
+<figcaption><b>Figure 3.1</b> Every heartbeat updates memory. The database receives a write when a host changes state.</figcaption>
+</figure>
+<p>Keeping the state in memory has one consequence. When the registry itself restarts, it
+has lost every host’s last-seen time. Our model starts by marking every host Up with a
+last-seen time of 0, which gives each host a full timeout to report in before anything is
+declared dead. A real registry has to do the same after a restart, or it would declare
+the whole fleet dead at once.</p>
+<h2 id="choosing-the-timeout-the-phi-accrual-detector"><a class="header" href="#choosing-the-timeout-the-phi-accrual-detector">Choosing the timeout: the phi accrual detector</a></h2>
+<p>A fixed timeout treats every host alike. Hosts are not alike: one on a quiet network sends
+heartbeats exactly a second apart, and another on a congested link sends them anywhere from
+half a second to two and a half seconds apart. Two seconds of silence is alarming for the
+first host and ordinary for the second.</p>
+<p>The <em>phi accrual failure detector</em>, described by Hayashibara, Défago, Yared, and Katayama
+in 2004 and used today in Apache Cassandra and Akka, makes the timeout depend on each
+host’s history. It keeps the most recent gaps between a host’s heartbeats, treats them as
+samples of a normal distribution, and computes the probability that a heartbeat would still
+arrive after the current silence. It reports that probability as <em>phi</em>, minus its base-10
+logarithm, so that each unit of phi is a factor of ten: phi 1 means a 10 percent chance
+that the host is fine, phi 2 means 1 percent, phi 3 means 0.1 percent. The control plane
+picks a phi threshold instead of a timeout, and each host’s effective timeout follows from
+its own behaviour.</p>
+<div class="lld">
+<p>Low-level design: <code>phi</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Detector</code></td><td>the most recent gaps between one host’s heartbeats, and the time of the last one</td><td>keeps at most a fixed number of gaps, the newest</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Heartbeat(now)</code></td><td>records the gap since the previous heartbeat</td></tr>
+<tr><td><code>Phi(now)</code></td><td>how unlikely the current silence is, given the recorded gaps</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>A detector belongs to one host. It remembers a window of gaps and the time of the latest
+heartbeat.</p>
+<p class="listing"><b>Listing 3.7</b> The detector and the recording of a heartbeat, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
+
+<pre><code class="language-go">// timeout is the fixed timeout that the program compares against, in seconds.
+const timeout = 2.0
+
+// minStdDev is the smallest standard deviation the detector assumes, in
+// seconds. Without it, a perfectly regular host would make any delay look
+// infinitely suspicious.
+const minStdDev = 0.2
+
+// Detector is a phi accrual failure detector for one host.
+type Detector struct {
+	// intervals holds the most recent gaps between heartbeats, in seconds.
+	intervals []float64
+	// window is the number of gaps the detector remembers.
+	window int
+	// last is the time of the most recent heartbeat, in seconds.
+	last float64
+}
+
+// NewDetector returns a detector that remembers window gaps and has seen a
+// first heartbeat at time first.
+func NewDetector(window int, first float64) *Detector {
+	return &amp;Detector{window: window, last: first}
+}
+
+// Heartbeat records a heartbeat that arrived at time now.
+func (d *Detector) Heartbeat(now float64) {
+	d.intervals = append(d.intervals, now-d.last)
+	if len(d.intervals) &gt; d.window {
+		d.intervals = d.intervals[1:]
+	}
+	d.last = now
+}
+</code></pre>
+<p class="listing"><b>Listing 3.8</b> The detector and the recording of a heartbeat, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The fixed timeout that the program compares against, in seconds.
+const TIMEOUT: f64 = 2.0;
+
+/// The smallest standard deviation the detector assumes, in seconds. Without
+/// it, a perfectly regular host would make any delay look infinitely
+/// suspicious.
+const MIN_STD_DEV: f64 = 0.2;
+
+/// A phi accrual failure detector for one host.
+struct Detector {
+    /// The most recent gaps between heartbeats, in seconds.
+    intervals: VecDeque&lt;f64&gt;,
+    /// The number of gaps the detector remembers.
+    window: usize,
+    /// The time of the most recent heartbeat, in seconds.
+    last: f64,
+}
+
+impl Detector {
+    /// Returns a detector that remembers `window` gaps and has seen a first
+    /// heartbeat at time `first`.
+    fn new(window: usize, first: f64) -&gt; Self {
+        Self {
+            intervals: VecDeque::new(),
+            window,
+            last: first,
+        }
+    }
+
+    /// Records a heartbeat that arrived at time `now`.
+    fn heartbeat(&amp;mut self, now: f64) {
+        self.intervals.push_back(now - self.last);
+        if self.intervals.len() &gt; self.window {
+            self.intervals.pop_front();
+        }
+        self.last = now;
+    }
+}</code></pre>
+<p><code>Phi</code> turns the window into a number.</p>
+<p class="listing"><b>Listing 3.9</b> Computing phi from the recorded gaps, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
+
+<pre><code class="language-go">// Phi returns the suspicion level at time now: minus the base-10 logarithm of
+// the probability that a heartbeat would still arrive after this much silence,
+// given the gaps seen so far. Phi 1 means a 10% chance the host is fine, phi 2
+// means 1%, and phi 3 means 0.1%.
+func (d *Detector) Phi(now float64) float64 {
+	var mean float64
+	for _, gap := range d.intervals {
+		mean += gap
+	}
+	mean /= float64(len(d.intervals))
+	var variance float64
+	for _, gap := range d.intervals {
+		variance += (gap - mean) * (gap - mean)
+	}
+	stdDev := math.Max(math.Sqrt(variance/float64(len(d.intervals))), minStdDev)
+
+	// The probability that a gap is longer than the current silence, from a
+	// logistic approximation of the normal distribution.
+	silence := now - d.last
+	y := (silence - mean) / stdDev
+	e := math.Exp(-y * (1.5976 + 0.070566*y*y))
+	pLater := 1 - 1/(1+e)
+	if silence &gt; mean {
+		pLater = e / (1 + e)
+	}
+	return -math.Log10(pLater)
+}
+</code></pre>
+<p class="listing"><b>Listing 3.10</b> Computing phi from the recorded gaps, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Detector {
+    /// Returns the suspicion level at time `now`: minus the base-10 logarithm
+    /// of the probability that a heartbeat would still arrive after this much
+    /// silence, given the gaps seen so far. Phi 1 means a 10% chance the host
+    /// is fine, phi 2 means 1%, and phi 3 means 0.1%.
+    #[allow(clippy::cast_precision_loss)] // the window holds at most 100 gaps
+    fn phi(&amp;self, now: f64) -&gt; f64 {
+        let n = self.intervals.len() as f64;
+        let mean = self.intervals.iter().sum::&lt;f64&gt;() / n;
+        let variance = self
+            .intervals
+            .iter()
+            .map(|gap| (gap - mean).powi(2))
+            .sum::&lt;f64&gt;()
+            / n;
+        let std_dev = variance.sqrt().max(MIN_STD_DEV);
+
+        // The probability that a gap is longer than the current silence, from
+        // a logistic approximation of the normal distribution.
+        let silence = now - self.last;
+        let y = (silence - mean) / std_dev;
+        let e = (-y * (1.5976 + 0.070_566 * y * y)).exp();
+        let p_later = if silence &gt; mean {
+            e / (1.0 + e)
+        } else {
+            1.0 - 1.0 / (1.0 + e)
+        };
+        -p_later.log10()
+    }
+}</code></pre>
+<p>The run trains one detector on a steady host and one on a jittery host, then asks each for
+phi after silences of increasing length.</p>
+<p class="listing"><b>Listing 3.11</b> Two hosts and the table of results, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
+
+<pre><code class="language-go">// hosts lists the simulated hosts and the gaps between their heartbeats.
+var hosts = []struct {
+	name string
+	gaps []float64
+}{
+	{"steady", []float64{1.0, 1.02, 0.98, 1.01, 0.99, 1.0, 1.03, 0.97, 1.0, 1.0}},
+	{"jittery", []float64{0.4, 1.9, 0.6, 1.7, 0.5, 1.8, 0.7, 1.6, 0.4, 2.4}},
+}
+
+// main feeds each host's heartbeats to a detector and prints phi after
+// increasing lengths of silence.
+func main() {
+	for _, host := range hosts {
+		detector := NewDetector(100, 0)
+		var now float64
+		for _, gap := range host.gaps {
+			now += gap
+			detector.Heartbeat(now)
+		}
+		fmt.Printf("%s host, silent for:\n", host.name)
+		for _, silence := range []float64{1.0, 1.5, 2.0, 2.5, 3.0, 4.0} {
+			verdict := "alive"
+			if silence &gt; timeout {
+				verdict = "dead"
+			}
+			fmt.Printf("  %.1fs  phi = %6.2f   %.0fs timeout says %s\n",
+				silence, detector.Phi(now+silence), timeout, verdict)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.12</b> Two hosts and the table of results, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The simulated hosts and the gaps between their heartbeats.
+const HOSTS: [(&amp;str, [f64; 10]); 2] = [
+    (
+        "steady",
+        [1.0, 1.02, 0.98, 1.01, 0.99, 1.0, 1.03, 0.97, 1.0, 1.0],
+    ),
+    (
+        "jittery",
+        [0.4, 1.9, 0.6, 1.7, 0.5, 1.8, 0.7, 1.6, 0.4, 2.4],
+    ),
+];
+
+/// Feeds each host's heartbeats to a detector and prints phi after increasing
+/// lengths of silence.
+fn main() {
+    for (name, gaps) in HOSTS {
+        let mut detector = Detector::new(100, 0.0);
+        let mut now = 0.0;
+        for gap in gaps {
+            now += gap;
+            detector.heartbeat(now);
+        }
+        println!("{name} host, silent for:");
+        for silence in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0] {
+            let verdict = if silence &gt; TIMEOUT { "dead" } else { "alive" };
+            println!(
+                "  {silence:.1}s  phi = {:6.2}   {TIMEOUT:.0}s timeout says {verdict}",
+                detector.phi(now + silence)
+            );
+        }
+    }
+}</code></pre>
+<p><code>Phi</code> computes the mean and standard deviation of the remembered gaps and measures how many
+standard deviations the current silence lies beyond the mean. The logistic expression is a
+standard approximation of the normal distribution’s tail, the same one Akka uses, and it
+avoids computing the error function. The standard deviation has a floor of 0.2 seconds.
+Without it, a host whose heartbeats were perfectly regular would have a standard deviation
+near zero, and the smallest delay would push phi towards infinity.</p>
+<p>Both versions print the same table:</p>
+<pre><code class="language-console">$ go run ./phi
+steady host, silent for:
+  1.0s  phi =   0.30   2s timeout says alive
+  1.5s  phi =   2.22   2s timeout says alive
+  2.0s  phi =   7.30   2s timeout says alive
+  2.5s  phi =  18.13   2s timeout says dead
+  3.0s  phi =  37.58   2s timeout says dead
+  4.0s  phi = 113.84   2s timeout says dead
+jittery host, silent for:
+  1.0s  phi =   0.21   2s timeout says alive
+  1.5s  phi =   0.47   2s timeout says alive
+  2.0s  phi =   0.88   2s timeout says alive
+  2.5s  phi =   1.47   2s timeout says dead
+  3.0s  phi =   2.25   2s timeout says dead
+  4.0s  phi =   4.58   2s timeout says dead
+</code></pre>
+<p>For the steady host, two seconds of silence already gives phi 7.3: a heartbeat that late is
+roughly a one-in-twenty-million event, and the host is almost certainly gone, while the
+2-second timeout still calls it alive. For the jittery host, two and a half seconds gives
+phi 1.47, about a 3 percent chance that the host is fine, and the timeout has already
+declared it dead. With a threshold of 3, the detector would give up on the steady host
+after about 1.6 seconds and on the jittery host only after about 3.4 seconds.</p>
+<h2 id="leases-how-kubernetes-tracks-its-nodes"><a class="header" href="#leases-how-kubernetes-tracks-its-nodes">Leases: how Kubernetes tracks its nodes</a></h2>
+<p>Kubernetes applies the same ideas to its own nodes. Every node has a <em>Lease</em>, a small
+object in the <code>coordination.k8s.io</code> API group, in the namespace <code>kube-node-lease</code>. The
+kubelet renews its node’s Lease every 10 seconds by writing the current time into the
+Lease’s <code>renewTime</code> field. Our cluster has one node and one node Lease:</p>
+<pre><code class="language-console">$ kubectl get lease -n kube-node-lease
+NAME                    HOLDER                  AGE
+gpu-lab-control-plane   gpu-lab-control-plane   4d11h
+$ kubectl get lease -n kube-node-lease gpu-lab-control-plane -o yaml
+...
+spec:
+  holderIdentity: gpu-lab-control-plane
+  leaseDurationSeconds: 40
+  renewTime: "2026-10-01T01:31:36.294522Z"
+</code></pre>
+<p>A Lease has five main fields. <code>holderIdentity</code> names whoever holds it, here the node
+itself. <code>leaseDurationSeconds</code> says how long the Lease stays valid after its last renewal.
+<code>renewTime</code> is the time of the last renewal, <code>acquireTime</code> the time the holder first took
+the Lease, and <code>leaseTransitions</code> counts how often the Lease has changed hands. Kubernetes
+also uses Leases for leader election, so that only one copy of the controller manager or
+the scheduler is active at a time, and for each API server to publish its identity.</p>
+<p>The kubelet used to send its heartbeats by updating the Node object’s status, which holds
+the node’s capacity, conditions, images, and addresses. The Kubernetes documentation
+explains the change: “a Lease is a lightweight resource. Using Leases for heartbeats reduces
+the performance impact of these updates”. The kubelet still updates the Node’s status, but
+only when something changes or every five minutes.</p>
+<p>On the other side, the <em>node lifecycle controller</em>, part of the controller manager, checks
+every node every 5 seconds. If it has seen no renewal for longer than its grace period,
+50 seconds by default, it sets the node’s <code>Ready</code> condition to <code>Unknown</code>. By default, the
+pods on that node are evicted 5 minutes later, so that their controllers can recreate them
+elsewhere. The long wait before eviction reflects the cost of a wrong guess: a node that
+only lost contact with the control plane may still be running its pods.</p>
+<h2 id="a-lease-agent"><a class="header" href="#a-lease-agent">A lease agent</a></h2>
+<p>We will give each simulated GPU host a Lease of its own, in a namespace called <code>fleet</code>:</p>
+<p class="listing"><b>Listing 3.13</b> The namespace for the fleet's Leases. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/manifests/fleet-namespace.yaml">code/manifests/fleet-namespace.yaml</a></p>
+
+<pre><code class="language-yaml"># The namespace that holds one Lease per simulated GPU host in chapter 3.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fleet
+</code></pre>
+<p>The agent plays the part of the kubelet. It writes the Lease named after its host every two
+seconds, with a lease duration of six seconds, so a host has to miss three renewals in a
+row before its Lease expires.</p>
+<div class="lld">
+<p>Low-level design: <code>leaseagent</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Setting</th><th>Value</th><th>Reason</th></tr>
+</thead>
+<tbody>
+<tr><td>namespace</td><td><code>fleet</code></td><td>one namespace for every host’s Lease</td></tr>
+<tr><td>renewal interval</td><td>2 seconds</td><td>a third of the lease duration</td></tr>
+<tr><td>lease duration</td><td>6 seconds</td><td>a host has to miss three renewals to expire</td></tr>
+<tr><td>field manager</td><td><code>leaseagent</code></td><td>the name under which server-side apply records the agent’s fields</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step of the loop</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td>build the Lease</td><td>holder, duration, the time first acquired, and the current time as <code>renewTime</code></td></tr>
+<tr><td>apply it</td><td>one request that creates the Lease or updates it</td></tr>
+<tr><td>wait</td><td>for the next tick, or for the signal that ends the program</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The settings are constants.</p>
+<p class="listing"><b>Listing 3.14</b> The agent's settings, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
+
+<pre><code class="language-go">// Lease settings. The renewal interval is a third of the lease duration, so a
+// host has to miss three renewals in a row before its Lease expires.
+const (
+	namespace     = "fleet"
+	renewEvery    = 2 * time.Second
+	leaseDuration = 6 // seconds
+	fieldManager  = "leaseagent"
+)
+</code></pre>
+<p class="listing"><b>Listing 3.15</b> The agent's settings, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The namespace that holds the hosts' Leases.
+const NAMESPACE: &amp;str = "fleet";
+/// How often the agent renews the Lease: a third of the lease duration, so a
+/// host has to miss three renewals in a row before its Lease expires.
+const RENEW_EVERY: Duration = Duration::from_secs(2);
+/// How long a Lease stays valid after its last renewal, in seconds.
+const LEASE_DURATION: i32 = 6;
+/// The field manager name for server-side apply.
+const FIELD_MANAGER: &amp;str = "leaseagent";</code></pre>
+<p>The Go version builds the Lease inside its loop with client-go’s apply configuration
+types. The Rust version builds it in a function of its own.</p>
+<p class="listing"><b>Listing 3.16</b> The renewal loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
+
+<pre><code class="language-go">// run writes the host's Lease with server-side apply once per renewEvery.
+// A renewal that fails is reported and retried at the next tick.
+func run(host string) error {
+	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	leases := clientset.CoordinationV1().Leases(namespace)
+	acquired := metav1.NewMicroTime(time.Now())
+	ticker := time.NewTicker(renewEvery)
+	defer ticker.Stop()
+	for {
+		now := metav1.NewMicroTime(time.Now())
+		lease := coordinationv1ac.Lease(host, namespace).
+			WithSpec(coordinationv1ac.LeaseSpec().
+				WithHolderIdentity(host).
+				WithLeaseDurationSeconds(leaseDuration).
+				WithAcquireTime(acquired).
+				WithRenewTime(now))
+		_, err := leases.Apply(ctx, lease, metav1.ApplyOptions{FieldManager: fieldManager, Force: true})
+		switch {
+		case ctx.Err() != nil:
+			return nil
+		case err != nil:
+			fmt.Printf("%s %s renewal failed: %v\n", now.Format(time.TimeOnly), host, err)
+		default:
+			fmt.Printf("%s %s renewed\n", now.Format(time.TimeOnly), host)
+		}
+		select {
+		case &lt;-ctx.Done():
+			return nil
+		case &lt;-ticker.C:
+		}
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.17</b> Building the Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Builds the Lease that `host` writes at time `now`, having first acquired
+/// it at time `acquired`.
+fn lease(host: &amp;str, acquired: Timestamp, now: Timestamp) -&gt; Lease {
+    Lease {
+        metadata: ObjectMeta {
+            name: Some(host.to_string()),
+            namespace: Some(NAMESPACE.to_string()),
+            ..ObjectMeta::default()
+        },
+        spec: Some(LeaseSpec {
+            holder_identity: Some(host.to_string()),
+            lease_duration_seconds: Some(LEASE_DURATION),
+            acquire_time: Some(MicroTime(acquired)),
+            renew_time: Some(MicroTime(now)),
+            ..LeaseSpec::default()
+        }),
+    }
+}</code></pre>
+<p class="listing"><b>Listing 3.18</b> The renewal loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Reads the host name from the command line and renews its Lease with
+/// server-side apply until the process receives Ctrl-C. A renewal that fails
+/// is reported and retried at the next tick.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let Some(host) = std::env::args().nth(1) else {
+        eprintln!("usage: leaseagent &lt;host&gt;");
+        std::process::exit(2);
+    };
+    let leases: Api&lt;Lease&gt; = Api::namespaced(Client::try_default().await?, NAMESPACE);
+    let params = PatchParams::apply(FIELD_MANAGER).force();
+    let acquired = Timestamp::now();
+    let mut ticker = tokio::time::interval(RENEW_EVERY);
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
+            _ = ticker.tick() =&gt; {}
+        }
+        let now = Timestamp::now();
+        match leases
+            .patch(&amp;host, &amp;params, &amp;Patch::Apply(lease(&amp;host, acquired, now)))
+            .await
+        {
+            Ok(_) =&gt; println!("{} {host} renewed", time_of_day(now)),
+            Err(error) =&gt; println!("{} {host} renewal failed: {error}", time_of_day(now)),
+        }
+    }
+}</code></pre>
+<p>Both agents write with server-side apply, which we met in section 1.1: each renewal sends
+the whole Lease, and the API server creates it on the first renewal and updates it on the
+others. A failed renewal, for example while the API server restarts, is logged and retried
+at the next tick; the Lease simply ages until a renewal succeeds. The renewal time is
+written in UTC, as every Kubernetes timestamp is, and it comes from the host’s own clock.</p>
+<h2 id="a-lease-watcher"><a class="header" href="#a-lease-watcher">A lease watcher</a></h2>
+<p>The watcher plays the part of the node lifecycle controller. It has to decide when a Lease
+has expired, and the obvious rule, “expired when <code>renewTime</code> plus the lease duration is in
+the past”, has a flaw: <code>renewTime</code> was written with the host’s clock and is compared with
+the watcher’s clock. If the two clocks disagree by a few seconds, healthy hosts look
+expired, or dead hosts look alive for longer than they should.</p>
+<p>The node lifecycle controller avoids this by never comparing the two clocks. A comment in
+its source explains that it records its own time of observation “to avoid the problem with
+time skew across the cluster”: whenever it sees a Lease’s <code>renewTime</code> change, it notes its
+own current time, and it declares the node unhealthy when its own clock shows that the
+grace period has passed since that note. The value of <code>renewTime</code> matters only in that it
+changed. Our watcher works the same way.</p>
+<div class="lld">
+<p>Low-level design: <code>leasewatch</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>observation</code></td><td>the latest <code>renewTime</code> seen, the watcher’s own time when it first saw that value, and whether the host has been reported as expired</td><td>the watcher’s time is compared only with the watcher’s time</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>run</code></td><td>keeps a local cache of the Leases up to date and checks every cached Lease once a second</td></tr>
+<tr><td><code>check(seen, lease, now)</code></td><td>records a first sighting, a changed <code>renewTime</code>, or an expiry</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>An observation is three fields, and the second is the one that matters: the local time at
+which the watcher first saw the current <code>renewTime</code>.</p>
+<p class="listing"><b>Listing 3.19</b> What the watcher remembers about one Lease, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
+
+<pre><code class="language-go">// observation is what the program knows about one host's Lease.
+type observation struct {
+	// renewTime is the latest renewTime seen in the Lease.
+	renewTime time.Time
+	// observedAt is the local time at which that renewTime was first seen.
+	observedAt time.Time
+	// expired records whether the host has been reported as expired.
+	expired bool
+}
+</code></pre>
+<p class="listing"><b>Listing 3.20</b> What the watcher remembers about one Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// What the program knows about one host's Lease.
+struct Observation {
+    /// The latest `renewTime` seen in the Lease.
+    renew_time: Timestamp,
+    /// The local time at which that `renewTime` was first seen.
+    observed_at: Instant,
+    /// Whether the host has been reported as expired.
+    expired: bool,
+}</code></pre>
+<p><code>check</code> holds the rule from the node lifecycle controller.</p>
+<p class="listing"><b>Listing 3.21</b> Checking one Lease against the watcher's own clock, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
+
+<pre><code class="language-go">// check updates the observation of one Lease at local time now and prints a
+// line when the host is first seen, expires, or renews again after expiring.
+func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.Time) {
+	if lease.Spec.RenewTime == nil || lease.Spec.LeaseDurationSeconds == nil {
+		return
+	}
+	renew := lease.Spec.RenewTime.Time
+	duration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
+	stamp := now.Format(time.TimeOnly)
+
+	obs, known := seen[lease.Name]
+	switch {
+	case !known:
+		seen[lease.Name] = &amp;observation{renewTime: renew, observedAt: now}
+		fmt.Printf("%s %s seen, lease duration %s\n", stamp, lease.Name, duration)
+	case !renew.Equal(obs.renewTime):
+		obs.renewTime, obs.observedAt = renew, now
+		if obs.expired {
+			obs.expired = false
+			fmt.Printf("%s %s renewing again\n", stamp, lease.Name)
+		}
+	case !obs.expired &amp;&amp; now.Sub(obs.observedAt) &gt; duration:
+		obs.expired = true
+		fmt.Printf("%s %s expired: no renewal seen for %s\n",
+			stamp, lease.Name, now.Sub(obs.observedAt).Round(time.Second))
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.22</b> Checking one Lease against the watcher's own clock, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Updates the observation of one Lease at local time `now` and prints a line
+/// when the host is first seen, expires, or renews again after expiring.
+fn check(seen: &amp;mut HashMap&lt;String, Observation&gt;, lease: &amp;Lease, now: Instant) {
+    let Some(spec) = &amp;lease.spec else { return };
+    let (Some(renew), Some(seconds)) = (&amp;spec.renew_time, spec.lease_duration_seconds) else {
+        return;
+    };
+    let duration = Duration::from_secs(u64::from(seconds.unsigned_abs()));
+    let stamp = Zoned::now().strftime("%H:%M:%S").to_string();
+    let name = lease.name_any();
+
+    match seen.get_mut(&amp;name) {
+        None =&gt; {
+            seen.insert(
+                name.clone(),
+                Observation {
+                    renew_time: renew.0,
+                    observed_at: now,
+                    expired: false,
+                },
+            );
+            println!(
+                "{stamp} {name} seen, lease duration {}s",
+                duration.as_secs()
+            );
+        }
+        Some(obs) if obs.renew_time != renew.0 =&gt; {
+            obs.renew_time = renew.0;
+            obs.observed_at = now;
+            if obs.expired {
+                obs.expired = false;
+                println!("{stamp} {name} renewing again");
+            }
+        }
+        Some(obs) if !obs.expired &amp;&amp; now.duration_since(obs.observed_at) &gt; duration =&gt; {
+            obs.expired = true;
+            let silent = now.duration_since(obs.observed_at).as_secs_f64().round();
+            println!("{stamp} {name} expired: no renewal seen for {silent}s");
+        }
+        Some(_) =&gt; {}
+    }
+}</code></pre>
+<p>The rest of the program keeps a cache of Leases and calls <code>check</code> for each of them once a
+second.</p>
+<p class="listing"><b>Listing 3.23</b> The cache of Leases and the once-a-second loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
+
+<pre><code class="language-go">// run starts an informer for Leases in the namespace, waits for its first
+// list, and then checks every Lease in its cache once per checkEvery.
+func run() error {
+	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	factory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithNamespace(namespace))
+	lister := factory.Coordination().V1().Leases().Lister().Leases(namespace)
+	factory.Start(ctx.Done())
+	factory.WaitForCacheSync(ctx.Done())
+
+	seen := map[string]*observation{}
+	ticker := time.NewTicker(checkEvery)
+	defer ticker.Stop()
+	for {
+		leases, err := lister.List(labels.Everything())
+		if err != nil {
+			return err
+		}
+		now := time.Now()
+		for _, lease := range leases {
+			check(seen, lease, now)
+		}
+		select {
+		case &lt;-ctx.Done():
+			return nil
+		case &lt;-ticker.C:
+		}
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.24</b> The cache of Leases and the once-a-second loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Starts a watcher that fills a reflector store with the namespace's Leases,
+/// waits for the first list, and then checks every Lease in the store once
+/// per `CHECK_EVERY` until the process receives Ctrl-C.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let leases: Api&lt;Lease&gt; = Api::namespaced(Client::try_default().await?, NAMESPACE);
+    let (store, writer) = reflector::store();
+    let stream = watcher(leases, watcher::Config::default())
+        .default_backoff()
+        .reflect(writer)
+        .applied_objects();
+    tokio::spawn(stream.for_each(|_| std::future::ready(())));
+    store.wait_until_ready().await?;
+
+    let mut seen = HashMap::new();
+    let mut ticker = tokio::time::interval(CHECK_EVERY);
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
+            _ = ticker.tick() =&gt; {}
+        }
+        let now = Instant::now();
+        for lease in store.state() {
+            check(&amp;mut seen, &amp;lease, now);
+        }
+    }
+}</code></pre>
+<p>Neither version sends a request per check. The Go version starts an informer for Leases in
+the <code>fleet</code> namespace from client-go’s shared informer factory and reads its cache through a
+lister. The Rust version runs a <code>watcher</code> stream into a reflector store in a background task,
+with <code>default_backoff</code> so that the stream reconnects after errors, and reads the store’s
+contents. Both are the list-and-watch machinery from chapter 1, and both read the cache once
+a second.</p>
+<p><code>check</code> keeps one observation per Lease and moves through three cases. A Lease seen for the
+first time is recorded with the current local time. A Lease whose <code>renewTime</code> has changed
+gets a new local observation time, and if the host had been reported as expired, the
+watcher reports that it is renewing again. A Lease whose <code>renewTime</code> has not changed for
+longer than its duration, measured on the watcher’s clock, is reported as expired, once.
+The Rust version measures with <code>Instant</code>, a monotonic clock that is unaffected if the
+system’s wall clock is adjusted.</p>
+<h2 id="running-it"><a class="header" href="#running-it">Running it</a></h2>
+<p>We create the namespace, start three agents, two in Go and one in Rust, and then start both
+watchers. Each command runs in its own terminal:</p>
+<pre><code class="language-console">$ kubectl apply -f code/manifests/fleet-namespace.yaml
+$ go run ./leaseagent gpu-host-a          # in code/go
+$ cargo run -p leaseagent -- gpu-host-b   # in code/rust
+$ go run ./leaseagent gpu-host-c          # in code/go
+$ go run ./leasewatch                     # in code/go
+$ cargo run -p leasewatch                 # in code/rust
+</code></pre>
+<p>Figure 3.2 shows the five programs and the Lease objects between them.</p>
+<figure>
+<img src="figures/lease-roles.svg" alt="Three lease agents, gpu-host-a and gpu-host-c in Go and gpu-host-b in Rust, each apply their own Lease in the fleet namespace every two seconds. The Lease for gpu-host-b holds its holder identity, a lease duration of 6 seconds, and a renewTime written with the host&#39;s clock. Two watchers, one in Go and one in Rust, watch the Leases and read their caches once a second.">
+<figcaption><b>Figure 3.2</b> Three agents renew, two watchers observe, and every program reads and writes the same <code>Lease</code> objects.</figcaption>
+</figure>
+<p>The Leases appear in the cluster like any other object:</p>
+<pre><code class="language-console">$ kubectl get lease -n fleet
+NAME         HOLDER       AGE
+gpu-host-a   gpu-host-a   29s
+gpu-host-b   gpu-host-b   29s
+gpu-host-c   gpu-host-c   29s
+$ kubectl get lease -n fleet gpu-host-a -o yaml
+...
+spec:
+  acquireTime: "2026-10-01T01:31:16.509475Z"
+  holderIdentity: gpu-host-a
+  leaseDurationSeconds: 6
+  renewTime: "2026-10-01T01:31:44.511013Z"
+</code></pre>
+<p>At 18:31:25 we kill the agent for <code>gpu-host-b</code> with <code>kill -9</code>, which stops it without
+giving it a chance to clean up, as a power failure would. Fourteen seconds later, at
+18:31:39, we start it again. The agent’s own log shows the gap:</p>
+<pre><code class="language-console">18:31:16 gpu-host-b renewed
+18:31:18 gpu-host-b renewed
+18:31:20 gpu-host-b renewed
+18:31:22 gpu-host-b renewed
+18:31:24 gpu-host-b renewed
+18:31:39 gpu-host-b renewed
+18:31:41 gpu-host-b renewed
+18:31:43 gpu-host-b renewed
+18:31:45 gpu-host-b renewed
+</code></pre>
+<p>The Go watcher printed:</p>
+<pre><code class="language-console">18:31:19 gpu-host-c seen, lease duration 6s
+18:31:19 gpu-host-a seen, lease duration 6s
+18:31:19 gpu-host-b seen, lease duration 6s
+18:31:31 gpu-host-b expired: no renewal seen for 7s
+18:31:39 gpu-host-b renewing again
+</code></pre>
+<p>And the Rust watcher printed:</p>
+<pre><code class="language-console">18:31:19 gpu-host-c seen, lease duration 6s
+18:31:19 gpu-host-a seen, lease duration 6s
+18:31:19 gpu-host-b seen, lease duration 6s
+18:31:30 gpu-host-b expired: no renewal seen for 6s
+18:31:40 gpu-host-b renewing again
+</code></pre>
+<p>The last renewal of <code>gpu-host-b</code> happened at 18:31:24. Each watcher sees a renewal only at
+its next once-a-second check, so its observation time is up to a second later than the
+renewal itself, and it reports the expiry at the first check that falls more than six
+seconds after that observation. The two watchers check at slightly different moments, so
+one reported the expiry at 18:31:30 and the other at 18:31:31. The same one-second
+granularity explains the second difference: the restarted agent renewed at once, at
+18:31:39, and the two watchers noticed at 18:31:39 and 18:31:40.</p>
+<p>Animation 3.1 replays the run for <code>gpu-host-b</code> as the Go watcher saw it. Its last part gives
+the host a clock that runs eight seconds behind and a watcher that subtracts <code>renewTime</code> from
+its own clock.</p>
+<figure class="anim">
+<video class="motion" src="figures/lease-expiry.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The lease agent for gpu-host-b on the left, its Lease in the middle, and the watcher on the right with a count of seconds since renewTime last changed. The agent renews every two seconds and the count returns to zero each time. At 18:31:25 the agent is killed, the count rises past six, and at 18:31:31 the watcher reports the host as expired. At 18:31:39 the agent starts again and the watcher reports it as renewing. In the last part the host&#39;s clock runs eight seconds behind, and a watcher that subtracts renewTime from its own clock reports a healthy host as expired." data-chapters="[[0.0, &quot;renewals&quot;], [10.26, &quot;kill -9&quot;], [21.06, &quot;expired&quot;], [27.24, &quot;back&quot;], [31.45, &quot;comparing clocks&quot;]]"><img src="figures/lease-expiry.gif" alt="The lease agent for gpu-host-b on the left, its Lease in the middle, and the watcher on the right with a count of seconds since renewTime last changed. The agent renews every two seconds and the count returns to zero each time. At 18:31:25 the agent is killed, the count rises past six, and at 18:31:31 the watcher reports the host as expired. At 18:31:39 the agent starts again and the watcher reports it as renewing. In the last part the host&#39;s clock runs eight seconds behind, and a watcher that subtracts renewTime from its own clock reports a healthy host as expired."></video>
+<figcaption><b>Animation 3.1</b> A Lease that stops being renewed, measured on the watcher's clock, and the wrong answer that comparing two clocks gives.</figcaption>
+</figure>
+<p>Throughout, the Go watchers read a Lease written by the Rust agent and the Rust watcher read
+Leases written by the Go agents. The Lease in the API server is the contract between them,
+and neither side needs to know what language the other is written in.</p>
+<p>Declaring a host dead is where a control plane’s harder decisions begin. The host’s jobs
+should run again elsewhere, but a host that only lost its network connection may still be
+running them, and a GPU job that writes checkpoints or holds a reservation must not run
+twice at once. Kubernetes answers part of this with the 5-minute delay before eviction. A
+control plane for GPU jobs needs a firmer answer as well.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><b>Listing 3.25</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
+
+<pre><code class="language-go">// Command heartbeats models how a control plane tracks which machines in a
+// fleet are alive. Every host sends a heartbeat once a second. The registry
+// keeps each host's last heartbeat in memory, runs a sweep once a second, and
+// records a durable write only when a host changes state: Up, Suspect, or Dead.
+//
+// The program simulates 10,000 hosts for 60 seconds without real time passing.
+// Host 42 crashes at second 20, and host 7 misses four heartbeats from second
+// 30 to second 33. It prints how many heartbeats the registry handled, how many
+// durable writes it made, and each write.
+//
+// Run it from code/go with:
+//
+//	go run ./heartbeats
+package main
+
+import "fmt"
+
+// State is what the registry believes about a host.
+type State int
+
+// The states a host moves through.
+const (
+	Up      State = iota // heartbeats are arriving
+	Suspect              // heartbeats stopped recently; the host may be slow
+	Dead                 // heartbeats stopped long enough to give up on the host
+)
+
+// String returns the state's name for the log.
+func (s State) String() string {
+	return [...]string{"Up", "Suspect", "Dead"}[s]
+}
+
+// Thresholds and the size of the simulation, in seconds and hosts.
+const (
+	suspectAfter = 3      // seconds without a heartbeat before a host is Suspect
+	deadAfter    = 10     // seconds without a heartbeat before a host is Dead
+	hostCount    = 10_000 // hosts in the fleet
+	duration     = 60     // seconds simulated
+)
+
+// entry is the registry's in-memory record of one host.
+type entry struct {
+	// lastSeen is the second of the host's most recent heartbeat.
+	lastSeen int
+	// state is the host's current state.
+	state State
+}
+
+// Transition is one durable write: a host entering a new state.
+type Transition struct {
+	// At is the second at which the sweep or heartbeat noticed the change.
+	At int
+	// Host is the host's number.
+	Host int
+	// State is the state the host entered.
+	State State
+}
+
+// Registry holds the liveness of every host.
+type Registry struct {
+	// hosts is indexed by host number.
+	hosts []entry
+	// heartbeats counts the heartbeats handled in memory.
+	heartbeats int
+	// writes lists the durable writes, in order.
+	writes []Transition
+}
+
+
+// NewRegistry returns a registry in which every host is Up, as it would be
+// after the hosts registered.
+func NewRegistry(n int) *Registry {
+	return &amp;Registry{hosts: make([]entry, n)}
+}
+
+// Heartbeat records a heartbeat from host at second now. Only a host that was
+// not Up costs a durable write.
+func (r *Registry) Heartbeat(now, host int) {
+	r.heartbeats++
+	e := &amp;r.hosts[host]
+	e.lastSeen = now
+	if e.state != Up {
+		e.state = Up
+		r.writes = append(r.writes, Transition{now, host, Up})
+	}
+}
+
+// Sweep re-evaluates every host at second now and records each change of state.
+func (r *Registry) Sweep(now int) {
+	for host := range r.hosts {
+		e := &amp;r.hosts[host]
+		if next := stateAfter(now - e.lastSeen); next != e.state {
+			e.state = next
+			r.writes = append(r.writes, Transition{now, host, next})
+		}
+	}
+}
+
+// stateAfter returns the state of a host that has been silent for the given
+// number of seconds.
+func stateAfter(silent int) State {
+	switch {
+	case silent &gt;= deadAfter:
+		return Dead
+	case silent &gt;= suspectAfter:
+		return Suspect
+	default:
+		return Up
+	}
+}
+
+
+// sendsHeartbeat reports whether host sends a heartbeat at second now in the
+// simulation.
+func sendsHeartbeat(host, now int) bool {
+	switch host {
+	case 42:
+		return now &lt; 20 // crashes at second 20
+	case 7:
+		return now &lt; 30 || now &gt;= 34 // silent from second 30 to 33
+	default:
+		return true
+	}
+}
+
+// main runs the simulation and prints the registry's work.
+func main() {
+	registry := NewRegistry(hostCount)
+	for now := 0; now &lt; duration; now++ {
+		for host := 0; host &lt; hostCount; host++ {
+			if sendsHeartbeat(host, now) {
+				registry.Heartbeat(now, host)
+			}
+		}
+		registry.Sweep(now)
+	}
+	fmt.Printf("heartbeats handled in memory: %d\n", registry.heartbeats)
+	fmt.Printf("durable writes:               %d\n", len(registry.writes))
+	for _, w := range registry.writes {
+		fmt.Printf("  second %2d  host %2d -&gt; %s\n", w.At, w.Host, w.State)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.26</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models how a control plane tracks which machines in a fleet are alive.
+//! Every host sends a heartbeat once a second. The registry keeps each host's
+//! last heartbeat in memory, runs a sweep once a second, and records a durable
+//! write only when a host changes state: Up, Suspect, or Dead.
+//!
+//! The program simulates 10,000 hosts for 60 seconds without real time
+//! passing. Host 42 crashes at second 20, and host 7 misses four heartbeats
+//! from second 30 to second 33. It prints how many heartbeats the registry
+//! handled, how many durable writes it made, and each write.
+//!
+//! Run it from `code/rust` with `cargo run -p heartbeats`.
+
+/// Seconds without a heartbeat before a host is Suspect.
+const SUSPECT_AFTER: u32 = 3;
+/// Seconds without a heartbeat before a host is Dead.
+const DEAD_AFTER: u32 = 10;
+/// Hosts in the fleet.
+const HOST_COUNT: usize = 10_000;
+/// Seconds simulated.
+const DURATION: u32 = 60;
+
+/// What the registry believes about a host.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum State {
+    /// Heartbeats are arriving.
+    #[default]
+    Up,
+    /// Heartbeats stopped recently; the host may be slow.
+    Suspect,
+    /// Heartbeats stopped long enough to give up on the host.
+    Dead,
+}
+
+/// The registry's in-memory record of one host.
+#[derive(Clone, Copy, Default)]
+struct Entry {
+    /// The second of the host's most recent heartbeat.
+    last_seen: u32,
+    /// The host's current state.
+    state: State,
+}
+
+/// One durable write: a host entering a new state.
+struct Transition {
+    /// The second at which the sweep or heartbeat noticed the change.
+    at: u32,
+    /// The host's number.
+    host: usize,
+    /// The state the host entered.
+    state: State,
+}
+
+/// Holds the liveness of every host.
+struct Registry {
+    /// Indexed by host number.
+    hosts: Vec&lt;Entry&gt;,
+    /// Counts the heartbeats handled in memory.
+    heartbeats: usize,
+    /// The durable writes, in order.
+    writes: Vec&lt;Transition&gt;,
+}
+
+impl Registry {
+    /// Returns a registry in which every host is Up, as it would be after the
+    /// hosts registered.
+    fn new(n: usize) -&gt; Self {
+        Self {
+            hosts: vec![Entry::default(); n],
+            heartbeats: 0,
+            writes: Vec::new(),
+        }
+    }
+
+    /// Records a heartbeat from `host` at second `now`. Only a host that was
+    /// not Up costs a durable write.
+    fn heartbeat(&amp;mut self, now: u32, host: usize) {
+        self.heartbeats += 1;
+        let entry = &amp;mut self.hosts[host];
+        entry.last_seen = now;
+        if entry.state != State::Up {
+            entry.state = State::Up;
+            self.writes.push(Transition {
+                at: now,
+                host,
+                state: State::Up,
+            });
+        }
+    }
+
+    /// Re-evaluates every host at second `now` and records each change of state.
+    fn sweep(&amp;mut self, now: u32) {
+        for (host, entry) in self.hosts.iter_mut().enumerate() {
+            let next = state_after(now - entry.last_seen);
+            if next != entry.state {
+                entry.state = next;
+                self.writes.push(Transition {
+                    at: now,
+                    host,
+                    state: next,
+                });
+            }
+        }
+    }
+}
+
+/// Returns the state of a host that has been silent for `silent` seconds.
+fn state_after(silent: u32) -&gt; State {
+    match silent {
+        s if s &gt;= DEAD_AFTER =&gt; State::Dead,
+        s if s &gt;= SUSPECT_AFTER =&gt; State::Suspect,
+        _ =&gt; State::Up,
+    }
+}
+
+/// Reports whether `host` sends a heartbeat at second `now` in the simulation.
+fn sends_heartbeat(host: usize, now: u32) -&gt; bool {
+    match host {
+        42 =&gt; now &lt; 20,                // crashes at second 20
+        7 =&gt; !(30..34).contains(&amp;now), // silent from second 30 to 33
+        _ =&gt; true,
+    }
+}
+
+/// Runs the simulation and prints the registry's work.
+fn main() {
+    let mut registry = Registry::new(HOST_COUNT);
+    for now in 0..DURATION {
+        for host in 0..HOST_COUNT {
+            if sends_heartbeat(host, now) {
+                registry.heartbeat(now, host);
+            }
+        }
+        registry.sweep(now);
+    }
+    println!("heartbeats handled in memory: {}", registry.heartbeats);
+    println!("durable writes:               {}", registry.writes.len());
+    for w in &amp;registry.writes {
+        println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
+    }
+}</code></pre>
+<p class="listing"><b>Listing 3.27</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
+
+<pre><code class="language-go">// Command phi compares two ways of deciding that a host has failed: a fixed
+// timeout, and the phi accrual failure detector, which learns how regular each
+// host's heartbeats are and reports how unlikely the current silence is.
+//
+// Two simulated hosts both send a heartbeat about once a second. One is
+// steady; the other sits on a congested network and its heartbeats arrive
+// between 0.4 and 2.4 seconds apart. For each host, the program prints the
+// detector's suspicion level, phi, after different lengths of silence, next to
+// the verdict of a 2-second timeout.
+//
+// Run it from code/go with:
+//
+//	go run ./phi
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+// timeout is the fixed timeout that the program compares against, in seconds.
+const timeout = 2.0
+
+// minStdDev is the smallest standard deviation the detector assumes, in
+// seconds. Without it, a perfectly regular host would make any delay look
+// infinitely suspicious.
+const minStdDev = 0.2
+
+// Detector is a phi accrual failure detector for one host.
+type Detector struct {
+	// intervals holds the most recent gaps between heartbeats, in seconds.
+	intervals []float64
+	// window is the number of gaps the detector remembers.
+	window int
+	// last is the time of the most recent heartbeat, in seconds.
+	last float64
+}
+
+// NewDetector returns a detector that remembers window gaps and has seen a
+// first heartbeat at time first.
+func NewDetector(window int, first float64) *Detector {
+	return &amp;Detector{window: window, last: first}
+}
+
+// Heartbeat records a heartbeat that arrived at time now.
+func (d *Detector) Heartbeat(now float64) {
+	d.intervals = append(d.intervals, now-d.last)
+	if len(d.intervals) &gt; d.window {
+		d.intervals = d.intervals[1:]
+	}
+	d.last = now
+}
+
+
+// Phi returns the suspicion level at time now: minus the base-10 logarithm of
+// the probability that a heartbeat would still arrive after this much silence,
+// given the gaps seen so far. Phi 1 means a 10% chance the host is fine, phi 2
+// means 1%, and phi 3 means 0.1%.
+func (d *Detector) Phi(now float64) float64 {
+	var mean float64
+	for _, gap := range d.intervals {
+		mean += gap
+	}
+	mean /= float64(len(d.intervals))
+	var variance float64
+	for _, gap := range d.intervals {
+		variance += (gap - mean) * (gap - mean)
+	}
+	stdDev := math.Max(math.Sqrt(variance/float64(len(d.intervals))), minStdDev)
+
+	// The probability that a gap is longer than the current silence, from a
+	// logistic approximation of the normal distribution.
+	silence := now - d.last
+	y := (silence - mean) / stdDev
+	e := math.Exp(-y * (1.5976 + 0.070566*y*y))
+	pLater := 1 - 1/(1+e)
+	if silence &gt; mean {
+		pLater = e / (1 + e)
+	}
+	return -math.Log10(pLater)
+}
+
+
+// hosts lists the simulated hosts and the gaps between their heartbeats.
+var hosts = []struct {
+	name string
+	gaps []float64
+}{
+	{"steady", []float64{1.0, 1.02, 0.98, 1.01, 0.99, 1.0, 1.03, 0.97, 1.0, 1.0}},
+	{"jittery", []float64{0.4, 1.9, 0.6, 1.7, 0.5, 1.8, 0.7, 1.6, 0.4, 2.4}},
+}
+
+// main feeds each host's heartbeats to a detector and prints phi after
+// increasing lengths of silence.
+func main() {
+	for _, host := range hosts {
+		detector := NewDetector(100, 0)
+		var now float64
+		for _, gap := range host.gaps {
+			now += gap
+			detector.Heartbeat(now)
+		}
+		fmt.Printf("%s host, silent for:\n", host.name)
+		for _, silence := range []float64{1.0, 1.5, 2.0, 2.5, 3.0, 4.0} {
+			verdict := "alive"
+			if silence &gt; timeout {
+				verdict = "dead"
+			}
+			fmt.Printf("  %.1fs  phi = %6.2f   %.0fs timeout says %s\n",
+				silence, detector.Phi(now+silence), timeout, verdict)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.28</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Compares two ways of deciding that a host has failed: a fixed timeout, and
+//! the phi accrual failure detector, which learns how regular each host's
+//! heartbeats are and reports how unlikely the current silence is.
+//!
+//! Two simulated hosts both send a heartbeat about once a second. One is
+//! steady; the other sits on a congested network and its heartbeats arrive
+//! between 0.4 and 2.4 seconds apart. For each host, the program prints the
+//! detector's suspicion level, phi, after different lengths of silence, next
+//! to the verdict of a 2-second timeout.
+//!
+//! Run it from `code/rust` with `cargo run -p phi`.
+
+use std::collections::VecDeque;
+
+/// The fixed timeout that the program compares against, in seconds.
+const TIMEOUT: f64 = 2.0;
+
+/// The smallest standard deviation the detector assumes, in seconds. Without
+/// it, a perfectly regular host would make any delay look infinitely
+/// suspicious.
+const MIN_STD_DEV: f64 = 0.2;
+
+/// A phi accrual failure detector for one host.
+struct Detector {
+    /// The most recent gaps between heartbeats, in seconds.
+    intervals: VecDeque&lt;f64&gt;,
+    /// The number of gaps the detector remembers.
+    window: usize,
+    /// The time of the most recent heartbeat, in seconds.
+    last: f64,
+}
+
+impl Detector {
+    /// Returns a detector that remembers `window` gaps and has seen a first
+    /// heartbeat at time `first`.
+    fn new(window: usize, first: f64) -&gt; Self {
+        Self {
+            intervals: VecDeque::new(),
+            window,
+            last: first,
+        }
+    }
+
+    /// Records a heartbeat that arrived at time `now`.
+    fn heartbeat(&amp;mut self, now: f64) {
+        self.intervals.push_back(now - self.last);
+        if self.intervals.len() &gt; self.window {
+            self.intervals.pop_front();
+        }
+        self.last = now;
+    }
+}
+
+impl Detector {
+    /// Returns the suspicion level at time `now`: minus the base-10 logarithm
+    /// of the probability that a heartbeat would still arrive after this much
+    /// silence, given the gaps seen so far. Phi 1 means a 10% chance the host
+    /// is fine, phi 2 means 1%, and phi 3 means 0.1%.
+    #[allow(clippy::cast_precision_loss)] // the window holds at most 100 gaps
+    fn phi(&amp;self, now: f64) -&gt; f64 {
+        let n = self.intervals.len() as f64;
+        let mean = self.intervals.iter().sum::&lt;f64&gt;() / n;
+        let variance = self
+            .intervals
+            .iter()
+            .map(|gap| (gap - mean).powi(2))
+            .sum::&lt;f64&gt;()
+            / n;
+        let std_dev = variance.sqrt().max(MIN_STD_DEV);
+
+        // The probability that a gap is longer than the current silence, from
+        // a logistic approximation of the normal distribution.
+        let silence = now - self.last;
+        let y = (silence - mean) / std_dev;
+        let e = (-y * (1.5976 + 0.070_566 * y * y)).exp();
+        let p_later = if silence &gt; mean {
+            e / (1.0 + e)
+        } else {
+            1.0 - 1.0 / (1.0 + e)
+        };
+        -p_later.log10()
+    }
+}
+
+/// The simulated hosts and the gaps between their heartbeats.
+const HOSTS: [(&amp;str, [f64; 10]); 2] = [
+    (
+        "steady",
+        [1.0, 1.02, 0.98, 1.01, 0.99, 1.0, 1.03, 0.97, 1.0, 1.0],
+    ),
+    (
+        "jittery",
+        [0.4, 1.9, 0.6, 1.7, 0.5, 1.8, 0.7, 1.6, 0.4, 2.4],
+    ),
+];
+
+/// Feeds each host's heartbeats to a detector and prints phi after increasing
+/// lengths of silence.
+fn main() {
+    for (name, gaps) in HOSTS {
+        let mut detector = Detector::new(100, 0.0);
+        let mut now = 0.0;
+        for gap in gaps {
+            now += gap;
+            detector.heartbeat(now);
+        }
+        println!("{name} host, silent for:");
+        for silence in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0] {
+            let verdict = if silence &gt; TIMEOUT { "dead" } else { "alive" };
+            println!(
+                "  {silence:.1}s  phi = {:6.2}   {TIMEOUT:.0}s timeout says {verdict}",
+                detector.phi(now + silence)
+            );
+        }
+    }
+}</code></pre>
+<p class="listing"><b>Listing 3.29</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
+
+<pre><code class="language-go">// Command leaseagent keeps a Kubernetes Lease alive for one host, the way the
+// kubelet keeps its node's Lease in the kube-node-lease namespace alive. Every
+// two seconds it writes the Lease named after the host in the fleet namespace,
+// with the current time as renewTime and a lease duration of six seconds.
+// Other programs judge the host alive for as long as these renewals continue.
+//
+// Run it from code/go, against the cluster in the current kubeconfig context,
+// with:
+//
+//	go run ./leaseagent gpu-host-a
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	coordinationv1ac "k8s.io/client-go/applyconfigurations/coordination/v1"
+	"k8s.io/client-go/kubernetes"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+// Lease settings. The renewal interval is a third of the lease duration, so a
+// host has to miss three renewals in a row before its Lease expires.
+const (
+	namespace     = "fleet"
+	renewEvery    = 2 * time.Second
+	leaseDuration = 6 // seconds
+	fieldManager  = "leaseagent"
+)
+
+
+// main reads the host name from the command line and renews its Lease until
+// the process receives Ctrl-C or SIGTERM.
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "usage: leaseagent &lt;host&gt;")
+		os.Exit(2)
+	}
+	if err := run(os.Args[1]); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run writes the host's Lease with server-side apply once per renewEvery.
+// A renewal that fails is reported and retried at the next tick.
+func run(host string) error {
+	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	leases := clientset.CoordinationV1().Leases(namespace)
+	acquired := metav1.NewMicroTime(time.Now())
+	ticker := time.NewTicker(renewEvery)
+	defer ticker.Stop()
+	for {
+		now := metav1.NewMicroTime(time.Now())
+		lease := coordinationv1ac.Lease(host, namespace).
+			WithSpec(coordinationv1ac.LeaseSpec().
+				WithHolderIdentity(host).
+				WithLeaseDurationSeconds(leaseDuration).
+				WithAcquireTime(acquired).
+				WithRenewTime(now))
+		_, err := leases.Apply(ctx, lease, metav1.ApplyOptions{FieldManager: fieldManager, Force: true})
+		switch {
+		case ctx.Err() != nil:
+			return nil
+		case err != nil:
+			fmt.Printf("%s %s renewal failed: %v\n", now.Format(time.TimeOnly), host, err)
+		default:
+			fmt.Printf("%s %s renewed\n", now.Format(time.TimeOnly), host)
+		}
+		select {
+		case &lt;-ctx.Done():
+			return nil
+		case &lt;-ticker.C:
+		}
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.30</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Keeps a Kubernetes Lease alive for one host, the way the kubelet keeps its
+//! node's Lease in the `kube-node-lease` namespace alive. Every two seconds it
+//! writes the Lease named after the host in the `fleet` namespace, with the
+//! current time as `renewTime` and a lease duration of six seconds. Other
+//! programs judge the host alive for as long as these renewals continue.
+//!
+//! Run it from `code/rust`, against the cluster in the current kubeconfig
+//! context, with `cargo run -p leaseagent -- gpu-host-a`.
+
+use jiff::Timestamp;
+use jiff::tz::TimeZone;
+use k8s_openapi::api::coordination::v1::{Lease, LeaseSpec};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::MicroTime;
+use kube::api::{ObjectMeta, Patch, PatchParams};
+use kube::{Api, Client};
+use std::error::Error;
+use std::time::Duration;
+
+/// The namespace that holds the hosts' Leases.
+const NAMESPACE: &amp;str = "fleet";
+/// How often the agent renews the Lease: a third of the lease duration, so a
+/// host has to miss three renewals in a row before its Lease expires.
+const RENEW_EVERY: Duration = Duration::from_secs(2);
+/// How long a Lease stays valid after its last renewal, in seconds.
+const LEASE_DURATION: i32 = 6;
+/// The field manager name for server-side apply.
+const FIELD_MANAGER: &amp;str = "leaseagent";
+
+/// Builds the Lease that `host` writes at time `now`, having first acquired
+/// it at time `acquired`.
+fn lease(host: &amp;str, acquired: Timestamp, now: Timestamp) -&gt; Lease {
+    Lease {
+        metadata: ObjectMeta {
+            name: Some(host.to_string()),
+            namespace: Some(NAMESPACE.to_string()),
+            ..ObjectMeta::default()
+        },
+        spec: Some(LeaseSpec {
+            holder_identity: Some(host.to_string()),
+            lease_duration_seconds: Some(LEASE_DURATION),
+            acquire_time: Some(MicroTime(acquired)),
+            renew_time: Some(MicroTime(now)),
+            ..LeaseSpec::default()
+        }),
+    }
+}
+
+/// Formats a timestamp as local time of day, for the log.
+fn time_of_day(t: Timestamp) -&gt; String {
+    t.to_zoned(TimeZone::system())
+        .strftime("%H:%M:%S")
+        .to_string()
+}
+
+/// Reads the host name from the command line and renews its Lease with
+/// server-side apply until the process receives Ctrl-C. A renewal that fails
+/// is reported and retried at the next tick.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let Some(host) = std::env::args().nth(1) else {
+        eprintln!("usage: leaseagent &lt;host&gt;");
+        std::process::exit(2);
+    };
+    let leases: Api&lt;Lease&gt; = Api::namespaced(Client::try_default().await?, NAMESPACE);
+    let params = PatchParams::apply(FIELD_MANAGER).force();
+    let acquired = Timestamp::now();
+    let mut ticker = tokio::time::interval(RENEW_EVERY);
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
+            _ = ticker.tick() =&gt; {}
+        }
+        let now = Timestamp::now();
+        match leases
+            .patch(&amp;host, &amp;params, &amp;Patch::Apply(lease(&amp;host, acquired, now)))
+            .await
+        {
+            Ok(_) =&gt; println!("{} {host} renewed", time_of_day(now)),
+            Err(error) =&gt; println!("{} {host} renewal failed: {error}", time_of_day(now)),
+        }
+    }
+}</code></pre>
+<p class="listing"><b>Listing 3.31</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
+
+<pre><code class="language-go">// Command leasewatch reports when a host in the fleet namespace stops renewing
+// its Lease, and when it starts again. It keeps an informer cache of the
+// Leases and checks it once a second.
+//
+// It judges a Lease by its own clock, the way the Kubernetes node lifecycle
+// controller judges node Leases: it notes the local time at which it first
+// sees each new renewTime, and declares the host expired when no new
+// renewTime has appeared for longer than the lease duration. The renewTime
+// value itself was written with the host's clock, which may differ from ours.
+//
+// Run it from code/go, against the cluster in the current kubeconfig context,
+// with:
+//
+//	go run ./leasewatch
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	coordinationv1 "k8s.io/api/coordination/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+// namespace is the namespace whose Leases the program watches.
+const namespace = "fleet"
+
+// checkEvery is how often the program re-evaluates every Lease.
+const checkEvery = time.Second
+
+// observation is what the program knows about one host's Lease.
+type observation struct {
+	// renewTime is the latest renewTime seen in the Lease.
+	renewTime time.Time
+	// observedAt is the local time at which that renewTime was first seen.
+	observedAt time.Time
+	// expired records whether the host has been reported as expired.
+	expired bool
+}
+
+
+// main runs the watcher until the process receives Ctrl-C or SIGTERM.
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run starts an informer for Leases in the namespace, waits for its first
+// list, and then checks every Lease in its cache once per checkEvery.
+func run() error {
+	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	factory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithNamespace(namespace))
+	lister := factory.Coordination().V1().Leases().Lister().Leases(namespace)
+	factory.Start(ctx.Done())
+	factory.WaitForCacheSync(ctx.Done())
+
+	seen := map[string]*observation{}
+	ticker := time.NewTicker(checkEvery)
+	defer ticker.Stop()
+	for {
+		leases, err := lister.List(labels.Everything())
+		if err != nil {
+			return err
+		}
+		now := time.Now()
+		for _, lease := range leases {
+			check(seen, lease, now)
+		}
+		select {
+		case &lt;-ctx.Done():
+			return nil
+		case &lt;-ticker.C:
+		}
+	}
+}
+
+
+// check updates the observation of one Lease at local time now and prints a
+// line when the host is first seen, expires, or renews again after expiring.
+func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.Time) {
+	if lease.Spec.RenewTime == nil || lease.Spec.LeaseDurationSeconds == nil {
+		return
+	}
+	renew := lease.Spec.RenewTime.Time
+	duration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
+	stamp := now.Format(time.TimeOnly)
+
+	obs, known := seen[lease.Name]
+	switch {
+	case !known:
+		seen[lease.Name] = &amp;observation{renewTime: renew, observedAt: now}
+		fmt.Printf("%s %s seen, lease duration %s\n", stamp, lease.Name, duration)
+	case !renew.Equal(obs.renewTime):
+		obs.renewTime, obs.observedAt = renew, now
+		if obs.expired {
+			obs.expired = false
+			fmt.Printf("%s %s renewing again\n", stamp, lease.Name)
+		}
+	case !obs.expired &amp;&amp; now.Sub(obs.observedAt) &gt; duration:
+		obs.expired = true
+		fmt.Printf("%s %s expired: no renewal seen for %s\n",
+			stamp, lease.Name, now.Sub(obs.observedAt).Round(time.Second))
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 3.32</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Reports when a host in the `fleet` namespace stops renewing its Lease, and
+//! when it starts again. It keeps a reflector store of the Leases and checks
+//! it once a second.
+//!
+//! It judges a Lease by its own clock, the way the Kubernetes node lifecycle
+//! controller judges node Leases: it notes the local time at which it first
+//! sees each new `renewTime`, and declares the host expired when no new
+//! `renewTime` has appeared for longer than the lease duration. The
+//! `renewTime` value itself was written with the host's clock, which may
+//! differ from ours.
+//!
+//! Run it from `code/rust`, against the cluster in the current kubeconfig
+//! context, with `cargo run -p leasewatch`.
+
+use futures::StreamExt;
+use jiff::{Timestamp, Zoned};
+use k8s_openapi::api::coordination::v1::Lease;
+use kube::runtime::{WatchStreamExt, reflector, watcher};
+use kube::{Api, Client, ResourceExt};
+use std::collections::HashMap;
+use std::error::Error;
+use std::time::{Duration, Instant};
+
+/// The namespace whose Leases the program watches.
+const NAMESPACE: &amp;str = "fleet";
+/// How often the program re-evaluates every Lease.
+const CHECK_EVERY: Duration = Duration::from_secs(1);
+
+/// What the program knows about one host's Lease.
+struct Observation {
+    /// The latest `renewTime` seen in the Lease.
+    renew_time: Timestamp,
+    /// The local time at which that `renewTime` was first seen.
+    observed_at: Instant,
+    /// Whether the host has been reported as expired.
+    expired: bool,
+}
+
+/// Updates the observation of one Lease at local time `now` and prints a line
+/// when the host is first seen, expires, or renews again after expiring.
+fn check(seen: &amp;mut HashMap&lt;String, Observation&gt;, lease: &amp;Lease, now: Instant) {
+    let Some(spec) = &amp;lease.spec else { return };
+    let (Some(renew), Some(seconds)) = (&amp;spec.renew_time, spec.lease_duration_seconds) else {
+        return;
+    };
+    let duration = Duration::from_secs(u64::from(seconds.unsigned_abs()));
+    let stamp = Zoned::now().strftime("%H:%M:%S").to_string();
+    let name = lease.name_any();
+
+    match seen.get_mut(&amp;name) {
+        None =&gt; {
+            seen.insert(
+                name.clone(),
+                Observation {
+                    renew_time: renew.0,
+                    observed_at: now,
+                    expired: false,
+                },
+            );
+            println!(
+                "{stamp} {name} seen, lease duration {}s",
+                duration.as_secs()
+            );
+        }
+        Some(obs) if obs.renew_time != renew.0 =&gt; {
+            obs.renew_time = renew.0;
+            obs.observed_at = now;
+            if obs.expired {
+                obs.expired = false;
+                println!("{stamp} {name} renewing again");
+            }
+        }
+        Some(obs) if !obs.expired &amp;&amp; now.duration_since(obs.observed_at) &gt; duration =&gt; {
+            obs.expired = true;
+            let silent = now.duration_since(obs.observed_at).as_secs_f64().round();
+            println!("{stamp} {name} expired: no renewal seen for {silent}s");
+        }
+        Some(_) =&gt; {}
+    }
+}
+
+/// Starts a watcher that fills a reflector store with the namespace's Leases,
+/// waits for the first list, and then checks every Lease in the store once
+/// per `CHECK_EVERY` until the process receives Ctrl-C.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let leases: Api&lt;Lease&gt; = Api::namespaced(Client::try_default().await?, NAMESPACE);
+    let (store, writer) = reflector::store();
+    let stream = watcher(leases, watcher::Config::default())
+        .default_backoff()
+        .reflect(writer)
+        .applied_objects();
+    tokio::spawn(stream.for_each(|_| std::future::ready(())));
+    store.wait_until_ready().await?;
+
+    let mut seen = HashMap::new();
+    let mut ticker = tokio::time::interval(CHECK_EVERY);
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
+            _ = ticker.tick() =&gt; {}
+        }
+        let now = Instant::now();
+        for lease in store.state() {
+            check(&amp;mut seen, &amp;lease, now);
+        }
+    }
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A crashed machine sends nothing, so a control plane infers failure from silence, and
+every timeout is a bet between false alarms and slow detection.</li>
+<li>A registry that keeps last-seen times in memory and writes only changes of state
+handled 599,956 heartbeats with four durable writes.</li>
+<li>The phi accrual detector derives each host’s timeout from the gaps between its own
+heartbeats.</li>
+<li>Kubernetes tracks its nodes with Lease objects that the kubelet renews every ten
+seconds.</li>
+<li>A watcher measures the time since it last saw <code>renewTime</code> change on its own clock, so
+a difference between two machines’ clocks cannot make a healthy host look expired.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Kubernetes, Leases:
+<a href="https://kubernetes.io/docs/concepts/architecture/leases/">https://kubernetes.io/docs/concepts/architecture/leases/</a></li>
+<li>Kubernetes, Node status and heartbeats:
+<a href="https://kubernetes.io/docs/reference/node/node-status/#heartbeats">https://kubernetes.io/docs/reference/node/node-status/#heartbeats</a></li>
+<li>Kubernetes, Nodes and the node controller:
+<a href="https://kubernetes.io/docs/concepts/architecture/nodes/">https://kubernetes.io/docs/concepts/architecture/nodes/</a></li>
+<li>Kubernetes source, node lifecycle controller:
+<a href="https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/nodelifecycle/node_lifecycle_controller.go">https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/nodelifecycle/node_lifecycle_controller.go</a></li>
+<li>N. Hayashibara, X. Défago, R. Yared, T. Katayama, “The φ Accrual Failure Detector”,
+23rd IEEE International Symposium on Reliable Distributed Systems (SRDS), 2004.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="02-gpus.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="04-fleet-control-plane.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="02-gpus.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="04-fleet-control-plane.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

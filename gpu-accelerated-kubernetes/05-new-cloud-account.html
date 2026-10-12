@@ -1,0 +1,1228 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Kubernetes in a new cloud account - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/05-new-cloud-account.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="5-kubernetes-in-a-new-cloud-account"><a class="header" href="#5-kubernetes-in-a-new-cloud-account">5. Kubernetes in a new cloud account</a></h1>
+<p>So far our cluster has existed before each chapter began. In this chapter, we will look
+at where a cluster comes from. We start with an account at a provider of machines, which
+holds nothing, and end with a set of machines that the API server knows as nodes and the
+scheduler can place GPU pods on.</p>
+<p>Two separate things have to happen. Something has to ask the provider for machines and
+keep asking until the right number exist, and each machine, once it boots, has to prove
+to the cluster that it is allowed to join. We will take the second first, because we can
+watch it on the cluster we already have. Then we will write <code>provisioner</code>, in Go and in
+Rust, a model of the controller that asks for machines, and use it to study the one
+failure that makes this job harder than it looks: a request that succeeds while its reply
+is lost.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what an empty account offers: a create call, a quota, and nothing else</li>
+<li>how a machine joins a cluster: a bootstrap token, a signed certificate, a Node object</li>
+<li>the labels and capacity a node reports, read from our own cluster</li>
+<li>a controller that fills pools of machines, and what a lost reply does to it</li>
+<li>client tokens, which make a create call safe to send twice</li>
+<li>how Cluster API expresses the same design as Kubernetes objects</li>
+</ul>
+</div>
+
+<h2 id="what-the-account-gives-us"><a class="header" href="#what-the-account-gives-us">What the account gives us</a></h2>
+<p>A provider of machines, whether a public cloud or the team that racks hardware in a
+company’s own data center, offers the same small interface. We can ask for a machine of
+a given model, list the machines we have, and give one back. The account also has a
+<em>quota</em> for each model: the largest number of machines of that model it may hold at
+once.</p>
+<p>Our fleet from chapter 4 fits this picture exactly, and its quotas are physical. There
+are five Jetson AGX Thors on the shelf and two DGX Sparks on the desk. A request for a
+sixth Thor fails for the same reason a request for a sixth GPU instance fails in a cloud
+account whose quota is five: the provider has no more to give us.</p>
+<p>A new machine is a computer with an operating system and a network address. It knows
+nothing about our cluster, and our cluster knows nothing about it.</p>
+<h2 id="how-a-machine-becomes-a-node"><a class="header" href="#how-a-machine-becomes-a-node">How a machine becomes a node</a></h2>
+<p>A machine becomes a node when the kubelet on it registers with the API server. From
+chapter 1 we know that every request to the API server is an HTTP request, and the API
+server requires each one to identify its sender. A kubelet identifies itself with a
+<em>client certificate</em>: a file that states a name, here the node’s name, and carries a
+signature from the cluster’s <em>certificate authority</em> (CA), a key pair the cluster
+created for itself when it was first set up. The API server trusts any certificate that
+its CA signed.</p>
+<p>A new machine has no such certificate, and it cannot be handed the CA’s private key,
+since any holder of that key can impersonate every node in the cluster. The machine is
+given something much weaker instead, and trades it for a certificate. Figure 5.1 shows
+the exchange.</p>
+<figure>
+<img src="figures/node-join.svg" alt="A new machine holds a bootstrap token and the hash of the cluster&#39;s CA key. Step 1: its kubelet connects to the API server and checks the server&#39;s certificate against the hash. Step 2: it authenticates with the token and submits a certificate signing request for the name system:node:thor-3. Step 3: a controller in the control plane approves and signs the request with the cluster CA. Step 4: the kubelet fetches the signed certificate. Step 5: using the certificate, it creates its Node object and its Lease, and begins to report capacity.">
+<figcaption><b>Figure 5.1</b> Joining a cluster: a short-lived token is traded for a certificate that names one node.</figcaption>
+</figure>
+<p>The weaker thing is a <em>bootstrap token</em>: a short string that the API server accepts for
+a limited time and for one purpose. Our kind cluster was created with kubeadm, the
+standard tool for setting up a cluster, and kubeadm can print the command a new machine
+would run to join. We have cut the two secret values from the output:</p>
+<pre><code class="language-console">$ docker exec gpu-lab-control-plane kubeadm token create --ttl 10m --print-join-command
+kubeadm join gpu-lab-control-plane:6443 --token &lt;token&gt; --discovery-token-ca-cert-hash sha256:&lt;hash&gt;
+</code></pre>
+<p>The command carries three facts, and each one answers a question the new machine has.</p>
+<ul>
+<li><code>gpu-lab-control-plane:6443</code> is where the API server listens.</li>
+<li>The token is what the machine will show to prove it was invited. We asked for it to
+expire after ten minutes.</li>
+<li>The hash is a fingerprint of the cluster’s CA public key. The machine uses it in the
+other direction: before it sends the token anywhere, it checks that the server it
+reached presents a certificate signed by the CA with this fingerprint. A machine
+without the hash could be tricked into sending its token to an impostor.</li>
+</ul>
+<p>With the token accepted, the kubelet generates a key pair of its own and submits a
+<em>CertificateSigningRequest</em>, a Kubernetes object that says “please sign a certificate
+that names me <code>system:node:thor-3</code>”. The token is permitted to do only this. A
+controller in the control plane checks that the request comes from a bootstrap token and
+asks for a node identity, approves it, and signs it with the CA. The kubelet downloads
+the certificate and from then on uses it for every request. The private key was
+generated on the machine and has stayed there.</p>
+<p>With its certificate, the kubelet creates the two objects we already know: a Node
+object, and the Lease from chapter 3 that it will renew every ten seconds.</p>
+<h3 id="what-a-node-reports-about-itself"><a class="header" href="#what-a-node-reports-about-itself">What a node reports about itself</a></h3>
+<p>The Node object is where the kubelet tells the scheduler what the machine has. Here is
+the capacity our Orin NX reports, with the huge-page lines removed:</p>
+<pre><code class="language-console">$ kubectl get node gpu-lab-control-plane -o jsonpath='{.status.capacity}'
+{"cpu":"8","ephemeral-storage":"1966327652352","memory":"16031232Ki","nvidia.com/gpu":"1","pods":"110"}
+</code></pre>
+<p>Eight CPU cores, 16,031,232 KiB of memory, which is the board’s 15.3 GiB, and one
+<code>nvidia.com/gpu</code>, reported by the device plugin from Appendix A. The scheduler subtracts
+what running pods have requested from these numbers to find out what is free.</p>
+<p>The Node object also carries <em>labels</em>: pairs of a key and a value that describe the
+machine.</p>
+<pre><code class="language-console">$ kubectl get node gpu-lab-control-plane -o jsonpath='{.metadata.labels}'
+{"beta.kubernetes.io/arch":"arm64","beta.kubernetes.io/os":"linux","kubernetes.io/arch":"arm64",
+"kubernetes.io/hostname":"gpu-lab-control-plane","kubernetes.io/os":"linux",
+"node-role.kubernetes.io/control-plane":""}
+</code></pre>
+<p>The kubelet sets the architecture, the operating system, and the host name by itself.
+Nothing here says which GPU the machine has. A count of <code>nvidia.com/gpu: 1</code> is the same
+on an Orin NX with 16 GB and on a Thor with 128 GB, and a job that needs 60 GB of GPU
+memory fits on only one of them. On clusters that the GPU Operator supports, a component
+called GPU Feature Discovery adds labels such as <code>nvidia.com/gpu.product</code> and
+<code>nvidia.com/gpu.memory</code> to each node. On our fleet we would set a label by hand as each
+machine joins:</p>
+<pre><code class="language-console">$ kubectl label node thor-3 gpucloud.dev/model=jetson-agx-thor
+</code></pre>
+<p>A pod then restricts itself to machines with that label through the <code>nodeSelector</code> field
+of its spec, and the scheduler considers only nodes whose labels match. Chapter 8 uses
+labels of this kind to place jobs.</p>
+<h2 id="asking-for-machines"><a class="header" href="#asking-for-machines">Asking for machines</a></h2>
+<p>Now for the first half: getting the machines to exist. We describe what we want as
+<em>pools</em>. A pool is a model and a count: five Thors, two Sparks. The controller’s job is
+to make the account hold exactly that.</p>
+<p>This is reconciliation again, with the provider’s interface in place of the API server.
+The controller compares the wanted count with the machines it has and creates the
+difference. The difficulty lies in a property of the create call that the calls in
+chapter 1 did not have. Creating a machine changes the world outside the cluster, costs
+money while the machine runs, and counts against a quota.</p>
+<p>Consider what the controller knows after a create call. There are three outcomes:</p>
+<ol>
+<li>A reply arrives with the new machine’s identifier. The machine exists.</li>
+<li>A reply arrives with an error such as “quota exceeded”. No machine was created.</li>
+<li>No reply arrives before the controller’s timeout.</li>
+</ol>
+<p>The third outcome is the awkward one, because it covers two different situations that
+look identical from the controller’s side. The request may have been lost on the way, in
+which case nothing was created. Or the provider may have created the machine and the
+reply was lost on the way back. Figure 5.2 follows the second situation.</p>
+<figure>
+<img src="figures/lost-reply.svg" alt="Two sequences. Above, without a token: the controller sends create, the provider creates machine m-03 and the reply is lost. The controller retries with another create, the provider creates a second machine m-06, and m-03 runs with no owner. Below, with a client token: the controller sends create with the token thor-3, the provider creates m-03 and the reply is lost. The controller retries with the same token, and the provider returns m-03 without creating anything.">
+<figcaption><b>Figure 5.2</b> A create call whose reply is lost, retried without a token and with one.</figcaption>
+</figure>
+<p>If the controller assumes nothing was created and sends another create, it may end up
+with two machines where it wanted one. It owns the second and has no record of the
+first, which runs, costs money, and uses up quota until someone finds it. If the
+controller assumes the machine was created, it has no identifier to manage it by.</p>
+<h3 id="a-token-that-names-the-request"><a class="header" href="#a-token-that-names-the-request">A token that names the request</a></h3>
+<p>The remedy is to let the controller name each request. The controller attaches a
+<em>client token</em> to the call: a string it chose, which identifies this particular
+machine-to-be. The provider stores the token with the machine it creates. When a second
+call arrives with a token it has already seen, the provider creates nothing and returns
+the existing machine.</p>
+<p>A call with this property is called <em>idempotent</em>: sending it twice has the same effect
+as sending it once. With an idempotent create, the controller needs no way to tell the
+two timeout situations apart. It sends the same call again, and the answer is the same
+machine either way.</p>
+<p>The token has to be the same on the retry, so it cannot be random. Our controller
+derives it from the pool’s name and the slot it is filling: the third Thor’s token is
+<code>thor-3</code>, on every attempt. Real providers work the same way. The call that creates a
+virtual machine in Amazon EC2 takes a <code>ClientToken</code> parameter for exactly this purpose.</p>
+<div class="lld">
+<p>Low-level design: <code>provisioner</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Machine</code></td><td>identifier, model, the token it was created with</td><td>fixed once created</td></tr>
+<tr><td><code>Provider</code></td><td>the quota per model, every machine, a call counter</td><td>a model’s machines stay within its quota; one machine per token</td></tr>
+<tr><td><code>Pool</code></td><td>a name, a model, the wanted count</td><td>fixed for the run</td></tr>
+<tr><td><code>Controller</code></td><td>the provider, and the machines it owns per pool</td><td>it owns a machine only after a successful reply</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Provider.Create(model, token)</code></td><td>returns the machine with this token if one exists; otherwise checks the quota and creates one</td></tr>
+<tr><td><code>Controller.Reconcile(pool)</code></td><td>fills the pool’s empty slots in order and stops at the first failed call</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="building-provisioner"><a class="header" href="#building-provisioner">Building <code>provisioner</code></a></h2>
+<h3 id="the-provider"><a class="header" href="#the-provider">The provider</a></h3>
+<p>The provider is the account. <code>Create</code> does three things in order. It looks for a
+machine that already carries the caller’s token and, if it finds one, returns it. It
+checks the quota. Then it creates the machine, and only after that does the run get the
+chance to lose the reply. That ordering is what makes the lost reply dangerous: the
+machine is in the list before the caller learns anything.</p>
+<p class="listing"><b>Listing 5.1</b> The provider and its create call, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
+
+<pre><code class="language-go">// Machine is one machine the provider has created.
+type Machine struct {
+	// ID is the provider's identifier for the machine.
+	ID string
+	// Model is the kind of machine.
+	Model string
+	// Token is the client token of the call that created it, or "".
+	Token string
+}
+
+// Errors a create call can return.
+var (
+	// ErrTimeout means no reply arrived. The machine may or may not exist.
+	ErrTimeout = errors.New("timed out")
+	// ErrQuota means the account already holds as many machines of this model
+	// as it is allowed.
+	ErrQuota = errors.New("quota exceeded")
+)
+
+// Provider is the account that machines are created in.
+type Provider struct {
+	// quota is the number of machines of each model the account may hold.
+	quota map[string]int
+	// machines lists every machine that exists, in creation order.
+	machines []Machine
+	// calls counts create calls, so the run can lose the reply to one of them.
+	calls int
+	// loseReply is the number of the call whose reply is lost.
+	loseReply int
+}
+
+// count returns how many machines of a model exist.
+func (p *Provider) count(model string) int {
+	n := 0
+	for _, m := range p.machines {
+		if m.Model == model {
+			n++
+		}
+	}
+	return n
+}
+
+// Create makes one machine. A call that carries a token already used by an
+// existing machine returns that machine and creates nothing.
+func (p *Provider) Create(model, token string) (Machine, error) {
+	p.calls++
+	if token != "" {
+		for _, m := range p.machines {
+			if m.Token == token {
+				return m, nil
+			}
+		}
+	}
+	if p.count(model) &gt;= p.quota[model] {
+		return Machine{}, ErrQuota
+	}
+	m := Machine{ID: fmt.Sprintf("m-%02d", len(p.machines)+1), Model: model, Token: token}
+	p.machines = append(p.machines, m)
+	if p.calls == p.loseReply {
+		return Machine{}, ErrTimeout
+	}
+	return m, nil
+}
+</code></pre>
+<p class="listing"><b>Listing 5.2</b> The provider and its create call, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// One machine the provider has created.
+#[derive(Clone)]
+struct Machine {
+    /// The provider's identifier for the machine.
+    id: String,
+    /// The kind of machine.
+    model: &amp;'static str,
+    /// The client token of the call that created it, if it carried one.
+    token: Option&lt;String&gt;,
+}
+
+/// The ways a create call can fail.
+enum CreateError {
+    /// No reply arrived. The machine may or may not exist.
+    Timeout,
+    /// The account already holds as many machines of this model as it is
+    /// allowed.
+    Quota,
+}
+
+impl fmt::Display for CreateError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            CreateError::Timeout =&gt; "timed out",
+            CreateError::Quota =&gt; "quota exceeded",
+        })
+    }
+}
+
+/// The account that machines are created in.
+struct Provider {
+    /// The number of machines of each model the account may hold.
+    quota: BTreeMap&lt;&amp;'static str, usize&gt;,
+    /// Every machine that exists, in creation order.
+    machines: Vec&lt;Machine&gt;,
+    /// Counts create calls, so the run can lose the reply to one of them.
+    calls: usize,
+    /// The number of the call whose reply is lost.
+    lose_reply: usize,
+}
+
+impl Provider {
+    /// Returns how many machines of a model exist.
+    fn count(&amp;self, model: &amp;str) -&gt; usize {
+        self.machines.iter().filter(|m| m.model == model).count()
+    }
+
+    /// Makes one machine. A call that carries a token already used by an
+    /// existing machine returns that machine and creates nothing.
+    fn create(&amp;mut self, model: &amp;'static str, token: Option&lt;&amp;str&gt;) -&gt; Result&lt;Machine, CreateError&gt; {
+        self.calls += 1;
+        if let Some(token) = token
+            &amp;&amp; let Some(existing) = self.machines.iter().find(|m| m.token.as_deref() == Some(token))
+        {
+            return Ok(existing.clone());
+        }
+        if self.count(model) &gt;= self.quota[model] {
+            return Err(CreateError::Quota);
+        }
+        let machine = Machine {
+            id: format!("m-{:02}", self.machines.len() + 1),
+            model,
+            token: token.map(str::to_owned),
+        };
+        self.machines.push(machine.clone());
+        if self.calls == self.lose_reply {
+            return Err(CreateError::Timeout);
+        }
+        Ok(machine)
+    }
+}</code></pre>
+<p>The Rust version represents a missing token as <code>None</code>, and the lookup is an
+<code>if let ... &amp;&amp; let ...</code> chain, the same construct we used in section 1.1: the first
+<code>let</code> unwraps the caller’s token, and the second searches for a machine that carries it.</p>
+<h3 id="the-controller"><a class="header" href="#the-controller">The controller</a></h3>
+<p><code>Reconcile</code> works on one pool. It names the next empty slot, builds the token from that
+name when tokens are switched on, and calls the provider. A failed call ends the pass
+for this pool, and the controller records nothing for it. The next pass starts from the
+same slot.</p>
+<p class="listing"><b>Listing 5.3</b> The pool and the controller's reconcile, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
+
+<pre><code class="language-go">// Pool is a group of identical machines and the size its owner wants.
+type Pool struct {
+	// Name prefixes the name of each slot: thor-1, thor-2, and so on.
+	Name string
+	// Model is the kind of machine in the pool.
+	Model string
+	// Want is the number of machines the pool should have.
+	Want int
+}
+
+// Controller brings each pool to its wanted size.
+type Controller struct {
+	provider *Provider
+	// tokens says whether create calls carry a client token.
+	tokens bool
+	// owned maps a pool's name to the machines the controller knows it has.
+	owned map[string][]Machine
+}
+
+// Reconcile fills the empty slots of one pool, in order, and stops at the
+// first call that fails. It returns true when the pool is full.
+func (c *Controller) Reconcile(pool Pool) bool {
+	for len(c.owned[pool.Name]) &lt; pool.Want {
+		slot := fmt.Sprintf("%s-%d", pool.Name, len(c.owned[pool.Name])+1)
+		token := ""
+		if c.tokens {
+			token = slot
+		}
+		m, err := c.provider.Create(pool.Model, token)
+		if err != nil {
+			fmt.Printf("    %-8s create failed: %v\n", slot, err)
+			return false
+		}
+		fmt.Printf("    %-8s is machine %s\n", slot, m.ID)
+		c.owned[pool.Name] = append(c.owned[pool.Name], m)
+	}
+	return true
+}
+</code></pre>
+<p class="listing"><b>Listing 5.4</b> The pool and the controller's reconcile, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// A group of identical machines and the size its owner wants.
+struct Pool {
+    /// Prefixes the name of each slot: thor-1, thor-2, and so on.
+    name: &amp;'static str,
+    /// The kind of machine in the pool.
+    model: &amp;'static str,
+    /// The number of machines the pool should have.
+    want: usize,
+}
+
+/// Brings each pool to its wanted size.
+struct Controller {
+    provider: Provider,
+    /// Whether create calls carry a client token.
+    tokens: bool,
+    /// Maps a pool's name to the machines the controller knows it has.
+    owned: BTreeMap&lt;&amp;'static str, Vec&lt;Machine&gt;&gt;,
+}
+
+impl Controller {
+    /// Fills the empty slots of one pool, in order, and stops at the first
+    /// call that fails. It returns true when the pool is full.
+    fn reconcile(&amp;mut self, pool: &amp;Pool) -&gt; bool {
+        let owned = self.owned.entry(pool.name).or_default();
+        while owned.len() &lt; pool.want {
+            let slot = format!("{}-{}", pool.name, owned.len() + 1);
+            let token = self.tokens.then_some(slot.as_str());
+            match self.provider.create(pool.model, token) {
+                Ok(machine) =&gt; {
+                    println!("    {slot:&lt;8} is machine {}", machine.id);
+                    owned.push(machine);
+                }
+                Err(e) =&gt; {
+                    println!("    {slot:&lt;8} create failed: {e}");
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}</code></pre>
+<p>The controller counts only what it has been told. <code>owned</code> grows by one machine for each
+successful reply, and <code>Reconcile</code> reads the pool’s size from it. This is where a lost
+reply does its damage in the first run, as the output will show.</p>
+<h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<p>The run asks for five Thors and two Sparks, with quotas of exactly five and two, and
+loses the reply to the third create call. It allows three passes and then prints what
+the controller owns beside what the provider holds.</p>
+<p class="listing"><b>Listing 5.5</b> The pools, the three passes, and the final comparison, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
+
+<pre><code class="language-go">// pools is the fleet we ask for: the Thors on the shelf and the two Sparks.
+var pools = []Pool{
+	{"thor", "Jetson AGX Thor", 5},
+	{"spark", "DGX Spark", 2},
+}
+
+// run reconciles every pool for three passes and then compares what the
+// controller owns with what the provider holds.
+func run(tokens bool) {
+	provider := &amp;Provider{quota: map[string]int{"Jetson AGX Thor": 5, "DGX Spark": 2}, loseReply: 3}
+	c := &amp;Controller{provider: provider, tokens: tokens, owned: map[string][]Machine{}}
+	for pass := 1; pass &lt;= 3; pass++ {
+		fmt.Printf("  pass %d\n", pass)
+		full := true
+		for _, pool := range pools {
+			full = c.Reconcile(pool) &amp;&amp; full
+		}
+		if full {
+			fmt.Println("    every pool is full")
+			break
+		}
+	}
+	known := map[string]bool{}
+	for _, pool := range pools {
+		for _, m := range c.owned[pool.Name] {
+			known[m.ID] = true
+		}
+		fmt.Printf("  %-5s wanted %d, controller owns %d, provider holds %d\n",
+			pool.Name, pool.Want, len(c.owned[pool.Name]), provider.count(pool.Model))
+	}
+	for _, m := range provider.machines {
+		if !known[m.ID] {
+			fmt.Printf("  machine %s (%s) is running and belongs to no pool\n", m.ID, m.Model)
+		}
+	}
+}
+
+func main() {
+	fmt.Println("create calls without a client token:")
+	run(false)
+	fmt.Println("create calls with the slot name as the client token:")
+	run(true)
+}
+</code></pre>
+<p class="listing"><b>Listing 5.6</b> The pools, the three passes, and the final comparison, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The fleet we ask for: the Thors on the shelf and the two Sparks.
+const POOLS: [Pool; 2] = [
+    Pool { name: "thor", model: "Jetson AGX Thor", want: 5 },
+    Pool { name: "spark", model: "DGX Spark", want: 2 },
+];
+
+/// Reconciles every pool for three passes and then compares what the
+/// controller owns with what the provider holds.
+fn run(tokens: bool) {
+    let provider = Provider {
+        quota: BTreeMap::from([("Jetson AGX Thor", 5), ("DGX Spark", 2)]),
+        machines: Vec::new(),
+        calls: 0,
+        lose_reply: 3,
+    };
+    let mut c = Controller { provider, tokens, owned: BTreeMap::new() };
+    for pass in 1..=3 {
+        println!("  pass {pass}");
+        let mut full = true;
+        for pool in &amp;POOLS {
+            full = c.reconcile(pool) &amp;&amp; full;
+        }
+        if full {
+            println!("    every pool is full");
+            break;
+        }
+    }
+    let mut known = BTreeSet::new();
+    for pool in &amp;POOLS {
+        let owned = &amp;c.owned[pool.name];
+        known.extend(owned.iter().map(|m| m.id.as_str()));
+        println!(
+            "  {:&lt;5} wanted {}, controller owns {}, provider holds {}",
+            pool.name,
+            pool.want,
+            owned.len(),
+            c.provider.count(pool.model)
+        );
+    }
+    for m in c.provider.machines.iter().filter(|m| !known.contains(m.id.as_str())) {
+        println!("  machine {} ({}) is running and belongs to no pool", m.id, m.model);
+    }
+}
+
+fn main() {
+    println!("create calls without a client token:");
+    run(false);
+    println!("create calls with the slot name as the client token:");
+    run(true);
+}</code></pre>
+<pre><code class="language-console">$ go run ./provisioner
+create calls without a client token:
+  pass 1
+    thor-1   is machine m-01
+    thor-2   is machine m-02
+    thor-3   create failed: timed out
+    spark-1  is machine m-04
+    spark-2  is machine m-05
+  pass 2
+    thor-3   is machine m-06
+    thor-4   is machine m-07
+    thor-5   create failed: quota exceeded
+  pass 3
+    thor-5   create failed: quota exceeded
+  thor  wanted 5, controller owns 4, provider holds 5
+  spark wanted 2, controller owns 2, provider holds 2
+  machine m-03 (Jetson AGX Thor) is running and belongs to no pool
+create calls with the slot name as the client token:
+  pass 1
+    thor-1   is machine m-01
+    thor-2   is machine m-02
+    thor-3   create failed: timed out
+    spark-1  is machine m-04
+    spark-2  is machine m-05
+  pass 2
+    thor-3   is machine m-03
+    thor-4   is machine m-06
+    thor-5   is machine m-07
+    every pool is full
+  thor  wanted 5, controller owns 5, provider holds 5
+  spark wanted 2, controller owns 2, provider holds 2
+</code></pre>
+<p>Both runs begin the same way. The third call creates machine <code>m-03</code> and its reply is
+lost, so the controller reports a timeout for <code>thor-3</code> and moves on to the Sparks.</p>
+<p>In the first run, pass 2 sends a fresh create for <code>thor-3</code>. The provider has no way to
+connect it with the earlier call and creates <code>m-06</code>. The controller fills <code>thor-4</code> with
+<code>m-07</code>, and then the create for <code>thor-5</code> fails: the account now holds five Thors, which
+is the whole quota. Pass 3 fails in the same way, and so would every later pass. The
+controller owns four Thors and has no way to get a fifth, while <code>m-03</code> runs with no owner.
+The pool is one machine short and the account is full.</p>
+<p>In the second run, pass 2 sends the create for <code>thor-3</code> again with the token <code>thor-3</code>.
+The provider finds <code>m-03</code> under that token and returns it. The controller then creates
+<code>thor-4</code> and <code>thor-5</code>, and every pool is full after two passes, with nothing left over.</p>
+<p>Animation 5.1 replays both runs for the pool of Thors.</p>
+<figure class="anim">
+<video class="motion" src="figures/lost-reply-run.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A controller on the left sends create calls to a provider on the right, whose list has room for five Thors. Without a token, the reply to the third call is lost after machine m-03 is made; the retry makes m-06, m-03 is marked as having no owner, and the call for the fifth slot is refused with quota exceeded while the controller owns four. With the slot name sent as a token, the reply is lost again, the retry returns m-03, and the run ends with five machines made and five owned." data-chapters="[[0.0, &quot;no token&quot;], [26.58, &quot;with a token&quot;]]"><img src="figures/lost-reply-run.gif" alt="A controller on the left sends create calls to a provider on the right, whose list has room for five Thors. Without a token, the reply to the third call is lost after machine m-03 is made; the retry makes m-06, m-03 is marked as having no owner, and the call for the fifth slot is refused with quota exceeded while the controller owns four. With the slot name sent as a token, the reply is lost again, the retry returns m-03, and the run ends with five machines made and five owned."></video>
+<figcaption><b>Animation 5.1</b> The lost reply, retried without a client token and with one.</figcaption>
+</figure>
+<div class="callout">
+<p><strong>Finding machines that have no owner.</strong> Tokens prevent duplicates from retries. A
+controller can also lose track of a machine by crashing after the create call and before
+it records the result. For that reason production provisioners also <em>tag</em> each machine
+with the name of its pool at creation and periodically list the account by tag. A
+machine that carries the tag and appears in no record is adopted or deleted. The model’s
+last loop does this comparison once, at the end of the run.</p>
+</div>
+
+<h2 id="the-same-design-as-kubernetes-objects"><a class="header" href="#the-same-design-as-kubernetes-objects">The same design as Kubernetes objects</a></h2>
+<p><em>Cluster API</em> is the Kubernetes project that manages clusters with Kubernetes objects. It
+runs in one cluster, called the management cluster, and creates others. Its objects map
+onto our model directly:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Our model</th><th>Cluster API</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Pool</code>: a model and a wanted count</td><td><code>MachineDeployment</code>, with a replica count and a machine template</td></tr>
+<tr><td>one slot of a pool</td><td><code>Machine</code></td></tr>
+<tr><td><code>Machine.ID</code></td><td><code>spec.providerID</code> on the Machine</td></tr>
+<tr><td><code>Provider</code></td><td>an infrastructure provider, one per cloud or kind of hardware</td></tr>
+<tr><td>the join step from the start of this chapter</td><td>a bootstrap provider, which generates the join configuration for each machine</td></tr>
+</tbody>
+</table>
+</div>
+<p>A Machine object is created first and the provider’s machine second, so the object’s own
+name can serve as the client token, and a controller that restarts finds every slot it
+was working on by listing Machine objects. The record of ownership lives in the API
+server, where the resource versions of chapter 1 protect it, and the provider’s account
+is reconciled towards it.</p>
+<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<p class="listing"><b>Listing 5.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
+
+<pre><code class="language-go">// Command provisioner models a controller that asks a provider for machines
+// until a pool has the size its owner asked for.
+//
+// The provider's create call can fail in an awkward way: the machine is
+// created and the reply is lost. The program runs the same controller twice.
+// The first run retries a lost reply with a plain create call. The second
+// sends a client token with every call, so a retry returns the machine that
+// the first attempt created.
+//
+// Run it from code/go with:
+//
+//	go run ./provisioner
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Machine is one machine the provider has created.
+type Machine struct {
+	// ID is the provider's identifier for the machine.
+	ID string
+	// Model is the kind of machine.
+	Model string
+	// Token is the client token of the call that created it, or "".
+	Token string
+}
+
+// Errors a create call can return.
+var (
+	// ErrTimeout means no reply arrived. The machine may or may not exist.
+	ErrTimeout = errors.New("timed out")
+	// ErrQuota means the account already holds as many machines of this model
+	// as it is allowed.
+	ErrQuota = errors.New("quota exceeded")
+)
+
+// Provider is the account that machines are created in.
+type Provider struct {
+	// quota is the number of machines of each model the account may hold.
+	quota map[string]int
+	// machines lists every machine that exists, in creation order.
+	machines []Machine
+	// calls counts create calls, so the run can lose the reply to one of them.
+	calls int
+	// loseReply is the number of the call whose reply is lost.
+	loseReply int
+}
+
+// count returns how many machines of a model exist.
+func (p *Provider) count(model string) int {
+	n := 0
+	for _, m := range p.machines {
+		if m.Model == model {
+			n++
+		}
+	}
+	return n
+}
+
+// Create makes one machine. A call that carries a token already used by an
+// existing machine returns that machine and creates nothing.
+func (p *Provider) Create(model, token string) (Machine, error) {
+	p.calls++
+	if token != "" {
+		for _, m := range p.machines {
+			if m.Token == token {
+				return m, nil
+			}
+		}
+	}
+	if p.count(model) &gt;= p.quota[model] {
+		return Machine{}, ErrQuota
+	}
+	m := Machine{ID: fmt.Sprintf("m-%02d", len(p.machines)+1), Model: model, Token: token}
+	p.machines = append(p.machines, m)
+	if p.calls == p.loseReply {
+		return Machine{}, ErrTimeout
+	}
+	return m, nil
+}
+
+
+// Pool is a group of identical machines and the size its owner wants.
+type Pool struct {
+	// Name prefixes the name of each slot: thor-1, thor-2, and so on.
+	Name string
+	// Model is the kind of machine in the pool.
+	Model string
+	// Want is the number of machines the pool should have.
+	Want int
+}
+
+// Controller brings each pool to its wanted size.
+type Controller struct {
+	provider *Provider
+	// tokens says whether create calls carry a client token.
+	tokens bool
+	// owned maps a pool's name to the machines the controller knows it has.
+	owned map[string][]Machine
+}
+
+// Reconcile fills the empty slots of one pool, in order, and stops at the
+// first call that fails. It returns true when the pool is full.
+func (c *Controller) Reconcile(pool Pool) bool {
+	for len(c.owned[pool.Name]) &lt; pool.Want {
+		slot := fmt.Sprintf("%s-%d", pool.Name, len(c.owned[pool.Name])+1)
+		token := ""
+		if c.tokens {
+			token = slot
+		}
+		m, err := c.provider.Create(pool.Model, token)
+		if err != nil {
+			fmt.Printf("    %-8s create failed: %v\n", slot, err)
+			return false
+		}
+		fmt.Printf("    %-8s is machine %s\n", slot, m.ID)
+		c.owned[pool.Name] = append(c.owned[pool.Name], m)
+	}
+	return true
+}
+
+
+// pools is the fleet we ask for: the Thors on the shelf and the two Sparks.
+var pools = []Pool{
+	{"thor", "Jetson AGX Thor", 5},
+	{"spark", "DGX Spark", 2},
+}
+
+// run reconciles every pool for three passes and then compares what the
+// controller owns with what the provider holds.
+func run(tokens bool) {
+	provider := &amp;Provider{quota: map[string]int{"Jetson AGX Thor": 5, "DGX Spark": 2}, loseReply: 3}
+	c := &amp;Controller{provider: provider, tokens: tokens, owned: map[string][]Machine{}}
+	for pass := 1; pass &lt;= 3; pass++ {
+		fmt.Printf("  pass %d\n", pass)
+		full := true
+		for _, pool := range pools {
+			full = c.Reconcile(pool) &amp;&amp; full
+		}
+		if full {
+			fmt.Println("    every pool is full")
+			break
+		}
+	}
+	known := map[string]bool{}
+	for _, pool := range pools {
+		for _, m := range c.owned[pool.Name] {
+			known[m.ID] = true
+		}
+		fmt.Printf("  %-5s wanted %d, controller owns %d, provider holds %d\n",
+			pool.Name, pool.Want, len(c.owned[pool.Name]), provider.count(pool.Model))
+	}
+	for _, m := range provider.machines {
+		if !known[m.ID] {
+			fmt.Printf("  machine %s (%s) is running and belongs to no pool\n", m.ID, m.Model)
+		}
+	}
+}
+
+func main() {
+	fmt.Println("create calls without a client token:")
+	run(false)
+	fmt.Println("create calls with the slot name as the client token:")
+	run(true)
+}
+</code></pre>
+<p class="listing"><b>Listing 5.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models a controller that asks a provider for machines until a pool has the
+//! size its owner asked for.
+//!
+//! The provider's create call can fail in an awkward way: the machine is
+//! created and the reply is lost. The program runs the same controller twice.
+//! The first run retries a lost reply with a plain create call. The second
+//! sends a client token with every call, so a retry returns the machine that
+//! the first attempt created.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p provisioner
+//! ```
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+
+/// One machine the provider has created.
+#[derive(Clone)]
+struct Machine {
+    /// The provider's identifier for the machine.
+    id: String,
+    /// The kind of machine.
+    model: &amp;'static str,
+    /// The client token of the call that created it, if it carried one.
+    token: Option&lt;String&gt;,
+}
+
+/// The ways a create call can fail.
+enum CreateError {
+    /// No reply arrived. The machine may or may not exist.
+    Timeout,
+    /// The account already holds as many machines of this model as it is
+    /// allowed.
+    Quota,
+}
+
+impl fmt::Display for CreateError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            CreateError::Timeout =&gt; "timed out",
+            CreateError::Quota =&gt; "quota exceeded",
+        })
+    }
+}
+
+/// The account that machines are created in.
+struct Provider {
+    /// The number of machines of each model the account may hold.
+    quota: BTreeMap&lt;&amp;'static str, usize&gt;,
+    /// Every machine that exists, in creation order.
+    machines: Vec&lt;Machine&gt;,
+    /// Counts create calls, so the run can lose the reply to one of them.
+    calls: usize,
+    /// The number of the call whose reply is lost.
+    lose_reply: usize,
+}
+
+impl Provider {
+    /// Returns how many machines of a model exist.
+    fn count(&amp;self, model: &amp;str) -&gt; usize {
+        self.machines.iter().filter(|m| m.model == model).count()
+    }
+
+    /// Makes one machine. A call that carries a token already used by an
+    /// existing machine returns that machine and creates nothing.
+    fn create(&amp;mut self, model: &amp;'static str, token: Option&lt;&amp;str&gt;) -&gt; Result&lt;Machine, CreateError&gt; {
+        self.calls += 1;
+        if let Some(token) = token
+            &amp;&amp; let Some(existing) = self.machines.iter().find(|m| m.token.as_deref() == Some(token))
+        {
+            return Ok(existing.clone());
+        }
+        if self.count(model) &gt;= self.quota[model] {
+            return Err(CreateError::Quota);
+        }
+        let machine = Machine {
+            id: format!("m-{:02}", self.machines.len() + 1),
+            model,
+            token: token.map(str::to_owned),
+        };
+        self.machines.push(machine.clone());
+        if self.calls == self.lose_reply {
+            return Err(CreateError::Timeout);
+        }
+        Ok(machine)
+    }
+}
+
+/// A group of identical machines and the size its owner wants.
+struct Pool {
+    /// Prefixes the name of each slot: thor-1, thor-2, and so on.
+    name: &amp;'static str,
+    /// The kind of machine in the pool.
+    model: &amp;'static str,
+    /// The number of machines the pool should have.
+    want: usize,
+}
+
+/// Brings each pool to its wanted size.
+struct Controller {
+    provider: Provider,
+    /// Whether create calls carry a client token.
+    tokens: bool,
+    /// Maps a pool's name to the machines the controller knows it has.
+    owned: BTreeMap&lt;&amp;'static str, Vec&lt;Machine&gt;&gt;,
+}
+
+impl Controller {
+    /// Fills the empty slots of one pool, in order, and stops at the first
+    /// call that fails. It returns true when the pool is full.
+    fn reconcile(&amp;mut self, pool: &amp;Pool) -&gt; bool {
+        let owned = self.owned.entry(pool.name).or_default();
+        while owned.len() &lt; pool.want {
+            let slot = format!("{}-{}", pool.name, owned.len() + 1);
+            let token = self.tokens.then_some(slot.as_str());
+            match self.provider.create(pool.model, token) {
+                Ok(machine) =&gt; {
+                    println!("    {slot:&lt;8} is machine {}", machine.id);
+                    owned.push(machine);
+                }
+                Err(e) =&gt; {
+                    println!("    {slot:&lt;8} create failed: {e}");
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
+
+/// The fleet we ask for: the Thors on the shelf and the two Sparks.
+const POOLS: [Pool; 2] = [
+    Pool { name: "thor", model: "Jetson AGX Thor", want: 5 },
+    Pool { name: "spark", model: "DGX Spark", want: 2 },
+];
+
+/// Reconciles every pool for three passes and then compares what the
+/// controller owns with what the provider holds.
+fn run(tokens: bool) {
+    let provider = Provider {
+        quota: BTreeMap::from([("Jetson AGX Thor", 5), ("DGX Spark", 2)]),
+        machines: Vec::new(),
+        calls: 0,
+        lose_reply: 3,
+    };
+    let mut c = Controller { provider, tokens, owned: BTreeMap::new() };
+    for pass in 1..=3 {
+        println!("  pass {pass}");
+        let mut full = true;
+        for pool in &amp;POOLS {
+            full = c.reconcile(pool) &amp;&amp; full;
+        }
+        if full {
+            println!("    every pool is full");
+            break;
+        }
+    }
+    let mut known = BTreeSet::new();
+    for pool in &amp;POOLS {
+        let owned = &amp;c.owned[pool.name];
+        known.extend(owned.iter().map(|m| m.id.as_str()));
+        println!(
+            "  {:&lt;5} wanted {}, controller owns {}, provider holds {}",
+            pool.name,
+            pool.want,
+            owned.len(),
+            c.provider.count(pool.model)
+        );
+    }
+    for m in c.provider.machines.iter().filter(|m| !known.contains(m.id.as_str())) {
+        println!("  machine {} ({}) is running and belongs to no pool", m.id, m.model);
+    }
+}
+
+fn main() {
+    println!("create calls without a client token:");
+    run(false);
+    println!("create calls with the slot name as the client token:");
+    run(true);
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>An account offers a create call, a list call, and a quota for each model of machine.</li>
+<li>A new machine joins with a bootstrap token and the hash of the cluster’s CA key. It
+trades the token for a certificate that names one node, then creates its Node object
+and its Lease.</li>
+<li>A node reports capacity and labels. The GPU count alone does not distinguish a 16 GB
+Orin NX from a 128 GB Thor, so GPU machines also carry labels that name the model.</li>
+<li>A create call with no reply may or may not have created a machine. Retrying a plain
+create can leave a machine with no owner and a pool that can no longer be filled.</li>
+<li>A client token derived from the slot’s name makes the create call idempotent, and the
+retry returns the machine the first attempt made.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>Kubernetes, TLS bootstrapping:
+<a href="https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/">https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/</a></li>
+<li>Kubernetes, Authenticating with bootstrap tokens:
+<a href="https://kubernetes.io/docs/reference/access-authn-authz/bootstrap-tokens/">https://kubernetes.io/docs/reference/access-authn-authz/bootstrap-tokens/</a></li>
+<li>Kubernetes, kubeadm join:
+<a href="https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-join/">https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-join/</a></li>
+<li>Amazon EC2, Ensuring idempotency in API requests:
+<a href="https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-idempotency.html">https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-idempotency.html</a></li>
+<li>The Cluster API Book:
+<a href="https://cluster-api.sigs.k8s.io/">https://cluster-api.sigs.k8s.io/</a></li>
+<li>NVIDIA, GPU Feature Discovery:
+<a href="https://github.com/NVIDIA/k8s-device-plugin/blob/main/docs/gpu-feature-discovery/README.md">https://github.com/NVIDIA/k8s-device-plugin/blob/main/docs/gpu-feature-discovery/README.md</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="04-fleet-control-plane.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="06-virtual-machines.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="04-fleet-control-plane.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="06-virtual-machines.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,1188 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Collective communication and training failures - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/07-collective-communication.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="7-collective-communication-and-training-failures"><a class="header" href="#7-collective-communication-and-training-failures">7. Collective communication and training failures</a></h1>
+<p>The jobs in the earlier chapters each ran on one machine. A model that is too large or
+too slow to train on one machine is trained on several at once, and that changes what a
+failure means. In this chapter, we will look at what the machines of a training job say
+to each other during every step, why the failure of one machine stops all of them, and
+how often a job should save its state so that a failure costs little.</p>
+<p>We will first reason about the communication with pencil and paper, on the five Thors
+from chapter 4. Then we will write <code>allreduce</code>, in Go and in Rust: five workers running
+at the same time, connected in a ring, exchanging the pieces of a gradient. We will run
+it healthy, run it again with one worker failing part of the way through, and finish
+with the arithmetic of checkpoints.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>one step of training on several machines, and the sum every machine needs</li>
+<li>all-reduce, and why a ring carries it better than a coordinator</li>
+<li>the cost of a step in gigabytes, for our Thors and our Sparks</li>
+<li>five concurrent workers in Go (goroutines and channels) and in Rust (threads and
+channels)</li>
+<li>how the failure of one worker spreads around the ring, one neighbour per exchange</li>
+<li>Young’s formula for the time between checkpoints</li>
+</ul>
+</div>
+
+<h2 id="one-step-of-training-on-five-machines"><a class="header" href="#one-step-of-training-on-five-machines">One step of training on five machines</a></h2>
+<p>Training adjusts a model’s <em>parameters</em>, the numbers that make up the model, a little at
+a time. One <em>step</em> takes a batch of training examples, measures how wrong the model’s
+output is for them, and computes a <em>gradient</em>: a list with one number for each
+parameter, saying in which direction and how strongly that parameter should change. The
+step ends by changing every parameter by a small multiple of its gradient entry.</p>
+<p>With five machines, each holds a full copy of the model and takes a different batch.
+Each computes its own gradient. Then all five have to apply the same change, or their
+copies of the model drift apart. The change they apply is the average of the five
+gradients, so before any machine can finish the step, every machine needs the sum of all
+five gradients.</p>
+<p>That requirement has a name. An operation in which every member of a group contributes a
+value and every member receives the combined result is called <em>all-reduce</em>. It belongs
+to a family called <em>collective communication</em>, a term from the MPI standard for
+operations that a group of processes performs together, as opposed to one process
+sending a message to one other. On NVIDIA GPUs the library that implements these
+operations is NCCL, the NVIDIA Collective Communications Library, and training
+frameworks call it once per step.</p>
+<p>The gradient is as large as the model. A model with 7 billion parameters stored as
+16-bit numbers has a gradient of 14 GB. The step cannot finish until 14 GB from each
+machine have been combined and the result has reached every machine, so the network
+between the machines is part of the inner loop of training.</p>
+<h2 id="two-ways-to-add-five-gradients"><a class="header" href="#two-ways-to-add-five-gradients">Two ways to add five gradients</a></h2>
+<p>The obvious design gives the job to one machine. Every worker sends its gradient to a
+coordinator, the coordinator adds them, and sends the sum back to every worker.</p>
+<p>Count what the coordinator’s network link carries in one step: five gradients in and
+five out. Every other link carries one in each direction. The coordinator’s link is the
+bottleneck, and it gets worse in proportion to the number of workers. With 14 GB
+gradients and five workers, 70 GB pass through one link in each direction, every step.</p>
+<p>The second design has no coordinator. Arrange the workers in a ring, so each has a left
+and a right neighbour, and cut every gradient into as many <em>chunks</em> as there are
+workers. Figure 7.1 compares the two shapes.</p>
+<figure>
+<img src="figures/allreduce-shapes.svg" alt="Two layouts of five workers. On the left, every worker sends its gradient to one coordinator and receives the sum back: the coordinator&#39;s link carries five gradients in each direction. On the right, the five workers form a ring and each sends chunks only to its right-hand neighbour: every link carries 1.6 gradients in one direction.">
+<figcaption><b>Figure 7.1</b> A coordinator concentrates the traffic on one link. A ring spreads it evenly.</figcaption>
+</figure>
+<p>The ring works in two phases. We follow one chunk, chunk 0, through both. Our five
+workers start with the values 1, 2, 3, 4, and 5 in chunk 0, so its sum is 15.</p>
+<p>In the first phase, each worker passes a partial sum to the right, and the receiver adds
+its own value:</p>
+<ul>
+<li><code>thor-1</code> sends its chunk 0, the value 1, to <code>thor-2</code>.</li>
+<li><code>thor-2</code> adds its own 2 and sends 3 to <code>thor-3</code>.</li>
+<li><code>thor-3</code> adds 3 and sends 6 to <code>thor-4</code>.</li>
+<li><code>thor-4</code> adds 4 and sends 10 to <code>thor-5</code>.</li>
+<li><code>thor-5</code> adds 5 and now holds 15, the finished sum of chunk 0.</li>
+</ul>
+<p>That took four exchanges, one fewer than the number of workers. Meanwhile the other four
+chunks made the same journey from different starting points: chunk 1 started at <code>thor-2</code>
+and finished at <code>thor-1</code>, and so on. Every worker sent one chunk in every exchange, each
+worker ends the phase holding the finished sum of exactly one chunk, and no two hold the
+same one.</p>
+<p>In the second phase the finished chunks travel around the ring so that everyone gets a
+copy. <code>thor-5</code> sends the 15 to <code>thor-1</code>, which stores it and passes it on, and after
+four more exchanges every worker holds it. The other finished chunks circulate at the
+same time.</p>
+<p>Now count what a link carries. With N workers there are 2(N − 1) exchanges, and each
+sends one chunk, which is one Nth of a gradient, across every link. A worker therefore
+sends 2(N − 1)/N gradients’ worth of data per step. For five workers that is 1.6, and
+however many workers join, it stays below 2. Every link carries the same amount, and
+none is special.</p>
+<p>Here is what that costs on our machines for the 14 GB gradient:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Workers</th><th>Link between them</th><th>Sent by each worker per step</th><th>Time for the exchange</th></tr>
+</thead>
+<tbody>
+<tr><td>five Thors</td><td>one 25 GbE lane, 3.125 GB/s</td><td>1.6 × 14 = 22.4 GB</td><td>7.2 s</td></tr>
+<tr><td>five Thors</td><td>four bonded lanes, 12.5 GB/s</td><td>22.4 GB</td><td>1.8 s</td></tr>
+<tr><td>two Sparks</td><td>the 200 GbE cable, 25 GB/s</td><td>1.0 × 14 = 14 GB</td><td>0.56 s</td></tr>
+</tbody>
+</table>
+</div>
+<p>A step whose computation takes a second is dominated by seven seconds of communication
+on a single 25 GbE lane. This is the reason the fast links on these machines exist, and
+the reason chapter 8 places a job’s workers by the links between them.</p>
+<p>One more property follows from the ring’s shape. Every chunk crosses every link. If one
+link is slower than the rest, every chunk waits for it, and the whole step runs at the
+speed of the slowest link.</p>
+<h2 id="when-one-worker-fails"><a class="header" href="#when-one-worker-fails">When one worker fails</a></h2>
+<p>The same shape decides what happens when a worker fails in the middle of a step. A
+worker’s every exchange depends on its left-hand neighbour: it cannot add to a chunk it
+has not received. So when one worker stops, its right-hand neighbour is stuck at its
+next exchange. That neighbour had already sent its chunk for the exchange, so the worker
+after it completes one more exchange and is stuck at the following one. The stall
+travels around the ring, one worker per exchange, until it has reached everyone.</p>
+<p>When the stall is complete, no worker holds the sum. Each holds some finished chunks,
+some partial sums, and some of its own original values, in a mixture that depends on
+where it was stopped. The step cannot be finished by the workers that remain, because
+the failed worker’s values for some chunks were not sent.</p>
+<p>The model in every worker’s memory is intact, since the step had not yet changed it. But
+a training job is built as a fixed group: its workers were started together with a fixed
+ring, and the frameworks do not shrink the ring in mid-run. The practical response to
+one failed worker is to stop all of them, replace the failed one, and start the whole
+group again from the last saved state.</p>
+<p>This has a consequence for the control plane that the single-machine jobs did not have.
+The controller that owns a training job treats its pods as one unit: when one pod
+fails, it deletes all of them and creates them all again. And it makes the two numbers
+from chapter 3 matter in a new way. The time to detect the failed machine is time during
+which the surviving machines hold their GPUs and do nothing.</p>
+<div class="lld">
+<p>Low-level design: <code>allreduce</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>message</code></td><td>a chunk’s index and its value</td><td>one message per exchange per worker</td></tr>
+<tr><td><code>Worker</code></td><td>its ring position, its gradient, a channel from the left and one to the right</td><td>it only sends right and only receives left</td></tr>
+<tr><td><code>result</code></td><td>exchanges completed, and why the worker stopped early</td><td>one per worker</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Worker.Run(n)</code></td><td>performs 2(n − 1) exchanges: send one chunk right, receive one from the left, add it in the first phase and store it in the second</td></tr>
+<tr><td><code>ring(n, failing, failAfter)</code></td><td>builds the channels, starts every worker at once, and waits for all of them</td></tr>
+<tr><td><code>interval(jobMTBF)</code></td><td>the time between checkpoints that loses the least work</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="building-allreduce"><a class="header" href="#building-allreduce">Building <code>allreduce</code></a></h2>
+<p>Each worker in the program stands for one Thor. One number stands for each chunk, which
+keeps the output readable. The algorithm does the same thing to a chunk of three
+gigabytes.</p>
+<h3 id="a-worker-and-its-two-channels"><a class="header" href="#a-worker-and-its-two-channels">A worker and its two channels</a></h3>
+<p>A worker has a position in the ring, its gradient, and two channels: it receives on one
+and sends on the other. Both languages use a <em>channel</em>, a queue that one concurrently
+running piece of code puts values into and another takes them out of. Nothing else is
+shared between workers, which mirrors the real situation: machines in a training job
+share no memory, only a network.</p>
+<p class="listing"><b>Listing 7.1</b> The message, the worker, and how long it waits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
+
+<pre><code class="language-go">// message carries one chunk of a gradient from a worker to its right-hand
+// neighbour.
+type message struct {
+	// chunk is the index of the chunk within the gradient.
+	chunk int
+	// value is the chunk's contents: one number stands for the whole chunk.
+	value int
+}
+
+// Worker is one machine's part in the step.
+type Worker struct {
+	// id is the worker's position in the ring, from 0.
+	id int
+	// gradient holds one value per chunk. It starts as this worker's own
+	// gradient and ends as the sum over all workers.
+	gradient []int
+	// in receives from the left-hand neighbour, and out sends to the right.
+	in  &lt;-chan message
+	out chan&lt;- message
+	// failAfter is the number of messages the worker exchanges before it
+	// fails, or -1 for a worker that stays healthy.
+	failAfter int
+}
+
+// errFailed is the result of the worker that the run makes fail.
+var errFailed = errors.New("failed")
+
+// patience is how long a worker waits for its neighbour before giving up.
+const patience = 100 * time.Millisecond
+</code></pre>
+<p class="listing"><b>Listing 7.2</b> The message, the worker, and how long it waits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Carries one chunk of a gradient from a worker to its right-hand neighbour.
+struct Message {
+    /// The index of the chunk within the gradient.
+    chunk: usize,
+    /// The chunk's contents: one number stands for the whole chunk.
+    value: i64,
+}
+
+/// One machine's part in the step.
+struct Worker {
+    /// The worker's position in the ring, from 0.
+    id: usize,
+    /// One value per chunk. It starts as this worker's own gradient and ends
+    /// as the sum over all workers.
+    gradient: Vec&lt;i64&gt;,
+    /// Receives from the left-hand neighbour.
+    inbox: Receiver&lt;Message&gt;,
+    /// Sends to the right-hand neighbour.
+    out: Sender&lt;Message&gt;,
+    /// The number of messages the worker exchanges before it fails, if the
+    /// run makes it fail.
+    fail_after: Option&lt;usize&gt;,
+}
+
+/// How long a worker waits for its neighbour before giving up.
+const PATIENCE: Duration = Duration::from_millis(100);</code></pre>
+<h3 id="the-exchanges"><a class="header" href="#the-exchanges">The exchanges</a></h3>
+<p><code>Run</code> is the algorithm. Each pass of its loop is one exchange: send a chunk to the right,
+then wait for a chunk from the left. The chunk to send is found by counting backwards
+from the worker’s own position, one place per exchange. Working through the hand example
+shows why that is right: after the first exchange, the chunk a worker sends next is
+always the one it received last.</p>
+<p class="listing"><b>Listing 7.3</b> A worker's 2(n − 1) exchanges, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
+
+<pre><code class="language-go">// Run performs the worker's 2(n-1) exchanges. In each one it sends a chunk to
+// the right and receives a chunk from the left. During the first n-1
+// exchanges it adds what it receives to its own chunk. During the last n-1
+// the chunks it receives are finished sums, and it stores them. Run returns
+// the number of exchanges completed and the reason it stopped early, if any.
+func (w *Worker) Run(n int) (int, error) {
+	for step := range 2 * (n - 1) {
+		if step == w.failAfter {
+			return step, errFailed
+		}
+		// The chunk to send moves one place back around the gradient each
+		// step, so after the first step it is the chunk just received.
+		chunk := mod(w.id-step, n)
+		w.out &lt;- message{chunk, w.gradient[chunk]}
+		reducing := step &lt; n-1
+
+		select {
+		case m := &lt;-w.in:
+			if reducing {
+				w.gradient[m.chunk] += m.value
+			} else {
+				w.gradient[m.chunk] = m.value
+			}
+		case &lt;-time.After(patience):
+			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
+		}
+	}
+	return 2 * (n - 1), nil
+}
+</code></pre>
+<p class="listing"><b>Listing 7.4</b> A worker's 2(n − 1) exchanges, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Worker {
+    /// Performs the worker's 2(n-1) exchanges. In each one it sends a chunk to
+    /// the right and receives a chunk from the left. During the first n-1
+    /// exchanges it adds what it receives to its own chunk. During the last
+    /// n-1 the chunks it receives are finished sums, and it stores them.
+    /// Returns the worker with the number of exchanges completed and the
+    /// reason it stopped early, if any.
+    fn run(mut self, n: usize) -&gt; (Self, usize, Option&lt;String&gt;) {
+        for step in 0..2 * (n - 1) {
+            if self.fail_after == Some(step) {
+                return (self, step, Some("failed".to_owned()));
+            }
+            // The chunk to send moves one place back around the gradient each
+            // step, so after the first step it is the chunk just received.
+            // Adding 2n keeps the subtraction from going below zero.
+            let chunk = (self.id + 2 * n - step) % n;
+            // The right-hand neighbour may have stopped; its channel still accepts.
+            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let reducing = step &lt; n - 1;
+
+            match self.inbox.recv_timeout(PATIENCE) {
+                Ok(m) if reducing =&gt; self.gradient[m.chunk] += m.value,
+                Ok(m) =&gt; self.gradient[m.chunk] = m.value,
+                Err(_) =&gt; {
+                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    return (self, step, Some(why));
+                }
+            }
+        }
+        (self, 2 * (n - 1), None)
+    }
+}</code></pre>
+<p>The wait for the left-hand neighbour has a time limit, which the program calls
+<code>patience</code>. In Go the wait is a <code>select</code> with two cases, a message on the channel or the
+timer from <code>time.After</code>, and whichever is ready first runs. In Rust it is the channel’s
+own <code>recv_timeout</code>, which returns an error if nothing arrives in time. Without the limit
+a worker whose neighbour had failed would wait forever, and the program, like a training
+job with no timeouts, would hang with no report of what went wrong.</p>
+<p>The Rust version of <code>run</code> takes <code>self</code> by value and returns it. The worker is moved into
+its thread when the thread starts and moved back out with the result when it ends, so
+the main thread can read each worker’s final gradient without any lock.</p>
+<h3 id="building-the-ring"><a class="header" href="#building-the-ring">Building the ring</a></h3>
+<p><code>ring</code> creates one channel per link and gives each worker the receiving end of its own
+link and the sending end of its right-hand neighbour’s. It then starts every worker at
+once and waits for all of them.</p>
+<p class="listing"><b>Listing 7.5</b> Connecting the workers and running them together, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
+
+<pre><code class="language-go">// result is what one worker reports when it stops.
+type result struct {
+	steps int
+	err   error
+}
+
+// ring connects n workers in a circle, runs them all at once, and returns the
+// workers and their results. The worker at position failing stops after
+// failAfter exchanges; pass -1 for a run with no failure.
+func ring(n, failing, failAfter int) ([]*Worker, []result) {
+	// Each link holds every message a worker can send in one step, so a send
+	// goes through even when the receiver has stopped.
+	links := make([]chan message, n)
+	for i := range links {
+		links[i] = make(chan message, 2*(n-1))
+	}
+	workers := make([]*Worker, n)
+	for i := range workers {
+		gradient := make([]int, n)
+		for chunk := range gradient {
+			gradient[chunk] = i + 1 + 10*chunk
+		}
+		workers[i] = &amp;Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
+	}
+	if failing &gt;= 0 {
+		workers[failing].failAfter = failAfter
+	}
+
+	results := make([]result, n)
+	var wg sync.WaitGroup
+	for i, w := range workers {
+		wg.Go(func() {
+			steps, err := w.Run(n)
+			results[i] = result{steps, err}
+		})
+	}
+	wg.Wait()
+	return workers, results
+}
+</code></pre>
+<p class="listing"><b>Listing 7.6</b> Connecting the workers and running them together, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Connects n workers in a circle, runs them all at once, and returns each
+/// worker with its result. The worker named in `failing` stops after that
+/// many exchanges.
+fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, usize, Option&lt;String&gt;)&gt; {
+    // One channel per link. `senders[i]` leads to worker i.
+    let (senders, receivers): (Vec&lt;_&gt;, Vec&lt;_&gt;) = (0..n).map(|_| mpsc::channel()).unzip();
+    let workers: Vec&lt;Worker&gt; = receivers
+        .into_iter()
+        .enumerate()
+        .map(|(id, inbox)| Worker {
+            id,
+            gradient: own_gradient(id, n),
+            inbox,
+            out: senders[(id + 1) % n].clone(),
+            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+        })
+        .collect();
+
+    let handles: Vec&lt;_&gt; = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
+    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+}</code></pre>
+<p>In Go each worker runs in a goroutine started with <code>wg.Go</code>, a method of
+<code>sync.WaitGroup</code> that starts a function and counts it, and <code>wg.Wait</code> blocks until all
+have returned. Each goroutine writes its result into its own element of <code>results</code>, so
+no two goroutines write the same memory. In Rust each worker runs in a thread from
+<code>thread::spawn</code>, and <code>join</code> waits for the thread and hands back what <code>run</code> returned.</p>
+<p>The Go channels have a buffer large enough for every message a worker can send in a
+step, and the Rust channels have no limit. A send therefore completes even when the
+receiving worker has stopped, as it does on a real network, where data sent to a dead
+machine leaves the sender and is acknowledged by nobody. The sender finds out only when
+it waits for something in return.</p>
+<h3 id="the-time-between-checkpoints"><a class="header" href="#the-time-between-checkpoints">The time between checkpoints</a></h3>
+<p>The last piece is arithmetic. Saving a <em>checkpoint</em>, the model’s parameters and the
+position in the training data, takes time during which no training happens. Saving
+rarely wastes little time on checkpoints and loses much work at each failure. Saving
+often does the opposite. Somewhere between lies the interval that wastes the least.</p>
+<p>Let C be the time one checkpoint takes, and M the job’s <em>mean time between failures</em>
+(MTBF), the average time from one failure to the next. With a checkpoint every T
+seconds:</p>
+<ul>
+<li>the fraction of time spent writing checkpoints is C / T;</li>
+<li>a failure arrives, on average, halfway between two checkpoints, so it destroys T / 2
+of work, and with one failure every M seconds the fraction of time lost that way is
+T / (2M).</li>
+</ul>
+<p>The total, C / T + T / (2M), is smallest when the two parts are equal, which happens at
+T = √(2CM). This is <em>Young’s formula</em>, published in 1974.</p>
+<p>The M in the formula is the job’s, and a job fails when any one of its machines fails. A
+job on N machines therefore fails N times as often as one machine: its MTBF is one
+machine’s divided by N.</p>
+<p class="listing"><b>Listing 7.7</b> Young's formula, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
+
+<pre><code class="language-go">// Costs and failure rates for the checkpoint arithmetic, in seconds.
+const (
+	// checkpointCost is the time one checkpoint takes to write.
+	checkpointCost = 50.0
+	// machineMTBF is the mean time between failures of one machine: 30 days.
+	machineMTBF = 30 * 24 * 3600.0
+)
+
+// interval returns the time between checkpoints that loses the least work,
+// by Young's formula: the square root of twice the checkpoint cost times the
+// job's mean time between failures.
+func interval(jobMTBF float64) float64 {
+	return math.Sqrt(2 * checkpointCost * jobMTBF)
+}
+</code></pre>
+<p class="listing"><b>Listing 7.8</b> Young's formula, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The time one checkpoint takes to write, in seconds.
+const CHECKPOINT_COST: f64 = 50.0;
+/// The mean time between failures of one machine, in seconds: 30 days.
+const MACHINE_MTBF: f64 = 30.0 * 24.0 * 3600.0;
+
+/// Returns the time between checkpoints that loses the least work, by Young's
+/// formula: the square root of twice the checkpoint cost times the job's mean
+/// time between failures.
+fn interval(job_mtbf: f64) -&gt; f64 {
+    (2.0 * CHECKPOINT_COST * job_mtbf).sqrt()
+}</code></pre>
+<h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<p class="listing"><b>Listing 7.9</b> The healthy step, the failed step, and the checkpoint table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
+
+<pre><code class="language-go">func main() {
+	const n = 5
+
+	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
+	workers, _ := ring(n, -1, 0)
+	for i := range n {
+		own := make([]int, n)
+		for chunk := range own {
+			own[chunk] = i + 1 + 10*chunk
+		}
+		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
+	}
+	sent := 2 * (n - 1)
+	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
+		sent, float64(sent)/n, sent*n)
+
+	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
+	_, results := ring(n, 2, 2)
+	for i, r := range results {
+		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
+	}
+
+	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
+	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+	for _, machines := range []int{1, 5, 64, 512} {
+		jobMTBF := machineMTBF / float64(machines)
+		every := interval(jobMTBF)
+		lost := checkpointCost/every + every/(2*jobMTBF)
+		fmt.Printf("  %8d  %10.1f hours  %9.0f minutes  %8.1f%%\n", machines, jobMTBF/3600, every/60, lost*100)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 7.10</b> The healthy step, the failed step, and the checkpoint table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn main() {
+    const N: usize = 5;
+
+    println!("ring all-reduce over {N} workers, {N} chunks each:");
+    for (worker, _, _) in ring(N, None) {
+        println!(
+            "  {} starts with {:&lt;17} and ends with {}",
+            name(worker.id),
+            show(&amp;own_gradient(worker.id, N)),
+            show(&amp;worker.gradient)
+        );
+    }
+    let sent = 2 * (N - 1);
+    println!(
+        "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
+        sent as f64 / N as f64,
+        sent * N
+    );
+
+    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    for (worker, steps, why) in ring(N, Some((2, 2))) {
+        let why = why.unwrap_or_else(|| "finished".to_owned());
+        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+    }
+
+    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!("  machines  job fails every  checkpoint every  time lost");
+    for machines in [1, 5, 64, 512] {
+        let job_mtbf = MACHINE_MTBF / f64::from(machines);
+        let every = interval(job_mtbf);
+        let lost = CHECKPOINT_COST / every + every / (2.0 * job_mtbf);
+        println!(
+            "  {machines:8}  {:10.1} hours  {:9.0} minutes  {:8.1}%",
+            job_mtbf / 3600.0,
+            every / 60.0,
+            lost * 100.0
+        );
+    }
+}</code></pre>
+<pre><code class="language-console">$ go run ./allreduce
+ring all-reduce over 5 workers, 5 chunks each:
+  thor-1 starts with 1 11 21 31 41     and ends with 15 65 115 165 215
+  thor-2 starts with 2 12 22 32 42     and ends with 15 65 115 165 215
+  thor-3 starts with 3 13 23 33 43     and ends with 15 65 115 165 215
+  thor-4 starts with 4 14 24 34 44     and ends with 15 65 115 165 215
+  thor-5 starts with 5 15 25 35 45     and ends with 15 65 115 165 215
+  each worker sent 8 chunks, 1.6 times its gradient; 40 messages in all
+the same step, with thor-3 failing after 2 of its 8 exchanges:
+  thor-1 stopped after 4 of 8: no chunk from thor-5 within 100ms
+  thor-2 stopped after 5 of 8: no chunk from thor-1 within 100ms
+  thor-3 stopped after 2 of 8: failed
+  thor-4 stopped after 2 of 8: no chunk from thor-3 within 100ms
+  thor-5 stopped after 3 of 8: no chunk from thor-4 within 100ms
+checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:
+  machines  job fails every  checkpoint every  time lost
+         1       720.0 hours        268 minutes       0.6%
+         5       144.0 hours        120 minutes       1.4%
+        64        11.2 hours         34 minutes       5.0%
+       512         1.4 hours         12 minutes      14.1%
+</code></pre>
+<p>In the first part every worker ends with the same five sums, starting with the 15 we
+computed by hand. Each sent 8 chunks, 1.6 gradients’ worth, as the count predicted.</p>
+<p>In the second part <code>thor-3</code> fails after two exchanges. <code>thor-4</code>, on its right, also
+completed two and stopped at the third, waiting for <code>thor-3</code>. <code>thor-5</code> completed three,
+<code>thor-1</code> four, and <code>thor-2</code> five. Reading the workers in ring order from the failure,
+the counts are 2, 3, 4, 5: the stall moved one worker per exchange, as we reasoned. Each
+worker names the neighbour it was waiting for, and only one of the four names the
+machine that failed. A person who reads the report from <code>thor-2</code> alone would suspect
+<code>thor-1</code>, which is healthy. Finding the worker that every chain of blame leads back to
+is the same counting exercise as chapter 4’s triage.</p>
+<p>Animation 7.1 replays both runs on the ring, following chunk 0 in the first and the count
+of completed exchanges in the second.</p>
+<figure class="anim">
+<video class="motion" src="figures/ring-allreduce.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Five Thors in a ring, each holding its value for chunk 0. A partial sum travels to the right and grows from 1 to 3, 6, 10 and 15, while grey dots show the other four chunks moving on the other links. The finished 15 then travels around the ring until every worker holds it. In the second part thor-3 fails after two exchanges; thor-4 stops after 2, thor-5 after 3, thor-1 after 4 and thor-2 after 5, each waiting for the neighbour on its left." data-chapters="[[0.0, &quot;phase 1&quot;], [22.26, &quot;phase 2&quot;], [35.7, &quot;thor-3 fails&quot;]]"><img src="figures/ring-allreduce.gif" alt="Five Thors in a ring, each holding its value for chunk 0. A partial sum travels to the right and grows from 1 to 3, 6, 10 and 15, while grey dots show the other four chunks moving on the other links. The finished 15 then travels around the ring until every worker holds it. In the second part thor-3 fails after two exchanges; thor-4 stops after 2, thor-5 after 3, thor-1 after 4 and thor-2 after 5, each waiting for the neighbour on its left."></video>
+<figcaption><b>Animation 7.1</b> One step of ring all-reduce, and the same step with one worker failing after two exchanges.</figcaption>
+</figure>
+<p>The third part assumes that one machine fails every 30 days and that a checkpoint takes
+50 seconds, which is 100 GB written at 2 GB per second. These are assumptions for the
+arithmetic, and the formula takes whatever numbers a real fleet measures.</p>
+<p>A job on one machine should checkpoint every 268 minutes and loses 0.6 percent of its
+time. Our five Thors together fail every 144 hours, and the best interval is exactly two
+hours, at a cost of 1.4 percent. At 512 machines the job fails every 1.4 hours on
+average. It should checkpoint every 12 minutes, and 14.1 percent of its time goes to
+checkpoints and repeated work. The machines are no less reliable than before. There are
+more of them in one job, and this is why large training jobs invest in making
+checkpoints fast.</p>
+<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<p class="listing"><b>Listing 7.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
+
+<pre><code class="language-go">// Command allreduce runs one step of distributed training's communication:
+// five workers each hold a gradient, and every worker has to end the step
+// holding the sum of all five.
+//
+// The workers are goroutines connected in a ring by channels, and they run
+// the ring all-reduce algorithm. The program runs the step three ways: with
+// every worker healthy, with one worker failing part of the way through, and
+// then as arithmetic, to find how often a job of a given size should save a
+// checkpoint.
+//
+// Run it from code/go with:
+//
+//	go run ./allreduce
+package main
+
+import (
+	"errors"
+	"fmt"
+	"math"
+	"strings"
+	"sync"
+	"time"
+)
+
+// message carries one chunk of a gradient from a worker to its right-hand
+// neighbour.
+type message struct {
+	// chunk is the index of the chunk within the gradient.
+	chunk int
+	// value is the chunk's contents: one number stands for the whole chunk.
+	value int
+}
+
+// Worker is one machine's part in the step.
+type Worker struct {
+	// id is the worker's position in the ring, from 0.
+	id int
+	// gradient holds one value per chunk. It starts as this worker's own
+	// gradient and ends as the sum over all workers.
+	gradient []int
+	// in receives from the left-hand neighbour, and out sends to the right.
+	in  &lt;-chan message
+	out chan&lt;- message
+	// failAfter is the number of messages the worker exchanges before it
+	// fails, or -1 for a worker that stays healthy.
+	failAfter int
+}
+
+// errFailed is the result of the worker that the run makes fail.
+var errFailed = errors.New("failed")
+
+// patience is how long a worker waits for its neighbour before giving up.
+const patience = 100 * time.Millisecond
+
+
+// name returns the host name of the worker at a ring position.
+func name(id int) string { return fmt.Sprintf("thor-%d", id+1) }
+
+// mod returns a modulo n as a value from 0 to n-1, for negative a as well.
+func mod(a, n int) int { return ((a % n) + n) % n }
+
+// Run performs the worker's 2(n-1) exchanges. In each one it sends a chunk to
+// the right and receives a chunk from the left. During the first n-1
+// exchanges it adds what it receives to its own chunk. During the last n-1
+// the chunks it receives are finished sums, and it stores them. Run returns
+// the number of exchanges completed and the reason it stopped early, if any.
+func (w *Worker) Run(n int) (int, error) {
+	for step := range 2 * (n - 1) {
+		if step == w.failAfter {
+			return step, errFailed
+		}
+		// The chunk to send moves one place back around the gradient each
+		// step, so after the first step it is the chunk just received.
+		chunk := mod(w.id-step, n)
+		w.out &lt;- message{chunk, w.gradient[chunk]}
+		reducing := step &lt; n-1
+
+		select {
+		case m := &lt;-w.in:
+			if reducing {
+				w.gradient[m.chunk] += m.value
+			} else {
+				w.gradient[m.chunk] = m.value
+			}
+		case &lt;-time.After(patience):
+			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
+		}
+	}
+	return 2 * (n - 1), nil
+}
+
+
+// result is what one worker reports when it stops.
+type result struct {
+	steps int
+	err   error
+}
+
+// ring connects n workers in a circle, runs them all at once, and returns the
+// workers and their results. The worker at position failing stops after
+// failAfter exchanges; pass -1 for a run with no failure.
+func ring(n, failing, failAfter int) ([]*Worker, []result) {
+	// Each link holds every message a worker can send in one step, so a send
+	// goes through even when the receiver has stopped.
+	links := make([]chan message, n)
+	for i := range links {
+		links[i] = make(chan message, 2*(n-1))
+	}
+	workers := make([]*Worker, n)
+	for i := range workers {
+		gradient := make([]int, n)
+		for chunk := range gradient {
+			gradient[chunk] = i + 1 + 10*chunk
+		}
+		workers[i] = &amp;Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
+	}
+	if failing &gt;= 0 {
+		workers[failing].failAfter = failAfter
+	}
+
+	results := make([]result, n)
+	var wg sync.WaitGroup
+	for i, w := range workers {
+		wg.Go(func() {
+			steps, err := w.Run(n)
+			results[i] = result{steps, err}
+		})
+	}
+	wg.Wait()
+	return workers, results
+}
+
+
+// show formats a gradient as its values separated by spaces.
+func show(gradient []int) string {
+	return strings.Trim(fmt.Sprint(gradient), "[]")
+}
+
+// Costs and failure rates for the checkpoint arithmetic, in seconds.
+const (
+	// checkpointCost is the time one checkpoint takes to write.
+	checkpointCost = 50.0
+	// machineMTBF is the mean time between failures of one machine: 30 days.
+	machineMTBF = 30 * 24 * 3600.0
+)
+
+// interval returns the time between checkpoints that loses the least work,
+// by Young's formula: the square root of twice the checkpoint cost times the
+// job's mean time between failures.
+func interval(jobMTBF float64) float64 {
+	return math.Sqrt(2 * checkpointCost * jobMTBF)
+}
+
+
+func main() {
+	const n = 5
+
+	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
+	workers, _ := ring(n, -1, 0)
+	for i := range n {
+		own := make([]int, n)
+		for chunk := range own {
+			own[chunk] = i + 1 + 10*chunk
+		}
+		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
+	}
+	sent := 2 * (n - 1)
+	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
+		sent, float64(sent)/n, sent*n)
+
+	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
+	_, results := ring(n, 2, 2)
+	for i, r := range results {
+		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
+	}
+
+	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
+	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+	for _, machines := range []int{1, 5, 64, 512} {
+		jobMTBF := machineMTBF / float64(machines)
+		every := interval(jobMTBF)
+		lost := checkpointCost/every + every/(2*jobMTBF)
+		fmt.Printf("  %8d  %10.1f hours  %9.0f minutes  %8.1f%%\n", machines, jobMTBF/3600, every/60, lost*100)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 7.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Runs one step of distributed training's communication: five workers each
+//! hold a gradient, and every worker has to end the step holding the sum of
+//! all five.
+//!
+//! The workers are threads connected in a ring by channels, and they run the
+//! ring all-reduce algorithm. The program runs the step three ways: with every
+//! worker healthy, with one worker failing part of the way through, and then
+//! as arithmetic, to find how often a job of a given size should save a
+//! checkpoint.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p allreduce
+//! ```
+
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+use std::time::Duration;
+
+/// Carries one chunk of a gradient from a worker to its right-hand neighbour.
+struct Message {
+    /// The index of the chunk within the gradient.
+    chunk: usize,
+    /// The chunk's contents: one number stands for the whole chunk.
+    value: i64,
+}
+
+/// One machine's part in the step.
+struct Worker {
+    /// The worker's position in the ring, from 0.
+    id: usize,
+    /// One value per chunk. It starts as this worker's own gradient and ends
+    /// as the sum over all workers.
+    gradient: Vec&lt;i64&gt;,
+    /// Receives from the left-hand neighbour.
+    inbox: Receiver&lt;Message&gt;,
+    /// Sends to the right-hand neighbour.
+    out: Sender&lt;Message&gt;,
+    /// The number of messages the worker exchanges before it fails, if the
+    /// run makes it fail.
+    fail_after: Option&lt;usize&gt;,
+}
+
+/// How long a worker waits for its neighbour before giving up.
+const PATIENCE: Duration = Duration::from_millis(100);
+
+/// Returns the host name of the worker at a ring position.
+fn name(id: usize) -&gt; String {
+    format!("thor-{}", id + 1)
+}
+
+impl Worker {
+    /// Performs the worker's 2(n-1) exchanges. In each one it sends a chunk to
+    /// the right and receives a chunk from the left. During the first n-1
+    /// exchanges it adds what it receives to its own chunk. During the last
+    /// n-1 the chunks it receives are finished sums, and it stores them.
+    /// Returns the worker with the number of exchanges completed and the
+    /// reason it stopped early, if any.
+    fn run(mut self, n: usize) -&gt; (Self, usize, Option&lt;String&gt;) {
+        for step in 0..2 * (n - 1) {
+            if self.fail_after == Some(step) {
+                return (self, step, Some("failed".to_owned()));
+            }
+            // The chunk to send moves one place back around the gradient each
+            // step, so after the first step it is the chunk just received.
+            // Adding 2n keeps the subtraction from going below zero.
+            let chunk = (self.id + 2 * n - step) % n;
+            // The right-hand neighbour may have stopped; its channel still accepts.
+            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let reducing = step &lt; n - 1;
+
+            match self.inbox.recv_timeout(PATIENCE) {
+                Ok(m) if reducing =&gt; self.gradient[m.chunk] += m.value,
+                Ok(m) =&gt; self.gradient[m.chunk] = m.value,
+                Err(_) =&gt; {
+                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    return (self, step, Some(why));
+                }
+            }
+        }
+        (self, 2 * (n - 1), None)
+    }
+}
+
+/// Connects n workers in a circle, runs them all at once, and returns each
+/// worker with its result. The worker named in `failing` stops after that
+/// many exchanges.
+fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, usize, Option&lt;String&gt;)&gt; {
+    // One channel per link. `senders[i]` leads to worker i.
+    let (senders, receivers): (Vec&lt;_&gt;, Vec&lt;_&gt;) = (0..n).map(|_| mpsc::channel()).unzip();
+    let workers: Vec&lt;Worker&gt; = receivers
+        .into_iter()
+        .enumerate()
+        .map(|(id, inbox)| Worker {
+            id,
+            gradient: own_gradient(id, n),
+            inbox,
+            out: senders[(id + 1) % n].clone(),
+            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+        })
+        .collect();
+
+    let handles: Vec&lt;_&gt; = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
+    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+}
+
+/// Returns the gradient a worker starts with: a different value in each chunk.
+fn own_gradient(id: usize, n: usize) -&gt; Vec&lt;i64&gt; {
+    (0..n).map(|chunk| (id + 1 + 10 * chunk) as i64).collect()
+}
+
+/// Formats a gradient as its values separated by spaces.
+fn show(gradient: &amp;[i64]) -&gt; String {
+    gradient.iter().map(i64::to_string).collect::&lt;Vec&lt;_&gt;&gt;().join(" ")
+}
+
+/// The time one checkpoint takes to write, in seconds.
+const CHECKPOINT_COST: f64 = 50.0;
+/// The mean time between failures of one machine, in seconds: 30 days.
+const MACHINE_MTBF: f64 = 30.0 * 24.0 * 3600.0;
+
+/// Returns the time between checkpoints that loses the least work, by Young's
+/// formula: the square root of twice the checkpoint cost times the job's mean
+/// time between failures.
+fn interval(job_mtbf: f64) -&gt; f64 {
+    (2.0 * CHECKPOINT_COST * job_mtbf).sqrt()
+}
+
+fn main() {
+    const N: usize = 5;
+
+    println!("ring all-reduce over {N} workers, {N} chunks each:");
+    for (worker, _, _) in ring(N, None) {
+        println!(
+            "  {} starts with {:&lt;17} and ends with {}",
+            name(worker.id),
+            show(&amp;own_gradient(worker.id, N)),
+            show(&amp;worker.gradient)
+        );
+    }
+    let sent = 2 * (N - 1);
+    println!(
+        "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
+        sent as f64 / N as f64,
+        sent * N
+    );
+
+    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    for (worker, steps, why) in ring(N, Some((2, 2))) {
+        let why = why.unwrap_or_else(|| "finished".to_owned());
+        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+    }
+
+    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!("  machines  job fails every  checkpoint every  time lost");
+    for machines in [1, 5, 64, 512] {
+        let job_mtbf = MACHINE_MTBF / f64::from(machines);
+        let every = interval(job_mtbf);
+        let lost = CHECKPOINT_COST / every + every / (2.0 * job_mtbf);
+        println!(
+            "  {machines:8}  {:10.1} hours  {:9.0} minutes  {:8.1}%",
+            job_mtbf / 3600.0,
+            every / 60.0,
+            lost * 100.0
+        );
+    }
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Each step of training on several machines ends with an all-reduce: every worker
+contributes a gradient and every worker needs the sum.</li>
+<li>A ring all-reduce cuts each gradient into N chunks and takes 2(N − 1) exchanges. Each
+worker sends a little under two gradients’ worth of data, and every link carries the same
+load.</li>
+<li>Every chunk crosses every link, so the step runs at the speed of the slowest link.</li>
+<li>A failed worker stalls its right-hand neighbour, and the stall moves around the ring
+one worker per exchange. The job restarts as a group from its last checkpoint.</li>
+<li>The time between checkpoints that wastes the least is √(2CM), where C is the cost of
+a checkpoint and M is the job’s mean time between failures, which shrinks as the job
+grows.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>NVIDIA, NCCL documentation:
+<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/index.html">https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/index.html</a></li>
+<li>A. Gibiansky, “Bringing HPC Techniques to Deep Learning”, Baidu Research, 2017, which
+describes the ring all-reduce used here.</li>
+<li>P. Patarasuk and X. Yuan, “Bandwidth optimal all-reduce algorithms for clusters of
+workstations”, Journal of Parallel and Distributed Computing, 2009.</li>
+<li>J. W. Young, “A first order approximation to the optimum checkpoint interval”,
+Communications of the ACM, 17(9), 1974.</li>
+<li>MPI Forum, MPI: A Message-Passing Interface Standard, chapter on collective
+communication: <a href="https://www.mpi-forum.org/docs/">https://www.mpi-forum.org/docs/</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="06-virtual-machines.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="08-placing-jobs.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="06-virtual-machines.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="08-placing-jobs.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

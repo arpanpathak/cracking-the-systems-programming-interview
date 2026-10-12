@@ -1,0 +1,2322 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>A control plane for a fleet of hosts - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/04-fleet-control-plane.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="4-a-control-plane-for-a-fleet-of-hosts"><a class="header" href="#4-a-control-plane-for-a-fleet-of-hosts">4. A control plane for a fleet of hosts</a></h1>
+<p>In chapter 3, we learned how a control plane notices that a machine has gone silent. A
+silent machine is the simple case. More often a machine keeps sending heartbeats while
+something on it is going wrong: a GPU reports a memory error, a job crashes with a GPU
+fault, or a network link drops for a second and returns. In this chapter, we will build
+the part of a control plane that reads those reports and decides what to do with the
+machine.</p>
+<p>We will work with a fleet of real machines, small enough to keep in our heads: five
+Jetson AGX Thor developer kits on one switch, two DGX Sparks joined by a cable, and the
+Jetson Orin NX that has run every example so far. We will first reason about what each
+kind of report tells us, then draw the design, then write it as two programs in Go and in
+Rust. <code>fleethealth</code> decides which reports blame a machine and walks a blamed machine
+through its repair. <code>fencing</code> deals with the question chapter 3 ended on: what stops a job
+from running twice when a machine that was declared dead turns out to be alive.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the fleet used in the rest of the book, with the numbers that matter for scheduling</li>
+<li>the two paths a failure report takes: one on the machine, one through the control plane</li>
+<li>telling a faulty job from a faulty machine, and both from a faulty switch</li>
+<li>the repair lifecycle: cordon, drain, repair, validate, return, or quarantine</li>
+<li>a disruption budget, which limits how much of the fleet a repair system may take away</li>
+<li>epochs and fencing, which keep a job that runs twice from damaging its checkpoints</li>
+</ul>
+</div>
+
+<h2 id="the-fleet"><a class="header" href="#the-fleet">The fleet</a></h2>
+<p>Figure 4.1 shows the eight machines. Each has one GPU that shares memory with the CPU, as
+we saw for the Orin in chapter 2, so a machine’s memory is also the limit on what its GPU
+can hold.</p>
+<figure>
+<img src="figures/fleet-map.svg" alt="Eight machines in three groups. Five Jetson AGX Thor developer kits, thor-1 to thor-5, each with 14 cores, 128 GB of memory and a draw of 40 to 130 watts, connect to one 25 GbE switch. Two DGX Sparks, spark-1 and spark-2, each with 20 cores, 128 GB and about 170 watts, are joined to each other by a 200 GbE cable. One Jetson Orin NX, orin-nx-1, with 8 cores, 16 GB and 10 to 40 watts, stands alone on 1 GbE.">
+<figcaption><b>Figure 4.1</b> The fleet: five Thors on a 25 GbE switch, two Sparks on a 200 GbE cable, and one Orin NX.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Machine</th><th>CPU cores</th><th>Memory, shared with the GPU</th><th>Memory bandwidth</th><th>Fast link</th><th>Power</th></tr>
+</thead>
+<tbody>
+<tr><td>Jetson Orin NX 16GB (Super)</td><td>8</td><td>16 GB</td><td>102 GB/s</td><td>1 GbE</td><td>10 to 40 W</td></tr>
+<tr><td>Jetson AGX Thor</td><td>14</td><td>128 GB</td><td>273 GB/s</td><td>four lanes of 25 GbE</td><td>40 to 130 W</td></tr>
+<tr><td>DGX Spark</td><td>20</td><td>128 GB</td><td>273 GB/s</td><td>up to 200 GbE</td><td>about 170 W</td></tr>
+</tbody>
+</table>
+</div>
+<p>Three facts about this fleet shape the chapter. The machines are few, so losing two of
+them removes a quarter of the capacity. They are connected in groups: the five Thors
+reach each other through one switch, and the two Sparks through one cable, so one failed
+switch looks like five failed machines. And every machine runs long jobs whose progress
+lives in the GPU’s memory until it is saved, so taking a machine away without warning
+destroys work.</p>
+<div class="callout">
+<p><strong>What we measured and what we modelled.</strong> The cluster in this book runs on the Orin NX,
+and the CUDA programs of chapter 2 ran on the Orin NX and on one Thor. The fleet of five
+Thors and two Sparks is the one the programs of this chapter and the next ones model.
+Its core counts, memory sizes, link speeds, and power figures are the manufacturer’s,
+and where a number in the book comes from a run on our own hardware, the text shows the
+command and its output.</p>
+</div>
+
+<p>A fleet of ten thousand machines has the same three properties with larger numbers. The
+design that follows is the one such fleets use, and our eight machines are enough to
+exercise every part of it.</p>
+<h2 id="what-a-failure-report-tells-us"><a class="header" href="#what-a-failure-report-tells-us">What a failure report tells us</a></h2>
+<p>Each machine produces several kinds of report about its GPU and its network link.</p>
+<p>The GPU driver writes a message to the kernel log when the GPU reports an error. On
+discrete and data center GPUs, the NVIDIA driver numbers these messages, and the number
+is called an <em>Xid</em>. NVIDIA publishes a catalog that gives the usual cause of each one.
+The table lists the Xids our model has a class for:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Xid</th><th>What the driver reports</th><th>Usual cause</th><th>Class in our model</th></tr>
+</thead>
+<tbody>
+<tr><td>13, 31, 43</td><td>an engine exception, a memory page fault, a channel that stopped</td><td>the program that was running</td><td>application fault</td></tr>
+<tr><td>48, 95</td><td>a double-bit or uncontained memory error</td><td>the GPU’s memory</td><td>uncorrectable ECC</td></tr>
+<tr><td>79</td><td>the GPU has fallen off the bus</td><td>the GPU, its power, or its slot</td><td>GPU off the bus</td></tr>
+</tbody>
+</table>
+</div>
+<p>Of our two boards, the Thor runs this driver, version 595.78, and reports its errors as
+Xids. Its kernel log held none when we looked. The Orin NX runs the older <code>nvgpu</code> driver,
+which writes its errors to the kernel log without Xid numbers. The model reduces every
+report to a class, so it does not depend on the format.</p>
+<p>ECC stands for error-correcting code: GPU memory stores a few extra bits with each word,
+enough to repair one flipped bit and to detect two. An <em>uncorrectable</em> error is one the
+extra bits detected and could not repair.</p>
+<p>The network interface reports each time its link goes down and comes back. We call one
+such event a <em>link flap</em>.</p>
+<p>The same report can have three different causes, and the right response differs for each:</p>
+<ul>
+<li>A job with a bug in its GPU code produces an application fault on every machine it runs
+on. Taking those machines out of service repairs nothing and removes capacity.</li>
+<li>A machine with a failing GPU produces faults for every job placed on it. The machine has
+to leave the pool before the scheduler places another job there.</li>
+<li>A switch that restarts makes every machine attached to it report a link flap within a
+few seconds. The machines are healthy, and draining them would turn a short network
+interruption into a loss of five machines’ worth of running jobs.</li>
+</ul>
+<p>One report cannot distinguish these cases. Several reports can, by counting along two
+directions. A fault that follows one job across three machines blames the job. Faults from
+three different jobs on one machine blame the machine. Flaps from three machines on one
+link, close together in time, blame the link. A report of a memory error or of a GPU off
+the bus needs no counting, because no program can cause one.</p>
+<h2 id="two-paths-for-one-report"><a class="header" href="#two-paths-for-one-report">Two paths for one report</a></h2>
+<p>A report has to reach two places, at two speeds. Figure 4.2 shows both.</p>
+<figure>
+<img src="figures/health-pipeline.svg" alt="On a GPU machine, the driver reports an error. One path stays on the machine: the device plugin marks the GPU unhealthy, the kubelet lowers the node&#39;s allocatable GPUs, and the scheduler stops placing pods there within seconds. The other path leaves the machine: the report goes to a health service that counts reports by job, by machine and by link, and sends a verdict to a remediation controller, which cordons, drains, repairs and validates the machine through the Kubernetes API.">
+<figcaption><b>Figure 4.2</b> The fast path stops new work on a broken GPU. The slow path decides what happens to the whole machine.</figcaption>
+</figure>
+<p>The fast path stays on the machine. The device plugin, which we met in the introduction,
+reports the health of each GPU to the kubelet along with the count. When a GPU fails, the
+plugin marks it unhealthy, the kubelet lowers the number of GPUs the node offers, and the
+scheduler stops placing pods that ask for that GPU. This takes seconds and needs no
+decision from anyone. It stops new work only: a pod that already holds the GPU keeps
+running.</p>
+<p>The slow path leaves the machine. Every report goes to a <em>health service</em>, which holds
+the counts from the previous section and turns them into a verdict for a machine: leave
+it alone, or repair it. A <em>remediation controller</em> acts on the verdict. It is a
+controller in the sense of chapter 1: it holds a desired state for each machine and moves
+the machine towards it one step at a time, through the Kubernetes API. In a production
+cluster the reports travel through a metrics pipeline, and the verdict is written to a
+custom resource that the controller watches. Our model keeps both halves in one process
+so that we can see every decision in one log.</p>
+<p>The two halves stay separate in the design for a practical reason. The rules that produce
+verdicts change often, as new failure patterns appear. The controller that drains and
+reboots machines changes rarely and is dangerous when it is wrong. Keeping them apart
+lets us change a rule, or run a new rule in a mode that only logs its verdicts, without
+touching the code that can take machines away.</p>
+<h2 id="the-repair-lifecycle"><a class="header" href="#the-repair-lifecycle">The repair lifecycle</a></h2>
+<p>A machine with a verdict against it goes through six states. Figure 4.3 shows them.</p>
+<figure>
+<img src="figures/node-lifecycle.svg" alt="Six states in a row. A machine is Healthy until a verdict cordons it. It waits in Cordoned until the disruption budget has a free slot, then moves to Draining, where its jobs write checkpoints and leave. In Remediating one repair action runs: a GPU reset, then a reboot, then a reimage. In Validating a burn-in test runs. A pass returns the machine to Healthy. A failure sends it back to Remediating for the next action, and after the last action to Quarantined, where a person takes over.">
+<figcaption><b>Figure 4.3</b> The lifecycle of a machine under repair, with the ladder of repair actions.</figcaption>
+</figure>
+<p><em>Cordoned</em> means the scheduler places no new pods on the machine. In Kubernetes this is
+one field, <code>spec.unschedulable</code>, on the Node object, and <code>kubectl cordon</code> sets it.
+Cordoning is cheap and fully reversible, so the controller does it at once.</p>
+<p><em>Draining</em> removes the pods that are already there. A training job loses everything
+since its last checkpoint when its pod is deleted, so the controller first tells the job
+to write a checkpoint and gives it time to do so. Kubernetes has a request made for this
+purpose, the <em>Eviction API</em>. An eviction asks for a pod to be removed and can be refused:
+a <em>PodDisruptionBudget</em> is an object in which a workload’s owner states how many of its
+pods may be down at once, and the API server refuses an eviction that would exceed it.
+<code>kubectl drain</code> cordons a node and then evicts each of its pods in this way.</p>
+<p><em>Remediating</em> runs one repair action. The actions form a ladder from the cheapest to the
+most thorough: reset the GPU, reboot the machine, and write a fresh operating system
+image to it. The controller starts at the bottom and climbs one rung at a time.</p>
+<p><em>Validating</em> runs a <em>burn-in test</em>: a short GPU workload with a known answer. A machine
+that boots and joins the cluster has shown only that its operating system starts. The
+burn-in shows that its GPU computes correctly under load, which is the property that
+failed. A machine that passes returns to Healthy. A machine that fails goes back for the
+next rung, and a machine that fails after the last rung is <em>Quarantined</em>: it stays out of
+the pool, and a ticket asks a person to look at the hardware.</p>
+<h3 id="a-limit-on-the-repair-system-itself"><a class="header" href="#a-limit-on-the-repair-system-itself">A limit on the repair system itself</a></h3>
+<p>A controller that can drain machines can also drain all of them. If a faulty rule
+condemned every machine in the fleet, a controller that obeyed would cause a larger
+outage than any hardware failure. So the controller carries a <em>disruption budget</em>: the
+largest number of machines that may be out of service at once. A machine whose verdict
+arrives when the budget is spent stays Cordoned, which costs nothing that is running, and
+waits for a slot. A budget that stays spent is itself a signal worth a page to a person,
+because it means failures are arriving faster than repairs finish.</p>
+<p>Our fleet’s budget is two machines. A quarantined machine keeps its slot until someone
+repairs or removes it, since it is still missing from the fleet.</p>
+<div class="lld">
+<p>Low-level design: <code>fleethealth</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Node</code></td><td>name, model, and the link it hangs on</td><td>fixed for the run</td></tr>
+<tr><td><code>Signal</code></td><td>second, node, job, and class</td><td>one per report</td></tr>
+<tr><td><code>State</code></td><td>Healthy, Cordoned, Draining, Remediating, Validating, Quarantined</td><td>ordered, so “out of service” is every state from Draining on</td></tr>
+<tr><td><code>record</code></td><td>one node’s state, the second it entered it, its rung on the ladder, the jobs that faulted on it</td><td>only <code>move</code> changes the state</td></tr>
+<tr><td><code>Plane</code></td><td>every record, the nodes each job faulted on, what has been blamed</td><td>at most <code>budget</code> records are out of service</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Observe(signal)</code></td><td>counts the signal and, when a count reaches its threshold, blames a job, a machine, or a link</td></tr>
+<tr><td><code>Step(now)</code></td><td>advances every machine by one second through the lifecycle</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="building-fleethealth"><a class="header" href="#building-fleethealth">Building <code>fleethealth</code></a></h2>
+<p>The program is a simulation with a clock that counts seconds. Each second it feeds the
+signals that arrive at that second to <code>Observe</code>, then calls <code>Step</code>. No real time passes,
+so a run takes a few milliseconds and prints the same log every time.</p>
+<h3 id="the-fleet-and-its-signals"><a class="header" href="#the-fleet-and-its-signals">The fleet and its signals</a></h3>
+<p>A machine is a name, a model, and the name of the switch or cable it shares with its
+neighbours. The link name is what lets the program see that five reports came from one
+place.</p>
+<p class="listing"><b>Listing 4.1</b> The machines, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// Node is one machine in the fleet.
+type Node struct {
+	// Name is the machine's host name.
+	Name string
+	// Model is the product the machine is.
+	Model string
+	// Link names the switch or cable that connects the machine to its peers.
+	Link string
+}
+
+// fleet lists the machines in the order the program reports them.
+var fleet = []Node{
+	{"thor-1", "Jetson AGX Thor", "switch-25g"},
+	{"thor-2", "Jetson AGX Thor", "switch-25g"},
+	{"thor-3", "Jetson AGX Thor", "switch-25g"},
+	{"thor-4", "Jetson AGX Thor", "switch-25g"},
+	{"thor-5", "Jetson AGX Thor", "switch-25g"},
+	{"spark-1", "DGX Spark", "cable-200g"},
+	{"spark-2", "DGX Spark", "cable-200g"},
+	{"orin-nx-1", "Jetson Orin NX", "bench"},
+}
+</code></pre>
+<p class="listing"><b>Listing 4.2</b> The machines, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// One machine in the fleet.
+struct Node {
+    /// The machine's host name.
+    name: &amp;'static str,
+    /// The product the machine is.
+    model: &amp;'static str,
+    /// The switch or cable that connects the machine to its peers.
+    link: &amp;'static str,
+}
+
+/// The machines, in the order the program reports them.
+const FLEET: [Node; 8] = [
+    Node {
+        name: "thor-1",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-2",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-3",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-4",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-5",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "spark-1",
+        model: "DGX Spark",
+        link: "cable-200g",
+    },
+    Node {
+        name: "spark-2",
+        model: "DGX Spark",
+        link: "cable-200g",
+    },
+    Node {
+        name: "orin-nx-1",
+        model: "Jetson Orin NX",
+        link: "bench",
+    },
+];</code></pre>
+<p>A signal carries the second it arrived, the machine, the job that was using the GPU, and
+its class. Hardware signals and link flaps have no job.</p>
+<p class="listing"><b>Listing 4.3</b> Signals and their classes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// Kind is the class of a failure signal.
+type Kind int
+
+// The classes of signal the model understands.
+const (
+	AppFault  Kind = iota // the GPU rejected work from one program
+	MemoryECC             // an uncorrectable memory error on the GPU
+	OffBus                // the GPU stopped answering the driver
+	LinkFlap              // the machine's network link went down and up
+)
+
+// String returns the class as it appears in the log.
+func (k Kind) String() string {
+	return [...]string{"application fault", "uncorrectable ECC", "GPU off the bus", "link flap"}[k]
+}
+
+// Signal is one failure report from a machine.
+type Signal struct {
+	// At is the second at which the signal arrived.
+	At int
+	// Node is the machine that reported it.
+	Node string
+	// Job is the job that was using the GPU, or "" for a signal with no job.
+	Job string
+	// Kind is the signal's class.
+	Kind Kind
+}
+</code></pre>
+<p class="listing"><b>Listing 4.4</b> Signals and their classes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The class of a failure signal.
+#[derive(Clone, Copy)]
+enum Kind {
+    /// The GPU rejected work from one program.
+    AppFault,
+    /// An uncorrectable memory error on the GPU.
+    MemoryEcc,
+    /// The GPU stopped answering the driver.
+    OffBus,
+    /// The machine's network link went down and up.
+    LinkFlap,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Kind::AppFault =&gt; "application fault",
+            Kind::MemoryEcc =&gt; "uncorrectable ECC",
+            Kind::OffBus =&gt; "GPU off the bus",
+            Kind::LinkFlap =&gt; "link flap",
+        })
+    }
+}
+
+/// One failure report from a machine.
+struct Signal {
+    /// The second at which the signal arrived.
+    at: u32,
+    /// The machine that reported it.
+    node: &amp;'static str,
+    /// The job that was using the GPU, or "" for a signal with no job.
+    job: &amp;'static str,
+    /// The signal's class.
+    kind: Kind,
+}</code></pre>
+<h3 id="the-states-and-the-ladder"><a class="header" href="#the-states-and-the-ladder">The states and the ladder</a></h3>
+<p>The states are declared in the order a failing machine passes through them, and both
+languages can compare them. That ordering does real work later: “every state from
+Draining on” becomes one comparison.</p>
+<p class="listing"><b>Listing 4.5</b> The lifecycle states and the repair ladder, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// State is a machine's place in the repair lifecycle.
+type State int
+
+// The lifecycle, in the order a failing machine passes through it.
+const (
+	Healthy     State = iota // schedulable
+	Cordoned                 // no new work; waiting for the disruption budget
+	Draining                 // jobs are checkpointing and leaving
+	Remediating              // a repair action is running
+	Validating               // a burn-in test is running
+	Quarantined              // every repair failed; a person has to look
+)
+
+// String returns the state's name for the log.
+func (s State) String() string {
+	return [...]string{"Healthy", "Cordoned", "Draining", "Remediating", "Validating", "Quarantined"}[s]
+}
+
+// ladder lists the repair actions from the cheapest to the most thorough.
+var ladder = []string{"reset the GPU", "reboot", "reimage"}
+</code></pre>
+<p class="listing"><b>Listing 4.6</b> The lifecycle states and the repair ladder, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// A machine's place in the repair lifecycle, in the order a failing machine
+/// passes through it.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+enum State {
+    /// Schedulable.
+    Healthy,
+    /// No new work; waiting for the disruption budget.
+    Cordoned,
+    /// Jobs are checkpointing and leaving.
+    Draining,
+    /// A repair action is running.
+    Remediating,
+    /// A burn-in test is running.
+    Validating,
+    /// Every repair failed; a person has to look.
+    Quarantined,
+}
+
+impl fmt::Display for State {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        // `pad` honours the width given in a format string such as `{:&lt;11}`.
+        f.pad(&amp;format!("{self:?}"))
+    }
+}
+
+/// The repair actions, from the cheapest to the most thorough.
+const LADDER: [&amp;str; 3] = ["reset the GPU", "reboot", "reimage"];</code></pre>
+<h3 id="deciding-what-a-signal-blames"><a class="header" href="#deciding-what-a-signal-blames">Deciding what a signal blames</a></h3>
+<p><code>Observe</code> holds the counting rules. A hardware signal condemns its machine at once. An
+application fault is recorded twice, under the machine and under the job, and then both
+counts are checked. Three machines for one job blames the job, and the program prints
+that verdict once and leaves every machine in service. Three jobs on one machine condemns
+the machine. A link flap is stamped on its machine, and the program counts the machines
+on the same link whose latest flap lies within five seconds.</p>
+<p class="listing"><b>Listing 4.7</b> Triage: which of a job, a machine, or a link a signal blames, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// Observe takes one signal and decides what it blames. A hardware signal
+// blames the machine. An application fault blames the job once the job has
+// faulted on three machines, and blames the machine once three jobs have
+// faulted on it. Link flaps blame the link when three machines on it flap
+// within five seconds of each other.
+func (p *Plane) Observe(s Signal) {
+	r := p.find(s.Node)
+	switch s.Kind {
+	case MemoryECC, OffBus:
+		p.condemn(s.At, r, s.Kind.String())
+	case AppFault:
+		r.faultJobs[s.Job] = true
+		if p.jobNodes[s.Job] == nil {
+			p.jobNodes[s.Job] = map[string]bool{}
+		}
+		p.jobNodes[s.Job][s.Node] = true
+		switch {
+		case len(p.jobNodes[s.Job]) &gt;= blameAfter &amp;&amp; !p.blamed[s.Job]:
+			p.blamed[s.Job] = true
+			fmt.Printf("%4ds  job %s faulted on %d machines: the job is at fault, no machine is drained\n",
+				s.At, s.Job, len(p.jobNodes[s.Job]))
+		case len(r.faultJobs) &gt;= blameAfter:
+			p.condemn(s.At, r, fmt.Sprintf("%d different jobs faulted here", len(r.faultJobs)))
+		}
+	case LinkFlap:
+		r.lastFlap = s.At
+		together := 0
+		for _, other := range p.records {
+			if other.node.Link == r.node.Link &amp;&amp; other.lastFlap &gt;= 0 &amp;&amp; s.At-other.lastFlap &lt;= fabricWindow {
+				together++
+			}
+		}
+		if together &gt;= fabricAfter &amp;&amp; !p.blamed[r.node.Link] {
+			p.blamed[r.node.Link] = true
+			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
+				s.At, together, r.node.Link)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 4.8</b> Triage: which of a job, a machine, or a link a signal blames, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Plane {
+    /// Takes one signal and decides what it blames. A hardware signal blames
+    /// the machine. An application fault blames the job once the job has
+    /// faulted on three machines, and blames the machine once three jobs have
+    /// faulted on it. Link flaps blame the link when three machines on it flap
+    /// within five seconds of each other.
+    fn observe(&amp;mut self, s: &amp;Signal) {
+        let index = self.find(s.node);
+        match s.kind {
+            Kind::MemoryEcc | Kind::OffBus =&gt; self.condemn(s.at, index, &amp;s.kind.to_string()),
+            Kind::AppFault =&gt; {
+                self.records[index].fault_jobs.insert(s.job);
+                let nodes = self.job_nodes.entry(s.job).or_default();
+                nodes.insert(s.node);
+                let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+                if machines &gt;= BLAME_AFTER &amp;&amp; self.blamed.insert(s.job) {
+                    println!(
+                        "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
+                        s.at, s.job
+                    );
+                } else if machines &lt; BLAME_AFTER &amp;&amp; jobs &gt;= BLAME_AFTER {
+                    self.condemn(s.at, index, &amp;format!("{jobs} different jobs faulted here"));
+                }
+            }
+            Kind::LinkFlap =&gt; {
+                self.records[index].last_flap = Some(s.at);
+                let link = self.records[index].node.link;
+                let together = self
+                    .records
+                    .iter()
+                    .filter(|r| r.node.link == link)
+                    .filter(|r| r.last_flap.is_some_and(|at| s.at - at &lt;= FABRIC_WINDOW))
+                    .count();
+                if together &gt;= FABRIC_AFTER &amp;&amp; self.blamed.insert(link) {
+                    println!(
+                        "{:4}s  {together} machines on {link} flapped together: the link is at fault, no machine is drained",
+                        s.at
+                    );
+                }
+            }
+        }
+    }
+}</code></pre>
+<p>The Go version keeps each set as a map from a name to <code>true</code>. The Rust version uses
+<code>BTreeSet</code>, whose <code>insert</code> returns whether the value was new, so “blame this once” is the
+single expression <code>self.blamed.insert(s.job)</code>.</p>
+<h3 id="the-budget"><a class="header" href="#the-budget">The budget</a></h3>
+<p>The budget check is a count of the machines in the four states that take a machine away
+from the fleet. Cordoned is left out on purpose: a cordoned machine still runs its jobs.</p>
+<p class="listing"><b>Listing 4.9</b> Counting the machines that are out of service, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// outOfService counts the machines that hold a slot of the disruption budget:
+// every machine that is draining, under repair, in burn-in, or quarantined.
+func (p *Plane) outOfService() int {
+	n := 0
+	for _, r := range p.records {
+		if r.state &gt;= Draining {
+			n++
+		}
+	}
+	return n
+}
+</code></pre>
+<p class="listing"><b>Listing 4.10</b> Counting the machines that are out of service, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Plane {
+    /// Counts the machines that hold a slot of the disruption budget: every
+    /// machine that is draining, under repair, in burn-in, or quarantined.
+    fn out_of_service(&amp;self) -&gt; usize {
+        self.records
+            .iter()
+            .filter(|r| r.state &gt;= State::Draining)
+            .count()
+    }
+}</code></pre>
+<h3 id="one-second-of-the-lifecycle"><a class="header" href="#one-second-of-the-lifecycle">One second of the lifecycle</a></h3>
+<p><code>Step</code> visits every machine and asks how long it has been in its state. A Cordoned
+machine starts to drain as soon as the budget has room, and reports once that it is
+blocked when the budget has none. Each of the other states lasts a fixed number of
+seconds in the model: four for a job to write its checkpoint and leave, three for a
+repair action, three for the burn-in. The result of a burn-in comes from a table the run
+supplies, which says how many tests each machine fails before one passes.</p>
+<p class="listing"><b>Listing 4.11</b> Advancing every machine by one second, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// Step advances every machine by one second. A Cordoned machine starts to
+// drain when the budget has a free slot. The other states each last a fixed
+// time and then move on; a failed burn-in sends the machine back for the next
+// action on the ladder, and a machine with no actions left is quarantined.
+func (p *Plane) Step(now int) {
+	for _, r := range p.records {
+		waited := now - r.since
+		switch {
+		case r.state == Cordoned &amp;&amp; p.outOfService() &lt; budget:
+			p.move(now, r, Draining, "jobs told to checkpoint")
+		case r.state == Cordoned &amp;&amp; waited == 1:
+			fmt.Printf("%4ds  %-10s blocked: %d machines are already out of service\n", now, r.node.Name, budget)
+		case r.state == Draining &amp;&amp; waited &gt;= drainTime:
+			p.move(now, r, Remediating, ladder[r.step])
+		case r.state == Remediating &amp;&amp; waited &gt;= repairTime:
+			p.move(now, r, Validating, "burn-in after "+ladder[r.step])
+		case r.state == Validating &amp;&amp; waited &gt;= burnInTime:
+			p.finishBurnIn(now, r)
+		}
+	}
+}
+
+// finishBurnIn acts on the result of a burn-in test. A pass returns the
+// machine to service. A failure sends it back for the next action on the
+// ladder, and a machine with no actions left is quarantined.
+func (p *Plane) finishBurnIn(now int, r *record) {
+	if p.burnIn[r.node.Name] == 0 {
+		r.faultJobs = map[string]bool{}
+		p.move(now, r, Healthy, "burn-in passed")
+		return
+	}
+	p.burnIn[r.node.Name]--
+	if r.step+1 == len(ladder) {
+		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+		return
+	}
+	r.step++
+	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
+}
+</code></pre>
+<p class="listing"><b>Listing 4.12</b> Advancing every machine by one second, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Plane {
+    /// Advances every machine by one second. A Cordoned machine starts to
+    /// drain when the budget has a free slot. The other states each last a
+    /// fixed time and then move on.
+    fn step(&amp;mut self, now: u32) {
+        for index in 0..self.records.len() {
+            let (state, step, name) = {
+                let r = &amp;self.records[index];
+                (r.state, r.step, r.node.name)
+            };
+            let waited = now - self.records[index].since;
+            match state {
+                State::Cordoned if self.out_of_service() &lt; BUDGET =&gt; {
+                    self.transition(now, index, State::Draining, "jobs told to checkpoint");
+                }
+                State::Cordoned if waited == 1 =&gt; {
+                    println!(
+                        "{now:4}s  {name:&lt;10} blocked: {BUDGET} machines are already out of service"
+                    );
+                }
+                State::Draining if waited &gt;= DRAIN_TIME =&gt; {
+                    self.transition(now, index, State::Remediating, LADDER[step]);
+                }
+                State::Remediating if waited &gt;= REPAIR_TIME =&gt; {
+                    let why = format!("burn-in after {}", LADDER[step]);
+                    self.transition(now, index, State::Validating, &amp;why);
+                }
+                State::Validating if waited &gt;= BURN_IN_TIME =&gt; self.finish_burn_in(now, index),
+                _ =&gt; {}
+            }
+        }
+    }
+
+    /// Acts on the result of a burn-in test. A pass returns the machine to
+    /// service. A failure sends it back for the next action on the ladder, and
+    /// a machine with no actions left is quarantined.
+    fn finish_burn_in(&amp;mut self, now: u32, index: usize) {
+        let name = self.records[index].node.name;
+        let failures = self.burn_in.entry(name).or_default();
+        if *failures == 0 {
+            self.records[index].fault_jobs.clear();
+            self.transition(now, index, State::Healthy, "burn-in passed");
+            return;
+        }
+        *failures -= 1;
+        if self.records[index].step + 1 == LADDER.len() {
+            let why = "burn-in failed after every action; ticket opened";
+            self.transition(now, index, State::Quarantined, why);
+            return;
+        }
+        self.records[index].step += 1;
+        let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
+        self.transition(now, index, State::Remediating, &amp;why);
+    }
+}</code></pre>
+<p><code>Step</code> reads the current state and acts on it, with no memory of which signal started the
+repair. This is the level-triggered style of chapter 1 applied to machines. If the
+process stopped and started again with the same records, the next call to <code>Step</code> would
+continue every repair from where it was.</p>
+<h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<p>The script holds eleven signals that exercise each rule: one job faulting on three Thors,
+a memory error on a Spark, a Thor whose GPU stops answering, a restart of the 25 GbE
+switch, and two machines failing in the same second.</p>
+<p class="listing"><b>Listing 4.13</b> The scripted signals and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// script is the run: the signals in the order they arrive.
+var script = []Signal{
+	// One job faults on three different Thors.
+	{5, "thor-1", "finetune-7b", AppFault},
+	{9, "thor-2", "finetune-7b", AppFault},
+	{14, "thor-3", "finetune-7b", AppFault},
+	// A memory error on a Spark, which one GPU reset repairs.
+	{20, "spark-1", "", MemoryECC},
+	// A Thor whose GPU stops answering, and which no action repairs.
+	{40, "thor-4", "", OffBus},
+	// The 25 GbE switch restarts: four Thors lose their link together.
+	{60, "thor-1", "", LinkFlap},
+	{61, "thor-2", "", LinkFlap},
+	{61, "thor-3", "", LinkFlap},
+	{62, "thor-5", "", LinkFlap},
+	// Two machines fail in the same second while thor-4 is quarantined.
+	{80, "spark-2", "", OffBus},
+	{80, "orin-nx-1", "", MemoryECC},
+}
+
+func main() {
+	// thor-4 fails every burn-in; every other machine passes its first.
+	p := NewPlane(map[string]int{"thor-4": len(ladder)})
+	next := 0
+	for now := 0; now &lt;= duration; now++ {
+		for ; next &lt; len(script) &amp;&amp; script[next].At == now; next++ {
+			p.Observe(script[next])
+		}
+		p.Step(now)
+	}
+	fmt.Println("final states:")
+	for _, r := range p.records {
+		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 4.14</b> The scripted signals and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The run: the signals in the order they arrive.
+const SCRIPT: [Signal; 11] = [
+    // One job faults on three different Thors.
+    Signal {
+        at: 5,
+        node: "thor-1",
+        job: "finetune-7b",
+        kind: Kind::AppFault,
+    },
+    Signal {
+        at: 9,
+        node: "thor-2",
+        job: "finetune-7b",
+        kind: Kind::AppFault,
+    },
+    Signal {
+        at: 14,
+        node: "thor-3",
+        job: "finetune-7b",
+        kind: Kind::AppFault,
+    },
+    // A memory error on a Spark, which one GPU reset repairs.
+    Signal {
+        at: 20,
+        node: "spark-1",
+        job: "",
+        kind: Kind::MemoryEcc,
+    },
+    // A Thor whose GPU stops answering, and which no action repairs.
+    Signal {
+        at: 40,
+        node: "thor-4",
+        job: "",
+        kind: Kind::OffBus,
+    },
+    // The 25 GbE switch restarts: four Thors lose their link together.
+    Signal {
+        at: 60,
+        node: "thor-1",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    Signal {
+        at: 61,
+        node: "thor-2",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    Signal {
+        at: 61,
+        node: "thor-3",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    Signal {
+        at: 62,
+        node: "thor-5",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    // Two machines fail in the same second while thor-4 is quarantined.
+    Signal {
+        at: 80,
+        node: "spark-2",
+        job: "",
+        kind: Kind::OffBus,
+    },
+    Signal {
+        at: 80,
+        node: "orin-nx-1",
+        job: "",
+        kind: Kind::MemoryEcc,
+    },
+];
+
+fn main() {
+    // thor-4 fails every burn-in; every other machine passes its first.
+    let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
+    let mut signals = SCRIPT.iter().peekable();
+    for now in 0..=DURATION {
+        while let Some(signal) = signals.next_if(|s| s.at == now) {
+            plane.observe(signal);
+        }
+        plane.step(now);
+    }
+    println!("final states:");
+    for r in &amp;plane.records {
+        println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
+    }
+}</code></pre>
+<p>Both versions print the same log:</p>
+<pre><code class="language-console">$ go run ./fleethealth
+  14s  job finetune-7b faulted on 3 machines: the job is at fault, no machine is drained
+  20s  spark-1    Healthy     -&gt; Cordoned    uncorrectable ECC
+  20s  spark-1    Cordoned    -&gt; Draining    jobs told to checkpoint
+  24s  spark-1    Draining    -&gt; Remediating reset the GPU
+  27s  spark-1    Remediating -&gt; Validating  burn-in after reset the GPU
+  30s  spark-1    Validating  -&gt; Healthy     burn-in passed
+  40s  thor-4     Healthy     -&gt; Cordoned    GPU off the bus
+  40s  thor-4     Cordoned    -&gt; Draining    jobs told to checkpoint
+  44s  thor-4     Draining    -&gt; Remediating reset the GPU
+  47s  thor-4     Remediating -&gt; Validating  burn-in after reset the GPU
+  50s  thor-4     Validating  -&gt; Remediating burn-in failed; reboot
+  53s  thor-4     Remediating -&gt; Validating  burn-in after reboot
+  56s  thor-4     Validating  -&gt; Remediating burn-in failed; reimage
+  59s  thor-4     Remediating -&gt; Validating  burn-in after reimage
+  61s  3 machines on switch-25g flapped together: the link is at fault, no machine is drained
+  62s  thor-4     Validating  -&gt; Quarantined burn-in failed after every action; ticket opened
+  80s  spark-2    Healthy     -&gt; Cordoned    GPU off the bus
+  80s  orin-nx-1  Healthy     -&gt; Cordoned    uncorrectable ECC
+  80s  spark-2    Cordoned    -&gt; Draining    jobs told to checkpoint
+  81s  orin-nx-1  blocked: 2 machines are already out of service
+  84s  spark-2    Draining    -&gt; Remediating reset the GPU
+  87s  spark-2    Remediating -&gt; Validating  burn-in after reset the GPU
+  90s  spark-2    Validating  -&gt; Healthy     burn-in passed
+  90s  orin-nx-1  Cordoned    -&gt; Draining    jobs told to checkpoint
+  94s  orin-nx-1  Draining    -&gt; Remediating reset the GPU
+  97s  orin-nx-1  Remediating -&gt; Validating  burn-in after reset the GPU
+ 100s  orin-nx-1  Validating  -&gt; Healthy     burn-in passed
+final states:
+  thor-1     Jetson AGX Thor  Healthy
+  thor-2     Jetson AGX Thor  Healthy
+  thor-3     Jetson AGX Thor  Healthy
+  thor-4     Jetson AGX Thor  Quarantined
+  thor-5     Jetson AGX Thor  Healthy
+  spark-1    DGX Spark        Healthy
+  spark-2    DGX Spark        Healthy
+  orin-nx-1  Jetson Orin NX   Healthy
+</code></pre>
+<p>The log has five episodes.</p>
+<p>At second 14 the job <code>finetune-7b</code> has faulted on <code>thor-1</code>, <code>thor-2</code>, and <code>thor-3</code>. The
+verdict names the job, and all three Thors stay Healthy.</p>
+<p>At second 20 <code>spark-1</code> reports an uncorrectable memory error. It is cordoned and, with
+the whole budget free, starts to drain in the same second. Four seconds later its jobs
+have left, the GPU is reset, the burn-in passes, and at second 30 the Spark is back in
+service. The whole repair took ten seconds and no person was involved.</p>
+<p>At second 40 the GPU of <code>thor-4</code> falls off the bus. The reset, the reboot, and the
+reimage each end in a failed burn-in, and at second 62 the Thor is quarantined with a
+ticket. It holds one of the two budget slots from then on.</p>
+<p>At seconds 60 to 62 four Thors report link flaps. The third report, at second 61, brings
+the count for <code>switch-25g</code> to three within the window, and the verdict names the switch.
+No Thor is cordoned.</p>
+<p>At second 80 <code>spark-2</code> and <code>orin-nx-1</code> fail together. <code>spark-2</code> comes first in the fleet
+and takes the last budget slot. <code>orin-nx-1</code> is cordoned and reports that it is blocked.
+It waits ten seconds, until <code>spark-2</code> passes its burn-in at second 90 and frees the slot,
+and then goes through the same repair. At no point are more than two of the eight
+machines out of service.</p>
+<p>Animation 4.1 replays the log from second 20 as a board with one column for each state.</p>
+<figure class="anim">
+<video class="motion" src="figures/fleet-repair.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A board with six columns, Healthy, Cordoned, Draining, Remediating, Validating and Quarantined, and one chip for each of the eight machines. spark-1 moves through the columns and returns to Healthy at second 30. thor-4 moves to Remediating and Validating three times, for a reset, a reboot and a reimage, and ends in Quarantined at second 62. At second 80 spark-2 and orin-nx-1 are cordoned together; spark-2 drains while orin-nx-1 is blocked with two machines out of service, and orin-nx-1 starts to drain at second 90 when spark-2 returns to Healthy." data-chapters="[[0.0, &quot;one repair&quot;], [20.46, &quot;the ladder&quot;], [39.18, &quot;the budget&quot;]]"><img src="figures/fleet-repair.gif" alt="A board with six columns, Healthy, Cordoned, Draining, Remediating, Validating and Quarantined, and one chip for each of the eight machines. spark-1 moves through the columns and returns to Healthy at second 30. thor-4 moves to Remediating and Validating three times, for a reset, a reboot and a reimage, and ends in Quarantined at second 62. At second 80 spark-2 and orin-nx-1 are cordoned together; spark-2 drains while orin-nx-1 is blocked with two machines out of service, and orin-nx-1 starts to drain at second 90 when spark-2 returns to Healthy."></video>
+<figcaption><b>Animation 4.1</b> The run of <code>fleethealth</code> as a board. A chip in one of the last four columns holds a slot of the disruption budget.</figcaption>
+</figure>
+<div class="callout">
+<p><strong>On a real cluster.</strong> Each transition in this log corresponds to one or two requests to
+the API server. Cordoning patches <code>spec.unschedulable</code> on the Node. Draining creates an
+Eviction for each pod. The repair actions run as privileged pods on the machine or as
+calls to its management interface, and the burn-in is a Job that requests the node’s GPU
+and whose success the controller waits for. A controller built with controller-runtime
+or kube-rs, as in section 1.1, would store the state, the rung, and the attempt count in
+the status of a custom resource, one per node, so that a restarted controller reads its
+own progress back from the API server.</p>
+</div>
+
+<h2 id="a-job-that-runs-twice"><a class="header" href="#a-job-that-runs-twice">A job that runs twice</a></h2>
+<p>The lifecycle above covers a machine that still answers. Chapter 3 left us with the
+harder case: a machine whose Lease has expired. The control plane cannot drain it,
+because it cannot reach it, and it cannot tell a machine that has lost power from one
+that has lost only its network link. If it waits, the job on a truly dead machine stays
+stopped. If it starts the job elsewhere, the job on a machine that was only cut off is
+now running twice.</p>
+<p>Two copies of a training job are harmless while they only compute. They become harmful
+at the moment they write. Both save checkpoints to the same place, and the copy on the
+cut-off machine started from an older state. When its link returns, its next checkpoint
+replaces a newer one from the second copy, and the job’s saved progress moves backwards.</p>
+<p>The control plane cannot prevent the second copy from existing, so the protection has to
+sit at the place where the writes land. The mechanism has two parts:</p>
+<ul>
+<li>Every time the control plane assigns the job to a machine, it increments a counter and
+gives the new value to that machine. The value is called an <em>epoch</em>. A later
+assignment always has a higher epoch than an earlier one.</li>
+<li>Every write to the checkpoint store carries the writer’s epoch. The store remembers the
+highest epoch it has accepted and refuses a write with a lower one.</li>
+</ul>
+<p>The second part is called <em>fencing</em>, and the epoch in this role is a <em>fencing token</em>.
+Once the new copy has written, the old copy is fenced off: each of its writes is refused,
+and the refusal tells it that it has been replaced, so it can stop.</p>
+<figure>
+<img src="figures/fencing.svg" alt="A timeline with two lanes. On thor-1, the job holds epoch 1 and saves step 1000. The Thor then loses its link and keeps training. The control plane assigns the job to thor-2 with epoch 2. thor-2 resumes from step 1000 and saves step 2000 with epoch 2. When thor-1&#39;s link returns it tries to save step 1500 with epoch 1, and the store, which has already accepted epoch 2, refuses the write.">
+<figcaption><b>Figure 4.4</b> Two copies of one job. The store has accepted epoch 2, so the write that carries epoch 1 is refused.</figcaption>
+</figure>
+<div class="lld">
+<p>Low-level design: <code>fencing</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ControlPlane</code></td><td>the last epoch it handed out</td><td>each assignment gets a higher epoch than the one before</td></tr>
+<tr><td><code>Checkpoint</code></td><td>training step, epoch, writer</td><td>the epoch is the one the writer was assigned</td></tr>
+<tr><td><code>Store</code></td><td>the latest checkpoint</td><td>with fencing on, the stored epoch only rises</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The store is a single checkpoint and one comparison.</p>
+<p class="listing"><b>Listing 4.15</b> The checkpoint store and its epoch check, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
+
+<pre><code class="language-go">// Checkpoint is what a worker saves: the training step it reached and the
+// epoch of the assignment under which it was running.
+type Checkpoint struct {
+	// Step is the training step the checkpoint holds.
+	Step int
+	// Epoch is the assignment number the writer was given.
+	Epoch int
+	// Writer is the host that wrote the checkpoint.
+	Writer string
+}
+
+// ErrFenced is returned to a writer whose epoch is older than one the store
+// has already accepted.
+var ErrFenced = errors.New("fenced: a newer assignment has written")
+
+// Store holds the latest checkpoint of one job.
+type Store struct {
+	// Fencing turns the epoch check on.
+	Fencing bool
+	// latest is the stored checkpoint.
+	latest Checkpoint
+}
+
+// Write stores a checkpoint. With fencing on, a checkpoint whose epoch is
+// lower than the stored one is refused.
+func (s *Store) Write(c Checkpoint) error {
+	if s.Fencing &amp;&amp; c.Epoch &lt; s.latest.Epoch {
+		return ErrFenced
+	}
+	s.latest = c
+	return nil
+}
+</code></pre>
+<p class="listing"><b>Listing 4.16</b> The checkpoint store and its epoch check, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// What a worker saves: the training step it reached and the epoch of the
+/// assignment under which it was running.
+#[derive(Clone, Copy, Default)]
+struct Checkpoint {
+    /// The training step the checkpoint holds.
+    step: u32,
+    /// The assignment number the writer was given.
+    epoch: u32,
+    /// The host that wrote the checkpoint.
+    writer: &amp;'static str,
+}
+
+/// Returned to a writer whose epoch is older than one the store has already
+/// accepted.
+struct Fenced;
+
+impl fmt::Display for Fenced {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("fenced: a newer assignment has written")
+    }
+}
+
+/// Holds the latest checkpoint of one job.
+#[derive(Default)]
+struct Store {
+    /// Turns the epoch check on.
+    fencing: bool,
+    /// The stored checkpoint.
+    latest: Checkpoint,
+}
+
+impl Store {
+    /// Stores a checkpoint. With fencing on, a checkpoint whose epoch is lower
+    /// than the stored one is refused.
+    fn write(&amp;mut self, c: Checkpoint) -&gt; Result&lt;(), Fenced&gt; {
+        if self.fencing &amp;&amp; c.epoch &lt; self.latest.epoch {
+            return Err(Fenced);
+        }
+        self.latest = c;
+        Ok(())
+    }
+}</code></pre>
+<p>The control plane is a counter.</p>
+<p class="listing"><b>Listing 4.17</b> Handing out epochs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
+
+<pre><code class="language-go">// ControlPlane hands out assignments of one job. Each assignment gets the
+// next epoch, so a later assignment always carries a higher number.
+type ControlPlane struct {
+	epoch int
+}
+
+// Assign gives the job to a host and returns the epoch of the assignment.
+func (c *ControlPlane) Assign(host string) int {
+	c.epoch++
+	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+	return c.epoch
+}
+</code></pre>
+<p class="listing"><b>Listing 4.18</b> Handing out epochs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Hands out assignments of one job. Each assignment gets the next epoch, so a
+/// later assignment always carries a higher number.
+#[derive(Default)]
+struct ControlPlane {
+    epoch: u32,
+}
+
+impl ControlPlane {
+    /// Gives the job to a host and returns the epoch of the assignment.
+    fn assign(&amp;mut self, host: &amp;str) -&gt; u32 {
+        self.epoch += 1;
+        println!("  control plane: job assigned to {host} with epoch {}", self.epoch);
+        self.epoch
+    }
+}</code></pre>
+<p>The run plays the same sequence against both kinds of store.</p>
+<p class="listing"><b>Listing 4.19</b> The sequence of writes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
+
+<pre><code class="language-go">// save writes one checkpoint and prints what the store answered.
+func save(s *Store, host string, epoch, step int) {
+	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+	if err != nil {
+		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+		return
+	}
+	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
+}
+
+// run plays the sequence against one store.
+func run(s *Store) {
+	var plane ControlPlane
+	first := plane.Assign("thor-1")
+	save(s, "thor-1", first, 1000)
+	fmt.Println("  thor-1 loses its link and keeps training; its Lease expires")
+	second := plane.Assign("thor-2")
+	fmt.Printf("  thor-2 resumes from step %d\n", s.latest.Step)
+	save(s, "thor-2", second, 2000)
+	fmt.Println("  thor-1's link returns; it still holds epoch 1")
+	save(s, "thor-1", first, 1500)
+	fmt.Printf("  a restart now resumes from step %d, written by %s\n", s.latest.Step, s.latest.Writer)
+}
+
+func main() {
+	fmt.Println("a store that accepts every write:")
+	run(&amp;Store{})
+	fmt.Println("a store that checks the epoch:")
+	run(&amp;Store{Fencing: true})
+}
+</code></pre>
+<p class="listing"><b>Listing 4.20</b> The sequence of writes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes one checkpoint and prints what the store answered.
+fn save(store: &amp;mut Store, writer: &amp;'static str, epoch: u32, step: u32) {
+    match store.write(Checkpoint { step, epoch, writer }) {
+        Ok(()) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: stored"),
+        Err(e) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: refused, {e}"),
+    }
+}
+
+/// Plays the sequence against one store.
+fn run(mut store: Store) {
+    let mut plane = ControlPlane::default();
+    let first = plane.assign("thor-1");
+    save(&amp;mut store, "thor-1", first, 1000);
+    println!("  thor-1 loses its link and keeps training; its Lease expires");
+    let second = plane.assign("thor-2");
+    println!("  thor-2 resumes from step {}", store.latest.step);
+    save(&amp;mut store, "thor-2", second, 2000);
+    println!("  thor-1's link returns; it still holds epoch 1");
+    save(&amp;mut store, "thor-1", first, 1500);
+    println!("  a restart now resumes from step {}, written by {}", store.latest.step, store.latest.writer);
+}
+
+fn main() {
+    println!("a store that accepts every write:");
+    run(Store::default());
+    println!("a store that checks the epoch:");
+    run(Store { fencing: true, ..Store::default() });
+}</code></pre>
+<pre><code class="language-console">$ go run ./fencing
+a store that accepts every write:
+  control plane: job assigned to thor-1 with epoch 1
+  thor-1 writes step 1000 with epoch 1: stored
+  thor-1 loses its link and keeps training; its Lease expires
+  control plane: job assigned to thor-2 with epoch 2
+  thor-2 resumes from step 1000
+  thor-2 writes step 2000 with epoch 2: stored
+  thor-1's link returns; it still holds epoch 1
+  thor-1 writes step 1500 with epoch 1: stored
+  a restart now resumes from step 1500, written by thor-1
+a store that checks the epoch:
+  control plane: job assigned to thor-1 with epoch 1
+  thor-1 writes step 1000 with epoch 1: stored
+  thor-1 loses its link and keeps training; its Lease expires
+  control plane: job assigned to thor-2 with epoch 2
+  thor-2 resumes from step 1000
+  thor-2 writes step 2000 with epoch 2: stored
+  thor-1's link returns; it still holds epoch 1
+  thor-1 writes step 1500 with epoch 1: refused, fenced: a newer assignment has written
+  a restart now resumes from step 2000, written by thor-2
+</code></pre>
+<p>In the first run, <code>thor-1</code>’s write of step 1500 lands after <code>thor-2</code>’s write of step
+2000, and a restart would resume from step 1500: five hundred steps of training are gone,
+and the stored checkpoint comes from the copy that should have stopped. In the second
+run the store refuses that write, and a restart resumes from step 2000.</p>
+<p>Kubernetes gives us the pieces for both parts. A Lease’s <code>leaseTransitions</code> field counts
+how often the Lease has changed hands, and it rises by one with each new holder, so it
+can serve as the epoch. The check has to be made by whatever stores the checkpoints: an
+object store that supports conditional writes, a database row with a version column, or a
+file server that rejects clients holding an old token. The resource version check from
+chapter 1 is the same idea applied to Kubernetes objects.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><b>Listing 4.21</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
+
+<pre><code class="language-go">// Command fleethealth models the part of a control plane that keeps a fleet of
+// GPU machines healthy. It reads failure signals, decides whether each one
+// blames a job, a machine, or the network between machines, and moves each
+// machine through a lifecycle: cordon, drain, repair, validate, and return.
+//
+// The fleet is eight machines: five Jetson AGX Thor developer kits on one
+// 25 GbE switch, two DGX Sparks joined by a 200 GbE cable, and one Jetson
+// Orin NX. The program replays a scripted list of signals without real time
+// passing and prints every decision it makes.
+//
+// Run it from code/go with:
+//
+//	go run ./fleethealth
+package main
+
+import "fmt"
+
+// Node is one machine in the fleet.
+type Node struct {
+	// Name is the machine's host name.
+	Name string
+	// Model is the product the machine is.
+	Model string
+	// Link names the switch or cable that connects the machine to its peers.
+	Link string
+}
+
+// fleet lists the machines in the order the program reports them.
+var fleet = []Node{
+	{"thor-1", "Jetson AGX Thor", "switch-25g"},
+	{"thor-2", "Jetson AGX Thor", "switch-25g"},
+	{"thor-3", "Jetson AGX Thor", "switch-25g"},
+	{"thor-4", "Jetson AGX Thor", "switch-25g"},
+	{"thor-5", "Jetson AGX Thor", "switch-25g"},
+	{"spark-1", "DGX Spark", "cable-200g"},
+	{"spark-2", "DGX Spark", "cable-200g"},
+	{"orin-nx-1", "Jetson Orin NX", "bench"},
+}
+
+
+// Kind is the class of a failure signal.
+type Kind int
+
+// The classes of signal the model understands.
+const (
+	AppFault  Kind = iota // the GPU rejected work from one program
+	MemoryECC             // an uncorrectable memory error on the GPU
+	OffBus                // the GPU stopped answering the driver
+	LinkFlap              // the machine's network link went down and up
+)
+
+// String returns the class as it appears in the log.
+func (k Kind) String() string {
+	return [...]string{"application fault", "uncorrectable ECC", "GPU off the bus", "link flap"}[k]
+}
+
+// Signal is one failure report from a machine.
+type Signal struct {
+	// At is the second at which the signal arrived.
+	At int
+	// Node is the machine that reported it.
+	Node string
+	// Job is the job that was using the GPU, or "" for a signal with no job.
+	Job string
+	// Kind is the signal's class.
+	Kind Kind
+}
+
+
+// State is a machine's place in the repair lifecycle.
+type State int
+
+// The lifecycle, in the order a failing machine passes through it.
+const (
+	Healthy     State = iota // schedulable
+	Cordoned                 // no new work; waiting for the disruption budget
+	Draining                 // jobs are checkpointing and leaving
+	Remediating              // a repair action is running
+	Validating               // a burn-in test is running
+	Quarantined              // every repair failed; a person has to look
+)
+
+// String returns the state's name for the log.
+func (s State) String() string {
+	return [...]string{"Healthy", "Cordoned", "Draining", "Remediating", "Validating", "Quarantined"}[s]
+}
+
+// ladder lists the repair actions from the cheapest to the most thorough.
+var ladder = []string{"reset the GPU", "reboot", "reimage"}
+
+
+// Thresholds and durations, in seconds unless stated otherwise.
+const (
+	blameAfter   = 3 // distinct jobs (or nodes) before an application fault blames a node (or a job)
+	fabricAfter  = 3 // machines on one link that must flap together to blame the link
+	fabricWindow = 5 // how close in time those flaps have to be
+	budget       = 2 // machines that may be out of service at once
+	drainTime    = 4 // time a job gets to write a checkpoint and leave
+	repairTime   = 3 // time one repair action takes
+	burnInTime   = 3 // time the burn-in test takes
+	duration     = 110
+)
+
+// record is what the control plane remembers about one machine.
+type record struct {
+	node  Node
+	state State
+	// since is the second at which the machine entered its state.
+	since int
+	// step indexes the next action on the ladder.
+	step int
+	// faultJobs holds the distinct jobs that have faulted on this machine.
+	faultJobs map[string]bool
+	// lastFlap is the second of the machine's latest link flap, or -1.
+	lastFlap int
+}
+
+// Plane is the control plane's state: one record per machine, the nodes each
+// job has faulted on, and a scripted answer for each burn-in test.
+type Plane struct {
+	records []*record
+	// jobNodes holds, for each job, the distinct nodes it has faulted on.
+	jobNodes map[string]map[string]bool
+	// blamed holds the jobs and links already reported, so each is reported once.
+	blamed map[string]bool
+	// burnIn says how many burn-in tests a machine fails before one passes.
+	burnIn map[string]int
+}
+
+// NewPlane returns a plane in which every machine is Healthy.
+func NewPlane(burnIn map[string]int) *Plane {
+	p := &amp;Plane{jobNodes: map[string]map[string]bool{}, blamed: map[string]bool{}, burnIn: burnIn}
+	for _, n := range fleet {
+		p.records = append(p.records, &amp;record{node: n, faultJobs: map[string]bool{}, lastFlap: -1})
+	}
+	return p
+}
+
+// find returns the record of the named machine.
+func (p *Plane) find(name string) *record {
+	for _, r := range p.records {
+		if r.node.Name == name {
+			return r
+		}
+	}
+	panic("unknown node " + name)
+}
+
+// move puts a machine in a new state and logs the transition with its reason.
+func (p *Plane) move(now int, r *record, to State, why string) {
+	fmt.Printf("%4ds  %-10s %-11s -&gt; %-11s %s\n", now, r.node.Name, r.state, to, why)
+	r.state, r.since = to, now
+}
+
+// Observe takes one signal and decides what it blames. A hardware signal
+// blames the machine. An application fault blames the job once the job has
+// faulted on three machines, and blames the machine once three jobs have
+// faulted on it. Link flaps blame the link when three machines on it flap
+// within five seconds of each other.
+func (p *Plane) Observe(s Signal) {
+	r := p.find(s.Node)
+	switch s.Kind {
+	case MemoryECC, OffBus:
+		p.condemn(s.At, r, s.Kind.String())
+	case AppFault:
+		r.faultJobs[s.Job] = true
+		if p.jobNodes[s.Job] == nil {
+			p.jobNodes[s.Job] = map[string]bool{}
+		}
+		p.jobNodes[s.Job][s.Node] = true
+		switch {
+		case len(p.jobNodes[s.Job]) &gt;= blameAfter &amp;&amp; !p.blamed[s.Job]:
+			p.blamed[s.Job] = true
+			fmt.Printf("%4ds  job %s faulted on %d machines: the job is at fault, no machine is drained\n",
+				s.At, s.Job, len(p.jobNodes[s.Job]))
+		case len(r.faultJobs) &gt;= blameAfter:
+			p.condemn(s.At, r, fmt.Sprintf("%d different jobs faulted here", len(r.faultJobs)))
+		}
+	case LinkFlap:
+		r.lastFlap = s.At
+		together := 0
+		for _, other := range p.records {
+			if other.node.Link == r.node.Link &amp;&amp; other.lastFlap &gt;= 0 &amp;&amp; s.At-other.lastFlap &lt;= fabricWindow {
+				together++
+			}
+		}
+		if together &gt;= fabricAfter &amp;&amp; !p.blamed[r.node.Link] {
+			p.blamed[r.node.Link] = true
+			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
+				s.At, together, r.node.Link)
+		}
+	}
+}
+
+
+// condemn cordons a Healthy machine. A machine already under repair stays
+// where it is.
+func (p *Plane) condemn(now int, r *record, why string) {
+	if r.state == Healthy {
+		r.step = 0
+		p.move(now, r, Cordoned, why)
+	}
+}
+
+// outOfService counts the machines that hold a slot of the disruption budget:
+// every machine that is draining, under repair, in burn-in, or quarantined.
+func (p *Plane) outOfService() int {
+	n := 0
+	for _, r := range p.records {
+		if r.state &gt;= Draining {
+			n++
+		}
+	}
+	return n
+}
+
+
+// Step advances every machine by one second. A Cordoned machine starts to
+// drain when the budget has a free slot. The other states each last a fixed
+// time and then move on; a failed burn-in sends the machine back for the next
+// action on the ladder, and a machine with no actions left is quarantined.
+func (p *Plane) Step(now int) {
+	for _, r := range p.records {
+		waited := now - r.since
+		switch {
+		case r.state == Cordoned &amp;&amp; p.outOfService() &lt; budget:
+			p.move(now, r, Draining, "jobs told to checkpoint")
+		case r.state == Cordoned &amp;&amp; waited == 1:
+			fmt.Printf("%4ds  %-10s blocked: %d machines are already out of service\n", now, r.node.Name, budget)
+		case r.state == Draining &amp;&amp; waited &gt;= drainTime:
+			p.move(now, r, Remediating, ladder[r.step])
+		case r.state == Remediating &amp;&amp; waited &gt;= repairTime:
+			p.move(now, r, Validating, "burn-in after "+ladder[r.step])
+		case r.state == Validating &amp;&amp; waited &gt;= burnInTime:
+			p.finishBurnIn(now, r)
+		}
+	}
+}
+
+// finishBurnIn acts on the result of a burn-in test. A pass returns the
+// machine to service. A failure sends it back for the next action on the
+// ladder, and a machine with no actions left is quarantined.
+func (p *Plane) finishBurnIn(now int, r *record) {
+	if p.burnIn[r.node.Name] == 0 {
+		r.faultJobs = map[string]bool{}
+		p.move(now, r, Healthy, "burn-in passed")
+		return
+	}
+	p.burnIn[r.node.Name]--
+	if r.step+1 == len(ladder) {
+		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+		return
+	}
+	r.step++
+	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
+}
+
+
+// script is the run: the signals in the order they arrive.
+var script = []Signal{
+	// One job faults on three different Thors.
+	{5, "thor-1", "finetune-7b", AppFault},
+	{9, "thor-2", "finetune-7b", AppFault},
+	{14, "thor-3", "finetune-7b", AppFault},
+	// A memory error on a Spark, which one GPU reset repairs.
+	{20, "spark-1", "", MemoryECC},
+	// A Thor whose GPU stops answering, and which no action repairs.
+	{40, "thor-4", "", OffBus},
+	// The 25 GbE switch restarts: four Thors lose their link together.
+	{60, "thor-1", "", LinkFlap},
+	{61, "thor-2", "", LinkFlap},
+	{61, "thor-3", "", LinkFlap},
+	{62, "thor-5", "", LinkFlap},
+	// Two machines fail in the same second while thor-4 is quarantined.
+	{80, "spark-2", "", OffBus},
+	{80, "orin-nx-1", "", MemoryECC},
+}
+
+func main() {
+	// thor-4 fails every burn-in; every other machine passes its first.
+	p := NewPlane(map[string]int{"thor-4": len(ladder)})
+	next := 0
+	for now := 0; now &lt;= duration; now++ {
+		for ; next &lt; len(script) &amp;&amp; script[next].At == now; next++ {
+			p.Observe(script[next])
+		}
+		p.Step(now)
+	}
+	fmt.Println("final states:")
+	for _, r := range p.records {
+		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 4.22</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the part of a control plane that keeps a fleet of GPU machines
+//! healthy. It reads failure signals, decides whether each one blames a job, a
+//! machine, or the network between machines, and moves each machine through a
+//! lifecycle: cordon, drain, repair, validate, and return.
+//!
+//! The fleet is eight machines: five Jetson AGX Thor developer kits on one
+//! 25 GbE switch, two DGX Sparks joined by a 200 GbE cable, and one Jetson
+//! Orin NX. The program replays a scripted list of signals without real time
+//! passing and prints every decision it makes.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p fleethealth
+//! ```
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+
+/// One machine in the fleet.
+struct Node {
+    /// The machine's host name.
+    name: &amp;'static str,
+    /// The product the machine is.
+    model: &amp;'static str,
+    /// The switch or cable that connects the machine to its peers.
+    link: &amp;'static str,
+}
+
+/// The machines, in the order the program reports them.
+const FLEET: [Node; 8] = [
+    Node {
+        name: "thor-1",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-2",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-3",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-4",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "thor-5",
+        model: "Jetson AGX Thor",
+        link: "switch-25g",
+    },
+    Node {
+        name: "spark-1",
+        model: "DGX Spark",
+        link: "cable-200g",
+    },
+    Node {
+        name: "spark-2",
+        model: "DGX Spark",
+        link: "cable-200g",
+    },
+    Node {
+        name: "orin-nx-1",
+        model: "Jetson Orin NX",
+        link: "bench",
+    },
+];
+
+/// The class of a failure signal.
+#[derive(Clone, Copy)]
+enum Kind {
+    /// The GPU rejected work from one program.
+    AppFault,
+    /// An uncorrectable memory error on the GPU.
+    MemoryEcc,
+    /// The GPU stopped answering the driver.
+    OffBus,
+    /// The machine's network link went down and up.
+    LinkFlap,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Kind::AppFault =&gt; "application fault",
+            Kind::MemoryEcc =&gt; "uncorrectable ECC",
+            Kind::OffBus =&gt; "GPU off the bus",
+            Kind::LinkFlap =&gt; "link flap",
+        })
+    }
+}
+
+/// One failure report from a machine.
+struct Signal {
+    /// The second at which the signal arrived.
+    at: u32,
+    /// The machine that reported it.
+    node: &amp;'static str,
+    /// The job that was using the GPU, or "" for a signal with no job.
+    job: &amp;'static str,
+    /// The signal's class.
+    kind: Kind,
+}
+
+/// A machine's place in the repair lifecycle, in the order a failing machine
+/// passes through it.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+enum State {
+    /// Schedulable.
+    Healthy,
+    /// No new work; waiting for the disruption budget.
+    Cordoned,
+    /// Jobs are checkpointing and leaving.
+    Draining,
+    /// A repair action is running.
+    Remediating,
+    /// A burn-in test is running.
+    Validating,
+    /// Every repair failed; a person has to look.
+    Quarantined,
+}
+
+impl fmt::Display for State {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        // `pad` honours the width given in a format string such as `{:&lt;11}`.
+        f.pad(&amp;format!("{self:?}"))
+    }
+}
+
+/// The repair actions, from the cheapest to the most thorough.
+const LADDER: [&amp;str; 3] = ["reset the GPU", "reboot", "reimage"];
+
+/// Distinct jobs (or nodes) before an application fault blames a node (or a job).
+const BLAME_AFTER: usize = 3;
+/// Machines on one link that must flap together to blame the link.
+const FABRIC_AFTER: usize = 3;
+/// How close in time those flaps have to be, in seconds.
+const FABRIC_WINDOW: u32 = 5;
+/// Machines that may be out of service at once.
+const BUDGET: usize = 2;
+/// Seconds a job gets to write a checkpoint and leave.
+const DRAIN_TIME: u32 = 4;
+/// Seconds one repair action takes.
+const REPAIR_TIME: u32 = 3;
+/// Seconds the burn-in test takes.
+const BURN_IN_TIME: u32 = 3;
+/// Seconds simulated.
+const DURATION: u32 = 110;
+
+/// What the control plane remembers about one machine.
+struct Record {
+    node: &amp;'static Node,
+    state: State,
+    /// The second at which the machine entered its state.
+    since: u32,
+    /// The index of the next action on the ladder.
+    step: usize,
+    /// The distinct jobs that have faulted on this machine.
+    fault_jobs: BTreeSet&lt;&amp;'static str&gt;,
+    /// The second of the machine's latest link flap.
+    last_flap: Option&lt;u32&gt;,
+}
+
+/// The control plane's state: one record per machine, the nodes each job has
+/// faulted on, and a scripted answer for each burn-in test.
+struct Plane {
+    records: Vec&lt;Record&gt;,
+    /// For each job, the distinct nodes it has faulted on.
+    job_nodes: BTreeMap&lt;&amp;'static str, BTreeSet&lt;&amp;'static str&gt;&gt;,
+    /// The jobs and links already reported, so each is reported once.
+    blamed: BTreeSet&lt;&amp;'static str&gt;,
+    /// How many burn-in tests a machine fails before one passes.
+    burn_in: BTreeMap&lt;&amp;'static str, usize&gt;,
+}
+
+impl Plane {
+    /// Returns a plane in which every machine is Healthy.
+    fn new(burn_in: BTreeMap&lt;&amp;'static str, usize&gt;) -&gt; Self {
+        let records = FLEET
+            .iter()
+            .map(|node| Record {
+                node,
+                state: State::Healthy,
+                since: 0,
+                step: 0,
+                fault_jobs: BTreeSet::new(),
+                last_flap: None,
+            })
+            .collect();
+        Plane {
+            records,
+            job_nodes: BTreeMap::new(),
+            blamed: BTreeSet::new(),
+            burn_in,
+        }
+    }
+
+    /// Returns the index of the named machine's record.
+    fn find(&amp;self, name: &amp;str) -&gt; usize {
+        self.records
+            .iter()
+            .position(|r| r.node.name == name)
+            .expect("unknown node")
+    }
+
+    /// Puts a machine in a new state and logs the transition with its reason.
+    fn transition(&amp;mut self, now: u32, index: usize, to: State, why: &amp;str) {
+        let r = &amp;mut self.records[index];
+        println!(
+            "{now:4}s  {:&lt;10} {:&lt;11} -&gt; {:&lt;11} {why}",
+            r.node.name, r.state, to
+        );
+        r.state = to;
+        r.since = now;
+    }
+}
+
+impl Plane {
+    /// Takes one signal and decides what it blames. A hardware signal blames
+    /// the machine. An application fault blames the job once the job has
+    /// faulted on three machines, and blames the machine once three jobs have
+    /// faulted on it. Link flaps blame the link when three machines on it flap
+    /// within five seconds of each other.
+    fn observe(&amp;mut self, s: &amp;Signal) {
+        let index = self.find(s.node);
+        match s.kind {
+            Kind::MemoryEcc | Kind::OffBus =&gt; self.condemn(s.at, index, &amp;s.kind.to_string()),
+            Kind::AppFault =&gt; {
+                self.records[index].fault_jobs.insert(s.job);
+                let nodes = self.job_nodes.entry(s.job).or_default();
+                nodes.insert(s.node);
+                let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+                if machines &gt;= BLAME_AFTER &amp;&amp; self.blamed.insert(s.job) {
+                    println!(
+                        "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
+                        s.at, s.job
+                    );
+                } else if machines &lt; BLAME_AFTER &amp;&amp; jobs &gt;= BLAME_AFTER {
+                    self.condemn(s.at, index, &amp;format!("{jobs} different jobs faulted here"));
+                }
+            }
+            Kind::LinkFlap =&gt; {
+                self.records[index].last_flap = Some(s.at);
+                let link = self.records[index].node.link;
+                let together = self
+                    .records
+                    .iter()
+                    .filter(|r| r.node.link == link)
+                    .filter(|r| r.last_flap.is_some_and(|at| s.at - at &lt;= FABRIC_WINDOW))
+                    .count();
+                if together &gt;= FABRIC_AFTER &amp;&amp; self.blamed.insert(link) {
+                    println!(
+                        "{:4}s  {together} machines on {link} flapped together: the link is at fault, no machine is drained",
+                        s.at
+                    );
+                }
+            }
+        }
+    }
+}
+
+impl Plane {
+    /// Cordons a Healthy machine. A machine already under repair stays where
+    /// it is.
+    fn condemn(&amp;mut self, now: u32, index: usize, why: &amp;str) {
+        if self.records[index].state == State::Healthy {
+            self.records[index].step = 0;
+            self.transition(now, index, State::Cordoned, why);
+        }
+    }
+}
+
+impl Plane {
+    /// Counts the machines that hold a slot of the disruption budget: every
+    /// machine that is draining, under repair, in burn-in, or quarantined.
+    fn out_of_service(&amp;self) -&gt; usize {
+        self.records
+            .iter()
+            .filter(|r| r.state &gt;= State::Draining)
+            .count()
+    }
+}
+
+impl Plane {
+    /// Advances every machine by one second. A Cordoned machine starts to
+    /// drain when the budget has a free slot. The other states each last a
+    /// fixed time and then move on.
+    fn step(&amp;mut self, now: u32) {
+        for index in 0..self.records.len() {
+            let (state, step, name) = {
+                let r = &amp;self.records[index];
+                (r.state, r.step, r.node.name)
+            };
+            let waited = now - self.records[index].since;
+            match state {
+                State::Cordoned if self.out_of_service() &lt; BUDGET =&gt; {
+                    self.transition(now, index, State::Draining, "jobs told to checkpoint");
+                }
+                State::Cordoned if waited == 1 =&gt; {
+                    println!(
+                        "{now:4}s  {name:&lt;10} blocked: {BUDGET} machines are already out of service"
+                    );
+                }
+                State::Draining if waited &gt;= DRAIN_TIME =&gt; {
+                    self.transition(now, index, State::Remediating, LADDER[step]);
+                }
+                State::Remediating if waited &gt;= REPAIR_TIME =&gt; {
+                    let why = format!("burn-in after {}", LADDER[step]);
+                    self.transition(now, index, State::Validating, &amp;why);
+                }
+                State::Validating if waited &gt;= BURN_IN_TIME =&gt; self.finish_burn_in(now, index),
+                _ =&gt; {}
+            }
+        }
+    }
+
+    /// Acts on the result of a burn-in test. A pass returns the machine to
+    /// service. A failure sends it back for the next action on the ladder, and
+    /// a machine with no actions left is quarantined.
+    fn finish_burn_in(&amp;mut self, now: u32, index: usize) {
+        let name = self.records[index].node.name;
+        let failures = self.burn_in.entry(name).or_default();
+        if *failures == 0 {
+            self.records[index].fault_jobs.clear();
+            self.transition(now, index, State::Healthy, "burn-in passed");
+            return;
+        }
+        *failures -= 1;
+        if self.records[index].step + 1 == LADDER.len() {
+            let why = "burn-in failed after every action; ticket opened";
+            self.transition(now, index, State::Quarantined, why);
+            return;
+        }
+        self.records[index].step += 1;
+        let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
+        self.transition(now, index, State::Remediating, &amp;why);
+    }
+}
+
+/// The run: the signals in the order they arrive.
+const SCRIPT: [Signal; 11] = [
+    // One job faults on three different Thors.
+    Signal {
+        at: 5,
+        node: "thor-1",
+        job: "finetune-7b",
+        kind: Kind::AppFault,
+    },
+    Signal {
+        at: 9,
+        node: "thor-2",
+        job: "finetune-7b",
+        kind: Kind::AppFault,
+    },
+    Signal {
+        at: 14,
+        node: "thor-3",
+        job: "finetune-7b",
+        kind: Kind::AppFault,
+    },
+    // A memory error on a Spark, which one GPU reset repairs.
+    Signal {
+        at: 20,
+        node: "spark-1",
+        job: "",
+        kind: Kind::MemoryEcc,
+    },
+    // A Thor whose GPU stops answering, and which no action repairs.
+    Signal {
+        at: 40,
+        node: "thor-4",
+        job: "",
+        kind: Kind::OffBus,
+    },
+    // The 25 GbE switch restarts: four Thors lose their link together.
+    Signal {
+        at: 60,
+        node: "thor-1",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    Signal {
+        at: 61,
+        node: "thor-2",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    Signal {
+        at: 61,
+        node: "thor-3",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    Signal {
+        at: 62,
+        node: "thor-5",
+        job: "",
+        kind: Kind::LinkFlap,
+    },
+    // Two machines fail in the same second while thor-4 is quarantined.
+    Signal {
+        at: 80,
+        node: "spark-2",
+        job: "",
+        kind: Kind::OffBus,
+    },
+    Signal {
+        at: 80,
+        node: "orin-nx-1",
+        job: "",
+        kind: Kind::MemoryEcc,
+    },
+];
+
+fn main() {
+    // thor-4 fails every burn-in; every other machine passes its first.
+    let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
+    let mut signals = SCRIPT.iter().peekable();
+    for now in 0..=DURATION {
+        while let Some(signal) = signals.next_if(|s| s.at == now) {
+            plane.observe(signal);
+        }
+        plane.step(now);
+    }
+    println!("final states:");
+    for r in &amp;plane.records {
+        println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
+    }
+}</code></pre>
+<p class="listing"><b>Listing 4.23</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
+
+<pre><code class="language-go">// Command fencing shows why a checkpoint store has to check who is writing.
+//
+// A training job runs on thor-1. The Thor loses its network link and keeps
+// training. The control plane sees silence, declares thor-1 dead, and starts
+// the job again on thor-2 from the last checkpoint. For a while two copies of
+// the job run, and both write checkpoints to the same store.
+//
+// The program plays that sequence twice: against a store that accepts every
+// write, and against a store that remembers the highest epoch it has seen
+// and refuses writes that carry an older one.
+//
+// Run it from code/go with:
+//
+//	go run ./fencing
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Checkpoint is what a worker saves: the training step it reached and the
+// epoch of the assignment under which it was running.
+type Checkpoint struct {
+	// Step is the training step the checkpoint holds.
+	Step int
+	// Epoch is the assignment number the writer was given.
+	Epoch int
+	// Writer is the host that wrote the checkpoint.
+	Writer string
+}
+
+// ErrFenced is returned to a writer whose epoch is older than one the store
+// has already accepted.
+var ErrFenced = errors.New("fenced: a newer assignment has written")
+
+// Store holds the latest checkpoint of one job.
+type Store struct {
+	// Fencing turns the epoch check on.
+	Fencing bool
+	// latest is the stored checkpoint.
+	latest Checkpoint
+}
+
+// Write stores a checkpoint. With fencing on, a checkpoint whose epoch is
+// lower than the stored one is refused.
+func (s *Store) Write(c Checkpoint) error {
+	if s.Fencing &amp;&amp; c.Epoch &lt; s.latest.Epoch {
+		return ErrFenced
+	}
+	s.latest = c
+	return nil
+}
+
+
+// ControlPlane hands out assignments of one job. Each assignment gets the
+// next epoch, so a later assignment always carries a higher number.
+type ControlPlane struct {
+	epoch int
+}
+
+// Assign gives the job to a host and returns the epoch of the assignment.
+func (c *ControlPlane) Assign(host string) int {
+	c.epoch++
+	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+	return c.epoch
+}
+
+
+// save writes one checkpoint and prints what the store answered.
+func save(s *Store, host string, epoch, step int) {
+	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+	if err != nil {
+		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+		return
+	}
+	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
+}
+
+// run plays the sequence against one store.
+func run(s *Store) {
+	var plane ControlPlane
+	first := plane.Assign("thor-1")
+	save(s, "thor-1", first, 1000)
+	fmt.Println("  thor-1 loses its link and keeps training; its Lease expires")
+	second := plane.Assign("thor-2")
+	fmt.Printf("  thor-2 resumes from step %d\n", s.latest.Step)
+	save(s, "thor-2", second, 2000)
+	fmt.Println("  thor-1's link returns; it still holds epoch 1")
+	save(s, "thor-1", first, 1500)
+	fmt.Printf("  a restart now resumes from step %d, written by %s\n", s.latest.Step, s.latest.Writer)
+}
+
+func main() {
+	fmt.Println("a store that accepts every write:")
+	run(&amp;Store{})
+	fmt.Println("a store that checks the epoch:")
+	run(&amp;Store{Fencing: true})
+}
+</code></pre>
+<p class="listing"><b>Listing 4.24</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Shows why a checkpoint store has to check who is writing.
+//!
+//! A training job runs on thor-1. The Thor loses its network link and keeps
+//! training. The control plane sees silence, declares thor-1 dead, and starts
+//! the job again on thor-2 from the last checkpoint. For a while two copies of
+//! the job run, and both write checkpoints to the same store.
+//!
+//! The program plays that sequence twice: against a store that accepts every
+//! write, and against a store that remembers the highest epoch it has seen
+//! and refuses writes that carry an older one.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p fencing
+//! ```
+
+use std::fmt;
+
+/// What a worker saves: the training step it reached and the epoch of the
+/// assignment under which it was running.
+#[derive(Clone, Copy, Default)]
+struct Checkpoint {
+    /// The training step the checkpoint holds.
+    step: u32,
+    /// The assignment number the writer was given.
+    epoch: u32,
+    /// The host that wrote the checkpoint.
+    writer: &amp;'static str,
+}
+
+/// Returned to a writer whose epoch is older than one the store has already
+/// accepted.
+struct Fenced;
+
+impl fmt::Display for Fenced {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("fenced: a newer assignment has written")
+    }
+}
+
+/// Holds the latest checkpoint of one job.
+#[derive(Default)]
+struct Store {
+    /// Turns the epoch check on.
+    fencing: bool,
+    /// The stored checkpoint.
+    latest: Checkpoint,
+}
+
+impl Store {
+    /// Stores a checkpoint. With fencing on, a checkpoint whose epoch is lower
+    /// than the stored one is refused.
+    fn write(&amp;mut self, c: Checkpoint) -&gt; Result&lt;(), Fenced&gt; {
+        if self.fencing &amp;&amp; c.epoch &lt; self.latest.epoch {
+            return Err(Fenced);
+        }
+        self.latest = c;
+        Ok(())
+    }
+}
+
+/// Hands out assignments of one job. Each assignment gets the next epoch, so a
+/// later assignment always carries a higher number.
+#[derive(Default)]
+struct ControlPlane {
+    epoch: u32,
+}
+
+impl ControlPlane {
+    /// Gives the job to a host and returns the epoch of the assignment.
+    fn assign(&amp;mut self, host: &amp;str) -&gt; u32 {
+        self.epoch += 1;
+        println!("  control plane: job assigned to {host} with epoch {}", self.epoch);
+        self.epoch
+    }
+}
+
+/// Writes one checkpoint and prints what the store answered.
+fn save(store: &amp;mut Store, writer: &amp;'static str, epoch: u32, step: u32) {
+    match store.write(Checkpoint { step, epoch, writer }) {
+        Ok(()) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: stored"),
+        Err(e) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: refused, {e}"),
+    }
+}
+
+/// Plays the sequence against one store.
+fn run(mut store: Store) {
+    let mut plane = ControlPlane::default();
+    let first = plane.assign("thor-1");
+    save(&amp;mut store, "thor-1", first, 1000);
+    println!("  thor-1 loses its link and keeps training; its Lease expires");
+    let second = plane.assign("thor-2");
+    println!("  thor-2 resumes from step {}", store.latest.step);
+    save(&amp;mut store, "thor-2", second, 2000);
+    println!("  thor-1's link returns; it still holds epoch 1");
+    save(&amp;mut store, "thor-1", first, 1500);
+    println!("  a restart now resumes from step {}, written by {}", store.latest.step, store.latest.writer);
+}
+
+fn main() {
+    println!("a store that accepts every write:");
+    run(Store::default());
+    println!("a store that checks the epoch:");
+    run(Store { fencing: true, ..Store::default() });
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A failure report can come from a faulty job, a faulty machine, or a faulty link. Counting
+reports per job, per machine, and per link separates the three.</li>
+<li>The device plugin stops new work on a broken GPU within seconds. A health service and a
+remediation controller decide, more slowly, what happens to the machine.</li>
+<li>A machine under repair is cordoned, drained with time for its jobs to checkpoint,
+repaired one rung at a time, and validated with a burn-in before it returns.</li>
+<li>A disruption budget limits the number of machines the repair system may take out of
+service at once.</li>
+<li>An epoch that rises with each assignment, checked by the checkpoint store, keeps a
+replaced copy of a job from overwriting newer progress.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>NVIDIA, Xid errors:
+<a href="https://docs.nvidia.com/deploy/xid-errors/">https://docs.nvidia.com/deploy/xid-errors/</a></li>
+<li>NVIDIA, DGX Spark hardware overview:
+<a href="https://docs.nvidia.com/dgx/dgx-spark/hardware.html">https://docs.nvidia.com/dgx/dgx-spark/hardware.html</a></li>
+<li>NVIDIA, Jetson modules technical specifications:
+<a href="https://developer.nvidia.com/embedded/jetson-modules">https://developer.nvidia.com/embedded/jetson-modules</a></li>
+<li>Kubernetes, Safely drain a node:
+<a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/">https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/</a></li>
+<li>Kubernetes, API-initiated eviction:
+<a href="https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/">https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/</a></li>
+<li>Kubernetes, Device plugins:
+<a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/">https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/</a></li>
+<li>M. Kleppmann, “How to do distributed locking”, 2016:
+<a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html">https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="03-liveness.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="05-new-cloud-account.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="03-liveness.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="05-new-cloud-account.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

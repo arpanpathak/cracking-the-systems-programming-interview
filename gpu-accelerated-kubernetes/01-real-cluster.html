@@ -29,6 +29,7 @@
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d0132860.js";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d2103709.js"></script>
+        <script src="toc-f31bf49e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,9 +210,20 @@ NAME                    STATUS   ROLES           AGE   VERSION
 gpu-lab-control-plane   Ready    control-plane   22s   v1.37.0
 </code></pre>
 <p>Pods in this cluster can use a GPU. Appendix A shows how we set that up.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>a CustomResourceDefinition for a new kind, <code>GpuJob</code>, and its status subresource</li>
+<li>watching <code>GpuJob</code> objects with controller-runtime and with kube-rs</li>
+<li>a controller that keeps one pod for each job, written with server-side apply</li>
+<li>a CUDA program running on the GPU in a pod the controller created</li>
+<li>two clients writing one object, and the <code>409 Conflict</code> from a real API server</li>
+</ul>
+</div>
+
 <h2 id="the-projects"><a class="header" href="#the-projects">The projects</a></h2>
 <p>Our Go code lives in the module in <code>code/go</code>, next to the model from chapter 1:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/go.mod">code/go/go.mod</a></p>
+<p class="listing"><b>Listing 1.41</b> The Go module. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/go.mod">code/go/go.mod</a></p>
 
 <pre><code class="language-text">module gpuk8s
 
@@ -232,13 +244,13 @@ controller framework built on it. We pick versions that match our cluster’s
 Kubernetes 1.37.</p>
 <p>Our Rust code is the <code>gpujob</code> package in the Cargo workspace in <code>code/rust</code>, next to the
 model’s <code>informer</code> package:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/Cargo.toml">code/rust/Cargo.toml</a></p>
+<p class="listing"><b>Listing 1.42</b> The Cargo workspace. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/Cargo.toml">code/rust/Cargo.toml</a></p>
 
 <pre><code class="language-toml">[workspace]
-members = ["informer", "gpujob", "gpuusage"]
+members = ["informer", "gpujob", "gpuusage", "heartbeats", "phi", "leaseagent", "leasewatch", "fleethealth", "fencing", "provisioner", "migration", "allreduce", "gangsched", "counter", "cas", "gpuctl"]
 resolver = "3"
 </code></pre>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/Cargo.toml">code/rust/gpujob/Cargo.toml</a></p>
+<p class="listing"><b>Listing 1.43</b> The `gpujob` package. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/Cargo.toml">code/rust/gpujob/Cargo.toml</a></p>
 
 <pre><code class="language-toml">[package]
 name = "gpujob"
@@ -285,7 +297,7 @@ ordinary types and let a tool generate the CRD from them.</p>
 registers our types in a <em>scheme</em>. A scheme is a table that maps Go types to the API kinds
 they represent. A client needs it to know that JSON with <code>"kind": "GpuJob"</code> should become a
 <code>GpuJob</code> value, and which URL to use when it sends one to the server.</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/groupversion.go">code/go/gpujob/api/v1/groupversion.go</a></p>
+<p class="listing"><b>Listing 1.44</b> The group, the version, and the scheme. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/groupversion.go">code/go/gpujob/api/v1/groupversion.go</a></p>
 
 <pre><code class="language-go">// Package v1 defines version v1 of the GpuJob custom resource in the API group
 // gpucloud.dev: a request to run one container with a number of GPUs, and the
@@ -316,17 +328,11 @@ var SchemeBuilder = &amp;scheme.Builder{GroupVersion: GroupVersion}
 // client can encode and decode them.
 var AddToScheme = SchemeBuilder.AddToScheme
 </code></pre>
-<p>The second file defines the types themselves:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+<p>The second file defines the types themselves, in three parts: the spec, the status, and the
+object that holds both.</p>
+<p class="listing"><b>Listing 1.45</b> The spec and the phases a job passes through. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
-<pre><code class="language-go">package v1
-
-import (
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-// GpuJobSpec is a request to run one container with a number of GPUs.
+<pre><code class="language-go">// GpuJobSpec is a request to run one container with a number of GPUs.
 type GpuJobSpec struct {
 	// Container image to run.
 	Image string `json:"image"`
@@ -353,8 +359,10 @@ const (
 	// PhaseFailed means the container exited with a non-zero status.
 	PhaseFailed Phase = "Failed"
 )
+</code></pre>
+<p class="listing"><b>Listing 1.46</b> The status. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
-// GpuJobStatus is the state of a job as the controller last observed it.
+<pre><code class="language-go">// GpuJobStatus is the state of a job as the controller last observed it.
 type GpuJobStatus struct {
 	// Progress of the job's pod.
 	Phase Phase `json:"phase"`
@@ -365,8 +373,10 @@ type GpuJobStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
+</code></pre>
+<p class="listing"><b>Listing 1.47</b> The object, the list, and their registration. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
-// GpuJob runs one container with a number of GPUs.
+<pre><code class="language-go">// GpuJob runs one container with a number of GPUs.
 //
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -398,8 +408,26 @@ type GpuJobList struct {
 func init() {
 	SchemeBuilder.Register(&amp;GpuJob{}, &amp;GpuJobList{})
 }
+</code></pre>
+<p>The comments that begin with <code>+kubebuilder:</code> are <em>markers</em>. They are instructions for
+controller-gen, a code generator from the Kubebuilder project, which reads our source code
+and writes the CRD for us. Let us go through the ones we use:</p>
+<ul>
+<li><code>object:root=true</code> marks <code>GpuJob</code> and <code>GpuJobList</code> as complete API objects, as opposed to
+structs that only appear inside other objects.</li>
+<li><code>subresource:status</code> turns on the <em>status subresource</em>, which we explain below.</li>
+<li><code>resource:shortName=gj</code> lets us type <code>kubectl get gj</code> instead of <code>kubectl get gpujobs</code>.</li>
+<li>The two <code>printcolumn</code> markers add the GPU count and the phase to the table that
+<code>kubectl get</code> prints.</li>
+<li>The <code>validation</code> markers become rules in the schema. The API server enforces them, so a
+job with a negative GPU count or an unknown phase is rejected before our controller ever
+sees it.</li>
+</ul>
+<p>The ordinary comments on our types and fields matter as well: controller-gen copies them
+into the CRD as field descriptions, and <code>kubectl explain gpujob.spec</code> shows them to users.</p>
+<p class="listing"><b>Listing 1.48</b> Working out a status from a pod. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
-// StatusFromPod derives a job's status from its pod. generation is the job's
+<pre><code class="language-go">// StatusFromPod derives a job's status from its pod. generation is the job's
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
@@ -420,22 +448,6 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	return status
 }
 </code></pre>
-<p>The comments that begin with <code>+kubebuilder:</code> are <em>markers</em>. They are instructions for
-controller-gen, a code generator from the Kubebuilder project, which reads our source code
-and writes the CRD for us. Let us go through the ones we use:</p>
-<ul>
-<li><code>object:root=true</code> marks <code>GpuJob</code> and <code>GpuJobList</code> as complete API objects, as opposed to
-structs that only appear inside other objects.</li>
-<li><code>subresource:status</code> turns on the <em>status subresource</em>, which we explain below.</li>
-<li><code>resource:shortName=gj</code> lets us type <code>kubectl get gj</code> instead of <code>kubectl get gpujobs</code>.</li>
-<li>The two <code>printcolumn</code> markers add the GPU count and the phase to the table that
-<code>kubectl get</code> prints.</li>
-<li>The <code>validation</code> markers become rules in the schema. The API server enforces them, so a
-job with a negative GPU count or an unknown phase is rejected before our controller ever
-sees it.</li>
-</ul>
-<p>The ordinary comments on our types and fields matter as well: controller-gen copies them
-into the CRD as field descriptions, and <code>kubectl explain gpujob.spec</code> shows them to users.</p>
 <p><code>StatusFromPod</code> works out a job’s status from its pod. The pod’s phase maps directly onto
 our <code>Phase</code>. There is one extra piece of information worth passing on. When the scheduler
 cannot find a machine for a pod, it sets the pod’s <code>PodScheduled</code> condition to <code>False</code> and
@@ -457,23 +469,9 @@ customresourcedefinition.apiextensions.k8s.io/gpujobs.gpucloud.dev configured
 <h3 id="in-rust"><a class="header" href="#in-rust">In Rust</a></h3>
 <p>In Rust, there is no separate generator to run. kube-rs builds the CRD while our program
 compiles, from derive macros on our types:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
+<p class="listing"><b>Listing 1.49</b> The spec, with the attributes that describe the kind. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>//! The `GpuJob` custom resource: a request to run one container with a number
-//! of GPUs, and the status that the controller reports back.
-//!
-//! The `///` comments on the spec and status types become the field
-//! descriptions in the generated `CustomResourceDefinition`, which
-//! `kubectl explain gpujob.spec` prints.
-
-use k8s_openapi::api::core::v1::Pod;
-use kube::CustomResource;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-/// A request to run one container with a number of GPUs.
+<pre><code class="language-rust">/// A request to run one container with a number of GPUs.
 ///
 /// The `CustomResource` derive generates the `GpuJob` type, which holds this
 /// spec together with the object's metadata and an optional `GpuJobStatus`.
@@ -499,9 +497,10 @@ pub struct GpuJobSpec {
     // non-negative int32.
     #[schemars(with = "i32", range(min = 0))]
     pub gpus: u32,
-}
+}</code></pre>
+<p class="listing"><b>Listing 1.50</b> The status and the phases. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
-/// The state of a job as the controller last observed it.
+<pre><code class="language-rust">/// The state of a job as the controller last observed it.
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GpuJobStatus {
@@ -527,9 +526,10 @@ pub enum Phase {
     Succeeded,
     /// The container exited with a non-zero status.
     Failed,
-}
+}</code></pre>
+<p class="listing"><b>Listing 1.51</b> Working out a status from a pod. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
-impl GpuJobStatus {
+<pre><code class="language-rust">impl GpuJobStatus {
     /// Derives a job's status from its pod. `generation` is the job's
     /// `metadata.generation`, recorded as the generation this status describes.
     #[must_use]
@@ -554,8 +554,7 @@ impl GpuJobStatus {
             observed_generation: generation,
         }
     }
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>The <code>CustomResource</code> derive generates a <code>GpuJob</code> type for us. It holds our spec together
 with the object’s metadata and an optional status, the same shape as the Go struct we
 wrote by hand. The <code>#[kube(...)]</code> attribute does the job of the Go markers. <code>group</code> and
@@ -571,9 +570,9 @@ warning every time the CRD is applied. The attribute <code>#[schemars(with = "i3
 schema the Go field of type <code>int32</code> with its <code>Minimum=0</code> marker produces, while the Rust
 field itself stays unsigned. <code>from_pod</code> is the Rust version of <code>StatusFromPod</code>.</p>
 <p>A tiny program prints the CRD, and we pipe it straight into kubectl:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/crdgen.rs">code/rust/gpujob/src/bin/crdgen.rs</a></p>
+<p class="listing"><b>Listing 1.52</b> Printing the CRD. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/crdgen.rs">code/rust/gpujob/src/bin/crdgen.rs</a></p>
 
-<pre class="playground"><code class="language-rust">//! Prints the `CustomResourceDefinition` for `GpuJob` as JSON, ready for kubectl:
+<pre><code class="language-rust">//! Prints the `CustomResourceDefinition` for `GpuJob` as JSON, ready for kubectl:
 //!
 //! ```console
 //! cargo run -p gpujob --bin crdgen | kubectl apply -f -
@@ -614,30 +613,9 @@ controller-runtime’s <code>cache</code> package creates one informer per kind 
 about changes, we register an <em>event handler</em>: a set of three functions that the informer
 calls whenever it adds, updates, or deletes an object in its cache. Our handlers simply
 print what they receive:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
+<p class="listing"><b>Listing 1.53</b> Describing an object for the log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
-<pre><code class="language-go">// Command watch-jobs prints the events that an informer delivers for GpuJob
-// objects in the default namespace: the initial list, one object at a time,
-// and then one event per change. Stop it with Ctrl-C.
-//
-// Run it from code/go with:
-//
-//	go run ./gpujob/cmd/watch-jobs
-package main
-
-import (
-	"fmt"
-	"os"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	toolscache "k8s.io/client-go/tools/cache"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-
-	gpujobv1 "gpuk8s/gpujob/api/v1"
-)
-
-// namespace is the namespace whose jobs the program watches.
+<pre><code class="language-go">// namespace is the namespace whose jobs the program watches.
 const namespace = "default"
 
 // describe formats a job as its name, GPU count, and resource version.
@@ -649,16 +627,10 @@ func describe(obj any) string {
 	job := obj.(*gpujobv1.GpuJob)
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
+</code></pre>
+<p class="listing"><b>Listing 1.54</b> Starting the informer and registering the handlers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
-// main starts an informer for GpuJob objects and prints one line per event.
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
-// run does the work of main and returns the first error it meets.
+<pre><code class="language-go">// run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
@@ -712,9 +684,9 @@ deletion that the informer only discovered by relisting, and <code>describe</cod
 arrive over time, which we read one at a time with <code>await</code>. It is the asynchronous
 counterpart of an iterator. The function <code>watcher</code> returns a stream of <code>Event</code> values for one
 kind of object:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/watch_jobs.rs">code/rust/gpujob/src/bin/watch_jobs.rs</a></p>
+<p class="listing"><b>Listing 1.55</b> Printing every event, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/watch_jobs.rs">code/rust/gpujob/src/bin/watch_jobs.rs</a></p>
 
-<pre class="playground"><code class="language-rust">//! Prints the event stream that a watcher produces for `GpuJob` objects in the
+<pre><code class="language-rust">//! Prints the event stream that a watcher produces for `GpuJob` objects in the
 //! current namespace: the initial list, one object at a time, and then one
 //! event per change. Stop it with Ctrl-C.
 //!
@@ -810,10 +782,893 @@ life, so its numbers are larger. Most of the <code>changed</code> lines are our 
 new status: the object changes, even though its spec stays the same.</p>
 <h2 id="the-controller"><a class="header" href="#the-controller">The controller</a></h2>
 <p>Now we can write the controller. It will run each <code>GpuJob</code> as a pod and report the
-pod’s progress in the job’s status. Both versions follow the same plan, so we show both
-listings first and then walk through them together.</p>
+pod’s progress in the job’s status. Both versions follow the same plan, so we walk
+through them together, one part at a time, and print the complete programs at the end of
+the chapter.</p>
+<div class="lld">
+<p>Low-level design: the <code>GpuJob</code> controller</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Part</th><th>Does</th><th>Rule it keeps</th></tr>
+</thead>
+<tbody>
+<tr><td>the desired pod</td><td>builds the pod a job should have: one container, the job’s image, and a limit of <code>nvidia.com/gpu</code></td><td>the pod’s name is the job’s name, and its owner reference names the job</td></tr>
+<tr><td>reconcile</td><td>replaces a pod whose GPU count is wrong, applies the desired pod, and writes the job’s status</td><td>writes the status only when it differs from the stored one</td></tr>
+<tr><td>the start-up code</td><td>watches <code>GpuJob</code> objects and the pods they own, and runs reconcile for each job that changes</td><td>one worker handles a given job at a time</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h3 id="the-pod-for-a-job"><a class="header" href="#the-pod-for-a-job">The pod for a job</a></h3>
+<p class="listing"><b>Listing 1.56</b> The pod a job should have, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+
+<pre><code class="language-go">// manager is the field manager name under which the controller writes with
+// server-side apply.
+const manager = "gpujob-controller"
+
+// gpu is the extended resource through which a container requests GPUs.
+const gpu corev1.ResourceName = "nvidia.com/gpu"
+
+// desiredPod builds the pod that should exist for job, as an apply
+// configuration: a partial object that lists only the fields this controller
+// sets.
+//
+// The owner reference makes Kubernetes delete the pod together with the job,
+// and it lets the controller map each pod event to the job that owns the pod.
+func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
+	gpus := corev1.ResourceList{gpu: *resource.NewQuantity(int64(job.Spec.GPUs), resource.DecimalSI)}
+	container := corev1ac.Container().
+		WithName("job").
+		WithImage(job.Spec.Image).
+		WithResources(corev1ac.ResourceRequirements().WithLimits(gpus))
+	if len(job.Spec.Command) &gt; 0 {
+		container.WithCommand(job.Spec.Command...)
+	}
+	owner := metav1ac.OwnerReference().
+		WithAPIVersion(gpujobv1.GroupVersion.String()).
+		WithKind("GpuJob").
+		WithName(job.Name).
+		WithUID(job.UID).
+		WithController(true).
+		WithBlockOwnerDeletion(true)
+	return corev1ac.Pod(job.Name, job.Namespace).
+		WithOwnerReferences(owner).
+		WithSpec(corev1ac.PodSpec().
+			WithRestartPolicy(corev1.RestartPolicyNever).
+			WithContainers(container))
+}
+
+// podGPUs returns the number of GPUs that an existing pod's container
+// requests, read from its limits, and whether the pod has a GPU limit.
+func podGPUs(pod *corev1.Pod) (int32, bool) {
+	if len(pod.Spec.Containers) == 0 {
+		return 0, false
+	}
+	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+	return int32(quantity.Value()), ok
+}
+</code></pre>
+<p class="listing"><b>Listing 1.57</b> The pod a job should have, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+
+<pre><code class="language-rust">/// The field manager name under which the controller writes with server-side apply.
+const MANAGER: &amp;str = "gpujob-controller";
+
+/// The extended resource through which a container requests GPUs.
+const GPU: &amp;str = "nvidia.com/gpu";
+
+/// Everything a reconcile can fail with.
+#[derive(Debug, thiserror::Error)]
+enum Error {
+    /// A request to the API server failed.
+    #[error("kubernetes API: {0}")]
+    Kube(#[from] kube::Error),
+    /// The status could not be serialized into a patch.
+    #[error("serializing status: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+/// State shared by every reconcile.
+struct Context {
+    /// Client for the cluster's API server.
+    client: Client,
+}
+
+/// Builds the pod that should exist for `job`.
+///
+/// The owner reference makes Kubernetes delete the pod together with the job,
+/// and it lets the controller map each pod event to the job that owns the pod.
+fn desired_pod(job: &amp;GpuJob) -&gt; Pod {
+    let gpus = BTreeMap::from([(GPU.to_string(), Quantity(job.spec.gpus.to_string()))]);
+    Pod {
+        metadata: ObjectMeta {
+            name: Some(job.name_any()),
+            owner_references: job.controller_owner_ref(&amp;()).map(|owner| vec![owner]),
+            ..Default::default()
+        },
+        spec: Some(PodSpec {
+            restart_policy: Some("Never".into()),
+            containers: vec![Container {
+                name: "job".into(),
+                image: Some(job.spec.image.clone()),
+                command: Some(job.spec.command.clone()).filter(|c| !c.is_empty()),
+                resources: Some(ResourceRequirements {
+                    limits: Some(gpus),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }],
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}
+
+/// Returns the number of GPUs that an existing pod's container requests, read
+/// from its limits, or `None` if the pod has no GPU limit.
+fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
+    let container = pod.spec.as_ref()?.containers.first()?;
+    let limits = container.resources.as_ref()?.limits.as_ref()?;
+    limits.get(GPU)?.0.parse().ok()
+}</code></pre>
+<p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
+interesting part is how the pod asks for a GPU. It puts <code>nvidia.com/gpu</code> in its resource
+limits, just as it would put CPU or memory there. Kubernetes calls a resource like this an
+<em>extended resource</em>: a name that Kubernetes itself does not understand, but whose
+quantity a machine can advertise as a whole number, and which the scheduler counts like
+any other resource. The name <code>nvidia.com/gpu</code> is advertised by the NVIDIA device plugin, a
+small program on each GPU machine that counts the GPUs and reports them to Kubernetes;
+Appendix A shows it at work. Extended resources can only be requested in whole units, and
+they are requested through <code>limits</code>. One unit of <code>nvidia.com/gpu</code> is, by default, one whole
+physical GPU; chapter 2 examines what that includes and how a GPU can be divided.</p>
+<p>The pod also carries an <em>owner reference</em>, a note in its metadata that says “this pod
+belongs to that job”. It has two uses. When the job is deleted, Kubernetes’ garbage
+collector, a controller built into every cluster, sees the note and deletes the pod as
+well, so we never have to clean up after deleted jobs ourselves. And because the note has
+its <code>controller</code> flag set, both libraries can take any event about the pod and work out
+which job it belongs to, which is how our controller hears about its pods.</p>
+<p>The two languages build the pod differently. The Go version builds an <em>apply
+configuration</em>, a type from client-go in which every field is optional and is filled in
+through <code>With</code> methods. The value ends up containing exactly the fields our controller
+cares about and nothing else, which matters for the kind of write we are about to do. The
+Rust version builds an ordinary <code>Pod</code> value and leaves everything else at its default;
+serde leaves the empty fields out when it turns the pod into JSON, which has the same
+effect.</p>
+<p><code>podGPUs</code> (<code>pod_gpus</code> in Rust) reads the GPU count back out of an existing pod. In Go it
+returns the count and a flag saying whether the pod had a GPU limit at all. In Rust it
+returns an <code>Option&lt;u32&gt;</code>, and each <code>?</code> bails out with <code>None</code> as soon as any field along the
+way is missing.</p>
+<h3 id="reconciling-a-job"><a class="header" href="#reconciling-a-job">Reconciling a job</a></h3>
+<p class="listing"><b>Listing 1.58</b> Reconciling one job, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+
+<pre><code class="language-go">// GpuJobReconciler makes the cluster match each GpuJob.
+type GpuJobReconciler struct {
+	// Client reads objects from the manager's cache and writes to the API server.
+	client.Client
+}
+
+// Reconcile makes the cluster match one job: it ensures the job's pod exists
+// with the requested GPUs, and writes the pod's progress into the job's status.
+func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
+
+	var job gpujobv1.GpuJob
+	if err := r.Get(ctx, req.NamespacedName, &amp;job); err != nil {
+		// A job deleted since it was queued needs nothing: its pod goes with it.
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// The resources of a pod are fixed when it is created. When the job asks
+	// for a different number of GPUs, delete the pod and come back after it is gone.
+	var pod corev1.Pod
+	err := r.Get(ctx, req.NamespacedName, &amp;pod)
+	switch {
+	case err == nil:
+		if gpus, ok := podGPUs(&amp;pod); !ok || gpus != job.Spec.GPUs {
+			log.Info("GPU count changed, replacing pod")
+			if err := r.Delete(ctx, &amp;pod); client.IgnoreNotFound(err) != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		}
+	case !apierrors.IsNotFound(err):
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Apply(ctx, desiredPod(&amp;job), client.FieldOwner(manager), client.ForceOwnership); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// A pod that was just created is not in the cache yet; its zero value
+	// yields the Pending phase, and the pod's creation event triggers the
+	// reconcile that reports its real progress.
+	status := gpujobv1.StatusFromPod(&amp;pod, job.Generation)
+	if job.Status != status {
+		log.Info("status changed", "phase", status.Phase, "message", status.Message)
+		patch := client.MergeFrom(job.DeepCopy())
+		job.Status = status
+		if err := r.Status().Patch(ctx, &amp;job, patch); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	// Changes to the pod trigger the next reconcile through Owns.
+	return ctrl.Result{}, nil
+}
+</code></pre>
+<p class="listing"><b>Listing 1.59</b> Reconciling one job, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+
+<pre><code class="language-rust">/// Makes the cluster match one job: ensures its pod exists with the requested
+/// GPUs, and writes the pod's progress into the job's status.
+async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result&lt;Action, Error&gt; {
+    let namespace = job.namespace().unwrap_or_default();
+    let name = job.name_any();
+    let pods: Api&lt;Pod&gt; = Api::namespaced(ctx.client.clone(), &amp;namespace);
+    let jobs: Api&lt;GpuJob&gt; = Api::namespaced(ctx.client.clone(), &amp;namespace);
+
+    // The resources of a pod are fixed when it is created. When the job asks
+    // for a different number of GPUs, delete the pod and come back after it is gone.
+    if let Some(pod) = pods.get_opt(&amp;name).await?
+        &amp;&amp; pod_gpus(&amp;pod) != Some(job.spec.gpus)
+    {
+        tracing::info!(%name, "GPU count changed, replacing pod");
+        pods.delete(&amp;name, &amp;DeleteParams::default()).await?;
+        return Ok(Action::requeue(Duration::from_secs(2)));
+    }
+
+    let apply = PatchParams::apply(MANAGER).force();
+    let pod = pods
+        .patch(&amp;name, &amp;apply, &amp;Patch::Apply(desired_pod(&amp;job)))
+        .await?;
+
+    let status = GpuJobStatus::from_pod(&amp;pod, job.metadata.generation);
+    if job.status.as_ref() != Some(&amp;status) {
+        let message = status.message.as_deref().unwrap_or("");
+        tracing::info!(%name, phase = ?status.phase, message, "status changed");
+        let patch = serde_json::json!({
+            "apiVersion": GpuJob::api_version(&amp;()),
+            "kind": GpuJob::kind(&amp;()),
+            "status": status,
+        });
+        jobs.patch_status(&amp;name, &amp;apply, &amp;Patch::Apply(patch))
+            .await?;
+    }
+    // Changes to the pod trigger the next reconcile through `owns`.
+    Ok(Action::await_change())
+}
+
+/// Decides what happens after a failed reconcile: log it and retry in five seconds.
+#[allow(clippy::needless_pass_by_value)] // the signature is fixed by `Controller::run`
+fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&gt;) -&gt; Action {
+    tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
+    Action::requeue(Duration::from_secs(5))
+}</code></pre>
+<p>Our reconcile function receives a job and brings the cluster into line with it in three
+steps.</p>
+<p>The first step covers a change that cannot be made in place. Kubernetes fixes a pod’s
+resources when the pod is created, so if the user changes the job’s GPU count, we cannot
+simply edit the pod. Instead we delete the pod and ask to be called again in two seconds,
+by which time it should be gone. The Go version asks for that with
+<code>ctrl.Result{RequeueAfter: 2 * time.Second}</code>, and the Rust version with <code>Action::requeue</code>.
+The Rust condition uses a <em>let chain</em>, <code>if let ... &amp;&amp; ...</code>, available since the 2024
+edition, to check for the pod and compare its GPU count in one expression.</p>
+<p>The second step creates or updates the pod with a single call, using <em>server-side apply</em>.
+We send the pod we want, and the API server merges it into whatever it has stored. The
+server also records which fields each writer set; a writer in this sense is called a
+<em>field manager</em>, and our controller calls itself <code>gpujob-controller</code>. Applying the same
+object twice changes nothing, which makes server-side apply a natural fit for a
+level-triggered controller: we can apply on every single reconcile, without first
+checking whether the pod exists. We also force ownership, with <code>client.ForceOwnership</code> in
+Go and <code>force()</code> in Rust. If some other writer has set a field that we also set, we take
+that field over, which is what we want from a controller that is the only authority over
+its pods.</p>
+<p>The third step works out the job’s status and writes it through the status subresource,
+but only if it differs from the status already stored. Skipping unchanged writes is more
+than a saving. Every write produces a watch event, every event causes a reconcile, and a
+controller that wrote on every reconcile would keep waking itself up forever. The Go
+version writes the status with a <em>merge patch</em>, which sends only the fields that differ
+from a copy of the job we saved before changing it. The Rust version applies the status
+with server-side apply, just as it does the pod.</p>
+<p>The two versions also read the pod differently, and the difference is worth
+understanding. controller-runtime’s client reads from the informer caches that the
+manager keeps, so the Go <code>Get</code> of the pod is a lookup in memory, exactly like the cache
+reads in chapter 1. A pod we have only just created is not in the cache yet; in that case
+the Go version computes the status from an empty pod, which comes out as Pending, and the
+pod’s creation event soon triggers another reconcile that reports the real state.
+kube-rs’s <code>Api</code>, on the other hand, talks to the API server directly, so the Rust
+<code>get_opt</code> is a real GET request. That is fine for our small controller. A Rust controller
+that looks after thousands of pods would keep a reflector store of pods in its <code>Context</code>
+and read them from memory, just as the Go version does.</p>
+<p>When a reconcile fails, the Go version returns the error, and controller-runtime puts the
+job back in the queue with the growing delay we described at the end of chapter 1. The
+Rust version returns the error to kube-rs, which asks our <code>error_policy</code> function what to
+do; ours logs the error and tries again in five seconds.</p>
+<h3 id="starting-the-controller"><a class="header" href="#starting-the-controller">Starting the controller</a></h3>
+<p class="listing"><b>Listing 1.60</b> Starting the controller, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+
+<pre><code class="language-go">// main builds a manager, registers the reconciler, and runs until Ctrl-C.
+func main() {
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true))) // readable console output
+	setup := ctrl.Log.WithName("setup")
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		setup.Error(err, "registering built-in types")
+		os.Exit(1)
+	}
+	if err := gpujobv1.AddToScheme(scheme); err != nil {
+		setup.Error(err, "registering GpuJob")
+		os.Exit(1)
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:  scheme,
+		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
+	})
+	if err != nil {
+		setup.Error(err, "creating manager")
+		os.Exit(1)
+	}
+
+	err = ctrl.NewControllerManagedBy(mgr).
+		For(&amp;gpujobv1.GpuJob{}).
+		Owns(&amp;corev1.Pod{}).
+		Complete(&amp;GpuJobReconciler{Client: mgr.GetClient()})
+	if err != nil {
+		setup.Error(err, "creating controller")
+		os.Exit(1)
+	}
+
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setup.Error(err, "running manager")
+		os.Exit(1)
+	}
+}
+</code></pre>
+<p class="listing"><b>Listing 1.61</b> Starting the controller, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+
+<pre><code class="language-rust">/// Starts the controller and runs it until Ctrl-C.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), kube::Error&gt; {
+    tracing_subscriber::fmt()
+        .with_env_filter("controller=info,kube=warn")
+        .with_target(false)
+        .with_ansi(std::io::IsTerminal::is_terminal(&amp;std::io::stdout()))
+        .init();
+    let client = Client::try_default().await?;
+    let jobs: Api&lt;GpuJob&gt; = Api::all(client.clone());
+    let pods: Api&lt;Pod&gt; = Api::all(client.clone());
+
+    Controller::new(jobs, watcher::Config::default())
+        .owns(pods, watcher::Config::default())
+        .shutdown_on_signal()
+        .run(reconcile, error_policy, Arc::new(Context { client }))
+        .for_each(|result| async move {
+            if let Err(error) = result {
+                tracing::debug!(%error, "reconcile error");
+            }
+        })
+        .await;
+    Ok(())
+}</code></pre>
+<p>In Go, everything a controller process shares lives in a <em>manager</em>: the connection to the
+cluster, the scheme, the informer caches, and the client that reads from them.
+<code>ctrl.NewControllerManagedBy(mgr)</code> builds our controller inside the manager, and each
+call in the chain wires up one piece. <code>For(&amp;GpuJob{})</code> watches jobs and queues the name of
+each job that changes. <code>Owns(&amp;corev1.Pod{})</code> watches pods and queues the name of each pod’s
+owning job, using the owner reference we set. <code>Complete</code> registers our reconciler. Then
+<code>mgr.Start</code> starts the caches, waits for their first lists, and runs the workers until the
+process receives a signal such as Ctrl-C. We switch off the metrics endpoint that a
+manager starts by default, since we do not need it here.</p>
+<p>In Rust, <code>Controller::new</code> starts a watcher and a store for <code>GpuJob</code> objects, and <code>owns</code>
+adds a second watcher, for pods, that queues each pod’s owning job in the same way.
+<code>run</code> starts the work queue and the workers and gives us back a stream with one item per
+finished reconcile, and <code>for_each</code> keeps reading that stream until the program stops.
+<code>shutdown_on_signal</code> ends the stream when we press Ctrl-C.</p>
+<p>In both libraries, the work queue behaves exactly like the one we built in chapter 1: a
+job waits in it at most once, and a job that one worker is reconciling is held back from
+all the others until that worker is done.</p>
+<h2 id="running-it"><a class="header" href="#running-it">Running it</a></h2>
+<p>Figure 1.2 shows what one reconcile writes for a job named <code>train</code>, and what Kubernetes does
+with the pod.</p>
+<figure>
+<img src="figures/gpujob-controller.svg" alt="A GpuJob named train, with image gpu-check:1 and gpus 1, is applied to the API server with kubectl. The gpujob-controller watches jobs and the pods they own. It applies a pod named train, whose owner reference names the job and whose limits ask for nvidia.com/gpu: 1, and writes the job&#39;s phase through the status subresource. The scheduler and the kubelet place and start the pod, and its program runs on the GPU.">
+<figcaption><b>Figure 1.2</b> One <code>GpuJob</code>, the pod the controller keeps for it, and the two writes of a reconcile: the pod, and the job's status.</figcaption>
+</figure>
+<p>We will test the controller with two jobs. <code>smoke-test</code> asks for no GPUs and runs a short
+shell command, which tells us the basic machinery works. <code>train</code> asks for one GPU and runs
+<code>gpu-check</code>, a small CUDA program from Appendix A that adds two vectors on the GPU and
+prints which device it used.</p>
+<p class="listing"><b>Listing 1.62</b> The two jobs. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/manifests/gpujobs.yaml">code/manifests/gpujobs.yaml</a></p>
+
+<pre><code class="language-yaml">apiVersion: gpucloud.dev/v1
+kind: GpuJob
+metadata:
+  name: smoke-test
+spec:
+  image: busybox:1.37
+  command: ["sh", "-c", "echo hello from the job; sleep 20"]
+  gpus: 0
+---
+apiVersion: gpucloud.dev/v1
+kind: GpuJob
+metadata:
+  name: train
+spec:
+  image: gpu-check:1
+  gpus: 1
+</code></pre>
+<p>We start the Go controller from <code>code/go</code>, create the jobs, and check on them:</p>
+<pre><code class="language-console">$ go run ./gpujob/cmd/controller
+$ kubectl apply -f ../manifests/gpujobs.yaml
+$ kubectl get gpujobs
+NAME         GPUS   PHASE
+smoke-test   0      Succeeded
+train        1      Succeeded
+$ kubectl logs train
+device: Orin, compute 8.7, 8 SMs
+kernel: no error, out[0] = 3.0, out[n-1] = 3.0
+</code></pre>
+<p>The log of <code>train</code> shows our CUDA kernel running on the cluster’s GPU,
+inside the pod our controller created. After its startup messages, the Go controller
+logged the following lines, shown here with the date and time zone trimmed from the
+timestamps:</p>
+<pre><code class="language-console">15:12:37  INFO  controller  status changed  {"name": "smoke-test", "phase": "Pending", "message": ""}
+15:12:37  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message": ""}
+15:12:38  INFO  controller  status changed  {"name": "smoke-test", "phase": "Running", "message": ""}
+15:12:38  INFO  controller  status changed  {"name": "train", "phase": "Running", "message": ""}
+15:12:40  INFO  controller  status changed  {"name": "train", "phase": "Succeeded", "message": ""}
+15:13:00  INFO  controller  status changed  {"name": "smoke-test", "phase": "Succeeded", "message": ""}
+</code></pre>
+<p>The Rust controller runs from <code>code/rust</code>, and the same steps give the same result:</p>
+<pre><code class="language-console">$ cargo run -p gpujob
+$ kubectl apply -f ../manifests/gpujobs.yaml
+$ kubectl get gpujobs
+NAME         GPUS   PHASE
+smoke-test   0      Succeeded
+train        1      Succeeded
+</code></pre>
+<pre><code class="language-console">14:01:15.949  INFO status changed name=train phase=Pending
+14:01:15.954  INFO status changed name=smoke-test phase=Pending
+14:01:15.985  INFO status changed name=smoke-test phase=Pending
+14:01:17.124  INFO status changed name=train phase=Running
+14:01:18.504  INFO status changed name=smoke-test phase=Running
+14:01:18.959  INFO status changed name=train phase=Succeeded
+14:01:39.957  INFO status changed name=smoke-test phase=Succeeded
+</code></pre>
+<p>In both runs, each job moved from Pending to Running to Succeeded along with its pod, and
+every step reached our controller through the pod watch that <code>Owns</code> or <code>owns</code> set up.
+<code>train</code> finished about two seconds after its pod was created, and <code>smoke-test</code> finished
+after its twenty-second sleep.</p>
+<p>Look at the Rust log once more: <code>smoke-test</code> reported Pending twice, 31 milliseconds
+apart. Here is what happened. The first reconcile wrote the status. The pod’s creation
+then triggered a second reconcile before our own status write had come back through the
+watch, so the job in the cache still had no status, the comparison saw a difference, and
+the controller wrote the same status again. This is the read-your-own-writes gap from the
+end of chapter 1. Here it costs one redundant write, which server-side
+apply turns into a no-op.</p>
+<h2 id="two-writers-one-object"><a class="header" href="#two-writers-one-object">Two writers, one object</a></h2>
+<p>Our controllers never send a resource version when they write, because server-side apply
+does not need one. Many clients do, though: a client that reads an object, changes it, and
+sends the whole object back with an update includes the version it read, and the API
+server applies the same check as our <code>Update</code> in chapter 1. To see that check on a real
+server, we will write a program in which two clients read the <code>train</code> job and then both
+try to write it back.</p>
 <p>In Go:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+<p class="listing"><b>Listing 1.63</b> Two clients and one refused write, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
+
+<pre><code class="language-go">// run does the work of main and returns the first unexpected error.
+func run(ctx context.Context) error {
+	scheme := runtime.NewScheme()
+	if err := gpujobv1.AddToScheme(scheme); err != nil {
+		return err
+	}
+	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+	if err != nil {
+		return err
+	}
+
+	var first gpujobv1.GpuJob
+	if err := c.Get(ctx, job, &amp;first); err != nil {
+		return err
+	}
+	second := first.DeepCopy()
+	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
+
+	first.Spec.GPUs++
+	if err := c.Update(ctx, &amp;first); err != nil {
+		return err
+	}
+	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
+
+	second.Spec.GPUs += 2
+	err = c.Update(ctx, second)
+	var status *apierrors.StatusError
+	if errors.As(err, &amp;status) &amp;&amp; status.ErrStatus.Code == http.StatusConflict {
+		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+		return nil
+	}
+	return fmt.Errorf("unexpected result: %v", err)
+}
+</code></pre>
+<p>In Rust:</p>
+<p class="listing"><b>Listing 1.64</b> Two clients and one refused write, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/conflict.rs">code/rust/gpujob/src/bin/conflict.rs</a></p>
+
+<pre><code class="language-rust">//! Shows the API server refusing a write with an outdated resource version.
+//! Two clients read the `train` job, and both write it back with `replace`.
+//! The first write succeeds and changes the version, so the second fails with
+//! `409 Conflict`.
+//!
+//! Run it from `code/rust`, while a `GpuJob` named `train` exists, with
+//! `cargo run -p gpujob --bin conflict`.
+
+use gpujob::GpuJob;
+use kube::api::PostParams;
+use kube::{Api, Client, ResourceExt};
+
+/// The job that both clients read and write.
+const JOB: &amp;str = "train";
+
+/// Performs the two writes and reports how the server answered each.
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), kube::Error&gt; {
+    let jobs: Api&lt;GpuJob&gt; = Api::default_namespaced(Client::try_default().await?);
+    let mut first = jobs.get(JOB).await?;
+    let mut second = first.clone();
+    println!(
+        "both clients read {JOB} at v{}",
+        first.resource_version().unwrap_or_default()
+    );
+
+    first.spec.gpus += 1;
+    let stored = jobs.replace(JOB, &amp;PostParams::default(), &amp;first).await?;
+    println!(
+        "first write stored, now v{}",
+        stored.resource_version().unwrap_or_default()
+    );
+
+    second.spec.gpus += 2;
+    match jobs.replace(JOB, &amp;PostParams::default(), &amp;second).await {
+        Err(kube::Error::Api(status)) if status.code == 409 =&gt; {
+            println!("second write refused: {} {}", status.code, status.message);
+        }
+        other =&gt; println!("unexpected: {other:?}"),
+    }
+    Ok(())
+}</code></pre>
+<p>The Go version recognises the conflict with <code>errors.As</code>, which digs the API server’s
+status out of the returned error, and compares its code with <code>http.StatusConflict</code>. The
+Rust version matches the error against a pattern with a guard, <code>if status.code == 409</code>,
+and every other outcome falls through to the second arm.</p>
+<pre><code class="language-console">$ go run ./gpujob/cmd/conflict
+both clients read train at v41931
+first write stored, now v41972
+second write refused: 409 Operation cannot be fulfilled on gpujobs.gpucloud.dev "train":
+the object has been modified; please apply your changes to the latest version and try again
+</code></pre>
+<pre><code class="language-console">$ cargo run -p gpujob --bin conflict
+both clients read train at v688
+first write stored, now v731
+second write refused: 409 Operation cannot be fulfilled on gpujobs.gpucloud.dev "train":
+the object has been modified; please apply your changes to the latest version and try again
+</code></pre>
+<p>The first write raised <code>train</code> to two GPUs, and our controllers noticed. The Go
+controller logged:</p>
+<pre><code class="language-console">15:13:07  INFO  controller  GPU count changed, replacing pod  {"name": "train"}
+15:13:07  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message": ""}
+15:13:07  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message":
+          "0/1 nodes are available: 1 Insufficient nvidia.com/gpu. preemption: 0/1 nodes are
+          available: 1 Preemption is not helpful for scheduling."}
+</code></pre>
+<p>And the Rust controller:</p>
+<pre><code class="language-console">14:01:46.101  INFO GPU count changed, replacing pod name=train
+14:01:46.137  INFO status changed name=train phase=Pending
+14:01:46.170  INFO status changed name=train phase=Pending 0/1 nodes are available:
+                   1 Insufficient nvidia.com/gpu. preemption: 0/1 nodes are available:
+                   1 Preemption is not helpful for scheduling.
+</code></pre>
+<p>Each controller deleted the old pod, because a pod’s resources cannot change, and the
+deletion event triggered the reconcile that created the replacement. The replacement asks
+for two GPUs on a machine that has only one, so the scheduler cannot place it anywhere.
+Thanks to the message we copy from the pod’s <code>PodScheduled</code> condition, the job’s status
+tells the user exactly why, and <code>kubectl get gpujobs</code> shows the job as Pending until its
+request is lowered or a machine with two free GPUs joins the cluster.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><b>Listing 1.65</b> The API types, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+
+<pre><code class="language-go">package v1
+
+import (
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+
+// GpuJobSpec is a request to run one container with a number of GPUs.
+type GpuJobSpec struct {
+	// Container image to run.
+	Image string `json:"image"`
+	// Command to run in the container. When empty, the image's own command runs.
+	// +optional
+	Command []string `json:"command,omitempty"`
+	// Number of GPUs the container requests.
+	// +kubebuilder:validation:Minimum=0
+	GPUs int32 `json:"gpus"`
+}
+
+// Phase is the progress of a job, following the phase of its pod.
+// +kubebuilder:validation:Enum=Pending;Running;Succeeded;Failed
+type Phase string
+
+// The phases a job moves through.
+const (
+	// PhasePending means the pod is waiting to be scheduled or for its containers to start.
+	PhasePending Phase = "Pending"
+	// PhaseRunning means the pod's container is running.
+	PhaseRunning Phase = "Running"
+	// PhaseSucceeded means the container exited with status 0.
+	PhaseSucceeded Phase = "Succeeded"
+	// PhaseFailed means the container exited with a non-zero status.
+	PhaseFailed Phase = "Failed"
+)
+
+
+
+// GpuJobStatus is the state of a job as the controller last observed it.
+type GpuJobStatus struct {
+	// Progress of the job's pod.
+	Phase Phase `json:"phase"`
+	// The scheduler's reason, when the pod cannot be placed on a node.
+	// +optional
+	Message string `json:"message,omitempty"`
+	// The metadata.generation of the spec that this status describes.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+}
+
+
+
+// GpuJob runs one container with a number of GPUs.
+//
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=gj
+// +kubebuilder:printcolumn:name="GPUs",type=integer,JSONPath=".spec.gpus"
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=".status.phase"
+type GpuJob struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object metadata: name, namespace, labels, resource version.
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	// What the user asks for.
+	Spec GpuJobSpec `json:"spec"`
+	// What the controller has observed.
+	// +optional
+	Status GpuJobStatus `json:"status,omitempty"`
+}
+
+// GpuJobList is a list of GpuJob objects, as the API server returns it.
+//
+// +kubebuilder:object:root=true
+type GpuJobList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata, including the list's resource version.
+	metav1.ListMeta `json:"metadata,omitempty"`
+	// The jobs in the list.
+	Items []GpuJob `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&amp;GpuJob{}, &amp;GpuJobList{})
+}
+
+
+
+// StatusFromPod derives a job's status from its pod. generation is the job's
+// metadata.generation, recorded as the generation that the status describes.
+func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
+	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		status.Phase = PhaseRunning
+	case corev1.PodSucceeded:
+		status.Phase = PhaseSucceeded
+	case corev1.PodFailed:
+		status.Phase = PhaseFailed
+	}
+	// A pod that cannot be placed explains why in its PodScheduled condition.
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled &amp;&amp; c.Status == corev1.ConditionFalse {
+			status.Message = c.Message
+		}
+	}
+	return status
+}
+</code></pre>
+<p class="listing"><b>Listing 1.66</b> The API types, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
+
+<pre><code class="language-rust">//! The `GpuJob` custom resource: a request to run one container with a number
+//! of GPUs, and the status that the controller reports back.
+//!
+//! The `///` comments on the spec and status types become the field
+//! descriptions in the generated `CustomResourceDefinition`, which
+//! `kubectl explain gpujob.spec` prints.
+
+use k8s_openapi::api::core::v1::Pod;
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+/// A request to run one container with a number of GPUs.
+///
+/// The `CustomResource` derive generates the `GpuJob` type, which holds this
+/// spec together with the object's metadata and an optional `GpuJobStatus`.
+#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[kube(
+    group = "gpucloud.dev",
+    version = "v1",
+    kind = "GpuJob",
+    namespaced,
+    status = "GpuJobStatus",
+    shortname = "gj",
+    printcolumn = r#"{"name":"GPUs","type":"integer","jsonPath":".spec.gpus"}"#,
+    printcolumn = r#"{"name":"Phase","type":"string","jsonPath":".status.phase"}"#
+)]
+pub struct GpuJobSpec {
+    /// Container image to run.
+    pub image: String,
+    /// Command to run in the container. When empty, the image's own command runs.
+    #[serde(default)]
+    pub command: Vec&lt;String&gt;,
+    /// Number of GPUs the container requests.
+    // Kubernetes schemas support int32 and int64, so the u32 is published as a
+    // non-negative int32.
+    #[schemars(with = "i32", range(min = 0))]
+    pub gpus: u32,
+}
+
+/// The state of a job as the controller last observed it.
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuJobStatus {
+    /// Progress of the job's pod.
+    pub phase: Phase,
+    /// The scheduler's reason, when the pod cannot be placed on a node.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option&lt;String&gt;,
+    /// The `metadata.generation` of the spec that this status describes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_generation: Option&lt;i64&gt;,
+}
+
+/// Progress of a job, following the phase of its pod.
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, Default, PartialEq, Eq, JsonSchema)]
+pub enum Phase {
+    /// The pod is waiting to be scheduled or for its containers to start.
+    #[default]
+    Pending,
+    /// The pod's container is running.
+    Running,
+    /// The container exited with status 0.
+    Succeeded,
+    /// The container exited with a non-zero status.
+    Failed,
+}
+
+impl GpuJobStatus {
+    /// Derives a job's status from its pod. `generation` is the job's
+    /// `metadata.generation`, recorded as the generation this status describes.
+    #[must_use]
+    pub fn from_pod(pod: &amp;Pod, generation: Option&lt;i64&gt;) -&gt; Self {
+        let status = pod.status.as_ref();
+        let phase = match status.and_then(|s| s.phase.as_deref()) {
+            Some("Running") =&gt; Phase::Running,
+            Some("Succeeded") =&gt; Phase::Succeeded,
+            Some("Failed") =&gt; Phase::Failed,
+            _ =&gt; Phase::Pending,
+        };
+        // A pod that cannot be placed explains why in its PodScheduled condition.
+        let message = status
+            .and_then(|s| s.conditions.as_ref())
+            .into_iter()
+            .flatten()
+            .find(|c| c.type_ == "PodScheduled" &amp;&amp; c.status == "False")
+            .and_then(|c| c.message.clone());
+        Self {
+            phase,
+            message,
+            observed_generation: generation,
+        }
+    }
+}</code></pre>
+<p class="listing"><b>Listing 1.67</b> The event printer, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
+
+<pre><code class="language-go">// Command watch-jobs prints the events that an informer delivers for GpuJob
+// objects in the default namespace: the initial list, one object at a time,
+// and then one event per change. Stop it with Ctrl-C.
+//
+// Run it from code/go with:
+//
+//	go run ./gpujob/cmd/watch-jobs
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	toolscache "k8s.io/client-go/tools/cache"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+
+	gpujobv1 "gpuk8s/gpujob/api/v1"
+)
+
+// namespace is the namespace whose jobs the program watches.
+const namespace = "default"
+
+// describe formats a job as its name, GPU count, and resource version.
+func describe(obj any) string {
+	// A deletion that a relist discovered arrives wrapped in a tombstone.
+	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	job := obj.(*gpujobv1.GpuJob)
+	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
+}
+
+
+// main starts an informer for GpuJob objects and prints one line per event.
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run does the work of main and returns the first error it meets.
+func run() error {
+	scheme := runtime.NewScheme()
+	if err := gpujobv1.AddToScheme(scheme); err != nil {
+		return err
+	}
+	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
+		Scheme:            scheme,
+		DefaultNamespaces: map[string]cache.Config{namespace: {}},
+	})
+	if err != nil {
+		return err
+	}
+	ctx := ctrl.SetupSignalHandler()
+	informer, err := informers.GetInformer(ctx, &amp;gpujobv1.GpuJob{})
+	if err != nil {
+		return err
+	}
+	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
+		AddFunc: func(obj any, isInInitialList bool) {
+			if isInInitialList {
+				fmt.Println("  listed  ", describe(obj))
+			} else {
+				fmt.Println("  changed ", describe(obj))
+			}
+		},
+		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
+		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("list started")
+	go informers.Start(ctx)
+	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
+		return fmt.Errorf("informer did not sync")
+	}
+	fmt.Println("list complete, watching")
+	&lt;-ctx.Done()
+	return nil
+}
+</code></pre>
+<p class="listing"><b>Listing 1.68</b> The controller, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// Command controller is a controller for GpuJob objects. It runs each job as a
 // pod that requests the job's GPUs, and reports the pod's progress in the
@@ -891,6 +1746,7 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	return int32(quantity.Value()), ok
 }
 
+
 // GpuJobReconciler makes the cluster match each GpuJob.
 type GpuJobReconciler struct {
 	// Client reads objects from the manager's cache and writes to the API server.
@@ -945,6 +1801,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 
+
 // main builds a manager, registers the reconciler, and runs until Ctrl-C.
 func main() {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true))) // readable console output
@@ -984,10 +1841,9 @@ func main() {
 	}
 }
 </code></pre>
-<p>In Rust:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+<p class="listing"><b>Listing 1.69</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
-<pre class="playground"><code class="language-rust">//! A controller for `GpuJob` objects. It runs each job as a pod that requests
+<pre><code class="language-rust">//! A controller for `GpuJob` objects. It runs each job as a pod that requests
 //! the job's GPUs, and reports the pod's progress in the job's status.
 //!
 //! Run it against the cluster in the current kubeconfig context with
@@ -1136,175 +1992,7 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
         .await;
     Ok(())
 }</code></pre>
-<h3 id="the-pod-for-a-job"><a class="header" href="#the-pod-for-a-job">The pod for a job</a></h3>
-<p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
-interesting part is how the pod asks for a GPU. It puts <code>nvidia.com/gpu</code> in its resource
-limits, just as it would put CPU or memory there. Kubernetes calls a resource like this an
-<em>extended resource</em>: a name that Kubernetes itself does not understand, but whose
-quantity a machine can advertise as a whole number, and which the scheduler counts like
-any other resource. The name <code>nvidia.com/gpu</code> is advertised by the NVIDIA device plugin, a
-small program on each GPU machine that counts the GPUs and reports them to Kubernetes;
-Appendix A shows it at work. Extended resources can only be requested in whole units, and
-they are requested through <code>limits</code>. One unit of <code>nvidia.com/gpu</code> is, by default, one whole
-physical GPU; chapter 2 examines what that includes and how a GPU can be divided.</p>
-<p>The pod also carries an <em>owner reference</em>, a note in its metadata that says “this pod
-belongs to that job”. It has two uses. When the job is deleted, Kubernetes’ garbage
-collector, a controller built into every cluster, sees the note and deletes the pod as
-well, so we never have to clean up after deleted jobs ourselves. And because the note has
-its <code>controller</code> flag set, both libraries can take any event about the pod and work out
-which job it belongs to, which is how our controller hears about its pods.</p>
-<p>The two languages build the pod differently. The Go version builds an <em>apply
-configuration</em>, a type from client-go in which every field is optional and is filled in
-through <code>With</code> methods. The value ends up containing exactly the fields our controller
-cares about and nothing else, which matters for the kind of write we are about to do. The
-Rust version builds an ordinary <code>Pod</code> value and leaves everything else at its default;
-serde leaves the empty fields out when it turns the pod into JSON, which has the same
-effect.</p>
-<p><code>podGPUs</code> (<code>pod_gpus</code> in Rust) reads the GPU count back out of an existing pod. In Go it
-returns the count and a flag saying whether the pod had a GPU limit at all. In Rust it
-returns an <code>Option&lt;u32&gt;</code>, and each <code>?</code> bails out with <code>None</code> as soon as any field along the
-way is missing.</p>
-<h3 id="reconciling-a-job"><a class="header" href="#reconciling-a-job">Reconciling a job</a></h3>
-<p>Our reconcile function receives a job and brings the cluster into line with it in three
-steps.</p>
-<p>The first step covers a change that cannot be made in place. Kubernetes fixes a pod’s
-resources when the pod is created, so if the user changes the job’s GPU count, we cannot
-simply edit the pod. Instead we delete the pod and ask to be called again in two seconds,
-by which time it should be gone. The Go version asks for that with
-<code>ctrl.Result{RequeueAfter: 2 * time.Second}</code>, and the Rust version with <code>Action::requeue</code>.
-The Rust condition uses a <em>let chain</em>, <code>if let ... &amp;&amp; ...</code>, available since the 2024
-edition, to check for the pod and compare its GPU count in one expression.</p>
-<p>The second step creates or updates the pod with a single call, using <em>server-side apply</em>.
-We send the pod we want, and the API server merges it into whatever it has stored. The
-server also records which fields each writer set; a writer in this sense is called a
-<em>field manager</em>, and our controller calls itself <code>gpujob-controller</code>. Applying the same
-object twice changes nothing, which makes server-side apply a natural fit for a
-level-triggered controller: we can apply on every single reconcile, without first
-checking whether the pod exists. We also force ownership, with <code>client.ForceOwnership</code> in
-Go and <code>force()</code> in Rust. If some other writer has set a field that we also set, we take
-that field over, which is what we want from a controller that is the only authority over
-its pods.</p>
-<p>The third step works out the job’s status and writes it through the status subresource,
-but only if it differs from the status already stored. Skipping unchanged writes is more
-than a saving. Every write produces a watch event, every event causes a reconcile, and a
-controller that wrote on every reconcile would keep waking itself up forever. The Go
-version writes the status with a <em>merge patch</em>, which sends only the fields that differ
-from a copy of the job we saved before changing it. The Rust version applies the status
-with server-side apply, just as it does the pod.</p>
-<p>The two versions also read the pod differently, and the difference is worth
-understanding. controller-runtime’s client reads from the informer caches that the
-manager keeps, so the Go <code>Get</code> of the pod is a lookup in memory, exactly like the cache
-reads in chapter 1. A pod we have only just created is not in the cache yet; in that case
-the Go version computes the status from an empty pod, which comes out as Pending, and the
-pod’s creation event soon triggers another reconcile that reports the real state.
-kube-rs’s <code>Api</code>, on the other hand, talks to the API server directly, so the Rust
-<code>get_opt</code> is a real GET request. That is fine for our small controller. A Rust controller
-that looks after thousands of pods would keep a reflector store of pods in its <code>Context</code>
-and read them from memory, just as the Go version does.</p>
-<p>When a reconcile fails, the Go version returns the error, and controller-runtime puts the
-job back in the queue with the growing delay we described at the end of chapter 1. The
-Rust version returns the error to kube-rs, which asks our <code>error_policy</code> function what to
-do; ours logs the error and tries again in five seconds.</p>
-<h3 id="starting-the-controller"><a class="header" href="#starting-the-controller">Starting the controller</a></h3>
-<p>In Go, everything a controller process shares lives in a <em>manager</em>: the connection to the
-cluster, the scheme, the informer caches, and the client that reads from them.
-<code>ctrl.NewControllerManagedBy(mgr)</code> builds our controller inside the manager, and each
-call in the chain wires up one piece. <code>For(&amp;GpuJob{})</code> watches jobs and queues the name of
-each job that changes. <code>Owns(&amp;corev1.Pod{})</code> watches pods and queues the name of each pod’s
-owning job, using the owner reference we set. <code>Complete</code> registers our reconciler. Then
-<code>mgr.Start</code> starts the caches, waits for their first lists, and runs the workers until the
-process receives a signal such as Ctrl-C. We switch off the metrics endpoint that a
-manager starts by default, since we do not need it here.</p>
-<p>In Rust, <code>Controller::new</code> starts a watcher and a store for <code>GpuJob</code> objects, and <code>owns</code>
-adds a second watcher, for pods, that queues each pod’s owning job in the same way.
-<code>run</code> starts the work queue and the workers and gives us back a stream with one item per
-finished reconcile, and <code>for_each</code> keeps reading that stream until the program stops.
-<code>shutdown_on_signal</code> ends the stream when we press Ctrl-C.</p>
-<p>In both libraries, the work queue behaves exactly like the one we built in chapter 1: a
-job waits in it at most once, and a job that one worker is reconciling is held back from
-all the others until that worker is done.</p>
-<h2 id="running-it"><a class="header" href="#running-it">Running it</a></h2>
-<p>We will test the controller with two jobs. <code>smoke-test</code> asks for no GPUs and runs a short
-shell command, which tells us the basic machinery works. <code>train</code> asks for one GPU and runs
-<code>gpu-check</code>, a small CUDA program from Appendix A that adds two vectors on the GPU and
-prints which device it used.</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/manifests/gpujobs.yaml">code/manifests/gpujobs.yaml</a></p>
-
-<pre><code class="language-yaml">apiVersion: gpucloud.dev/v1
-kind: GpuJob
-metadata:
-  name: smoke-test
-spec:
-  image: busybox:1.37
-  command: ["sh", "-c", "echo hello from the job; sleep 20"]
-  gpus: 0
----
-apiVersion: gpucloud.dev/v1
-kind: GpuJob
-metadata:
-  name: train
-spec:
-  image: gpu-check:1
-  gpus: 1
-</code></pre>
-<p>We start the Go controller from <code>code/go</code>, create the jobs, and check on them:</p>
-<pre><code class="language-console">$ go run ./gpujob/cmd/controller
-$ kubectl apply -f ../manifests/gpujobs.yaml
-$ kubectl get gpujobs
-NAME         GPUS   PHASE
-smoke-test   0      Succeeded
-train        1      Succeeded
-$ kubectl logs train
-device: Orin, compute 8.7, 8 SMs
-kernel: no error, out[0] = 3.0, out[n-1] = 3.0
-</code></pre>
-<p>The log of <code>train</code> shows our CUDA kernel running on the cluster’s GPU,
-inside the pod our controller created. After its startup messages, the Go controller
-logged the following lines, shown here with the date and time zone trimmed from the
-timestamps:</p>
-<pre><code class="language-console">15:12:37  INFO  controller  status changed  {"name": "smoke-test", "phase": "Pending", "message": ""}
-15:12:37  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message": ""}
-15:12:38  INFO  controller  status changed  {"name": "smoke-test", "phase": "Running", "message": ""}
-15:12:38  INFO  controller  status changed  {"name": "train", "phase": "Running", "message": ""}
-15:12:40  INFO  controller  status changed  {"name": "train", "phase": "Succeeded", "message": ""}
-15:13:00  INFO  controller  status changed  {"name": "smoke-test", "phase": "Succeeded", "message": ""}
-</code></pre>
-<p>The Rust controller runs from <code>code/rust</code>, and the same steps give the same result:</p>
-<pre><code class="language-console">$ cargo run -p gpujob
-$ kubectl apply -f ../manifests/gpujobs.yaml
-$ kubectl get gpujobs
-NAME         GPUS   PHASE
-smoke-test   0      Succeeded
-train        1      Succeeded
-</code></pre>
-<pre><code class="language-console">14:01:15.949  INFO status changed name=train phase=Pending
-14:01:15.954  INFO status changed name=smoke-test phase=Pending
-14:01:15.985  INFO status changed name=smoke-test phase=Pending
-14:01:17.124  INFO status changed name=train phase=Running
-14:01:18.504  INFO status changed name=smoke-test phase=Running
-14:01:18.959  INFO status changed name=train phase=Succeeded
-14:01:39.957  INFO status changed name=smoke-test phase=Succeeded
-</code></pre>
-<p>In both runs, each job moved from Pending to Running to Succeeded along with its pod, and
-every step reached our controller through the pod watch that <code>Owns</code> or <code>owns</code> set up.
-<code>train</code> finished about two seconds after its pod was created, and <code>smoke-test</code> finished
-after its twenty-second sleep.</p>
-<p>Look at the Rust log once more: <code>smoke-test</code> reported Pending twice, 31 milliseconds
-apart. Here is what happened. The first reconcile wrote the status. The pod’s creation
-then triggered a second reconcile before our own status write had come back through the
-watch, so the job in the cache still had no status, the comparison saw a difference, and
-the controller wrote the same status again. This is the read-your-own-writes gap from the
-end of chapter 1. Here it costs one redundant write, which server-side
-apply turns into a no-op.</p>
-<h2 id="two-writers-one-object"><a class="header" href="#two-writers-one-object">Two writers, one object</a></h2>
-<p>Our controllers never send a resource version when they write, because server-side apply
-does not need one. Many clients do, though: a client that reads an object, changes it, and
-sends the whole object back with an update includes the version it read, and the API
-server applies the same check as our <code>Update</code> in chapter 1. To see that check on a real
-server, we will write a program in which two clients read the <code>train</code> job and then both
-try to write it back.</p>
-<p>In Go:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
+<p class="listing"><b>Listing 1.70</b> The two-client program, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
 
 <pre><code class="language-go">// Command conflict shows the API server refusing a write with an out-of-date
 // resource version. Two clients read the train job, and both write it back
@@ -1376,88 +2064,6 @@ func run(ctx context.Context) error {
 	return fmt.Errorf("unexpected result: %v", err)
 }
 </code></pre>
-<p>In Rust:</p>
-<p class="listing"><a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/conflict.rs">code/rust/gpujob/src/bin/conflict.rs</a></p>
-
-<pre class="playground"><code class="language-rust">//! Shows the API server refusing a write with an outdated resource version.
-//! Two clients read the `train` job, and both write it back with `replace`.
-//! The first write succeeds and changes the version, so the second fails with
-//! `409 Conflict`.
-//!
-//! Run it from `code/rust`, while a `GpuJob` named `train` exists, with
-//! `cargo run -p gpujob --bin conflict`.
-
-use gpujob::GpuJob;
-use kube::api::PostParams;
-use kube::{Api, Client, ResourceExt};
-
-/// The job that both clients read and write.
-const JOB: &amp;str = "train";
-
-/// Performs the two writes and reports how the server answered each.
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), kube::Error&gt; {
-    let jobs: Api&lt;GpuJob&gt; = Api::default_namespaced(Client::try_default().await?);
-    let mut first = jobs.get(JOB).await?;
-    let mut second = first.clone();
-    println!(
-        "both clients read {JOB} at v{}",
-        first.resource_version().unwrap_or_default()
-    );
-
-    first.spec.gpus += 1;
-    let stored = jobs.replace(JOB, &amp;PostParams::default(), &amp;first).await?;
-    println!(
-        "first write stored, now v{}",
-        stored.resource_version().unwrap_or_default()
-    );
-
-    second.spec.gpus += 2;
-    match jobs.replace(JOB, &amp;PostParams::default(), &amp;second).await {
-        Err(kube::Error::Api(status)) if status.code == 409 =&gt; {
-            println!("second write refused: {} {}", status.code, status.message);
-        }
-        other =&gt; println!("unexpected: {other:?}"),
-    }
-    Ok(())
-}</code></pre>
-<p>The Go version recognises the conflict with <code>errors.As</code>, which digs the API server’s
-status out of the returned error, and compares its code with <code>http.StatusConflict</code>. The
-Rust version matches the error against a pattern with a guard, <code>if status.code == 409</code>,
-and every other outcome falls through to the second arm.</p>
-<pre><code class="language-console">$ go run ./gpujob/cmd/conflict
-both clients read train at v41931
-first write stored, now v41972
-second write refused: 409 Operation cannot be fulfilled on gpujobs.gpucloud.dev "train":
-the object has been modified; please apply your changes to the latest version and try again
-</code></pre>
-<pre><code class="language-console">$ cargo run -p gpujob --bin conflict
-both clients read train at v688
-first write stored, now v731
-second write refused: 409 Operation cannot be fulfilled on gpujobs.gpucloud.dev "train":
-the object has been modified; please apply your changes to the latest version and try again
-</code></pre>
-<p>The first write raised <code>train</code> to two GPUs, and our controllers noticed. The Go
-controller logged:</p>
-<pre><code class="language-console">15:13:07  INFO  controller  GPU count changed, replacing pod  {"name": "train"}
-15:13:07  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message": ""}
-15:13:07  INFO  controller  status changed  {"name": "train", "phase": "Pending", "message":
-          "0/1 nodes are available: 1 Insufficient nvidia.com/gpu. preemption: 0/1 nodes are
-          available: 1 Preemption is not helpful for scheduling."}
-</code></pre>
-<p>And the Rust controller:</p>
-<pre><code class="language-console">14:01:46.101  INFO GPU count changed, replacing pod name=train
-14:01:46.137  INFO status changed name=train phase=Pending
-14:01:46.170  INFO status changed name=train phase=Pending 0/1 nodes are available:
-                   1 Insufficient nvidia.com/gpu. preemption: 0/1 nodes are available:
-                   1 Preemption is not helpful for scheduling.
-</code></pre>
-<p>Each controller deleted the old pod, because a pod’s resources cannot change, and the
-deletion event triggered the reconcile that created the replacement. The replacement asks
-for two GPUs on a machine that has only one, so the scheduler cannot place it anywhere.
-Thanks to the message we copy from the pod’s <code>PodScheduled</code> condition, the job’s status
-tells the user exactly why, and <code>kubectl get gpujobs</code> shows the job as Pending until its
-request is lowered or a machine with two free GPUs joins the cluster.</p>
 
                     </main>
 
@@ -1510,6 +2116,8 @@ request is lowered or a machine with two free GPUs joins the cluster.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
 
 
 

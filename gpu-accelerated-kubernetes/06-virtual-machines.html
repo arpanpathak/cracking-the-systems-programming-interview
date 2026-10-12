@@ -1,0 +1,1001 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Virtual machines on Kubernetes - GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-f31bf49e.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPU-Accelerated Kubernetes - Distributed GPU Kernel &amp; Job Scheduling in a Cloud Native Way</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/gpu-accelerated-kubernetes/src/06-virtual-machines.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="6-virtual-machines-on-kubernetes"><a class="header" href="#6-virtual-machines-on-kubernetes">6. Virtual machines on Kubernetes</a></h1>
+<p>Every workload so far has run in a container. A container shares the host’s kernel, and
+some users of a GPU cluster need a kernel of their own: a customer who must run a
+particular operating system, a tenant who is not trusted to share a kernel with others,
+or a team with an appliance that ships as a disk image. For them the unit of work is a
+<em>virtual machine</em> (VM), a complete computer simulated in software, with its own kernel,
+on a real one.</p>
+<p>In this chapter, we will see how a VM runs on a Kubernetes cluster and what that means
+for the two things this book cares about: giving the VM a GPU, and moving the VM off a
+machine that has to be repaired. The second leads to <em>live migration</em>, moving a running
+VM to another host without stopping it. We will reason about when that can work, and
+then write <code>migration</code>, in Go and in Rust, a model of the algorithm that we can run with
+the memory sizes and link speeds of our own fleet.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what a virtual machine is on Linux: a process, with help from the kernel</li>
+<li>KubeVirt, which runs each VM inside a pod</li>
+<li>two ways to give a VM a GPU, and what each costs</li>
+<li>live migration by pre-copy: rounds, dirty memory, and the final pause</li>
+<li>when a migration converges, worked out for the links between our machines</li>
+<li>why a VM that holds a GPU directly has to be stopped to be moved</li>
+</ul>
+</div>
+
+<h2 id="a-virtual-machine-is-a-process"><a class="header" href="#a-virtual-machine-is-a-process">A virtual machine is a process</a></h2>
+<p>On Linux, a VM is an ordinary process on the host. The program is usually QEMU. It
+allocates a large block of its own memory and presents it to the guest as the guest’s
+physical memory, and it creates one thread for each of the guest’s CPUs.</p>
+<p>Those threads run the guest’s code directly on the host’s CPU cores, at close to full
+speed, through a kernel feature called <em>KVM</em> (Kernel-based Virtual Machine). KVM uses
+the CPU’s virtualization support to run guest code in a restricted mode, and returns
+control to QEMU whenever the guest does something that needs the host’s help, such as
+talking to a disk or a network card. A program asks for this by opening the device file
+<code>/dev/kvm</code>.</p>
+<p>The Orin NX that runs our cluster has it:</p>
+<pre><code class="language-console">$ ls -l /dev/kvm
+crw-rw----+ 1 root kvm 10, 232 Nov 21  2023 /dev/kvm
+$ zcat /proc/config.gz | grep -E '^CONFIG_(KVM|VFIO)='
+CONFIG_KVM=y
+CONFIG_VFIO=y
+</code></pre>
+<p>Since a VM is a process, it can run in a container, and so in a pod. That observation is
+the whole basis for running VMs on Kubernetes.</p>
+<h2 id="kubevirt-a-vm-inside-a-pod"><a class="header" href="#kubevirt-a-vm-inside-a-pod">KubeVirt: a VM inside a pod</a></h2>
+<p><em>KubeVirt</em> is the project that adds virtual machines to Kubernetes. It follows the
+pattern of section 1.1: it teaches the API server new kinds of object with
+CustomResourceDefinitions and runs controllers that reconcile them. Figure 6.1 shows the
+parts.</p>
+<figure>
+<img src="figures/vm-in-pod.svg" alt="A user applies a VirtualMachine object to the API server. The virt-controller watches it and creates a pod named virt-launcher for the VM. The scheduler places the pod on a machine like any other pod. On that machine, virt-handler, which runs on every node, tells the launcher to start the VM. Inside the pod a QEMU process holds the guest&#39;s memory and runs the guest&#39;s kernel and programs through KVM in the host kernel.">
+<figcaption><b>Figure 6.1</b> A KubeVirt virtual machine: a custom resource, a controller, and a pod whose process is the VM.</figcaption>
+</figure>
+<p>A user creates a <em>VirtualMachine</em> object, whose spec describes the VM: its CPUs, its
+memory, its disks, and its devices. A controller, <code>virt-controller</code>, creates a pod for
+it, named <code>virt-launcher</code> followed by the VM’s name. The pod’s resource requests match
+the VM’s size, so the scheduler places it exactly as it places any pod, and everything
+we have built so far applies: the pod is counted against the node’s capacity, it shows
+up in <code>gpuusage</code> from chapter 2 if it holds a GPU, and it is evicted when chapter 4’s
+controller drains the node.</p>
+<p>On each node runs <code>virt-handler</code>, an agent that plays the kubelet’s part for VMs. When a
+launcher pod starts on its node, it has the launcher start a QEMU process inside the
+pod’s container. The guest’s memory is that process’s memory, so it counts against the
+pod’s memory limit.</p>
+<p>The running VM is represented by a second object, the <em>VirtualMachineInstance</em>, whose
+status reports the node it is on and the phase it is in. The VirtualMachine object
+outlives it, in the way a <code>GpuJob</code> outlived its pod: stopping a VM deletes the instance
+and keeps the VirtualMachine.</p>
+<h2 id="giving-a-vm-a-gpu"><a class="header" href="#giving-a-vm-a-gpu">Giving a VM a GPU</a></h2>
+<p>A container reaches a GPU through the host’s driver, as Appendix A showed. A VM has its
+own kernel and so needs its own driver, which has to talk to a GPU device. There are two
+ways to give it one.</p>
+<p><em>Passthrough</em> hands a whole physical GPU to one VM. The host detaches the GPU from its
+own driver and attaches it to a stub driver, <em>VFIO</em>, whose job is to let a process map
+the device’s registers and receive its interrupts. QEMU presents the device to the
+guest, and the guest’s NVIDIA driver then operates the real GPU directly. The guest gets
+the full performance of the card. The host can no longer use it, and can no longer see
+what it is doing.</p>
+<p>A <em>vGPU</em>, which we met in chapter 2, divides one physical GPU among several VMs. The
+host keeps its own driver, which creates several virtual devices and schedules their
+work on the real GPU. Each VM is given one virtual device.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th>Passthrough</th><th>vGPU</th></tr>
+</thead>
+<tbody>
+<tr><td>What the VM holds</td><td>one whole physical GPU</td><td>a share of a GPU</td></tr>
+<tr><td>Driver on the host</td><td>a stub; the host does not use the GPU</td><td>the vendor’s host driver, which schedules the VMs</td></tr>
+<tr><td>VMs per GPU</td><td>one</td><td>several</td></tr>
+<tr><td>Host can read the device’s state</td><td>no</td><td>yes</td></tr>
+</tbody>
+</table>
+</div>
+<p>In KubeVirt, the VM’s spec names the device it wants in a <code>gpus</code> list, by the same kind
+of resource name a pod uses, and a device plugin on the node advertises the GPUs that
+have been set aside for VMs. The scheduler counts them as it counts
+<code>nvidia.com/gpu</code>.</p>
+<p>The last row of the table decides what the rest of this chapter can do for a VM with a
+GPU, as we will see once we have built the model.</p>
+<div class="callout">
+<p><strong>On our machines.</strong> Passthrough with VFIO works on a device that sits on a PCI bus, and
+our two boards differ here. The Orin NX’s GPU is part of the system-on-chip and has no
+bus address. Its driver is <code>nvgpu</code>, and <code>nvidia-smi</code> shows nothing where the address
+would be:</p>
+<pre><code class="language-console">$ nvidia-smi | sed -n 9,10p        # on the Orin NX
+|   0  Orin (nvgpu)                  N/A  | N/A              N/A |                  N/A |
+| N/A   N/A  N/A               N/A /  N/A | Not Supported        |     N/A          N/A |
+</code></pre>
+<p>There is no device to detach, so a GPU workload on the Orin runs in a container. The
+Thor’s GPU also shares the board’s memory with the CPU, yet it appears on the PCI bus
+and runs the same <code>nvidia</code> driver as a discrete card:</p>
+<pre><code class="language-console">$ lspci -nnk -s 01:00.0            # on the Thor
+0000:01:00.0 3D controller [0302]: NVIDIA Corporation Device [10de:2b00] (rev a1)
+	Kernel driver in use: nvidia
+	Kernel modules: nouveau, nvgpu, nvidia_drm, nvidia
+</code></pre>
+<p>The Thor also has <code>/dev/kvm</code>. We have not tried to pass its GPU to a virtual machine, and
+with one GPU on the board, doing so would leave the host with none. The memory sizes and
+link speeds of the fleet are what we use in the rest of the chapter.</p>
+</div>
+
+<h2 id="moving-a-running-vm"><a class="header" href="#moving-a-running-vm">Moving a running VM</a></h2>
+<p>Chapter 4’s controller drains a machine before repairing it. For a container, draining
+means stopping the process and starting a new one elsewhere. A VM often runs software
+that expects to stay up for months, and its users did not write it to be restarted. For
+a VM we would like something better: to move it to another host while it runs.</p>
+<p>A VM’s state is its memory, the registers of its CPUs, and the state of its devices.
+The registers and most device state amount to a few kilobytes. The memory is the
+problem. A VM sized for a Thor may hold 100 GB, and at the 3.125 GB per second that one
+25 GbE lane carries, copying it takes 32 seconds. If the VM were paused for that long,
+its network connections would time out and its users would see an outage.</p>
+<p>So the copy happens while the VM runs, and that creates a second problem: the VM keeps
+writing to its memory during the copy, and the pages it writes after they were sent are
+stale on the other side. Memory that has been written since it was last sent is called
+<em>dirty</em>.</p>
+<h3 id="pre-copy-round-by-round"><a class="header" href="#pre-copy-round-by-round">Pre-copy, round by round</a></h3>
+<p>The standard algorithm, <em>pre-copy</em>, turns this into a loop.</p>
+<ol>
+<li>Mark all of the VM’s memory as dirty.</li>
+<li>Send every dirty page to the target host, and clear the mark on each page as it is
+sent. The VM keeps running, and the hypervisor marks each page it writes.</li>
+<li>When the round ends, some pages are dirty again. If they are few enough to send
+within the pause we are willing to accept, go to step 4. Otherwise go back to step 2.</li>
+<li>Pause the VM, send the remaining dirty pages and the CPU and device state, and resume
+the VM on the target.</li>
+</ol>
+<p>Each round sends less than the one before, provided the VM dirties memory more slowly
+than the link carries it. Let us work one case by hand. A 100 GB VM dirties 4 GB each
+second, and the link carries 12.5 GB each second, which is four bonded 25 GbE lanes.</p>
+<ul>
+<li>Round 1 sends 100 GB. That takes 100 / 12.5 = 8 seconds, during which the VM dirties
+4 × 8 = 32 GB.</li>
+<li>Round 2 sends 32 GB in 2.56 seconds, during which the VM dirties 10.24 GB.</li>
+<li>Round 3 sends 10.24 GB in 0.82 seconds, during which the VM dirties 3.28 GB.</li>
+<li>3.28 GB takes 0.26 seconds to send. If we allow a pause of 0.3 seconds, the VM is
+paused now and the last 3.28 GB are sent.</li>
+</ul>
+<p>Each round is smaller than the last by the same factor: the dirty rate divided by the
+link rate, here 4 / 12.5 = 0.32. Figure 6.2 shows the rounds as bars.</p>
+<figure>
+<img src="figures/pre-copy.svg" alt="Four bars for the migration of a 100 GB VM that dirties 4 GB per second over a link of 12.5 GB per second. Round 1 sends 100 GB in 8.0 seconds. Round 2 sends 32 GB in 2.6 seconds. Round 3 sends 10.24 GB in 0.8 seconds. In round 4 the VM is paused and the last 3.28 GB are sent in 0.26 seconds. A line marks 3.75 GB, the most that can be sent within a pause of 0.3 seconds.">
+<figcaption><b>Figure 6.2</b> Pre-copy over four bonded 25 GbE lanes. Each round sends what the VM dirtied during the round before.</figcaption>
+</figure>
+<p>That factor is the whole story of convergence:</p>
+<ul>
+<li>When the VM dirties memory more slowly than the link carries it, the factor is below
+one, the rounds shrink, and the migration finishes.</li>
+<li>When the VM dirties memory as fast as the link carries it, or faster, the factor is
+one or more. Every round ends with as much dirty memory as it started with, and the
+migration does not reach step 4.</li>
+</ul>
+<p>A hypervisor has two remedies for the second case. It can slow the guest down, by giving
+its CPU threads less time to run, which lowers the rate at which they dirty memory.
+QEMU calls this <em>auto-converge</em>. Or it can switch to <em>post-copy</em>: pause the VM at once,
+move only the CPU and device state, resume it on the target, and fetch each page from
+the source at the moment the guest first touches it. Post-copy always finishes, at the
+price that a network failure during the migration leaves the VM’s memory split between
+two hosts with no complete copy on either.</p>
+<div class="lld">
+<p>Low-level design: <code>migration</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Holds</th></tr>
+</thead>
+<tbody>
+<tr><td><code>VM</code></td><td>a name, the memory size in GB, the rate at which memory is dirtied in GB per second</td></tr>
+<tr><td><code>Link</code></td><td>a name, and what it carries in GB per second</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Migrate(vm, link, throttle)</code></td><td>runs rounds until the remainder fits in the pause, and prints each round</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Rule</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>the longest pause</td><td>0.3 seconds, so the last round may send at most 0.3 × the link rate</td></tr>
+<tr><td>a round makes no progress</td><td>when the memory dirtied during it is at least the memory it sent</td></tr>
+<tr><td>throttling</td><td>each round with no progress slows the guest by a further 20 percent, up to 80 percent</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="building-migration"><a class="header" href="#building-migration">Building <code>migration</code></a></h2>
+<h3 id="the-vm-and-the-link"><a class="header" href="#the-vm-and-the-link">The VM and the link</a></h3>
+<p>The model needs three numbers: the VM’s memory, the rate at which the VM dirties it, and
+the rate of the link. Link speeds are quoted in gigabits per second and memory in
+gigabytes, so each link is entered in gigabytes per second: 25 GbE is 25 / 8 = 3.125.</p>
+<p class="listing"><b>Listing 6.1</b> The VM, the link, and the limits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
+
+<pre><code class="language-go">// VM describes the virtual machine being moved.
+type VM struct {
+	// Name labels the VM in the output.
+	Name string
+	// MemoryGB is the size of the VM's memory.
+	MemoryGB float64
+	// DirtyGBps is how much memory the VM's programs change each second.
+	DirtyGBps float64
+}
+
+// Link is the network path between the two hosts.
+type Link struct {
+	// Name labels the link in the output.
+	Name string
+	// GBps is what the link carries, in gigabytes per second. A link of
+	// 8 gigabits per second carries 1 gigabyte per second.
+	GBps float64
+}
+
+// Limits of the algorithm.
+const (
+	// maxPauseSeconds is the longest the VM may be paused for the last round.
+	maxPauseSeconds = 0.3
+	// maxRounds ends a migration that keeps making progress too slowly.
+	maxRounds = 30
+	// throttleStep is how much more the guest is slowed each time a round
+	// fails to shrink the remaining memory, as a fraction of full speed.
+	throttleStep = 0.2
+	// maxThrottle is the most the guest may be slowed.
+	maxThrottle = 0.8
+)
+</code></pre>
+<p class="listing"><b>Listing 6.2</b> The VM, the link, and the limits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The virtual machine being moved.
+struct Vm {
+    /// Labels the VM in the output.
+    name: &amp;'static str,
+    /// The size of the VM's memory.
+    memory_gb: f64,
+    /// How much memory the VM's programs change each second.
+    dirty_gbps: f64,
+}
+
+/// The network path between the two hosts.
+struct Link {
+    /// Labels the link in the output.
+    name: &amp;'static str,
+    /// What the link carries, in gigabytes per second. A link of 8 gigabits
+    /// per second carries 1 gigabyte per second.
+    gbps: f64,
+}
+
+/// The longest the VM may be paused for the last round, in seconds.
+const MAX_PAUSE_SECONDS: f64 = 0.3;
+/// Ends a migration that keeps making progress too slowly.
+const MAX_ROUNDS: u32 = 30;
+/// How much more the guest is slowed each time a round fails to shrink the
+/// remaining memory, as a fraction of full speed.
+const THROTTLE_STEP: f64 = 0.2;
+/// The most the guest may be slowed.
+const MAX_THROTTLE: f64 = 0.8;</code></pre>
+<h3 id="one-migration"><a class="header" href="#one-migration">One migration</a></h3>
+<p><code>Migrate</code> keeps one quantity between rounds: <code>remaining</code>, the memory still to be sent.
+It starts as the whole memory. Each pass of the loop first asks whether <code>remaining</code> can
+be sent within the pause, and if so pauses the VM and finishes. Otherwise it computes
+how long the round takes and how much memory the guest dirties in that time. The dirtied
+amount is capped at the VM’s size, since a page that is written twice is still one
+dirty page.</p>
+<p class="listing"><b>Listing 6.3</b> The pre-copy loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
+
+<pre><code class="language-go">// Migrate runs pre-copy rounds until the remaining memory can be sent within
+// the allowed pause, and prints each round. With throttle set, it slows the
+// guest whenever a round leaves as much memory to send as it started with.
+func Migrate(vm VM, link Link, throttle bool) {
+	fmt.Printf("%s over %s", vm.Name, link.Name)
+	if throttle {
+		fmt.Print(", with throttling")
+	}
+	fmt.Println(":")
+
+	remaining := vm.MemoryGB // memory still to be sent
+	slowed := 0.0            // fraction by which the guest is slowed
+	elapsed := 0.0
+	for round := 1; round &lt;= maxRounds; round++ {
+		if remaining &lt;= link.GBps*maxPauseSeconds {
+			pause := remaining / link.GBps
+			fmt.Printf("  round %2d: VM paused, %.2f GB sent in %.2f s\n", round, remaining, pause)
+			fmt.Printf("  done in %.1f s; the VM was paused for %.0f ms\n", elapsed+pause, pause*1000)
+			return
+		}
+		seconds := remaining / link.GBps
+		dirtied := min(vm.DirtyGBps*(1-slowed)*seconds, vm.MemoryGB)
+		fmt.Printf("  round %2d: %6.2f GB sent in %6.1f s, %6.2f GB changed meanwhile\n",
+			round, remaining, seconds, dirtied)
+		elapsed += seconds
+		if dirtied &gt;= remaining {
+			if !throttle || slowed &gt;= maxThrottle {
+				fmt.Println("  does not converge: memory changes as fast as the link carries it")
+				return
+			}
+			slowed += throttleStep
+			fmt.Printf("            no progress: guest slowed to %.0f%% of full speed\n", (1-slowed)*100)
+		}
+		remaining = dirtied
+	}
+	fmt.Printf("  gave up after %d rounds\n", maxRounds)
+}
+</code></pre>
+<p class="listing"><b>Listing 6.4</b> The pre-copy loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Runs pre-copy rounds until the remaining memory can be sent within the
+/// allowed pause, and prints each round. With `throttle` set, it slows the
+/// guest whenever a round leaves as much memory to send as it started with.
+fn migrate(vm: &amp;Vm, link: &amp;Link, throttle: bool) {
+    let suffix = if throttle { ", with throttling" } else { "" };
+    println!("{} over {}{suffix}:", vm.name, link.name);
+
+    let mut remaining = vm.memory_gb; // memory still to be sent
+    let mut slowed = 0.0; // fraction by which the guest is slowed
+    let mut elapsed = 0.0;
+    for round in 1..=MAX_ROUNDS {
+        if remaining &lt;= link.gbps * MAX_PAUSE_SECONDS {
+            let pause = remaining / link.gbps;
+            println!("  round {round:2}: VM paused, {remaining:.2} GB sent in {pause:.2} s");
+            println!("  done in {:.1} s; the VM was paused for {:.0} ms", elapsed + pause, pause * 1000.0);
+            return;
+        }
+        let seconds = remaining / link.gbps;
+        let dirtied = (vm.dirty_gbps * (1.0 - slowed) * seconds).min(vm.memory_gb);
+        println!("  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile");
+        elapsed += seconds;
+        if dirtied &gt;= remaining {
+            if !throttle || slowed &gt;= MAX_THROTTLE {
+                println!("  does not converge: memory changes as fast as the link carries it");
+                return;
+            }
+            slowed += THROTTLE_STEP;
+            println!("            no progress: guest slowed to {:.0}% of full speed", (1.0 - slowed) * 100.0);
+        }
+        remaining = dirtied;
+    }
+    println!("  gave up after {MAX_ROUNDS} rounds");
+}</code></pre>
+<p>A round that dirties at least as much as it sent has made no progress. Without
+throttling the function reports that the migration does not converge. With throttling
+it slows the guest by another 20 percent and tries again.</p>
+<h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<p>The run uses two VMs and the four links our fleet has: the Orin NX’s 1 GbE, one of a
+Thor’s 25 GbE lanes, all four lanes bonded together, and the 200 GbE cable between the
+two Sparks.</p>
+<p class="listing"><b>Listing 6.5</b> The VMs, the links, and the six migrations, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
+
+<pre><code class="language-go">func main() {
+	// An inference VM sized for the Orin NX, and a training VM sized for a
+	// Thor or a Spark.
+	inference := VM{"16 GB inference VM (0.2 GB/s changed)", 16, 0.2}
+	training := VM{"100 GB training VM (4 GB/s changed)", 100, 4}
+
+	// The links in the fleet, in gigabytes per second.
+	orin := Link{"1 GbE", 0.125}
+	lane := Link{"one 25 GbE lane", 3.125}
+	bonded := Link{"four bonded 25 GbE lanes", 12.5}
+	spark := Link{"the Sparks' 200 GbE cable", 25}
+
+	Migrate(inference, orin, false)
+	Migrate(inference, lane, false)
+	Migrate(training, lane, false)
+	Migrate(training, lane, true)
+	Migrate(training, bonded, false)
+	Migrate(training, spark, false)
+}
+</code></pre>
+<p class="listing"><b>Listing 6.6</b> The VMs, the links, and the six migrations, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn main() {
+    // An inference VM sized for the Orin NX, and a training VM sized for a
+    // Thor or a Spark.
+    let inference = Vm { name: "16 GB inference VM (0.2 GB/s changed)", memory_gb: 16.0, dirty_gbps: 0.2 };
+    let training = Vm { name: "100 GB training VM (4 GB/s changed)", memory_gb: 100.0, dirty_gbps: 4.0 };
+
+    // The links in the fleet, in gigabytes per second.
+    let orin = Link { name: "1 GbE", gbps: 0.125 };
+    let lane = Link { name: "one 25 GbE lane", gbps: 3.125 };
+    let bonded = Link { name: "four bonded 25 GbE lanes", gbps: 12.5 };
+    let spark = Link { name: "the Sparks' 200 GbE cable", gbps: 25.0 };
+
+    migrate(&amp;inference, &amp;orin, false);
+    migrate(&amp;inference, &amp;lane, false);
+    migrate(&amp;training, &amp;lane, false);
+    migrate(&amp;training, &amp;lane, true);
+    migrate(&amp;training, &amp;bonded, false);
+    migrate(&amp;training, &amp;spark, false);
+}</code></pre>
+<pre><code class="language-console">$ go run ./migration
+16 GB inference VM (0.2 GB/s changed) over 1 GbE:
+  round  1:  16.00 GB sent in  128.0 s,  16.00 GB changed meanwhile
+  does not converge: memory changes as fast as the link carries it
+16 GB inference VM (0.2 GB/s changed) over one 25 GbE lane:
+  round  1:  16.00 GB sent in    5.1 s,   1.02 GB changed meanwhile
+  round  2:   1.02 GB sent in    0.3 s,   0.07 GB changed meanwhile
+  round  3: VM paused, 0.07 GB sent in 0.02 s
+  done in 5.5 s; the VM was paused for 21 ms
+100 GB training VM (4 GB/s changed) over one 25 GbE lane:
+  round  1: 100.00 GB sent in   32.0 s, 100.00 GB changed meanwhile
+  does not converge: memory changes as fast as the link carries it
+100 GB training VM (4 GB/s changed) over one 25 GbE lane, with throttling:
+  round  1: 100.00 GB sent in   32.0 s, 100.00 GB changed meanwhile
+            no progress: guest slowed to 80% of full speed
+  round  2: 100.00 GB sent in   32.0 s, 100.00 GB changed meanwhile
+            no progress: guest slowed to 60% of full speed
+  round  3: 100.00 GB sent in   32.0 s,  76.80 GB changed meanwhile
+  round  4:  76.80 GB sent in   24.6 s,  58.98 GB changed meanwhile
+  round  5:  58.98 GB sent in   18.9 s,  45.30 GB changed meanwhile
+  round  6:  45.30 GB sent in   14.5 s,  34.79 GB changed meanwhile
+  round  7:  34.79 GB sent in   11.1 s,  26.72 GB changed meanwhile
+  round  8:  26.72 GB sent in    8.5 s,  20.52 GB changed meanwhile
+  round  9:  20.52 GB sent in    6.6 s,  15.76 GB changed meanwhile
+  round 10:  15.76 GB sent in    5.0 s,  12.10 GB changed meanwhile
+  round 11:  12.10 GB sent in    3.9 s,   9.30 GB changed meanwhile
+  round 12:   9.30 GB sent in    3.0 s,   7.14 GB changed meanwhile
+  round 13:   7.14 GB sent in    2.3 s,   5.48 GB changed meanwhile
+  round 14:   5.48 GB sent in    1.8 s,   4.21 GB changed meanwhile
+  round 15:   4.21 GB sent in    1.3 s,   3.23 GB changed meanwhile
+  round 16:   3.23 GB sent in    1.0 s,   2.48 GB changed meanwhile
+  round 17:   2.48 GB sent in    0.8 s,   1.91 GB changed meanwhile
+  round 18:   1.91 GB sent in    0.6 s,   1.46 GB changed meanwhile
+  round 19:   1.46 GB sent in    0.5 s,   1.12 GB changed meanwhile
+  round 20:   1.12 GB sent in    0.4 s,   0.86 GB changed meanwhile
+  round 21: VM paused, 0.86 GB sent in 0.28 s
+  done in 201.0 s; the VM was paused for 276 ms
+100 GB training VM (4 GB/s changed) over four bonded 25 GbE lanes:
+  round  1: 100.00 GB sent in    8.0 s,  32.00 GB changed meanwhile
+  round  2:  32.00 GB sent in    2.6 s,  10.24 GB changed meanwhile
+  round  3:  10.24 GB sent in    0.8 s,   3.28 GB changed meanwhile
+  round  4: VM paused, 3.28 GB sent in 0.26 s
+  done in 11.6 s; the VM was paused for 262 ms
+100 GB training VM (4 GB/s changed) over the Sparks' 200 GbE cable:
+  round  1: 100.00 GB sent in    4.0 s,  16.00 GB changed meanwhile
+  round  2:  16.00 GB sent in    0.6 s,   2.56 GB changed meanwhile
+  round  3: VM paused, 2.56 GB sent in 0.10 s
+  done in 4.7 s; the VM was paused for 102 ms
+</code></pre>
+<p>The inference VM dirties 0.2 GB per second. The Orin NX’s 1 GbE link carries 0.125 GB
+per second, which is less, so after 128 seconds of copying all 16 GB are dirty again.
+Over one 25 GbE lane the same VM moves in 5.5 seconds with a pause of 21 milliseconds.
+The VM is the same in both runs. The link decides the outcome.</p>
+<p>The training VM dirties 4 GB per second, which is more than one 25 GbE lane carries, so
+that migration does not converge either. With throttling, the first two rounds make no
+progress and the guest is slowed twice, to 60 percent of full speed. At that speed it
+dirties 2.4 GB per second, the factor becomes 2.4 / 3.125 = 0.768, and the rounds
+shrink, slowly: the migration takes 21 rounds and 201 seconds, and the training job
+runs at reduced speed for most of that time.</p>
+<p>Over the four bonded lanes the factor is 0.32 and the migration takes 11.6 seconds.
+Over the Sparks’ cable it is 0.16 and the migration takes 4.7 seconds, with a pause of
+102 milliseconds against 262.</p>
+<p>Animation 6.1 plays three of these migrations for the training VM, with the memory still
+to send beside the memory that changes during the round.</p>
+<figure class="anim">
+<video class="motion" src="figures/pre-copy-rounds.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two bars: the memory still to send, which drains during a round, and the memory changed during that round, which grows. Over four bonded lanes the rounds send 100, 32, 10.24 and 3.28 GB, and the VM is paused for the last one and moves in 11.6 seconds. Over one lane, the first round ends with 100 GB changed again and the migration does not converge. With the guest slowed to 60 percent the rounds shrink by 0.768 each, and the VM moves after 21 rounds and 201 seconds." data-chapters="[[0.0, &quot;12.5 GB/s&quot;], [17.1, &quot;3.125 GB/s&quot;], [29.46, &quot;slowed guest&quot;]]"><img src="figures/pre-copy-rounds.gif" alt="Two bars: the memory still to send, which drains during a round, and the memory changed during that round, which grows. Over four bonded lanes the rounds send 100, 32, 10.24 and 3.28 GB, and the VM is paused for the last one and moves in 11.6 seconds. Over one lane, the first round ends with 100 GB changed again and the migration does not converge. With the guest slowed to 60 percent the rounds shrink by 0.768 each, and the VM moves after 21 rounds and 201 seconds."></video>
+<figcaption><b>Animation 6.1</b> Pre-copy over a fast link, over a link slower than the VM's writes, and over that link with the guest slowed.</figcaption>
+</figure>
+<p>This is the reason clusters that migrate large VMs give migration a fast network of its
+own. The memory size sets how long the first round takes. The ratio of dirty rate to
+link rate sets whether there is a last round at all.</p>
+<h2 id="migration-in-kubevirt"><a class="header" href="#migration-in-kubevirt">Migration in KubeVirt</a></h2>
+<p>KubeVirt runs this algorithm through objects. A <em>VirtualMachineInstanceMigration</em> names
+a running instance. A controller creates a second launcher pod on another node, the two
+QEMU processes connect to each other, and the source sends its memory in rounds. When
+the migration completes, the instance’s status names the new node and the old pod is
+removed.</p>
+<p>A VM’s spec can set <code>evictionStrategy: LiveMigrate</code>. An eviction of the launcher pod,
+the request chapter 4’s drain sends for every pod on a node, then starts a migration and
+is refused until the VM has moved. This is how the two chapters meet: the remediation
+controller drains with the Eviction API and needs no knowledge of VMs, and each VM
+leaves in the way its owner chose.</p>
+<h3 id="the-vm-that-cannot-move"><a class="header" href="#the-vm-that-cannot-move">The VM that cannot move</a></h3>
+<p>Step 4 of pre-copy sends “the CPU and device state”. For a virtual disk or a virtual
+network card, the hypervisor implements the device, so it has that state in its own
+memory and can send it.</p>
+<p>A GPU given to the VM by passthrough is different. The device’s state, including
+everything in the GPU’s memory, is inside the physical card on the source host, and the
+host gave up its driver for that card when it attached the stub. The hypervisor has
+nothing to read and nothing to send, and the target host’s GPU is a different physical
+device. KubeVirt therefore marks a VM with a passed-through device as not migratable.
+Draining its node means shutting the VM down and starting it again elsewhere, and the
+checkpointing discipline of chapter 4 applies to the jobs inside it.</p>
+<p>With a vGPU, the host’s driver holds the device’s state and can save and restore it, so
+migration is possible when the host driver and the hypervisor both support it. That
+support depends on the driver and hypervisor versions, and has to be checked for each
+combination.</p>
+<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<p class="listing"><b>Listing 6.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
+
+<pre><code class="language-go">// Command migration models the live migration of a virtual machine: moving a
+// running VM's memory from one host to another while the VM keeps running.
+//
+// The model is the pre-copy algorithm. Each round sends the memory that
+// changed during the round before it. The VM is paused only for the last
+// round, when what remains is small enough to send within the allowed pause.
+// The program runs the algorithm for VMs of two sizes over the links in our
+// fleet and prints each round.
+//
+// Run it from code/go with:
+//
+//	go run ./migration
+package main
+
+import "fmt"
+
+// VM describes the virtual machine being moved.
+type VM struct {
+	// Name labels the VM in the output.
+	Name string
+	// MemoryGB is the size of the VM's memory.
+	MemoryGB float64
+	// DirtyGBps is how much memory the VM's programs change each second.
+	DirtyGBps float64
+}
+
+// Link is the network path between the two hosts.
+type Link struct {
+	// Name labels the link in the output.
+	Name string
+	// GBps is what the link carries, in gigabytes per second. A link of
+	// 8 gigabits per second carries 1 gigabyte per second.
+	GBps float64
+}
+
+// Limits of the algorithm.
+const (
+	// maxPauseSeconds is the longest the VM may be paused for the last round.
+	maxPauseSeconds = 0.3
+	// maxRounds ends a migration that keeps making progress too slowly.
+	maxRounds = 30
+	// throttleStep is how much more the guest is slowed each time a round
+	// fails to shrink the remaining memory, as a fraction of full speed.
+	throttleStep = 0.2
+	// maxThrottle is the most the guest may be slowed.
+	maxThrottle = 0.8
+)
+
+
+// Migrate runs pre-copy rounds until the remaining memory can be sent within
+// the allowed pause, and prints each round. With throttle set, it slows the
+// guest whenever a round leaves as much memory to send as it started with.
+func Migrate(vm VM, link Link, throttle bool) {
+	fmt.Printf("%s over %s", vm.Name, link.Name)
+	if throttle {
+		fmt.Print(", with throttling")
+	}
+	fmt.Println(":")
+
+	remaining := vm.MemoryGB // memory still to be sent
+	slowed := 0.0            // fraction by which the guest is slowed
+	elapsed := 0.0
+	for round := 1; round &lt;= maxRounds; round++ {
+		if remaining &lt;= link.GBps*maxPauseSeconds {
+			pause := remaining / link.GBps
+			fmt.Printf("  round %2d: VM paused, %.2f GB sent in %.2f s\n", round, remaining, pause)
+			fmt.Printf("  done in %.1f s; the VM was paused for %.0f ms\n", elapsed+pause, pause*1000)
+			return
+		}
+		seconds := remaining / link.GBps
+		dirtied := min(vm.DirtyGBps*(1-slowed)*seconds, vm.MemoryGB)
+		fmt.Printf("  round %2d: %6.2f GB sent in %6.1f s, %6.2f GB changed meanwhile\n",
+			round, remaining, seconds, dirtied)
+		elapsed += seconds
+		if dirtied &gt;= remaining {
+			if !throttle || slowed &gt;= maxThrottle {
+				fmt.Println("  does not converge: memory changes as fast as the link carries it")
+				return
+			}
+			slowed += throttleStep
+			fmt.Printf("            no progress: guest slowed to %.0f%% of full speed\n", (1-slowed)*100)
+		}
+		remaining = dirtied
+	}
+	fmt.Printf("  gave up after %d rounds\n", maxRounds)
+}
+
+
+func main() {
+	// An inference VM sized for the Orin NX, and a training VM sized for a
+	// Thor or a Spark.
+	inference := VM{"16 GB inference VM (0.2 GB/s changed)", 16, 0.2}
+	training := VM{"100 GB training VM (4 GB/s changed)", 100, 4}
+
+	// The links in the fleet, in gigabytes per second.
+	orin := Link{"1 GbE", 0.125}
+	lane := Link{"one 25 GbE lane", 3.125}
+	bonded := Link{"four bonded 25 GbE lanes", 12.5}
+	spark := Link{"the Sparks' 200 GbE cable", 25}
+
+	Migrate(inference, orin, false)
+	Migrate(inference, lane, false)
+	Migrate(training, lane, false)
+	Migrate(training, lane, true)
+	Migrate(training, bonded, false)
+	Migrate(training, spark, false)
+}
+</code></pre>
+<p class="listing"><b>Listing 6.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the live migration of a virtual machine: moving a running VM's
+//! memory from one host to another while the VM keeps running.
+//!
+//! The model is the pre-copy algorithm. Each round sends the memory that
+//! changed during the round before it. The VM is paused only for the last
+//! round, when what remains is small enough to send within the allowed pause.
+//! The program runs the algorithm for VMs of two sizes over the links in our
+//! fleet and prints each round.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p migration
+//! ```
+
+/// The virtual machine being moved.
+struct Vm {
+    /// Labels the VM in the output.
+    name: &amp;'static str,
+    /// The size of the VM's memory.
+    memory_gb: f64,
+    /// How much memory the VM's programs change each second.
+    dirty_gbps: f64,
+}
+
+/// The network path between the two hosts.
+struct Link {
+    /// Labels the link in the output.
+    name: &amp;'static str,
+    /// What the link carries, in gigabytes per second. A link of 8 gigabits
+    /// per second carries 1 gigabyte per second.
+    gbps: f64,
+}
+
+/// The longest the VM may be paused for the last round, in seconds.
+const MAX_PAUSE_SECONDS: f64 = 0.3;
+/// Ends a migration that keeps making progress too slowly.
+const MAX_ROUNDS: u32 = 30;
+/// How much more the guest is slowed each time a round fails to shrink the
+/// remaining memory, as a fraction of full speed.
+const THROTTLE_STEP: f64 = 0.2;
+/// The most the guest may be slowed.
+const MAX_THROTTLE: f64 = 0.8;
+
+/// Runs pre-copy rounds until the remaining memory can be sent within the
+/// allowed pause, and prints each round. With `throttle` set, it slows the
+/// guest whenever a round leaves as much memory to send as it started with.
+fn migrate(vm: &amp;Vm, link: &amp;Link, throttle: bool) {
+    let suffix = if throttle { ", with throttling" } else { "" };
+    println!("{} over {}{suffix}:", vm.name, link.name);
+
+    let mut remaining = vm.memory_gb; // memory still to be sent
+    let mut slowed = 0.0; // fraction by which the guest is slowed
+    let mut elapsed = 0.0;
+    for round in 1..=MAX_ROUNDS {
+        if remaining &lt;= link.gbps * MAX_PAUSE_SECONDS {
+            let pause = remaining / link.gbps;
+            println!("  round {round:2}: VM paused, {remaining:.2} GB sent in {pause:.2} s");
+            println!("  done in {:.1} s; the VM was paused for {:.0} ms", elapsed + pause, pause * 1000.0);
+            return;
+        }
+        let seconds = remaining / link.gbps;
+        let dirtied = (vm.dirty_gbps * (1.0 - slowed) * seconds).min(vm.memory_gb);
+        println!("  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile");
+        elapsed += seconds;
+        if dirtied &gt;= remaining {
+            if !throttle || slowed &gt;= MAX_THROTTLE {
+                println!("  does not converge: memory changes as fast as the link carries it");
+                return;
+            }
+            slowed += THROTTLE_STEP;
+            println!("            no progress: guest slowed to {:.0}% of full speed", (1.0 - slowed) * 100.0);
+        }
+        remaining = dirtied;
+    }
+    println!("  gave up after {MAX_ROUNDS} rounds");
+}
+
+fn main() {
+    // An inference VM sized for the Orin NX, and a training VM sized for a
+    // Thor or a Spark.
+    let inference = Vm { name: "16 GB inference VM (0.2 GB/s changed)", memory_gb: 16.0, dirty_gbps: 0.2 };
+    let training = Vm { name: "100 GB training VM (4 GB/s changed)", memory_gb: 100.0, dirty_gbps: 4.0 };
+
+    // The links in the fleet, in gigabytes per second.
+    let orin = Link { name: "1 GbE", gbps: 0.125 };
+    let lane = Link { name: "one 25 GbE lane", gbps: 3.125 };
+    let bonded = Link { name: "four bonded 25 GbE lanes", gbps: 12.5 };
+    let spark = Link { name: "the Sparks' 200 GbE cable", gbps: 25.0 };
+
+    migrate(&amp;inference, &amp;orin, false);
+    migrate(&amp;inference, &amp;lane, false);
+    migrate(&amp;training, &amp;lane, false);
+    migrate(&amp;training, &amp;lane, true);
+    migrate(&amp;training, &amp;bonded, false);
+    migrate(&amp;training, &amp;spark, false);
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A virtual machine on Linux is a QEMU process that runs guest code through KVM. KubeVirt
+runs that process inside a pod, so the scheduler, quotas, and drains treat a VM as a
+pod.</li>
+<li>Passthrough gives a VM one whole GPU and removes it from the host. A vGPU gives a VM a
+share of a GPU that the host’s driver still controls.</li>
+<li>Pre-copy migration sends memory in rounds while the VM runs, and pauses the VM only
+for the last round.</li>
+<li>Each round is smaller than the one before by the ratio of the dirty rate to the link
+rate. A ratio of one or more means the migration does not finish without slowing the
+guest or switching to post-copy.</li>
+<li>A VM with a passed-through GPU cannot be migrated live, because the device’s state is
+out of the hypervisor’s reach.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>KubeVirt user guide, Architecture:
+<a href="https://kubevirt.io/user-guide/architecture/">https://kubevirt.io/user-guide/architecture/</a></li>
+<li>KubeVirt user guide, Live migration:
+<a href="https://kubevirt.io/user-guide/compute/live_migration/">https://kubevirt.io/user-guide/compute/live_migration/</a></li>
+<li>KubeVirt user guide, Host devices assignment:
+<a href="https://kubevirt.io/user-guide/compute/host-devices/">https://kubevirt.io/user-guide/compute/host-devices/</a></li>
+<li>QEMU, Migration framework:
+<a href="https://www.qemu.org/docs/master/devel/migration/main.html">https://www.qemu.org/docs/master/devel/migration/main.html</a></li>
+<li>The Linux kernel, VFIO:
+<a href="https://docs.kernel.org/driver-api/vfio.html">https://docs.kernel.org/driver-api/vfio.html</a></li>
+<li>C. Clark and others, “Live Migration of Virtual Machines”, 2nd USENIX Symposium on
+Networked Systems Design and Implementation (NSDI), 2005.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="05-new-cloud-account.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="07-collective-communication.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="05-new-cloud-account.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="07-collective-communication.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

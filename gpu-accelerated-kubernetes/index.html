@@ -29,6 +29,7 @@
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="theme/custom-84de3dd1.css">
+        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -36,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d0132860.js";
+            window.path_to_searchindex_js = "searchindex-39244b02.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d2103709.js"></script>
+        <script src="toc-f31bf49e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -223,6 +224,11 @@ machine’s hardware devices, and its image does not contain the machine’s GPU
 a pod has been given a GPU, the runtime adds the GPU’s device files and the driver’s
 libraries to the container just before it starts, so that a program inside it can use the
 GPU.</p>
+<p>Figure I.1 follows one request for a GPU past both pieces.</p>
+<figure>
+<img src="figures/gpu-request.svg" alt="A pod whose limits ask for nvidia.com/gpu: 1 goes to the scheduler, which picks a machine that advertises a free unit. On that machine the kubelet starts the pod&#39;s containers, the device plugin reports the number of GPUs to the kubelet, and the GPU container runtime adds the GPU&#39;s device files and driver libraries to the container.">
+<figcaption><b>Figure I.1</b> A pod asks for one GPU, the scheduler finds a machine that advertises one, and the two vendor pieces on that machine count the GPUs and open one to the container.</figcaption>
+</figure>
 <p>We develop and test every example on a single-node cluster created with kind, a tool that
 runs Kubernetes nodes as Docker containers. Appendix A shows how we build that cluster and
 install both pieces on it.</p>
@@ -268,9 +274,45 @@ $ cargo run -p gpujob
 Appendix A.</p>
 </li>
 </ul>
+<p>Every program has the same name in both trees. From chapter 3 on, each is one directory under
+<code>code/go</code>, run with <code>go run ./&lt;name&gt;</code>, and one package under <code>code/rust</code>, run with
+<code>cargo run -p &lt;name&gt;</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Chapter</th><th>Programs</th></tr>
+</thead>
+<tbody>
+<tr><td>1. Keeping a local copy of the cluster</td><td><code>informer</code></td></tr>
+<tr><td>1.1 A GPU job controller on a real cluster</td><td><code>gpujob</code></td></tr>
+<tr><td>2. What one GPU means</td><td><code>gpuusage</code>, and the CUDA programs <code>gpu_info</code> and <code>gpu_load</code></td></tr>
+<tr><td>3. Knowing which machines are alive</td><td><code>heartbeats</code>, <code>phi</code>, <code>leaseagent</code>, <code>leasewatch</code></td></tr>
+<tr><td>4. A control plane for a fleet of hosts</td><td><code>fleethealth</code>, <code>fencing</code></td></tr>
+<tr><td>5. Kubernetes in a new cloud account</td><td><code>provisioner</code></td></tr>
+<tr><td>6. Virtual machines on Kubernetes</td><td><code>migration</code></td></tr>
+<tr><td>7. Collective communication and training failures</td><td><code>allreduce</code></td></tr>
+<tr><td>8. Placing jobs on GPUs</td><td><code>gangsched</code></td></tr>
+<tr><td>9. Counting across replicas</td><td><code>counter</code></td></tr>
+<tr><td>10. A content-addressed artifact store</td><td><code>cas</code></td></tr>
+<tr><td>11. A command-line tool for Windows, macOS, and Linux</td><td><code>gpuctl</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The programs of chapters 4 to 10 are models: they need no cluster, finish in well under a
+second, and print the same output in Go and in Rust. The output shown in each chapter is
+included from <code>code/output</code>, where a run of the program wrote it.</p>
+<p>Each chapter introduces its programs in the same order. It starts from the problem and a
+small example worked by hand, draws the design, and states the types and the rules they
+keep in a box headed “Low-level design”. The code then appears in short parts, each next to
+the text that explains it, and the complete program is printed at the end of the chapter.</p>
 <p>The Go module declares Go 1.26, and the Rust programs need Rust 1.89 or later, the
 minimum version of the kube crate. The controllers need a Kubernetes cluster in the
 current kubeconfig context.</p>
+<p>The diagrams are drawn by <code>tools/draw_figures.py</code> and the animations by
+<code>tools/animations.py</code>; <code>make figures</code> and <code>make animations</code> run them, and their output in
+<code>src/figures</code> is part of the repository. The book’s build removes the <code>ANCHOR</code> comments
+that mark the parts of each program, with <code>tools/strip_anchors.py</code>, so Python 3 has to be
+installed.</p>
 <p>To read the book in a browser, install mdBook and run:</p>
 <pre><code class="language-console">$ mdbook serve --open
 </code></pre>
@@ -320,6 +362,8 @@ current kubeconfig context.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="theme/figures-f9e9be6d.js"></script>
+        <script src="theme/anim-4192821e.js"></script>
 
 
 

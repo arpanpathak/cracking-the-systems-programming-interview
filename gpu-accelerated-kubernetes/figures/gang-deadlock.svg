@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 952 372" width="952" height="372" role="img" aria-label="Two rows of the fleet&#x27;s eight machines. In the first row, placed one pod at a time, train-a and train-b hold four machines each in alternation; each needs five and no job runs. In the second row, placed one job at a time, train-a holds the five Thors and runs, and the Orin NX and the two Sparks are free while train-b waits.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="952" height="372" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Two jobs of five workers on eight GPUs</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A job with four of its five workers does no work and keeps four GPUs from everyone else.</text>
+  <text x="32.0" y="112.0" class="tab" text-anchor="start" xml:space="preserve">ONE POD AT A TIME</text>
+  <rect x="32.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="82.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">orin-nx-1</text>
+  <text x="82.0" y="162.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="144.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="194.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">spark-1</text>
+  <text x="194.0" y="162.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">train-b</text>
+  <rect x="256.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="306.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">spark-2</text>
+  <text x="306.0" y="162.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="368.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="418.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-1</text>
+  <text x="418.0" y="162.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">train-b</text>
+  <rect x="480.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="530.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-2</text>
+  <text x="530.0" y="162.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="592.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="642.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-3</text>
+  <text x="642.0" y="162.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">train-b</text>
+  <rect x="704.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="754.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-4</text>
+  <text x="754.0" y="162.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="816.0" y="124.0" width="100.0" height="50.0" rx="9" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="866.0" y="145.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-5</text>
+  <text x="866.0" y="162.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">train-b</text>
+  <text x="32.0" y="200.0" class="note" text-anchor="start" style="fill:#CF4526" xml:space="preserve">train-a holds 4 of 5. train-b holds 4 of 5. Eight GPUs are held and no job runs.</text>
+  <text x="32.0" y="258.0" class="tab" text-anchor="start" xml:space="preserve">ONE JOB AT A TIME</text>
+  <rect x="32.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.4"/>
+  <text x="82.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">orin-nx-1</text>
+  <text x="82.0" y="308.0" class="pill" text-anchor="middle" style="fill:#7F8EA0" xml:space="preserve">free</text>
+  <rect x="144.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.4"/>
+  <text x="194.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">spark-1</text>
+  <text x="194.0" y="308.0" class="pill" text-anchor="middle" style="fill:#7F8EA0" xml:space="preserve">free</text>
+  <rect x="256.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.4"/>
+  <text x="306.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">spark-2</text>
+  <text x="306.0" y="308.0" class="pill" text-anchor="middle" style="fill:#7F8EA0" xml:space="preserve">free</text>
+  <rect x="368.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="418.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-1</text>
+  <text x="418.0" y="308.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="480.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="530.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-2</text>
+  <text x="530.0" y="308.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="592.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="642.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-3</text>
+  <text x="642.0" y="308.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="704.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="754.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-4</text>
+  <text x="754.0" y="308.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <rect x="816.0" y="270.0" width="100.0" height="50.0" rx="9" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.4"/>
+  <text x="866.0" y="291.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">thor-5</text>
+  <text x="866.0" y="308.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">train-a</text>
+  <text x="32.0" y="346.0" class="note" text-anchor="start" style="fill:#2E8B3D" xml:space="preserve">train-a holds 5 of 5 and runs. train-b holds nothing and waits; three GPUs stay free.</text>
+</svg>

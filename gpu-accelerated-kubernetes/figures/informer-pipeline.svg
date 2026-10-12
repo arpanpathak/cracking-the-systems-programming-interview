@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 440" width="1050" height="440" role="img" aria-label="The API server numbers every write and stores objects in etcd. Inside the controller&#x27;s process, the reflector lists and then watches, applies each event to the cache first, and then adds the object&#x27;s name to the work queue. The controller gets a name from the queue, reads the object from the cache, and writes the status back to the API server with the version it read.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1050" height="440" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The parts of the model, and the order in which a change passes through them</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The reflector updates the cache before it queues the name, so a worker reads the new state.</text>
+  <rect x="32" y="120" width="230" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,120.7 H38 V183.3 H44 A11.3,11.3 0 0 1 32.7,172 V132 A11.3,11.3 0 0 1 44,120.7 Z" fill="#1F8A70"/>
+  <rect x="48" y="136.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(54.0,142.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="90.0" y="148.0" class="name" text-anchor="start" xml:space="preserve">API server</text>
+  <text x="90.0" y="166.0" class="sub" text-anchor="start" xml:space="preserve">numbers every write</text>
+  <path d="M62,259 A85.0,9 0 0 1 232,259 V333 A85.0,9 0 0 1 62,333 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="147.0" cy="259" rx="85.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="147.0" y="299.0" class="name" text-anchor="middle" xml:space="preserve">etcd</text>
+  <text x="147.0" y="317.0" class="sub" text-anchor="middle" xml:space="preserve">objects, by revision</text>
+  <path class="wire" d="M120,184 L120,250" marker-end="url(#head)"/>
+  <rect x="350" y="96" width="668" height="256" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="368" y="85" width="216.8" height="22" rx="11" fill="#1B2430"/>
+  <text x="476.4" y="100.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">THE CONTROLLER&#x27;S PROCESS</text>
+  <rect x="380" y="120" width="230" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M392,120.7 H386 V183.3 H392 A11.3,11.3 0 0 1 380.7,172 V132 A11.3,11.3 0 0 1 392,120.7 Z" fill="#1F8A70"/>
+  <rect x="396" y="136.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(402.0,142.0) scale(0.8333)"><path d="M7 4 2 9l5 5v-3.5h9V8H7zm10 6v3.5H8V16h9v3.5l5-5z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="438.0" y="148.0" class="name" text-anchor="start" xml:space="preserve">Reflector</text>
+  <text x="438.0" y="166.0" class="sub" text-anchor="start" xml:space="preserve">list, then watch</text>
+  <path class="wire" d="M262,152 L380,152" marker-end="url(#head)"/>
+  <rect x="294.2" y="143.0" width="53.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="321.0" y="155.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">events</text>
+  <path d="M730,115 A85.0,9 0 0 1 900,115 V189 A85.0,9 0 0 1 730,189 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="815.0" cy="115" rx="85.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="815.0" y="155.0" class="name" text-anchor="middle" xml:space="preserve">Cache</text>
+  <text x="815.0" y="173.0" class="sub" text-anchor="middle" xml:space="preserve">a copy of every object</text>
+  <path class="wire" d="M610,152 L730,152" marker-end="url(#head)"/>
+  <rect x="639.9" y="143.0" width="60.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="670.0" y="155.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">1 apply</text>
+  <rect x="380" y="262" width="230" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M392,262.7 H386 V325.3 H392 A11.3,11.3 0 0 1 380.7,314 V274 A11.3,11.3 0 0 1 392,262.7 Z" fill="#B7791F"/>
+  <rect x="396" y="278.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(402.0,284.0) scale(0.8333)"><path d="M12 2 2 7l10 5 10-5zm-7.8 8.6L2 11.7l10 5 10-5-2.2-1.1L12 14.5zm0 4.7L2 16.4l10 5 10-5-2.2-1.1L12 19.2z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="438.0" y="290.0" class="name" text-anchor="start" xml:space="preserve">Work queue</text>
+  <text x="438.0" y="308.0" class="sub" text-anchor="start" xml:space="preserve">names of changed objects</text>
+  <path class="wire" d="M495,184 L495,262" marker-end="url(#head)"/>
+  <rect x="455.0" y="214.0" width="80.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="495.0" y="226.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">2 add name</text>
+  <rect x="730" y="262" width="258" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M742,262.7 H736 V325.3 H742 A11.3,11.3 0 0 1 730.7,314 V274 A11.3,11.3 0 0 1 742,262.7 Z" fill="#1F8A70"/>
+  <rect x="746" y="278.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(752.0,284.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="788.0" y="290.0" class="name" text-anchor="start" xml:space="preserve">Controller</text>
+  <text x="788.0" y="308.0" class="sub" text-anchor="start" xml:space="preserve">reconcile(name)</text>
+  <path class="wire" d="M610,294 L730,294" marker-end="url(#head)"/>
+  <rect x="653.1" y="285.0" width="33.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="670.0" y="297.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">Get</text>
+  <path class="wire" d="M815,262 L815,198" marker-end="url(#head)"/>
+  <rect x="794.8" y="221.0" width="40.4" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="815.0" y="233.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">read</text>
+  <path class="wire" d="M900,326 L900,391 Q900,400 891,400 L209,400 Q200,400 200,391 L200,184" marker-end="url(#head)"/>
+  <rect x="387.9" y="391.0" width="324.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="550.0" y="403.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">write the status with the version that was read</text>
+</svg>
