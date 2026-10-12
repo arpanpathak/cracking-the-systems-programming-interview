@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -431,6 +431,7 @@ into the CRD as field descriptions, and <code>kubectl explain gpujob.spec</code>
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		status.Phase = PhaseRunning
@@ -439,12 +440,14 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	case corev1.PodFailed:
 		status.Phase = PhaseFailed
 	}
+
 	// A pod that cannot be placed explains why in its PodScheduled condition.
 	for _, c := range pod.Status.Conditions {
 		if c.Type == corev1.PodScheduled &amp;&amp; c.Status == corev1.ConditionFalse {
 			status.Message = c.Message
 		}
 	}
+
 	return status
 }
 </code></pre>
@@ -584,6 +587,7 @@ use kube::CustomResourceExt;
 /// Generates the definition from the `GpuJob` type and prints it.
 fn main() -&gt; serde_json::Result&lt;()&gt; {
     println!("{}", serde_json::to_string_pretty(&amp;GpuJob::crd())?);
+
     Ok(())
 }</code></pre>
 <pre><code class="language-console">$ cargo run -p gpujob --bin crdgen | kubectl apply -f -
@@ -624,7 +628,9 @@ func describe(obj any) string {
 	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
+
 	job := obj.(*gpujobv1.GpuJob)
+
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
 </code></pre>
@@ -633,21 +639,27 @@ func describe(obj any) string {
 <pre><code class="language-go">// run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
 		Scheme:            scheme,
 		DefaultNamespaces: map[string]cache.Config{namespace: {}},
 	})
+
 	if err != nil {
 		return err
 	}
+
 	ctx := ctrl.SetupSignalHandler()
 	informer, err := informers.GetInformer(ctx, &amp;gpujobv1.GpuJob{})
+
 	if err != nil {
 		return err
 	}
+
 	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj any, isInInitialList bool) {
 			if isInInitialList {
@@ -659,17 +671,21 @@ func run() error {
 		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
 		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
 	})
+
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("list started")
 	go informers.Start(ctx)
+
 	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
 		return fmt.Errorf("informer did not sync")
 	}
+
 	fmt.Println("list complete, watching")
 	&lt;-ctx.Done()
+
 	return nil
 }
 </code></pre>
@@ -700,6 +716,7 @@ use kube::{Api, Client, ResourceExt};
 /// Formats a job as its name, GPU count, and resource version.
 fn describe(job: &amp;GpuJob) -&gt; String {
     let version = job.resource_version().unwrap_or_default();
+
     format!("{} gpus={} v{version}", job.name_any(), job.spec.gpus)
 }
 
@@ -708,6 +725,7 @@ fn describe(job: &amp;GpuJob) -&gt; String {
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let jobs: Api&lt;GpuJob&gt; = Api::default_namespaced(Client::try_default().await?);
     let mut events = std::pin::pin!(watcher(jobs, watcher::Config::default()));
+
     while let Some(event) = events.try_next().await? {
         match event {
             Event::Init =&gt; println!("list started"),
@@ -717,6 +735,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
             Event::Delete(job) =&gt; println!("  deleted  {}", describe(&amp;job)),
         }
     }
+
     Ok(())
 }</code></pre>
 <p>The <code>Event</code> enum spells out the list-then-watch sequence we reasoned about in chapter 1.
@@ -826,6 +845,7 @@ func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
 	if len(job.Spec.Command) &gt; 0 {
 		container.WithCommand(job.Spec.Command...)
 	}
+
 	owner := metav1ac.OwnerReference().
 		WithAPIVersion(gpujobv1.GroupVersion.String()).
 		WithKind("GpuJob").
@@ -846,7 +866,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	if len(pod.Spec.Containers) == 0 {
 		return 0, false
 	}
+
 	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+
 	return int32(quantity.Value()), ok
 }
 </code></pre>
@@ -910,6 +932,7 @@ fn desired_pod(job: &amp;GpuJob) -&gt; Pod {
 fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
     let container = pod.spec.as_ref()?.containers.first()?;
     let limits = container.resources.as_ref()?.limits.as_ref()?;
+
     limits.get(GPU)?.0.parse().ok()
 }</code></pre>
 <p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
@@ -954,6 +977,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
 
 	var job gpujobv1.GpuJob
+
 	if err := r.Get(ctx, req.NamespacedName, &amp;job); err != nil {
 		// A job deleted since it was queued needs nothing: its pod goes with it.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -963,13 +987,16 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// for a different number of GPUs, delete the pod and come back after it is gone.
 	var pod corev1.Pod
 	err := r.Get(ctx, req.NamespacedName, &amp;pod)
+
 	switch {
 	case err == nil:
 		if gpus, ok := podGPUs(&amp;pod); !ok || gpus != job.Spec.GPUs {
 			log.Info("GPU count changed, replacing pod")
+
 			if err := r.Delete(ctx, &amp;pod); client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, err
 			}
+
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 	case !apierrors.IsNotFound(err):
@@ -984,14 +1011,17 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// yields the Pending phase, and the pod's creation event triggers the
 	// reconcile that reports its real progress.
 	status := gpujobv1.StatusFromPod(&amp;pod, job.Generation)
+
 	if job.Status != status {
 		log.Info("status changed", "phase", status.Phase, "message", status.Message)
 		patch := client.MergeFrom(job.DeepCopy())
 		job.Status = status
+
 		if err := r.Status().Patch(ctx, &amp;job, patch); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	// Changes to the pod trigger the next reconcile through Owns.
 	return ctrl.Result{}, nil
 }
@@ -1013,6 +1043,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
     {
         tracing::info!(%name, "GPU count changed, replacing pod");
         pods.delete(&amp;name, &amp;DeleteParams::default()).await?;
+
         return Ok(Action::requeue(Duration::from_secs(2)));
     }
 
@@ -1022,6 +1053,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         .await?;
 
     let status = GpuJobStatus::from_pod(&amp;pod, job.metadata.generation);
+
     if job.status.as_ref() != Some(&amp;status) {
         let message = status.message.as_deref().unwrap_or("");
         tracing::info!(%name, phase = ?status.phase, message, "status changed");
@@ -1033,6 +1065,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         jobs.patch_status(&amp;name, &amp;apply, &amp;Patch::Apply(patch))
             .await?;
     }
+
     // Changes to the pod trigger the next reconcile through `owns`.
     Ok(Action::await_change())
 }
@@ -1041,6 +1074,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
 #[allow(clippy::needless_pass_by_value)] // the signature is fixed by `Controller::run`
 fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&gt;) -&gt; Action {
     tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
+
     Action::requeue(Duration::from_secs(5))
 }</code></pre>
 <p>Our reconcile function receives a job and brings the cluster into line with it in three
@@ -1092,10 +1126,12 @@ func main() {
 	setup := ctrl.Log.WithName("setup")
 
 	scheme := runtime.NewScheme()
+
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering built-in types")
 		os.Exit(1)
 	}
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering GpuJob")
 		os.Exit(1)
@@ -1105,6 +1141,7 @@ func main() {
 		Scheme:  scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
 	})
+
 	if err != nil {
 		setup.Error(err, "creating manager")
 		os.Exit(1)
@@ -1260,34 +1297,44 @@ try to write it back.</p>
 <pre><code class="language-go">// run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+
 	if err != nil {
 		return err
 	}
 
 	var first gpujobv1.GpuJob
+
 	if err := c.Get(ctx, job, &amp;first); err != nil {
 		return err
 	}
+
 	second := first.DeepCopy()
 	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
 
 	first.Spec.GPUs++
+
 	if err := c.Update(ctx, &amp;first); err != nil {
 		return err
 	}
+
 	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
 
 	second.Spec.GPUs += 2
 	err = c.Update(ctx, second)
 	var status *apierrors.StatusError
+
 	if errors.As(err, &amp;status) &amp;&amp; status.ErrStatus.Code == http.StatusConflict {
 		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+
 		return nil
 	}
+
 	return fmt.Errorf("unexpected result: %v", err)
 }
 </code></pre>
@@ -1328,12 +1375,14 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
     );
 
     second.spec.gpus += 2;
+
     match jobs.replace(JOB, &amp;PostParams::default(), &amp;second).await {
         Err(kube::Error::Api(status)) if status.code == 409 =&gt; {
             println!("second write refused: {} {}", status.code, status.message);
         }
         other =&gt; println!("unexpected: {other:?}"),
     }
+
     Ok(())
 }</code></pre>
 <p>The Go version recognises the conflict with <code>errors.As</code>, which digs the API server’s
@@ -1467,6 +1516,7 @@ func init() {
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		status.Phase = PhaseRunning
@@ -1475,12 +1525,14 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	case corev1.PodFailed:
 		status.Phase = PhaseFailed
 	}
+
 	// A pod that cannot be placed explains why in its PodScheduled condition.
 	for _, c := range pod.Status.Conditions {
 		if c.Type == corev1.PodScheduled &amp;&amp; c.Status == corev1.ConditionFalse {
 			status.Message = c.Message
 		}
 	}
+
 	return status
 }
 </code></pre>
@@ -1612,7 +1664,9 @@ func describe(obj any) string {
 	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
+
 	job := obj.(*gpujobv1.GpuJob)
+
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
 
@@ -1628,21 +1682,27 @@ func main() {
 // run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
 		Scheme:            scheme,
 		DefaultNamespaces: map[string]cache.Config{namespace: {}},
 	})
+
 	if err != nil {
 		return err
 	}
+
 	ctx := ctrl.SetupSignalHandler()
 	informer, err := informers.GetInformer(ctx, &amp;gpujobv1.GpuJob{})
+
 	if err != nil {
 		return err
 	}
+
 	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj any, isInInitialList bool) {
 			if isInInitialList {
@@ -1654,17 +1714,21 @@ func run() error {
 		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
 		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
 	})
+
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("list started")
 	go informers.Start(ctx)
+
 	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
 		return fmt.Errorf("informer did not sync")
 	}
+
 	fmt.Println("list complete, watching")
 	&lt;-ctx.Done()
+
 	return nil
 }
 </code></pre>
@@ -1722,6 +1786,7 @@ func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
 	if len(job.Spec.Command) &gt; 0 {
 		container.WithCommand(job.Spec.Command...)
 	}
+
 	owner := metav1ac.OwnerReference().
 		WithAPIVersion(gpujobv1.GroupVersion.String()).
 		WithKind("GpuJob").
@@ -1742,7 +1807,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	if len(pod.Spec.Containers) == 0 {
 		return 0, false
 	}
+
 	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+
 	return int32(quantity.Value()), ok
 }
 
@@ -1759,6 +1826,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
 
 	var job gpujobv1.GpuJob
+
 	if err := r.Get(ctx, req.NamespacedName, &amp;job); err != nil {
 		// A job deleted since it was queued needs nothing: its pod goes with it.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -1768,13 +1836,16 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// for a different number of GPUs, delete the pod and come back after it is gone.
 	var pod corev1.Pod
 	err := r.Get(ctx, req.NamespacedName, &amp;pod)
+
 	switch {
 	case err == nil:
 		if gpus, ok := podGPUs(&amp;pod); !ok || gpus != job.Spec.GPUs {
 			log.Info("GPU count changed, replacing pod")
+
 			if err := r.Delete(ctx, &amp;pod); client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, err
 			}
+
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 	case !apierrors.IsNotFound(err):
@@ -1789,14 +1860,17 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// yields the Pending phase, and the pod's creation event triggers the
 	// reconcile that reports its real progress.
 	status := gpujobv1.StatusFromPod(&amp;pod, job.Generation)
+
 	if job.Status != status {
 		log.Info("status changed", "phase", status.Phase, "message", status.Message)
 		patch := client.MergeFrom(job.DeepCopy())
 		job.Status = status
+
 		if err := r.Status().Patch(ctx, &amp;job, patch); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	// Changes to the pod trigger the next reconcile through Owns.
 	return ctrl.Result{}, nil
 }
@@ -1808,10 +1882,12 @@ func main() {
 	setup := ctrl.Log.WithName("setup")
 
 	scheme := runtime.NewScheme()
+
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering built-in types")
 		os.Exit(1)
 	}
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering GpuJob")
 		os.Exit(1)
@@ -1821,6 +1897,7 @@ func main() {
 		Scheme:  scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
 	})
+
 	if err != nil {
 		setup.Error(err, "creating manager")
 		os.Exit(1)
@@ -1919,6 +1996,7 @@ fn desired_pod(job: &amp;GpuJob) -&gt; Pod {
 fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
     let container = pod.spec.as_ref()?.containers.first()?;
     let limits = container.resources.as_ref()?.limits.as_ref()?;
+
     limits.get(GPU)?.0.parse().ok()
 }
 
@@ -1937,6 +2015,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
     {
         tracing::info!(%name, "GPU count changed, replacing pod");
         pods.delete(&amp;name, &amp;DeleteParams::default()).await?;
+
         return Ok(Action::requeue(Duration::from_secs(2)));
     }
 
@@ -1946,6 +2025,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         .await?;
 
     let status = GpuJobStatus::from_pod(&amp;pod, job.metadata.generation);
+
     if job.status.as_ref() != Some(&amp;status) {
         let message = status.message.as_deref().unwrap_or("");
         tracing::info!(%name, phase = ?status.phase, message, "status changed");
@@ -1957,6 +2037,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         jobs.patch_status(&amp;name, &amp;apply, &amp;Patch::Apply(patch))
             .await?;
     }
+
     // Changes to the pod trigger the next reconcile through `owns`.
     Ok(Action::await_change())
 }
@@ -1965,6 +2046,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
 #[allow(clippy::needless_pass_by_value)] // the signature is fixed by `Controller::run`
 fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&gt;) -&gt; Action {
     tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
+
     Action::requeue(Duration::from_secs(5))
 }
 
@@ -2033,34 +2115,44 @@ func main() {
 // run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+
 	if err != nil {
 		return err
 	}
 
 	var first gpujobv1.GpuJob
+
 	if err := c.Get(ctx, job, &amp;first); err != nil {
 		return err
 	}
+
 	second := first.DeepCopy()
 	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
 
 	first.Spec.GPUs++
+
 	if err := c.Update(ctx, &amp;first); err != nil {
 		return err
 	}
+
 	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
 
 	second.Spec.GPUs += 2
 	err = c.Update(ctx, second)
 	var status *apierrors.StatusError
+
 	if errors.As(err, &amp;status) &amp;&amp; status.ErrStatus.Code == http.StatusConflict {
 		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+
 		return nil
 	}
+
 	return fmt.Errorf("unexpected result: %v", err)
 }
 </code></pre>

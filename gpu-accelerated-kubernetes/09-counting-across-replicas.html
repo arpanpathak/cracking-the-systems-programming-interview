@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -370,9 +370,11 @@ func (c *GCounter) Merge(other GCounter) {
 // Value is the count: the sum of every replica's entry.
 func (c GCounter) Value() int {
 	total := 0
+
 	for _, n := range c {
 		total += n
 	}
+
 	return total
 }
 </code></pre>
@@ -476,11 +478,13 @@ func oneNumber() {
 	totals := [replicas]int{}
 	adds := [replicas]int{300, 120, 40}
 	sum := 0
+
 	for r, n := range adds {
 		totals[r] += n
 		sum += n
 		fmt.Printf("  %-5s records %d GPU-seconds\n", names[r], n)
 	}
+
 	largest := max(totals[shelf], totals[desk], totals[bench])
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
@@ -491,9 +495,11 @@ func oneNumber() {
 /// larger of two numbers.
 fn one_number() {
     let adds = [300, 120, 40];
+
     for (name, n) in NAMES.iter().zip(adds) {
         println!("  {name:&lt;5} records {n} GPU-seconds");
     }
+
     let largest = adds.iter().max().expect("three replicas");
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
@@ -508,23 +514,28 @@ partition the rows are merged in an order chosen to be untidy, with one merge re
 // partition that cuts the bench off from the other two.
 func growOnly() {
 	var at [replicas]GCounter
+
 	for r, n := range [replicas]int{300, 120, 40} {
 		at[r].Add(r, n)
 	}
+
 	fmt.Println("  the bench is cut off; shelf and desk exchange counters")
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	at[shelf].Add(shelf, 60)
 	at[bench].Add(bench, 25)
+
 	for r := range at {
 		show(r, at[r])
 	}
+
 	fmt.Println("  the network heals; counters are exchanged in no particular order, some twice")
 	at[desk].Merge(at[bench])
 	at[shelf].Merge(at[desk])
 	at[bench].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
+
 	for r := range at {
 		show(r, at[r])
 	}
@@ -536,23 +547,28 @@ func growOnly() {
 /// partition that cuts the bench off from the other two.
 fn grow_only() {
     let mut at = [GCounter::default(); REPLICAS];
+
     for (r, n) in [300, 120, 40].into_iter().enumerate() {
         at[r].add(r, n);
     }
+
     println!("  the bench is cut off; shelf and desk exchange counters");
     at[SHELF].merge(at[DESK]);
     at[DESK].merge(at[SHELF]);
     at[SHELF].add(SHELF, 60);
     at[BENCH].add(BENCH, 25);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
+
     println!("  the network heals; counters are exchanged in no particular order, some twice");
     at[DESK].merge(at[BENCH]);
     at[SHELF].merge(at[DESK]);
     at[BENCH].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
@@ -571,11 +587,13 @@ func upAndDown() {
 	at[desk].Add(desk, 2)    // two start on the Sparks
 	at[shelf].Add(shelf, -1) // one Thor job ends
 	at[bench].Add(bench, -1) // the bench replica hears that a Spark job ended
+
 	for r := range at {
 		for other := range at {
 			at[r].Merge(at[other])
 		}
 	}
+
 	c := at[bench]
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
@@ -590,14 +608,21 @@ fn up_and_down() {
     at[DESK].add(DESK, 2); // two start on the Sparks
     at[SHELF].add(SHELF, -1); // one Thor job ends
     at[BENCH].add(BENCH, -1); // the bench replica hears that a Spark job ended
+
     for r in 0..REPLICAS {
         for other in 0..REPLICAS {
             let theirs = at[other];
             at[r].merge(theirs);
         }
     }
+
     let c = at[BENCH];
-    println!("  started {}, ended {}: {} GPUs in use", row(c.up.0), row(c.down.0), c.value());
+    println!(
+        "  started {}, ended {}: {} GPUs in use",
+        row(c.up.0),
+        row(c.down.0),
+        c.value()
+    );
 }</code></pre>
 <h3 id="a-quota-two-ways"><a class="header" href="#a-quota-two-ways">A quota, two ways</a></h3>
 <p>The last two experiments enforce a quota of six GPUs. <code>sharedLimit</code> lets each replica
@@ -616,12 +641,14 @@ func sharedLimit() {
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	fmt.Printf("  both replicas see %d of %d in use; then they lose contact\n", at[shelf].Value(), quota)
+
 	for _, r := range []int{shelf, desk} {
 		if at[r].Value()+2 &lt;= quota {
 			at[r].Add(r, 2)
 			fmt.Printf("  %-5s admits a 2-GPU job: by its count, %d of %d are in use\n", names[r], at[r].Value(), quota)
 		}
 	}
+
 	at[shelf].Merge(at[desk])
 	fmt.Printf("  after they merge: %d of %d in use\n", at[shelf].Value(), quota)
 }
@@ -636,8 +663,10 @@ func allowances() {
 	admit := func(r, gpus int) {
 		if left := share[r] - used[r]; left &lt; gpus {
 			fmt.Printf("  %-5s refuses a %d-GPU job: its share has %d left\n", names[r], gpus, left)
+
 			return
 		}
+
 		used[r] += gpus
 		fmt.Printf("  %-5s admits a %d-GPU job\n", names[r], gpus)
 	}
@@ -664,16 +693,28 @@ fn shared_limit() {
     let (shelf, desk) = (at[SHELF], at[DESK]);
     at[SHELF].merge(desk);
     at[DESK].merge(shelf);
-    println!("  both replicas see {} of {QUOTA} in use; then they lose contact", at[SHELF].value());
+    println!(
+        "  both replicas see {} of {QUOTA} in use; then they lose contact",
+        at[SHELF].value()
+    );
+
     for r in [SHELF, DESK] {
         if at[r].value() + 2 &lt;= QUOTA {
             at[r].add(r, 2);
-            println!("  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use", NAMES[r], at[r].value());
+            println!(
+                "  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use",
+                NAMES[r],
+                at[r].value()
+            );
         }
     }
+
     let desk = at[DESK];
     at[SHELF].merge(desk);
-    println!("  after they merge: {} of {QUOTA} in use", at[SHELF].value());
+    println!(
+        "  after they merge: {} of {QUOTA} in use",
+        at[SHELF].value()
+    );
 }
 
 /// Gives each replica a share of the quota. A replica admits a job only from
@@ -682,13 +723,23 @@ fn shared_limit() {
 fn allowances() {
     let mut share = [4, 2, 0];
     let mut used = [3, 1, 0];
-    println!("  shares {}, in use {}; then the replicas lose contact", row(share), row(used));
+    println!(
+        "  shares {}, in use {}; then the replicas lose contact",
+        row(share),
+        row(used)
+    );
     let admit = |share: &amp;[i64; REPLICAS], used: &amp;mut [i64; REPLICAS], r: usize, gpus: i64| {
         let left = share[r] - used[r];
+
         if left &lt; gpus {
-            println!("  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left", NAMES[r]);
+            println!(
+                "  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left",
+                NAMES[r]
+            );
+
             return;
         }
+
         used[r] += gpus;
         println!("  {:&lt;5} admits a {gpus}-GPU job", NAMES[r]);
     };
@@ -698,7 +749,12 @@ fn allowances() {
     share[DESK] -= 1;
     share[SHELF] += 1;
     admit(&amp;share, &amp;mut used, SHELF, 2);
-    println!("  shares {}, in use {}: {} of {QUOTA}", row(share), row(used), used.iter().sum::&lt;i64&gt;());
+    println!(
+        "  shares {}, in use {}: {} of {QUOTA}",
+        row(share),
+        row(used),
+        used.iter().sum::&lt;i64&gt;()
+    );
 }</code></pre>
 <h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
 <pre><code class="language-console">$ go run ./counter
@@ -814,9 +870,11 @@ func (c *GCounter) Merge(other GCounter) {
 // Value is the count: the sum of every replica's entry.
 func (c GCounter) Value() int {
 	total := 0
+
 	for _, n := range c {
 		total += n
 	}
+
 	return total
 }
 
@@ -852,11 +910,13 @@ func oneNumber() {
 	totals := [replicas]int{}
 	adds := [replicas]int{300, 120, 40}
 	sum := 0
+
 	for r, n := range adds {
 		totals[r] += n
 		sum += n
 		fmt.Printf("  %-5s records %d GPU-seconds\n", names[r], n)
 	}
+
 	largest := max(totals[shelf], totals[desk], totals[bench])
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
@@ -871,23 +931,28 @@ func show(replica int, c GCounter) {
 // partition that cuts the bench off from the other two.
 func growOnly() {
 	var at [replicas]GCounter
+
 	for r, n := range [replicas]int{300, 120, 40} {
 		at[r].Add(r, n)
 	}
+
 	fmt.Println("  the bench is cut off; shelf and desk exchange counters")
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	at[shelf].Add(shelf, 60)
 	at[bench].Add(bench, 25)
+
 	for r := range at {
 		show(r, at[r])
 	}
+
 	fmt.Println("  the network heals; counters are exchanged in no particular order, some twice")
 	at[desk].Merge(at[bench])
 	at[shelf].Merge(at[desk])
 	at[bench].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
+
 	for r := range at {
 		show(r, at[r])
 	}
@@ -902,11 +967,13 @@ func upAndDown() {
 	at[desk].Add(desk, 2)    // two start on the Sparks
 	at[shelf].Add(shelf, -1) // one Thor job ends
 	at[bench].Add(bench, -1) // the bench replica hears that a Spark job ended
+
 	for r := range at {
 		for other := range at {
 			at[r].Merge(at[other])
 		}
 	}
+
 	c := at[bench]
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
@@ -924,12 +991,14 @@ func sharedLimit() {
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	fmt.Printf("  both replicas see %d of %d in use; then they lose contact\n", at[shelf].Value(), quota)
+
 	for _, r := range []int{shelf, desk} {
 		if at[r].Value()+2 &lt;= quota {
 			at[r].Add(r, 2)
 			fmt.Printf("  %-5s admits a 2-GPU job: by its count, %d of %d are in use\n", names[r], at[r].Value(), quota)
 		}
 	}
+
 	at[shelf].Merge(at[desk])
 	fmt.Printf("  after they merge: %d of %d in use\n", at[shelf].Value(), quota)
 }
@@ -944,8 +1013,10 @@ func allowances() {
 	admit := func(r, gpus int) {
 		if left := share[r] - used[r]; left &lt; gpus {
 			fmt.Printf("  %-5s refuses a %d-GPU job: its share has %d left\n", names[r], gpus, left)
+
 			return
 		}
+
 		used[r] += gpus
 		fmt.Printf("  %-5s admits a %d-GPU job\n", names[r], gpus)
 	}
@@ -1062,9 +1133,11 @@ impl PnCounter {
 /// larger of two numbers.
 fn one_number() {
     let adds = [300, 120, 40];
+
     for (name, n) in NAMES.iter().zip(adds) {
         println!("  {name:&lt;5} records {n} GPU-seconds");
     }
+
     let largest = adds.iter().max().expect("three replicas");
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
@@ -1079,23 +1152,28 @@ fn show(replica: usize, c: GCounter) {
 /// partition that cuts the bench off from the other two.
 fn grow_only() {
     let mut at = [GCounter::default(); REPLICAS];
+
     for (r, n) in [300, 120, 40].into_iter().enumerate() {
         at[r].add(r, n);
     }
+
     println!("  the bench is cut off; shelf and desk exchange counters");
     at[SHELF].merge(at[DESK]);
     at[DESK].merge(at[SHELF]);
     at[SHELF].add(SHELF, 60);
     at[BENCH].add(BENCH, 25);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
+
     println!("  the network heals; counters are exchanged in no particular order, some twice");
     at[DESK].merge(at[BENCH]);
     at[SHELF].merge(at[DESK]);
     at[BENCH].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
@@ -1109,14 +1187,21 @@ fn up_and_down() {
     at[DESK].add(DESK, 2); // two start on the Sparks
     at[SHELF].add(SHELF, -1); // one Thor job ends
     at[BENCH].add(BENCH, -1); // the bench replica hears that a Spark job ended
+
     for r in 0..REPLICAS {
         for other in 0..REPLICAS {
             let theirs = at[other];
             at[r].merge(theirs);
         }
     }
+
     let c = at[BENCH];
-    println!("  started {}, ended {}: {} GPUs in use", row(c.up.0), row(c.down.0), c.value());
+    println!(
+        "  started {}, ended {}: {} GPUs in use",
+        row(c.up.0),
+        row(c.down.0),
+        c.value()
+    );
 }
 
 /// The number of GPUs one team may use at once.
@@ -1131,16 +1216,28 @@ fn shared_limit() {
     let (shelf, desk) = (at[SHELF], at[DESK]);
     at[SHELF].merge(desk);
     at[DESK].merge(shelf);
-    println!("  both replicas see {} of {QUOTA} in use; then they lose contact", at[SHELF].value());
+    println!(
+        "  both replicas see {} of {QUOTA} in use; then they lose contact",
+        at[SHELF].value()
+    );
+
     for r in [SHELF, DESK] {
         if at[r].value() + 2 &lt;= QUOTA {
             at[r].add(r, 2);
-            println!("  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use", NAMES[r], at[r].value());
+            println!(
+                "  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use",
+                NAMES[r],
+                at[r].value()
+            );
         }
     }
+
     let desk = at[DESK];
     at[SHELF].merge(desk);
-    println!("  after they merge: {} of {QUOTA} in use", at[SHELF].value());
+    println!(
+        "  after they merge: {} of {QUOTA} in use",
+        at[SHELF].value()
+    );
 }
 
 /// Gives each replica a share of the quota. A replica admits a job only from
@@ -1149,13 +1246,23 @@ fn shared_limit() {
 fn allowances() {
     let mut share = [4, 2, 0];
     let mut used = [3, 1, 0];
-    println!("  shares {}, in use {}; then the replicas lose contact", row(share), row(used));
+    println!(
+        "  shares {}, in use {}; then the replicas lose contact",
+        row(share),
+        row(used)
+    );
     let admit = |share: &amp;[i64; REPLICAS], used: &amp;mut [i64; REPLICAS], r: usize, gpus: i64| {
         let left = share[r] - used[r];
+
         if left &lt; gpus {
-            println!("  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left", NAMES[r]);
+            println!(
+                "  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left",
+                NAMES[r]
+            );
+
             return;
         }
+
         used[r] += gpus;
         println!("  {:&lt;5} admits a {gpus}-GPU job", NAMES[r]);
     };
@@ -1165,7 +1272,12 @@ fn allowances() {
     share[DESK] -= 1;
     share[SHELF] += 1;
     admit(&amp;share, &amp;mut used, SHELF, 2);
-    println!("  shares {}, in use {}: {} of {QUOTA}", row(share), row(used), used.iter().sum::&lt;i64&gt;());
+    println!(
+        "  shares {}, in use {}: {} of {QUOTA}",
+        row(share),
+        row(used),
+        used.iter().sum::&lt;i64&gt;()
+    );
 }
 
 fn main() {

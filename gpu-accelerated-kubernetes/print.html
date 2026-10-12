@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -694,17 +694,22 @@ func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, exists := s.objects[o.Name]
+
 	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
 		return ErrConflict
 	}
+
 	eventType := Modified
+
 	if !exists {
 		eventType = Added
 	}
+
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
 	s.publish(Event{eventType, o})
+
 	return nil
 }
 
@@ -713,9 +718,11 @@ func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	o, exists := s.objects[name]
+
 	if !exists {
 		return
 	}
+
 	delete(s.objects, name)
 	s.version++
 	o.ResourceVersion = s.version
@@ -726,6 +733,7 @@ func (s *APIServer) Delete(name string) {
 // The caller must hold s.mu.
 func (s *APIServer) publish(e Event) {
 	s.history = append(s.history, e)
+
 	for _, w := range s.watches {
 		w &lt;- e
 	}
@@ -742,9 +750,11 @@ func (s *APIServer) publish(e Event) {
         let mut state = self.state();
         let current = state.objects.get(&amp;object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
+
         if object.resource_version != 0 &amp;&amp; object.resource_version != current_version {
             return Err(ApiError::Conflict);
         }
+
         let kind = if current.is_some() {
             EventType::Modified
         } else {
@@ -754,6 +764,7 @@ func (s *APIServer) publish(e Event) {
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
         state.publish(Event { kind, object });
+
         Ok(())
     }
 
@@ -785,6 +796,7 @@ func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
 }
 
@@ -793,19 +805,24 @@ func (s *APIServer) List() ([]Object, int) {
 func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch {
 	case s.unreachable:
 		return nil, ErrUnreachable
 	case version &lt; s.compacted:
 		return nil, ErrGone
 	}
+
 	w := make(chan Event, 1024)
+
 	for _, e := range s.history {
 		if e.Object.ResourceVersion &gt; version {
 			w &lt;- e
 		}
 	}
+
 	s.watches = append(s.watches, w)
+
 	return w, nil
 }
 </code></pre>
@@ -818,6 +835,7 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
         let state = self.state();
         let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
+
         (objects, state.version)
     }
 
@@ -825,19 +843,25 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
     /// `version` and then every new event, until the server drops the watch.
     pub fn watch(&amp;self, version: u64) -&gt; Result&lt;Receiver&lt;Event&gt;, ApiError&gt; {
         let mut state = self.state();
+
         if state.unreachable {
             return Err(ApiError::Unreachable);
         }
+
         if version &lt; state.compacted {
             return Err(ApiError::Gone);
         }
+
         let (sender, receiver) = channel();
+
         for event in &amp;state.history {
             if event.object.resource_version &gt; version {
                 sender.send(event.clone()).expect("receiver is held here");
             }
         }
+
         state.watches.push(sender);
+
         Ok(receiver)
     }
 }</code></pre>
@@ -887,6 +911,7 @@ func (s *APIServer) dropWatches() {
 	for _, w := range s.watches {
 		close(w)
 	}
+
 	s.watches = nil
 }
 </code></pre>
@@ -947,6 +972,7 @@ func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	o, ok := c.objects[name]
+
 	return o, ok
 }
 
@@ -954,10 +980,13 @@ func (c *Cache) Get(name string) (Object, bool) {
 func (c *Cache) Apply(e Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if e.Type == Deleted {
 		delete(c.objects, e.Object.Name)
+
 		return
 	}
+
 	c.objects[e.Object.Name] = e.Object
 }
 </code></pre>
@@ -976,12 +1005,14 @@ impl Cache {
     /// Returns the cached copy of the named object, if it exists.
     pub fn get(&amp;self, name: &amp;str) -&gt; Option&lt;Object&gt; {
         let objects = self.objects.read().expect("cache lock poisoned");
+
         objects.get(name).cloned()
     }
 
     /// Records one event from a watch.
     pub fn apply(&amp;self, event: Event) {
         let mut objects = self.objects.write().expect("cache lock poisoned");
+
         match event.kind {
             EventType::Deleted =&gt; objects.remove(&amp;event.object.name),
             EventType::Added | EventType::Modified =&gt; {
@@ -1006,6 +1037,7 @@ func (c *Cache) Replace(list []Object) []string {
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
 	var changed []string
+
 	for _, o := range list {
 		c.objects[o.Name] = o
 		// A name missing from old reads as version 0, so it counts as changed.
@@ -1013,11 +1045,13 @@ func (c *Cache) Replace(list []Object) []string {
 			changed = append(changed, o.Name)
 		}
 	}
+
 	for name := range old {
 		if _, ok := c.objects[name]; !ok {
 			changed = append(changed, name)
 		}
 	}
+
 	return changed
 }
 </code></pre>
@@ -1031,18 +1065,23 @@ func (c *Cache) Replace(list []Object) []string {
         let mut objects = self.objects.write().expect("cache lock poisoned");
         let old = std::mem::take(&amp;mut *objects);
         let mut changed = Vec::new();
+
         for object in list {
             let old_version = old.get(&amp;object.name).map(|o| o.resource_version);
+
             if old_version != Some(object.resource_version) {
                 changed.push(object.name.clone());
             }
+
             objects.insert(object.name.clone(), object.clone());
         }
+
         for name in old.keys() {
             if !objects.contains_key(name) {
                 changed.push(name.clone());
             }
         }
+
         changed
     }
 }</code></pre>
@@ -1123,14 +1162,18 @@ impl Reflector {
 func (r *Reflector) watchFrom(version int) {
 	for {
 		w, err := r.server.Watch(version)
+
 		if errors.Is(err, ErrGone) {
 			logf("reflector: watch from version %d: %v", version, err)
+
 			return
 		}
+
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
 			continue
 		}
+
 		for e := range w {
 			// Update the cache before queueing the name, so that a worker
 			// that takes the name reads the object as of this event.
@@ -1138,6 +1181,7 @@ func (r *Reflector) watchFrom(version int) {
 			r.queue.Add(e.Object.Name)
 			version = e.Object.ResourceVersion
 		}
+
 		logf("reflector: watch closed, resuming from version %d", version)
 	}
 }
@@ -1156,6 +1200,7 @@ func (r *Reflector) watchFrom(version int) {
                         "reflector: watch from version {version}: {}",
                         ApiError::Gone
                     );
+
                     return;
                 }
                 Err(_) =&gt; {
@@ -1163,6 +1208,7 @@ func (r *Reflector) watchFrom(version int) {
                     continue;
                 }
             };
+
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
@@ -1171,6 +1217,7 @@ func (r *Reflector) watchFrom(version int) {
                 self.cache.apply(event);
                 self.queue.add([name]);
             }
+
             log!("reflector: watch closed, resuming from version {version}");
         }
     }
@@ -1239,6 +1286,7 @@ type WorkQueue struct {
 func NewWorkQueue() *WorkQueue {
 	q := &amp;WorkQueue{dirty: map[string]bool{}, processing: map[string]bool{}}
 	q.cond = sync.NewCond(&amp;q.mu)
+
 	return q
 }
 </code></pre>
@@ -1283,11 +1331,14 @@ taken and not yet handed back.</p>
 func (q *WorkQueue) Add(names ...string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for _, name := range names {
 		if q.dirty[name] {
 			continue
 		}
+
 		q.dirty[name] = true
+
 		if !q.processing[name] {
 			q.queue = append(q.queue, name)
 			q.cond.Signal()
@@ -1299,13 +1350,16 @@ func (q *WorkQueue) Add(names ...string) {
 func (q *WorkQueue) Get() string {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for len(q.queue) == 0 {
 		q.cond.Wait()
 	}
+
 	name := q.queue[0]
 	q.queue = q.queue[1:]
 	delete(q.dirty, name)
 	q.processing[name] = true
+
 	return name
 }
 
@@ -1315,6 +1369,7 @@ func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	delete(q.processing, name)
+
 	if q.dirty[name] {
 		q.queue = append(q.queue, name)
 		q.cond.Signal()
@@ -1328,10 +1383,12 @@ func (q *WorkQueue) Done(name string) {
     /// is left where it is. A name that a worker holds is queued again by `done`.
     pub fn add(&amp;self, names: impl IntoIterator&lt;Item = String&gt;) {
         let mut state = self.state();
+
         for name in names {
             if !state.dirty.insert(name.clone()) {
                 continue;
             }
+
             if !state.processing.contains(&amp;name) {
                 state.ready.push_back(name);
                 self.ready.notify_one();
@@ -1342,12 +1399,15 @@ func (q *WorkQueue) Done(name string) {
     /// Blocks until a name is ready and hands it to the caller.
     pub fn get(&amp;self) -&gt; String {
         let mut state = self.state();
+
         loop {
             if let Some(name) = state.ready.pop_front() {
                 state.dirty.remove(&amp;name);
                 state.processing.insert(name.clone());
+
                 return name;
             }
+
             state = self.ready.wait(state).expect("queue lock poisoned");
         }
     }
@@ -1357,6 +1417,7 @@ func (q *WorkQueue) Done(name string) {
     pub fn done(&amp;self, name: &amp;str) {
         let mut state = self.state();
         state.processing.remove(name);
+
         if state.dirty.contains(name) {
             state.ready.push_back(name.to_string());
             self.ready.notify_one();
@@ -1406,20 +1467,28 @@ bringing what actually exists into agreement with what the user asked for.</p>
 // from its spec, writes a new status conditioned on the version it read.
 func (c *Controller) reconcile(name string) error {
 	o, ok := c.cache.Get(name)
+
 	if !ok {
 		logf("reconcile %s: deleted, releasing its GPUs", name)
+
 		return nil
 	}
+
 	if o.Status.GPUs == o.Spec.GPUs {
 		return nil
 	}
+
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
 	o.Status.GPUs = o.Spec.GPUs
+
 	if err := c.server.Update(o); err != nil {
 		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
+
 		return err
 	}
+
 	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+
 	return nil
 }
 </code></pre>
@@ -1431,21 +1500,27 @@ func (c *Controller) reconcile(name string) error {
     fn reconcile(&amp;self, name: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
         let Some(mut object) = self.cache.get(name) else {
             log!("reconcile {name}: deleted, releasing its GPUs");
+
             return Ok(());
         };
+
         if object.status.gpus == object.spec.gpus {
             return Ok(());
         }
+
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
+
         match self.server.update(object.clone()) {
             Ok(()) =&gt; {
                 log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+
                 Ok(())
             }
             Err(error) =&gt; {
                 log!("reconcile {name}: write at version {version}: {error}");
+
                 Err(error)
             }
         }
@@ -1484,6 +1559,7 @@ func (c *Controller) Run() {
 		name := c.queue.Get()
 		err := c.reconcile(name)
 		c.queue.Done(name)
+
 		if err != nil {
 			c.queue.Add(name) // client-go requeues with a backoff
 		}
@@ -1510,6 +1586,7 @@ impl Controller {
             let name = self.queue.get();
             let result = self.reconcile(&amp;name);
             self.queue.done(&amp;name);
+
             if result.is_err() {
                 self.queue.add([name]); // client-go requeues with a backoff
             }
@@ -1562,12 +1639,15 @@ with a small <code>log!</code> macro, and Go with a <code>logf</code> function.<
 	time.Sleep(100 * time.Millisecond)
 
 	logf("--- job-a is edited five times in a burst")
+
 	for gpus := 2; gpus &lt;= 6; gpus++ {
 		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+
 		if gpus == 2 {
 			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
 		}
 	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	logf("--- the watch connection drops")
@@ -1615,6 +1695,7 @@ with a small <code>log!</code> macro, and Go with a <code>logf</code> function.<
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
+
     for gpus in 2..=6 {
         server
             .update(Object::new("job-a", gpus))
@@ -1623,6 +1704,7 @@ with a small <code>log!</code> macro, and Go with a <code>logf</code> function.<
             sleep_ms(5); // the controller starts on the first edit
         }
     }
+
     sleep_ms(150);
 
     log!("--- the watch connection drops");
@@ -1886,17 +1968,22 @@ func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, exists := s.objects[o.Name]
+
 	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
 		return ErrConflict
 	}
+
 	eventType := Modified
+
 	if !exists {
 		eventType = Added
 	}
+
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
 	s.publish(Event{eventType, o})
+
 	return nil
 }
 
@@ -1905,9 +1992,11 @@ func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	o, exists := s.objects[name]
+
 	if !exists {
 		return
 	}
+
 	delete(s.objects, name)
 	s.version++
 	o.ResourceVersion = s.version
@@ -1918,6 +2007,7 @@ func (s *APIServer) Delete(name string) {
 // The caller must hold s.mu.
 func (s *APIServer) publish(e Event) {
 	s.history = append(s.history, e)
+
 	for _, w := range s.watches {
 		w &lt;- e
 	}
@@ -1930,6 +2020,7 @@ func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
 }
 
@@ -1938,19 +2029,24 @@ func (s *APIServer) List() ([]Object, int) {
 func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch {
 	case s.unreachable:
 		return nil, ErrUnreachable
 	case version &lt; s.compacted:
 		return nil, ErrGone
 	}
+
 	w := make(chan Event, 1024)
+
 	for _, e := range s.history {
 		if e.Object.ResourceVersion &gt; version {
 			w &lt;- e
 		}
 	}
+
 	s.watches = append(s.watches, w)
+
 	return w, nil
 }
 
@@ -1990,6 +2086,7 @@ func (s *APIServer) dropWatches() {
 	for _, w := range s.watches {
 		close(w)
 	}
+
 	s.watches = nil
 }
 </code></pre>
@@ -2146,9 +2243,11 @@ impl ApiServer {
         let mut state = self.state();
         let current = state.objects.get(&amp;object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
+
         if object.resource_version != 0 &amp;&amp; object.resource_version != current_version {
             return Err(ApiError::Conflict);
         }
+
         let kind = if current.is_some() {
             EventType::Modified
         } else {
@@ -2158,6 +2257,7 @@ impl ApiServer {
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
         state.publish(Event { kind, object });
+
         Ok(())
     }
 
@@ -2183,6 +2283,7 @@ impl ApiServer {
         let state = self.state();
         let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
+
         (objects, state.version)
     }
 
@@ -2190,19 +2291,25 @@ impl ApiServer {
     /// `version` and then every new event, until the server drops the watch.
     pub fn watch(&amp;self, version: u64) -&gt; Result&lt;Receiver&lt;Event&gt;, ApiError&gt; {
         let mut state = self.state();
+
         if state.unreachable {
             return Err(ApiError::Unreachable);
         }
+
         if version &lt; state.compacted {
             return Err(ApiError::Gone);
         }
+
         let (sender, receiver) = channel();
+
         for event in &amp;state.history {
             if event.object.resource_version &gt; version {
                 sender.send(event.clone()).expect("receiver is held here");
             }
         }
+
         state.watches.push(sender);
+
         Ok(receiver)
     }
 }
@@ -2259,6 +2366,7 @@ func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	o, ok := c.objects[name]
+
 	return o, ok
 }
 
@@ -2266,10 +2374,13 @@ func (c *Cache) Get(name string) (Object, bool) {
 func (c *Cache) Apply(e Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if e.Type == Deleted {
 		delete(c.objects, e.Object.Name)
+
 		return
 	}
+
 	c.objects[e.Object.Name] = e.Object
 }
 
@@ -2283,6 +2394,7 @@ func (c *Cache) Replace(list []Object) []string {
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
 	var changed []string
+
 	for _, o := range list {
 		c.objects[o.Name] = o
 		// A name missing from old reads as version 0, so it counts as changed.
@@ -2290,11 +2402,13 @@ func (c *Cache) Replace(list []Object) []string {
 			changed = append(changed, o.Name)
 		}
 	}
+
 	for name := range old {
 		if _, ok := c.objects[name]; !ok {
 			changed = append(changed, name)
 		}
 	}
+
 	return changed
 }
 </code></pre>
@@ -2319,12 +2433,14 @@ impl Cache {
     /// Returns the cached copy of the named object, if it exists.
     pub fn get(&amp;self, name: &amp;str) -&gt; Option&lt;Object&gt; {
         let objects = self.objects.read().expect("cache lock poisoned");
+
         objects.get(name).cloned()
     }
 
     /// Records one event from a watch.
     pub fn apply(&amp;self, event: Event) {
         let mut objects = self.objects.write().expect("cache lock poisoned");
+
         match event.kind {
             EventType::Deleted =&gt; objects.remove(&amp;event.object.name),
             EventType::Added | EventType::Modified =&gt; {
@@ -2342,18 +2458,23 @@ impl Cache {
         let mut objects = self.objects.write().expect("cache lock poisoned");
         let old = std::mem::take(&amp;mut *objects);
         let mut changed = Vec::new();
+
         for object in list {
             let old_version = old.get(&amp;object.name).map(|o| o.resource_version);
+
             if old_version != Some(object.resource_version) {
                 changed.push(object.name.clone());
             }
+
             objects.insert(object.name.clone(), object.clone());
         }
+
         for name in old.keys() {
             if !objects.contains_key(name) {
                 changed.push(name.clone());
             }
         }
+
         changed
     }
 }</code></pre>
@@ -2396,14 +2517,18 @@ func (r *Reflector) Run() {
 func (r *Reflector) watchFrom(version int) {
 	for {
 		w, err := r.server.Watch(version)
+
 		if errors.Is(err, ErrGone) {
 			logf("reflector: watch from version %d: %v", version, err)
+
 			return
 		}
+
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
 			continue
 		}
+
 		for e := range w {
 			// Update the cache before queueing the name, so that a worker
 			// that takes the name reads the object as of this event.
@@ -2411,6 +2536,7 @@ func (r *Reflector) watchFrom(version int) {
 			r.queue.Add(e.Object.Name)
 			version = e.Object.ResourceVersion
 		}
+
 		logf("reflector: watch closed, resuming from version %d", version)
 	}
 }
@@ -2467,6 +2593,7 @@ impl Reflector {
                         "reflector: watch from version {version}: {}",
                         ApiError::Gone
                     );
+
                     return;
                 }
                 Err(_) =&gt; {
@@ -2474,6 +2601,7 @@ impl Reflector {
                     continue;
                 }
             };
+
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
@@ -2482,6 +2610,7 @@ impl Reflector {
                 self.cache.apply(event);
                 self.queue.add([name]);
             }
+
             log!("reflector: watch closed, resuming from version {version}");
         }
     }
@@ -2514,6 +2643,7 @@ type WorkQueue struct {
 func NewWorkQueue() *WorkQueue {
 	q := &amp;WorkQueue{dirty: map[string]bool{}, processing: map[string]bool{}}
 	q.cond = sync.NewCond(&amp;q.mu)
+
 	return q
 }
 
@@ -2523,11 +2653,14 @@ func NewWorkQueue() *WorkQueue {
 func (q *WorkQueue) Add(names ...string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for _, name := range names {
 		if q.dirty[name] {
 			continue
 		}
+
 		q.dirty[name] = true
+
 		if !q.processing[name] {
 			q.queue = append(q.queue, name)
 			q.cond.Signal()
@@ -2539,13 +2672,16 @@ func (q *WorkQueue) Add(names ...string) {
 func (q *WorkQueue) Get() string {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for len(q.queue) == 0 {
 		q.cond.Wait()
 	}
+
 	name := q.queue[0]
 	q.queue = q.queue[1:]
 	delete(q.dirty, name)
 	q.processing[name] = true
+
 	return name
 }
 
@@ -2555,6 +2691,7 @@ func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	delete(q.processing, name)
+
 	if q.dirty[name] {
 		q.queue = append(q.queue, name)
 		q.cond.Signal()
@@ -2602,10 +2739,12 @@ impl WorkQueue {
     /// is left where it is. A name that a worker holds is queued again by `done`.
     pub fn add(&amp;self, names: impl IntoIterator&lt;Item = String&gt;) {
         let mut state = self.state();
+
         for name in names {
             if !state.dirty.insert(name.clone()) {
                 continue;
             }
+
             if !state.processing.contains(&amp;name) {
                 state.ready.push_back(name);
                 self.ready.notify_one();
@@ -2616,12 +2755,15 @@ impl WorkQueue {
     /// Blocks until a name is ready and hands it to the caller.
     pub fn get(&amp;self) -&gt; String {
         let mut state = self.state();
+
         loop {
             if let Some(name) = state.ready.pop_front() {
                 state.dirty.remove(&amp;name);
                 state.processing.insert(name.clone());
+
                 return name;
             }
+
             state = self.ready.wait(state).expect("queue lock poisoned");
         }
     }
@@ -2631,6 +2773,7 @@ impl WorkQueue {
     pub fn done(&amp;self, name: &amp;str) {
         let mut state = self.state();
         state.processing.remove(name);
+
         if state.dirty.contains(name) {
             state.ready.push_back(name.to_string());
             self.ready.notify_one();
@@ -2662,6 +2805,7 @@ func (c *Controller) Run() {
 		name := c.queue.Get()
 		err := c.reconcile(name)
 		c.queue.Done(name)
+
 		if err != nil {
 			c.queue.Add(name) // client-go requeues with a backoff
 		}
@@ -2673,20 +2817,28 @@ func (c *Controller) Run() {
 // from its spec, writes a new status conditioned on the version it read.
 func (c *Controller) reconcile(name string) error {
 	o, ok := c.cache.Get(name)
+
 	if !ok {
 		logf("reconcile %s: deleted, releasing its GPUs", name)
+
 		return nil
 	}
+
 	if o.Status.GPUs == o.Spec.GPUs {
 		return nil
 	}
+
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
 	o.Status.GPUs = o.Spec.GPUs
+
 	if err := c.server.Update(o); err != nil {
 		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
+
 		return err
 	}
+
 	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+
 	return nil
 }
 </code></pre>
@@ -2720,6 +2872,7 @@ impl Controller {
             let name = self.queue.get();
             let result = self.reconcile(&amp;name);
             self.queue.done(&amp;name);
+
             if result.is_err() {
                 self.queue.add([name]); // client-go requeues with a backoff
             }
@@ -2733,21 +2886,27 @@ impl Controller {
     fn reconcile(&amp;self, name: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
         let Some(mut object) = self.cache.get(name) else {
             log!("reconcile {name}: deleted, releasing its GPUs");
+
             return Ok(());
         };
+
         if object.status.gpus == object.spec.gpus {
             return Ok(());
         }
+
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
+
         match self.server.update(object.clone()) {
             Ok(()) =&gt; {
                 log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+
                 Ok(())
             }
             Err(error) =&gt; {
                 log!("reconcile {name}: write at version {version}: {error}");
+
                 Err(error)
             }
         }
@@ -2793,12 +2952,15 @@ func main() {
 	time.Sleep(100 * time.Millisecond)
 
 	logf("--- job-a is edited five times in a burst")
+
 	for gpus := 2; gpus &lt;= 6; gpus++ {
 		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+
 		if gpus == 2 {
 			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
 		}
 	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	logf("--- the watch connection drops")
@@ -2891,6 +3053,7 @@ fn main() {
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
+
     for gpus in 2..=6 {
         server
             .update(Object::new("job-a", gpus))
@@ -2899,6 +3062,7 @@ fn main() {
             sleep_ms(5); // the controller starts on the first edit
         }
     }
+
     sleep_ms(150);
 
     log!("--- the watch connection drops");
@@ -3167,6 +3331,7 @@ into the CRD as field descriptions, and <code>kubectl explain gpujob.spec</code>
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		status.Phase = PhaseRunning
@@ -3175,12 +3340,14 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	case corev1.PodFailed:
 		status.Phase = PhaseFailed
 	}
+
 	// A pod that cannot be placed explains why in its PodScheduled condition.
 	for _, c := range pod.Status.Conditions {
 		if c.Type == corev1.PodScheduled &amp;&amp; c.Status == corev1.ConditionFalse {
 			status.Message = c.Message
 		}
 	}
+
 	return status
 }
 </code></pre>
@@ -3320,6 +3487,7 @@ use kube::CustomResourceExt;
 /// Generates the definition from the `GpuJob` type and prints it.
 fn main() -&gt; serde_json::Result&lt;()&gt; {
     println!("{}", serde_json::to_string_pretty(&amp;GpuJob::crd())?);
+
     Ok(())
 }</code></pre>
 <pre><code class="language-console">$ cargo run -p gpujob --bin crdgen | kubectl apply -f -
@@ -3360,7 +3528,9 @@ func describe(obj any) string {
 	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
+
 	job := obj.(*gpujobv1.GpuJob)
+
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
 </code></pre>
@@ -3369,21 +3539,27 @@ func describe(obj any) string {
 <pre><code class="language-go">// run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
 		Scheme:            scheme,
 		DefaultNamespaces: map[string]cache.Config{namespace: {}},
 	})
+
 	if err != nil {
 		return err
 	}
+
 	ctx := ctrl.SetupSignalHandler()
 	informer, err := informers.GetInformer(ctx, &amp;gpujobv1.GpuJob{})
+
 	if err != nil {
 		return err
 	}
+
 	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj any, isInInitialList bool) {
 			if isInInitialList {
@@ -3395,17 +3571,21 @@ func run() error {
 		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
 		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
 	})
+
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("list started")
 	go informers.Start(ctx)
+
 	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
 		return fmt.Errorf("informer did not sync")
 	}
+
 	fmt.Println("list complete, watching")
 	&lt;-ctx.Done()
+
 	return nil
 }
 </code></pre>
@@ -3436,6 +3616,7 @@ use kube::{Api, Client, ResourceExt};
 /// Formats a job as its name, GPU count, and resource version.
 fn describe(job: &amp;GpuJob) -&gt; String {
     let version = job.resource_version().unwrap_or_default();
+
     format!("{} gpus={} v{version}", job.name_any(), job.spec.gpus)
 }
 
@@ -3444,6 +3625,7 @@ fn describe(job: &amp;GpuJob) -&gt; String {
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let jobs: Api&lt;GpuJob&gt; = Api::default_namespaced(Client::try_default().await?);
     let mut events = std::pin::pin!(watcher(jobs, watcher::Config::default()));
+
     while let Some(event) = events.try_next().await? {
         match event {
             Event::Init =&gt; println!("list started"),
@@ -3453,6 +3635,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
             Event::Delete(job) =&gt; println!("  deleted  {}", describe(&amp;job)),
         }
     }
+
     Ok(())
 }</code></pre>
 <p>The <code>Event</code> enum spells out the list-then-watch sequence we reasoned about in chapter 1.
@@ -3562,6 +3745,7 @@ func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
 	if len(job.Spec.Command) &gt; 0 {
 		container.WithCommand(job.Spec.Command...)
 	}
+
 	owner := metav1ac.OwnerReference().
 		WithAPIVersion(gpujobv1.GroupVersion.String()).
 		WithKind("GpuJob").
@@ -3582,7 +3766,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	if len(pod.Spec.Containers) == 0 {
 		return 0, false
 	}
+
 	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+
 	return int32(quantity.Value()), ok
 }
 </code></pre>
@@ -3646,6 +3832,7 @@ fn desired_pod(job: &amp;GpuJob) -&gt; Pod {
 fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
     let container = pod.spec.as_ref()?.containers.first()?;
     let limits = container.resources.as_ref()?.limits.as_ref()?;
+
     limits.get(GPU)?.0.parse().ok()
 }</code></pre>
 <p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
@@ -3690,6 +3877,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
 
 	var job gpujobv1.GpuJob
+
 	if err := r.Get(ctx, req.NamespacedName, &amp;job); err != nil {
 		// A job deleted since it was queued needs nothing: its pod goes with it.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -3699,13 +3887,16 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// for a different number of GPUs, delete the pod and come back after it is gone.
 	var pod corev1.Pod
 	err := r.Get(ctx, req.NamespacedName, &amp;pod)
+
 	switch {
 	case err == nil:
 		if gpus, ok := podGPUs(&amp;pod); !ok || gpus != job.Spec.GPUs {
 			log.Info("GPU count changed, replacing pod")
+
 			if err := r.Delete(ctx, &amp;pod); client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, err
 			}
+
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 	case !apierrors.IsNotFound(err):
@@ -3720,14 +3911,17 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// yields the Pending phase, and the pod's creation event triggers the
 	// reconcile that reports its real progress.
 	status := gpujobv1.StatusFromPod(&amp;pod, job.Generation)
+
 	if job.Status != status {
 		log.Info("status changed", "phase", status.Phase, "message", status.Message)
 		patch := client.MergeFrom(job.DeepCopy())
 		job.Status = status
+
 		if err := r.Status().Patch(ctx, &amp;job, patch); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	// Changes to the pod trigger the next reconcile through Owns.
 	return ctrl.Result{}, nil
 }
@@ -3749,6 +3943,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
     {
         tracing::info!(%name, "GPU count changed, replacing pod");
         pods.delete(&amp;name, &amp;DeleteParams::default()).await?;
+
         return Ok(Action::requeue(Duration::from_secs(2)));
     }
 
@@ -3758,6 +3953,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         .await?;
 
     let status = GpuJobStatus::from_pod(&amp;pod, job.metadata.generation);
+
     if job.status.as_ref() != Some(&amp;status) {
         let message = status.message.as_deref().unwrap_or("");
         tracing::info!(%name, phase = ?status.phase, message, "status changed");
@@ -3769,6 +3965,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         jobs.patch_status(&amp;name, &amp;apply, &amp;Patch::Apply(patch))
             .await?;
     }
+
     // Changes to the pod trigger the next reconcile through `owns`.
     Ok(Action::await_change())
 }
@@ -3777,6 +3974,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
 #[allow(clippy::needless_pass_by_value)] // the signature is fixed by `Controller::run`
 fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&gt;) -&gt; Action {
     tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
+
     Action::requeue(Duration::from_secs(5))
 }</code></pre>
 <p>Our reconcile function receives a job and brings the cluster into line with it in three
@@ -3828,10 +4026,12 @@ func main() {
 	setup := ctrl.Log.WithName("setup")
 
 	scheme := runtime.NewScheme()
+
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering built-in types")
 		os.Exit(1)
 	}
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering GpuJob")
 		os.Exit(1)
@@ -3841,6 +4041,7 @@ func main() {
 		Scheme:  scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
 	})
+
 	if err != nil {
 		setup.Error(err, "creating manager")
 		os.Exit(1)
@@ -3996,34 +4197,44 @@ try to write it back.</p>
 <pre><code class="language-go">// run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+
 	if err != nil {
 		return err
 	}
 
 	var first gpujobv1.GpuJob
+
 	if err := c.Get(ctx, job, &amp;first); err != nil {
 		return err
 	}
+
 	second := first.DeepCopy()
 	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
 
 	first.Spec.GPUs++
+
 	if err := c.Update(ctx, &amp;first); err != nil {
 		return err
 	}
+
 	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
 
 	second.Spec.GPUs += 2
 	err = c.Update(ctx, second)
 	var status *apierrors.StatusError
+
 	if errors.As(err, &amp;status) &amp;&amp; status.ErrStatus.Code == http.StatusConflict {
 		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+
 		return nil
 	}
+
 	return fmt.Errorf("unexpected result: %v", err)
 }
 </code></pre>
@@ -4064,12 +4275,14 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
     );
 
     second.spec.gpus += 2;
+
     match jobs.replace(JOB, &amp;PostParams::default(), &amp;second).await {
         Err(kube::Error::Api(status)) if status.code == 409 =&gt; {
             println!("second write refused: {} {}", status.code, status.message);
         }
         other =&gt; println!("unexpected: {other:?}"),
     }
+
     Ok(())
 }</code></pre>
 <p>The Go version recognises the conflict with <code>errors.As</code>, which digs the API server’s
@@ -4203,6 +4416,7 @@ func init() {
 // metadata.generation, recorded as the generation that the status describes.
 func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	status := GpuJobStatus{Phase: PhasePending, ObservedGeneration: generation}
+
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		status.Phase = PhaseRunning
@@ -4211,12 +4425,14 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	case corev1.PodFailed:
 		status.Phase = PhaseFailed
 	}
+
 	// A pod that cannot be placed explains why in its PodScheduled condition.
 	for _, c := range pod.Status.Conditions {
 		if c.Type == corev1.PodScheduled &amp;&amp; c.Status == corev1.ConditionFalse {
 			status.Message = c.Message
 		}
 	}
+
 	return status
 }
 </code></pre>
@@ -4348,7 +4564,9 @@ func describe(obj any) string {
 	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
+
 	job := obj.(*gpujobv1.GpuJob)
+
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
 
@@ -4364,21 +4582,27 @@ func main() {
 // run does the work of main and returns the first error it meets.
 func run() error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	informers, err := cache.New(ctrl.GetConfigOrDie(), cache.Options{
 		Scheme:            scheme,
 		DefaultNamespaces: map[string]cache.Config{namespace: {}},
 	})
+
 	if err != nil {
 		return err
 	}
+
 	ctx := ctrl.SetupSignalHandler()
 	informer, err := informers.GetInformer(ctx, &amp;gpujobv1.GpuJob{})
+
 	if err != nil {
 		return err
 	}
+
 	registration, err := informer.AddEventHandler(toolscache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj any, isInInitialList bool) {
 			if isInInitialList {
@@ -4390,17 +4614,21 @@ func run() error {
 		UpdateFunc: func(_, obj any) { fmt.Println("  changed ", describe(obj)) },
 		DeleteFunc: func(obj any) { fmt.Println("  deleted ", describe(obj)) },
 	})
+
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("list started")
 	go informers.Start(ctx)
+
 	if !toolscache.WaitForCacheSync(ctx.Done(), registration.HasSynced) {
 		return fmt.Errorf("informer did not sync")
 	}
+
 	fmt.Println("list complete, watching")
 	&lt;-ctx.Done()
+
 	return nil
 }
 </code></pre>
@@ -4458,6 +4686,7 @@ func desiredPod(job *gpujobv1.GpuJob) *corev1ac.PodApplyConfiguration {
 	if len(job.Spec.Command) &gt; 0 {
 		container.WithCommand(job.Spec.Command...)
 	}
+
 	owner := metav1ac.OwnerReference().
 		WithAPIVersion(gpujobv1.GroupVersion.String()).
 		WithKind("GpuJob").
@@ -4478,7 +4707,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	if len(pod.Spec.Containers) == 0 {
 		return 0, false
 	}
+
 	quantity, ok := pod.Spec.Containers[0].Resources.Limits[gpu]
+
 	return int32(quantity.Value()), ok
 }
 
@@ -4495,6 +4726,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := ctrl.Log.WithName("controller").WithValues("name", req.Name)
 
 	var job gpujobv1.GpuJob
+
 	if err := r.Get(ctx, req.NamespacedName, &amp;job); err != nil {
 		// A job deleted since it was queued needs nothing: its pod goes with it.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -4504,13 +4736,16 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// for a different number of GPUs, delete the pod and come back after it is gone.
 	var pod corev1.Pod
 	err := r.Get(ctx, req.NamespacedName, &amp;pod)
+
 	switch {
 	case err == nil:
 		if gpus, ok := podGPUs(&amp;pod); !ok || gpus != job.Spec.GPUs {
 			log.Info("GPU count changed, replacing pod")
+
 			if err := r.Delete(ctx, &amp;pod); client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, err
 			}
+
 			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
 		}
 	case !apierrors.IsNotFound(err):
@@ -4525,14 +4760,17 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// yields the Pending phase, and the pod's creation event triggers the
 	// reconcile that reports its real progress.
 	status := gpujobv1.StatusFromPod(&amp;pod, job.Generation)
+
 	if job.Status != status {
 		log.Info("status changed", "phase", status.Phase, "message", status.Message)
 		patch := client.MergeFrom(job.DeepCopy())
 		job.Status = status
+
 		if err := r.Status().Patch(ctx, &amp;job, patch); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	// Changes to the pod trigger the next reconcile through Owns.
 	return ctrl.Result{}, nil
 }
@@ -4544,10 +4782,12 @@ func main() {
 	setup := ctrl.Log.WithName("setup")
 
 	scheme := runtime.NewScheme()
+
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering built-in types")
 		os.Exit(1)
 	}
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		setup.Error(err, "registering GpuJob")
 		os.Exit(1)
@@ -4557,6 +4797,7 @@ func main() {
 		Scheme:  scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"}, // no metrics endpoint
 	})
+
 	if err != nil {
 		setup.Error(err, "creating manager")
 		os.Exit(1)
@@ -4655,6 +4896,7 @@ fn desired_pod(job: &amp;GpuJob) -&gt; Pod {
 fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
     let container = pod.spec.as_ref()?.containers.first()?;
     let limits = container.resources.as_ref()?.limits.as_ref()?;
+
     limits.get(GPU)?.0.parse().ok()
 }
 
@@ -4673,6 +4915,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
     {
         tracing::info!(%name, "GPU count changed, replacing pod");
         pods.delete(&amp;name, &amp;DeleteParams::default()).await?;
+
         return Ok(Action::requeue(Duration::from_secs(2)));
     }
 
@@ -4682,6 +4925,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         .await?;
 
     let status = GpuJobStatus::from_pod(&amp;pod, job.metadata.generation);
+
     if job.status.as_ref() != Some(&amp;status) {
         let message = status.message.as_deref().unwrap_or("");
         tracing::info!(%name, phase = ?status.phase, message, "status changed");
@@ -4693,6 +4937,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
         jobs.patch_status(&amp;name, &amp;apply, &amp;Patch::Apply(patch))
             .await?;
     }
+
     // Changes to the pod trigger the next reconcile through `owns`.
     Ok(Action::await_change())
 }
@@ -4701,6 +4946,7 @@ async fn reconcile(job: Arc&lt;GpuJob&gt;, ctx: Arc&lt;Context&gt;) -&gt; Result
 #[allow(clippy::needless_pass_by_value)] // the signature is fixed by `Controller::run`
 fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&gt;) -&gt; Action {
     tracing::warn!(name = %job.name_any(), %error, "reconcile failed");
+
     Action::requeue(Duration::from_secs(5))
 }
 
@@ -4769,34 +5015,44 @@ func main() {
 // run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
 	scheme := runtime.NewScheme()
+
 	if err := gpujobv1.AddToScheme(scheme); err != nil {
 		return err
 	}
+
 	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+
 	if err != nil {
 		return err
 	}
 
 	var first gpujobv1.GpuJob
+
 	if err := c.Get(ctx, job, &amp;first); err != nil {
 		return err
 	}
+
 	second := first.DeepCopy()
 	fmt.Printf("both clients read %s at v%s\n", job.Name, first.ResourceVersion)
 
 	first.Spec.GPUs++
+
 	if err := c.Update(ctx, &amp;first); err != nil {
 		return err
 	}
+
 	fmt.Printf("first write stored, now v%s\n", first.ResourceVersion)
 
 	second.Spec.GPUs += 2
 	err = c.Update(ctx, second)
 	var status *apierrors.StatusError
+
 	if errors.As(err, &amp;status) &amp;&amp; status.ErrStatus.Code == http.StatusConflict {
 		fmt.Printf("second write refused: %d %s\n", status.ErrStatus.Code, status.ErrStatus.Message)
+
 		return nil
 	}
+
 	return fmt.Errorf("unexpected result: %v", err)
 }
 </code></pre>
@@ -5078,11 +5334,13 @@ type holder struct {
 // nvidia.com/gpu limits of its containers.
 func podGPUs(pod *corev1.Pod) int64 {
 	var units int64
+
 	for _, c := range pod.Spec.Containers {
 		if q, ok := c.Resources.Limits[gpu]; ok {
 			units += q.Value()
 		}
 	}
+
 	return units
 }
 
@@ -5091,6 +5349,7 @@ func podGPUs(pod *corev1.Pod) int64 {
 // finishes; a pod that has succeeded or failed gives them back.
 func holdsResources(pod *corev1.Pod) bool {
 	finished := pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+
 	return pod.Spec.NodeName != "" &amp;&amp; !finished
 }
 </code></pre>
@@ -5123,9 +5382,11 @@ fn pod_gpus(pod: &amp;Pod) -&gt; i64 {
 /// succeeded or failed gives them back.
 fn holding_node(pod: &amp;Pod) -&gt; Option&lt;&amp;str&gt; {
     let phase = pod.status.as_ref().and_then(|s| s.phase.as_deref());
+
     if matches!(phase, Some("Succeeded" | "Failed")) {
         return None;
     }
+
     pod.spec.as_ref()?.node_name.as_deref()
 }
 
@@ -5143,21 +5404,28 @@ fn gpu_units(resources: Option&lt;&amp;BTreeMap&lt;String, Quantity&gt;&gt;) -&g
 // and prints one table row per node followed by the pods that hold its units.
 func run(ctx context.Context) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
+
 	pods, err := clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
 
 	holders := map[string][]holder{}
+
 	for i := range pods.Items {
 		pod := &amp;pods.Items[i]
+
 		if units := podGPUs(pod); units &gt; 0 &amp;&amp; holdsResources(pod) {
 			name := pod.Namespace + "/" + pod.Name
 			holders[pod.Spec.NodeName] = append(holders[pod.Spec.NodeName], holder{name, units})
@@ -5166,16 +5434,20 @@ func run(ctx context.Context) error {
 
 	table := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NODE\tCAPACITY\tALLOCATABLE\tIN USE\tFREE")
+
 	for _, node := range nodes.Items {
 		capacity := node.Status.Capacity[gpu]
 		allocatable := node.Status.Allocatable[gpu]
 		var inUse int64
+
 		for _, h := range holders[node.Name] {
 			inUse += h.units
 		}
+
 		fmt.Fprintf(table, "%s\t%d\t%d\t%d\t%d\n",
 			node.Name, capacity.Value(), allocatable.Value(), inUse, allocatable.Value()-inUse)
 	}
+
 	if err := table.Flush(); err != nil {
 		return err
 	}
@@ -5183,10 +5455,12 @@ func run(ctx context.Context) error {
 	for _, node := range nodes.Items {
 		list := holders[node.Name]
 		slices.SortFunc(list, func(a, b holder) int { return cmp.Compare(a.pod, b.pod) })
+
 		for _, h := range list {
 			fmt.Printf("  %s holds %d on %s\n", h.pod, h.units, node.Name)
 		}
 	}
+
 	return nil
 }
 </code></pre>
@@ -5203,6 +5477,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let pods = Api::&lt;Pod&gt;::all(client).list(&amp;ListParams::default()).await?;
 
     let mut holders: BTreeMap&lt;String, Vec&lt;Holder&gt;&gt; = BTreeMap::new();
+
     for pod in &amp;pods {
         let units = pod_gpus(pod);
         if let Some(node) = holding_node(pod)
@@ -5220,6 +5495,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         "{:&lt;23}{:&lt;10}{:&lt;13}{:&lt;8}FREE",
         "NODE", "CAPACITY", "ALLOCATABLE", "IN USE"
     );
+
     for node in &amp;nodes {
         let name = node.name_any();
         let in_use: i64 = holders
@@ -5237,12 +5513,15 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
             allocatable - in_use
         );
     }
+
     for (node, list) in &amp;mut holders {
         list.sort_by(|a, b| a.pod.cmp(&amp;b.pod));
+
         for h in list.iter() {
             println!("  {} holds {} on {node}", h.pod, h.units);
         }
     }
+
     Ok(())
 }</code></pre>
 <p>Both programs list the nodes and the pods with one request each, keep the pods that hold
@@ -5712,11 +5991,13 @@ type holder struct {
 // nvidia.com/gpu limits of its containers.
 func podGPUs(pod *corev1.Pod) int64 {
 	var units int64
+
 	for _, c := range pod.Spec.Containers {
 		if q, ok := c.Resources.Limits[gpu]; ok {
 			units += q.Value()
 		}
 	}
+
 	return units
 }
 
@@ -5725,6 +6006,7 @@ func podGPUs(pod *corev1.Pod) int64 {
 // finishes; a pod that has succeeded or failed gives them back.
 func holdsResources(pod *corev1.Pod) bool {
 	finished := pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+
 	return pod.Spec.NodeName != "" &amp;&amp; !finished
 }
 
@@ -5741,21 +6023,28 @@ func main() {
 // and prints one table row per node followed by the pods that hold its units.
 func run(ctx context.Context) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
+
 	pods, err := clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
 
 	holders := map[string][]holder{}
+
 	for i := range pods.Items {
 		pod := &amp;pods.Items[i]
+
 		if units := podGPUs(pod); units &gt; 0 &amp;&amp; holdsResources(pod) {
 			name := pod.Namespace + "/" + pod.Name
 			holders[pod.Spec.NodeName] = append(holders[pod.Spec.NodeName], holder{name, units})
@@ -5764,16 +6053,20 @@ func run(ctx context.Context) error {
 
 	table := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NODE\tCAPACITY\tALLOCATABLE\tIN USE\tFREE")
+
 	for _, node := range nodes.Items {
 		capacity := node.Status.Capacity[gpu]
 		allocatable := node.Status.Allocatable[gpu]
 		var inUse int64
+
 		for _, h := range holders[node.Name] {
 			inUse += h.units
 		}
+
 		fmt.Fprintf(table, "%s\t%d\t%d\t%d\t%d\n",
 			node.Name, capacity.Value(), allocatable.Value(), inUse, allocatable.Value()-inUse)
 	}
+
 	if err := table.Flush(); err != nil {
 		return err
 	}
@@ -5781,10 +6074,12 @@ func run(ctx context.Context) error {
 	for _, node := range nodes.Items {
 		list := holders[node.Name]
 		slices.SortFunc(list, func(a, b holder) int { return cmp.Compare(a.pod, b.pod) })
+
 		for _, h := range list {
 			fmt.Printf("  %s holds %d on %s\n", h.pod, h.units, node.Name)
 		}
 	}
+
 	return nil
 }
 </code></pre>
@@ -5832,9 +6127,11 @@ fn pod_gpus(pod: &amp;Pod) -&gt; i64 {
 /// succeeded or failed gives them back.
 fn holding_node(pod: &amp;Pod) -&gt; Option&lt;&amp;str&gt; {
     let phase = pod.status.as_ref().and_then(|s| s.phase.as_deref());
+
     if matches!(phase, Some("Succeeded" | "Failed")) {
         return None;
     }
+
     pod.spec.as_ref()?.node_name.as_deref()
 }
 
@@ -5857,6 +6154,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let pods = Api::&lt;Pod&gt;::all(client).list(&amp;ListParams::default()).await?;
 
     let mut holders: BTreeMap&lt;String, Vec&lt;Holder&gt;&gt; = BTreeMap::new();
+
     for pod in &amp;pods {
         let units = pod_gpus(pod);
         if let Some(node) = holding_node(pod)
@@ -5874,6 +6172,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         "{:&lt;23}{:&lt;10}{:&lt;13}{:&lt;8}FREE",
         "NODE", "CAPACITY", "ALLOCATABLE", "IN USE"
     );
+
     for node in &amp;nodes {
         let name = node.name_any();
         let in_use: i64 = holders
@@ -5891,12 +6190,15 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
             allocatable - in_use
         );
     }
+
     for (node, list) in &amp;mut holders {
         list.sort_by(|a, b| a.pod.cmp(&amp;b.pod));
+
         for h in list.iter() {
             println!("  {} holds {} on {node}", h.pod, h.units);
         }
     }
+
     Ok(())
 }</code></pre>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
@@ -6124,6 +6426,7 @@ func (r *Registry) Heartbeat(now, host int) {
 	r.heartbeats++
 	e := &amp;r.hosts[host]
 	e.lastSeen = now
+
 	if e.state != Up {
 		e.state = Up
 		r.writes = append(r.writes, Transition{now, host, Up})
@@ -6134,6 +6437,7 @@ func (r *Registry) Heartbeat(now, host int) {
 func (r *Registry) Sweep(now int) {
 	for host := range r.hosts {
 		e := &amp;r.hosts[host]
+
 		if next := stateAfter(now - e.lastSeen); next != e.state {
 			e.state = next
 			r.writes = append(r.writes, Transition{now, host, next})
@@ -6173,6 +6477,7 @@ func stateAfter(silent int) State {
         self.heartbeats += 1;
         let entry = &amp;mut self.hosts[host];
         entry.last_seen = now;
+
         if entry.state != State::Up {
             entry.state = State::Up;
             self.writes.push(Transition {
@@ -6187,6 +6492,7 @@ func stateAfter(silent int) State {
     fn sweep(&amp;mut self, now: u32) {
         for (host, entry) in self.hosts.iter_mut().enumerate() {
             let next = state_after(now - entry.last_seen);
+
             if next != entry.state {
                 entry.state = next;
                 self.writes.push(Transition {
@@ -6227,16 +6533,20 @@ func sendsHeartbeat(host, now int) bool {
 // main runs the simulation and prints the registry's work.
 func main() {
 	registry := NewRegistry(hostCount)
+
 	for now := 0; now &lt; duration; now++ {
 		for host := 0; host &lt; hostCount; host++ {
 			if sendsHeartbeat(host, now) {
 				registry.Heartbeat(now, host)
 			}
 		}
+
 		registry.Sweep(now)
 	}
+
 	fmt.Printf("heartbeats handled in memory: %d\n", registry.heartbeats)
 	fmt.Printf("durable writes:               %d\n", len(registry.writes))
+
 	for _, w := range registry.writes {
 		fmt.Printf("  second %2d  host %2d -&gt; %s\n", w.At, w.Host, w.State)
 	}
@@ -6256,16 +6566,20 @@ fn sends_heartbeat(host: usize, now: u32) -&gt; bool {
 /// Runs the simulation and prints the registry's work.
 fn main() {
     let mut registry = Registry::new(HOST_COUNT);
+
     for now in 0..DURATION {
         for host in 0..HOST_COUNT {
             if sends_heartbeat(host, now) {
                 registry.heartbeat(now, host);
             }
         }
+
         registry.sweep(now);
     }
+
     println!("heartbeats handled in memory: {}", registry.heartbeats);
     println!("durable writes:               {}", registry.writes.len());
+
     for w in &amp;registry.writes {
         println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
     }
@@ -6367,9 +6681,11 @@ func NewDetector(window int, first float64) *Detector {
 // Heartbeat records a heartbeat that arrived at time now.
 func (d *Detector) Heartbeat(now float64) {
 	d.intervals = append(d.intervals, now-d.last)
+
 	if len(d.intervals) &gt; d.window {
 		d.intervals = d.intervals[1:]
 	}
+
 	d.last = now
 }
 </code></pre>
@@ -6407,9 +6723,11 @@ impl Detector {
     /// Records a heartbeat that arrived at time `now`.
     fn heartbeat(&amp;mut self, now: f64) {
         self.intervals.push_back(now - self.last);
+
         if self.intervals.len() &gt; self.window {
             self.intervals.pop_front();
         }
+
         self.last = now;
     }
 }</code></pre>
@@ -6422,14 +6740,18 @@ impl Detector {
 // means 1%, and phi 3 means 0.1%.
 func (d *Detector) Phi(now float64) float64 {
 	var mean float64
+
 	for _, gap := range d.intervals {
 		mean += gap
 	}
+
 	mean /= float64(len(d.intervals))
 	var variance float64
+
 	for _, gap := range d.intervals {
 		variance += (gap - mean) * (gap - mean)
 	}
+
 	stdDev := math.Max(math.Sqrt(variance/float64(len(d.intervals))), minStdDev)
 
 	// The probability that a gap is longer than the current silence, from a
@@ -6438,9 +6760,11 @@ func (d *Detector) Phi(now float64) float64 {
 	y := (silence - mean) / stdDev
 	e := math.Exp(-y * (1.5976 + 0.070566*y*y))
 	pLater := 1 - 1/(1+e)
+
 	if silence &gt; mean {
 		pLater = e / (1 + e)
 	}
+
 	return -math.Log10(pLater)
 }
 </code></pre>
@@ -6473,6 +6797,7 @@ func (d *Detector) Phi(now float64) float64 {
         } else {
             1.0 - 1.0 / (1.0 + e)
         };
+
         -p_later.log10()
     }
 }</code></pre>
@@ -6495,16 +6820,21 @@ func main() {
 	for _, host := range hosts {
 		detector := NewDetector(100, 0)
 		var now float64
+
 		for _, gap := range host.gaps {
 			now += gap
 			detector.Heartbeat(now)
 		}
+
 		fmt.Printf("%s host, silent for:\n", host.name)
+
 		for _, silence := range []float64{1.0, 1.5, 2.0, 2.5, 3.0, 4.0} {
 			verdict := "alive"
+
 			if silence &gt; timeout {
 				verdict = "dead"
 			}
+
 			fmt.Printf("  %.1fs  phi = %6.2f   %.0fs timeout says %s\n",
 				silence, detector.Phi(now+silence), timeout, verdict)
 		}
@@ -6531,11 +6861,14 @@ fn main() {
     for (name, gaps) in HOSTS {
         let mut detector = Detector::new(100, 0.0);
         let mut now = 0.0;
+
         for gap in gaps {
             now += gap;
             detector.heartbeat(now);
         }
+
         println!("{name} host, silent for:");
+
         for silence in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0] {
             let verdict = if silence &gt; TIMEOUT { "dead" } else { "alive" };
             println!(
@@ -6679,9 +7012,11 @@ types. The Rust version builds it in a function of its own.</p>
 // A renewal that fails is reported and retried at the next tick.
 func run(host string) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -6689,6 +7024,7 @@ func run(host string) error {
 	acquired := metav1.NewMicroTime(time.Now())
 	ticker := time.NewTicker(renewEvery)
 	defer ticker.Stop()
+
 	for {
 		now := metav1.NewMicroTime(time.Now())
 		lease := coordinationv1ac.Lease(host, namespace).
@@ -6698,6 +7034,7 @@ func run(host string) error {
 				WithAcquireTime(acquired).
 				WithRenewTime(now))
 		_, err := leases.Apply(ctx, lease, metav1.ApplyOptions{FieldManager: fieldManager, Force: true})
+
 		switch {
 		case ctx.Err() != nil:
 			return nil
@@ -6706,6 +7043,7 @@ func run(host string) error {
 		default:
 			fmt.Printf("%s %s renewed\n", now.Format(time.TimeOnly), host)
 		}
+
 		select {
 		case &lt;-ctx.Done():
 			return nil
@@ -6749,6 +7087,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let params = PatchParams::apply(FIELD_MANAGER).force();
     let acquired = Timestamp::now();
     let mut ticker = tokio::time::interval(RENEW_EVERY);
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
@@ -6840,17 +7179,20 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	if lease.Spec.RenewTime == nil || lease.Spec.LeaseDurationSeconds == nil {
 		return
 	}
+
 	renew := lease.Spec.RenewTime.Time
 	duration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
 	stamp := now.Format(time.TimeOnly)
 
 	obs, known := seen[lease.Name]
+
 	switch {
 	case !known:
 		seen[lease.Name] = &amp;observation{renewTime: renew, observedAt: now}
 		fmt.Printf("%s %s seen, lease duration %s\n", stamp, lease.Name, duration)
 	case !renew.Equal(obs.renewTime):
 		obs.renewTime, obs.observedAt = renew, now
+
 		if obs.expired {
 			obs.expired = false
 			fmt.Printf("%s %s renewing again\n", stamp, lease.Name)
@@ -6893,6 +7235,7 @@ fn check(seen: &amp;mut HashMap&lt;String, Observation&gt;, lease: &amp;Lease, n
         Some(obs) if obs.renew_time != renew.0 =&gt; {
             obs.renew_time = renew.0;
             obs.observed_at = now;
+
             if obs.expired {
                 obs.expired = false;
                 println!("{stamp} {name} renewing again");
@@ -6914,9 +7257,11 @@ second.</p>
 // list, and then checks every Lease in its cache once per checkEvery.
 func run() error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -6928,15 +7273,20 @@ func run() error {
 	seen := map[string]*observation{}
 	ticker := time.NewTicker(checkEvery)
 	defer ticker.Stop()
+
 	for {
 		leases, err := lister.List(labels.Everything())
+
 		if err != nil {
 			return err
 		}
+
 		now := time.Now()
+
 		for _, lease := range leases {
 			check(seen, lease, now)
 		}
+
 		select {
 		case &lt;-ctx.Done():
 			return nil
@@ -6963,12 +7313,14 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     let mut seen = HashMap::new();
     let mut ticker = tokio::time::interval(CHECK_EVERY);
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
             _ = ticker.tick() =&gt; {}
         }
         let now = Instant::now();
+
         for lease in store.state() {
             check(&amp;mut seen, &amp;lease, now);
         }
@@ -7149,6 +7501,7 @@ func (r *Registry) Heartbeat(now, host int) {
 	r.heartbeats++
 	e := &amp;r.hosts[host]
 	e.lastSeen = now
+
 	if e.state != Up {
 		e.state = Up
 		r.writes = append(r.writes, Transition{now, host, Up})
@@ -7159,6 +7512,7 @@ func (r *Registry) Heartbeat(now, host int) {
 func (r *Registry) Sweep(now int) {
 	for host := range r.hosts {
 		e := &amp;r.hosts[host]
+
 		if next := stateAfter(now - e.lastSeen); next != e.state {
 			e.state = next
 			r.writes = append(r.writes, Transition{now, host, next})
@@ -7196,16 +7550,20 @@ func sendsHeartbeat(host, now int) bool {
 // main runs the simulation and prints the registry's work.
 func main() {
 	registry := NewRegistry(hostCount)
+
 	for now := 0; now &lt; duration; now++ {
 		for host := 0; host &lt; hostCount; host++ {
 			if sendsHeartbeat(host, now) {
 				registry.Heartbeat(now, host)
 			}
 		}
+
 		registry.Sweep(now)
 	}
+
 	fmt.Printf("heartbeats handled in memory: %d\n", registry.heartbeats)
 	fmt.Printf("durable writes:               %d\n", len(registry.writes))
+
 	for _, w := range registry.writes {
 		fmt.Printf("  second %2d  host %2d -&gt; %s\n", w.At, w.Host, w.State)
 	}
@@ -7292,6 +7650,7 @@ impl Registry {
         self.heartbeats += 1;
         let entry = &amp;mut self.hosts[host];
         entry.last_seen = now;
+
         if entry.state != State::Up {
             entry.state = State::Up;
             self.writes.push(Transition {
@@ -7306,6 +7665,7 @@ impl Registry {
     fn sweep(&amp;mut self, now: u32) {
         for (host, entry) in self.hosts.iter_mut().enumerate() {
             let next = state_after(now - entry.last_seen);
+
             if next != entry.state {
                 entry.state = next;
                 self.writes.push(Transition {
@@ -7339,16 +7699,20 @@ fn sends_heartbeat(host: usize, now: u32) -&gt; bool {
 /// Runs the simulation and prints the registry's work.
 fn main() {
     let mut registry = Registry::new(HOST_COUNT);
+
     for now in 0..DURATION {
         for host in 0..HOST_COUNT {
             if sends_heartbeat(host, now) {
                 registry.heartbeat(now, host);
             }
         }
+
         registry.sweep(now);
     }
+
     println!("heartbeats handled in memory: {}", registry.heartbeats);
     println!("durable writes:               {}", registry.writes.len());
+
     for w in &amp;registry.writes {
         println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
     }
@@ -7402,9 +7766,11 @@ func NewDetector(window int, first float64) *Detector {
 // Heartbeat records a heartbeat that arrived at time now.
 func (d *Detector) Heartbeat(now float64) {
 	d.intervals = append(d.intervals, now-d.last)
+
 	if len(d.intervals) &gt; d.window {
 		d.intervals = d.intervals[1:]
 	}
+
 	d.last = now
 }
 
@@ -7415,14 +7781,18 @@ func (d *Detector) Heartbeat(now float64) {
 // means 1%, and phi 3 means 0.1%.
 func (d *Detector) Phi(now float64) float64 {
 	var mean float64
+
 	for _, gap := range d.intervals {
 		mean += gap
 	}
+
 	mean /= float64(len(d.intervals))
 	var variance float64
+
 	for _, gap := range d.intervals {
 		variance += (gap - mean) * (gap - mean)
 	}
+
 	stdDev := math.Max(math.Sqrt(variance/float64(len(d.intervals))), minStdDev)
 
 	// The probability that a gap is longer than the current silence, from a
@@ -7431,9 +7801,11 @@ func (d *Detector) Phi(now float64) float64 {
 	y := (silence - mean) / stdDev
 	e := math.Exp(-y * (1.5976 + 0.070566*y*y))
 	pLater := 1 - 1/(1+e)
+
 	if silence &gt; mean {
 		pLater = e / (1 + e)
 	}
+
 	return -math.Log10(pLater)
 }
 
@@ -7453,16 +7825,21 @@ func main() {
 	for _, host := range hosts {
 		detector := NewDetector(100, 0)
 		var now float64
+
 		for _, gap := range host.gaps {
 			now += gap
 			detector.Heartbeat(now)
 		}
+
 		fmt.Printf("%s host, silent for:\n", host.name)
+
 		for _, silence := range []float64{1.0, 1.5, 2.0, 2.5, 3.0, 4.0} {
 			verdict := "alive"
+
 			if silence &gt; timeout {
 				verdict = "dead"
 			}
+
 			fmt.Printf("  %.1fs  phi = %6.2f   %.0fs timeout says %s\n",
 				silence, detector.Phi(now+silence), timeout, verdict)
 		}
@@ -7517,9 +7894,11 @@ impl Detector {
     /// Records a heartbeat that arrived at time `now`.
     fn heartbeat(&amp;mut self, now: f64) {
         self.intervals.push_back(now - self.last);
+
         if self.intervals.len() &gt; self.window {
             self.intervals.pop_front();
         }
+
         self.last = now;
     }
 }
@@ -7551,6 +7930,7 @@ impl Detector {
         } else {
             1.0 - 1.0 / (1.0 + e)
         };
+
         -p_later.log10()
     }
 }
@@ -7573,11 +7953,14 @@ fn main() {
     for (name, gaps) in HOSTS {
         let mut detector = Detector::new(100, 0.0);
         let mut now = 0.0;
+
         for gap in gaps {
             now += gap;
             detector.heartbeat(now);
         }
+
         println!("{name} host, silent for:");
+
         for silence in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0] {
             let verdict = if silence &gt; TIMEOUT { "dead" } else { "alive" };
             println!(
@@ -7632,6 +8015,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: leaseagent &lt;host&gt;")
 		os.Exit(2)
 	}
+
 	if err := run(os.Args[1]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -7642,9 +8026,11 @@ func main() {
 // A renewal that fails is reported and retried at the next tick.
 func run(host string) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -7652,6 +8038,7 @@ func run(host string) error {
 	acquired := metav1.NewMicroTime(time.Now())
 	ticker := time.NewTicker(renewEvery)
 	defer ticker.Stop()
+
 	for {
 		now := metav1.NewMicroTime(time.Now())
 		lease := coordinationv1ac.Lease(host, namespace).
@@ -7661,6 +8048,7 @@ func run(host string) error {
 				WithAcquireTime(acquired).
 				WithRenewTime(now))
 		_, err := leases.Apply(ctx, lease, metav1.ApplyOptions{FieldManager: fieldManager, Force: true})
+
 		switch {
 		case ctx.Err() != nil:
 			return nil
@@ -7669,6 +8057,7 @@ func run(host string) error {
 		default:
 			fmt.Printf("%s %s renewed\n", now.Format(time.TimeOnly), host)
 		}
+
 		select {
 		case &lt;-ctx.Done():
 			return nil
@@ -7746,6 +8135,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let params = PatchParams::apply(FIELD_MANAGER).force();
     let acquired = Timestamp::now();
     let mut ticker = tokio::time::interval(RENEW_EVERY);
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
@@ -7823,9 +8213,11 @@ func main() {
 // list, and then checks every Lease in its cache once per checkEvery.
 func run() error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -7837,15 +8229,20 @@ func run() error {
 	seen := map[string]*observation{}
 	ticker := time.NewTicker(checkEvery)
 	defer ticker.Stop()
+
 	for {
 		leases, err := lister.List(labels.Everything())
+
 		if err != nil {
 			return err
 		}
+
 		now := time.Now()
+
 		for _, lease := range leases {
 			check(seen, lease, now)
 		}
+
 		select {
 		case &lt;-ctx.Done():
 			return nil
@@ -7861,17 +8258,20 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	if lease.Spec.RenewTime == nil || lease.Spec.LeaseDurationSeconds == nil {
 		return
 	}
+
 	renew := lease.Spec.RenewTime.Time
 	duration := time.Duration(*lease.Spec.LeaseDurationSeconds) * time.Second
 	stamp := now.Format(time.TimeOnly)
 
 	obs, known := seen[lease.Name]
+
 	switch {
 	case !known:
 		seen[lease.Name] = &amp;observation{renewTime: renew, observedAt: now}
 		fmt.Printf("%s %s seen, lease duration %s\n", stamp, lease.Name, duration)
 	case !renew.Equal(obs.renewTime):
 		obs.renewTime, obs.observedAt = renew, now
+
 		if obs.expired {
 			obs.expired = false
 			fmt.Printf("%s %s renewing again\n", stamp, lease.Name)
@@ -7952,6 +8352,7 @@ fn check(seen: &amp;mut HashMap&lt;String, Observation&gt;, lease: &amp;Lease, n
         Some(obs) if obs.renew_time != renew.0 =&gt; {
             obs.renew_time = renew.0;
             obs.observed_at = now;
+
             if obs.expired {
                 obs.expired = false;
                 println!("{stamp} {name} renewing again");
@@ -7982,12 +8383,14 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     let mut seen = HashMap::new();
     let mut ticker = tokio::time::interval(CHECK_EVERY);
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() =&gt; return Ok(()),
             _ = ticker.tick() =&gt; {}
         }
         let now = Instant::now();
+
         for lease in store.state() {
             check(&amp;mut seen, &amp;lease, now);
         }
@@ -8446,15 +8849,19 @@ on the same link whose latest flap lies within five seconds.</p>
 // within five seconds of each other.
 func (p *Plane) Observe(s Signal) {
 	r := p.find(s.Node)
+
 	switch s.Kind {
 	case MemoryECC, OffBus:
 		p.condemn(s.At, r, s.Kind.String())
 	case AppFault:
 		r.faultJobs[s.Job] = true
+
 		if p.jobNodes[s.Job] == nil {
 			p.jobNodes[s.Job] = map[string]bool{}
 		}
+
 		p.jobNodes[s.Job][s.Node] = true
+
 		switch {
 		case len(p.jobNodes[s.Job]) &gt;= blameAfter &amp;&amp; !p.blamed[s.Job]:
 			p.blamed[s.Job] = true
@@ -8466,11 +8873,13 @@ func (p *Plane) Observe(s Signal) {
 	case LinkFlap:
 		r.lastFlap = s.At
 		together := 0
+
 		for _, other := range p.records {
 			if other.node.Link == r.node.Link &amp;&amp; other.lastFlap &gt;= 0 &amp;&amp; s.At-other.lastFlap &lt;= fabricWindow {
 				together++
 			}
 		}
+
 		if together &gt;= fabricAfter &amp;&amp; !p.blamed[r.node.Link] {
 			p.blamed[r.node.Link] = true
 			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
@@ -8489,6 +8898,7 @@ func (p *Plane) Observe(s Signal) {
     /// within five seconds of each other.
     fn observe(&amp;mut self, s: &amp;Signal) {
         let index = self.find(s.node);
+
         match s.kind {
             Kind::MemoryEcc | Kind::OffBus =&gt; self.condemn(s.at, index, &amp;s.kind.to_string()),
             Kind::AppFault =&gt; {
@@ -8496,6 +8906,7 @@ func (p *Plane) Observe(s Signal) {
                 let nodes = self.job_nodes.entry(s.job).or_default();
                 nodes.insert(s.node);
                 let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+
                 if machines &gt;= BLAME_AFTER &amp;&amp; self.blamed.insert(s.job) {
                     println!(
                         "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
@@ -8536,11 +8947,13 @@ from the fleet. Cordoned is left out on purpose: a cordoned machine still runs i
 // every machine that is draining, under repair, in burn-in, or quarantined.
 func (p *Plane) outOfService() int {
 	n := 0
+
 	for _, r := range p.records {
 		if r.state &gt;= Draining {
 			n++
 		}
 	}
+
 	return n
 }
 </code></pre>
@@ -8572,6 +8985,7 @@ supplies, which says how many tests each machine fails before one passes.</p>
 func (p *Plane) Step(now int) {
 	for _, r := range p.records {
 		waited := now - r.since
+
 		switch {
 		case r.state == Cordoned &amp;&amp; p.outOfService() &lt; budget:
 			p.move(now, r, Draining, "jobs told to checkpoint")
@@ -8594,13 +9008,18 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	if p.burnIn[r.node.Name] == 0 {
 		r.faultJobs = map[string]bool{}
 		p.move(now, r, Healthy, "burn-in passed")
+
 		return
 	}
+
 	p.burnIn[r.node.Name]--
+
 	if r.step+1 == len(ladder) {
 		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+
 		return
 	}
+
 	r.step++
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
@@ -8618,6 +9037,7 @@ func (p *Plane) finishBurnIn(now int, r *record) {
                 (r.state, r.step, r.node.name)
             };
             let waited = now - self.records[index].since;
+
             match state {
                 State::Cordoned if self.out_of_service() &lt; BUDGET =&gt; {
                     self.transition(now, index, State::Draining, "jobs told to checkpoint");
@@ -8646,17 +9066,23 @@ func (p *Plane) finishBurnIn(now int, r *record) {
     fn finish_burn_in(&amp;mut self, now: u32, index: usize) {
         let name = self.records[index].node.name;
         let failures = self.burn_in.entry(name).or_default();
+
         if *failures == 0 {
             self.records[index].fault_jobs.clear();
             self.transition(now, index, State::Healthy, "burn-in passed");
+
             return;
         }
+
         *failures -= 1;
+
         if self.records[index].step + 1 == LADDER.len() {
             let why = "burn-in failed after every action; ticket opened";
             self.transition(now, index, State::Quarantined, why);
+
             return;
         }
+
         self.records[index].step += 1;
         let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
         self.transition(now, index, State::Remediating, &amp;why);
@@ -8696,13 +9122,17 @@ func main() {
 	// thor-4 fails every burn-in; every other machine passes its first.
 	p := NewPlane(map[string]int{"thor-4": len(ladder)})
 	next := 0
+
 	for now := 0; now &lt;= duration; now++ {
 		for ; next &lt; len(script) &amp;&amp; script[next].At == now; next++ {
 			p.Observe(script[next])
 		}
+
 		p.Step(now)
 	}
+
 	fmt.Println("final states:")
+
 	for _, r := range p.records {
 		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
 	}
@@ -8789,13 +9219,17 @@ fn main() {
     // thor-4 fails every burn-in; every other machine passes its first.
     let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
     let mut signals = SCRIPT.iter().peekable();
+
     for now in 0..=DURATION {
         while let Some(signal) = signals.next_if(|s| s.at == now) {
             plane.observe(signal);
         }
+
         plane.step(now);
     }
+
     println!("final states:");
+
     for r in &amp;plane.records {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
@@ -8948,7 +9382,9 @@ func (s *Store) Write(c Checkpoint) error {
 	if s.Fencing &amp;&amp; c.Epoch &lt; s.latest.Epoch {
 		return ErrFenced
 	}
+
 	s.latest = c
+
 	return nil
 }
 </code></pre>
@@ -8992,7 +9428,9 @@ impl Store {
         if self.fencing &amp;&amp; c.epoch &lt; self.latest.epoch {
             return Err(Fenced);
         }
+
         self.latest = c;
+
         Ok(())
     }
 }</code></pre>
@@ -9009,6 +9447,7 @@ type ControlPlane struct {
 func (c *ControlPlane) Assign(host string) int {
 	c.epoch++
 	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+
 	return c.epoch
 }
 </code></pre>
@@ -9025,7 +9464,11 @@ impl ControlPlane {
     /// Gives the job to a host and returns the epoch of the assignment.
     fn assign(&amp;mut self, host: &amp;str) -&gt; u32 {
         self.epoch += 1;
-        println!("  control plane: job assigned to {host} with epoch {}", self.epoch);
+        println!(
+            "  control plane: job assigned to {host} with epoch {}",
+            self.epoch
+        );
+
         self.epoch
     }
 }</code></pre>
@@ -9035,10 +9478,13 @@ impl ControlPlane {
 <pre><code class="language-go">// save writes one checkpoint and prints what the store answered.
 func save(s *Store, host string, epoch, step int) {
 	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+
 	if err != nil {
 		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+
 		return
 	}
+
 	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
 }
 
@@ -9067,7 +9513,11 @@ func main() {
 
 <pre><code class="language-rust">/// Writes one checkpoint and prints what the store answered.
 fn save(store: &amp;mut Store, writer: &amp;'static str, epoch: u32, step: u32) {
-    match store.write(Checkpoint { step, epoch, writer }) {
+    match store.write(Checkpoint {
+        step,
+        epoch,
+        writer,
+    }) {
         Ok(()) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: stored"),
         Err(e) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: refused, {e}"),
     }
@@ -9084,14 +9534,20 @@ fn run(mut store: Store) {
     save(&amp;mut store, "thor-2", second, 2000);
     println!("  thor-1's link returns; it still holds epoch 1");
     save(&amp;mut store, "thor-1", first, 1500);
-    println!("  a restart now resumes from step {}, written by {}", store.latest.step, store.latest.writer);
+    println!(
+        "  a restart now resumes from step {}, written by {}",
+        store.latest.step, store.latest.writer
+    );
 }
 
 fn main() {
     println!("a store that accepts every write:");
     run(Store::default());
     println!("a store that checks the epoch:");
-    run(Store { fencing: true, ..Store::default() });
+    run(Store {
+        fencing: true,
+        ..Store::default()
+    });
 }</code></pre>
 <pre><code class="language-console">$ go run ./fencing
 a store that accepts every write:
@@ -9260,9 +9716,11 @@ type Plane struct {
 // NewPlane returns a plane in which every machine is Healthy.
 func NewPlane(burnIn map[string]int) *Plane {
 	p := &amp;Plane{jobNodes: map[string]map[string]bool{}, blamed: map[string]bool{}, burnIn: burnIn}
+
 	for _, n := range fleet {
 		p.records = append(p.records, &amp;record{node: n, faultJobs: map[string]bool{}, lastFlap: -1})
 	}
+
 	return p
 }
 
@@ -9273,6 +9731,7 @@ func (p *Plane) find(name string) *record {
 			return r
 		}
 	}
+
 	panic("unknown node " + name)
 }
 
@@ -9289,15 +9748,19 @@ func (p *Plane) move(now int, r *record, to State, why string) {
 // within five seconds of each other.
 func (p *Plane) Observe(s Signal) {
 	r := p.find(s.Node)
+
 	switch s.Kind {
 	case MemoryECC, OffBus:
 		p.condemn(s.At, r, s.Kind.String())
 	case AppFault:
 		r.faultJobs[s.Job] = true
+
 		if p.jobNodes[s.Job] == nil {
 			p.jobNodes[s.Job] = map[string]bool{}
 		}
+
 		p.jobNodes[s.Job][s.Node] = true
+
 		switch {
 		case len(p.jobNodes[s.Job]) &gt;= blameAfter &amp;&amp; !p.blamed[s.Job]:
 			p.blamed[s.Job] = true
@@ -9309,11 +9772,13 @@ func (p *Plane) Observe(s Signal) {
 	case LinkFlap:
 		r.lastFlap = s.At
 		together := 0
+
 		for _, other := range p.records {
 			if other.node.Link == r.node.Link &amp;&amp; other.lastFlap &gt;= 0 &amp;&amp; s.At-other.lastFlap &lt;= fabricWindow {
 				together++
 			}
 		}
+
 		if together &gt;= fabricAfter &amp;&amp; !p.blamed[r.node.Link] {
 			p.blamed[r.node.Link] = true
 			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
@@ -9336,11 +9801,13 @@ func (p *Plane) condemn(now int, r *record, why string) {
 // every machine that is draining, under repair, in burn-in, or quarantined.
 func (p *Plane) outOfService() int {
 	n := 0
+
 	for _, r := range p.records {
 		if r.state &gt;= Draining {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -9352,6 +9819,7 @@ func (p *Plane) outOfService() int {
 func (p *Plane) Step(now int) {
 	for _, r := range p.records {
 		waited := now - r.since
+
 		switch {
 		case r.state == Cordoned &amp;&amp; p.outOfService() &lt; budget:
 			p.move(now, r, Draining, "jobs told to checkpoint")
@@ -9374,13 +9842,18 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	if p.burnIn[r.node.Name] == 0 {
 		r.faultJobs = map[string]bool{}
 		p.move(now, r, Healthy, "burn-in passed")
+
 		return
 	}
+
 	p.burnIn[r.node.Name]--
+
 	if r.step+1 == len(ladder) {
 		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+
 		return
 	}
+
 	r.step++
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
@@ -9410,13 +9883,17 @@ func main() {
 	// thor-4 fails every burn-in; every other machine passes its first.
 	p := NewPlane(map[string]int{"thor-4": len(ladder)})
 	next := 0
+
 	for now := 0; now &lt;= duration; now++ {
 		for ; next &lt; len(script) &amp;&amp; script[next].At == now; next++ {
 			p.Observe(script[next])
 		}
+
 		p.Step(now)
 	}
+
 	fmt.Println("final states:")
+
 	for _, r := range p.records {
 		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
 	}
@@ -9654,6 +10131,7 @@ impl Plane {
     /// within five seconds of each other.
     fn observe(&amp;mut self, s: &amp;Signal) {
         let index = self.find(s.node);
+
         match s.kind {
             Kind::MemoryEcc | Kind::OffBus =&gt; self.condemn(s.at, index, &amp;s.kind.to_string()),
             Kind::AppFault =&gt; {
@@ -9661,6 +10139,7 @@ impl Plane {
                 let nodes = self.job_nodes.entry(s.job).or_default();
                 nodes.insert(s.node);
                 let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+
                 if machines &gt;= BLAME_AFTER &amp;&amp; self.blamed.insert(s.job) {
                     println!(
                         "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
@@ -9723,6 +10202,7 @@ impl Plane {
                 (r.state, r.step, r.node.name)
             };
             let waited = now - self.records[index].since;
+
             match state {
                 State::Cordoned if self.out_of_service() &lt; BUDGET =&gt; {
                     self.transition(now, index, State::Draining, "jobs told to checkpoint");
@@ -9751,17 +10231,23 @@ impl Plane {
     fn finish_burn_in(&amp;mut self, now: u32, index: usize) {
         let name = self.records[index].node.name;
         let failures = self.burn_in.entry(name).or_default();
+
         if *failures == 0 {
             self.records[index].fault_jobs.clear();
             self.transition(now, index, State::Healthy, "burn-in passed");
+
             return;
         }
+
         *failures -= 1;
+
         if self.records[index].step + 1 == LADDER.len() {
             let why = "burn-in failed after every action; ticket opened";
             self.transition(now, index, State::Quarantined, why);
+
             return;
         }
+
         self.records[index].step += 1;
         let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
         self.transition(now, index, State::Remediating, &amp;why);
@@ -9847,13 +10333,17 @@ fn main() {
     // thor-4 fails every burn-in; every other machine passes its first.
     let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
     let mut signals = SCRIPT.iter().peekable();
+
     for now in 0..=DURATION {
         while let Some(signal) = signals.next_if(|s| s.at == now) {
             plane.observe(signal);
         }
+
         plane.step(now);
     }
+
     println!("final states:");
+
     for r in &amp;plane.records {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
@@ -9910,7 +10400,9 @@ func (s *Store) Write(c Checkpoint) error {
 	if s.Fencing &amp;&amp; c.Epoch &lt; s.latest.Epoch {
 		return ErrFenced
 	}
+
 	s.latest = c
+
 	return nil
 }
 
@@ -9925,6 +10417,7 @@ type ControlPlane struct {
 func (c *ControlPlane) Assign(host string) int {
 	c.epoch++
 	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+
 	return c.epoch
 }
 
@@ -9932,10 +10425,13 @@ func (c *ControlPlane) Assign(host string) int {
 // save writes one checkpoint and prints what the store answered.
 func save(s *Store, host string, epoch, step int) {
 	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+
 	if err != nil {
 		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+
 		return
 	}
+
 	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
 }
 
@@ -10019,7 +10515,9 @@ impl Store {
         if self.fencing &amp;&amp; c.epoch &lt; self.latest.epoch {
             return Err(Fenced);
         }
+
         self.latest = c;
+
         Ok(())
     }
 }
@@ -10035,14 +10533,22 @@ impl ControlPlane {
     /// Gives the job to a host and returns the epoch of the assignment.
     fn assign(&amp;mut self, host: &amp;str) -&gt; u32 {
         self.epoch += 1;
-        println!("  control plane: job assigned to {host} with epoch {}", self.epoch);
+        println!(
+            "  control plane: job assigned to {host} with epoch {}",
+            self.epoch
+        );
+
         self.epoch
     }
 }
 
 /// Writes one checkpoint and prints what the store answered.
 fn save(store: &amp;mut Store, writer: &amp;'static str, epoch: u32, step: u32) {
-    match store.write(Checkpoint { step, epoch, writer }) {
+    match store.write(Checkpoint {
+        step,
+        epoch,
+        writer,
+    }) {
         Ok(()) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: stored"),
         Err(e) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: refused, {e}"),
     }
@@ -10059,14 +10565,20 @@ fn run(mut store: Store) {
     save(&amp;mut store, "thor-2", second, 2000);
     println!("  thor-1's link returns; it still holds epoch 1");
     save(&amp;mut store, "thor-1", first, 1500);
-    println!("  a restart now resumes from step {}, written by {}", store.latest.step, store.latest.writer);
+    println!(
+        "  a restart now resumes from step {}, written by {}",
+        store.latest.step, store.latest.writer
+    );
 }
 
 fn main() {
     println!("a store that accepts every write:");
     run(Store::default());
     println!("a store that checks the epoch:");
-    run(Store { fencing: true, ..Store::default() });
+    run(Store {
+        fencing: true,
+        ..Store::default()
+    });
 }</code></pre>
 <div class="summary">
 <h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
@@ -10320,11 +10832,13 @@ type Provider struct {
 // count returns how many machines of a model exist.
 func (p *Provider) count(model string) int {
 	n := 0
+
 	for _, m := range p.machines {
 		if m.Model == model {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -10332,6 +10846,7 @@ func (p *Provider) count(model string) int {
 // existing machine returns that machine and creates nothing.
 func (p *Provider) Create(model, token string) (Machine, error) {
 	p.calls++
+
 	if token != "" {
 		for _, m := range p.machines {
 			if m.Token == token {
@@ -10339,14 +10854,18 @@ func (p *Provider) Create(model, token string) (Machine, error) {
 			}
 		}
 	}
+
 	if p.count(model) &gt;= p.quota[model] {
 		return Machine{}, ErrQuota
 	}
+
 	m := Machine{ID: fmt.Sprintf("m-%02d", len(p.machines)+1), Model: model, Token: token}
 	p.machines = append(p.machines, m)
+
 	if p.calls == p.loseReply {
 		return Machine{}, ErrTimeout
 	}
+
 	return m, nil
 }
 </code></pre>
@@ -10404,22 +10923,29 @@ impl Provider {
     fn create(&amp;mut self, model: &amp;'static str, token: Option&lt;&amp;str&gt;) -&gt; Result&lt;Machine, CreateError&gt; {
         self.calls += 1;
         if let Some(token) = token
-            &amp;&amp; let Some(existing) = self.machines.iter().find(|m| m.token.as_deref() == Some(token))
+            &amp;&amp; let Some(existing) = self
+                .machines
+                .iter()
+                .find(|m| m.token.as_deref() == Some(token))
         {
             return Ok(existing.clone());
         }
+
         if self.count(model) &gt;= self.quota[model] {
             return Err(CreateError::Quota);
         }
+
         let machine = Machine {
             id: format!("m-{:02}", self.machines.len() + 1),
             model,
             token: token.map(str::to_owned),
         };
         self.machines.push(machine.clone());
+
         if self.calls == self.lose_reply {
             return Err(CreateError::Timeout);
         }
+
         Ok(machine)
     }
 }</code></pre>
@@ -10458,17 +10984,23 @@ func (c *Controller) Reconcile(pool Pool) bool {
 	for len(c.owned[pool.Name]) &lt; pool.Want {
 		slot := fmt.Sprintf("%s-%d", pool.Name, len(c.owned[pool.Name])+1)
 		token := ""
+
 		if c.tokens {
 			token = slot
 		}
+
 		m, err := c.provider.Create(pool.Model, token)
+
 		if err != nil {
 			fmt.Printf("    %-8s create failed: %v\n", slot, err)
+
 			return false
 		}
+
 		fmt.Printf("    %-8s is machine %s\n", slot, m.ID)
 		c.owned[pool.Name] = append(c.owned[pool.Name], m)
 	}
+
 	return true
 }
 </code></pre>
@@ -10498,9 +11030,11 @@ impl Controller {
     /// call that fails. It returns true when the pool is full.
     fn reconcile(&amp;mut self, pool: &amp;Pool) -&gt; bool {
         let owned = self.owned.entry(pool.name).or_default();
+
         while owned.len() &lt; pool.want {
             let slot = format!("{}-{}", pool.name, owned.len() + 1);
             let token = self.tokens.then_some(slot.as_str());
+
             match self.provider.create(pool.model, token) {
                 Ok(machine) =&gt; {
                     println!("    {slot:&lt;8} is machine {}", machine.id);
@@ -10508,10 +11042,12 @@ impl Controller {
                 }
                 Err(e) =&gt; {
                     println!("    {slot:&lt;8} create failed: {e}");
+
                     return false;
                 }
             }
         }
+
         true
     }
 }</code></pre>
@@ -10535,25 +11071,32 @@ var pools = []Pool{
 func run(tokens bool) {
 	provider := &amp;Provider{quota: map[string]int{"Jetson AGX Thor": 5, "DGX Spark": 2}, loseReply: 3}
 	c := &amp;Controller{provider: provider, tokens: tokens, owned: map[string][]Machine{}}
+
 	for pass := 1; pass &lt;= 3; pass++ {
 		fmt.Printf("  pass %d\n", pass)
 		full := true
+
 		for _, pool := range pools {
 			full = c.Reconcile(pool) &amp;&amp; full
 		}
+
 		if full {
 			fmt.Println("    every pool is full")
 			break
 		}
 	}
+
 	known := map[string]bool{}
+
 	for _, pool := range pools {
 		for _, m := range c.owned[pool.Name] {
 			known[m.ID] = true
 		}
+
 		fmt.Printf("  %-5s wanted %d, controller owns %d, provider holds %d\n",
 			pool.Name, pool.Want, len(c.owned[pool.Name]), provider.count(pool.Model))
 	}
+
 	for _, m := range provider.machines {
 		if !known[m.ID] {
 			fmt.Printf("  machine %s (%s) is running and belongs to no pool\n", m.ID, m.Model)
@@ -10572,8 +11115,16 @@ func main() {
 
 <pre><code class="language-rust">/// The fleet we ask for: the Thors on the shelf and the two Sparks.
 const POOLS: [Pool; 2] = [
-    Pool { name: "thor", model: "Jetson AGX Thor", want: 5 },
-    Pool { name: "spark", model: "DGX Spark", want: 2 },
+    Pool {
+        name: "thor",
+        model: "Jetson AGX Thor",
+        want: 5,
+    },
+    Pool {
+        name: "spark",
+        model: "DGX Spark",
+        want: 2,
+    },
 ];
 
 /// Reconciles every pool for three passes and then compares what the
@@ -10585,19 +11136,28 @@ fn run(tokens: bool) {
         calls: 0,
         lose_reply: 3,
     };
-    let mut c = Controller { provider, tokens, owned: BTreeMap::new() };
+    let mut c = Controller {
+        provider,
+        tokens,
+        owned: BTreeMap::new(),
+    };
+
     for pass in 1..=3 {
         println!("  pass {pass}");
         let mut full = true;
+
         for pool in &amp;POOLS {
             full = c.reconcile(pool) &amp;&amp; full;
         }
+
         if full {
             println!("    every pool is full");
             break;
         }
     }
+
     let mut known = BTreeSet::new();
+
     for pool in &amp;POOLS {
         let owned = &amp;c.owned[pool.name];
         known.extend(owned.iter().map(|m| m.id.as_str()));
@@ -10609,8 +11169,17 @@ fn run(tokens: bool) {
             c.provider.count(pool.model)
         );
     }
-    for m in c.provider.machines.iter().filter(|m| !known.contains(m.id.as_str())) {
-        println!("  machine {} ({}) is running and belongs to no pool", m.id, m.model);
+
+    for m in c
+        .provider
+        .machines
+        .iter()
+        .filter(|m| !known.contains(m.id.as_str()))
+    {
+        println!(
+            "  machine {} ({}) is running and belongs to no pool",
+            m.id, m.model
+        );
     }
 }
 
@@ -10756,11 +11325,13 @@ type Provider struct {
 // count returns how many machines of a model exist.
 func (p *Provider) count(model string) int {
 	n := 0
+
 	for _, m := range p.machines {
 		if m.Model == model {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -10768,6 +11339,7 @@ func (p *Provider) count(model string) int {
 // existing machine returns that machine and creates nothing.
 func (p *Provider) Create(model, token string) (Machine, error) {
 	p.calls++
+
 	if token != "" {
 		for _, m := range p.machines {
 			if m.Token == token {
@@ -10775,14 +11347,18 @@ func (p *Provider) Create(model, token string) (Machine, error) {
 			}
 		}
 	}
+
 	if p.count(model) &gt;= p.quota[model] {
 		return Machine{}, ErrQuota
 	}
+
 	m := Machine{ID: fmt.Sprintf("m-%02d", len(p.machines)+1), Model: model, Token: token}
 	p.machines = append(p.machines, m)
+
 	if p.calls == p.loseReply {
 		return Machine{}, ErrTimeout
 	}
+
 	return m, nil
 }
 
@@ -10812,17 +11388,23 @@ func (c *Controller) Reconcile(pool Pool) bool {
 	for len(c.owned[pool.Name]) &lt; pool.Want {
 		slot := fmt.Sprintf("%s-%d", pool.Name, len(c.owned[pool.Name])+1)
 		token := ""
+
 		if c.tokens {
 			token = slot
 		}
+
 		m, err := c.provider.Create(pool.Model, token)
+
 		if err != nil {
 			fmt.Printf("    %-8s create failed: %v\n", slot, err)
+
 			return false
 		}
+
 		fmt.Printf("    %-8s is machine %s\n", slot, m.ID)
 		c.owned[pool.Name] = append(c.owned[pool.Name], m)
 	}
+
 	return true
 }
 
@@ -10838,25 +11420,32 @@ var pools = []Pool{
 func run(tokens bool) {
 	provider := &amp;Provider{quota: map[string]int{"Jetson AGX Thor": 5, "DGX Spark": 2}, loseReply: 3}
 	c := &amp;Controller{provider: provider, tokens: tokens, owned: map[string][]Machine{}}
+
 	for pass := 1; pass &lt;= 3; pass++ {
 		fmt.Printf("  pass %d\n", pass)
 		full := true
+
 		for _, pool := range pools {
 			full = c.Reconcile(pool) &amp;&amp; full
 		}
+
 		if full {
 			fmt.Println("    every pool is full")
 			break
 		}
 	}
+
 	known := map[string]bool{}
+
 	for _, pool := range pools {
 		for _, m := range c.owned[pool.Name] {
 			known[m.ID] = true
 		}
+
 		fmt.Printf("  %-5s wanted %d, controller owns %d, provider holds %d\n",
 			pool.Name, pool.Want, len(c.owned[pool.Name]), provider.count(pool.Model))
 	}
+
 	for _, m := range provider.machines {
 		if !known[m.ID] {
 			fmt.Printf("  machine %s (%s) is running and belongs to no pool\n", m.ID, m.Model)
@@ -10943,22 +11532,29 @@ impl Provider {
     fn create(&amp;mut self, model: &amp;'static str, token: Option&lt;&amp;str&gt;) -&gt; Result&lt;Machine, CreateError&gt; {
         self.calls += 1;
         if let Some(token) = token
-            &amp;&amp; let Some(existing) = self.machines.iter().find(|m| m.token.as_deref() == Some(token))
+            &amp;&amp; let Some(existing) = self
+                .machines
+                .iter()
+                .find(|m| m.token.as_deref() == Some(token))
         {
             return Ok(existing.clone());
         }
+
         if self.count(model) &gt;= self.quota[model] {
             return Err(CreateError::Quota);
         }
+
         let machine = Machine {
             id: format!("m-{:02}", self.machines.len() + 1),
             model,
             token: token.map(str::to_owned),
         };
         self.machines.push(machine.clone());
+
         if self.calls == self.lose_reply {
             return Err(CreateError::Timeout);
         }
+
         Ok(machine)
     }
 }
@@ -10987,9 +11583,11 @@ impl Controller {
     /// call that fails. It returns true when the pool is full.
     fn reconcile(&amp;mut self, pool: &amp;Pool) -&gt; bool {
         let owned = self.owned.entry(pool.name).or_default();
+
         while owned.len() &lt; pool.want {
             let slot = format!("{}-{}", pool.name, owned.len() + 1);
             let token = self.tokens.then_some(slot.as_str());
+
             match self.provider.create(pool.model, token) {
                 Ok(machine) =&gt; {
                     println!("    {slot:&lt;8} is machine {}", machine.id);
@@ -10997,18 +11595,28 @@ impl Controller {
                 }
                 Err(e) =&gt; {
                     println!("    {slot:&lt;8} create failed: {e}");
+
                     return false;
                 }
             }
         }
+
         true
     }
 }
 
 /// The fleet we ask for: the Thors on the shelf and the two Sparks.
 const POOLS: [Pool; 2] = [
-    Pool { name: "thor", model: "Jetson AGX Thor", want: 5 },
-    Pool { name: "spark", model: "DGX Spark", want: 2 },
+    Pool {
+        name: "thor",
+        model: "Jetson AGX Thor",
+        want: 5,
+    },
+    Pool {
+        name: "spark",
+        model: "DGX Spark",
+        want: 2,
+    },
 ];
 
 /// Reconciles every pool for three passes and then compares what the
@@ -11020,19 +11628,28 @@ fn run(tokens: bool) {
         calls: 0,
         lose_reply: 3,
     };
-    let mut c = Controller { provider, tokens, owned: BTreeMap::new() };
+    let mut c = Controller {
+        provider,
+        tokens,
+        owned: BTreeMap::new(),
+    };
+
     for pass in 1..=3 {
         println!("  pass {pass}");
         let mut full = true;
+
         for pool in &amp;POOLS {
             full = c.reconcile(pool) &amp;&amp; full;
         }
+
         if full {
             println!("    every pool is full");
             break;
         }
     }
+
     let mut known = BTreeSet::new();
+
     for pool in &amp;POOLS {
         let owned = &amp;c.owned[pool.name];
         known.extend(owned.iter().map(|m| m.id.as_str()));
@@ -11044,8 +11661,17 @@ fn run(tokens: bool) {
             c.provider.count(pool.model)
         );
     }
-    for m in c.provider.machines.iter().filter(|m| !known.contains(m.id.as_str())) {
-        println!("  machine {} ({}) is running and belongs to no pool", m.id, m.model);
+
+    for m in c
+        .provider
+        .machines
+        .iter()
+        .filter(|m| !known.contains(m.id.as_str()))
+    {
+        println!(
+            "  machine {} ({}) is running and belongs to no pool",
+            m.id, m.model
+        );
     }
 }
 
@@ -11386,36 +12012,46 @@ dirty page.</p>
 // guest whenever a round leaves as much memory to send as it started with.
 func Migrate(vm VM, link Link, throttle bool) {
 	fmt.Printf("%s over %s", vm.Name, link.Name)
+
 	if throttle {
 		fmt.Print(", with throttling")
 	}
+
 	fmt.Println(":")
 
 	remaining := vm.MemoryGB // memory still to be sent
 	slowed := 0.0            // fraction by which the guest is slowed
 	elapsed := 0.0
+
 	for round := 1; round &lt;= maxRounds; round++ {
 		if remaining &lt;= link.GBps*maxPauseSeconds {
 			pause := remaining / link.GBps
 			fmt.Printf("  round %2d: VM paused, %.2f GB sent in %.2f s\n", round, remaining, pause)
 			fmt.Printf("  done in %.1f s; the VM was paused for %.0f ms\n", elapsed+pause, pause*1000)
+
 			return
 		}
+
 		seconds := remaining / link.GBps
 		dirtied := min(vm.DirtyGBps*(1-slowed)*seconds, vm.MemoryGB)
 		fmt.Printf("  round %2d: %6.2f GB sent in %6.1f s, %6.2f GB changed meanwhile\n",
 			round, remaining, seconds, dirtied)
 		elapsed += seconds
+
 		if dirtied &gt;= remaining {
 			if !throttle || slowed &gt;= maxThrottle {
 				fmt.Println("  does not converge: memory changes as fast as the link carries it")
+
 				return
 			}
+
 			slowed += throttleStep
 			fmt.Printf("            no progress: guest slowed to %.0f%% of full speed\n", (1-slowed)*100)
 		}
+
 		remaining = dirtied
 	}
+
 	fmt.Printf("  gave up after %d rounds\n", maxRounds)
 }
 </code></pre>
@@ -11431,27 +12067,44 @@ fn migrate(vm: &amp;Vm, link: &amp;Link, throttle: bool) {
     let mut remaining = vm.memory_gb; // memory still to be sent
     let mut slowed = 0.0; // fraction by which the guest is slowed
     let mut elapsed = 0.0;
+
     for round in 1..=MAX_ROUNDS {
         if remaining &lt;= link.gbps * MAX_PAUSE_SECONDS {
             let pause = remaining / link.gbps;
             println!("  round {round:2}: VM paused, {remaining:.2} GB sent in {pause:.2} s");
-            println!("  done in {:.1} s; the VM was paused for {:.0} ms", elapsed + pause, pause * 1000.0);
+            println!(
+                "  done in {:.1} s; the VM was paused for {:.0} ms",
+                elapsed + pause,
+                pause * 1000.0
+            );
+
             return;
         }
+
         let seconds = remaining / link.gbps;
         let dirtied = (vm.dirty_gbps * (1.0 - slowed) * seconds).min(vm.memory_gb);
-        println!("  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile");
+        println!(
+            "  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile"
+        );
         elapsed += seconds;
+
         if dirtied &gt;= remaining {
             if !throttle || slowed &gt;= MAX_THROTTLE {
                 println!("  does not converge: memory changes as fast as the link carries it");
+
                 return;
             }
+
             slowed += THROTTLE_STEP;
-            println!("            no progress: guest slowed to {:.0}% of full speed", (1.0 - slowed) * 100.0);
+            println!(
+                "            no progress: guest slowed to {:.0}% of full speed",
+                (1.0 - slowed) * 100.0
+            );
         }
+
         remaining = dirtied;
     }
+
     println!("  gave up after {MAX_ROUNDS} rounds");
 }</code></pre>
 <p>A round that dirties at least as much as it sent has made no progress. Without
@@ -11488,14 +12141,34 @@ two Sparks.</p>
 <pre><code class="language-rust">fn main() {
     // An inference VM sized for the Orin NX, and a training VM sized for a
     // Thor or a Spark.
-    let inference = Vm { name: "16 GB inference VM (0.2 GB/s changed)", memory_gb: 16.0, dirty_gbps: 0.2 };
-    let training = Vm { name: "100 GB training VM (4 GB/s changed)", memory_gb: 100.0, dirty_gbps: 4.0 };
+    let inference = Vm {
+        name: "16 GB inference VM (0.2 GB/s changed)",
+        memory_gb: 16.0,
+        dirty_gbps: 0.2,
+    };
+    let training = Vm {
+        name: "100 GB training VM (4 GB/s changed)",
+        memory_gb: 100.0,
+        dirty_gbps: 4.0,
+    };
 
     // The links in the fleet, in gigabytes per second.
-    let orin = Link { name: "1 GbE", gbps: 0.125 };
-    let lane = Link { name: "one 25 GbE lane", gbps: 3.125 };
-    let bonded = Link { name: "four bonded 25 GbE lanes", gbps: 12.5 };
-    let spark = Link { name: "the Sparks' 200 GbE cable", gbps: 25.0 };
+    let orin = Link {
+        name: "1 GbE",
+        gbps: 0.125,
+    };
+    let lane = Link {
+        name: "one 25 GbE lane",
+        gbps: 3.125,
+    };
+    let bonded = Link {
+        name: "four bonded 25 GbE lanes",
+        gbps: 12.5,
+    };
+    let spark = Link {
+        name: "the Sparks' 200 GbE cable",
+        gbps: 25.0,
+    };
 
     migrate(&amp;inference, &amp;orin, false);
     migrate(&amp;inference, &amp;lane, false);
@@ -11658,36 +12331,46 @@ const (
 // guest whenever a round leaves as much memory to send as it started with.
 func Migrate(vm VM, link Link, throttle bool) {
 	fmt.Printf("%s over %s", vm.Name, link.Name)
+
 	if throttle {
 		fmt.Print(", with throttling")
 	}
+
 	fmt.Println(":")
 
 	remaining := vm.MemoryGB // memory still to be sent
 	slowed := 0.0            // fraction by which the guest is slowed
 	elapsed := 0.0
+
 	for round := 1; round &lt;= maxRounds; round++ {
 		if remaining &lt;= link.GBps*maxPauseSeconds {
 			pause := remaining / link.GBps
 			fmt.Printf("  round %2d: VM paused, %.2f GB sent in %.2f s\n", round, remaining, pause)
 			fmt.Printf("  done in %.1f s; the VM was paused for %.0f ms\n", elapsed+pause, pause*1000)
+
 			return
 		}
+
 		seconds := remaining / link.GBps
 		dirtied := min(vm.DirtyGBps*(1-slowed)*seconds, vm.MemoryGB)
 		fmt.Printf("  round %2d: %6.2f GB sent in %6.1f s, %6.2f GB changed meanwhile\n",
 			round, remaining, seconds, dirtied)
 		elapsed += seconds
+
 		if dirtied &gt;= remaining {
 			if !throttle || slowed &gt;= maxThrottle {
 				fmt.Println("  does not converge: memory changes as fast as the link carries it")
+
 				return
 			}
+
 			slowed += throttleStep
 			fmt.Printf("            no progress: guest slowed to %.0f%% of full speed\n", (1-slowed)*100)
 		}
+
 		remaining = dirtied
 	}
+
 	fmt.Printf("  gave up after %d rounds\n", maxRounds)
 }
 
@@ -11768,41 +12451,78 @@ fn migrate(vm: &amp;Vm, link: &amp;Link, throttle: bool) {
     let mut remaining = vm.memory_gb; // memory still to be sent
     let mut slowed = 0.0; // fraction by which the guest is slowed
     let mut elapsed = 0.0;
+
     for round in 1..=MAX_ROUNDS {
         if remaining &lt;= link.gbps * MAX_PAUSE_SECONDS {
             let pause = remaining / link.gbps;
             println!("  round {round:2}: VM paused, {remaining:.2} GB sent in {pause:.2} s");
-            println!("  done in {:.1} s; the VM was paused for {:.0} ms", elapsed + pause, pause * 1000.0);
+            println!(
+                "  done in {:.1} s; the VM was paused for {:.0} ms",
+                elapsed + pause,
+                pause * 1000.0
+            );
+
             return;
         }
+
         let seconds = remaining / link.gbps;
         let dirtied = (vm.dirty_gbps * (1.0 - slowed) * seconds).min(vm.memory_gb);
-        println!("  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile");
+        println!(
+            "  round {round:2}: {remaining:6.2} GB sent in {seconds:6.1} s, {dirtied:6.2} GB changed meanwhile"
+        );
         elapsed += seconds;
+
         if dirtied &gt;= remaining {
             if !throttle || slowed &gt;= MAX_THROTTLE {
                 println!("  does not converge: memory changes as fast as the link carries it");
+
                 return;
             }
+
             slowed += THROTTLE_STEP;
-            println!("            no progress: guest slowed to {:.0}% of full speed", (1.0 - slowed) * 100.0);
+            println!(
+                "            no progress: guest slowed to {:.0}% of full speed",
+                (1.0 - slowed) * 100.0
+            );
         }
+
         remaining = dirtied;
     }
+
     println!("  gave up after {MAX_ROUNDS} rounds");
 }
 
 fn main() {
     // An inference VM sized for the Orin NX, and a training VM sized for a
     // Thor or a Spark.
-    let inference = Vm { name: "16 GB inference VM (0.2 GB/s changed)", memory_gb: 16.0, dirty_gbps: 0.2 };
-    let training = Vm { name: "100 GB training VM (4 GB/s changed)", memory_gb: 100.0, dirty_gbps: 4.0 };
+    let inference = Vm {
+        name: "16 GB inference VM (0.2 GB/s changed)",
+        memory_gb: 16.0,
+        dirty_gbps: 0.2,
+    };
+    let training = Vm {
+        name: "100 GB training VM (4 GB/s changed)",
+        memory_gb: 100.0,
+        dirty_gbps: 4.0,
+    };
 
     // The links in the fleet, in gigabytes per second.
-    let orin = Link { name: "1 GbE", gbps: 0.125 };
-    let lane = Link { name: "one 25 GbE lane", gbps: 3.125 };
-    let bonded = Link { name: "four bonded 25 GbE lanes", gbps: 12.5 };
-    let spark = Link { name: "the Sparks' 200 GbE cable", gbps: 25.0 };
+    let orin = Link {
+        name: "1 GbE",
+        gbps: 0.125,
+    };
+    let lane = Link {
+        name: "one 25 GbE lane",
+        gbps: 3.125,
+    };
+    let bonded = Link {
+        name: "four bonded 25 GbE lanes",
+        gbps: 12.5,
+    };
+    let spark = Link {
+        name: "the Sparks' 200 GbE cable",
+        gbps: 25.0,
+    };
 
     migrate(&amp;inference, &amp;orin, false);
     migrate(&amp;inference, &amp;lane, false);
@@ -12086,6 +12806,7 @@ func (w *Worker) Run(n int) (int, error) {
 		if step == w.failAfter {
 			return step, errFailed
 		}
+
 		// The chunk to send moves one place back around the gradient each
 		// step, so after the first step it is the chunk just received.
 		chunk := mod(w.id-step, n)
@@ -12103,6 +12824,7 @@ func (w *Worker) Run(n int) (int, error) {
 			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
 		}
 	}
+
 	return 2 * (n - 1), nil
 }
 </code></pre>
@@ -12120,23 +12842,32 @@ func (w *Worker) Run(n int) (int, error) {
             if self.fail_after == Some(step) {
                 return (self, step, Some("failed".to_owned()));
             }
+
             // The chunk to send moves one place back around the gradient each
             // step, so after the first step it is the chunk just received.
             // Adding 2n keeps the subtraction from going below zero.
             let chunk = (self.id + 2 * n - step) % n;
             // The right-hand neighbour may have stopped; its channel still accepts.
-            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let _ = self.out.send(Message {
+                chunk,
+                value: self.gradient[chunk],
+            });
             let reducing = step &lt; n - 1;
 
             match self.inbox.recv_timeout(PATIENCE) {
                 Ok(m) if reducing =&gt; self.gradient[m.chunk] += m.value,
                 Ok(m) =&gt; self.gradient[m.chunk] = m.value,
                 Err(_) =&gt; {
-                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    let why = format!(
+                        "no chunk from {} within {PATIENCE:?}",
+                        name((self.id + n - 1) % n)
+                    );
+
                     return (self, step, Some(why));
                 }
             }
         }
+
         (self, 2 * (n - 1), None)
     }
 }</code></pre>
@@ -12168,30 +12899,39 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	// Each link holds every message a worker can send in one step, so a send
 	// goes through even when the receiver has stopped.
 	links := make([]chan message, n)
+
 	for i := range links {
 		links[i] = make(chan message, 2*(n-1))
 	}
+
 	workers := make([]*Worker, n)
+
 	for i := range workers {
 		gradient := make([]int, n)
+
 		for chunk := range gradient {
 			gradient[chunk] = i + 1 + 10*chunk
 		}
+
 		workers[i] = &amp;Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
 	}
+
 	if failing &gt;= 0 {
 		workers[failing].failAfter = failAfter
 	}
 
 	results := make([]result, n)
 	var wg sync.WaitGroup
+
 	for i, w := range workers {
 		wg.Go(func() {
 			steps, err := w.Run(n)
 			results[i] = result{steps, err}
 		})
 	}
+
 	wg.Wait()
+
 	return workers, results
 }
 </code></pre>
@@ -12211,12 +12951,21 @@ fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, u
             gradient: own_gradient(id, n),
             inbox,
             out: senders[(id + 1) % n].clone(),
-            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+            fail_after: failing
+                .filter(|(who, _)| *who == id)
+                .map(|(_, after)| after),
         })
         .collect();
 
-    let handles: Vec&lt;_&gt; = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
-    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+    let handles: Vec&lt;_&gt; = workers
+        .into_iter()
+        .map(|w| thread::spawn(move || w.run(n)))
+        .collect();
+
+    handles
+        .into_iter()
+        .map(|h| h.join().expect("a worker panicked"))
+        .collect()
 }</code></pre>
 <p>In Go each worker runs in a goroutine started with <code>wg.Go</code>, a method of
 <code>sync.WaitGroup</code> that starts a function and counts it, and <code>wg.Wait</code> blocks until all
@@ -12285,25 +13034,31 @@ fn interval(job_mtbf: f64) -&gt; f64 {
 
 	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
 	workers, _ := ring(n, -1, 0)
+
 	for i := range n {
 		own := make([]int, n)
+
 		for chunk := range own {
 			own[chunk] = i + 1 + 10*chunk
 		}
+
 		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
 	}
+
 	sent := 2 * (n - 1)
 	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
 		sent, float64(sent)/n, sent*n)
 
 	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
 	_, results := ring(n, 2, 2)
+
 	for i, r := range results {
 		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
 	}
 
 	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
 	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+
 	for _, machines := range []int{1, 5, 64, 512} {
 		jobMTBF := machineMTBF / float64(machines)
 		every := interval(jobMTBF)
@@ -12318,6 +13073,7 @@ fn interval(job_mtbf: f64) -&gt; f64 {
     const N: usize = 5;
 
     println!("ring all-reduce over {N} workers, {N} chunks each:");
+
     for (worker, _, _) in ring(N, None) {
         println!(
             "  {} starts with {:&lt;17} and ends with {}",
@@ -12326,6 +13082,7 @@ fn interval(job_mtbf: f64) -&gt; f64 {
             show(&amp;worker.gradient)
         );
     }
+
     let sent = 2 * (N - 1);
     println!(
         "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
@@ -12333,14 +13090,24 @@ fn interval(job_mtbf: f64) -&gt; f64 {
         sent * N
     );
 
-    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    println!(
+        "the same step, with {} failing after 2 of its {sent} exchanges:",
+        name(2)
+    );
+
     for (worker, steps, why) in ring(N, Some((2, 2))) {
         let why = why.unwrap_or_else(|| "finished".to_owned());
-        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+        println!(
+            "  {} stopped after {steps} of {sent}: {why}",
+            name(worker.id)
+        );
     }
 
-    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!(
+        "checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:"
+    );
     println!("  machines  job fails every  checkpoint every  time lost");
+
     for machines in [1, 5, 64, 512] {
         let job_mtbf = MACHINE_MTBF / f64::from(machines);
         let every = interval(job_mtbf);
@@ -12474,6 +13241,7 @@ func (w *Worker) Run(n int) (int, error) {
 		if step == w.failAfter {
 			return step, errFailed
 		}
+
 		// The chunk to send moves one place back around the gradient each
 		// step, so after the first step it is the chunk just received.
 		chunk := mod(w.id-step, n)
@@ -12491,6 +13259,7 @@ func (w *Worker) Run(n int) (int, error) {
 			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
 		}
 	}
+
 	return 2 * (n - 1), nil
 }
 
@@ -12508,30 +13277,39 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	// Each link holds every message a worker can send in one step, so a send
 	// goes through even when the receiver has stopped.
 	links := make([]chan message, n)
+
 	for i := range links {
 		links[i] = make(chan message, 2*(n-1))
 	}
+
 	workers := make([]*Worker, n)
+
 	for i := range workers {
 		gradient := make([]int, n)
+
 		for chunk := range gradient {
 			gradient[chunk] = i + 1 + 10*chunk
 		}
+
 		workers[i] = &amp;Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
 	}
+
 	if failing &gt;= 0 {
 		workers[failing].failAfter = failAfter
 	}
 
 	results := make([]result, n)
 	var wg sync.WaitGroup
+
 	for i, w := range workers {
 		wg.Go(func() {
 			steps, err := w.Run(n)
 			results[i] = result{steps, err}
 		})
 	}
+
 	wg.Wait()
+
 	return workers, results
 }
 
@@ -12562,25 +13340,31 @@ func main() {
 
 	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
 	workers, _ := ring(n, -1, 0)
+
 	for i := range n {
 		own := make([]int, n)
+
 		for chunk := range own {
 			own[chunk] = i + 1 + 10*chunk
 		}
+
 		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
 	}
+
 	sent := 2 * (n - 1)
 	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
 		sent, float64(sent)/n, sent*n)
 
 	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
 	_, results := ring(n, 2, 2)
+
 	for i, r := range results {
 		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
 	}
 
 	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
 	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+
 	for _, machines := range []int{1, 5, 64, 512} {
 		jobMTBF := machineMTBF / float64(machines)
 		every := interval(jobMTBF)
@@ -12655,23 +13439,32 @@ impl Worker {
             if self.fail_after == Some(step) {
                 return (self, step, Some("failed".to_owned()));
             }
+
             // The chunk to send moves one place back around the gradient each
             // step, so after the first step it is the chunk just received.
             // Adding 2n keeps the subtraction from going below zero.
             let chunk = (self.id + 2 * n - step) % n;
             // The right-hand neighbour may have stopped; its channel still accepts.
-            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let _ = self.out.send(Message {
+                chunk,
+                value: self.gradient[chunk],
+            });
             let reducing = step &lt; n - 1;
 
             match self.inbox.recv_timeout(PATIENCE) {
                 Ok(m) if reducing =&gt; self.gradient[m.chunk] += m.value,
                 Ok(m) =&gt; self.gradient[m.chunk] = m.value,
                 Err(_) =&gt; {
-                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    let why = format!(
+                        "no chunk from {} within {PATIENCE:?}",
+                        name((self.id + n - 1) % n)
+                    );
+
                     return (self, step, Some(why));
                 }
             }
         }
+
         (self, 2 * (n - 1), None)
     }
 }
@@ -12690,12 +13483,21 @@ fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, u
             gradient: own_gradient(id, n),
             inbox,
             out: senders[(id + 1) % n].clone(),
-            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+            fail_after: failing
+                .filter(|(who, _)| *who == id)
+                .map(|(_, after)| after),
         })
         .collect();
 
-    let handles: Vec&lt;_&gt; = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
-    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+    let handles: Vec&lt;_&gt; = workers
+        .into_iter()
+        .map(|w| thread::spawn(move || w.run(n)))
+        .collect();
+
+    handles
+        .into_iter()
+        .map(|h| h.join().expect("a worker panicked"))
+        .collect()
 }
 
 /// Returns the gradient a worker starts with: a different value in each chunk.
@@ -12705,7 +13507,11 @@ fn own_gradient(id: usize, n: usize) -&gt; Vec&lt;i64&gt; {
 
 /// Formats a gradient as its values separated by spaces.
 fn show(gradient: &amp;[i64]) -&gt; String {
-    gradient.iter().map(i64::to_string).collect::&lt;Vec&lt;_&gt;&gt;().join(" ")
+    gradient
+        .iter()
+        .map(i64::to_string)
+        .collect::&lt;Vec&lt;_&gt;&gt;()
+        .join(" ")
 }
 
 /// The time one checkpoint takes to write, in seconds.
@@ -12724,6 +13530,7 @@ fn main() {
     const N: usize = 5;
 
     println!("ring all-reduce over {N} workers, {N} chunks each:");
+
     for (worker, _, _) in ring(N, None) {
         println!(
             "  {} starts with {:&lt;17} and ends with {}",
@@ -12732,6 +13539,7 @@ fn main() {
             show(&amp;worker.gradient)
         );
     }
+
     let sent = 2 * (N - 1);
     println!(
         "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
@@ -12739,14 +13547,24 @@ fn main() {
         sent * N
     );
 
-    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    println!(
+        "the same step, with {} failing after 2 of its {sent} exchanges:",
+        name(2)
+    );
+
     for (worker, steps, why) in ring(N, Some((2, 2))) {
         let why = why.unwrap_or_else(|| "finished".to_owned());
-        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+        println!(
+            "  {} stopped after {steps} of {sent}: {why}",
+            name(worker.id)
+        );
     }
 
-    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!(
+        "checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:"
+    );
     println!("  machines  job fails every  checkpoint every  time lost");
+
     for machines in [1, 5, 64, 512] {
         let job_mtbf = MACHINE_MTBF / f64::from(machines);
         let every = interval(job_mtbf);
@@ -12996,15 +13814,27 @@ impl Domain {
     /// Returns the link the machines of this domain share.
     fn link(self) -&gt; Link {
         match self {
-            Domain::Shelf =&gt; Link { label: "the 25 GbE switch", gbps: 3.125 },
-            Domain::Desk =&gt; Link { label: "the 200 GbE cable", gbps: 25.0 },
-            Domain::Bench =&gt; Link { label: "1 GbE", gbps: 0.125 },
+            Domain::Shelf =&gt; Link {
+                label: "the 25 GbE switch",
+                gbps: 3.125,
+            },
+            Domain::Desk =&gt; Link {
+                label: "the 200 GbE cable",
+                gbps: 25.0,
+            },
+            Domain::Bench =&gt; Link {
+                label: "1 GbE",
+                gbps: 0.125,
+            },
         }
     }
 }
 
 /// The link between machines in different domains.
-const HOUSE_NETWORK: Link = Link { label: "the 1 GbE house network", gbps: 0.125 };
+const HOUSE_NETWORK: Link = Link {
+    label: "the 1 GbE house network",
+    gbps: 0.125,
+};
 
 /// Returns the machines in name order, all free.
 fn new_fleet() -&gt; Vec&lt;Node&gt; {
@@ -13019,7 +13849,11 @@ fn new_fleet() -&gt; Vec&lt;Node&gt; {
         ("thor-5", Domain::Shelf),
     ]
     .into_iter()
-    .map(|(name, domain)| Node { name, domain, job: None })
+    .map(|(name, domain)| Node {
+        name,
+        domain,
+        job: None,
+    })
     .collect()
 }
 
@@ -13042,10 +13876,13 @@ free GPU per turn, until a whole round passes in which nobody could be given any
 // ended up holding.
 func podAtATime(fleet []*Node, jobs []Job) {
 	held := map[string][]*Node{}
+
 	for progress := true; progress; {
 		progress = false
+
 		for _, job := range jobs {
 			open := free(fleet)
+
 			if len(held[job.Name]) &lt; job.Workers &amp;&amp; len(open) &gt; 0 {
 				open[0].Job = job.Name
 				held[job.Name] = append(held[job.Name], open[0])
@@ -13053,13 +13890,17 @@ func podAtATime(fleet []*Node, jobs []Job) {
 			}
 		}
 	}
+
 	running := 0
+
 	for _, job := range jobs {
 		fmt.Printf("  %-8s holds %d of %d GPUs: %s\n", job.Name, len(held[job.Name]), job.Workers, names(held[job.Name]))
+
 		if len(held[job.Name]) == job.Workers {
 			running++
 		}
 	}
+
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 </code></pre>
@@ -13070,11 +13911,15 @@ func podAtATime(fleet []*Node, jobs []Job) {
 /// holding.
 fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
     let held = |fleet: &amp;[Node], job: &amp;Job| -&gt; Vec&lt;usize&gt; {
-        (0..fleet.len()).filter(|&amp;i| fleet[i].job == Some(job.name)).collect()
+        (0..fleet.len())
+            .filter(|&amp;i| fleet[i].job == Some(job.name))
+            .collect()
     };
     let mut progress = true;
+
     while progress {
         progress = false;
+
         for job in jobs {
             if held(&amp;fleet, job).len() &lt; job.workers
                 &amp;&amp; let Some(&amp;first) = free(&amp;fleet).first()
@@ -13084,16 +13929,29 @@ fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
             }
         }
     }
+
     let mut running = 0;
+
     for job in jobs {
         let mine = held(&amp;fleet, job);
-        println!("  {:&lt;8} holds {} of {} GPUs: {}", job.name, mine.len(), job.workers, names(&amp;fleet, &amp;mine));
+        println!(
+            "  {:&lt;8} holds {} of {} GPUs: {}",
+            job.name,
+            mine.len(),
+            job.workers,
+            names(&amp;fleet, &amp;mine)
+        );
+
         if mine.len() == job.workers {
             running += 1;
         }
     }
+
     let taken = fleet.len() - free(&amp;fleet).len();
-    println!("  {taken} of {} GPUs are held and {running} jobs are running", fleet.len());
+    println!(
+        "  {taken} of {} GPUs are held and {running} jobs are running",
+        fleet.len()
+    );
 }</code></pre>
 <h3 id="two-ways-to-choose-machines"><a class="header" href="#two-ways-to-choose-machines">Two ways to choose machines</a></h3>
 <p>A <em>placer</em> is a function that takes the free machines and a number of workers and
@@ -13116,6 +13974,7 @@ func firstFree(open []*Node, workers int) []*Node {
 	if len(open) &lt; workers {
 		return nil
 	}
+
 	return open[:workers]
 }
 
@@ -13126,22 +13985,29 @@ func firstFree(open []*Node, workers int) []*Node {
 func byTopology(open []*Node, workers int) []*Node {
 	byDomain := map[string][]*Node{}
 	var order []string
+
 	for _, n := range open {
 		if byDomain[n.Domain] == nil {
 			order = append(order, n.Domain)
 		}
+
 		byDomain[n.Domain] = append(byDomain[n.Domain], n)
 	}
+
 	best := ""
+
 	for _, domain := range order {
 		size := len(byDomain[domain])
+
 		if size &gt;= workers &amp;&amp; (best == "" || size &lt; len(byDomain[best])) {
 			best = domain
 		}
 	}
+
 	if best == "" {
 		return firstFree(open, workers)
 	}
+
 	return byDomain[best][:workers]
 }
 </code></pre>
@@ -13162,7 +14028,10 @@ fn first_free(_fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Opt
 /// first free machines.
 fn by_topology(fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
     let in_domain = |domain: Domain| -&gt; Vec&lt;usize&gt; {
-        open.iter().copied().filter(|&amp;i| fleet[i].domain == domain).collect()
+        open.iter()
+            .copied()
+            .filter(|&amp;i| fleet[i].domain == domain)
+            .collect()
     };
     [Domain::Bench, Domain::Desk, Domain::Shelf]
         .into_iter()
@@ -13189,6 +14058,7 @@ func slowest(nodes []*Node) Link {
 			return houseNetwork
 		}
 	}
+
 	return links[nodes[0].Domain]
 }
 
@@ -13196,6 +14066,7 @@ func slowest(nodes []*Node) Link {
 // 2(n-1)/n gradients over the slowest link.
 func exchangeSeconds(nodes []*Node) float64 {
 	n := float64(len(nodes))
+
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 </code></pre>
@@ -13208,13 +14079,18 @@ const GRADIENT_GB: f64 = 14.0;
 /// every machine is in one domain, and the house network otherwise.
 fn slowest(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; Link {
     let first = fleet[nodes[0]].domain;
-    if nodes.iter().all(|&amp;i| fleet[i].domain == first) { first.link() } else { HOUSE_NETWORK }
+    if nodes.iter().all(|&amp;i| fleet[i].domain == first) {
+        first.link()
+    } else {
+        HOUSE_NETWORK
+    }
 }
 
 /// Returns the time one ring all-reduce takes: each worker sends 2(n-1)/n
 /// gradients over the slowest link.
 fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
     let n = nodes.len() as f64;
+
     2.0 * (n - 1.0) / n * GRADIENT_GB / slowest(fleet, nodes).gbps
 }</code></pre>
 <h3 id="admitting-a-whole-job"><a class="header" href="#admitting-a-whole-job">Admitting a whole job</a></h3>
@@ -13229,17 +14105,23 @@ when every worker has a machine does <code>admit</code> mark any of them as take
 func admit(fleet []*Node, job Job, place placer) bool {
 	open := free(fleet)
 	nodes := place(open, job.Workers)
+
 	if nodes == nil {
 		fmt.Printf("  %-8s waits: it needs %d GPUs and %d are free\n", job.Name, job.Workers, len(open))
+
 		return false
 	}
+
 	for _, n := range nodes {
 		n.Job = job.Name
 	}
+
 	fmt.Printf("  %-8s runs on %s\n", job.Name, names(nodes))
+
 	if len(nodes) &gt; 1 {
 		fmt.Printf("           over %s: %.1f s for each all-reduce\n", slowest(nodes).Label, exchangeSeconds(nodes))
 	}
+
 	return true
 }
 
@@ -13250,6 +14132,7 @@ func release(fleet []*Node, job string) {
 			n.Job = ""
 		}
 	}
+
 	fmt.Printf("  %-8s finishes\n", job)
 }
 </code></pre>
@@ -13261,17 +14144,31 @@ func release(fleet []*Node, job string) {
 fn admit(fleet: &amp;mut [Node], job: Job, place: Placer) -&gt; bool {
     let open = free(fleet);
     let Some(nodes) = place(fleet, &amp;open, job.workers) else {
-        println!("  {:&lt;8} waits: it needs {} GPUs and {} are free", job.name, job.workers, open.len());
+        println!(
+            "  {:&lt;8} waits: it needs {} GPUs and {} are free",
+            job.name,
+            job.workers,
+            open.len()
+        );
+
         return false;
     };
+
     for &amp;i in &amp;nodes {
         fleet[i].job = Some(job.name);
     }
+
     println!("  {:&lt;8} runs on {}", job.name, names(fleet, &amp;nodes));
+
     if nodes.len() &gt; 1 {
         let link = slowest(fleet, &amp;nodes);
-        println!("           over {}: {:.1} s for each all-reduce", link.label, exchange_seconds(fleet, &amp;nodes));
+        println!(
+            "           over {}: {:.1} s for each all-reduce",
+            link.label,
+            exchange_seconds(fleet, &amp;nodes)
+        );
     }
+
     true
 }
 
@@ -13280,6 +14177,7 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
     for node in fleet.iter_mut().filter(|n| n.job == Some(job)) {
         node.job = None;
     }
+
     println!("  {job:&lt;8} finishes");
 }</code></pre>
 <h3 id="the-run-4"><a class="header" href="#the-run-4">The run</a></h3>
@@ -13301,11 +14199,14 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 	three := []Job{{"pair", 2}, {"quad", 4}, {"single", 1}}
 	fmt.Println("three jobs, on the first free machines:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, firstFree)
 	}
+
 	fmt.Println("the same three jobs, placed by topology:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, byTopology)
 	}
@@ -13314,7 +14215,16 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 <p class="listing"><b>Listing 8.12</b> Four experiments on the same fleet, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
-    let two = [Job { name: "train-a", workers: 5 }, Job { name: "train-b", workers: 5 }];
+    let two = [
+        Job {
+            name: "train-a",
+            workers: 5,
+        },
+        Job {
+            name: "train-b",
+            workers: 5,
+        },
+    ];
 
     println!("one pod at a time, two jobs of five workers:");
     pod_at_a_time(new_fleet(), &amp;two);
@@ -13327,17 +14237,29 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
     admit(&amp;mut fleet, two[1], by_topology);
 
     let three = [
-        Job { name: "pair", workers: 2 },
-        Job { name: "quad", workers: 4 },
-        Job { name: "single", workers: 1 },
+        Job {
+            name: "pair",
+            workers: 2,
+        },
+        Job {
+            name: "quad",
+            workers: 4,
+        },
+        Job {
+            name: "single",
+            workers: 1,
+        },
     ];
     println!("three jobs, on the first free machines:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, first_free);
     }
+
     println!("the same three jobs, placed by topology:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, by_topology);
     }
@@ -13496,20 +14418,24 @@ type Job struct {
 // free returns the machines whose GPU nobody holds, in name order.
 func free(fleet []*Node) []*Node {
 	var out []*Node
+
 	for _, n := range fleet {
 		if n.Job == "" {
 			out = append(out, n)
 		}
 	}
+
 	return out
 }
 
 // names joins the names of some machines with spaces.
 func names(nodes []*Node) string {
 	parts := make([]string, len(nodes))
+
 	for i, n := range nodes {
 		parts[i] = n.Name
 	}
+
 	return strings.Join(parts, " ")
 }
 
@@ -13518,10 +14444,13 @@ func names(nodes []*Node) string {
 // ended up holding.
 func podAtATime(fleet []*Node, jobs []Job) {
 	held := map[string][]*Node{}
+
 	for progress := true; progress; {
 		progress = false
+
 		for _, job := range jobs {
 			open := free(fleet)
+
 			if len(held[job.Name]) &lt; job.Workers &amp;&amp; len(open) &gt; 0 {
 				open[0].Job = job.Name
 				held[job.Name] = append(held[job.Name], open[0])
@@ -13529,13 +14458,17 @@ func podAtATime(fleet []*Node, jobs []Job) {
 			}
 		}
 	}
+
 	running := 0
+
 	for _, job := range jobs {
 		fmt.Printf("  %-8s holds %d of %d GPUs: %s\n", job.Name, len(held[job.Name]), job.Workers, names(held[job.Name]))
+
 		if len(held[job.Name]) == job.Workers {
 			running++
 		}
 	}
+
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 
@@ -13549,6 +14482,7 @@ func firstFree(open []*Node, workers int) []*Node {
 	if len(open) &lt; workers {
 		return nil
 	}
+
 	return open[:workers]
 }
 
@@ -13559,22 +14493,29 @@ func firstFree(open []*Node, workers int) []*Node {
 func byTopology(open []*Node, workers int) []*Node {
 	byDomain := map[string][]*Node{}
 	var order []string
+
 	for _, n := range open {
 		if byDomain[n.Domain] == nil {
 			order = append(order, n.Domain)
 		}
+
 		byDomain[n.Domain] = append(byDomain[n.Domain], n)
 	}
+
 	best := ""
+
 	for _, domain := range order {
 		size := len(byDomain[domain])
+
 		if size &gt;= workers &amp;&amp; (best == "" || size &lt; len(byDomain[best])) {
 			best = domain
 		}
 	}
+
 	if best == "" {
 		return firstFree(open, workers)
 	}
+
 	return byDomain[best][:workers]
 }
 
@@ -13590,6 +14531,7 @@ func slowest(nodes []*Node) Link {
 			return houseNetwork
 		}
 	}
+
 	return links[nodes[0].Domain]
 }
 
@@ -13597,6 +14539,7 @@ func slowest(nodes []*Node) Link {
 // 2(n-1)/n gradients over the slowest link.
 func exchangeSeconds(nodes []*Node) float64 {
 	n := float64(len(nodes))
+
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 
@@ -13607,17 +14550,23 @@ func exchangeSeconds(nodes []*Node) float64 {
 func admit(fleet []*Node, job Job, place placer) bool {
 	open := free(fleet)
 	nodes := place(open, job.Workers)
+
 	if nodes == nil {
 		fmt.Printf("  %-8s waits: it needs %d GPUs and %d are free\n", job.Name, job.Workers, len(open))
+
 		return false
 	}
+
 	for _, n := range nodes {
 		n.Job = job.Name
 	}
+
 	fmt.Printf("  %-8s runs on %s\n", job.Name, names(nodes))
+
 	if len(nodes) &gt; 1 {
 		fmt.Printf("           over %s: %.1f s for each all-reduce\n", slowest(nodes).Label, exchangeSeconds(nodes))
 	}
+
 	return true
 }
 
@@ -13628,6 +14577,7 @@ func release(fleet []*Node, job string) {
 			n.Job = ""
 		}
 	}
+
 	fmt.Printf("  %-8s finishes\n", job)
 }
 
@@ -13648,11 +14598,14 @@ func main() {
 	three := []Job{{"pair", 2}, {"quad", 4}, {"single", 1}}
 	fmt.Println("three jobs, on the first free machines:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, firstFree)
 	}
+
 	fmt.Println("the same three jobs, placed by topology:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, byTopology)
 	}
@@ -13708,15 +14661,27 @@ impl Domain {
     /// Returns the link the machines of this domain share.
     fn link(self) -&gt; Link {
         match self {
-            Domain::Shelf =&gt; Link { label: "the 25 GbE switch", gbps: 3.125 },
-            Domain::Desk =&gt; Link { label: "the 200 GbE cable", gbps: 25.0 },
-            Domain::Bench =&gt; Link { label: "1 GbE", gbps: 0.125 },
+            Domain::Shelf =&gt; Link {
+                label: "the 25 GbE switch",
+                gbps: 3.125,
+            },
+            Domain::Desk =&gt; Link {
+                label: "the 200 GbE cable",
+                gbps: 25.0,
+            },
+            Domain::Bench =&gt; Link {
+                label: "1 GbE",
+                gbps: 0.125,
+            },
         }
     }
 }
 
 /// The link between machines in different domains.
-const HOUSE_NETWORK: Link = Link { label: "the 1 GbE house network", gbps: 0.125 };
+const HOUSE_NETWORK: Link = Link {
+    label: "the 1 GbE house network",
+    gbps: 0.125,
+};
 
 /// Returns the machines in name order, all free.
 fn new_fleet() -&gt; Vec&lt;Node&gt; {
@@ -13731,7 +14696,11 @@ fn new_fleet() -&gt; Vec&lt;Node&gt; {
         ("thor-5", Domain::Shelf),
     ]
     .into_iter()
-    .map(|(name, domain)| Node { name, domain, job: None })
+    .map(|(name, domain)| Node {
+        name,
+        domain,
+        job: None,
+    })
     .collect()
 }
 
@@ -13744,12 +14713,18 @@ struct Job {
 
 /// Returns the indexes of the machines whose GPU nobody holds, in name order.
 fn free(fleet: &amp;[Node]) -&gt; Vec&lt;usize&gt; {
-    (0..fleet.len()).filter(|&amp;i| fleet[i].job.is_none()).collect()
+    (0..fleet.len())
+        .filter(|&amp;i| fleet[i].job.is_none())
+        .collect()
 }
 
 /// Joins the names of some machines with spaces.
 fn names(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; String {
-    nodes.iter().map(|&amp;i| fleet[i].name).collect::&lt;Vec&lt;_&gt;&gt;().join(" ")
+    nodes
+        .iter()
+        .map(|&amp;i| fleet[i].name)
+        .collect::&lt;Vec&lt;_&gt;&gt;()
+        .join(" ")
 }
 
 /// Gives each job one GPU in turn until none are left, the way a scheduler
@@ -13757,11 +14732,15 @@ fn names(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; String {
 /// holding.
 fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
     let held = |fleet: &amp;[Node], job: &amp;Job| -&gt; Vec&lt;usize&gt; {
-        (0..fleet.len()).filter(|&amp;i| fleet[i].job == Some(job.name)).collect()
+        (0..fleet.len())
+            .filter(|&amp;i| fleet[i].job == Some(job.name))
+            .collect()
     };
     let mut progress = true;
+
     while progress {
         progress = false;
+
         for job in jobs {
             if held(&amp;fleet, job).len() &lt; job.workers
                 &amp;&amp; let Some(&amp;first) = free(&amp;fleet).first()
@@ -13771,16 +14750,29 @@ fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
             }
         }
     }
+
     let mut running = 0;
+
     for job in jobs {
         let mine = held(&amp;fleet, job);
-        println!("  {:&lt;8} holds {} of {} GPUs: {}", job.name, mine.len(), job.workers, names(&amp;fleet, &amp;mine));
+        println!(
+            "  {:&lt;8} holds {} of {} GPUs: {}",
+            job.name,
+            mine.len(),
+            job.workers,
+            names(&amp;fleet, &amp;mine)
+        );
+
         if mine.len() == job.workers {
             running += 1;
         }
     }
+
     let taken = fleet.len() - free(&amp;fleet).len();
-    println!("  {taken} of {} GPUs are held and {running} jobs are running", fleet.len());
+    println!(
+        "  {taken} of {} GPUs are held and {running} jobs are running",
+        fleet.len()
+    );
 }
 
 /// Chooses machines for a job from the free ones, or returns `None` when it
@@ -13798,7 +14790,10 @@ fn first_free(_fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Opt
 /// first free machines.
 fn by_topology(fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
     let in_domain = |domain: Domain| -&gt; Vec&lt;usize&gt; {
-        open.iter().copied().filter(|&amp;i| fleet[i].domain == domain).collect()
+        open.iter()
+            .copied()
+            .filter(|&amp;i| fleet[i].domain == domain)
+            .collect()
     };
     [Domain::Bench, Domain::Desk, Domain::Shelf]
         .into_iter()
@@ -13816,13 +14811,18 @@ const GRADIENT_GB: f64 = 14.0;
 /// every machine is in one domain, and the house network otherwise.
 fn slowest(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; Link {
     let first = fleet[nodes[0]].domain;
-    if nodes.iter().all(|&amp;i| fleet[i].domain == first) { first.link() } else { HOUSE_NETWORK }
+    if nodes.iter().all(|&amp;i| fleet[i].domain == first) {
+        first.link()
+    } else {
+        HOUSE_NETWORK
+    }
 }
 
 /// Returns the time one ring all-reduce takes: each worker sends 2(n-1)/n
 /// gradients over the slowest link.
 fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
     let n = nodes.len() as f64;
+
     2.0 * (n - 1.0) / n * GRADIENT_GB / slowest(fleet, nodes).gbps
 }
 
@@ -13832,17 +14832,31 @@ fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
 fn admit(fleet: &amp;mut [Node], job: Job, place: Placer) -&gt; bool {
     let open = free(fleet);
     let Some(nodes) = place(fleet, &amp;open, job.workers) else {
-        println!("  {:&lt;8} waits: it needs {} GPUs and {} are free", job.name, job.workers, open.len());
+        println!(
+            "  {:&lt;8} waits: it needs {} GPUs and {} are free",
+            job.name,
+            job.workers,
+            open.len()
+        );
+
         return false;
     };
+
     for &amp;i in &amp;nodes {
         fleet[i].job = Some(job.name);
     }
+
     println!("  {:&lt;8} runs on {}", job.name, names(fleet, &amp;nodes));
+
     if nodes.len() &gt; 1 {
         let link = slowest(fleet, &amp;nodes);
-        println!("           over {}: {:.1} s for each all-reduce", link.label, exchange_seconds(fleet, &amp;nodes));
+        println!(
+            "           over {}: {:.1} s for each all-reduce",
+            link.label,
+            exchange_seconds(fleet, &amp;nodes)
+        );
     }
+
     true
 }
 
@@ -13851,11 +14865,21 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
     for node in fleet.iter_mut().filter(|n| n.job == Some(job)) {
         node.job = None;
     }
+
     println!("  {job:&lt;8} finishes");
 }
 
 fn main() {
-    let two = [Job { name: "train-a", workers: 5 }, Job { name: "train-b", workers: 5 }];
+    let two = [
+        Job {
+            name: "train-a",
+            workers: 5,
+        },
+        Job {
+            name: "train-b",
+            workers: 5,
+        },
+    ];
 
     println!("one pod at a time, two jobs of five workers:");
     pod_at_a_time(new_fleet(), &amp;two);
@@ -13868,17 +14892,29 @@ fn main() {
     admit(&amp;mut fleet, two[1], by_topology);
 
     let three = [
-        Job { name: "pair", workers: 2 },
-        Job { name: "quad", workers: 4 },
-        Job { name: "single", workers: 1 },
+        Job {
+            name: "pair",
+            workers: 2,
+        },
+        Job {
+            name: "quad",
+            workers: 4,
+        },
+        Job {
+            name: "single",
+            workers: 1,
+        },
     ];
     println!("three jobs, on the first free machines:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, first_free);
     }
+
     println!("the same three jobs, placed by topology:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, by_topology);
     }
@@ -14103,9 +15139,11 @@ func (c *GCounter) Merge(other GCounter) {
 // Value is the count: the sum of every replica's entry.
 func (c GCounter) Value() int {
 	total := 0
+
 	for _, n := range c {
 		total += n
 	}
+
 	return total
 }
 </code></pre>
@@ -14209,11 +15247,13 @@ func oneNumber() {
 	totals := [replicas]int{}
 	adds := [replicas]int{300, 120, 40}
 	sum := 0
+
 	for r, n := range adds {
 		totals[r] += n
 		sum += n
 		fmt.Printf("  %-5s records %d GPU-seconds\n", names[r], n)
 	}
+
 	largest := max(totals[shelf], totals[desk], totals[bench])
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
@@ -14224,9 +15264,11 @@ func oneNumber() {
 /// larger of two numbers.
 fn one_number() {
     let adds = [300, 120, 40];
+
     for (name, n) in NAMES.iter().zip(adds) {
         println!("  {name:&lt;5} records {n} GPU-seconds");
     }
+
     let largest = adds.iter().max().expect("three replicas");
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
@@ -14241,23 +15283,28 @@ partition the rows are merged in an order chosen to be untidy, with one merge re
 // partition that cuts the bench off from the other two.
 func growOnly() {
 	var at [replicas]GCounter
+
 	for r, n := range [replicas]int{300, 120, 40} {
 		at[r].Add(r, n)
 	}
+
 	fmt.Println("  the bench is cut off; shelf and desk exchange counters")
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	at[shelf].Add(shelf, 60)
 	at[bench].Add(bench, 25)
+
 	for r := range at {
 		show(r, at[r])
 	}
+
 	fmt.Println("  the network heals; counters are exchanged in no particular order, some twice")
 	at[desk].Merge(at[bench])
 	at[shelf].Merge(at[desk])
 	at[bench].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
+
 	for r := range at {
 		show(r, at[r])
 	}
@@ -14269,23 +15316,28 @@ func growOnly() {
 /// partition that cuts the bench off from the other two.
 fn grow_only() {
     let mut at = [GCounter::default(); REPLICAS];
+
     for (r, n) in [300, 120, 40].into_iter().enumerate() {
         at[r].add(r, n);
     }
+
     println!("  the bench is cut off; shelf and desk exchange counters");
     at[SHELF].merge(at[DESK]);
     at[DESK].merge(at[SHELF]);
     at[SHELF].add(SHELF, 60);
     at[BENCH].add(BENCH, 25);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
+
     println!("  the network heals; counters are exchanged in no particular order, some twice");
     at[DESK].merge(at[BENCH]);
     at[SHELF].merge(at[DESK]);
     at[BENCH].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
@@ -14304,11 +15356,13 @@ func upAndDown() {
 	at[desk].Add(desk, 2)    // two start on the Sparks
 	at[shelf].Add(shelf, -1) // one Thor job ends
 	at[bench].Add(bench, -1) // the bench replica hears that a Spark job ended
+
 	for r := range at {
 		for other := range at {
 			at[r].Merge(at[other])
 		}
 	}
+
 	c := at[bench]
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
@@ -14323,14 +15377,21 @@ fn up_and_down() {
     at[DESK].add(DESK, 2); // two start on the Sparks
     at[SHELF].add(SHELF, -1); // one Thor job ends
     at[BENCH].add(BENCH, -1); // the bench replica hears that a Spark job ended
+
     for r in 0..REPLICAS {
         for other in 0..REPLICAS {
             let theirs = at[other];
             at[r].merge(theirs);
         }
     }
+
     let c = at[BENCH];
-    println!("  started {}, ended {}: {} GPUs in use", row(c.up.0), row(c.down.0), c.value());
+    println!(
+        "  started {}, ended {}: {} GPUs in use",
+        row(c.up.0),
+        row(c.down.0),
+        c.value()
+    );
 }</code></pre>
 <h3 id="a-quota-two-ways"><a class="header" href="#a-quota-two-ways">A quota, two ways</a></h3>
 <p>The last two experiments enforce a quota of six GPUs. <code>sharedLimit</code> lets each replica
@@ -14349,12 +15410,14 @@ func sharedLimit() {
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	fmt.Printf("  both replicas see %d of %d in use; then they lose contact\n", at[shelf].Value(), quota)
+
 	for _, r := range []int{shelf, desk} {
 		if at[r].Value()+2 &lt;= quota {
 			at[r].Add(r, 2)
 			fmt.Printf("  %-5s admits a 2-GPU job: by its count, %d of %d are in use\n", names[r], at[r].Value(), quota)
 		}
 	}
+
 	at[shelf].Merge(at[desk])
 	fmt.Printf("  after they merge: %d of %d in use\n", at[shelf].Value(), quota)
 }
@@ -14369,8 +15432,10 @@ func allowances() {
 	admit := func(r, gpus int) {
 		if left := share[r] - used[r]; left &lt; gpus {
 			fmt.Printf("  %-5s refuses a %d-GPU job: its share has %d left\n", names[r], gpus, left)
+
 			return
 		}
+
 		used[r] += gpus
 		fmt.Printf("  %-5s admits a %d-GPU job\n", names[r], gpus)
 	}
@@ -14397,16 +15462,28 @@ fn shared_limit() {
     let (shelf, desk) = (at[SHELF], at[DESK]);
     at[SHELF].merge(desk);
     at[DESK].merge(shelf);
-    println!("  both replicas see {} of {QUOTA} in use; then they lose contact", at[SHELF].value());
+    println!(
+        "  both replicas see {} of {QUOTA} in use; then they lose contact",
+        at[SHELF].value()
+    );
+
     for r in [SHELF, DESK] {
         if at[r].value() + 2 &lt;= QUOTA {
             at[r].add(r, 2);
-            println!("  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use", NAMES[r], at[r].value());
+            println!(
+                "  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use",
+                NAMES[r],
+                at[r].value()
+            );
         }
     }
+
     let desk = at[DESK];
     at[SHELF].merge(desk);
-    println!("  after they merge: {} of {QUOTA} in use", at[SHELF].value());
+    println!(
+        "  after they merge: {} of {QUOTA} in use",
+        at[SHELF].value()
+    );
 }
 
 /// Gives each replica a share of the quota. A replica admits a job only from
@@ -14415,13 +15492,23 @@ fn shared_limit() {
 fn allowances() {
     let mut share = [4, 2, 0];
     let mut used = [3, 1, 0];
-    println!("  shares {}, in use {}; then the replicas lose contact", row(share), row(used));
+    println!(
+        "  shares {}, in use {}; then the replicas lose contact",
+        row(share),
+        row(used)
+    );
     let admit = |share: &amp;[i64; REPLICAS], used: &amp;mut [i64; REPLICAS], r: usize, gpus: i64| {
         let left = share[r] - used[r];
+
         if left &lt; gpus {
-            println!("  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left", NAMES[r]);
+            println!(
+                "  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left",
+                NAMES[r]
+            );
+
             return;
         }
+
         used[r] += gpus;
         println!("  {:&lt;5} admits a {gpus}-GPU job", NAMES[r]);
     };
@@ -14431,7 +15518,12 @@ fn allowances() {
     share[DESK] -= 1;
     share[SHELF] += 1;
     admit(&amp;share, &amp;mut used, SHELF, 2);
-    println!("  shares {}, in use {}: {} of {QUOTA}", row(share), row(used), used.iter().sum::&lt;i64&gt;());
+    println!(
+        "  shares {}, in use {}: {} of {QUOTA}",
+        row(share),
+        row(used),
+        used.iter().sum::&lt;i64&gt;()
+    );
 }</code></pre>
 <h3 id="the-run-5"><a class="header" href="#the-run-5">The run</a></h3>
 <pre><code class="language-console">$ go run ./counter
@@ -14547,9 +15639,11 @@ func (c *GCounter) Merge(other GCounter) {
 // Value is the count: the sum of every replica's entry.
 func (c GCounter) Value() int {
 	total := 0
+
 	for _, n := range c {
 		total += n
 	}
+
 	return total
 }
 
@@ -14585,11 +15679,13 @@ func oneNumber() {
 	totals := [replicas]int{}
 	adds := [replicas]int{300, 120, 40}
 	sum := 0
+
 	for r, n := range adds {
 		totals[r] += n
 		sum += n
 		fmt.Printf("  %-5s records %d GPU-seconds\n", names[r], n)
 	}
+
 	largest := max(totals[shelf], totals[desk], totals[bench])
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
@@ -14604,23 +15700,28 @@ func show(replica int, c GCounter) {
 // partition that cuts the bench off from the other two.
 func growOnly() {
 	var at [replicas]GCounter
+
 	for r, n := range [replicas]int{300, 120, 40} {
 		at[r].Add(r, n)
 	}
+
 	fmt.Println("  the bench is cut off; shelf and desk exchange counters")
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	at[shelf].Add(shelf, 60)
 	at[bench].Add(bench, 25)
+
 	for r := range at {
 		show(r, at[r])
 	}
+
 	fmt.Println("  the network heals; counters are exchanged in no particular order, some twice")
 	at[desk].Merge(at[bench])
 	at[shelf].Merge(at[desk])
 	at[bench].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
 	at[desk].Merge(at[shelf])
+
 	for r := range at {
 		show(r, at[r])
 	}
@@ -14635,11 +15736,13 @@ func upAndDown() {
 	at[desk].Add(desk, 2)    // two start on the Sparks
 	at[shelf].Add(shelf, -1) // one Thor job ends
 	at[bench].Add(bench, -1) // the bench replica hears that a Spark job ended
+
 	for r := range at {
 		for other := range at {
 			at[r].Merge(at[other])
 		}
 	}
+
 	c := at[bench]
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
@@ -14657,12 +15760,14 @@ func sharedLimit() {
 	at[shelf].Merge(at[desk])
 	at[desk].Merge(at[shelf])
 	fmt.Printf("  both replicas see %d of %d in use; then they lose contact\n", at[shelf].Value(), quota)
+
 	for _, r := range []int{shelf, desk} {
 		if at[r].Value()+2 &lt;= quota {
 			at[r].Add(r, 2)
 			fmt.Printf("  %-5s admits a 2-GPU job: by its count, %d of %d are in use\n", names[r], at[r].Value(), quota)
 		}
 	}
+
 	at[shelf].Merge(at[desk])
 	fmt.Printf("  after they merge: %d of %d in use\n", at[shelf].Value(), quota)
 }
@@ -14677,8 +15782,10 @@ func allowances() {
 	admit := func(r, gpus int) {
 		if left := share[r] - used[r]; left &lt; gpus {
 			fmt.Printf("  %-5s refuses a %d-GPU job: its share has %d left\n", names[r], gpus, left)
+
 			return
 		}
+
 		used[r] += gpus
 		fmt.Printf("  %-5s admits a %d-GPU job\n", names[r], gpus)
 	}
@@ -14795,9 +15902,11 @@ impl PnCounter {
 /// larger of two numbers.
 fn one_number() {
     let adds = [300, 120, 40];
+
     for (name, n) in NAMES.iter().zip(adds) {
         println!("  {name:&lt;5} records {n} GPU-seconds");
     }
+
     let largest = adds.iter().max().expect("three replicas");
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
@@ -14812,23 +15921,28 @@ fn show(replica: usize, c: GCounter) {
 /// partition that cuts the bench off from the other two.
 fn grow_only() {
     let mut at = [GCounter::default(); REPLICAS];
+
     for (r, n) in [300, 120, 40].into_iter().enumerate() {
         at[r].add(r, n);
     }
+
     println!("  the bench is cut off; shelf and desk exchange counters");
     at[SHELF].merge(at[DESK]);
     at[DESK].merge(at[SHELF]);
     at[SHELF].add(SHELF, 60);
     at[BENCH].add(BENCH, 25);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
+
     println!("  the network heals; counters are exchanged in no particular order, some twice");
     at[DESK].merge(at[BENCH]);
     at[SHELF].merge(at[DESK]);
     at[BENCH].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
     at[DESK].merge(at[SHELF]);
+
     for (r, c) in at.into_iter().enumerate() {
         show(r, c);
     }
@@ -14842,14 +15956,21 @@ fn up_and_down() {
     at[DESK].add(DESK, 2); // two start on the Sparks
     at[SHELF].add(SHELF, -1); // one Thor job ends
     at[BENCH].add(BENCH, -1); // the bench replica hears that a Spark job ended
+
     for r in 0..REPLICAS {
         for other in 0..REPLICAS {
             let theirs = at[other];
             at[r].merge(theirs);
         }
     }
+
     let c = at[BENCH];
-    println!("  started {}, ended {}: {} GPUs in use", row(c.up.0), row(c.down.0), c.value());
+    println!(
+        "  started {}, ended {}: {} GPUs in use",
+        row(c.up.0),
+        row(c.down.0),
+        c.value()
+    );
 }
 
 /// The number of GPUs one team may use at once.
@@ -14864,16 +15985,28 @@ fn shared_limit() {
     let (shelf, desk) = (at[SHELF], at[DESK]);
     at[SHELF].merge(desk);
     at[DESK].merge(shelf);
-    println!("  both replicas see {} of {QUOTA} in use; then they lose contact", at[SHELF].value());
+    println!(
+        "  both replicas see {} of {QUOTA} in use; then they lose contact",
+        at[SHELF].value()
+    );
+
     for r in [SHELF, DESK] {
         if at[r].value() + 2 &lt;= QUOTA {
             at[r].add(r, 2);
-            println!("  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use", NAMES[r], at[r].value());
+            println!(
+                "  {:&lt;5} admits a 2-GPU job: by its count, {} of {QUOTA} are in use",
+                NAMES[r],
+                at[r].value()
+            );
         }
     }
+
     let desk = at[DESK];
     at[SHELF].merge(desk);
-    println!("  after they merge: {} of {QUOTA} in use", at[SHELF].value());
+    println!(
+        "  after they merge: {} of {QUOTA} in use",
+        at[SHELF].value()
+    );
 }
 
 /// Gives each replica a share of the quota. A replica admits a job only from
@@ -14882,13 +16015,23 @@ fn shared_limit() {
 fn allowances() {
     let mut share = [4, 2, 0];
     let mut used = [3, 1, 0];
-    println!("  shares {}, in use {}; then the replicas lose contact", row(share), row(used));
+    println!(
+        "  shares {}, in use {}; then the replicas lose contact",
+        row(share),
+        row(used)
+    );
     let admit = |share: &amp;[i64; REPLICAS], used: &amp;mut [i64; REPLICAS], r: usize, gpus: i64| {
         let left = share[r] - used[r];
+
         if left &lt; gpus {
-            println!("  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left", NAMES[r]);
+            println!(
+                "  {:&lt;5} refuses a {gpus}-GPU job: its share has {left} left",
+                NAMES[r]
+            );
+
             return;
         }
+
         used[r] += gpus;
         println!("  {:&lt;5} admits a {gpus}-GPU job", NAMES[r]);
     };
@@ -14898,7 +16041,12 @@ fn allowances() {
     share[DESK] -= 1;
     share[SHELF] += 1;
     admit(&amp;share, &amp;mut used, SHELF, 2);
-    println!("  shares {}, in use {}: {} of {QUOTA}", row(share), row(used), used.iter().sum::&lt;i64&gt;());
+    println!(
+        "  shares {}, in use {}: {} of {QUOTA}",
+        row(share),
+        row(used),
+        used.iter().sum::&lt;i64&gt;()
+    );
 }
 
 fn main() {
@@ -15103,6 +16251,7 @@ type Digest string
 // digestOf computes the name of some bytes.
 func digestOf(data []byte) Digest {
 	sum := sha256.Sum256(data)
+
 	return Digest("sha256:" + hex.EncodeToString(sum[:]))
 }
 
@@ -15126,10 +16275,13 @@ func NewStore() *Store {
 // store already holds are not stored a second time.
 func (s *Store) Put(data []byte) (Digest, bool) {
 	d := digestOf(data)
+
 	if _, held := s.blobs[d]; held {
 		return d, false
 	}
+
 	s.blobs[d] = data
+
 	return d, true
 }
 
@@ -15139,12 +16291,15 @@ var ErrCorrupt = errors.New("contents do not match the digest")
 // Get returns a blob after checking that its bytes still hash to its name.
 func (s *Store) Get(d Digest) ([]byte, error) {
 	data, held := s.blobs[d]
+
 	if !held {
 		return nil, fmt.Errorf("%s: not found", d.short())
 	}
+
 	if digestOf(data) != d {
 		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
 	}
+
 	return data, nil
 }
 </code></pre>
@@ -15158,9 +16313,11 @@ impl Digest {
     /// Computes the name of some bytes.
     fn of(data: &amp;[u8]) -&gt; Self {
         let mut name = String::from("sha256:");
+
         for byte in Sha256::digest(data) {
             write!(name, "{byte:02x}").expect("writing to a String");
         }
+
         Digest(name)
     }
 
@@ -15205,10 +16362,13 @@ impl Store {
     /// store already holds are not stored a second time.
     fn put(&amp;mut self, data: &amp;[u8]) -&gt; (Digest, bool) {
         let d = Digest::of(data);
+
         if self.blobs.contains_key(&amp;d) {
             return (d, false);
         }
+
         self.blobs.insert(d.clone(), data.to_vec());
+
         (d, true)
     }
 
@@ -15221,6 +16381,7 @@ impl Store {
         if Digest::of(data) != *d {
             return Err(StoreError::Corrupt(d.short().to_owned()));
         }
+
         Ok(data)
     }
 }</code></pre>
@@ -15243,31 +16404,40 @@ const chunkSize = 8 * 1024
 // manifest. It returns how many chunks were new to the store.
 func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
 	var lines strings.Builder
+
 	for start := 0; start &lt; len(artifact); start += chunkSize {
 		chunk := artifact[start:min(start+chunkSize, len(artifact))]
 		d, fresh := s.Put(chunk)
+
 		if fresh {
 			added++
 		}
+
 		chunks++
 		fmt.Fprintf(&amp;lines, "%s %d\n", d, len(chunk))
 	}
+
 	manifest, _ = s.Put([]byte(lines.String()))
 	s.tags[tag] = manifest
+
 	return manifest, chunks, added
 }
 
 // chunksOf reads a manifest and returns the digests it lists.
 func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	data, err := s.Get(manifest)
+
 	if err != nil {
 		return nil, err
 	}
+
 	var out []Digest
+
 	for line := range strings.Lines(string(data)) {
 		digest, _, _ := strings.Cut(line, " ")
 		out = append(out, Digest(digest))
 	}
+
 	return out, nil
 }
 </code></pre>
@@ -15281,14 +16451,17 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
     fn push(&amp;mut self, tag: &amp;'static str, artifact: &amp;[u8]) -&gt; (Digest, usize, usize) {
         let mut lines = String::new();
         let (mut chunks, mut added) = (0, 0);
+
         for chunk in artifact.chunks(CHUNK_SIZE) {
             let (d, fresh) = self.put(chunk);
             added += usize::from(fresh);
             chunks += 1;
             writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
         }
+
         let (manifest, _) = self.put(lines.as_bytes());
         self.tags.insert(tag, manifest.clone());
+
         (manifest, chunks, added)
     }
 
@@ -15318,41 +16491,54 @@ that name. <code>Read</code> reassembles the artifact from local chunks, and sin
 func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
 	manifest := remote.tags[tag]
 	chunks, err := remote.chunksOf(manifest)
+
 	if err != nil {
 		return 0, 0, err
 	}
+
 	for _, d := range chunks {
 		if _, held := s.blobs[d]; held {
 			continue
 		}
+
 		data, err := remote.Get(d)
+
 		if err != nil {
 			return fetched, bytes, err
 		}
+
 		s.blobs[d] = data
 		fetched++
 		bytes += len(data)
 	}
+
 	data, _ := remote.Get(manifest)
 	s.blobs[manifest] = data
 	s.tags[tag] = manifest
+
 	return fetched, bytes, nil
 }
 
 // Read reassembles a tagged artifact, verifying every chunk on the way.
 func (s *Store) Read(tag string) ([]byte, error) {
 	chunks, err := s.chunksOf(s.tags[tag])
+
 	if err != nil {
 		return nil, err
 	}
+
 	var artifact []byte
+
 	for i, d := range chunks {
 		data, err := s.Get(d)
+
 		if err != nil {
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
 		}
+
 		artifact = append(artifact, data...)
 	}
+
 	return artifact, nil
 }
 </code></pre>
@@ -15365,28 +16551,34 @@ func (s *Store) Read(tag string) ([]byte, error) {
     fn pull(&amp;mut self, remote: &amp;Store, tag: &amp;'static str) -&gt; Result&lt;(usize, usize), StoreError&gt; {
         let manifest = &amp;remote.tags[tag];
         let (mut fetched, mut bytes) = (0, 0);
+
         for d in remote.chunks_of(manifest)? {
             if self.blobs.contains_key(&amp;d) {
                 continue;
             }
+
             let data = remote.get(&amp;d)?;
             fetched += 1;
             bytes += data.len();
             self.blobs.insert(d, data.to_vec());
         }
+
         self.blobs
             .insert(manifest.clone(), remote.get(manifest)?.to_vec());
         self.tags.insert(tag, manifest.clone());
+
         Ok((fetched, bytes))
     }
 
     /// Reassembles a tagged artifact, verifying every chunk on the way.
     fn read(&amp;self, tag: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, StoreError&gt; {
         let mut artifact = Vec::new();
+
         for (i, d) in self.chunks_of(&amp;self.tags[tag])?.iter().enumerate() {
             let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
             artifact.extend_from_slice(data);
         }
+
         Ok(artifact)
     }
 }</code></pre>
@@ -15404,13 +16596,16 @@ noted.</p>
 // the rest. It returns the number of blobs and bytes removed.
 func (s *Store) Collect() (removed, bytes int) {
 	live := map[Digest]bool{}
+
 	for _, manifest := range s.tags {
 		live[manifest] = true
 		chunks, _ := s.chunksOf(manifest)
+
 		for _, d := range chunks {
 			live[d] = true
 		}
 	}
+
 	for d, data := range s.blobs {
 		if !live[d] {
 			removed++
@@ -15418,6 +16613,7 @@ func (s *Store) Collect() (removed, bytes int) {
 			delete(s.blobs, d)
 		}
 	}
+
 	return removed, bytes
 }
 </code></pre>
@@ -15429,13 +16625,16 @@ func (s *Store) Collect() (removed, bytes int) {
     /// rest. Returns the number of blobs and bytes removed.
     fn collect(&amp;mut self) -&gt; (usize, usize) {
         let mut live = BTreeSet::new();
+
         for manifest in self.tags.values() {
             live.extend(self.chunks_of(manifest).unwrap_or_default());
             live.insert(manifest.clone());
         }
+
         let (before, bytes_before) = self.size();
         self.blobs.retain(|d, _| live.contains(d));
         let (after, bytes_after) = self.size();
+
         (before - after, bytes_before - bytes_after)
     }
 }</code></pre>
@@ -15469,13 +16668,16 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
 	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
 	damaged[100] ^= 1
 	node.blobs[chunkList[3]] = damaged
+
 	if _, err := node.Read("llm:v1"); err != nil {
 		fmt.Printf("  read llm:v1: %v\n", err)
 	}
+
 	// The bad chunk is dropped and pulled again, by name, from the registry.
 	delete(node.blobs, chunkList[3])
 	fetched, n, _ = node.Pull(registry, "llm:v1")
 	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+
 	if got, err := node.Read("llm:v1"); err == nil {
 		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
 	}
@@ -15521,9 +16723,11 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
     println!("one bit flips in a chunk stored on thor-1:");
     let fourth = node.chunks_of(&amp;node.tags["llm:v1"])?[3].clone();
     node.blobs.get_mut(&amp;fourth).expect("the chunk was pulled")[100] ^= 1;
+
     if let Err(e) = node.read("llm:v1") {
         println!("  read llm:v1: {e}");
     }
+
     // The bad chunk is dropped and pulled again, by name, from the registry.
     node.blobs.remove(&amp;fourth);
     let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
@@ -15540,6 +16744,7 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
     let (removed, n) = registry.collect();
     let (blobs, bytes) = registry.size();
     println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+
     Ok(())
 }</code></pre>
 <pre><code class="language-console">$ go run ./cas
@@ -15629,6 +16834,7 @@ type Digest string
 // digestOf computes the name of some bytes.
 func digestOf(data []byte) Digest {
 	sum := sha256.Sum256(data)
+
 	return Digest("sha256:" + hex.EncodeToString(sum[:]))
 }
 
@@ -15652,10 +16858,13 @@ func NewStore() *Store {
 // store already holds are not stored a second time.
 func (s *Store) Put(data []byte) (Digest, bool) {
 	d := digestOf(data)
+
 	if _, held := s.blobs[d]; held {
 		return d, false
 	}
+
 	s.blobs[d] = data
+
 	return d, true
 }
 
@@ -15665,12 +16874,15 @@ var ErrCorrupt = errors.New("contents do not match the digest")
 // Get returns a blob after checking that its bytes still hash to its name.
 func (s *Store) Get(d Digest) ([]byte, error) {
 	data, held := s.blobs[d]
+
 	if !held {
 		return nil, fmt.Errorf("%s: not found", d.short())
 	}
+
 	if digestOf(data) != d {
 		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
 	}
+
 	return data, nil
 }
 
@@ -15683,31 +16895,40 @@ const chunkSize = 8 * 1024
 // manifest. It returns how many chunks were new to the store.
 func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
 	var lines strings.Builder
+
 	for start := 0; start &lt; len(artifact); start += chunkSize {
 		chunk := artifact[start:min(start+chunkSize, len(artifact))]
 		d, fresh := s.Put(chunk)
+
 		if fresh {
 			added++
 		}
+
 		chunks++
 		fmt.Fprintf(&amp;lines, "%s %d\n", d, len(chunk))
 	}
+
 	manifest, _ = s.Put([]byte(lines.String()))
 	s.tags[tag] = manifest
+
 	return manifest, chunks, added
 }
 
 // chunksOf reads a manifest and returns the digests it lists.
 func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	data, err := s.Get(manifest)
+
 	if err != nil {
 		return nil, err
 	}
+
 	var out []Digest
+
 	for line := range strings.Lines(string(data)) {
 		digest, _, _ := strings.Cut(line, " ")
 		out = append(out, Digest(digest))
 	}
+
 	return out, nil
 }
 
@@ -15718,41 +16939,54 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
 	manifest := remote.tags[tag]
 	chunks, err := remote.chunksOf(manifest)
+
 	if err != nil {
 		return 0, 0, err
 	}
+
 	for _, d := range chunks {
 		if _, held := s.blobs[d]; held {
 			continue
 		}
+
 		data, err := remote.Get(d)
+
 		if err != nil {
 			return fetched, bytes, err
 		}
+
 		s.blobs[d] = data
 		fetched++
 		bytes += len(data)
 	}
+
 	data, _ := remote.Get(manifest)
 	s.blobs[manifest] = data
 	s.tags[tag] = manifest
+
 	return fetched, bytes, nil
 }
 
 // Read reassembles a tagged artifact, verifying every chunk on the way.
 func (s *Store) Read(tag string) ([]byte, error) {
 	chunks, err := s.chunksOf(s.tags[tag])
+
 	if err != nil {
 		return nil, err
 	}
+
 	var artifact []byte
+
 	for i, d := range chunks {
 		data, err := s.Get(d)
+
 		if err != nil {
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
 		}
+
 		artifact = append(artifact, data...)
 	}
+
 	return artifact, nil
 }
 
@@ -15762,13 +16996,16 @@ func (s *Store) Read(tag string) ([]byte, error) {
 // the rest. It returns the number of blobs and bytes removed.
 func (s *Store) Collect() (removed, bytes int) {
 	live := map[Digest]bool{}
+
 	for _, manifest := range s.tags {
 		live[manifest] = true
 		chunks, _ := s.chunksOf(manifest)
+
 		for _, d := range chunks {
 			live[d] = true
 		}
 	}
+
 	for d, data := range s.blobs {
 		if !live[d] {
 			removed++
@@ -15776,6 +17013,7 @@ func (s *Store) Collect() (removed, bytes int) {
 			delete(s.blobs, d)
 		}
 	}
+
 	return removed, bytes
 }
 
@@ -15785,6 +17023,7 @@ func (s *Store) size() (blobs, bytes int) {
 	for _, data := range s.blobs {
 		bytes += len(data)
 	}
+
 	return len(s.blobs), bytes
 }
 
@@ -15793,10 +17032,12 @@ func (s *Store) size() (blobs, bytes int) {
 func weights(n int, seed uint32) []byte {
 	out := make([]byte, n)
 	x := seed
+
 	for i := range out {
 		x = x*1664525 + 1013904223
 		out[i] = byte(x &gt;&gt; 24)
 	}
+
 	return out
 }
 
@@ -15825,13 +17066,16 @@ func main() {
 	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
 	damaged[100] ^= 1
 	node.blobs[chunkList[3]] = damaged
+
 	if _, err := node.Read("llm:v1"); err != nil {
 		fmt.Printf("  read llm:v1: %v\n", err)
 	}
+
 	// The bad chunk is dropped and pulled again, by name, from the registry.
 	delete(node.blobs, chunkList[3])
 	fetched, n, _ = node.Pull(registry, "llm:v1")
 	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+
 	if got, err := node.Read("llm:v1"); err == nil {
 		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
 	}
@@ -15873,9 +17117,11 @@ impl Digest {
     /// Computes the name of some bytes.
     fn of(data: &amp;[u8]) -&gt; Self {
         let mut name = String::from("sha256:");
+
         for byte in Sha256::digest(data) {
             write!(name, "{byte:02x}").expect("writing to a String");
         }
+
         Digest(name)
     }
 
@@ -15920,10 +17166,13 @@ impl Store {
     /// store already holds are not stored a second time.
     fn put(&amp;mut self, data: &amp;[u8]) -&gt; (Digest, bool) {
         let d = Digest::of(data);
+
         if self.blobs.contains_key(&amp;d) {
             return (d, false);
         }
+
         self.blobs.insert(d.clone(), data.to_vec());
+
         (d, true)
     }
 
@@ -15936,6 +17185,7 @@ impl Store {
         if Digest::of(data) != *d {
             return Err(StoreError::Corrupt(d.short().to_owned()));
         }
+
         Ok(data)
     }
 }
@@ -15948,14 +17198,17 @@ impl Store {
     fn push(&amp;mut self, tag: &amp;'static str, artifact: &amp;[u8]) -&gt; (Digest, usize, usize) {
         let mut lines = String::new();
         let (mut chunks, mut added) = (0, 0);
+
         for chunk in artifact.chunks(CHUNK_SIZE) {
             let (d, fresh) = self.put(chunk);
             added += usize::from(fresh);
             chunks += 1;
             writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
         }
+
         let (manifest, _) = self.put(lines.as_bytes());
         self.tags.insert(tag, manifest.clone());
+
         (manifest, chunks, added)
     }
 
@@ -15977,28 +17230,34 @@ impl Store {
     fn pull(&amp;mut self, remote: &amp;Store, tag: &amp;'static str) -&gt; Result&lt;(usize, usize), StoreError&gt; {
         let manifest = &amp;remote.tags[tag];
         let (mut fetched, mut bytes) = (0, 0);
+
         for d in remote.chunks_of(manifest)? {
             if self.blobs.contains_key(&amp;d) {
                 continue;
             }
+
             let data = remote.get(&amp;d)?;
             fetched += 1;
             bytes += data.len();
             self.blobs.insert(d, data.to_vec());
         }
+
         self.blobs
             .insert(manifest.clone(), remote.get(manifest)?.to_vec());
         self.tags.insert(tag, manifest.clone());
+
         Ok((fetched, bytes))
     }
 
     /// Reassembles a tagged artifact, verifying every chunk on the way.
     fn read(&amp;self, tag: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, StoreError&gt; {
         let mut artifact = Vec::new();
+
         for (i, d) in self.chunks_of(&amp;self.tags[tag])?.iter().enumerate() {
             let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
             artifact.extend_from_slice(data);
         }
+
         Ok(artifact)
     }
 }
@@ -16009,13 +17268,16 @@ impl Store {
     /// rest. Returns the number of blobs and bytes removed.
     fn collect(&amp;mut self) -&gt; (usize, usize) {
         let mut live = BTreeSet::new();
+
         for manifest in self.tags.values() {
             live.extend(self.chunks_of(manifest).unwrap_or_default());
             live.insert(manifest.clone());
         }
+
         let (before, bytes_before) = self.size();
         self.blobs.retain(|d, _| live.contains(d));
         let (after, bytes_after) = self.size();
+
         (before - after, bytes_before - bytes_after)
     }
 }
@@ -16074,9 +17336,11 @@ fn main() -&gt; Result&lt;(), StoreError&gt; {
     println!("one bit flips in a chunk stored on thor-1:");
     let fourth = node.chunks_of(&amp;node.tags["llm:v1"])?[3].clone();
     node.blobs.get_mut(&amp;fourth).expect("the chunk was pulled")[100] ^= 1;
+
     if let Err(e) = node.read("llm:v1") {
         println!("  read llm:v1: {e}");
     }
+
     // The bad chunk is dropped and pulled again, by name, from the registry.
     node.blobs.remove(&amp;fourth);
     let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
@@ -16093,6 +17357,7 @@ fn main() -&gt; Result&lt;(), StoreError&gt; {
     let (removed, n) = registry.collect();
     let (blobs, bytes) = registry.size();
     println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+
     Ok(())
 }</code></pre>
 <div class="summary">
@@ -16233,9 +17498,11 @@ when the program is compiled, so each build contains only its own case.</p>
 // settings.
 func configFile() (string, error) {
 	dir, err := os.UserConfigDir()
+
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "gpuctl", "config.toml"), nil
 }
 
@@ -16261,6 +17528,7 @@ fn config_file() -&gt; Option&lt;PathBuf&gt; {
             _ =&gt; env::home_dir()?.join(".config"),
         }
     };
+
     Some(dir.join("gpuctl").join("config.toml"))
 }
 
@@ -16300,18 +17568,25 @@ type NodeInfo struct {
 func listNodes(ctx context.Context) ([]NodeInfo, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+
 	if err != nil {
 		return nil, err
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		return nil, err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return nil, err
 	}
+
 	rows := make([]NodeInfo, 0, len(nodes.Items))
+
 	for _, n := range nodes.Items {
 		gpus := n.Status.Allocatable["nvidia.com/gpu"]
 		rows = append(rows, NodeInfo{
@@ -16322,6 +17597,7 @@ func listNodes(ctx context.Context) ([]NodeInfo, error) {
 			Kubelet: n.Status.NodeInfo.KubeletVersion,
 		})
 	}
+
 	return rows, nil
 }
 </code></pre>
@@ -16341,7 +17617,9 @@ struct NodeInfo {
 /// prints.
 async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
     let client = Client::try_default().await?;
-    let nodes = Api::&lt;Node&gt;::all(client).list(&amp;ListParams::default()).await?;
+    let nodes = Api::&lt;Node&gt;::all(client)
+        .list(&amp;ListParams::default())
+        .await?;
     Ok(nodes
         .into_iter()
         .map(|node| {
@@ -16380,13 +17658,17 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 	if format == "json" {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(rows)
 	}
+
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+
 	for _, r := range rows {
 		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
 	}
+
 	return table.Flush()
 }
 </code></pre>
@@ -16396,20 +17678,33 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()&gt; {
     if json {
         println!("{}", serde_json::to_string_pretty(rows)?);
+
         return Ok(());
     }
+
     let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
     let table: Vec&lt;[String; 5]&gt; = std::iter::once(header)
         .chain(rows.iter().map(|r| {
-            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+            [
+                r.name.clone(),
+                r.gpus.to_string(),
+                r.arch.clone(),
+                r.os.clone(),
+                r.kubelet.clone(),
+            ]
         }))
         .collect();
     // Each column is as wide as its longest cell, plus two spaces.
-    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    let widths: [usize; 5] =
+        std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+
     for row in &amp;table {
-        let line: String = (0..5).map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2)).collect();
+        let line: String = (0..5)
+            .map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2))
+            .collect();
         println!("{}", line.trim_end());
     }
+
     Ok(())
 }</code></pre>
 <p>The table is for reading. Its columns are padded so that they line up, which Go’s
@@ -16460,38 +17755,51 @@ const USAGE: &amp;str = "usage:
 func run(args []string, out, errOut io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(errOut, usage)
+
 		return exitUsage
 	}
+
 	switch args[0] {
 	case "version":
 		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
 	case "config":
 		file, err := configFile()
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
+
 		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
 	case "nodes":
 		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		format := flags.String("o", "table", "output format: table or json")
+
 		if err := flags.Parse(args[1:]); err != nil || (*format != "table" &amp;&amp; *format != "json") {
 			fmt.Fprint(errOut, usage)
+
 			return exitUsage
 		}
+
 		rows, err := listNodes(context.Background())
+
 		if err == nil {
 			err = printNodes(out, rows, *format)
 		}
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
 	default:
 		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+
 		return exitUsage
 	}
+
 	return exitOK
 }
 
@@ -16504,14 +17812,20 @@ func main() {
 <pre><code class="language-rust">/// Carries out one command line and returns the exit status.
 async fn run(args: &amp;[String]) -&gt; ExitCode {
     let args: Vec&lt;&amp;str&gt; = args.iter().map(String::as_str).collect();
+
     match args.as_slice() {
         ["version"] =&gt; println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
         ["config"] =&gt; {
             let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
                 eprintln!("gpuctl: cannot find the home directory");
+
                 return ExitCode::FAILURE;
             };
-            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+            println!(
+                "config file  {}\nkubeconfig   {}",
+                file.display(),
+                kube.display()
+            );
         }
         ["nodes"] | ["nodes", "-o", "table" | "json"] =&gt; {
             let json = args.last() == Some(&amp;"json");
@@ -16519,29 +17833,36 @@ async fn run(args: &amp;[String]) -&gt; ExitCode {
                 Ok(rows) =&gt; rows,
                 Err(e) =&gt; {
                     eprintln!("gpuctl: {e}");
+
                     return ExitCode::FAILURE;
                 }
             };
+
             if let Err(e) = print_nodes(&amp;rows, json) {
                 eprintln!("gpuctl: {e}");
+
                 return ExitCode::FAILURE;
             }
         }
         [] | ["nodes", ..] =&gt; {
             eprint!("{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
         [other, ..] =&gt; {
             eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
     }
+
     ExitCode::SUCCESS
 }
 
 #[tokio::main]
 async fn main() -&gt; ExitCode {
     let args: Vec&lt;String&gt; = env::args().skip(1).collect();
+
     run(&amp;args).await
 }</code></pre>
 <p>The Go version parses the <code>-o</code> flag with the standard <code>flag</code> package and tells it to
@@ -16716,9 +18037,11 @@ const usage = `usage:
 // settings.
 func configFile() (string, error) {
 	dir, err := os.UserConfigDir()
+
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "gpuctl", "config.toml"), nil
 }
 
@@ -16744,18 +18067,25 @@ type NodeInfo struct {
 func listNodes(ctx context.Context) ([]NodeInfo, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+
 	if err != nil {
 		return nil, err
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		return nil, err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return nil, err
 	}
+
 	rows := make([]NodeInfo, 0, len(nodes.Items))
+
 	for _, n := range nodes.Items {
 		gpus := n.Status.Allocatable["nvidia.com/gpu"]
 		rows = append(rows, NodeInfo{
@@ -16766,6 +18096,7 @@ func listNodes(ctx context.Context) ([]NodeInfo, error) {
 			Kubelet: n.Status.NodeInfo.KubeletVersion,
 		})
 	}
+
 	return rows, nil
 }
 
@@ -16775,13 +18106,17 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 	if format == "json" {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(rows)
 	}
+
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+
 	for _, r := range rows {
 		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
 	}
+
 	return table.Flush()
 }
 
@@ -16792,38 +18127,51 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 func run(args []string, out, errOut io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(errOut, usage)
+
 		return exitUsage
 	}
+
 	switch args[0] {
 	case "version":
 		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
 	case "config":
 		file, err := configFile()
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
+
 		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
 	case "nodes":
 		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		format := flags.String("o", "table", "output format: table or json")
+
 		if err := flags.Parse(args[1:]); err != nil || (*format != "table" &amp;&amp; *format != "json") {
 			fmt.Fprint(errOut, usage)
+
 			return exitUsage
 		}
+
 		rows, err := listNodes(context.Background())
+
 		if err == nil {
 			err = printNodes(out, rows, *format)
 		}
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
 	default:
 		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+
 		return exitUsage
 	}
+
 	return exitOK
 }
 
@@ -16884,6 +18232,7 @@ fn config_file() -&gt; Option&lt;PathBuf&gt; {
             _ =&gt; env::home_dir()?.join(".config"),
         }
     };
+
     Some(dir.join("gpuctl").join("config.toml"))
 }
 
@@ -16911,7 +18260,9 @@ struct NodeInfo {
 /// prints.
 async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
     let client = Client::try_default().await?;
-    let nodes = Api::&lt;Node&gt;::all(client).list(&amp;ListParams::default()).await?;
+    let nodes = Api::&lt;Node&gt;::all(client)
+        .list(&amp;ListParams::default())
+        .await?;
     Ok(nodes
         .into_iter()
         .map(|node| {
@@ -16936,20 +18287,33 @@ async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
 fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()&gt; {
     if json {
         println!("{}", serde_json::to_string_pretty(rows)?);
+
         return Ok(());
     }
+
     let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
     let table: Vec&lt;[String; 5]&gt; = std::iter::once(header)
         .chain(rows.iter().map(|r| {
-            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+            [
+                r.name.clone(),
+                r.gpus.to_string(),
+                r.arch.clone(),
+                r.os.clone(),
+                r.kubelet.clone(),
+            ]
         }))
         .collect();
     // Each column is as wide as its longest cell, plus two spaces.
-    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    let widths: [usize; 5] =
+        std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+
     for row in &amp;table {
-        let line: String = (0..5).map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2)).collect();
+        let line: String = (0..5)
+            .map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2))
+            .collect();
         println!("{}", line.trim_end());
     }
+
     Ok(())
 }
 
@@ -16961,20 +18325,27 @@ fn platform() -&gt; String {
         "x86_64" =&gt; "amd64",
         other =&gt; other,
     };
+
     format!("{}/{arch}", env::consts::OS)
 }
 
 /// Carries out one command line and returns the exit status.
 async fn run(args: &amp;[String]) -&gt; ExitCode {
     let args: Vec&lt;&amp;str&gt; = args.iter().map(String::as_str).collect();
+
     match args.as_slice() {
         ["version"] =&gt; println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
         ["config"] =&gt; {
             let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
                 eprintln!("gpuctl: cannot find the home directory");
+
                 return ExitCode::FAILURE;
             };
-            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+            println!(
+                "config file  {}\nkubeconfig   {}",
+                file.display(),
+                kube.display()
+            );
         }
         ["nodes"] | ["nodes", "-o", "table" | "json"] =&gt; {
             let json = args.last() == Some(&amp;"json");
@@ -16982,29 +18353,36 @@ async fn run(args: &amp;[String]) -&gt; ExitCode {
                 Ok(rows) =&gt; rows,
                 Err(e) =&gt; {
                     eprintln!("gpuctl: {e}");
+
                     return ExitCode::FAILURE;
                 }
             };
+
             if let Err(e) = print_nodes(&amp;rows, json) {
                 eprintln!("gpuctl: {e}");
+
                 return ExitCode::FAILURE;
             }
         }
         [] | ["nodes", ..] =&gt; {
             eprint!("{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
         [other, ..] =&gt; {
             eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
     }
+
     ExitCode::SUCCESS
 }
 
 #[tokio::main]
 async fn main() -&gt; ExitCode {
     let args: Vec&lt;String&gt; = env::args().skip(1).collect();
+
     run(&amp;args).await
 }</code></pre>
 <div class="summary">

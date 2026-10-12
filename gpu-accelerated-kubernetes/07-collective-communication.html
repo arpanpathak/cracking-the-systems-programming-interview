@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -423,6 +423,7 @@ func (w *Worker) Run(n int) (int, error) {
 		if step == w.failAfter {
 			return step, errFailed
 		}
+
 		// The chunk to send moves one place back around the gradient each
 		// step, so after the first step it is the chunk just received.
 		chunk := mod(w.id-step, n)
@@ -440,6 +441,7 @@ func (w *Worker) Run(n int) (int, error) {
 			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
 		}
 	}
+
 	return 2 * (n - 1), nil
 }
 </code></pre>
@@ -457,23 +459,32 @@ func (w *Worker) Run(n int) (int, error) {
             if self.fail_after == Some(step) {
                 return (self, step, Some("failed".to_owned()));
             }
+
             // The chunk to send moves one place back around the gradient each
             // step, so after the first step it is the chunk just received.
             // Adding 2n keeps the subtraction from going below zero.
             let chunk = (self.id + 2 * n - step) % n;
             // The right-hand neighbour may have stopped; its channel still accepts.
-            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let _ = self.out.send(Message {
+                chunk,
+                value: self.gradient[chunk],
+            });
             let reducing = step &lt; n - 1;
 
             match self.inbox.recv_timeout(PATIENCE) {
                 Ok(m) if reducing =&gt; self.gradient[m.chunk] += m.value,
                 Ok(m) =&gt; self.gradient[m.chunk] = m.value,
                 Err(_) =&gt; {
-                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    let why = format!(
+                        "no chunk from {} within {PATIENCE:?}",
+                        name((self.id + n - 1) % n)
+                    );
+
                     return (self, step, Some(why));
                 }
             }
         }
+
         (self, 2 * (n - 1), None)
     }
 }</code></pre>
@@ -505,30 +516,39 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	// Each link holds every message a worker can send in one step, so a send
 	// goes through even when the receiver has stopped.
 	links := make([]chan message, n)
+
 	for i := range links {
 		links[i] = make(chan message, 2*(n-1))
 	}
+
 	workers := make([]*Worker, n)
+
 	for i := range workers {
 		gradient := make([]int, n)
+
 		for chunk := range gradient {
 			gradient[chunk] = i + 1 + 10*chunk
 		}
+
 		workers[i] = &amp;Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
 	}
+
 	if failing &gt;= 0 {
 		workers[failing].failAfter = failAfter
 	}
 
 	results := make([]result, n)
 	var wg sync.WaitGroup
+
 	for i, w := range workers {
 		wg.Go(func() {
 			steps, err := w.Run(n)
 			results[i] = result{steps, err}
 		})
 	}
+
 	wg.Wait()
+
 	return workers, results
 }
 </code></pre>
@@ -548,12 +568,21 @@ fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, u
             gradient: own_gradient(id, n),
             inbox,
             out: senders[(id + 1) % n].clone(),
-            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+            fail_after: failing
+                .filter(|(who, _)| *who == id)
+                .map(|(_, after)| after),
         })
         .collect();
 
-    let handles: Vec&lt;_&gt; = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
-    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+    let handles: Vec&lt;_&gt; = workers
+        .into_iter()
+        .map(|w| thread::spawn(move || w.run(n)))
+        .collect();
+
+    handles
+        .into_iter()
+        .map(|h| h.join().expect("a worker panicked"))
+        .collect()
 }</code></pre>
 <p>In Go each worker runs in a goroutine started with <code>wg.Go</code>, a method of
 <code>sync.WaitGroup</code> that starts a function and counts it, and <code>wg.Wait</code> blocks until all
@@ -622,25 +651,31 @@ fn interval(job_mtbf: f64) -&gt; f64 {
 
 	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
 	workers, _ := ring(n, -1, 0)
+
 	for i := range n {
 		own := make([]int, n)
+
 		for chunk := range own {
 			own[chunk] = i + 1 + 10*chunk
 		}
+
 		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
 	}
+
 	sent := 2 * (n - 1)
 	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
 		sent, float64(sent)/n, sent*n)
 
 	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
 	_, results := ring(n, 2, 2)
+
 	for i, r := range results {
 		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
 	}
 
 	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
 	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+
 	for _, machines := range []int{1, 5, 64, 512} {
 		jobMTBF := machineMTBF / float64(machines)
 		every := interval(jobMTBF)
@@ -655,6 +690,7 @@ fn interval(job_mtbf: f64) -&gt; f64 {
     const N: usize = 5;
 
     println!("ring all-reduce over {N} workers, {N} chunks each:");
+
     for (worker, _, _) in ring(N, None) {
         println!(
             "  {} starts with {:&lt;17} and ends with {}",
@@ -663,6 +699,7 @@ fn interval(job_mtbf: f64) -&gt; f64 {
             show(&amp;worker.gradient)
         );
     }
+
     let sent = 2 * (N - 1);
     println!(
         "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
@@ -670,14 +707,24 @@ fn interval(job_mtbf: f64) -&gt; f64 {
         sent * N
     );
 
-    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    println!(
+        "the same step, with {} failing after 2 of its {sent} exchanges:",
+        name(2)
+    );
+
     for (worker, steps, why) in ring(N, Some((2, 2))) {
         let why = why.unwrap_or_else(|| "finished".to_owned());
-        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+        println!(
+            "  {} stopped after {steps} of {sent}: {why}",
+            name(worker.id)
+        );
     }
 
-    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!(
+        "checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:"
+    );
     println!("  machines  job fails every  checkpoint every  time lost");
+
     for machines in [1, 5, 64, 512] {
         let job_mtbf = MACHINE_MTBF / f64::from(machines);
         let every = interval(job_mtbf);
@@ -811,6 +858,7 @@ func (w *Worker) Run(n int) (int, error) {
 		if step == w.failAfter {
 			return step, errFailed
 		}
+
 		// The chunk to send moves one place back around the gradient each
 		// step, so after the first step it is the chunk just received.
 		chunk := mod(w.id-step, n)
@@ -828,6 +876,7 @@ func (w *Worker) Run(n int) (int, error) {
 			return step, fmt.Errorf("no chunk from %s within %v", name(mod(w.id-1, n)), patience)
 		}
 	}
+
 	return 2 * (n - 1), nil
 }
 
@@ -845,30 +894,39 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	// Each link holds every message a worker can send in one step, so a send
 	// goes through even when the receiver has stopped.
 	links := make([]chan message, n)
+
 	for i := range links {
 		links[i] = make(chan message, 2*(n-1))
 	}
+
 	workers := make([]*Worker, n)
+
 	for i := range workers {
 		gradient := make([]int, n)
+
 		for chunk := range gradient {
 			gradient[chunk] = i + 1 + 10*chunk
 		}
+
 		workers[i] = &amp;Worker{id: i, gradient: gradient, in: links[i], out: links[mod(i+1, n)], failAfter: -1}
 	}
+
 	if failing &gt;= 0 {
 		workers[failing].failAfter = failAfter
 	}
 
 	results := make([]result, n)
 	var wg sync.WaitGroup
+
 	for i, w := range workers {
 		wg.Go(func() {
 			steps, err := w.Run(n)
 			results[i] = result{steps, err}
 		})
 	}
+
 	wg.Wait()
+
 	return workers, results
 }
 
@@ -899,25 +957,31 @@ func main() {
 
 	fmt.Printf("ring all-reduce over %d workers, %d chunks each:\n", n, n)
 	workers, _ := ring(n, -1, 0)
+
 	for i := range n {
 		own := make([]int, n)
+
 		for chunk := range own {
 			own[chunk] = i + 1 + 10*chunk
 		}
+
 		fmt.Printf("  %s starts with %-17s and ends with %s\n", name(i), show(own), show(workers[i].gradient))
 	}
+
 	sent := 2 * (n - 1)
 	fmt.Printf("  each worker sent %d chunks, %.1f times its gradient; %d messages in all\n",
 		sent, float64(sent)/n, sent*n)
 
 	fmt.Printf("the same step, with %s failing after 2 of its %d exchanges:\n", name(2), sent)
 	_, results := ring(n, 2, 2)
+
 	for i, r := range results {
 		fmt.Printf("  %s stopped after %d of %d: %v\n", name(i), r.steps, sent, r.err)
 	}
 
 	fmt.Println("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:")
 	fmt.Println("  machines  job fails every  checkpoint every  time lost")
+
 	for _, machines := range []int{1, 5, 64, 512} {
 		jobMTBF := machineMTBF / float64(machines)
 		every := interval(jobMTBF)
@@ -992,23 +1056,32 @@ impl Worker {
             if self.fail_after == Some(step) {
                 return (self, step, Some("failed".to_owned()));
             }
+
             // The chunk to send moves one place back around the gradient each
             // step, so after the first step it is the chunk just received.
             // Adding 2n keeps the subtraction from going below zero.
             let chunk = (self.id + 2 * n - step) % n;
             // The right-hand neighbour may have stopped; its channel still accepts.
-            let _ = self.out.send(Message { chunk, value: self.gradient[chunk] });
+            let _ = self.out.send(Message {
+                chunk,
+                value: self.gradient[chunk],
+            });
             let reducing = step &lt; n - 1;
 
             match self.inbox.recv_timeout(PATIENCE) {
                 Ok(m) if reducing =&gt; self.gradient[m.chunk] += m.value,
                 Ok(m) =&gt; self.gradient[m.chunk] = m.value,
                 Err(_) =&gt; {
-                    let why = format!("no chunk from {} within {PATIENCE:?}", name((self.id + n - 1) % n));
+                    let why = format!(
+                        "no chunk from {} within {PATIENCE:?}",
+                        name((self.id + n - 1) % n)
+                    );
+
                     return (self, step, Some(why));
                 }
             }
         }
+
         (self, 2 * (n - 1), None)
     }
 }
@@ -1027,12 +1100,21 @@ fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, u
             gradient: own_gradient(id, n),
             inbox,
             out: senders[(id + 1) % n].clone(),
-            fail_after: failing.filter(|(who, _)| *who == id).map(|(_, after)| after),
+            fail_after: failing
+                .filter(|(who, _)| *who == id)
+                .map(|(_, after)| after),
         })
         .collect();
 
-    let handles: Vec&lt;_&gt; = workers.into_iter().map(|w| thread::spawn(move || w.run(n))).collect();
-    handles.into_iter().map(|h| h.join().expect("a worker panicked")).collect()
+    let handles: Vec&lt;_&gt; = workers
+        .into_iter()
+        .map(|w| thread::spawn(move || w.run(n)))
+        .collect();
+
+    handles
+        .into_iter()
+        .map(|h| h.join().expect("a worker panicked"))
+        .collect()
 }
 
 /// Returns the gradient a worker starts with: a different value in each chunk.
@@ -1042,7 +1124,11 @@ fn own_gradient(id: usize, n: usize) -&gt; Vec&lt;i64&gt; {
 
 /// Formats a gradient as its values separated by spaces.
 fn show(gradient: &amp;[i64]) -&gt; String {
-    gradient.iter().map(i64::to_string).collect::&lt;Vec&lt;_&gt;&gt;().join(" ")
+    gradient
+        .iter()
+        .map(i64::to_string)
+        .collect::&lt;Vec&lt;_&gt;&gt;()
+        .join(" ")
 }
 
 /// The time one checkpoint takes to write, in seconds.
@@ -1061,6 +1147,7 @@ fn main() {
     const N: usize = 5;
 
     println!("ring all-reduce over {N} workers, {N} chunks each:");
+
     for (worker, _, _) in ring(N, None) {
         println!(
             "  {} starts with {:&lt;17} and ends with {}",
@@ -1069,6 +1156,7 @@ fn main() {
             show(&amp;worker.gradient)
         );
     }
+
     let sent = 2 * (N - 1);
     println!(
         "  each worker sent {sent} chunks, {:.1} times its gradient; {} messages in all",
@@ -1076,14 +1164,24 @@ fn main() {
         sent * N
     );
 
-    println!("the same step, with {} failing after 2 of its {sent} exchanges:", name(2));
+    println!(
+        "the same step, with {} failing after 2 of its {sent} exchanges:",
+        name(2)
+    );
+
     for (worker, steps, why) in ring(N, Some((2, 2))) {
         let why = why.unwrap_or_else(|| "finished".to_owned());
-        println!("  {} stopped after {steps} of {sent}: {why}", name(worker.id));
+        println!(
+            "  {} stopped after {steps} of {sent}: {why}",
+            name(worker.id)
+        );
     }
 
-    println!("checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:");
+    println!(
+        "checkpoint interval, for a 50 s checkpoint and one failure per machine every 30 days:"
+    );
     println!("  machines  job fails every  checkpoint every  time lost");
+
     for machines in [1, 5, 64, 512] {
         let job_mtbf = MACHINE_MTBF / f64::from(machines);
         let every = interval(job_mtbf);

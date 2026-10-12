@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -339,6 +339,7 @@ type Digest string
 // digestOf computes the name of some bytes.
 func digestOf(data []byte) Digest {
 	sum := sha256.Sum256(data)
+
 	return Digest("sha256:" + hex.EncodeToString(sum[:]))
 }
 
@@ -362,10 +363,13 @@ func NewStore() *Store {
 // store already holds are not stored a second time.
 func (s *Store) Put(data []byte) (Digest, bool) {
 	d := digestOf(data)
+
 	if _, held := s.blobs[d]; held {
 		return d, false
 	}
+
 	s.blobs[d] = data
+
 	return d, true
 }
 
@@ -375,12 +379,15 @@ var ErrCorrupt = errors.New("contents do not match the digest")
 // Get returns a blob after checking that its bytes still hash to its name.
 func (s *Store) Get(d Digest) ([]byte, error) {
 	data, held := s.blobs[d]
+
 	if !held {
 		return nil, fmt.Errorf("%s: not found", d.short())
 	}
+
 	if digestOf(data) != d {
 		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
 	}
+
 	return data, nil
 }
 </code></pre>
@@ -394,9 +401,11 @@ impl Digest {
     /// Computes the name of some bytes.
     fn of(data: &amp;[u8]) -&gt; Self {
         let mut name = String::from("sha256:");
+
         for byte in Sha256::digest(data) {
             write!(name, "{byte:02x}").expect("writing to a String");
         }
+
         Digest(name)
     }
 
@@ -441,10 +450,13 @@ impl Store {
     /// store already holds are not stored a second time.
     fn put(&amp;mut self, data: &amp;[u8]) -&gt; (Digest, bool) {
         let d = Digest::of(data);
+
         if self.blobs.contains_key(&amp;d) {
             return (d, false);
         }
+
         self.blobs.insert(d.clone(), data.to_vec());
+
         (d, true)
     }
 
@@ -457,6 +469,7 @@ impl Store {
         if Digest::of(data) != *d {
             return Err(StoreError::Corrupt(d.short().to_owned()));
         }
+
         Ok(data)
     }
 }</code></pre>
@@ -479,31 +492,40 @@ const chunkSize = 8 * 1024
 // manifest. It returns how many chunks were new to the store.
 func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
 	var lines strings.Builder
+
 	for start := 0; start &lt; len(artifact); start += chunkSize {
 		chunk := artifact[start:min(start+chunkSize, len(artifact))]
 		d, fresh := s.Put(chunk)
+
 		if fresh {
 			added++
 		}
+
 		chunks++
 		fmt.Fprintf(&amp;lines, "%s %d\n", d, len(chunk))
 	}
+
 	manifest, _ = s.Put([]byte(lines.String()))
 	s.tags[tag] = manifest
+
 	return manifest, chunks, added
 }
 
 // chunksOf reads a manifest and returns the digests it lists.
 func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	data, err := s.Get(manifest)
+
 	if err != nil {
 		return nil, err
 	}
+
 	var out []Digest
+
 	for line := range strings.Lines(string(data)) {
 		digest, _, _ := strings.Cut(line, " ")
 		out = append(out, Digest(digest))
 	}
+
 	return out, nil
 }
 </code></pre>
@@ -517,14 +539,17 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
     fn push(&amp;mut self, tag: &amp;'static str, artifact: &amp;[u8]) -&gt; (Digest, usize, usize) {
         let mut lines = String::new();
         let (mut chunks, mut added) = (0, 0);
+
         for chunk in artifact.chunks(CHUNK_SIZE) {
             let (d, fresh) = self.put(chunk);
             added += usize::from(fresh);
             chunks += 1;
             writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
         }
+
         let (manifest, _) = self.put(lines.as_bytes());
         self.tags.insert(tag, manifest.clone());
+
         (manifest, chunks, added)
     }
 
@@ -554,41 +579,54 @@ that name. <code>Read</code> reassembles the artifact from local chunks, and sin
 func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
 	manifest := remote.tags[tag]
 	chunks, err := remote.chunksOf(manifest)
+
 	if err != nil {
 		return 0, 0, err
 	}
+
 	for _, d := range chunks {
 		if _, held := s.blobs[d]; held {
 			continue
 		}
+
 		data, err := remote.Get(d)
+
 		if err != nil {
 			return fetched, bytes, err
 		}
+
 		s.blobs[d] = data
 		fetched++
 		bytes += len(data)
 	}
+
 	data, _ := remote.Get(manifest)
 	s.blobs[manifest] = data
 	s.tags[tag] = manifest
+
 	return fetched, bytes, nil
 }
 
 // Read reassembles a tagged artifact, verifying every chunk on the way.
 func (s *Store) Read(tag string) ([]byte, error) {
 	chunks, err := s.chunksOf(s.tags[tag])
+
 	if err != nil {
 		return nil, err
 	}
+
 	var artifact []byte
+
 	for i, d := range chunks {
 		data, err := s.Get(d)
+
 		if err != nil {
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
 		}
+
 		artifact = append(artifact, data...)
 	}
+
 	return artifact, nil
 }
 </code></pre>
@@ -601,28 +639,34 @@ func (s *Store) Read(tag string) ([]byte, error) {
     fn pull(&amp;mut self, remote: &amp;Store, tag: &amp;'static str) -&gt; Result&lt;(usize, usize), StoreError&gt; {
         let manifest = &amp;remote.tags[tag];
         let (mut fetched, mut bytes) = (0, 0);
+
         for d in remote.chunks_of(manifest)? {
             if self.blobs.contains_key(&amp;d) {
                 continue;
             }
+
             let data = remote.get(&amp;d)?;
             fetched += 1;
             bytes += data.len();
             self.blobs.insert(d, data.to_vec());
         }
+
         self.blobs
             .insert(manifest.clone(), remote.get(manifest)?.to_vec());
         self.tags.insert(tag, manifest.clone());
+
         Ok((fetched, bytes))
     }
 
     /// Reassembles a tagged artifact, verifying every chunk on the way.
     fn read(&amp;self, tag: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, StoreError&gt; {
         let mut artifact = Vec::new();
+
         for (i, d) in self.chunks_of(&amp;self.tags[tag])?.iter().enumerate() {
             let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
             artifact.extend_from_slice(data);
         }
+
         Ok(artifact)
     }
 }</code></pre>
@@ -640,13 +684,16 @@ noted.</p>
 // the rest. It returns the number of blobs and bytes removed.
 func (s *Store) Collect() (removed, bytes int) {
 	live := map[Digest]bool{}
+
 	for _, manifest := range s.tags {
 		live[manifest] = true
 		chunks, _ := s.chunksOf(manifest)
+
 		for _, d := range chunks {
 			live[d] = true
 		}
 	}
+
 	for d, data := range s.blobs {
 		if !live[d] {
 			removed++
@@ -654,6 +701,7 @@ func (s *Store) Collect() (removed, bytes int) {
 			delete(s.blobs, d)
 		}
 	}
+
 	return removed, bytes
 }
 </code></pre>
@@ -665,13 +713,16 @@ func (s *Store) Collect() (removed, bytes int) {
     /// rest. Returns the number of blobs and bytes removed.
     fn collect(&amp;mut self) -&gt; (usize, usize) {
         let mut live = BTreeSet::new();
+
         for manifest in self.tags.values() {
             live.extend(self.chunks_of(manifest).unwrap_or_default());
             live.insert(manifest.clone());
         }
+
         let (before, bytes_before) = self.size();
         self.blobs.retain(|d, _| live.contains(d));
         let (after, bytes_after) = self.size();
+
         (before - after, bytes_before - bytes_after)
     }
 }</code></pre>
@@ -705,13 +756,16 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
 	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
 	damaged[100] ^= 1
 	node.blobs[chunkList[3]] = damaged
+
 	if _, err := node.Read("llm:v1"); err != nil {
 		fmt.Printf("  read llm:v1: %v\n", err)
 	}
+
 	// The bad chunk is dropped and pulled again, by name, from the registry.
 	delete(node.blobs, chunkList[3])
 	fetched, n, _ = node.Pull(registry, "llm:v1")
 	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+
 	if got, err := node.Read("llm:v1"); err == nil {
 		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
 	}
@@ -757,9 +811,11 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
     println!("one bit flips in a chunk stored on thor-1:");
     let fourth = node.chunks_of(&amp;node.tags["llm:v1"])?[3].clone();
     node.blobs.get_mut(&amp;fourth).expect("the chunk was pulled")[100] ^= 1;
+
     if let Err(e) = node.read("llm:v1") {
         println!("  read llm:v1: {e}");
     }
+
     // The bad chunk is dropped and pulled again, by name, from the registry.
     node.blobs.remove(&amp;fourth);
     let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
@@ -776,6 +832,7 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
     let (removed, n) = registry.collect();
     let (blobs, bytes) = registry.size();
     println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+
     Ok(())
 }</code></pre>
 <pre><code class="language-console">$ go run ./cas
@@ -865,6 +922,7 @@ type Digest string
 // digestOf computes the name of some bytes.
 func digestOf(data []byte) Digest {
 	sum := sha256.Sum256(data)
+
 	return Digest("sha256:" + hex.EncodeToString(sum[:]))
 }
 
@@ -888,10 +946,13 @@ func NewStore() *Store {
 // store already holds are not stored a second time.
 func (s *Store) Put(data []byte) (Digest, bool) {
 	d := digestOf(data)
+
 	if _, held := s.blobs[d]; held {
 		return d, false
 	}
+
 	s.blobs[d] = data
+
 	return d, true
 }
 
@@ -901,12 +962,15 @@ var ErrCorrupt = errors.New("contents do not match the digest")
 // Get returns a blob after checking that its bytes still hash to its name.
 func (s *Store) Get(d Digest) ([]byte, error) {
 	data, held := s.blobs[d]
+
 	if !held {
 		return nil, fmt.Errorf("%s: not found", d.short())
 	}
+
 	if digestOf(data) != d {
 		return nil, fmt.Errorf("%s: %w", d.short(), ErrCorrupt)
 	}
+
 	return data, nil
 }
 
@@ -919,31 +983,40 @@ const chunkSize = 8 * 1024
 // manifest. It returns how many chunks were new to the store.
 func (s *Store) Push(tag string, artifact []byte) (manifest Digest, chunks, added int) {
 	var lines strings.Builder
+
 	for start := 0; start &lt; len(artifact); start += chunkSize {
 		chunk := artifact[start:min(start+chunkSize, len(artifact))]
 		d, fresh := s.Put(chunk)
+
 		if fresh {
 			added++
 		}
+
 		chunks++
 		fmt.Fprintf(&amp;lines, "%s %d\n", d, len(chunk))
 	}
+
 	manifest, _ = s.Put([]byte(lines.String()))
 	s.tags[tag] = manifest
+
 	return manifest, chunks, added
 }
 
 // chunksOf reads a manifest and returns the digests it lists.
 func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	data, err := s.Get(manifest)
+
 	if err != nil {
 		return nil, err
 	}
+
 	var out []Digest
+
 	for line := range strings.Lines(string(data)) {
 		digest, _, _ := strings.Cut(line, " ")
 		out = append(out, Digest(digest))
 	}
+
 	return out, nil
 }
 
@@ -954,41 +1027,54 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 func (s *Store) Pull(remote *Store, tag string) (fetched, bytes int, err error) {
 	manifest := remote.tags[tag]
 	chunks, err := remote.chunksOf(manifest)
+
 	if err != nil {
 		return 0, 0, err
 	}
+
 	for _, d := range chunks {
 		if _, held := s.blobs[d]; held {
 			continue
 		}
+
 		data, err := remote.Get(d)
+
 		if err != nil {
 			return fetched, bytes, err
 		}
+
 		s.blobs[d] = data
 		fetched++
 		bytes += len(data)
 	}
+
 	data, _ := remote.Get(manifest)
 	s.blobs[manifest] = data
 	s.tags[tag] = manifest
+
 	return fetched, bytes, nil
 }
 
 // Read reassembles a tagged artifact, verifying every chunk on the way.
 func (s *Store) Read(tag string) ([]byte, error) {
 	chunks, err := s.chunksOf(s.tags[tag])
+
 	if err != nil {
 		return nil, err
 	}
+
 	var artifact []byte
+
 	for i, d := range chunks {
 		data, err := s.Get(d)
+
 		if err != nil {
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
 		}
+
 		artifact = append(artifact, data...)
 	}
+
 	return artifact, nil
 }
 
@@ -998,13 +1084,16 @@ func (s *Store) Read(tag string) ([]byte, error) {
 // the rest. It returns the number of blobs and bytes removed.
 func (s *Store) Collect() (removed, bytes int) {
 	live := map[Digest]bool{}
+
 	for _, manifest := range s.tags {
 		live[manifest] = true
 		chunks, _ := s.chunksOf(manifest)
+
 		for _, d := range chunks {
 			live[d] = true
 		}
 	}
+
 	for d, data := range s.blobs {
 		if !live[d] {
 			removed++
@@ -1012,6 +1101,7 @@ func (s *Store) Collect() (removed, bytes int) {
 			delete(s.blobs, d)
 		}
 	}
+
 	return removed, bytes
 }
 
@@ -1021,6 +1111,7 @@ func (s *Store) size() (blobs, bytes int) {
 	for _, data := range s.blobs {
 		bytes += len(data)
 	}
+
 	return len(s.blobs), bytes
 }
 
@@ -1029,10 +1120,12 @@ func (s *Store) size() (blobs, bytes int) {
 func weights(n int, seed uint32) []byte {
 	out := make([]byte, n)
 	x := seed
+
 	for i := range out {
 		x = x*1664525 + 1013904223
 		out[i] = byte(x &gt;&gt; 24)
 	}
+
 	return out
 }
 
@@ -1061,13 +1154,16 @@ func main() {
 	damaged := append([]byte{}, node.blobs[chunkList[3]]...)
 	damaged[100] ^= 1
 	node.blobs[chunkList[3]] = damaged
+
 	if _, err := node.Read("llm:v1"); err != nil {
 		fmt.Printf("  read llm:v1: %v\n", err)
 	}
+
 	// The bad chunk is dropped and pulled again, by name, from the registry.
 	delete(node.blobs, chunkList[3])
 	fetched, n, _ = node.Pull(registry, "llm:v1")
 	fmt.Printf("  thor-1 drops the chunk and pulls llm:v1 again: %d chunk fetched, %d bytes\n", fetched, n)
+
 	if got, err := node.Read("llm:v1"); err == nil {
 		fmt.Printf("  read llm:v1: %d bytes, digest %s\n", len(got), digestOf(got).short())
 	}
@@ -1109,9 +1205,11 @@ impl Digest {
     /// Computes the name of some bytes.
     fn of(data: &amp;[u8]) -&gt; Self {
         let mut name = String::from("sha256:");
+
         for byte in Sha256::digest(data) {
             write!(name, "{byte:02x}").expect("writing to a String");
         }
+
         Digest(name)
     }
 
@@ -1156,10 +1254,13 @@ impl Store {
     /// store already holds are not stored a second time.
     fn put(&amp;mut self, data: &amp;[u8]) -&gt; (Digest, bool) {
         let d = Digest::of(data);
+
         if self.blobs.contains_key(&amp;d) {
             return (d, false);
         }
+
         self.blobs.insert(d.clone(), data.to_vec());
+
         (d, true)
     }
 
@@ -1172,6 +1273,7 @@ impl Store {
         if Digest::of(data) != *d {
             return Err(StoreError::Corrupt(d.short().to_owned()));
         }
+
         Ok(data)
     }
 }
@@ -1184,14 +1286,17 @@ impl Store {
     fn push(&amp;mut self, tag: &amp;'static str, artifact: &amp;[u8]) -&gt; (Digest, usize, usize) {
         let mut lines = String::new();
         let (mut chunks, mut added) = (0, 0);
+
         for chunk in artifact.chunks(CHUNK_SIZE) {
             let (d, fresh) = self.put(chunk);
             added += usize::from(fresh);
             chunks += 1;
             writeln!(lines, "{} {}", d.0, chunk.len()).expect("writing to a String");
         }
+
         let (manifest, _) = self.put(lines.as_bytes());
         self.tags.insert(tag, manifest.clone());
+
         (manifest, chunks, added)
     }
 
@@ -1213,28 +1318,34 @@ impl Store {
     fn pull(&amp;mut self, remote: &amp;Store, tag: &amp;'static str) -&gt; Result&lt;(usize, usize), StoreError&gt; {
         let manifest = &amp;remote.tags[tag];
         let (mut fetched, mut bytes) = (0, 0);
+
         for d in remote.chunks_of(manifest)? {
             if self.blobs.contains_key(&amp;d) {
                 continue;
             }
+
             let data = remote.get(&amp;d)?;
             fetched += 1;
             bytes += data.len();
             self.blobs.insert(d, data.to_vec());
         }
+
         self.blobs
             .insert(manifest.clone(), remote.get(manifest)?.to_vec());
         self.tags.insert(tag, manifest.clone());
+
         Ok((fetched, bytes))
     }
 
     /// Reassembles a tagged artifact, verifying every chunk on the way.
     fn read(&amp;self, tag: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, StoreError&gt; {
         let mut artifact = Vec::new();
+
         for (i, d) in self.chunks_of(&amp;self.tags[tag])?.iter().enumerate() {
             let data = self.get(d).map_err(|e| StoreError::Chunk(i, Box::new(e)))?;
             artifact.extend_from_slice(data);
         }
+
         Ok(artifact)
     }
 }
@@ -1245,13 +1356,16 @@ impl Store {
     /// rest. Returns the number of blobs and bytes removed.
     fn collect(&amp;mut self) -&gt; (usize, usize) {
         let mut live = BTreeSet::new();
+
         for manifest in self.tags.values() {
             live.extend(self.chunks_of(manifest).unwrap_or_default());
             live.insert(manifest.clone());
         }
+
         let (before, bytes_before) = self.size();
         self.blobs.retain(|d, _| live.contains(d));
         let (after, bytes_after) = self.size();
+
         (before - after, bytes_before - bytes_after)
     }
 }
@@ -1310,9 +1424,11 @@ fn main() -&gt; Result&lt;(), StoreError&gt; {
     println!("one bit flips in a chunk stored on thor-1:");
     let fourth = node.chunks_of(&amp;node.tags["llm:v1"])?[3].clone();
     node.blobs.get_mut(&amp;fourth).expect("the chunk was pulled")[100] ^= 1;
+
     if let Err(e) = node.read("llm:v1") {
         println!("  read llm:v1: {e}");
     }
+
     // The bad chunk is dropped and pulled again, by name, from the registry.
     node.blobs.remove(&amp;fourth);
     let (fetched, n) = node.pull(&amp;registry, "llm:v1")?;
@@ -1329,6 +1445,7 @@ fn main() -&gt; Result&lt;(), StoreError&gt; {
     let (removed, n) = registry.collect();
     let (blobs, bytes) = registry.size();
     println!("  collected {removed} blobs, {n} bytes; {blobs} blobs and {bytes} bytes remain");
+
     Ok(())
 }</code></pre>
 <div class="summary">

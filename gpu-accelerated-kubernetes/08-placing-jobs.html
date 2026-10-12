@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -388,15 +388,27 @@ impl Domain {
     /// Returns the link the machines of this domain share.
     fn link(self) -&gt; Link {
         match self {
-            Domain::Shelf =&gt; Link { label: "the 25 GbE switch", gbps: 3.125 },
-            Domain::Desk =&gt; Link { label: "the 200 GbE cable", gbps: 25.0 },
-            Domain::Bench =&gt; Link { label: "1 GbE", gbps: 0.125 },
+            Domain::Shelf =&gt; Link {
+                label: "the 25 GbE switch",
+                gbps: 3.125,
+            },
+            Domain::Desk =&gt; Link {
+                label: "the 200 GbE cable",
+                gbps: 25.0,
+            },
+            Domain::Bench =&gt; Link {
+                label: "1 GbE",
+                gbps: 0.125,
+            },
         }
     }
 }
 
 /// The link between machines in different domains.
-const HOUSE_NETWORK: Link = Link { label: "the 1 GbE house network", gbps: 0.125 };
+const HOUSE_NETWORK: Link = Link {
+    label: "the 1 GbE house network",
+    gbps: 0.125,
+};
 
 /// Returns the machines in name order, all free.
 fn new_fleet() -&gt; Vec&lt;Node&gt; {
@@ -411,7 +423,11 @@ fn new_fleet() -&gt; Vec&lt;Node&gt; {
         ("thor-5", Domain::Shelf),
     ]
     .into_iter()
-    .map(|(name, domain)| Node { name, domain, job: None })
+    .map(|(name, domain)| Node {
+        name,
+        domain,
+        job: None,
+    })
     .collect()
 }
 
@@ -434,10 +450,13 @@ free GPU per turn, until a whole round passes in which nobody could be given any
 // ended up holding.
 func podAtATime(fleet []*Node, jobs []Job) {
 	held := map[string][]*Node{}
+
 	for progress := true; progress; {
 		progress = false
+
 		for _, job := range jobs {
 			open := free(fleet)
+
 			if len(held[job.Name]) &lt; job.Workers &amp;&amp; len(open) &gt; 0 {
 				open[0].Job = job.Name
 				held[job.Name] = append(held[job.Name], open[0])
@@ -445,13 +464,17 @@ func podAtATime(fleet []*Node, jobs []Job) {
 			}
 		}
 	}
+
 	running := 0
+
 	for _, job := range jobs {
 		fmt.Printf("  %-8s holds %d of %d GPUs: %s\n", job.Name, len(held[job.Name]), job.Workers, names(held[job.Name]))
+
 		if len(held[job.Name]) == job.Workers {
 			running++
 		}
 	}
+
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 </code></pre>
@@ -462,11 +485,15 @@ func podAtATime(fleet []*Node, jobs []Job) {
 /// holding.
 fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
     let held = |fleet: &amp;[Node], job: &amp;Job| -&gt; Vec&lt;usize&gt; {
-        (0..fleet.len()).filter(|&amp;i| fleet[i].job == Some(job.name)).collect()
+        (0..fleet.len())
+            .filter(|&amp;i| fleet[i].job == Some(job.name))
+            .collect()
     };
     let mut progress = true;
+
     while progress {
         progress = false;
+
         for job in jobs {
             if held(&amp;fleet, job).len() &lt; job.workers
                 &amp;&amp; let Some(&amp;first) = free(&amp;fleet).first()
@@ -476,16 +503,29 @@ fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
             }
         }
     }
+
     let mut running = 0;
+
     for job in jobs {
         let mine = held(&amp;fleet, job);
-        println!("  {:&lt;8} holds {} of {} GPUs: {}", job.name, mine.len(), job.workers, names(&amp;fleet, &amp;mine));
+        println!(
+            "  {:&lt;8} holds {} of {} GPUs: {}",
+            job.name,
+            mine.len(),
+            job.workers,
+            names(&amp;fleet, &amp;mine)
+        );
+
         if mine.len() == job.workers {
             running += 1;
         }
     }
+
     let taken = fleet.len() - free(&amp;fleet).len();
-    println!("  {taken} of {} GPUs are held and {running} jobs are running", fleet.len());
+    println!(
+        "  {taken} of {} GPUs are held and {running} jobs are running",
+        fleet.len()
+    );
 }</code></pre>
 <h3 id="two-ways-to-choose-machines"><a class="header" href="#two-ways-to-choose-machines">Two ways to choose machines</a></h3>
 <p>A <em>placer</em> is a function that takes the free machines and a number of workers and
@@ -508,6 +548,7 @@ func firstFree(open []*Node, workers int) []*Node {
 	if len(open) &lt; workers {
 		return nil
 	}
+
 	return open[:workers]
 }
 
@@ -518,22 +559,29 @@ func firstFree(open []*Node, workers int) []*Node {
 func byTopology(open []*Node, workers int) []*Node {
 	byDomain := map[string][]*Node{}
 	var order []string
+
 	for _, n := range open {
 		if byDomain[n.Domain] == nil {
 			order = append(order, n.Domain)
 		}
+
 		byDomain[n.Domain] = append(byDomain[n.Domain], n)
 	}
+
 	best := ""
+
 	for _, domain := range order {
 		size := len(byDomain[domain])
+
 		if size &gt;= workers &amp;&amp; (best == "" || size &lt; len(byDomain[best])) {
 			best = domain
 		}
 	}
+
 	if best == "" {
 		return firstFree(open, workers)
 	}
+
 	return byDomain[best][:workers]
 }
 </code></pre>
@@ -554,7 +602,10 @@ fn first_free(_fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Opt
 /// first free machines.
 fn by_topology(fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
     let in_domain = |domain: Domain| -&gt; Vec&lt;usize&gt; {
-        open.iter().copied().filter(|&amp;i| fleet[i].domain == domain).collect()
+        open.iter()
+            .copied()
+            .filter(|&amp;i| fleet[i].domain == domain)
+            .collect()
     };
     [Domain::Bench, Domain::Desk, Domain::Shelf]
         .into_iter()
@@ -581,6 +632,7 @@ func slowest(nodes []*Node) Link {
 			return houseNetwork
 		}
 	}
+
 	return links[nodes[0].Domain]
 }
 
@@ -588,6 +640,7 @@ func slowest(nodes []*Node) Link {
 // 2(n-1)/n gradients over the slowest link.
 func exchangeSeconds(nodes []*Node) float64 {
 	n := float64(len(nodes))
+
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 </code></pre>
@@ -600,13 +653,18 @@ const GRADIENT_GB: f64 = 14.0;
 /// every machine is in one domain, and the house network otherwise.
 fn slowest(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; Link {
     let first = fleet[nodes[0]].domain;
-    if nodes.iter().all(|&amp;i| fleet[i].domain == first) { first.link() } else { HOUSE_NETWORK }
+    if nodes.iter().all(|&amp;i| fleet[i].domain == first) {
+        first.link()
+    } else {
+        HOUSE_NETWORK
+    }
 }
 
 /// Returns the time one ring all-reduce takes: each worker sends 2(n-1)/n
 /// gradients over the slowest link.
 fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
     let n = nodes.len() as f64;
+
     2.0 * (n - 1.0) / n * GRADIENT_GB / slowest(fleet, nodes).gbps
 }</code></pre>
 <h3 id="admitting-a-whole-job"><a class="header" href="#admitting-a-whole-job">Admitting a whole job</a></h3>
@@ -621,17 +679,23 @@ when every worker has a machine does <code>admit</code> mark any of them as take
 func admit(fleet []*Node, job Job, place placer) bool {
 	open := free(fleet)
 	nodes := place(open, job.Workers)
+
 	if nodes == nil {
 		fmt.Printf("  %-8s waits: it needs %d GPUs and %d are free\n", job.Name, job.Workers, len(open))
+
 		return false
 	}
+
 	for _, n := range nodes {
 		n.Job = job.Name
 	}
+
 	fmt.Printf("  %-8s runs on %s\n", job.Name, names(nodes))
+
 	if len(nodes) &gt; 1 {
 		fmt.Printf("           over %s: %.1f s for each all-reduce\n", slowest(nodes).Label, exchangeSeconds(nodes))
 	}
+
 	return true
 }
 
@@ -642,6 +706,7 @@ func release(fleet []*Node, job string) {
 			n.Job = ""
 		}
 	}
+
 	fmt.Printf("  %-8s finishes\n", job)
 }
 </code></pre>
@@ -653,17 +718,31 @@ func release(fleet []*Node, job string) {
 fn admit(fleet: &amp;mut [Node], job: Job, place: Placer) -&gt; bool {
     let open = free(fleet);
     let Some(nodes) = place(fleet, &amp;open, job.workers) else {
-        println!("  {:&lt;8} waits: it needs {} GPUs and {} are free", job.name, job.workers, open.len());
+        println!(
+            "  {:&lt;8} waits: it needs {} GPUs and {} are free",
+            job.name,
+            job.workers,
+            open.len()
+        );
+
         return false;
     };
+
     for &amp;i in &amp;nodes {
         fleet[i].job = Some(job.name);
     }
+
     println!("  {:&lt;8} runs on {}", job.name, names(fleet, &amp;nodes));
+
     if nodes.len() &gt; 1 {
         let link = slowest(fleet, &amp;nodes);
-        println!("           over {}: {:.1} s for each all-reduce", link.label, exchange_seconds(fleet, &amp;nodes));
+        println!(
+            "           over {}: {:.1} s for each all-reduce",
+            link.label,
+            exchange_seconds(fleet, &amp;nodes)
+        );
     }
+
     true
 }
 
@@ -672,6 +751,7 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
     for node in fleet.iter_mut().filter(|n| n.job == Some(job)) {
         node.job = None;
     }
+
     println!("  {job:&lt;8} finishes");
 }</code></pre>
 <h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
@@ -693,11 +773,14 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 	three := []Job{{"pair", 2}, {"quad", 4}, {"single", 1}}
 	fmt.Println("three jobs, on the first free machines:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, firstFree)
 	}
+
 	fmt.Println("the same three jobs, placed by topology:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, byTopology)
 	}
@@ -706,7 +789,16 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 <p class="listing"><b>Listing 8.12</b> Four experiments on the same fleet, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
-    let two = [Job { name: "train-a", workers: 5 }, Job { name: "train-b", workers: 5 }];
+    let two = [
+        Job {
+            name: "train-a",
+            workers: 5,
+        },
+        Job {
+            name: "train-b",
+            workers: 5,
+        },
+    ];
 
     println!("one pod at a time, two jobs of five workers:");
     pod_at_a_time(new_fleet(), &amp;two);
@@ -719,17 +811,29 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
     admit(&amp;mut fleet, two[1], by_topology);
 
     let three = [
-        Job { name: "pair", workers: 2 },
-        Job { name: "quad", workers: 4 },
-        Job { name: "single", workers: 1 },
+        Job {
+            name: "pair",
+            workers: 2,
+        },
+        Job {
+            name: "quad",
+            workers: 4,
+        },
+        Job {
+            name: "single",
+            workers: 1,
+        },
     ];
     println!("three jobs, on the first free machines:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, first_free);
     }
+
     println!("the same three jobs, placed by topology:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, by_topology);
     }
@@ -888,20 +992,24 @@ type Job struct {
 // free returns the machines whose GPU nobody holds, in name order.
 func free(fleet []*Node) []*Node {
 	var out []*Node
+
 	for _, n := range fleet {
 		if n.Job == "" {
 			out = append(out, n)
 		}
 	}
+
 	return out
 }
 
 // names joins the names of some machines with spaces.
 func names(nodes []*Node) string {
 	parts := make([]string, len(nodes))
+
 	for i, n := range nodes {
 		parts[i] = n.Name
 	}
+
 	return strings.Join(parts, " ")
 }
 
@@ -910,10 +1018,13 @@ func names(nodes []*Node) string {
 // ended up holding.
 func podAtATime(fleet []*Node, jobs []Job) {
 	held := map[string][]*Node{}
+
 	for progress := true; progress; {
 		progress = false
+
 		for _, job := range jobs {
 			open := free(fleet)
+
 			if len(held[job.Name]) &lt; job.Workers &amp;&amp; len(open) &gt; 0 {
 				open[0].Job = job.Name
 				held[job.Name] = append(held[job.Name], open[0])
@@ -921,13 +1032,17 @@ func podAtATime(fleet []*Node, jobs []Job) {
 			}
 		}
 	}
+
 	running := 0
+
 	for _, job := range jobs {
 		fmt.Printf("  %-8s holds %d of %d GPUs: %s\n", job.Name, len(held[job.Name]), job.Workers, names(held[job.Name]))
+
 		if len(held[job.Name]) == job.Workers {
 			running++
 		}
 	}
+
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 
@@ -941,6 +1056,7 @@ func firstFree(open []*Node, workers int) []*Node {
 	if len(open) &lt; workers {
 		return nil
 	}
+
 	return open[:workers]
 }
 
@@ -951,22 +1067,29 @@ func firstFree(open []*Node, workers int) []*Node {
 func byTopology(open []*Node, workers int) []*Node {
 	byDomain := map[string][]*Node{}
 	var order []string
+
 	for _, n := range open {
 		if byDomain[n.Domain] == nil {
 			order = append(order, n.Domain)
 		}
+
 		byDomain[n.Domain] = append(byDomain[n.Domain], n)
 	}
+
 	best := ""
+
 	for _, domain := range order {
 		size := len(byDomain[domain])
+
 		if size &gt;= workers &amp;&amp; (best == "" || size &lt; len(byDomain[best])) {
 			best = domain
 		}
 	}
+
 	if best == "" {
 		return firstFree(open, workers)
 	}
+
 	return byDomain[best][:workers]
 }
 
@@ -982,6 +1105,7 @@ func slowest(nodes []*Node) Link {
 			return houseNetwork
 		}
 	}
+
 	return links[nodes[0].Domain]
 }
 
@@ -989,6 +1113,7 @@ func slowest(nodes []*Node) Link {
 // 2(n-1)/n gradients over the slowest link.
 func exchangeSeconds(nodes []*Node) float64 {
 	n := float64(len(nodes))
+
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 
@@ -999,17 +1124,23 @@ func exchangeSeconds(nodes []*Node) float64 {
 func admit(fleet []*Node, job Job, place placer) bool {
 	open := free(fleet)
 	nodes := place(open, job.Workers)
+
 	if nodes == nil {
 		fmt.Printf("  %-8s waits: it needs %d GPUs and %d are free\n", job.Name, job.Workers, len(open))
+
 		return false
 	}
+
 	for _, n := range nodes {
 		n.Job = job.Name
 	}
+
 	fmt.Printf("  %-8s runs on %s\n", job.Name, names(nodes))
+
 	if len(nodes) &gt; 1 {
 		fmt.Printf("           over %s: %.1f s for each all-reduce\n", slowest(nodes).Label, exchangeSeconds(nodes))
 	}
+
 	return true
 }
 
@@ -1020,6 +1151,7 @@ func release(fleet []*Node, job string) {
 			n.Job = ""
 		}
 	}
+
 	fmt.Printf("  %-8s finishes\n", job)
 }
 
@@ -1040,11 +1172,14 @@ func main() {
 	three := []Job{{"pair", 2}, {"quad", 4}, {"single", 1}}
 	fmt.Println("three jobs, on the first free machines:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, firstFree)
 	}
+
 	fmt.Println("the same three jobs, placed by topology:")
 	fleet = newFleet()
+
 	for _, job := range three {
 		admit(fleet, job, byTopology)
 	}
@@ -1100,15 +1235,27 @@ impl Domain {
     /// Returns the link the machines of this domain share.
     fn link(self) -&gt; Link {
         match self {
-            Domain::Shelf =&gt; Link { label: "the 25 GbE switch", gbps: 3.125 },
-            Domain::Desk =&gt; Link { label: "the 200 GbE cable", gbps: 25.0 },
-            Domain::Bench =&gt; Link { label: "1 GbE", gbps: 0.125 },
+            Domain::Shelf =&gt; Link {
+                label: "the 25 GbE switch",
+                gbps: 3.125,
+            },
+            Domain::Desk =&gt; Link {
+                label: "the 200 GbE cable",
+                gbps: 25.0,
+            },
+            Domain::Bench =&gt; Link {
+                label: "1 GbE",
+                gbps: 0.125,
+            },
         }
     }
 }
 
 /// The link between machines in different domains.
-const HOUSE_NETWORK: Link = Link { label: "the 1 GbE house network", gbps: 0.125 };
+const HOUSE_NETWORK: Link = Link {
+    label: "the 1 GbE house network",
+    gbps: 0.125,
+};
 
 /// Returns the machines in name order, all free.
 fn new_fleet() -&gt; Vec&lt;Node&gt; {
@@ -1123,7 +1270,11 @@ fn new_fleet() -&gt; Vec&lt;Node&gt; {
         ("thor-5", Domain::Shelf),
     ]
     .into_iter()
-    .map(|(name, domain)| Node { name, domain, job: None })
+    .map(|(name, domain)| Node {
+        name,
+        domain,
+        job: None,
+    })
     .collect()
 }
 
@@ -1136,12 +1287,18 @@ struct Job {
 
 /// Returns the indexes of the machines whose GPU nobody holds, in name order.
 fn free(fleet: &amp;[Node]) -&gt; Vec&lt;usize&gt; {
-    (0..fleet.len()).filter(|&amp;i| fleet[i].job.is_none()).collect()
+    (0..fleet.len())
+        .filter(|&amp;i| fleet[i].job.is_none())
+        .collect()
 }
 
 /// Joins the names of some machines with spaces.
 fn names(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; String {
-    nodes.iter().map(|&amp;i| fleet[i].name).collect::&lt;Vec&lt;_&gt;&gt;().join(" ")
+    nodes
+        .iter()
+        .map(|&amp;i| fleet[i].name)
+        .collect::&lt;Vec&lt;_&gt;&gt;()
+        .join(" ")
 }
 
 /// Gives each job one GPU in turn until none are left, the way a scheduler
@@ -1149,11 +1306,15 @@ fn names(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; String {
 /// holding.
 fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
     let held = |fleet: &amp;[Node], job: &amp;Job| -&gt; Vec&lt;usize&gt; {
-        (0..fleet.len()).filter(|&amp;i| fleet[i].job == Some(job.name)).collect()
+        (0..fleet.len())
+            .filter(|&amp;i| fleet[i].job == Some(job.name))
+            .collect()
     };
     let mut progress = true;
+
     while progress {
         progress = false;
+
         for job in jobs {
             if held(&amp;fleet, job).len() &lt; job.workers
                 &amp;&amp; let Some(&amp;first) = free(&amp;fleet).first()
@@ -1163,16 +1324,29 @@ fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
             }
         }
     }
+
     let mut running = 0;
+
     for job in jobs {
         let mine = held(&amp;fleet, job);
-        println!("  {:&lt;8} holds {} of {} GPUs: {}", job.name, mine.len(), job.workers, names(&amp;fleet, &amp;mine));
+        println!(
+            "  {:&lt;8} holds {} of {} GPUs: {}",
+            job.name,
+            mine.len(),
+            job.workers,
+            names(&amp;fleet, &amp;mine)
+        );
+
         if mine.len() == job.workers {
             running += 1;
         }
     }
+
     let taken = fleet.len() - free(&amp;fleet).len();
-    println!("  {taken} of {} GPUs are held and {running} jobs are running", fleet.len());
+    println!(
+        "  {taken} of {} GPUs are held and {running} jobs are running",
+        fleet.len()
+    );
 }
 
 /// Chooses machines for a job from the free ones, or returns `None` when it
@@ -1190,7 +1364,10 @@ fn first_free(_fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Opt
 /// first free machines.
 fn by_topology(fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Option&lt;Vec&lt;usize&gt;&gt; {
     let in_domain = |domain: Domain| -&gt; Vec&lt;usize&gt; {
-        open.iter().copied().filter(|&amp;i| fleet[i].domain == domain).collect()
+        open.iter()
+            .copied()
+            .filter(|&amp;i| fleet[i].domain == domain)
+            .collect()
     };
     [Domain::Bench, Domain::Desk, Domain::Shelf]
         .into_iter()
@@ -1208,13 +1385,18 @@ const GRADIENT_GB: f64 = 14.0;
 /// every machine is in one domain, and the house network otherwise.
 fn slowest(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; Link {
     let first = fleet[nodes[0]].domain;
-    if nodes.iter().all(|&amp;i| fleet[i].domain == first) { first.link() } else { HOUSE_NETWORK }
+    if nodes.iter().all(|&amp;i| fleet[i].domain == first) {
+        first.link()
+    } else {
+        HOUSE_NETWORK
+    }
 }
 
 /// Returns the time one ring all-reduce takes: each worker sends 2(n-1)/n
 /// gradients over the slowest link.
 fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
     let n = nodes.len() as f64;
+
     2.0 * (n - 1.0) / n * GRADIENT_GB / slowest(fleet, nodes).gbps
 }
 
@@ -1224,17 +1406,31 @@ fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
 fn admit(fleet: &amp;mut [Node], job: Job, place: Placer) -&gt; bool {
     let open = free(fleet);
     let Some(nodes) = place(fleet, &amp;open, job.workers) else {
-        println!("  {:&lt;8} waits: it needs {} GPUs and {} are free", job.name, job.workers, open.len());
+        println!(
+            "  {:&lt;8} waits: it needs {} GPUs and {} are free",
+            job.name,
+            job.workers,
+            open.len()
+        );
+
         return false;
     };
+
     for &amp;i in &amp;nodes {
         fleet[i].job = Some(job.name);
     }
+
     println!("  {:&lt;8} runs on {}", job.name, names(fleet, &amp;nodes));
+
     if nodes.len() &gt; 1 {
         let link = slowest(fleet, &amp;nodes);
-        println!("           over {}: {:.1} s for each all-reduce", link.label, exchange_seconds(fleet, &amp;nodes));
+        println!(
+            "           over {}: {:.1} s for each all-reduce",
+            link.label,
+            exchange_seconds(fleet, &amp;nodes)
+        );
     }
+
     true
 }
 
@@ -1243,11 +1439,21 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
     for node in fleet.iter_mut().filter(|n| n.job == Some(job)) {
         node.job = None;
     }
+
     println!("  {job:&lt;8} finishes");
 }
 
 fn main() {
-    let two = [Job { name: "train-a", workers: 5 }, Job { name: "train-b", workers: 5 }];
+    let two = [
+        Job {
+            name: "train-a",
+            workers: 5,
+        },
+        Job {
+            name: "train-b",
+            workers: 5,
+        },
+    ];
 
     println!("one pod at a time, two jobs of five workers:");
     pod_at_a_time(new_fleet(), &amp;two);
@@ -1260,17 +1466,29 @@ fn main() {
     admit(&amp;mut fleet, two[1], by_topology);
 
     let three = [
-        Job { name: "pair", workers: 2 },
-        Job { name: "quad", workers: 4 },
-        Job { name: "single", workers: 1 },
+        Job {
+            name: "pair",
+            workers: 2,
+        },
+        Job {
+            name: "quad",
+            workers: 4,
+        },
+        Job {
+            name: "single",
+            workers: 1,
+        },
     ];
     println!("three jobs, on the first free machines:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, first_free);
     }
+
     println!("the same three jobs, placed by topology:");
     let mut fleet = new_fleet();
+
     for job in three {
         admit(&amp;mut fleet, job, by_topology);
     }

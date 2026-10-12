@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -605,15 +605,19 @@ on the same link whose latest flap lies within five seconds.</p>
 // within five seconds of each other.
 func (p *Plane) Observe(s Signal) {
 	r := p.find(s.Node)
+
 	switch s.Kind {
 	case MemoryECC, OffBus:
 		p.condemn(s.At, r, s.Kind.String())
 	case AppFault:
 		r.faultJobs[s.Job] = true
+
 		if p.jobNodes[s.Job] == nil {
 			p.jobNodes[s.Job] = map[string]bool{}
 		}
+
 		p.jobNodes[s.Job][s.Node] = true
+
 		switch {
 		case len(p.jobNodes[s.Job]) &gt;= blameAfter &amp;&amp; !p.blamed[s.Job]:
 			p.blamed[s.Job] = true
@@ -625,11 +629,13 @@ func (p *Plane) Observe(s Signal) {
 	case LinkFlap:
 		r.lastFlap = s.At
 		together := 0
+
 		for _, other := range p.records {
 			if other.node.Link == r.node.Link &amp;&amp; other.lastFlap &gt;= 0 &amp;&amp; s.At-other.lastFlap &lt;= fabricWindow {
 				together++
 			}
 		}
+
 		if together &gt;= fabricAfter &amp;&amp; !p.blamed[r.node.Link] {
 			p.blamed[r.node.Link] = true
 			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
@@ -648,6 +654,7 @@ func (p *Plane) Observe(s Signal) {
     /// within five seconds of each other.
     fn observe(&amp;mut self, s: &amp;Signal) {
         let index = self.find(s.node);
+
         match s.kind {
             Kind::MemoryEcc | Kind::OffBus =&gt; self.condemn(s.at, index, &amp;s.kind.to_string()),
             Kind::AppFault =&gt; {
@@ -655,6 +662,7 @@ func (p *Plane) Observe(s Signal) {
                 let nodes = self.job_nodes.entry(s.job).or_default();
                 nodes.insert(s.node);
                 let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+
                 if machines &gt;= BLAME_AFTER &amp;&amp; self.blamed.insert(s.job) {
                     println!(
                         "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
@@ -695,11 +703,13 @@ from the fleet. Cordoned is left out on purpose: a cordoned machine still runs i
 // every machine that is draining, under repair, in burn-in, or quarantined.
 func (p *Plane) outOfService() int {
 	n := 0
+
 	for _, r := range p.records {
 		if r.state &gt;= Draining {
 			n++
 		}
 	}
+
 	return n
 }
 </code></pre>
@@ -731,6 +741,7 @@ supplies, which says how many tests each machine fails before one passes.</p>
 func (p *Plane) Step(now int) {
 	for _, r := range p.records {
 		waited := now - r.since
+
 		switch {
 		case r.state == Cordoned &amp;&amp; p.outOfService() &lt; budget:
 			p.move(now, r, Draining, "jobs told to checkpoint")
@@ -753,13 +764,18 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	if p.burnIn[r.node.Name] == 0 {
 		r.faultJobs = map[string]bool{}
 		p.move(now, r, Healthy, "burn-in passed")
+
 		return
 	}
+
 	p.burnIn[r.node.Name]--
+
 	if r.step+1 == len(ladder) {
 		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+
 		return
 	}
+
 	r.step++
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
@@ -777,6 +793,7 @@ func (p *Plane) finishBurnIn(now int, r *record) {
                 (r.state, r.step, r.node.name)
             };
             let waited = now - self.records[index].since;
+
             match state {
                 State::Cordoned if self.out_of_service() &lt; BUDGET =&gt; {
                     self.transition(now, index, State::Draining, "jobs told to checkpoint");
@@ -805,17 +822,23 @@ func (p *Plane) finishBurnIn(now int, r *record) {
     fn finish_burn_in(&amp;mut self, now: u32, index: usize) {
         let name = self.records[index].node.name;
         let failures = self.burn_in.entry(name).or_default();
+
         if *failures == 0 {
             self.records[index].fault_jobs.clear();
             self.transition(now, index, State::Healthy, "burn-in passed");
+
             return;
         }
+
         *failures -= 1;
+
         if self.records[index].step + 1 == LADDER.len() {
             let why = "burn-in failed after every action; ticket opened";
             self.transition(now, index, State::Quarantined, why);
+
             return;
         }
+
         self.records[index].step += 1;
         let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
         self.transition(now, index, State::Remediating, &amp;why);
@@ -855,13 +878,17 @@ func main() {
 	// thor-4 fails every burn-in; every other machine passes its first.
 	p := NewPlane(map[string]int{"thor-4": len(ladder)})
 	next := 0
+
 	for now := 0; now &lt;= duration; now++ {
 		for ; next &lt; len(script) &amp;&amp; script[next].At == now; next++ {
 			p.Observe(script[next])
 		}
+
 		p.Step(now)
 	}
+
 	fmt.Println("final states:")
+
 	for _, r := range p.records {
 		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
 	}
@@ -948,13 +975,17 @@ fn main() {
     // thor-4 fails every burn-in; every other machine passes its first.
     let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
     let mut signals = SCRIPT.iter().peekable();
+
     for now in 0..=DURATION {
         while let Some(signal) = signals.next_if(|s| s.at == now) {
             plane.observe(signal);
         }
+
         plane.step(now);
     }
+
     println!("final states:");
+
     for r in &amp;plane.records {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
@@ -1107,7 +1138,9 @@ func (s *Store) Write(c Checkpoint) error {
 	if s.Fencing &amp;&amp; c.Epoch &lt; s.latest.Epoch {
 		return ErrFenced
 	}
+
 	s.latest = c
+
 	return nil
 }
 </code></pre>
@@ -1151,7 +1184,9 @@ impl Store {
         if self.fencing &amp;&amp; c.epoch &lt; self.latest.epoch {
             return Err(Fenced);
         }
+
         self.latest = c;
+
         Ok(())
     }
 }</code></pre>
@@ -1168,6 +1203,7 @@ type ControlPlane struct {
 func (c *ControlPlane) Assign(host string) int {
 	c.epoch++
 	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+
 	return c.epoch
 }
 </code></pre>
@@ -1184,7 +1220,11 @@ impl ControlPlane {
     /// Gives the job to a host and returns the epoch of the assignment.
     fn assign(&amp;mut self, host: &amp;str) -&gt; u32 {
         self.epoch += 1;
-        println!("  control plane: job assigned to {host} with epoch {}", self.epoch);
+        println!(
+            "  control plane: job assigned to {host} with epoch {}",
+            self.epoch
+        );
+
         self.epoch
     }
 }</code></pre>
@@ -1194,10 +1234,13 @@ impl ControlPlane {
 <pre><code class="language-go">// save writes one checkpoint and prints what the store answered.
 func save(s *Store, host string, epoch, step int) {
 	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+
 	if err != nil {
 		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+
 		return
 	}
+
 	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
 }
 
@@ -1226,7 +1269,11 @@ func main() {
 
 <pre><code class="language-rust">/// Writes one checkpoint and prints what the store answered.
 fn save(store: &amp;mut Store, writer: &amp;'static str, epoch: u32, step: u32) {
-    match store.write(Checkpoint { step, epoch, writer }) {
+    match store.write(Checkpoint {
+        step,
+        epoch,
+        writer,
+    }) {
         Ok(()) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: stored"),
         Err(e) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: refused, {e}"),
     }
@@ -1243,14 +1290,20 @@ fn run(mut store: Store) {
     save(&amp;mut store, "thor-2", second, 2000);
     println!("  thor-1's link returns; it still holds epoch 1");
     save(&amp;mut store, "thor-1", first, 1500);
-    println!("  a restart now resumes from step {}, written by {}", store.latest.step, store.latest.writer);
+    println!(
+        "  a restart now resumes from step {}, written by {}",
+        store.latest.step, store.latest.writer
+    );
 }
 
 fn main() {
     println!("a store that accepts every write:");
     run(Store::default());
     println!("a store that checks the epoch:");
-    run(Store { fencing: true, ..Store::default() });
+    run(Store {
+        fencing: true,
+        ..Store::default()
+    });
 }</code></pre>
 <pre><code class="language-console">$ go run ./fencing
 a store that accepts every write:
@@ -1419,9 +1472,11 @@ type Plane struct {
 // NewPlane returns a plane in which every machine is Healthy.
 func NewPlane(burnIn map[string]int) *Plane {
 	p := &amp;Plane{jobNodes: map[string]map[string]bool{}, blamed: map[string]bool{}, burnIn: burnIn}
+
 	for _, n := range fleet {
 		p.records = append(p.records, &amp;record{node: n, faultJobs: map[string]bool{}, lastFlap: -1})
 	}
+
 	return p
 }
 
@@ -1432,6 +1487,7 @@ func (p *Plane) find(name string) *record {
 			return r
 		}
 	}
+
 	panic("unknown node " + name)
 }
 
@@ -1448,15 +1504,19 @@ func (p *Plane) move(now int, r *record, to State, why string) {
 // within five seconds of each other.
 func (p *Plane) Observe(s Signal) {
 	r := p.find(s.Node)
+
 	switch s.Kind {
 	case MemoryECC, OffBus:
 		p.condemn(s.At, r, s.Kind.String())
 	case AppFault:
 		r.faultJobs[s.Job] = true
+
 		if p.jobNodes[s.Job] == nil {
 			p.jobNodes[s.Job] = map[string]bool{}
 		}
+
 		p.jobNodes[s.Job][s.Node] = true
+
 		switch {
 		case len(p.jobNodes[s.Job]) &gt;= blameAfter &amp;&amp; !p.blamed[s.Job]:
 			p.blamed[s.Job] = true
@@ -1468,11 +1528,13 @@ func (p *Plane) Observe(s Signal) {
 	case LinkFlap:
 		r.lastFlap = s.At
 		together := 0
+
 		for _, other := range p.records {
 			if other.node.Link == r.node.Link &amp;&amp; other.lastFlap &gt;= 0 &amp;&amp; s.At-other.lastFlap &lt;= fabricWindow {
 				together++
 			}
 		}
+
 		if together &gt;= fabricAfter &amp;&amp; !p.blamed[r.node.Link] {
 			p.blamed[r.node.Link] = true
 			fmt.Printf("%4ds  %d machines on %s flapped together: the link is at fault, no machine is drained\n",
@@ -1495,11 +1557,13 @@ func (p *Plane) condemn(now int, r *record, why string) {
 // every machine that is draining, under repair, in burn-in, or quarantined.
 func (p *Plane) outOfService() int {
 	n := 0
+
 	for _, r := range p.records {
 		if r.state &gt;= Draining {
 			n++
 		}
 	}
+
 	return n
 }
 
@@ -1511,6 +1575,7 @@ func (p *Plane) outOfService() int {
 func (p *Plane) Step(now int) {
 	for _, r := range p.records {
 		waited := now - r.since
+
 		switch {
 		case r.state == Cordoned &amp;&amp; p.outOfService() &lt; budget:
 			p.move(now, r, Draining, "jobs told to checkpoint")
@@ -1533,13 +1598,18 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	if p.burnIn[r.node.Name] == 0 {
 		r.faultJobs = map[string]bool{}
 		p.move(now, r, Healthy, "burn-in passed")
+
 		return
 	}
+
 	p.burnIn[r.node.Name]--
+
 	if r.step+1 == len(ladder) {
 		p.move(now, r, Quarantined, "burn-in failed after every action; ticket opened")
+
 		return
 	}
+
 	r.step++
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
@@ -1569,13 +1639,17 @@ func main() {
 	// thor-4 fails every burn-in; every other machine passes its first.
 	p := NewPlane(map[string]int{"thor-4": len(ladder)})
 	next := 0
+
 	for now := 0; now &lt;= duration; now++ {
 		for ; next &lt; len(script) &amp;&amp; script[next].At == now; next++ {
 			p.Observe(script[next])
 		}
+
 		p.Step(now)
 	}
+
 	fmt.Println("final states:")
+
 	for _, r := range p.records {
 		fmt.Printf("  %-10s %-16s %s\n", r.node.Name, r.node.Model, r.state)
 	}
@@ -1813,6 +1887,7 @@ impl Plane {
     /// within five seconds of each other.
     fn observe(&amp;mut self, s: &amp;Signal) {
         let index = self.find(s.node);
+
         match s.kind {
             Kind::MemoryEcc | Kind::OffBus =&gt; self.condemn(s.at, index, &amp;s.kind.to_string()),
             Kind::AppFault =&gt; {
@@ -1820,6 +1895,7 @@ impl Plane {
                 let nodes = self.job_nodes.entry(s.job).or_default();
                 nodes.insert(s.node);
                 let (machines, jobs) = (nodes.len(), self.records[index].fault_jobs.len());
+
                 if machines &gt;= BLAME_AFTER &amp;&amp; self.blamed.insert(s.job) {
                     println!(
                         "{:4}s  job {} faulted on {machines} machines: the job is at fault, no machine is drained",
@@ -1882,6 +1958,7 @@ impl Plane {
                 (r.state, r.step, r.node.name)
             };
             let waited = now - self.records[index].since;
+
             match state {
                 State::Cordoned if self.out_of_service() &lt; BUDGET =&gt; {
                     self.transition(now, index, State::Draining, "jobs told to checkpoint");
@@ -1910,17 +1987,23 @@ impl Plane {
     fn finish_burn_in(&amp;mut self, now: u32, index: usize) {
         let name = self.records[index].node.name;
         let failures = self.burn_in.entry(name).or_default();
+
         if *failures == 0 {
             self.records[index].fault_jobs.clear();
             self.transition(now, index, State::Healthy, "burn-in passed");
+
             return;
         }
+
         *failures -= 1;
+
         if self.records[index].step + 1 == LADDER.len() {
             let why = "burn-in failed after every action; ticket opened";
             self.transition(now, index, State::Quarantined, why);
+
             return;
         }
+
         self.records[index].step += 1;
         let why = format!("burn-in failed; {}", LADDER[self.records[index].step]);
         self.transition(now, index, State::Remediating, &amp;why);
@@ -2006,13 +2089,17 @@ fn main() {
     // thor-4 fails every burn-in; every other machine passes its first.
     let mut plane = Plane::new(BTreeMap::from([("thor-4", LADDER.len())]));
     let mut signals = SCRIPT.iter().peekable();
+
     for now in 0..=DURATION {
         while let Some(signal) = signals.next_if(|s| s.at == now) {
             plane.observe(signal);
         }
+
         plane.step(now);
     }
+
     println!("final states:");
+
     for r in &amp;plane.records {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
@@ -2069,7 +2156,9 @@ func (s *Store) Write(c Checkpoint) error {
 	if s.Fencing &amp;&amp; c.Epoch &lt; s.latest.Epoch {
 		return ErrFenced
 	}
+
 	s.latest = c
+
 	return nil
 }
 
@@ -2084,6 +2173,7 @@ type ControlPlane struct {
 func (c *ControlPlane) Assign(host string) int {
 	c.epoch++
 	fmt.Printf("  control plane: job assigned to %s with epoch %d\n", host, c.epoch)
+
 	return c.epoch
 }
 
@@ -2091,10 +2181,13 @@ func (c *ControlPlane) Assign(host string) int {
 // save writes one checkpoint and prints what the store answered.
 func save(s *Store, host string, epoch, step int) {
 	err := s.Write(Checkpoint{Step: step, Epoch: epoch, Writer: host})
+
 	if err != nil {
 		fmt.Printf("  %s writes step %d with epoch %d: refused, %v\n", host, step, epoch, err)
+
 		return
 	}
+
 	fmt.Printf("  %s writes step %d with epoch %d: stored\n", host, step, epoch)
 }
 
@@ -2178,7 +2271,9 @@ impl Store {
         if self.fencing &amp;&amp; c.epoch &lt; self.latest.epoch {
             return Err(Fenced);
         }
+
         self.latest = c;
+
         Ok(())
     }
 }
@@ -2194,14 +2289,22 @@ impl ControlPlane {
     /// Gives the job to a host and returns the epoch of the assignment.
     fn assign(&amp;mut self, host: &amp;str) -&gt; u32 {
         self.epoch += 1;
-        println!("  control plane: job assigned to {host} with epoch {}", self.epoch);
+        println!(
+            "  control plane: job assigned to {host} with epoch {}",
+            self.epoch
+        );
+
         self.epoch
     }
 }
 
 /// Writes one checkpoint and prints what the store answered.
 fn save(store: &amp;mut Store, writer: &amp;'static str, epoch: u32, step: u32) {
-    match store.write(Checkpoint { step, epoch, writer }) {
+    match store.write(Checkpoint {
+        step,
+        epoch,
+        writer,
+    }) {
         Ok(()) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: stored"),
         Err(e) =&gt; println!("  {writer} writes step {step} with epoch {epoch}: refused, {e}"),
     }
@@ -2218,14 +2321,20 @@ fn run(mut store: Store) {
     save(&amp;mut store, "thor-2", second, 2000);
     println!("  thor-1's link returns; it still holds epoch 1");
     save(&amp;mut store, "thor-1", first, 1500);
-    println!("  a restart now resumes from step {}, written by {}", store.latest.step, store.latest.writer);
+    println!(
+        "  a restart now resumes from step {}, written by {}",
+        store.latest.step, store.latest.writer
+    );
 }
 
 fn main() {
     println!("a store that accepts every write:");
     run(Store::default());
     println!("a store that checks the epoch:");
-    run(Store { fencing: true, ..Store::default() });
+    run(Store {
+        fencing: true,
+        ..Store::default()
+    });
 }</code></pre>
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>

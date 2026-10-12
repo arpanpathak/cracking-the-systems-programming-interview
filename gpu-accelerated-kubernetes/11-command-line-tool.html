@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -290,9 +290,11 @@ when the program is compiled, so each build contains only its own case.</p>
 // settings.
 func configFile() (string, error) {
 	dir, err := os.UserConfigDir()
+
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "gpuctl", "config.toml"), nil
 }
 
@@ -318,6 +320,7 @@ fn config_file() -&gt; Option&lt;PathBuf&gt; {
             _ =&gt; env::home_dir()?.join(".config"),
         }
     };
+
     Some(dir.join("gpuctl").join("config.toml"))
 }
 
@@ -357,18 +360,25 @@ type NodeInfo struct {
 func listNodes(ctx context.Context) ([]NodeInfo, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+
 	if err != nil {
 		return nil, err
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		return nil, err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return nil, err
 	}
+
 	rows := make([]NodeInfo, 0, len(nodes.Items))
+
 	for _, n := range nodes.Items {
 		gpus := n.Status.Allocatable["nvidia.com/gpu"]
 		rows = append(rows, NodeInfo{
@@ -379,6 +389,7 @@ func listNodes(ctx context.Context) ([]NodeInfo, error) {
 			Kubelet: n.Status.NodeInfo.KubeletVersion,
 		})
 	}
+
 	return rows, nil
 }
 </code></pre>
@@ -398,7 +409,9 @@ struct NodeInfo {
 /// prints.
 async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
     let client = Client::try_default().await?;
-    let nodes = Api::&lt;Node&gt;::all(client).list(&amp;ListParams::default()).await?;
+    let nodes = Api::&lt;Node&gt;::all(client)
+        .list(&amp;ListParams::default())
+        .await?;
     Ok(nodes
         .into_iter()
         .map(|node| {
@@ -437,13 +450,17 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 	if format == "json" {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(rows)
 	}
+
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+
 	for _, r := range rows {
 		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
 	}
+
 	return table.Flush()
 }
 </code></pre>
@@ -453,20 +470,33 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()&gt; {
     if json {
         println!("{}", serde_json::to_string_pretty(rows)?);
+
         return Ok(());
     }
+
     let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
     let table: Vec&lt;[String; 5]&gt; = std::iter::once(header)
         .chain(rows.iter().map(|r| {
-            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+            [
+                r.name.clone(),
+                r.gpus.to_string(),
+                r.arch.clone(),
+                r.os.clone(),
+                r.kubelet.clone(),
+            ]
         }))
         .collect();
     // Each column is as wide as its longest cell, plus two spaces.
-    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    let widths: [usize; 5] =
+        std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+
     for row in &amp;table {
-        let line: String = (0..5).map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2)).collect();
+        let line: String = (0..5)
+            .map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2))
+            .collect();
         println!("{}", line.trim_end());
     }
+
     Ok(())
 }</code></pre>
 <p>The table is for reading. Its columns are padded so that they line up, which Go’s
@@ -517,38 +547,51 @@ const USAGE: &amp;str = "usage:
 func run(args []string, out, errOut io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(errOut, usage)
+
 		return exitUsage
 	}
+
 	switch args[0] {
 	case "version":
 		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
 	case "config":
 		file, err := configFile()
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
+
 		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
 	case "nodes":
 		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		format := flags.String("o", "table", "output format: table or json")
+
 		if err := flags.Parse(args[1:]); err != nil || (*format != "table" &amp;&amp; *format != "json") {
 			fmt.Fprint(errOut, usage)
+
 			return exitUsage
 		}
+
 		rows, err := listNodes(context.Background())
+
 		if err == nil {
 			err = printNodes(out, rows, *format)
 		}
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
 	default:
 		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+
 		return exitUsage
 	}
+
 	return exitOK
 }
 
@@ -561,14 +604,20 @@ func main() {
 <pre><code class="language-rust">/// Carries out one command line and returns the exit status.
 async fn run(args: &amp;[String]) -&gt; ExitCode {
     let args: Vec&lt;&amp;str&gt; = args.iter().map(String::as_str).collect();
+
     match args.as_slice() {
         ["version"] =&gt; println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
         ["config"] =&gt; {
             let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
                 eprintln!("gpuctl: cannot find the home directory");
+
                 return ExitCode::FAILURE;
             };
-            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+            println!(
+                "config file  {}\nkubeconfig   {}",
+                file.display(),
+                kube.display()
+            );
         }
         ["nodes"] | ["nodes", "-o", "table" | "json"] =&gt; {
             let json = args.last() == Some(&amp;"json");
@@ -576,29 +625,36 @@ async fn run(args: &amp;[String]) -&gt; ExitCode {
                 Ok(rows) =&gt; rows,
                 Err(e) =&gt; {
                     eprintln!("gpuctl: {e}");
+
                     return ExitCode::FAILURE;
                 }
             };
+
             if let Err(e) = print_nodes(&amp;rows, json) {
                 eprintln!("gpuctl: {e}");
+
                 return ExitCode::FAILURE;
             }
         }
         [] | ["nodes", ..] =&gt; {
             eprint!("{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
         [other, ..] =&gt; {
             eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
     }
+
     ExitCode::SUCCESS
 }
 
 #[tokio::main]
 async fn main() -&gt; ExitCode {
     let args: Vec&lt;String&gt; = env::args().skip(1).collect();
+
     run(&amp;args).await
 }</code></pre>
 <p>The Go version parses the <code>-o</code> flag with the standard <code>flag</code> package and tells it to
@@ -773,9 +829,11 @@ const usage = `usage:
 // settings.
 func configFile() (string, error) {
 	dir, err := os.UserConfigDir()
+
 	if err != nil {
 		return "", err
 	}
+
 	return filepath.Join(dir, "gpuctl", "config.toml"), nil
 }
 
@@ -801,18 +859,25 @@ type NodeInfo struct {
 func listNodes(ctx context.Context) ([]NodeInfo, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil).ClientConfig()
+
 	if err != nil {
 		return nil, err
 	}
+
 	clientset, err := kubernetes.NewForConfig(config)
+
 	if err != nil {
 		return nil, err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return nil, err
 	}
+
 	rows := make([]NodeInfo, 0, len(nodes.Items))
+
 	for _, n := range nodes.Items {
 		gpus := n.Status.Allocatable["nvidia.com/gpu"]
 		rows = append(rows, NodeInfo{
@@ -823,6 +888,7 @@ func listNodes(ctx context.Context) ([]NodeInfo, error) {
 			Kubelet: n.Status.NodeInfo.KubeletVersion,
 		})
 	}
+
 	return rows, nil
 }
 
@@ -832,13 +898,17 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 	if format == "json" {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(rows)
 	}
+
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NAME\tGPUS\tARCH\tOS\tKUBELET")
+
 	for _, r := range rows {
 		fmt.Fprintf(table, "%s\t%d\t%s\t%s\t%s\n", r.Name, r.GPUs, r.Arch, r.OS, r.Kubelet)
 	}
+
 	return table.Flush()
 }
 
@@ -849,38 +919,51 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 func run(args []string, out, errOut io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(errOut, usage)
+
 		return exitUsage
 	}
+
 	switch args[0] {
 	case "version":
 		fmt.Fprintf(out, "gpuctl %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
 	case "config":
 		file, err := configFile()
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
+
 		fmt.Fprintf(out, "config file  %s\nkubeconfig   %s\n", file, kubeconfig())
 	case "nodes":
 		flags := flag.NewFlagSet("nodes", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		format := flags.String("o", "table", "output format: table or json")
+
 		if err := flags.Parse(args[1:]); err != nil || (*format != "table" &amp;&amp; *format != "json") {
 			fmt.Fprint(errOut, usage)
+
 			return exitUsage
 		}
+
 		rows, err := listNodes(context.Background())
+
 		if err == nil {
 			err = printNodes(out, rows, *format)
 		}
+
 		if err != nil {
 			fmt.Fprintln(errOut, "gpuctl:", err)
+
 			return exitFailure
 		}
 	default:
 		fmt.Fprintf(errOut, "gpuctl: unknown command %q\n%s", args[0], usage)
+
 		return exitUsage
 	}
+
 	return exitOK
 }
 
@@ -941,6 +1024,7 @@ fn config_file() -&gt; Option&lt;PathBuf&gt; {
             _ =&gt; env::home_dir()?.join(".config"),
         }
     };
+
     Some(dir.join("gpuctl").join("config.toml"))
 }
 
@@ -968,7 +1052,9 @@ struct NodeInfo {
 /// prints.
 async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
     let client = Client::try_default().await?;
-    let nodes = Api::&lt;Node&gt;::all(client).list(&amp;ListParams::default()).await?;
+    let nodes = Api::&lt;Node&gt;::all(client)
+        .list(&amp;ListParams::default())
+        .await?;
     Ok(nodes
         .into_iter()
         .map(|node| {
@@ -993,20 +1079,33 @@ async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
 fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()&gt; {
     if json {
         println!("{}", serde_json::to_string_pretty(rows)?);
+
         return Ok(());
     }
+
     let header = ["NAME", "GPUS", "ARCH", "OS", "KUBELET"].map(String::from);
     let table: Vec&lt;[String; 5]&gt; = std::iter::once(header)
         .chain(rows.iter().map(|r| {
-            [r.name.clone(), r.gpus.to_string(), r.arch.clone(), r.os.clone(), r.kubelet.clone()]
+            [
+                r.name.clone(),
+                r.gpus.to_string(),
+                r.arch.clone(),
+                r.os.clone(),
+                r.kubelet.clone(),
+            ]
         }))
         .collect();
     // Each column is as wide as its longest cell, plus two spaces.
-    let widths: [usize; 5] = std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+    let widths: [usize; 5] =
+        std::array::from_fn(|col| table.iter().map(|row| row[col].len()).max().unwrap_or(0));
+
     for row in &amp;table {
-        let line: String = (0..5).map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2)).collect();
+        let line: String = (0..5)
+            .map(|col| format!("{:&lt;width$}", row[col], width = widths[col] + 2))
+            .collect();
         println!("{}", line.trim_end());
     }
+
     Ok(())
 }
 
@@ -1018,20 +1117,27 @@ fn platform() -&gt; String {
         "x86_64" =&gt; "amd64",
         other =&gt; other,
     };
+
     format!("{}/{arch}", env::consts::OS)
 }
 
 /// Carries out one command line and returns the exit status.
 async fn run(args: &amp;[String]) -&gt; ExitCode {
     let args: Vec&lt;&amp;str&gt; = args.iter().map(String::as_str).collect();
+
     match args.as_slice() {
         ["version"] =&gt; println!("gpuctl {} {}", env!("CARGO_PKG_VERSION"), platform()),
         ["config"] =&gt; {
             let (Some(file), Some(kube)) = (config_file(), kubeconfig()) else {
                 eprintln!("gpuctl: cannot find the home directory");
+
                 return ExitCode::FAILURE;
             };
-            println!("config file  {}\nkubeconfig   {}", file.display(), kube.display());
+            println!(
+                "config file  {}\nkubeconfig   {}",
+                file.display(),
+                kube.display()
+            );
         }
         ["nodes"] | ["nodes", "-o", "table" | "json"] =&gt; {
             let json = args.last() == Some(&amp;"json");
@@ -1039,29 +1145,36 @@ async fn run(args: &amp;[String]) -&gt; ExitCode {
                 Ok(rows) =&gt; rows,
                 Err(e) =&gt; {
                     eprintln!("gpuctl: {e}");
+
                     return ExitCode::FAILURE;
                 }
             };
+
             if let Err(e) = print_nodes(&amp;rows, json) {
                 eprintln!("gpuctl: {e}");
+
                 return ExitCode::FAILURE;
             }
         }
         [] | ["nodes", ..] =&gt; {
             eprint!("{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
         [other, ..] =&gt; {
             eprint!("gpuctl: unknown command \"{other}\"\n{USAGE}");
+
             return ExitCode::from(EXIT_USAGE);
         }
     }
+
     ExitCode::SUCCESS
 }
 
 #[tokio::main]
 async fn main() -&gt; ExitCode {
     let args: Vec&lt;String&gt; = env::args().skip(1).collect();
+
     run(&amp;args).await
 }</code></pre>
 <div class="summary">

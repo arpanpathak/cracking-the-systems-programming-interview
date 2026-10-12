@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -561,17 +561,22 @@ func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, exists := s.objects[o.Name]
+
 	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
 		return ErrConflict
 	}
+
 	eventType := Modified
+
 	if !exists {
 		eventType = Added
 	}
+
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
 	s.publish(Event{eventType, o})
+
 	return nil
 }
 
@@ -580,9 +585,11 @@ func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	o, exists := s.objects[name]
+
 	if !exists {
 		return
 	}
+
 	delete(s.objects, name)
 	s.version++
 	o.ResourceVersion = s.version
@@ -593,6 +600,7 @@ func (s *APIServer) Delete(name string) {
 // The caller must hold s.mu.
 func (s *APIServer) publish(e Event) {
 	s.history = append(s.history, e)
+
 	for _, w := range s.watches {
 		w &lt;- e
 	}
@@ -609,9 +617,11 @@ func (s *APIServer) publish(e Event) {
         let mut state = self.state();
         let current = state.objects.get(&amp;object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
+
         if object.resource_version != 0 &amp;&amp; object.resource_version != current_version {
             return Err(ApiError::Conflict);
         }
+
         let kind = if current.is_some() {
             EventType::Modified
         } else {
@@ -621,6 +631,7 @@ func (s *APIServer) publish(e Event) {
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
         state.publish(Event { kind, object });
+
         Ok(())
     }
 
@@ -652,6 +663,7 @@ func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
 }
 
@@ -660,19 +672,24 @@ func (s *APIServer) List() ([]Object, int) {
 func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch {
 	case s.unreachable:
 		return nil, ErrUnreachable
 	case version &lt; s.compacted:
 		return nil, ErrGone
 	}
+
 	w := make(chan Event, 1024)
+
 	for _, e := range s.history {
 		if e.Object.ResourceVersion &gt; version {
 			w &lt;- e
 		}
 	}
+
 	s.watches = append(s.watches, w)
+
 	return w, nil
 }
 </code></pre>
@@ -685,6 +702,7 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
         let state = self.state();
         let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
+
         (objects, state.version)
     }
 
@@ -692,19 +710,25 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
     /// `version` and then every new event, until the server drops the watch.
     pub fn watch(&amp;self, version: u64) -&gt; Result&lt;Receiver&lt;Event&gt;, ApiError&gt; {
         let mut state = self.state();
+
         if state.unreachable {
             return Err(ApiError::Unreachable);
         }
+
         if version &lt; state.compacted {
             return Err(ApiError::Gone);
         }
+
         let (sender, receiver) = channel();
+
         for event in &amp;state.history {
             if event.object.resource_version &gt; version {
                 sender.send(event.clone()).expect("receiver is held here");
             }
         }
+
         state.watches.push(sender);
+
         Ok(receiver)
     }
 }</code></pre>
@@ -754,6 +778,7 @@ func (s *APIServer) dropWatches() {
 	for _, w := range s.watches {
 		close(w)
 	}
+
 	s.watches = nil
 }
 </code></pre>
@@ -814,6 +839,7 @@ func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	o, ok := c.objects[name]
+
 	return o, ok
 }
 
@@ -821,10 +847,13 @@ func (c *Cache) Get(name string) (Object, bool) {
 func (c *Cache) Apply(e Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if e.Type == Deleted {
 		delete(c.objects, e.Object.Name)
+
 		return
 	}
+
 	c.objects[e.Object.Name] = e.Object
 }
 </code></pre>
@@ -843,12 +872,14 @@ impl Cache {
     /// Returns the cached copy of the named object, if it exists.
     pub fn get(&amp;self, name: &amp;str) -&gt; Option&lt;Object&gt; {
         let objects = self.objects.read().expect("cache lock poisoned");
+
         objects.get(name).cloned()
     }
 
     /// Records one event from a watch.
     pub fn apply(&amp;self, event: Event) {
         let mut objects = self.objects.write().expect("cache lock poisoned");
+
         match event.kind {
             EventType::Deleted =&gt; objects.remove(&amp;event.object.name),
             EventType::Added | EventType::Modified =&gt; {
@@ -873,6 +904,7 @@ func (c *Cache) Replace(list []Object) []string {
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
 	var changed []string
+
 	for _, o := range list {
 		c.objects[o.Name] = o
 		// A name missing from old reads as version 0, so it counts as changed.
@@ -880,11 +912,13 @@ func (c *Cache) Replace(list []Object) []string {
 			changed = append(changed, o.Name)
 		}
 	}
+
 	for name := range old {
 		if _, ok := c.objects[name]; !ok {
 			changed = append(changed, name)
 		}
 	}
+
 	return changed
 }
 </code></pre>
@@ -898,18 +932,23 @@ func (c *Cache) Replace(list []Object) []string {
         let mut objects = self.objects.write().expect("cache lock poisoned");
         let old = std::mem::take(&amp;mut *objects);
         let mut changed = Vec::new();
+
         for object in list {
             let old_version = old.get(&amp;object.name).map(|o| o.resource_version);
+
             if old_version != Some(object.resource_version) {
                 changed.push(object.name.clone());
             }
+
             objects.insert(object.name.clone(), object.clone());
         }
+
         for name in old.keys() {
             if !objects.contains_key(name) {
                 changed.push(name.clone());
             }
         }
+
         changed
     }
 }</code></pre>
@@ -990,14 +1029,18 @@ impl Reflector {
 func (r *Reflector) watchFrom(version int) {
 	for {
 		w, err := r.server.Watch(version)
+
 		if errors.Is(err, ErrGone) {
 			logf("reflector: watch from version %d: %v", version, err)
+
 			return
 		}
+
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
 			continue
 		}
+
 		for e := range w {
 			// Update the cache before queueing the name, so that a worker
 			// that takes the name reads the object as of this event.
@@ -1005,6 +1048,7 @@ func (r *Reflector) watchFrom(version int) {
 			r.queue.Add(e.Object.Name)
 			version = e.Object.ResourceVersion
 		}
+
 		logf("reflector: watch closed, resuming from version %d", version)
 	}
 }
@@ -1023,6 +1067,7 @@ func (r *Reflector) watchFrom(version int) {
                         "reflector: watch from version {version}: {}",
                         ApiError::Gone
                     );
+
                     return;
                 }
                 Err(_) =&gt; {
@@ -1030,6 +1075,7 @@ func (r *Reflector) watchFrom(version int) {
                     continue;
                 }
             };
+
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
@@ -1038,6 +1084,7 @@ func (r *Reflector) watchFrom(version int) {
                 self.cache.apply(event);
                 self.queue.add([name]);
             }
+
             log!("reflector: watch closed, resuming from version {version}");
         }
     }
@@ -1106,6 +1153,7 @@ type WorkQueue struct {
 func NewWorkQueue() *WorkQueue {
 	q := &amp;WorkQueue{dirty: map[string]bool{}, processing: map[string]bool{}}
 	q.cond = sync.NewCond(&amp;q.mu)
+
 	return q
 }
 </code></pre>
@@ -1150,11 +1198,14 @@ taken and not yet handed back.</p>
 func (q *WorkQueue) Add(names ...string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for _, name := range names {
 		if q.dirty[name] {
 			continue
 		}
+
 		q.dirty[name] = true
+
 		if !q.processing[name] {
 			q.queue = append(q.queue, name)
 			q.cond.Signal()
@@ -1166,13 +1217,16 @@ func (q *WorkQueue) Add(names ...string) {
 func (q *WorkQueue) Get() string {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for len(q.queue) == 0 {
 		q.cond.Wait()
 	}
+
 	name := q.queue[0]
 	q.queue = q.queue[1:]
 	delete(q.dirty, name)
 	q.processing[name] = true
+
 	return name
 }
 
@@ -1182,6 +1236,7 @@ func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	delete(q.processing, name)
+
 	if q.dirty[name] {
 		q.queue = append(q.queue, name)
 		q.cond.Signal()
@@ -1195,10 +1250,12 @@ func (q *WorkQueue) Done(name string) {
     /// is left where it is. A name that a worker holds is queued again by `done`.
     pub fn add(&amp;self, names: impl IntoIterator&lt;Item = String&gt;) {
         let mut state = self.state();
+
         for name in names {
             if !state.dirty.insert(name.clone()) {
                 continue;
             }
+
             if !state.processing.contains(&amp;name) {
                 state.ready.push_back(name);
                 self.ready.notify_one();
@@ -1209,12 +1266,15 @@ func (q *WorkQueue) Done(name string) {
     /// Blocks until a name is ready and hands it to the caller.
     pub fn get(&amp;self) -&gt; String {
         let mut state = self.state();
+
         loop {
             if let Some(name) = state.ready.pop_front() {
                 state.dirty.remove(&amp;name);
                 state.processing.insert(name.clone());
+
                 return name;
             }
+
             state = self.ready.wait(state).expect("queue lock poisoned");
         }
     }
@@ -1224,6 +1284,7 @@ func (q *WorkQueue) Done(name string) {
     pub fn done(&amp;self, name: &amp;str) {
         let mut state = self.state();
         state.processing.remove(name);
+
         if state.dirty.contains(name) {
             state.ready.push_back(name.to_string());
             self.ready.notify_one();
@@ -1273,20 +1334,28 @@ bringing what actually exists into agreement with what the user asked for.</p>
 // from its spec, writes a new status conditioned on the version it read.
 func (c *Controller) reconcile(name string) error {
 	o, ok := c.cache.Get(name)
+
 	if !ok {
 		logf("reconcile %s: deleted, releasing its GPUs", name)
+
 		return nil
 	}
+
 	if o.Status.GPUs == o.Spec.GPUs {
 		return nil
 	}
+
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
 	o.Status.GPUs = o.Spec.GPUs
+
 	if err := c.server.Update(o); err != nil {
 		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
+
 		return err
 	}
+
 	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+
 	return nil
 }
 </code></pre>
@@ -1298,21 +1367,27 @@ func (c *Controller) reconcile(name string) error {
     fn reconcile(&amp;self, name: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
         let Some(mut object) = self.cache.get(name) else {
             log!("reconcile {name}: deleted, releasing its GPUs");
+
             return Ok(());
         };
+
         if object.status.gpus == object.spec.gpus {
             return Ok(());
         }
+
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
+
         match self.server.update(object.clone()) {
             Ok(()) =&gt; {
                 log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+
                 Ok(())
             }
             Err(error) =&gt; {
                 log!("reconcile {name}: write at version {version}: {error}");
+
                 Err(error)
             }
         }
@@ -1351,6 +1426,7 @@ func (c *Controller) Run() {
 		name := c.queue.Get()
 		err := c.reconcile(name)
 		c.queue.Done(name)
+
 		if err != nil {
 			c.queue.Add(name) // client-go requeues with a backoff
 		}
@@ -1377,6 +1453,7 @@ impl Controller {
             let name = self.queue.get();
             let result = self.reconcile(&amp;name);
             self.queue.done(&amp;name);
+
             if result.is_err() {
                 self.queue.add([name]); // client-go requeues with a backoff
             }
@@ -1429,12 +1506,15 @@ with a small <code>log!</code> macro, and Go with a <code>logf</code> function.<
 	time.Sleep(100 * time.Millisecond)
 
 	logf("--- job-a is edited five times in a burst")
+
 	for gpus := 2; gpus &lt;= 6; gpus++ {
 		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+
 		if gpus == 2 {
 			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
 		}
 	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	logf("--- the watch connection drops")
@@ -1482,6 +1562,7 @@ with a small <code>log!</code> macro, and Go with a <code>logf</code> function.<
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
+
     for gpus in 2..=6 {
         server
             .update(Object::new("job-a", gpus))
@@ -1490,6 +1571,7 @@ with a small <code>log!</code> macro, and Go with a <code>logf</code> function.<
             sleep_ms(5); // the controller starts on the first edit
         }
     }
+
     sleep_ms(150);
 
     log!("--- the watch connection drops");
@@ -1753,17 +1835,22 @@ func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, exists := s.objects[o.Name]
+
 	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
 		return ErrConflict
 	}
+
 	eventType := Modified
+
 	if !exists {
 		eventType = Added
 	}
+
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
 	s.publish(Event{eventType, o})
+
 	return nil
 }
 
@@ -1772,9 +1859,11 @@ func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	o, exists := s.objects[name]
+
 	if !exists {
 		return
 	}
+
 	delete(s.objects, name)
 	s.version++
 	o.ResourceVersion = s.version
@@ -1785,6 +1874,7 @@ func (s *APIServer) Delete(name string) {
 // The caller must hold s.mu.
 func (s *APIServer) publish(e Event) {
 	s.history = append(s.history, e)
+
 	for _, w := range s.watches {
 		w &lt;- e
 	}
@@ -1797,6 +1887,7 @@ func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
+
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
 }
 
@@ -1805,19 +1896,24 @@ func (s *APIServer) List() ([]Object, int) {
 func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch {
 	case s.unreachable:
 		return nil, ErrUnreachable
 	case version &lt; s.compacted:
 		return nil, ErrGone
 	}
+
 	w := make(chan Event, 1024)
+
 	for _, e := range s.history {
 		if e.Object.ResourceVersion &gt; version {
 			w &lt;- e
 		}
 	}
+
 	s.watches = append(s.watches, w)
+
 	return w, nil
 }
 
@@ -1857,6 +1953,7 @@ func (s *APIServer) dropWatches() {
 	for _, w := range s.watches {
 		close(w)
 	}
+
 	s.watches = nil
 }
 </code></pre>
@@ -2013,9 +2110,11 @@ impl ApiServer {
         let mut state = self.state();
         let current = state.objects.get(&amp;object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
+
         if object.resource_version != 0 &amp;&amp; object.resource_version != current_version {
             return Err(ApiError::Conflict);
         }
+
         let kind = if current.is_some() {
             EventType::Modified
         } else {
@@ -2025,6 +2124,7 @@ impl ApiServer {
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
         state.publish(Event { kind, object });
+
         Ok(())
     }
 
@@ -2050,6 +2150,7 @@ impl ApiServer {
         let state = self.state();
         let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
+
         (objects, state.version)
     }
 
@@ -2057,19 +2158,25 @@ impl ApiServer {
     /// `version` and then every new event, until the server drops the watch.
     pub fn watch(&amp;self, version: u64) -&gt; Result&lt;Receiver&lt;Event&gt;, ApiError&gt; {
         let mut state = self.state();
+
         if state.unreachable {
             return Err(ApiError::Unreachable);
         }
+
         if version &lt; state.compacted {
             return Err(ApiError::Gone);
         }
+
         let (sender, receiver) = channel();
+
         for event in &amp;state.history {
             if event.object.resource_version &gt; version {
                 sender.send(event.clone()).expect("receiver is held here");
             }
         }
+
         state.watches.push(sender);
+
         Ok(receiver)
     }
 }
@@ -2126,6 +2233,7 @@ func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	o, ok := c.objects[name]
+
 	return o, ok
 }
 
@@ -2133,10 +2241,13 @@ func (c *Cache) Get(name string) (Object, bool) {
 func (c *Cache) Apply(e Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	if e.Type == Deleted {
 		delete(c.objects, e.Object.Name)
+
 		return
 	}
+
 	c.objects[e.Object.Name] = e.Object
 }
 
@@ -2150,6 +2261,7 @@ func (c *Cache) Replace(list []Object) []string {
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
 	var changed []string
+
 	for _, o := range list {
 		c.objects[o.Name] = o
 		// A name missing from old reads as version 0, so it counts as changed.
@@ -2157,11 +2269,13 @@ func (c *Cache) Replace(list []Object) []string {
 			changed = append(changed, o.Name)
 		}
 	}
+
 	for name := range old {
 		if _, ok := c.objects[name]; !ok {
 			changed = append(changed, name)
 		}
 	}
+
 	return changed
 }
 </code></pre>
@@ -2186,12 +2300,14 @@ impl Cache {
     /// Returns the cached copy of the named object, if it exists.
     pub fn get(&amp;self, name: &amp;str) -&gt; Option&lt;Object&gt; {
         let objects = self.objects.read().expect("cache lock poisoned");
+
         objects.get(name).cloned()
     }
 
     /// Records one event from a watch.
     pub fn apply(&amp;self, event: Event) {
         let mut objects = self.objects.write().expect("cache lock poisoned");
+
         match event.kind {
             EventType::Deleted =&gt; objects.remove(&amp;event.object.name),
             EventType::Added | EventType::Modified =&gt; {
@@ -2209,18 +2325,23 @@ impl Cache {
         let mut objects = self.objects.write().expect("cache lock poisoned");
         let old = std::mem::take(&amp;mut *objects);
         let mut changed = Vec::new();
+
         for object in list {
             let old_version = old.get(&amp;object.name).map(|o| o.resource_version);
+
             if old_version != Some(object.resource_version) {
                 changed.push(object.name.clone());
             }
+
             objects.insert(object.name.clone(), object.clone());
         }
+
         for name in old.keys() {
             if !objects.contains_key(name) {
                 changed.push(name.clone());
             }
         }
+
         changed
     }
 }</code></pre>
@@ -2263,14 +2384,18 @@ func (r *Reflector) Run() {
 func (r *Reflector) watchFrom(version int) {
 	for {
 		w, err := r.server.Watch(version)
+
 		if errors.Is(err, ErrGone) {
 			logf("reflector: watch from version %d: %v", version, err)
+
 			return
 		}
+
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
 			continue
 		}
+
 		for e := range w {
 			// Update the cache before queueing the name, so that a worker
 			// that takes the name reads the object as of this event.
@@ -2278,6 +2403,7 @@ func (r *Reflector) watchFrom(version int) {
 			r.queue.Add(e.Object.Name)
 			version = e.Object.ResourceVersion
 		}
+
 		logf("reflector: watch closed, resuming from version %d", version)
 	}
 }
@@ -2334,6 +2460,7 @@ impl Reflector {
                         "reflector: watch from version {version}: {}",
                         ApiError::Gone
                     );
+
                     return;
                 }
                 Err(_) =&gt; {
@@ -2341,6 +2468,7 @@ impl Reflector {
                     continue;
                 }
             };
+
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
@@ -2349,6 +2477,7 @@ impl Reflector {
                 self.cache.apply(event);
                 self.queue.add([name]);
             }
+
             log!("reflector: watch closed, resuming from version {version}");
         }
     }
@@ -2381,6 +2510,7 @@ type WorkQueue struct {
 func NewWorkQueue() *WorkQueue {
 	q := &amp;WorkQueue{dirty: map[string]bool{}, processing: map[string]bool{}}
 	q.cond = sync.NewCond(&amp;q.mu)
+
 	return q
 }
 
@@ -2390,11 +2520,14 @@ func NewWorkQueue() *WorkQueue {
 func (q *WorkQueue) Add(names ...string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for _, name := range names {
 		if q.dirty[name] {
 			continue
 		}
+
 		q.dirty[name] = true
+
 		if !q.processing[name] {
 			q.queue = append(q.queue, name)
 			q.cond.Signal()
@@ -2406,13 +2539,16 @@ func (q *WorkQueue) Add(names ...string) {
 func (q *WorkQueue) Get() string {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	for len(q.queue) == 0 {
 		q.cond.Wait()
 	}
+
 	name := q.queue[0]
 	q.queue = q.queue[1:]
 	delete(q.dirty, name)
 	q.processing[name] = true
+
 	return name
 }
 
@@ -2422,6 +2558,7 @@ func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	delete(q.processing, name)
+
 	if q.dirty[name] {
 		q.queue = append(q.queue, name)
 		q.cond.Signal()
@@ -2469,10 +2606,12 @@ impl WorkQueue {
     /// is left where it is. A name that a worker holds is queued again by `done`.
     pub fn add(&amp;self, names: impl IntoIterator&lt;Item = String&gt;) {
         let mut state = self.state();
+
         for name in names {
             if !state.dirty.insert(name.clone()) {
                 continue;
             }
+
             if !state.processing.contains(&amp;name) {
                 state.ready.push_back(name);
                 self.ready.notify_one();
@@ -2483,12 +2622,15 @@ impl WorkQueue {
     /// Blocks until a name is ready and hands it to the caller.
     pub fn get(&amp;self) -&gt; String {
         let mut state = self.state();
+
         loop {
             if let Some(name) = state.ready.pop_front() {
                 state.dirty.remove(&amp;name);
                 state.processing.insert(name.clone());
+
                 return name;
             }
+
             state = self.ready.wait(state).expect("queue lock poisoned");
         }
     }
@@ -2498,6 +2640,7 @@ impl WorkQueue {
     pub fn done(&amp;self, name: &amp;str) {
         let mut state = self.state();
         state.processing.remove(name);
+
         if state.dirty.contains(name) {
             state.ready.push_back(name.to_string());
             self.ready.notify_one();
@@ -2529,6 +2672,7 @@ func (c *Controller) Run() {
 		name := c.queue.Get()
 		err := c.reconcile(name)
 		c.queue.Done(name)
+
 		if err != nil {
 			c.queue.Add(name) // client-go requeues with a backoff
 		}
@@ -2540,20 +2684,28 @@ func (c *Controller) Run() {
 // from its spec, writes a new status conditioned on the version it read.
 func (c *Controller) reconcile(name string) error {
 	o, ok := c.cache.Get(name)
+
 	if !ok {
 		logf("reconcile %s: deleted, releasing its GPUs", name)
+
 		return nil
 	}
+
 	if o.Status.GPUs == o.Spec.GPUs {
 		return nil
 	}
+
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
 	o.Status.GPUs = o.Spec.GPUs
+
 	if err := c.server.Update(o); err != nil {
 		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
+
 		return err
 	}
+
 	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+
 	return nil
 }
 </code></pre>
@@ -2587,6 +2739,7 @@ impl Controller {
             let name = self.queue.get();
             let result = self.reconcile(&amp;name);
             self.queue.done(&amp;name);
+
             if result.is_err() {
                 self.queue.add([name]); // client-go requeues with a backoff
             }
@@ -2600,21 +2753,27 @@ impl Controller {
     fn reconcile(&amp;self, name: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
         let Some(mut object) = self.cache.get(name) else {
             log!("reconcile {name}: deleted, releasing its GPUs");
+
             return Ok(());
         };
+
         if object.status.gpus == object.spec.gpus {
             return Ok(());
         }
+
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
+
         match self.server.update(object.clone()) {
             Ok(()) =&gt; {
                 log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+
                 Ok(())
             }
             Err(error) =&gt; {
                 log!("reconcile {name}: write at version {version}: {error}");
+
                 Err(error)
             }
         }
@@ -2660,12 +2819,15 @@ func main() {
 	time.Sleep(100 * time.Millisecond)
 
 	logf("--- job-a is edited five times in a burst")
+
 	for gpus := 2; gpus &lt;= 6; gpus++ {
 		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+
 		if gpus == 2 {
 			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
 		}
 	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	logf("--- the watch connection drops")
@@ -2758,6 +2920,7 @@ fn main() {
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
+
     for gpus in 2..=6 {
         server
             .update(Object::new("job-a", gpus))
@@ -2766,6 +2929,7 @@ fn main() {
             sleep_ms(5); // the controller starts on the first edit
         }
     }
+
     sleep_ms(150);
 
     log!("--- the watch connection drops");

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-39244b02.js";
+            window.path_to_searchindex_js = "searchindex-2227ac82.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -459,11 +459,13 @@ type holder struct {
 // nvidia.com/gpu limits of its containers.
 func podGPUs(pod *corev1.Pod) int64 {
 	var units int64
+
 	for _, c := range pod.Spec.Containers {
 		if q, ok := c.Resources.Limits[gpu]; ok {
 			units += q.Value()
 		}
 	}
+
 	return units
 }
 
@@ -472,6 +474,7 @@ func podGPUs(pod *corev1.Pod) int64 {
 // finishes; a pod that has succeeded or failed gives them back.
 func holdsResources(pod *corev1.Pod) bool {
 	finished := pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+
 	return pod.Spec.NodeName != "" &amp;&amp; !finished
 }
 </code></pre>
@@ -504,9 +507,11 @@ fn pod_gpus(pod: &amp;Pod) -&gt; i64 {
 /// succeeded or failed gives them back.
 fn holding_node(pod: &amp;Pod) -&gt; Option&lt;&amp;str&gt; {
     let phase = pod.status.as_ref().and_then(|s| s.phase.as_deref());
+
     if matches!(phase, Some("Succeeded" | "Failed")) {
         return None;
     }
+
     pod.spec.as_ref()?.node_name.as_deref()
 }
 
@@ -524,21 +529,28 @@ fn gpu_units(resources: Option&lt;&amp;BTreeMap&lt;String, Quantity&gt;&gt;) -&g
 // and prints one table row per node followed by the pods that hold its units.
 func run(ctx context.Context) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
+
 	pods, err := clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
 
 	holders := map[string][]holder{}
+
 	for i := range pods.Items {
 		pod := &amp;pods.Items[i]
+
 		if units := podGPUs(pod); units &gt; 0 &amp;&amp; holdsResources(pod) {
 			name := pod.Namespace + "/" + pod.Name
 			holders[pod.Spec.NodeName] = append(holders[pod.Spec.NodeName], holder{name, units})
@@ -547,16 +559,20 @@ func run(ctx context.Context) error {
 
 	table := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NODE\tCAPACITY\tALLOCATABLE\tIN USE\tFREE")
+
 	for _, node := range nodes.Items {
 		capacity := node.Status.Capacity[gpu]
 		allocatable := node.Status.Allocatable[gpu]
 		var inUse int64
+
 		for _, h := range holders[node.Name] {
 			inUse += h.units
 		}
+
 		fmt.Fprintf(table, "%s\t%d\t%d\t%d\t%d\n",
 			node.Name, capacity.Value(), allocatable.Value(), inUse, allocatable.Value()-inUse)
 	}
+
 	if err := table.Flush(); err != nil {
 		return err
 	}
@@ -564,10 +580,12 @@ func run(ctx context.Context) error {
 	for _, node := range nodes.Items {
 		list := holders[node.Name]
 		slices.SortFunc(list, func(a, b holder) int { return cmp.Compare(a.pod, b.pod) })
+
 		for _, h := range list {
 			fmt.Printf("  %s holds %d on %s\n", h.pod, h.units, node.Name)
 		}
 	}
+
 	return nil
 }
 </code></pre>
@@ -584,6 +602,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let pods = Api::&lt;Pod&gt;::all(client).list(&amp;ListParams::default()).await?;
 
     let mut holders: BTreeMap&lt;String, Vec&lt;Holder&gt;&gt; = BTreeMap::new();
+
     for pod in &amp;pods {
         let units = pod_gpus(pod);
         if let Some(node) = holding_node(pod)
@@ -601,6 +620,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         "{:&lt;23}{:&lt;10}{:&lt;13}{:&lt;8}FREE",
         "NODE", "CAPACITY", "ALLOCATABLE", "IN USE"
     );
+
     for node in &amp;nodes {
         let name = node.name_any();
         let in_use: i64 = holders
@@ -618,12 +638,15 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
             allocatable - in_use
         );
     }
+
     for (node, list) in &amp;mut holders {
         list.sort_by(|a, b| a.pod.cmp(&amp;b.pod));
+
         for h in list.iter() {
             println!("  {} holds {} on {node}", h.pod, h.units);
         }
     }
+
     Ok(())
 }</code></pre>
 <p>Both programs list the nodes and the pods with one request each, keep the pods that hold
@@ -1093,11 +1116,13 @@ type holder struct {
 // nvidia.com/gpu limits of its containers.
 func podGPUs(pod *corev1.Pod) int64 {
 	var units int64
+
 	for _, c := range pod.Spec.Containers {
 		if q, ok := c.Resources.Limits[gpu]; ok {
 			units += q.Value()
 		}
 	}
+
 	return units
 }
 
@@ -1106,6 +1131,7 @@ func podGPUs(pod *corev1.Pod) int64 {
 // finishes; a pod that has succeeded or failed gives them back.
 func holdsResources(pod *corev1.Pod) bool {
 	finished := pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
+
 	return pod.Spec.NodeName != "" &amp;&amp; !finished
 }
 
@@ -1122,21 +1148,28 @@ func main() {
 // and prints one table row per node followed by the pods that hold its units.
 func run(ctx context.Context) error {
 	clientset, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+
 	if err != nil {
 		return err
 	}
+
 	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
+
 	pods, err := clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+
 	if err != nil {
 		return err
 	}
 
 	holders := map[string][]holder{}
+
 	for i := range pods.Items {
 		pod := &amp;pods.Items[i]
+
 		if units := podGPUs(pod); units &gt; 0 &amp;&amp; holdsResources(pod) {
 			name := pod.Namespace + "/" + pod.Name
 			holders[pod.Spec.NodeName] = append(holders[pod.Spec.NodeName], holder{name, units})
@@ -1145,16 +1178,20 @@ func run(ctx context.Context) error {
 
 	table := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NODE\tCAPACITY\tALLOCATABLE\tIN USE\tFREE")
+
 	for _, node := range nodes.Items {
 		capacity := node.Status.Capacity[gpu]
 		allocatable := node.Status.Allocatable[gpu]
 		var inUse int64
+
 		for _, h := range holders[node.Name] {
 			inUse += h.units
 		}
+
 		fmt.Fprintf(table, "%s\t%d\t%d\t%d\t%d\n",
 			node.Name, capacity.Value(), allocatable.Value(), inUse, allocatable.Value()-inUse)
 	}
+
 	if err := table.Flush(); err != nil {
 		return err
 	}
@@ -1162,10 +1199,12 @@ func run(ctx context.Context) error {
 	for _, node := range nodes.Items {
 		list := holders[node.Name]
 		slices.SortFunc(list, func(a, b holder) int { return cmp.Compare(a.pod, b.pod) })
+
 		for _, h := range list {
 			fmt.Printf("  %s holds %d on %s\n", h.pod, h.units, node.Name)
 		}
 	}
+
 	return nil
 }
 </code></pre>
@@ -1213,9 +1252,11 @@ fn pod_gpus(pod: &amp;Pod) -&gt; i64 {
 /// succeeded or failed gives them back.
 fn holding_node(pod: &amp;Pod) -&gt; Option&lt;&amp;str&gt; {
     let phase = pod.status.as_ref().and_then(|s| s.phase.as_deref());
+
     if matches!(phase, Some("Succeeded" | "Failed")) {
         return None;
     }
+
     pod.spec.as_ref()?.node_name.as_deref()
 }
 
@@ -1238,6 +1279,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let pods = Api::&lt;Pod&gt;::all(client).list(&amp;ListParams::default()).await?;
 
     let mut holders: BTreeMap&lt;String, Vec&lt;Holder&gt;&gt; = BTreeMap::new();
+
     for pod in &amp;pods {
         let units = pod_gpus(pod);
         if let Some(node) = holding_node(pod)
@@ -1255,6 +1297,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         "{:&lt;23}{:&lt;10}{:&lt;13}{:&lt;8}FREE",
         "NODE", "CAPACITY", "ALLOCATABLE", "IN USE"
     );
+
     for node in &amp;nodes {
         let name = node.name_any();
         let in_use: i64 = holders
@@ -1272,12 +1315,15 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
             allocatable - in_use
         );
     }
+
     for (node, list) in &amp;mut holders {
         list.sort_by(|a, b| a.pod.cmp(&amp;b.pod));
+
         for h in list.iter() {
             println!("  {} holds {} on {node}", h.pod, h.units);
         }
     }
+
     Ok(())
 }</code></pre>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
