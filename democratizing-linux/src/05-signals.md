@@ -1,0 +1,574 @@
+<img class="plate" src="art/ch05.svg" alt="Klaxon, an owl, is the night watch. Signal flags numbered 2, 9 and 15 fly from a mast, a bell rings, and a hare that was asleep jumps awake.">
+
+# Signals
+
+A *signal* is a notification that the kernel delivers to a process at a moment the
+process did not choose. Each signal is identified by a small number and a name. The
+kernel sends signals to report events: a key pressed on the terminal, a write to a pipe
+with no reader, the end of a child, an invalid memory access. Processes send them to
+each other with the `kill` system call.
+
+In this chapter, we will learn what state the kernel keeps for signals and at which
+moment a signal takes effect. We will follow Ctrl-C from the keyboard to the end of a
+program, read the kernel's structures, and see how a handler function is run. Then we
+will measure signal handling from outside a process with `sigfacts`, and write
+`sigmodel`, a model of the kernel's signal state.
+
+<div class="covers">
+
+This chapter covers
+
+- the common signals, what sends them, and what they do by default
+- the path of Ctrl-C from the terminal to a process
+- the pending mask, the blocked mask, and the action of a signal
+- the kernel structures: `struct sigpending`, `struct sighand_struct`, `struct k_sigaction`
+- why sending a signal and delivering it are separate events
+- why several sends of the same signal can result in a single delivery
+- how the kernel runs a handler, and what a handler may safely do
+- which dispositions survive `exec`
+- why `SIGKILL` cannot be blocked, ignored or handled
+- `EINTR` and `SA_RESTART`: a signal during a blocking system call
+
+</div>
+
+## The common signals
+
+Linux has 64 signals. Numbers 1 to 31 are the *standard signals*, each with a fixed
+meaning, and numbers 32 to 64 are the *real-time signals*, which programs may use for
+their own purposes. `kill -l` lists them. These are the ones a programmer meets.
+
+| Number | Name | Sent when | Default action |
+|---|---|---|---|
+| 2 | `SIGINT` | Ctrl-C is pressed on the terminal | end the process |
+| 3 | `SIGQUIT` | Ctrl-\\ is pressed | end the process and write a core dump |
+| 9 | `SIGKILL` | a program calls `kill` with it | end the process; cannot be changed |
+| 11 | `SIGSEGV` | the process accesses memory it has no mapping for ([chapter 7](07-virtual-memory.md)) | end the process and write a core dump |
+| 13 | `SIGPIPE` | the process writes to a pipe or socket with no reader ([chapter 1](01-pipes.md)) | end the process |
+| 15 | `SIGTERM` | a program calls `kill`; the default of the `kill` command | end the process |
+| 17 | `SIGCHLD` | a child of the process ends or stops ([chapter 3](03-processes.md)) | ignore |
+| 19 | `SIGSTOP` | a program calls `kill` with it | stop the process; cannot be changed |
+| 20 | `SIGTSTP` | Ctrl-Z is pressed | stop the process |
+| 18 | `SIGCONT` | `fg`, `bg`, or `kill` | continue a stopped process |
+
+For each signal a process has a *disposition*, also called its action: what happens when
+the signal is delivered. There are 3 possibilities. The *default action* is the one in
+the table. *Ignore* discards the signal. A *handler* is a function of the program that
+the kernel calls when the signal arrives. `SIGTERM` is the polite request to end, which
+a program can handle to save its work, and `SIGKILL` is the request that cannot be
+refused.
+
+## From Ctrl-C to the end of a program
+
+Suppose a program is running in a terminal, blocked in a `read`, and we press Ctrl-C.
+
+1. The terminal passes the byte 0x03 to the kernel's terminal driver.
+2. The driver recognises it as the interrupt character and does not put it in the input
+   of the program. It sends `SIGINT` to every process of the terminal's *foreground
+   process group*, the set of processes the shell started for the current command line.
+3. Sending means setting a bit: the kernel sets the bit for `SIGINT` in the *pending
+   mask* of each of those processes. Nothing else has happened to them yet.
+4. A process that is sleeping in a system call is woken so that it can notice.
+5. When the process is next about to return from the kernel to user mode, the kernel
+   checks its pending mask, finds `SIGINT`, clears the bit, and performs the action. The
+   default action ends the process.
+
+<figure>
+<img src="figures/signal-ctrl-c.svg" alt="What happens when Ctrl-C is pressed. The terminal receives the byte 0x03. The terminal driver in the kernel recognises the interrupt character and sends SIGINT to each process of the foreground process group. The pending bit of SIGINT is set in the mask of each process. A process that sleeps in a system call is woken. When the process returns to user mode, the kernel performs the action of the signal.">
+<figcaption><b>Figure 5.1</b> Ctrl-C, from the keyboard to the action of <code>SIGINT</code>.</figcaption>
+</figure>
+
+Steps 3 and 5 are separate events. *Sending* a signal runs in the sender, or in the
+kernel on behalf of a device, and only records that the signal is wanted. *Delivery*
+runs later, in the target, at the boundary between kernel mode and user mode. Every
+property of signals in this chapter follows from that split.
+
+## The state behind a signal
+
+The kernel keeps 3 pieces of signal state.
+
+| State | Contents | Changed by |
+|---|---|---|
+| Pending mask | 1 bit per signal: the signal has been sent and not yet delivered | `kill` sets a bit; delivery clears it |
+| Blocked mask | 1 bit per signal: delivery of the signal is postponed | `sigprocmask` |
+| Action | per signal: the default, ignore, or the address of a handler function | `sigaction` |
+
+*Blocking* a signal is different from ignoring it. An ignored signal is discarded. A
+blocked signal stays pending and is delivered when the program unblocks it. A program
+blocks a signal around a piece of code that must not be interrupted by its handler.
+
+<figure>
+<img src="figures/signal-path.svg" alt="A sender calls kill with a pid and SIGUSR1. The kernel sets bit 10 in the pending mask of the target. The target also has a blocked mask, here with bit 2 set. When the target is about to return to user mode, each signal that is pending and not blocked is delivered, and its action is performed: the default, which ends the process for most signals; ignore, which discards it; or a handler function.">
+<figcaption><b>Figure 5.2</b> <code>kill</code> sets a pending bit. The action is performed later, in the target.</figcaption>
+</figure>
+
+These are the kernel's definitions in Linux 5.15, from `include/linux/signal_types.h`,
+`include/linux/sched/signal.h` and `include/linux/sched.h`, reduced to the fields we use.
+
+```c
+struct sigpending {
+        struct list_head list;         /* queued details of pending signals */
+        sigset_t signal;               /* the pending mask: 64 bits */
+};
+
+struct sigaction {
+        __sighandler_t sa_handler;     /* SIG_DFL, SIG_IGN, or a function */
+        unsigned long sa_flags;        /* SA_RESTART, ... */
+        sigset_t sa_mask;              /* signals blocked while the handler runs */
+};
+
+struct sighand_struct {
+        struct k_sigaction action[_NSIG];      /* one action per signal, _NSIG is 64 */
+        /* ... */
+};
+
+struct signal_struct {
+        struct sigpending shared_pending;      /* signals sent to the process */
+        /* ... */
+};
+
+struct task_struct {
+        struct signal_struct *signal;
+        struct sighand_struct *sighand;
+        sigset_t blocked;                      /* the blocked mask */
+        struct sigpending pending;             /* signals sent to this thread */
+        /* ... */
+};
+```
+
+| Field | Meaning |
+|---|---|
+| `sigset_t` | A set of signals as a bit mask of 64 bits. Signal `n` is bit `n - 1`. |
+| `sigpending.signal` | The pending mask. |
+| `sighand_struct.action` | The table of actions, indexed by signal number. |
+| `sa_handler` | The action: the constant `SIG_DFL` for the default, `SIG_IGN` for ignore, or the address of a handler. |
+| `sa_flags`, `sa_mask` | Options for a handler, set by the program with `sigaction`. |
+| `task_struct.blocked` | The blocked mask. Each thread has its own. |
+| `task_struct.pending` and `signal_struct.shared_pending` | There are 2 pending sets. A signal sent to a process with `kill` goes into `shared_pending`, and any thread of the process that does not block it may take it. A signal aimed at a single thread, such as `SIGSEGV` for the thread that made the invalid access, goes into that thread's `pending`. |
+
+<figure>
+<img src="figures/signal-structs.svg" alt="The kernel structures of signal handling. Each thread has a struct task_struct with a blocked mask and a pending set for signals sent to that thread. Each process has a struct signal_struct with shared_pending for signals sent to the process. A struct sighand_struct holds the array action with a struct k_sigaction for each of the 64 signals: sa_handler, sa_flags and sa_mask.">
+<figcaption><b>Figure 5.3</b> The structures that hold the pending signals, the blocked mask and the actions.</figcaption>
+</figure>
+
+The kernel shows these masks in `/proc/<pid>/status`. This is a shell after
+`trap '' INT` and `trap 'echo x' USR1`:
+
+```console
+$ grep -E 'SigPnd|ShdPnd|SigBlk|SigIgn|SigCgt' /proc/$$/status
+SigPnd:	0000000000000000
+ShdPnd:	0000000000000000
+SigBlk:	0000000000000000
+SigIgn:	0000000000000002
+SigCgt:	0000000000010200
+```
+
+`SigPnd` is the thread's `pending` mask and `ShdPnd` is `shared_pending`. `SigBlk` is
+`blocked`. `SigIgn` and `SigCgt` are derived from the action table: the signals that are
+ignored and the signals that have a handler. The values are hexadecimal. `0x2` is bit 1,
+signal 2, `SIGINT`. `0x10200` is bit 9, signal 10, `SIGUSR1`, and bit 16, signal 17,
+`SIGCHLD`, which the shell handles for its own purposes.
+
+The masks are easier to read after decoding one by hand. Take `SigCgt`,
+`0000000000010200`.
+
+1. Drop the leading zeros: `0x10200`.
+2. Write each hexadecimal digit as 4 bits: `1 0000 0010 0000 0000`.
+3. Number the bits from the right, starting at 0. The bits that are 1 are bit 9 and bit
+   16.
+4. Add 1 to each: signals 10 and 17, `SIGUSR1` and `SIGCHLD`.
+
+<figure>
+<img src="figures/mask-decode.svg" alt="The mask 0x10200 written in binary, with bit 0 on the right. Bits 9 and 16 are 1 and all others are 0. Bit 9 stands for signal 10, SIGUSR1, and bit 16 for signal 17, SIGCHLD. Bit n stands for signal n plus 1.">
+<figcaption><b>Figure 5.4</b> The mask <code>0x10200</code> decoded bit by bit.</figcaption>
+</figure>
+
+`SigIgn`, `0x2`, is the single bit 1, signal 2, `SIGINT`. A mask of all zeros, as for
+`SigPnd` and `SigBlk` here, means that no signal is pending and none is blocked.
+
+The design has direct consequences, and the measurements below confirm each of them.
+
+- The pending mask has 1 bit per signal, so it cannot count. A signal that is sent again
+  while its bit is set leaves the mask unchanged.
+- A blocked signal stays pending for as long as it is blocked.
+- A handler is an address inside the current program. `exec` replaces the program, so a
+  handled signal returns to the default action. Ignore and default are independent of
+  the program and are kept.
+- `SIGKILL` and `SIGSTOP` are exempt from all 3 mechanisms. The kernel guarantees that
+  an administrator can always end or stop a process.
+
+<div class="crab crab-angry">
+
+`SIGKILL` cannot be blocked, ignored or handled. A process that receives it gets no chance to clean up.
+
+</div>
+
+## How a handler is run
+
+A handler is a function in the program, and the kernel has to make the program call it
+at a moment the program did not plan for. It does so by editing the state it is about to
+return to.
+
+1. The process is in the kernel, about to return to user mode, with its user-mode
+   registers saved.
+2. The kernel copies those saved registers to the user stack of the process, in a
+   *signal frame*.
+3. It changes the saved program counter to the address of the handler, and arranges the
+   return address of the handler to point at a small piece of code that makes the
+   system call `sigreturn`.
+4. It returns to user mode. The process now executes the handler, as if the handler had
+   been called at the point of interruption.
+5. When the handler returns, `sigreturn` enters the kernel, which restores the registers
+   from the signal frame. The program continues at the instruction where it was
+   interrupted.
+
+<figure>
+<img src="figures/signal-frame.svg" alt="How a handler is run. The program is interrupted at any instruction. The kernel saves the registers in a frame on the user stack and sets the program counter to the address of the handler. The handler runs in user mode on the same stack. When it returns, it returns into a call of sigreturn, and the kernel restores the registers so that the program continues where it was interrupted.">
+<figcaption><b>Figure 5.5</b> The kernel runs a handler by rewriting the state the program returns to.</figcaption>
+</figure>
+
+The handler can run between any 2 instructions of the program. If the program was in the
+middle of `malloc`, with the allocator's data structures half updated, and the handler
+calls `malloc` too, the structures are corrupted. A handler may therefore call only
+functions that are *async-signal-safe*, a short list that includes `write` and excludes
+`malloc` and `printf`. The usual practice is a handler that does almost nothing: it
+sets a flag, or writes a byte to a pipe that the main loop of the program reads.
+
+The runtimes of both languages do this for us. The Go runtime installs handlers for all
+signals and forwards them to the program through a channel registered with
+`signal.Notify`. Rust libraries such as `signal-hook` use the pipe technique. In both,
+the code we write for a signal runs in ordinary program context and may call anything.
+
+## Measuring signals
+
+A program that changed its own signal handling would measure its language runtime as
+much as the kernel. `sigfacts` therefore observes other processes. It starts shell
+scripts that set dispositions with `trap`, sends them signals, and reads their masks
+from `/proc/<pid>/status`. The Rust version uses the `nix` crate with the `signal`
+feature.
+
+```console
+$ cargo new sigfacts
+$ cargo add -p sigfacts nix --features signal
+```
+
+`mask` reads a mask from the status file as a hexadecimal number. `await` waits until a
+process has reached a given state.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.1</b> The imports of <code>sigfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/sigfacts/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.2</b> The imports of <code>sigfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigfacts/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.3</b> Reading the signal masks of another process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/sigfacts/main.go:proc}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.4</b> Reading the signal masks of another process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigfacts/src/main.rs:proc}}
+```
+
+
+A stopped process does not return to user mode, so nothing is delivered to it. `pending`
+uses that to observe the pending mask. The script installs a handler for `SIGUSR1` and
+stops itself. The program sends `SIGUSR1` 3 times, reads the mask, and lets the script
+continue with `SIGCONT`.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.5</b> Sending a signal 3 times to a stopped process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/sigfacts/main.go:pending}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.6</b> Sending a signal 3 times to a stopped process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigfacts/src/main.rs:pending}}
+```
+
+
+`dispositions` reads the ignored and caught masks of a shell that ignores `SIGINT` and
+handles `SIGUSR1`.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.7</b> The actions of a process, read from outside, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/sigfacts/main.go:dispositions}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.8</b> The actions of a process, read from outside, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigfacts/src/main.rs:dispositions}}
+```
+
+
+`acrossExec` starts a shell that ignores `SIGTERM`, handles `SIGUSR1`, and then replaces
+itself with `sleep` by `exec`. It reads the masks of the `sleep` process, sends it
+`SIGTERM` and then `SIGKILL`, and reports how it ended.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.9</b> Dispositions after exec, and SIGKILL, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/sigfacts/main.go:exec}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.10</b> Dispositions after exec, and SIGKILL, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigfacts/src/main.rs:exec}}
+```
+
+
+```text
+{{#include ../code/output/sigfacts.txt}}
+```
+
+| Output | Conclusion |
+|---|---|
+| pending mask `0x200` after 3 sends | `0x200` is bit 9, signal 10, `SIGUSR1`. The mask records that the signal is pending and holds no count. |
+| the handler ran 1 time | 3 sends were merged into a single delivery. |
+| `SIGINT` ignored, `SIGUSR1` caught, `SIGTERM` not ignored | Each signal has its own entry in the action table. |
+| after `exec`: `SIGTERM` ignored, `SIGUSR1` not caught | Ignore survives `exec`. A handler is reset to the default. |
+| killed by signal 9 | `SIGTERM` was discarded. `SIGKILL` ended the process. |
+
+Line 4 explains a detail from [chapter 1](01-pipes.md). A Rust program starts with
+`SIGPIPE` ignored, and an ignored signal stays ignored across `exec`. Rust's `Command`
+therefore resets `SIGPIPE` to the default in each child before it calls `exec`, and
+`yes` in the pipeline was ended by the signal as intended.
+
+The merging of signals has a consequence for every program that handles `SIGCHLD`. A
+handler for it calls `wait` in a loop until no ended child remains, because several
+children may have ended behind a single delivery.
+
+## Modelling signal state
+
+<div class="lld">
+
+Low-level design: `sigmodel`
+
+| Field of `process` | Kernel field | Meaning |
+|---|---|---|
+| `pending` | `shared_pending.signal` | mask of 64 bits; signal `n` is bit `n - 1` |
+| `blocked` | `task_struct.blocked` | mask of 64 bits |
+| `actions`, `restart` | `sighand->action[n]` | default, ignore or handle; the `SA_RESTART` flag |
+| `handled`, `killedBy` | | how many handlers have run; the signal that ended the process |
+| `call`, `outcome` | | the system call the process is blocked in; what a signal did to it |
+
+| Operation | System call | Behaviour |
+|---|---|---|
+| `setAction(signal, action, restart)` | `sigaction` | installs an action; fails with `EINVAL` for `SIGKILL` |
+| `block(mask)`, `unblock(mask)` | `sigprocmask` | changes the blocked mask; `SIGKILL` cannot be added |
+| `send(signal)` | `kill` | discards an ignored signal, otherwise sets its pending bit |
+| `deliver()` | | performs the action of each pending, unblocked signal, lowest number first |
+
+</div>
+
+The state of a process is the 2 masks and a table of actions.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.11</b> The imports of <code>sigmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.12</b> The imports of <code>sigmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.13</b> The signal state of a process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go:state}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.14</b> The signal state of a process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs:state}}
+```
+
+
+`setAction` and `block` enforce the exemption of `SIGKILL`. Changing its action is an
+error, and a request to block it is reduced silently.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.15</b> Installing actions and changing the blocked mask, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go:control}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.16</b> Installing actions and changing the blocked mask, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs:control}}
+```
+
+
+`send` is the half that runs in the sender. A signal that the target ignores is
+discarded at this point and does not become pending, unless it is blocked: a blocked
+signal is kept, because its action may have changed by the time it is unblocked.
+Setting a bit that is already set has no effect, which is the merging we measured.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.17</b> Sending: setting a pending bit, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go:send}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.18</b> Sending: setting a pending bit, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs:send}}
+```
+
+
+`deliver` is the half that runs in the target. It considers the signals that are pending
+and not blocked. For a handler it also decides the fate of a system call that the
+process was blocked in.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.19</b> Delivering: performing the action, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go:deliver}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.20</b> Delivering: performing the action, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs:deliver}}
+```
+
+
+### A signal during a blocking call
+
+A process that is blocked in a system call is inside the kernel and is not about to
+return to user mode. If signals waited for the call to finish, a process blocked in a
+`read` on a terminal could not be interrupted by Ctrl-C. The kernel therefore wakes the
+process, abandons the call, and runs the handler. After the handler returns there are 2
+possible outcomes, selected by a flag given to `sigaction` when the handler was
+installed.
+
+<figure>
+<img src="figures/signal-eintr.svg" alt="A process calls read and sleeps because there is no data. A signal arrives, and the kernel wakes the process and abandons the read. The handler runs in user mode. Then, for a handler installed without SA_RESTART, read returns -1 with the error EINTR. For a handler installed with SA_RESTART, the kernel calls read again.">
+<figcaption><b>Figure 5.6</b> A handled signal interrupts a blocking call.</figcaption>
+</figure>
+
+Without `SA_RESTART`, the call returns the error `EINTR`, "interrupted system call",
+and the program has to call it again. A loop that retries on `EINTR` around every
+blocking call is the standard defence. Go's standard library and Rust's `std::io`
+helpers such as `read_to_end` contain that loop.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.21</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go:trace}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.22</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs:trace}}
+```
+
+
+```text
+{{#include ../code/output/sigmodel.txt}}
+```
+
+Lines 1 and 2 reproduce the pending mask and the single delivery that `sigfacts`
+measured.
+
+<div class="callout">
+
+**Correspondence with the kernel source.** `__send_signal` in `kernel/signal.c` sets the
+bit, and `prepare_signal` discards ignored signals. Delivery starts in `get_signal`,
+called on the way back to user mode, and the signal frame of an arm64 process is built
+by `setup_rt_frame` in `arch/arm64/kernel/signal.c`. Real-time signals, numbers 32 to
+64, are an exception to merging: the kernel queues each send of those separately, in
+the `list` of `struct sigpending`.
+
+</div>
+
+## Inspecting signals on a live system
+
+| Command | Shows |
+|---|---|
+| `kill -l` | the names and numbers of all signals |
+| `grep Sig /proc/<pid>/status` | the pending, blocked, ignored and caught masks of a process |
+| `kill -TERM <pid>`, `kill -KILL <pid>` | sends a signal to a process |
+| `kill -STOP <pid>`, `kill -CONT <pid>` | stops and continues a process |
+| `strace -e trace=signal -p <pid>` | the signals a process receives and the signal system calls it makes |
+
+A process that does not react to `kill` is diagnosed with the second command. If
+`SIGTERM`, bit 14, is set in `SigIgn` or `SigBlk`, the process has ignored or blocked
+it, and only `SIGKILL` will end it.
+
+## The complete programs
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.23</b> The complete <code>sigfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/sigfacts/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 5.24</b> The complete <code>sigfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigfacts/src/main.rs}}
+```
+
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.25</b> The complete <code>sigmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/sigmodel/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 5.26</b> The complete <code>sigmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/sigmodel/src/main.rs}}
+```
+
+
+<div class="summary">
+
+## Summary
+
+- A signal is sent by setting a bit in the pending mask of the target. Its action is
+  performed later, when the target is about to return to user mode and the signal is not
+  blocked.
+- Each signal has an action: the default, ignore, or a handler function. The actions are
+  in `struct sighand_struct`, and the masks are visible in `/proc/<pid>/status`.
+- The pending mask holds 1 bit per signal, so repeated sends of a pending signal are
+  merged into a single delivery.
+- The kernel runs a handler by saving the program's registers on its stack and
+  redirecting it to the handler. A handler may call only async-signal-safe functions.
+- `exec` resets handlers to the default action and keeps ignored signals ignored.
+- `SIGKILL` and `SIGSTOP` cannot be blocked, ignored or handled.
+- A handler that runs during a blocking system call makes the call fail with `EINTR`,
+  or restart when the handler was installed with `SA_RESTART`.
+
+</div>
+
+## References
+
+- `signal(7)`, `sigaction(2)`, `sigprocmask(2)`, `signal-safety(7)` and `sigreturn(2)`,
+  Linux manual pages: <https://man7.org/linux/man-pages/man7/signal.7.html>
+- M. Kerrisk, *The Linux Programming Interface*, No Starch Press, 2010, chapters 20 to
+  22.
+- `kernel/signal.c` and `include/linux/sched/signal.h`, Linux 5.15:
+  <https://elixir.bootlin.com/linux/v5.15/source/kernel/signal.c>

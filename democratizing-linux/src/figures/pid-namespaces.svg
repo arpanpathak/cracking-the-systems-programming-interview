@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 546" width="480" height="546" role="img" aria-label="The root PID namespace contains the first process, pid 1, and a shell, pid 2. It encloses namespace A and namespace B. In A, the first process has pid 1 inside and pid 3 in the root, and its child has pid 2 inside and pid 4 in the root. A namespace nested in A has a first process with pid 1 inside, pid 3 in A, and pid 6 in the root. In B, the first process has pid 1 inside and pid 5 in the root.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="546" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Nested PID namespaces</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The numbers of the model&#x27;s trace.</text>
+  <rect x="32" y="104" width="416" height="414" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="169.6" height="22" rx="11" fill="#1B2430"/>
+  <text x="134.8" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">ROOT PID NAMESPACE</text>
+  <rect x="48" y="128" width="112" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,128.7 H54 V179.3 H60 A11.3,11.3 0 0 1 48.7,168 V140 A11.3,11.3 0 0 1 60,128.7 Z" fill="#7F8EA0"/>
+  <text x="68.0" y="150.0" class="name" text-anchor="start" xml:space="preserve">first</text>
+  <text x="68.0" y="168.0" class="sub" text-anchor="start" xml:space="preserve">pid 1</text>
+  <rect x="184" y="128" width="112" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M196,128.7 H190 V179.3 H196 A11.3,11.3 0 0 1 184.7,168 V140 A11.3,11.3 0 0 1 196,128.7 Z" fill="#7F8EA0"/>
+  <text x="204.0" y="150.0" class="name" text-anchor="start" xml:space="preserve">shell</text>
+  <text x="204.0" y="168.0" class="sub" text-anchor="start" xml:space="preserve">pid 2</text>
+  <path class="wire" d="M160,154 L184,154" marker-end="url(#head)"/>
+  <rect x="48" y="224" width="184" height="278" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="66" y="213" width="114.5" height="22" rx="11" fill="#1B2430"/>
+  <text x="123.3" y="228.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">NAMESPACE A</text>
+  <rect x="60" y="248" width="112" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M72,248.7 H66 V299.3 H72 A11.3,11.3 0 0 1 60.7,288 V260 A11.3,11.3 0 0 1 72,248.7 Z" fill="#2F6FDB"/>
+  <text x="80.0" y="270.0" class="name" text-anchor="start" xml:space="preserve">first</text>
+  <text x="80.0" y="288.0" class="sub" text-anchor="start" xml:space="preserve">1, root 3</text>
+  <rect x="60" y="318" width="112" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M72,318.7 H66 V369.3 H72 A11.3,11.3 0 0 1 60.7,358 V330 A11.3,11.3 0 0 1 72,318.7 Z" fill="#2F6FDB"/>
+  <text x="80.0" y="340.0" class="name" text-anchor="start" xml:space="preserve">child</text>
+  <text x="80.0" y="358.0" class="sub" text-anchor="start" xml:space="preserve">2, root 4</text>
+  <path class="wire" d="M116,300 L116,318" marker-end="url(#head)"/>
+  <rect x="60" y="402" width="160" height="86" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="78" y="391" width="75.2" height="22" rx="11" fill="#1B2430"/>
+  <text x="115.6" y="406.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">NESTED</text>
+  <rect x="72" y="422" width="112" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M84,422.7 H78 V473.3 H84 A11.3,11.3 0 0 1 72.7,462 V434 A11.3,11.3 0 0 1 84,422.7 Z" fill="#7A4FD0"/>
+  <text x="92.0" y="444.0" class="name" text-anchor="start" xml:space="preserve">first</text>
+  <text x="92.0" y="462.0" class="sub" text-anchor="start" xml:space="preserve">1, 3, 6</text>
+  <rect x="248" y="224" width="184" height="100" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="266" y="213" width="114.5" height="22" rx="11" fill="#1B2430"/>
+  <text x="323.3" y="228.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">NAMESPACE B</text>
+  <rect x="260" y="248" width="112" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M272,248.7 H266 V299.3 H272 A11.3,11.3 0 0 1 260.7,288 V260 A11.3,11.3 0 0 1 272,248.7 Z" fill="#1F8A70"/>
+  <text x="280.0" y="270.0" class="name" text-anchor="start" xml:space="preserve">first</text>
+  <text x="280.0" y="288.0" class="sub" text-anchor="start" xml:space="preserve">1, root 5</text>
+  <text x="248.0" y="352.0" class="note" text-anchor="start" xml:space="preserve">A process has a number in</text>
+  <text x="248.0" y="369.0" class="note" text-anchor="start" xml:space="preserve">its own namespace and in</text>
+  <text x="248.0" y="386.0" class="note" text-anchor="start" xml:space="preserve">every namespace around it.</text>
+  <text x="248.0" y="403.0" class="note" text-anchor="start" xml:space="preserve"></text>
+  <text x="248.0" y="420.0" class="note" text-anchor="start" xml:space="preserve">A and B cannot see each</text>
+  <text x="248.0" y="437.0" class="note" text-anchor="start" xml:space="preserve">other. The root namespace</text>
+  <text x="248.0" y="454.0" class="note" text-anchor="start" xml:space="preserve">sees every process.</text>
+</svg>

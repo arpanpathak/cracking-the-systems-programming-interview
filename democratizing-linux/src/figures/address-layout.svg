@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 532" width="480" height="532" role="img" aria-label="The address space of a cat process from high addresses to low. The stack, read-write, holds local variables and grows downward. Below it are the shared libraries libc and ld-linux, mapped from files. Then anonymous mappings for large allocations and thread stacks. Then the heap, read-write, used by malloc and grown upward with brk. Then the data of /usr/bin/cat, read-write, with its global variables. At the lowest addresses is the code of /usr/bin/cat, readable and executable.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="532" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The layout of an address space</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The mappings of a small program, from /proc/self/maps.</text>
+  <text x="32.0" y="104.0" class="tab" text-anchor="start" xml:space="preserve">high addresses</text>
+  <text x="448.0" y="104.0" class="tab" text-anchor="end" xml:space="preserve">permissions</text>
+  <rect x="32.0" y="116.0" width="416.0" height="46.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="46.0" y="133.0" class="mono strong" text-anchor="start" xml:space="preserve">[stack]</text>
+  <text x="46.0" y="151.0" class="note" text-anchor="start" xml:space="preserve">local variables; grows downward</text>
+  <text x="434.0" y="133.0" class="mono" text-anchor="end" xml:space="preserve">rw-p</text>
+  <rect x="32.0" y="168.0" width="416.0" height="26.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="185.0" class="mono dim" text-anchor="start" xml:space="preserve">(unmapped)</text>
+  <rect x="32.0" y="200.0" width="416.0" height="56.0" rx="6" fill="#F0EAFB" stroke="#7A4FD0" stroke-width="1.3"/>
+  <text x="46.0" y="217.0" class="mono strong" text-anchor="start" xml:space="preserve">libc.so.6, ld-linux</text>
+  <text x="46.0" y="235.0" class="note" text-anchor="start" xml:space="preserve">shared libraries, mapped from files</text>
+  <text x="434.0" y="217.0" class="mono" text-anchor="end" xml:space="preserve">r-xp, r--p, rw-p</text>
+  <rect x="32.0" y="262.0" width="416.0" height="46.0" rx="6" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="46.0" y="279.0" class="mono strong" text-anchor="start" xml:space="preserve">anonymous mappings</text>
+  <text x="46.0" y="297.0" class="note" text-anchor="start" xml:space="preserve">large allocations, thread stacks</text>
+  <text x="434.0" y="279.0" class="mono" text-anchor="end" xml:space="preserve">rw-p</text>
+  <rect x="32.0" y="314.0" width="416.0" height="26.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="331.0" class="mono dim" text-anchor="start" xml:space="preserve">(unmapped)</text>
+  <rect x="32.0" y="346.0" width="416.0" height="46.0" rx="6" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="46.0" y="363.0" class="mono strong" text-anchor="start" xml:space="preserve">[heap]</text>
+  <text x="46.0" y="381.0" class="note" text-anchor="start" xml:space="preserve">malloc; grows upward with brk</text>
+  <text x="434.0" y="363.0" class="mono" text-anchor="end" xml:space="preserve">rw-p</text>
+  <rect x="32.0" y="398.0" width="416.0" height="46.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="46.0" y="415.0" class="mono strong" text-anchor="start" xml:space="preserve">/usr/bin/cat, data</text>
+  <text x="46.0" y="433.0" class="note" text-anchor="start" xml:space="preserve">global variables</text>
+  <text x="434.0" y="415.0" class="mono" text-anchor="end" xml:space="preserve">rw-p</text>
+  <rect x="32.0" y="450.0" width="416.0" height="46.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="46.0" y="467.0" class="mono strong" text-anchor="start" xml:space="preserve">/usr/bin/cat, code</text>
+  <text x="46.0" y="485.0" class="note" text-anchor="start" xml:space="preserve">the program&#x27;s instructions</text>
+  <text x="434.0" y="467.0" class="mono" text-anchor="end" xml:space="preserve">r-xp</text>
+  <text x="32.0" y="514.0" class="tab" text-anchor="start" xml:space="preserve">low addresses</text>
+</svg>

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 390" width="480" height="390" role="img" aria-label="3 gauges for the group of user 1000. pids.current is 1347 of 40594 tasks allowed. Of the 12315 MB of memory in use, 5923 MB is anonymous memory of programs and 5731 MB is page cache.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="390" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Reading the counters of a group</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The usage of every process of user 1000 together.</text>
+  <text x="32.0" y="122.0" class="name" text-anchor="start" xml:space="preserve">pids.current of user-1000.slice</text>
+  <text x="448.0" y="122.0" class="mono" text-anchor="end" xml:space="preserve">1347 of 40594 tasks</text>
+  <rect x="32.0" y="130.0" width="416.0" height="22.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="130.0" width="13.8" height="22.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="32.0" y="192.0" class="name" text-anchor="start" xml:space="preserve">of its memory: anonymous</text>
+  <text x="448.0" y="192.0" class="mono" text-anchor="end" xml:space="preserve">5923 of 12315 MB</text>
+  <rect x="32.0" y="200.0" width="416.0" height="22.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="200.0" width="200.1" height="22.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="32.0" y="262.0" class="name" text-anchor="start" xml:space="preserve">of its memory: page cache</text>
+  <text x="448.0" y="262.0" class="mono" text-anchor="end" xml:space="preserve">5731 of 12315 MB</text>
+  <rect x="32.0" y="270.0" width="416.0" height="22.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="270.0" width="193.6" height="22.0" rx="6" fill="#EEF6DC" stroke="#5E9400" stroke-width="1.3"/>
+  <text x="32.0" y="328.0" class="note" text-anchor="start" xml:space="preserve">1347 of the 40594 tasks allowed are in use. memory.max is max,</text>
+  <text x="32.0" y="345.0" class="note" text-anchor="start" xml:space="preserve">so the 12315 MB in use has no limit. About half of it is page</text>
+  <text x="32.0" y="362.0" class="note" text-anchor="start" xml:space="preserve">cache, which the kernel can reclaim under a limit.</text>
+</svg>

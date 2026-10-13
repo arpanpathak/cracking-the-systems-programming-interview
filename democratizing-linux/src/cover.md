@@ -1,0 +1,1 @@
+<img class="cover" src="art/cover.svg" alt="The cover of Democratizing Linux: A Pipe Dream. A penguin sleeps on an ice floe under the aurora, and in its dream a pipe carries the bytes of the word LINUX from one penguin to another.">

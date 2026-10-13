@@ -1,0 +1,14 @@
+ring of 4 pages of 8 bytes
+put  12: 12 bytes   head 2  tail 0   [8 4 . .]
+take  3:  3 bytes   head 2  tail 0   [5 4 . .]
+put  30: 20 bytes   head 4  tail 0   [5 8 8 8]
+take  5:  5 bytes   head 4  tail 1   [. 8 8 8]
+put  30:  8 bytes   head 5  tail 1   [8 8 8 8]
+
+new pipe: 65536 bytes accepted
+after reading 1 byte: 0 bytes accepted
+after reading 4096 bytes in total: 4096 bytes accepted
+
+1048576 bytes written: 1048576 bytes read, in order: true
+write end closed: read returns 0
+read end closed: write fails with EPIPE

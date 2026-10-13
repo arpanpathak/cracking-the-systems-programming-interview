@@ -1,0 +1,386 @@
+/* Browser edition. The print edition uses tools/print.css; both style the same
+   class names that the chapters use: img.plate, .covers, .sidebar, .listing,
+   and figure. */
+
+:root {
+    --book-ink: #1d2733;
+    --book-steel: #5b6b7c;
+    --book-pale: #e9eef3;
+    --book-navy: #16324f;
+    --book-rust: #d9622b;
+    --book-brass: #c89b3c;
+    --content-max-width: 820px;
+}
+
+.navy, .coal, .ayu {
+    --book-ink: #d6dde5;
+    --book-pale: #1f2b38;
+    --book-navy: #9cc3ec;
+}
+
+.content main {
+    font-family: Charter, "Iowan Old Style", Georgia, serif;
+    font-size: 1.72rem;
+    line-height: 1.62;
+}
+
+.content h1, .content h2, .content h3, .content h4 {
+    font-family: "Avenir Next Condensed", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    color: var(--book-navy);
+    letter-spacing: 0.01em;
+}
+
+.content h1 { font-size: 2.4em; margin-top: 0.4em; }
+.content h2 { border-bottom: 1px solid #c9d4de; padding-bottom: 0.2em; margin-top: 2em; }
+
+img.plate {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    margin: 0.5em 0 1em 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+img.cover {
+    display: block;
+    max-width: 520px;
+    width: 100%;
+    margin: 1em auto;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.covers {
+    background: var(--book-pale);
+    border-left: 5px solid var(--book-rust);
+    padding: 0.6em 1.2em 0.2em 1.2em;
+    margin: 0 0 1.5em 0;
+}
+
+.covers > p:first-child {
+    font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--book-navy);
+    margin-bottom: 0.3em;
+}
+
+.sidebar {
+    border: 1px solid #b7c4d1;
+    background: var(--book-pale);
+    padding: 0.6em 1.2em;
+    margin: 1.4em 0;
+    font-size: 0.94em;
+}
+
+.content blockquote {
+    border-left: 4px solid var(--book-brass);
+    background: transparent;
+    margin: 1em 0;
+    padding: 0.2em 1em;
+    font-size: 0.95em;
+}
+
+.listing {
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82em;
+    margin: 1.6em 0 0.2em 0;
+    padding-bottom: 0.25em;
+    border-bottom: 2px solid var(--book-navy);
+}
+
+.listing b, figcaption b { color: var(--book-rust); margin-right: 0.4em; }
+
+.content pre > code { font-size: 0.83em; line-height: 1.5; }
+
+figure { margin: 1.6em 0; text-align: center; }
+figure img { max-width: 100%; }
+
+figcaption {
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82em;
+    text-align: left;
+    border-top: 1px solid #c9d4de;
+    margin-top: 0.5em;
+    padding-top: 0.3em;
+}
+
+/* An animated figure. The still figures call their captions "Figure N"; an
+   animation calls its caption "Animation N" and colours it teal, so a reader
+   can tell at a glance that the picture moves. */
+figure.anim {
+    margin: 1.4em 0 2em 0;
+}
+
+figure.anim img {
+    border: 2px solid var(--book-pale);
+    border-radius: 6px;
+}
+
+figure.anim figcaption b {
+    color: #2f7f86;
+}
+
+.navy figure img, .coal figure img, .ayu figure img {
+    background: #f3f5f7;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+.content table { font-size: 0.9em; }
+.content table thead th { background: var(--book-navy); color: #ffffff; }
+.navy .content table thead th, .coal .content table thead th { color: #0d1620; }
+
+.callout { border-left: 5px solid var(--book-navy); background: var(--book-pale); padding: 0.5em 1.1em; margin: 1.3em 0; font-size: 0.95em; }
+.callout.tip { border-left-color: #2f7f86; }
+.callout.warning { border-left-color: var(--book-rust); }
+.callout.note { border-left-color: var(--book-brass); }
+.callout > p:first-child strong:first-child { font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif; letter-spacing: 0.06em; }
+.summary { border-top: 3px solid var(--book-navy); margin-top: 2em; }
+
+/* The motion animations are videos, with controls a reader can use to take
+   them at their own pace: pause, a slower speed, a jump to any step, and a
+   mode that stops at the end of each step. */
+figure.anim video.motion {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border: 2px solid var(--book-pale);
+    border-radius: 6px;
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.motion-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 0.9em;
+    margin: 0.5em 0 0.2em 0;
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.8em;
+    text-align: left;
+}
+
+.motion-group { display: inline-flex; flex-wrap: wrap; gap: 0.3em; }
+
+.motion-bar button {
+    font: inherit;
+    padding: 0.25em 0.7em;
+    border: 1px solid #c9d4de;
+    border-radius: 999px;
+    background: #f6f8fa;
+    color: #1d2733;
+    cursor: pointer;
+}
+
+.motion-bar button:hover { border-color: #2f7f86; }
+.motion-bar button:focus-visible { outline: 2px solid #c89b3c; outline-offset: 2px; }
+
+.motion-bar button[aria-pressed="true"],
+.motion-bar button[aria-current="step"] {
+    background: #e3f1ea;
+    border-color: #2f7f86;
+    color: #1d4f54;
+    font-weight: 600;
+}
+
+.motion-bar .motion-play { min-width: 6.5em; font-weight: 600; }
+.motion-stepwise { color: #5b6b7c; cursor: pointer; }
+
+/* ---- Additions for Democratizing Linux -------------------------------- */
+
+/* The diagrams are drawn 480 units wide, to fit a phone held upright. On a
+   wide screen they are shown a little larger, in the middle of the column. */
+figure > img[src$=".svg"] {
+    width: min(100%, 600px);
+    cursor: zoom-in;
+}
+
+figure.anim video.motion,
+figure.anim > img {
+    width: min(100%, 640px);
+    margin-inline: auto;
+}
+
+figure.anim .motion-bar { justify-content: center; }
+
+/* The cover is a wide plate in this book. */
+img.cover { max-width: 100%; border-radius: 6px; }
+
+/* The low-level design box: the types and operations of a program. */
+.lld {
+    border: 1px solid #b7c4d1;
+    border-top: 4px solid var(--book-navy);
+    background: var(--book-pale);
+    padding: 0.6em 1.2em 0.4em 1.2em;
+    margin: 1.6em 0;
+    font-size: 0.94em;
+}
+
+.lld > p:first-child {
+    font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--book-navy);
+    margin-bottom: 0.3em;
+}
+
+.lld > p:first-child code { text-transform: none; }
+.lld table { width: 100%; margin: 0.6em 0; background: transparent; }
+
+.listing a {
+    float: right;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    font-weight: 400;
+}
+
+/* Code. theme/code.js puts every line of a listing in its own block, so a
+   line that is longer than the screen wraps under its own indentation and
+   the listing never scrolls sideways. --indent is the width of the line's
+   leading white space, in characters. */
+.content pre { padding: 0; }
+.content pre > code { display: block; padding: 0.9em 1em; tab-size: 4; }
+
+.content pre > code.lined {
+    white-space: normal;
+    overflow-x: visible;
+}
+
+.content pre > code .line {
+    display: block;
+    min-height: 1.5em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding-left: calc(var(--indent, 0) * 1ch + 4ch);
+    text-indent: calc(var(--indent, 0) * -1ch - 4ch);
+}
+
+/* Phones. The column uses the whole width, tables become lists, and the
+   type is a little smaller. */
+@media (max-width: 720px) {
+    .content main { font-size: 1.62rem; line-height: 1.58; }
+    .content h1 { font-size: 2em; }
+    .content h2 { font-size: 1.45em; }
+    .content pre > code { font-size: 0.74em; padding: 0.8em 0.8em; }
+    .listing a { float: none; display: block; margin-top: 0.2em; overflow-wrap: anywhere; }
+    :not(pre) > code { overflow-wrap: anywhere; }
+
+    .content table, .content tbody, .content tr, .content td { display: block; width: auto; }
+    .content table { border: 0; margin-inline: 0; }
+    .content thead { display: none; }
+    .content tr { padding: 0.55em 0; border: 0; border-bottom: 1px solid #c9d4de; background: none !important; }
+    .content td { padding: 0.1em 0; border: 0; }
+    .content td:first-child { font-weight: 600; }
+    .content td:empty { display: none; }
+    .lld, .covers, .callout { padding-inline: 0.9em; }
+}
+
+.figure-zoom {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(9, 11, 16, 0.94);
+    cursor: zoom-out;
+    overflow: auto;
+    touch-action: pinch-zoom;
+}
+.figure-zoom img {
+    max-width: 96vw;
+    max-height: 94vh;
+    border-radius: 10px;
+    background: #fbfaf6;
+}
+/* On an upright phone a wide diagram is turned a quarter, so its long side
+   runs down the screen. */
+.figure-zoom.turned img {
+    transform: rotate(90deg);
+    width: 94vh;
+    max-width: none;
+    max-height: 96vw;
+}
+.figure-zoom::after {
+    content: "Tap to close";
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    color: #a6accd;
+    font-size: 1.3rem;
+}
+
+/* The mascots. A gopher marks a Go listing and a crab a Rust listing. A crab
+   in one of 5 moods sits beside a note, a callout and the summary. */
+.listing img.mascot {
+    height: 1.9em;
+    width: auto;
+    vertical-align: -0.55em;
+    margin-right: 0.45em;
+    box-shadow: none;
+    border: 0;
+    background: none;
+    padding: 0;
+}
+
+.crab {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin: 1.6em 0;
+    padding: 0.5em 1.1em 0.5em 0.9em;
+    border: 1px solid #f3c3a8;
+    border-left: 5px solid var(--book-rust);
+    border-radius: 6px;
+    background: #fff5ee;
+    font-size: 0.95em;
+}
+
+.navy .crab, .coal .crab, .ayu .crab { background: #2a1d17; border-color: #6b3a22; }
+
+.crab::before {
+    content: "";
+    flex: 0 0 4.6em;
+    height: 3.7em;
+    background: no-repeat center / contain;
+}
+
+.crab > p { margin: 0.3em 0; }
+.crab-happy::before { background-image: url("../art/crab-happy.svg"); }
+.crab-cute::before { background-image: url("../art/crab-cute.svg"); }
+.crab-angry::before { background-image: url("../art/crab-angry.svg"); }
+.crab-sleepy::before { background-image: url("../art/crab-sleepy.svg"); }
+.crab-shocked::before { background-image: url("../art/crab-shocked.svg"); }
+
+.callout { position: relative; padding-right: 5.4em; }
+
+.callout::after {
+    content: "";
+    position: absolute;
+    right: 0.7em;
+    top: 0.6em;
+    width: 4em;
+    height: 3.2em;
+    background: url("../art/crab-cute.svg") no-repeat center / contain;
+}
+
+.summary h2::after {
+    content: "";
+    display: inline-block;
+    width: 2.2em;
+    height: 1.7em;
+    margin-left: 0.5em;
+    vertical-align: -0.35em;
+    background: url("../art/crab-happy.svg") no-repeat center / contain;
+}
+
+@media (max-width: 720px) {
+    .crab { gap: 0.7em; padding-inline: 0.7em; }
+    .crab::before { flex-basis: 3.6em; height: 2.9em; }
+    .callout { padding-right: 0.9em; }
+    .callout::after { position: static; display: block; margin: 0 0 0.2em auto; width: 3.4em; height: 2.7em; float: right; }
+}

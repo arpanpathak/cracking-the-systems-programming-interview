@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 651" width="480" height="651" role="img" aria-label="The kernel structures behind a descriptor, top to bottom, each pointing to the next. struct fdtable has the array fd with one pointer per descriptor and the bitmaps open_fds and close_on_exec. struct file has f_pos, f_flags, f_count, f_inode and f_path. struct dentry has d_name, d_parent and d_inode. struct inode has i_ino, i_mode, i_nlink, i_size, the owner and times, and i_mapping.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="651" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The structures behind a descriptor</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A selection of fields from Linux 5.15.</text>
+  <rect x="60.0" y="96.0" width="360.0" height="99.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="60.0" y="96.0" width="360.0" height="28.0" rx="10" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="72.0" y="115.0" class="mono strong" text-anchor="start" xml:space="preserve">struct fdtable</text>
+  <text x="72.0" y="146.0" class="mono" text-anchor="start" xml:space="preserve">fd[]           one pointer per descriptor</text>
+  <text x="72.0" y="165.0" class="mono" text-anchor="start" xml:space="preserve">open_fds       bitmap: numbers in use</text>
+  <text x="72.0" y="184.0" class="mono" text-anchor="start" xml:space="preserve">close_on_exec  bitmap: FD_CLOEXEC</text>
+  <rect x="60.0" y="221.0" width="360.0" height="118.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="60.0" y="221.0" width="360.0" height="28.0" rx="10" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="72.0" y="240.0" class="mono strong" text-anchor="start" xml:space="preserve">struct file</text>
+  <text x="72.0" y="271.0" class="mono" text-anchor="start" xml:space="preserve">f_pos     the offset</text>
+  <text x="72.0" y="290.0" class="mono" text-anchor="start" xml:space="preserve">f_flags   O_APPEND, O_NONBLOCK, ...</text>
+  <text x="72.0" y="309.0" class="mono" text-anchor="start" xml:space="preserve">f_count   references to this file</text>
+  <text x="72.0" y="328.0" class="mono" text-anchor="start" xml:space="preserve">f_inode, f_path</text>
+  <path class="wire" d="M240,195 L240,221" marker-end="url(#head)"/>
+  <rect x="60.0" y="365.0" width="360.0" height="99.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="60.0" y="365.0" width="360.0" height="28.0" rx="10" fill="#F0EAFB" stroke="#7A4FD0" stroke-width="1.3"/>
+  <text x="72.0" y="384.0" class="mono strong" text-anchor="start" xml:space="preserve">struct dentry</text>
+  <text x="72.0" y="415.0" class="mono" text-anchor="start" xml:space="preserve">d_name    one component of a path</text>
+  <text x="72.0" y="434.0" class="mono" text-anchor="start" xml:space="preserve">d_parent  the directory</text>
+  <text x="72.0" y="453.0" class="mono" text-anchor="start" xml:space="preserve">d_inode</text>
+  <path class="wire" d="M240,339 L240,365" marker-end="url(#head)"/>
+  <rect x="60.0" y="490.0" width="360.0" height="137.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="60.0" y="490.0" width="360.0" height="28.0" rx="10" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="72.0" y="509.0" class="mono strong" text-anchor="start" xml:space="preserve">struct inode</text>
+  <text x="72.0" y="540.0" class="mono" text-anchor="start" xml:space="preserve">i_ino     the inode number</text>
+  <text x="72.0" y="559.0" class="mono" text-anchor="start" xml:space="preserve">i_mode    type and permissions</text>
+  <text x="72.0" y="578.0" class="mono" text-anchor="start" xml:space="preserve">i_nlink   names that refer to it</text>
+  <text x="72.0" y="597.0" class="mono" text-anchor="start" xml:space="preserve">i_size, i_uid, i_gid, times</text>
+  <text x="72.0" y="616.0" class="mono" text-anchor="start" xml:space="preserve">i_mapping the cached pages</text>
+  <path class="wire" d="M240,464 L240,490" marker-end="url(#head)"/>
+</svg>

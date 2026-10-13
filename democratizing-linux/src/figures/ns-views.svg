@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 456" width="480" height="456" role="img" aria-label="A process in new namespaces seen from outside and from inside. Its process number is 565534 on the host and 1 inside. Its user is 1000 on the host and 0 inside. The host name is yahboom outside and box inside. It may set the host name inside and gets EPERM outside.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="456" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The same process, seen from 2 sides</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">nsfacts measured both columns.</text>
+  <rect x="32" y="104" width="200" height="44" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,104.7 H38 V147.3 H44 A11.3,11.3 0 0 1 32.7,136 V116 A11.3,11.3 0 0 1 44,104.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="131.0" class="name" text-anchor="start" xml:space="preserve">outside, on the host</text>
+  <rect x="248" y="104" width="200" height="44" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M260,104.7 H254 V147.3 H260 A11.3,11.3 0 0 1 248.7,136 V116 A11.3,11.3 0 0 1 260,104.7 Z" fill="#7A4FD0"/>
+  <text x="268.0" y="131.0" class="name" text-anchor="start" xml:space="preserve">inside</text>
+  <rect x="32.0" y="162.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="248.0" y="162.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="44.0" y="180.0" class="tab" text-anchor="start" xml:space="preserve">its pid</text>
+  <text x="44.0" y="198.0" class="mono strong" text-anchor="start" xml:space="preserve">565534</text>
+  <text x="260.0" y="180.0" class="tab" text-anchor="start" xml:space="preserve">its pid</text>
+  <text x="260.0" y="198.0" class="mono strong" text-anchor="start" xml:space="preserve">1</text>
+  <rect x="32.0" y="220.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="248.0" y="220.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="44.0" y="238.0" class="tab" text-anchor="start" xml:space="preserve">its user</text>
+  <text x="44.0" y="256.0" class="mono strong" text-anchor="start" xml:space="preserve">1000 (jetson)</text>
+  <text x="260.0" y="238.0" class="tab" text-anchor="start" xml:space="preserve">its user</text>
+  <text x="260.0" y="256.0" class="mono strong" text-anchor="start" xml:space="preserve">0 (root)</text>
+  <rect x="32.0" y="278.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="248.0" y="278.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="44.0" y="296.0" class="tab" text-anchor="start" xml:space="preserve">the host name</text>
+  <text x="44.0" y="314.0" class="mono strong" text-anchor="start" xml:space="preserve">yahboom</text>
+  <text x="260.0" y="296.0" class="tab" text-anchor="start" xml:space="preserve">the host name</text>
+  <text x="260.0" y="314.0" class="mono strong" text-anchor="start" xml:space="preserve">box</text>
+  <rect x="32.0" y="336.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="248.0" y="336.0" width="200.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="44.0" y="354.0" class="tab" text-anchor="start" xml:space="preserve">may set the host name</text>
+  <text x="44.0" y="372.0" class="mono strong" text-anchor="start" xml:space="preserve">no: EPERM</text>
+  <text x="260.0" y="354.0" class="tab" text-anchor="start" xml:space="preserve">may set the host name</text>
+  <text x="260.0" y="372.0" class="mono strong" text-anchor="start" xml:space="preserve">yes</text>
+  <text x="32.0" y="412.0" class="note" text-anchor="start" xml:space="preserve">A namespace changes what the process is told. The process, its</text>
+  <text x="32.0" y="429.0" class="note" text-anchor="start" xml:space="preserve">memory and its files are the same from both sides.</text>
+</svg>

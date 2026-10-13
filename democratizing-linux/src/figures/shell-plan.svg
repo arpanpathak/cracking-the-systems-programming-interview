@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 614" width="480" height="614" role="img" aria-label="The plan for the line sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers. Descriptor 0 of sort is the file numbers, opened for reading. Descriptor 1 of sort is the write end of a pipe. Descriptor 0 of head is the read end of that pipe. Descriptor 1 of head is the file numbers, opened with O_APPEND.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="614" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Descriptors for one command line</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The shell arranges descriptors 0 and 1 of each child.</text>
+  <text x="240.0" y="100.0" class="mono strong" text-anchor="middle" xml:space="preserve">sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers</text>
+  <path d="M150,133 A90.0,9 0 0 1 330,133 V177 A90.0,9 0 0 1 150,177 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="240.0" cy="133" rx="90.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="240.0" y="158.0" class="name" text-anchor="middle" xml:space="preserve">numbers</text>
+  <text x="240.0" y="176.0" class="sub" text-anchor="middle" xml:space="preserve">opened for reading</text>
+  <path class="wire" d="M240,186 L240,236" marker-end="url(#head)"/>
+  <rect x="193.4" y="202.0" width="93.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="214.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">descriptor 0</text>
+  <rect x="110" y="236" width="260" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M122,236.7 H116 V291.3 H122 A11.3,11.3 0 0 1 110.7,280 V248 A11.3,11.3 0 0 1 122,236.7 Z" fill="#2F6FDB"/>
+  <rect x="126" y="248.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(132.0,254.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="168.0" y="260.0" class="name" text-anchor="start" xml:space="preserve">sort -rn</text>
+  <text x="168.0" y="278.0" class="sub" text-anchor="start" xml:space="preserve">child 1</text>
+  <path class="wire" d="M240,292 L240,342" marker-end="url(#head)"/>
+  <rect x="193.4" y="308.0" width="93.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="320.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">descriptor 1</text>
+  <rect x="165.0" y="342.0" width="150.0" height="30.0" rx="15" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="240.0" y="361.5" class="mono strong" text-anchor="middle" xml:space="preserve">pipe</text>
+  <path class="wire" d="M240,372 L240,422" marker-end="url(#head)"/>
+  <rect x="193.4" y="388.0" width="93.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="400.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">descriptor 0</text>
+  <rect x="110" y="422" width="260" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M122,422.7 H116 V477.3 H122 A11.3,11.3 0 0 1 110.7,466 V434 A11.3,11.3 0 0 1 122,422.7 Z" fill="#2F6FDB"/>
+  <rect x="126" y="434.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(132.0,440.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="168.0" y="446.0" class="name" text-anchor="start" xml:space="preserve">head -n 2</text>
+  <text x="168.0" y="464.0" class="sub" text-anchor="start" xml:space="preserve">child 2</text>
+  <path class="wire" d="M240,478 L240,528" marker-end="url(#head)"/>
+  <rect x="193.4" y="494.0" width="93.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="506.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">descriptor 1</text>
+  <path d="M150,537 A90.0,9 0 0 1 330,537 V581 A90.0,9 0 0 1 150,581 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="240.0" cy="537" rx="90.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="240.0" y="562.0" class="name" text-anchor="middle" xml:space="preserve">numbers</text>
+  <text x="240.0" y="580.0" class="sub" text-anchor="middle" xml:space="preserve">opened with O_APPEND</text>
+</svg>

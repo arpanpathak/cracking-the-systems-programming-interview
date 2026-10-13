@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" width="480" height="480" role="img" aria-label="The scheduling classes in order of precedence. Deadline, with the policy SCHED_DEADLINE, runs first. Real time, with SCHED_FIFO and SCHED_RR, has fixed priorities 1 to 99. Fair, with SCHED_OTHER and SCHED_BATCH, uses nice values -20 to 19. Idle, with SCHED_IDLE, runs when nothing else is runnable.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="480" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Scheduling classes</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Almost every task on a system is in the fair class.</text>
+  <rect x="48" y="96" width="384" height="68" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,96.7 H54 V163.3 H60 A11.3,11.3 0 0 1 48.7,152 V108 A11.3,11.3 0 0 1 60,96.7 Z" fill="#CF4526"/>
+  <text x="68.0" y="117.0" class="name" text-anchor="start" xml:space="preserve">Deadline</text>
+  <text x="68.0" y="135.0" class="sub" text-anchor="start" xml:space="preserve">SCHED_DEADLINE</text>
+  <text x="68.0" y="153.0" class="sub" text-anchor="start" xml:space="preserve">runs first: tasks with a declared deadline</text>
+  <rect x="48" y="180" width="384" height="68" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,180.7 H54 V247.3 H60 A11.3,11.3 0 0 1 48.7,236 V192 A11.3,11.3 0 0 1 60,180.7 Z" fill="#B7791F"/>
+  <text x="68.0" y="201.0" class="name" text-anchor="start" xml:space="preserve">Real time</text>
+  <text x="68.0" y="219.0" class="sub" text-anchor="start" xml:space="preserve">SCHED_FIFO, SCHED_RR</text>
+  <text x="68.0" y="237.0" class="sub" text-anchor="start" xml:space="preserve">fixed priority 1 to 99, highest first</text>
+  <path class="wire" d="M240,164 L240,180" marker-end="url(#head)"/>
+  <rect x="48" y="264" width="384" height="68" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,264.7 H54 V331.3 H60 A11.3,11.3 0 0 1 48.7,320 V276 A11.3,11.3 0 0 1 60,264.7 Z" fill="#2E8B3D"/>
+  <text x="68.0" y="285.0" class="name" text-anchor="start" xml:space="preserve">Fair</text>
+  <text x="68.0" y="303.0" class="sub" text-anchor="start" xml:space="preserve">SCHED_OTHER, SCHED_BATCH</text>
+  <text x="68.0" y="321.0" class="sub" text-anchor="start" xml:space="preserve">nice -20 to 19: the subject of this chapter</text>
+  <path class="wire" d="M240,248 L240,264" marker-end="url(#head)"/>
+  <rect x="48" y="348" width="384" height="68" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,348.7 H54 V415.3 H60 A11.3,11.3 0 0 1 48.7,404 V360 A11.3,11.3 0 0 1 60,348.7 Z" fill="#7F8EA0"/>
+  <text x="68.0" y="369.0" class="name" text-anchor="start" xml:space="preserve">Idle</text>
+  <text x="68.0" y="387.0" class="sub" text-anchor="start" xml:space="preserve">SCHED_IDLE</text>
+  <text x="68.0" y="405.0" class="sub" text-anchor="start" xml:space="preserve">runs when nothing else is runnable</text>
+  <path class="wire" d="M240,332 L240,348" marker-end="url(#head)"/>
+  <text x="32.0" y="442.0" class="note" text-anchor="start" xml:space="preserve">The scheduler asks each class in this order for a task. A runnable</text>
+  <text x="32.0" y="459.0" class="note" text-anchor="start" xml:space="preserve">real-time task always runs before any task of the fair class.</text>
+</svg>
