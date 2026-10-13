@@ -428,6 +428,57 @@ The steps follow the arrows of figure 16.objects-design.
 3. When every chunk is stored, the API server writes 1 record to the metadata store: the object's name and its list of chunk names.
 4. In the background, the repair worker checks that every chunk still has 3 good copies, and makes a new copy where 1 is missing.
 
+## The design, deployed
+
+@figure objects-deploy :: The object store as it is deployed, with the background tier that scrubs, repairs and collects.
+
+The front end is a large stateless tier of API servers behind load balancers. Below
+it the 2 kinds of storage are plainly separate: 60 machines of the metadata store,
+which is 20 shards of 3 replicas each, and 600 storage nodes with some 36 disks
+apiece, which hold the bytes. The bottom tier is peculiar to storage systems. It
+serves no request, and it runs all the time: a scrubber on every node reading its
+disks in rotation, a pool of repair workers, and the garbage collector. A store of
+this size loses a disk on most days, and this tier is what turns that from an event
+into routine.
+
+## How real systems do it
+
+The published designs of large stores show a clear progression, and this chapter
+compresses several generations into 1.
+
+The Google File System of 2003 established the pattern of a metadata service and
+many chunk servers, with chunks of 64 MB kept in 3 copies. Facebook's Haystack, in
+2010, addressed a problem that this chapter passes over: a store of billions of small
+photographs spends most of its disk operations on locating files and very few on
+reading them, and Haystack packed many photographs into each large file with an
+index held in memory, so that a read needs a single disk operation. Any store of
+small objects has to do something of the kind, and a design that kept every object
+as a separate file would not survive.
+
+For data that is seldom read, Facebook then built f4, which replaces copies by
+erasure coding with exactly the scheme of this chapter, 10 data blocks and 4 parity
+blocks, at 1.4 times the size of the data within a data centre. The paper gives the
+effective overhead of Haystack as 3.6, since it kept 3 copies on disks that were
+themselves in redundant arrays, and that of f4 as 2.1 once a further coding across
+data centres is included. Microsoft's storage system uses a variant, local
+reconstruction codes, which adds parity blocks that each cover half of the data
+blocks, so that the common case of a single lost block is repaired by reading 6
+blocks where the plain scheme reads 10 or more.
+
+On placement, a paper from Stanford made precise the danger of correlated failures.
+When replicas are placed on nodes chosen at random, almost any simultaneous loss of 3
+nodes in a large cluster destroys some chunk, because nearly every combination of 3
+nodes holds the replicas of something. Restricting placement to a limited number of
+fixed groups of nodes makes a simultaneous loss far less likely to hit all copies of
+anything, at the cost of losing more when it does.
+
+The deduplication of identical chunks described in this chapter is characteristic of
+backup and file synchronisation systems, and public object stores generally do not
+practise it across customers, in part because it lets 1 customer discover whether
+another holds a given file. And the consistency that this chapter requires of
+metadata was for many years not provided by the largest public store, Amazon's S3,
+which offered it only from the end of 2020.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -464,6 +515,16 @@ The steps follow the arrows of figure 16.objects-design.
 ## The simulation
 
 @sim objectsim
+
+## References
+
+- S. Ghemawat, H. Gobioff and S. Leung, "The Google File System", SOSP 2003.
+- D. Beaver and others, "Finding a Needle in Haystack: Facebook's Photo Storage", OSDI 2010.
+- S. Muralidhar and others, "f4: Facebook's Warm BLOB Storage System", OSDI 2014.
+- C. Huang and others, "Erasure Coding in Windows Azure Storage", USENIX ATC 2012.
+- A. Cidon and others, "Copysets: Reducing the Frequency of Data Loss in Cloud Storage", USENIX ATC 2013.
+- B. Calder and others, "Windows Azure Storage: A Highly Available Cloud Storage Service with Strong Consistency", SOSP 2011.
+- Amazon Web Services, "Amazon S3 Update: Strong Read-After-Write Consistency", 2020.
 
 ## Terms introduced in this chapter
 

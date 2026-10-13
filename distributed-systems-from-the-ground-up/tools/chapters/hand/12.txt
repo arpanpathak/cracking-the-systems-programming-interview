@@ -297,8 +297,8 @@ than once.
 ## The API
 
 A worker takes a job by creating a lease, which is why the request is a `POST` to the
-collection of leases, and it reports by replacing the result of the job, which is a
-`PUT`.
+collection of leases, and it reports by writing the result that belongs to its lease,
+which is a `PUT` to an address that names the job and the lease.
 
 @part api
 
@@ -314,6 +314,46 @@ scheduler to learn the capacity of each worker.
 ### One request, step by step
 
 @part walk
+
+## The design, deployed
+
+@figure jobs-deploy :: The job scheduler as it is deployed: stateless scheduler nodes, a replicated job store, and 200 workers.
+
+The scheduler nodes hold no state and stand behind a pair of load balancers, through
+which both submitters and workers reach them. All state is in the job store, a
+leader with 2 followers in 3 zones. The reclaimer, which returns jobs with expired
+leases to the queue, runs as 2 instances of which 1 is active, chosen through the
+lock service of chapter 10, and since reclaiming is itself a conditional write, a
+moment in which both believe themselves active does no harm. The 200 workers are the
+only tier whose size follows the amount of work, and it can be changed freely.
+
+## How real systems do it
+
+Google has published an account of its distributed cron service that agrees with
+this chapter on the essentials and is frank about the same limits. The service keeps
+its state in a store replicated by Paxos, and only the leader launches jobs. The
+authors state that the system cannot guarantee that a job is launched exactly once,
+since the leader may fail between launching and recording the launch, and that the
+owners of each job must therefore decide whether it is worse for the job to be
+skipped or to run twice. They recommend making launches idempotent, and naming each
+launch after its scheduled time so that a repeat can be recognised, as this chapter
+does.
+
+The remedy for many workers competing for the same waiting job, a query that passes
+over rows locked by other transactions, is the clause `SKIP LOCKED`, which
+PostgreSQL has offered since version 9.5 and which is the basis of several job
+queues built on that database. For keeping very large numbers of timers in memory,
+the classical structure is the timing wheel, in which timers are placed in slots by
+their expiry time and a pointer advances 1 slot at each tick, so that starting and
+stopping a timer take constant time.
+
+A more recent development goes beyond anything in this chapter. Systems such as
+Temporal, which descends from Uber's Cadence, record every step of a long-running
+piece of work in a durable history, and recover a failed worker by replaying that
+history to the point it had reached. A job in such a system is a program that
+appears to run for days without interruption, and the leases, retries and
+idempotency of this chapter are handled beneath it. The underlying guarantee is
+unchanged: each step runs at least once, and the steps must tolerate repetition.
 
 ## Mistakes to avoid
 
@@ -343,6 +383,13 @@ scheduler to learn the capacity of each worker.
 ## The simulation
 
 @part sim
+
+## References
+
+- S. Davidovic and K. Guliani, "Reliable Cron across the Planet", ACM Queue, 2015.
+- PostgreSQL documentation, "SELECT", on `FOR UPDATE SKIP LOCKED`.
+- G. Varghese and A. Lauck, "Hashed and Hierarchical Timing Wheels", SOSP 1987.
+- Temporal documentation, "Workflow execution" and "Event history".
 
 ## Terms introduced in this chapter
 

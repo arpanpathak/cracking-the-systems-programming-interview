@@ -416,6 +416,56 @@ The steps follow the arrows of figure 28.4.
 4. The log is also copied to the archive, from which counts can later be made again.
 5. When the watermark passes the end of a window, the processor writes that window's count to the count store, under a key formed from the advertisement and the start of the window.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/click-deploy.svg?v=05190817" alt="The click counter, deployed. Browsers: Browsers (100000 clicks/s), report each click. Collection, in 3 zones: Load balancers (x 4), any collector, Collectors (x 40), append, and nothing else. The log: Click log (x 12), brokers, chapter 11, Archive (73 TB a year), every raw click. Counting: Stream processors (x 24), state in checkpoints, Nightly batch (from the archive), final counts. Serving: Count store (x 9), by ad and window, Counts API (x 8), dashboards, invoices.">
+<figcaption><b>Figure 28.5</b> The click counter as it is deployed, from the collectors down to the store that serves the counts.</figcaption>
+</figure>
+
+The tiers follow the path of a click. The collectors are a large and deliberately
+simple stateless tier, since their availability is what matters most. The click log
+of 12 brokers is the point at which the system changes character: above it,
+everything must be available at every moment, and below it, everything can be
+stopped, corrected and run again from a position in the log. The 24 stream
+processors hold their state in checkpoints, and the nightly batch reads the archive.
+At the bottom, a small serving tier answers dashboards and the billing system from
+the count store.
+
+## How real systems do it
+
+The vocabulary of this chapter, event time and processing time, windows, watermarks
+and late data, was fixed by a paper from Google in 2015 that presents the Dataflow
+model. The paper's central argument is the one made here, that a stream is
+unbounded and its completeness is never known, so that a system must offer the
+means to trade correctness, delay and cost against one another explicitly. It adds
+a concept that this chapter touched on without naming, the *trigger*, which says
+when the result of a window is to be emitted: early and provisionally, at the
+watermark, and again for each late arrival. The earlier MillWheel paper describes
+the system beneath, including low watermarks and the removal of duplicate records
+by recording the identifiers of those processed.
+
+Apache Flink is the open implementation in widest use, and its checkpoints are the
+ones described here. They are taken without stopping the stream, by passing markers
+through it that tell each operator when to record its state, a method derived from
+a classical algorithm for taking a consistent snapshot of a distributed system.
+
+The problem of this very chapter, the joining and counting of clicks for billing,
+is the subject of a paper on Photon, the system that Google built for its
+advertising business. Photon runs in several data centres at once, so that the loss
+of 1 does not delay the counts, and it prevents a click from being processed twice
+by recording the identifier of every processed click in a store that is replicated
+between the data centres by Paxos. A click is thereby counted at most once at all
+times and exactly once eventually, which is the guarantee sought here, obtained
+across data centres.
+
+The practice of running a stream and a batch side by side was named the lambda
+architecture. The objection that the same logic then exists twice, and the proposal
+to reprocess by running the stream code again over a retained log, were made in an
+article by an author of Kafka. And for counting the number of distinct visitors,
+which cannot be done by adding partial counts, the standard tool is a sketch that
+estimates the number from a few kilobytes of state.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -462,6 +512,16 @@ The steps follow the arrows of figure 28.4.
 **Simulation in the repository.** The program [`code/clicksim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/clicksim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p clicksim` in the `code` directory.
 
 </div>
+
+## References
+
+- T. Akidau and others, "The Dataflow Model: A Practical Approach to Balancing Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order Data Processing", VLDB 2015.
+- T. Akidau and others, "MillWheel: Fault-Tolerant Stream Processing at Internet Scale", VLDB 2013.
+- R. Ananthanarayanan and others, "Photon: Fault-tolerant and Scalable Joining of Continuous Data Streams", SIGMOD 2013.
+- P. Carbone and others, "Lightweight Asynchronous Snapshots for Distributed Dataflows", 2015.
+- K. Chandy and L. Lamport, "Distributed Snapshots: Determining Global States of Distributed Systems", ACM Transactions on Computer Systems, 1985.
+- J. Kreps, "Questioning the Lambda Architecture", O'Reilly Radar, 2014.
+- P. Flajolet and others, "HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm", AofA 2007.
 
 ## Terms introduced in this chapter
 

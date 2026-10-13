@@ -390,6 +390,54 @@ request.
 
 @part walk
 
+## The design, deployed
+
+@figure pay-deploy :: The payment system as it is deployed, with the vault isolated and the card network outside.
+
+By the standards of this book the payment system is small, since 1000 payments per
+second is a modest load, and its deployment is shaped by correctness and isolation
+more than by scale. The payment API is stateless. The ledger is a single database
+with a leader and 2 followers in 3 zones, which confirms a write only when a
+follower in another zone holds it. The vault that holds card numbers is drawn in red
+because it is a separate system with its own network, its own access rules and its
+own audit, which the rest of the system can reach only to exchange a token. The
+background tier carries the work that follows a payment: publishing events from the
+outbox, asking the card network about pending payments, and the nightly
+reconciliation.
+
+## How real systems do it
+
+The idempotency key is the centrepiece of Stripe's public API, and an engineer of
+that company has published the most detailed account of implementing it. The
+account divides a request into *atomic phases*, each a database transaction that
+ends at a call to an outside service, and records after each phase how far the
+request has progressed, so that a retry with the same key resumes from the last
+completed phase and does not start again. This is a more careful version of the
+pending state described above, generalised to requests with several outside calls.
+Airbnb has described a similar design for its own payments, in which a request is
+divided into a phase before the outside call, the call itself and a phase after it,
+with the rule that no outside call may be made inside a database transaction.
+
+The saga comes from a paper of 1987, which proposed it for transactions that run
+too long to hold locks. The 2-phase commit protocol and its weakness, the
+participant left in doubt when the coordinator fails, are described in the classic
+literature on transaction processing.
+
+For the ledger, several companies have described building append-only stores
+specifically for double-entry records, with the immutability enforced by the store
+itself, whatever the application attempts. Whatever the store, the rule of
+keeping card numbers in an isolated component is not a matter of taste. The security
+standard of the card industry applies to every system that stores, processes or
+transmits card numbers, and the tokenising vault exists to keep as much of the
+system as possible outside its scope.
+
+What this chapter leaves out is considerable. A real card payment involves a
+standard message format between the parties, further authentication of the
+cardholder in many countries, the screening of every payment for fraud before it is
+authorised, the conversion of currencies, and the rules of each card network on
+disputes. Each is a subject in itself, and none of them changes the 3 ideas on which
+the chapter rests.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -419,6 +467,15 @@ request.
 ## The simulation
 
 @part sim
+
+## References
+
+- B. Leach, "Implementing Stripe-like Idempotency Keys in Postgres", 2017.
+- Stripe API reference, "Idempotent requests".
+- J. Chew, "Avoiding Double Payments in a Distributed Payments System", Airbnb engineering blog, 2019.
+- H. Garcia-Molina and K. Salem, "Sagas", SIGMOD 1987.
+- J. Gray and A. Reuter, *Transaction Processing: Concepts and Techniques*, Morgan Kaufmann, 1992.
+- PCI Security Standards Council, *Payment Card Industry Data Security Standard*.
 
 ## Terms introduced in this chapter
 

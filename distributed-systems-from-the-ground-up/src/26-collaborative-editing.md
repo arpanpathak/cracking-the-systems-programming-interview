@@ -459,6 +459,54 @@ The steps follow the arrows of figure 26.5.
 3. The server sends the transformed operation to author B, whose client transforms it against any operations of its own that the server has not yet acknowledged, and applies it.
 4. Every few hundred operations, the current text is saved as a snapshot.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/edit-deploy.svg?v=c827b2d1" alt="The editing service, deployed. Authors: Authors (20 million), 1 open connection each. Connections, in 3 zones: Load balancers (x 8), by connection, Gateways (x 100), route by document. Sessions: Session servers (x 300), 1 owner per document, Document directory (x 3), which server owns what. Storage: Operation log (x 30), shards x 3 replicas, Snapshot store (chapter 16), an object store.">
+<figcaption><b>Figure 26.6</b> The editing service as it is deployed, with every document owned by 1 session server.</figcaption>
+</figure>
+
+Authors hold connections to gateways, as in the chat service. What is particular to
+this system is the tier below. Each open document is owned by exactly 1 of the 300
+session servers, which holds its text in memory and decides the order of its
+operations, and a small directory records which server owns which document, so that
+the gateways can route every author of a document to the same place. The session
+servers are therefore not interchangeable in the way that stateless servers are. If
+1 fails, each of its documents is taken over by another server, which loads the
+latest snapshot and replays the log from there.
+
+## How real systems do it
+
+Operational transformation was introduced in 1989, in a paper on a group editor
+that exchanged operations directly among its participants. The arrangement with a
+central server, in which each client synchronises with the server alone and the
+server fixes the order, is that of the Jupiter system of 1995, and it is the form
+that Google adopted for its collaborative documents. Its attraction is the one
+given in this chapter: with a server in the middle, the transformation functions
+have to satisfy only the simpler of the 2 correctness conditions that the general
+case requires. The warning that published algorithms have been found faulty refers
+to the other condition, needed when there is no server, for which several
+algorithms were shown by formal analysis to diverge in particular cases, years
+after they were published.
+
+Conflict-free replicated data types were given their name and a systematic theory
+in 2011. For text, the scheme of this chapter, in which each character has a
+position drawn from a dense ordered set, is that of a family of early designs. It
+has a defect that should be mentioned, since the simulation does not show it. When 2
+people type whole words at the same place at the same time, their characters can
+become interleaved letter by letter, because the positions that each chooses fall
+among the other's. Designs in which a new character names the character it was
+typed after, and ties are broken consistently, keep each person's run together, and
+the libraries in common use today work in that way.
+
+Not every collaborative product uses either method in its pure form. The makers of
+Figma have described a design in which a central server orders changes, as with
+operational transformation, while each property of each object is a simple register
+in which the last write prevails, as in a basic CRDT. Their argument is that a
+design tool's documents are trees of objects with properties, for which that is
+enough, and that the full generality of either method serves the editing of long
+texts and is not needed elsewhere.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -501,6 +549,15 @@ The steps follow the arrows of figure 26.5.
 **Simulation in the repository.** The program [`code/editsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/editsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p editsim` in the `code` directory.
 
 </div>
+
+## References
+
+- C. Ellis and S. Gibbs, "Concurrency Control in Groupware Systems", SIGMOD 1989.
+- D. Nichols and others, "High-Latency, Low-Bandwidth Windowing in the Jupiter Collaboration System", UIST 1995.
+- M. Shapiro, N. Preguica, C. Baquero and M. Zawirski, "Conflict-free Replicated Data Types", SSS 2011.
+- M. Kleppmann and others, "Interleaving Anomalies in Collaborative Text Editors", PaPoC 2019.
+- E. Wallace, "How Figma's multiplayer technology works", Figma blog, 2019.
+- M. Kleppmann and others, "Local-First Software: You Own Your Data, in Spite of the Cloud", Onward! 2019.
 
 ## Terms introduced in this chapter
 

@@ -302,6 +302,7 @@ API correctly without knowing anything about key-value stores.
 | Rule | How it is applied here |
 |---|---|
 | A URL identifies a resource, and consists of nouns. | `/v1/keys/user-1` identifies the key `user-1`. The API has no URLs such as `/setKey`. |
+| A collection is named by a plural noun, and a member by the collection followed by its identifier. | `/v1/keys` is the collection of keys, and `/v1/keys/user-1` is 1 member of it. |
 | The HTTP method expresses the operation. | `GET` reads a resource, `PUT` replaces it and `DELETE` removes it. |
 | `GET` has no side effects. | Clients and intermediaries may repeat, cache and retry a `GET` freely. |
 | `PUT` and `DELETE` are idempotent. | An operation is *idempotent* if performing it several times has the same effect as performing it once, so that a client may repeat these requests after a lost response. |
@@ -1197,6 +1198,62 @@ therefore, the requirement is not threatened by the failures of individual machi
 which this design absorbs, and is limited by events that affect many nodes together,
 such as a faulty release of the software or the loss of a segment of the network.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/kv-deploy.svg?v=b2e0d15c" alt="The key-value store, deployed. Applications: Applications (120000 req/s), keep their state here. Edge: Load balancers (x 2), active and standby, Routers (x 12), stateless, hold the ring. Storage, in 3 zones: Storage nodes (x 8), zone a, Storage nodes (x 8), zone b, Storage nodes (x 8), zone c. Control: Coordinator (x 3), holds the ring, Monitoring (x 2), health and metrics.">
+<figcaption><b>Figure 1.18</b> The key-value store as it is deployed: 12 routers, 24 storage nodes in 3 zones, and a coordinator of 3 machines.</figcaption>
+</figure>
+
+The figure of the high-level design showed 1 box for each kind of component. A
+running system has many of each, and their number and placement are part of the
+design. Applications reach the store through a pair of load balancers, of which 1 is
+active and the other takes over its address if it fails. Behind them are 12 routers,
+which can be any number, since they are stateless. The 24 storage nodes are divided
+equally among 3 *availability zones*, which are separate buildings or halls with
+their own power and network, and the ring is constructed so that the 3 replicas of
+every shard fall in 3 different zones. The loss of an entire zone then removes 1
+replica of each shard and leaves a majority of every one. The coordinator has 1
+machine in each zone for the same reason.
+
+## How real systems do it
+
+The design of this chapter is not the only way of building a key-value store, and it
+is instructive to place it among the systems that are in use.
+
+Its 2 ancestors are quite different from each other. *Dynamo*, described by Amazon in
+2007, introduced to a wide audience the combination of consistent hashing, virtual
+nodes and replication to the next nodes on the ring that this chapter uses for
+placement. In every other respect Dynamo chose the opposite course. It has no leaders.
+Any replica accepts a write, a request succeeds when W of N replicas have answered,
+conflicting versions are detected with vector clocks and handed back to the
+application to be reconciled, and membership spreads by gossip. It is the model of
+eventual and tunable consistency described earlier, and Cassandra and Riak descend
+from it. The other ancestor is the line of consensus protocols, Paxos and later
+Raft, in which a leader orders the writes and a majority must store each one. The
+coordinator of this chapter is a system of that kind, as etcd and ZooKeeper are.
+
+The design here combines the 2: placement by a hash ring, as in Dynamo, with a
+consensus group for each shard, as in Raft. Systems that are built this way in
+practice, among them CockroachDB, TiKV and YugabyteDB, differ from our design in 1
+important respect. They do not hash keys. They divide the ordered key space into
+contiguous ranges, each replicated by its own Raft group, and they split a range
+when it grows beyond a set size and merge ranges that shrink. This keeps
+neighbouring keys together, so that a listing by prefix reads 1 or 2 ranges where
+ours must ask every node, and it lets the system move load by moving the boundaries.
+The price is the machinery for splitting, merging and rebalancing, which a hash ring
+does not need. Google's Bigtable and Spanner also partition by range.
+
+Several things that a production store requires are absent from this chapter and
+from the code that follows. A log that grows for ever must be cut short by taking
+*snapshots* of the state. Changing the set of members of a shard while it runs needs
+a protocol of its own, which Raft calls joint consensus. Reads served by a leader on
+the strength of a recent heartbeat depend on clocks behaving reasonably, and stricter
+systems confirm leadership with a majority for each read. And none of this has been
+tested here in the way that such systems are tested in earnest, by a tool such as
+Jepsen, which partitions a real cluster at random and checks every response against
+the definition of linearizability.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -1239,6 +1296,17 @@ of this chapter appear in its code under the same names.
 **Simulation in the repository.** The program [`code/ringsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ringsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p ringsim` in the `code` directory.
 
 </div>
+
+## References
+
+- G. DeCandia and others, "Dynamo: Amazon's Highly Available Key-value Store", SOSP 2007.
+- D. Ongaro and J. Ousterhout, "In Search of an Understandable Consensus Algorithm", USENIX ATC 2014.
+- D. Karger and others, "Consistent Hashing and Random Trees", STOC 1997.
+- F. Chang and others, "Bigtable: A Distributed Storage System for Structured Data", OSDI 2006.
+- J. Corbett and others, "Spanner: Google's Globally-Distributed Database", OSDI 2012.
+- M. Herlihy and J. Wing, "Linearizability: A Correctness Condition for Concurrent Objects", ACM TOPLAS, 1990.
+- S. Gilbert and N. Lynch, "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services", ACM SIGACT News, 2002.
+- M. Kleppmann, *Designing Data-Intensive Applications*, O'Reilly, 2017.
 
 ## Terms introduced in this chapter
 

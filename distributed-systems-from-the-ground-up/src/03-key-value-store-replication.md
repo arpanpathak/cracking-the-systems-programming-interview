@@ -922,6 +922,12 @@ The log and the store are listed in chapter 2. Those listings include
 ```
 
 
+## Further reading
+
+- B. Oki and B. Liskov, "Viewstamped Replication: A New Primary Copy Method to Support Highly-Available Distributed Systems", PODC 1988.
+- D. Ongaro and J. Ousterhout, "In Search of an Understandable Consensus Algorithm", USENIX ATC 2014.
+- R. van Renesse and F. Schneider, "Chain Replication for Supporting High Throughput and Availability", OSDI 2004.
+
 <div class="summary">
 
 ## Summary

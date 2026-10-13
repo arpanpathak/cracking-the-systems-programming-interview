@@ -347,6 +347,48 @@ that the request has been stored and will be acted upon.
 
 @part walk
 
+## The design, deployed
+
+@figure notify-deploy :: The notification service as it is deployed, from the calling services to the outside providers.
+
+The deployment falls into 2 halves joined by queues. The upper half, the API nodes
+with their key store, must always be available, since it is what the calling
+services depend on, and it does very little. The lower half, the senders, is where
+the slow and uncertain work is done, and it is divided into separate pools for each
+channel and each priority, so that a pool blocked on a failing provider cannot
+starve the others. The providers at the bottom are outside the system, and for the
+channel that matters most there are 2 of them.
+
+## How real systems do it
+
+The treatment of retries in this chapter follows an article from Amazon that has
+become the standard reference. It simulates many clients contending for a resource
+and compares several ways of randomising the pause. The form used in this chapter,
+a random time between 0 and the full exponential value, is the one the article calls
+full jitter, and it found that this did the least total work, with a variant that
+keeps half of the pause fixed close behind and a third variant, in which each pause
+is derived from the previous one, somewhat worse. The author has since added the
+caution that backoff and jitter spread a burst of load out and do not reduce a
+sustained overload, for which the load itself must be reduced.
+
+That further step is the *retry budget*. Google's book on site reliability
+engineering recommends that a client limit its retries to a fixed proportion of its
+ordinary requests, 10% for example, in addition to a limit for each request, so that
+when a dependency is failing completely, the retries add a tenth to the load, where
+unlimited retries would multiply it. A circuit breaker achieves a similar end by different means.
+
+The circuit breaker was described by Michael Nygard in his book on production
+failures and was made widely known by a library from Netflix. The same book treats
+its companions, the timeout and the *bulkhead*, which is the separation of pools
+used in the deployment above.
+
+For push notifications, the providers are Apple's and Google's services, each of
+which reports a token that is no longer valid in its reply to a send, so that
+sending is also the means by which dead tokens are discovered. Most providers of
+email and text messages report delivery by webhook, and they retry their webhooks
+for hours when the receiver is down, so that the receiver must be idempotent, in a
+reversal of the usual roles.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -375,6 +417,14 @@ that the request has been stored and will be acted upon.
 ## The simulation
 
 @part sim
+
+## References
+
+- M. Brooker, "Exponential Backoff And Jitter", AWS Architecture Blog, 2015.
+- M. Brooker, "Timeouts, retries, and backoff with jitter", Amazon Builders' Library.
+- B. Beyer and others (editors), *Site Reliability Engineering*, O'Reilly, 2016, chapter 22, "Addressing Cascading Failures".
+- M. Nygard, *Release It!*, Pragmatic Bookshelf, second edition, 2018.
+- RFC 9110, *HTTP Semantics*, 2022, for status 202.
 
 ## Terms introduced in this chapter
 

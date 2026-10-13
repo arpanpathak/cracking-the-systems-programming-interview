@@ -206,8 +206,8 @@ dependency and, when the dependency is plainly failing, stops calling it for a t
 It takes its name from the electrical device that cuts off a circuit in which too much
 current is flowing.
 
-<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="82b99825">
-<img src="figures/steps-notify-breaker-01.svg?v=82b99825" alt="A circuit breaker in front of a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
+<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="07ad94bb">
+<img src="figures/steps-notify-breaker-01.svg?v=07ad94bb" alt="A circuit breaker before a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
 <figcaption><b>Figure 13.3</b> A circuit breaker opens after 5 failures in a row, refuses calls for 30 seconds, and closes again after a successful trial. Use Next and Back to move through the 6 steps.</figcaption>
 </figure>
 
@@ -452,6 +452,51 @@ The steps follow the arrows of figure 13.7.
 4. The sender calls the provider. On failure it waits and tries again, with a pause that doubles.
 5. After 5 failed tries the sender moves the notification to a separate list for a person to look at.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/notify-deploy.svg?v=4f8e9ac4" alt="The notification service, deployed. Callers: Calling services (580 req/s), report events. Api, in 3 zones: Load balancers (x 2), any API node, API nodes (x 8), check key, preferences, Key store (x 3), keys seen, with outbox. Queues and senders: Queue brokers (x 6), 1 queue per priority, Senders (x 40), a pool for each channel. Outside: Email provider (x 1), outside our control, SMS providers (x 2), a second as fallback, Push providers (x 2), 1 per phone system.">
+<figcaption><b>Figure 13.8</b> The notification service as it is deployed, from the calling services to the outside providers.</figcaption>
+</figure>
+
+The deployment falls into 2 halves joined by queues. The upper half, the API nodes
+with their key store, must always be available, since it is what the calling
+services depend on, and it does very little. The lower half, the senders, is where
+the slow and uncertain work is done, and it is divided into separate pools for each
+channel and each priority, so that a pool blocked on a failing provider cannot
+starve the others. The providers at the bottom are outside the system, and for the
+channel that matters most there are 2 of them.
+
+## How real systems do it
+
+The treatment of retries in this chapter follows an article from Amazon that has
+become the standard reference. It simulates many clients contending for a resource
+and compares several ways of randomising the pause. The form used in this chapter,
+a random time between 0 and the full exponential value, is the one the article calls
+full jitter, and it found that this did the least total work, with a variant that
+keeps half of the pause fixed close behind and a third variant, in which each pause
+is derived from the previous one, somewhat worse. The author has since added the
+caution that backoff and jitter spread a burst of load out and do not reduce a
+sustained overload, for which the load itself must be reduced.
+
+That further step is the *retry budget*. Google's book on site reliability
+engineering recommends that a client limit its retries to a fixed proportion of its
+ordinary requests, 10% for example, in addition to a limit for each request, so that
+when a dependency is failing completely, the retries add a tenth to the load, where
+unlimited retries would multiply it. A circuit breaker achieves a similar end by different means.
+
+The circuit breaker was described by Michael Nygard in his book on production
+failures and was made widely known by a library from Netflix. The same book treats
+its companions, the timeout and the *bulkhead*, which is the separation of pools
+used in the deployment above.
+
+For push notifications, the providers are Apple's and Google's services, each of
+which reports a token that is no longer valid in its reply to a send, so that
+sending is also the means by which dead tokens are discovered. Most providers of
+email and text messages report delivery by webhook, and they retry their webhooks
+for hours when the receiver is down, so that the receiver must be idempotent, in a
+reversal of the usual roles.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -492,6 +537,14 @@ The steps follow the arrows of figure 13.7.
 **Simulation in the repository.** The program [`code/notifysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p notifysim` in the `code` directory.
 
 </div>
+
+## References
+
+- M. Brooker, "Exponential Backoff And Jitter", AWS Architecture Blog, 2015.
+- M. Brooker, "Timeouts, retries, and backoff with jitter", Amazon Builders' Library.
+- B. Beyer and others (editors), *Site Reliability Engineering*, O'Reilly, 2016, chapter 22, "Addressing Cascading Failures".
+- M. Nygard, *Release It!*, Pragmatic Bookshelf, second edition, 2018.
+- RFC 9110, *HTTP Semantics*, 2022, for status 202.
 
 ## Terms introduced in this chapter
 

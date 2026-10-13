@@ -391,6 +391,48 @@ a node holds its number, it needs nothing from the coordinator or from any other
 and the availability of the service as a whole is that of whichever single node a
 caller manages to reach.
 
+## The design, deployed
+
+@figure idgen-deploy :: The id generator as it is deployed: 12 nodes in 3 zones, each with its own number.
+
+The id nodes are spread over 3 zones and placed behind a load balancer only as a
+convenience for callers, since any node can answer any request. Each zone is given a
+range of node numbers, so that the number in an id also says where the id was made,
+which helps when a duplicate has to be traced. The coordinator is consulted when a
+node starts and at no other time. Callers with very high rates do not use the
+network at all: they link the generator into their own processes, each of which then
+holds a node number of its own.
+
+## How real systems do it
+
+The scheme of time, node number and counter is the one that Twitter announced in June
+2010 under the name Snowflake, with exactly the division used here: 1 unused bit, 41
+bits of milliseconds, 10 bits for the machine and 12 for a sequence. Twitter adopted
+it when it moved its tweets from a single database to a sharded store and could no
+longer rely on the database's counter. The layout has been widely copied with
+different divisions. Instagram described a variant in 2012 with 41 bits of time, 13
+bits for the logical shard and 10 for a sequence, generated inside the database
+itself, so that no separate service is needed. Discord uses the original layout with
+its own starting date.
+
+The counter in a pair of databases, stepping by 2, is the scheme that Flickr published
+as its ticket servers. Blocks of numbers handed out by a coordinator are how many
+database sequences are cached in practice.
+
+Version 7 of the UUID, with a millisecond timestamp in its first 48 bits, was
+standardised in RFC 9562 in 2024, and it exists because of the problem of index
+locality described at the start of this chapter.
+
+There is an important case in which the advice of this chapter is reversed. In a
+store that partitions its data by ranges of keys, as Spanner, CockroachDB and Bigtable
+do, keys that increase with time send every insert to the last range, and that 1
+range and the machines holding it become a bottleneck however large the cluster. The
+documentation of such stores warns against time-ordered primary keys for exactly this
+reason, and recommends keys whose leading bits are spread out, by a hash or by
+reversing the bits of a sequence. The locality that helps an index on 1 machine
+becomes a hot spot on many, and which of the 2 effects governs depends on how the
+store beneath partitions its keys.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -416,6 +458,14 @@ caller manages to reach.
 ## The simulation
 
 @part sim
+
+## References
+
+- R. King, "Announcing Snowflake", Twitter engineering blog, 2010.
+- Instagram engineering blog, "Sharding & IDs at Instagram", 2012.
+- K. Elliott-McCrea, "Ticket Servers: Distributed Unique Primary Keys on the Cheap", Flickr code blog, 2010.
+- RFC 9562, *Universally Unique IDentifiers (UUIDs)*, 2024.
+- Google Cloud Spanner documentation, "Schema design best practices", on avoiding monotonically increasing keys.
 
 ## Terms introduced in this chapter
 

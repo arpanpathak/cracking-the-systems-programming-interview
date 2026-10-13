@@ -415,6 +415,52 @@ The steps follow the arrows of figure 27.match-design.
 4. The engine takes the order from the sequence, matches it against the book, and updates the book. The standby engine does the same, a moment later.
 5. The engine emits the trades and the new best prices, which are published to every participant and passed on for clearing.
 
+## The design, deployed
+
+@figure match-deploy :: The exchange as it is deployed: gateways, a sequencer with its journal, and matching engines with standbys.
+
+This is the 1 deployment in the book without a load balancer on its main path, and
+the omission is deliberate. A participant connects to a particular gateway over a
+path whose length is controlled, every gateway feeds the single sequencer, and each
+share is matched by 1 particular engine. There is nowhere that a request could be
+sent to "any available server", since the whole design depends on there being
+exactly 1 place for each decision. Redundancy is provided by duplicates that follow
+along, a standby sequencer and a standby for every engine, and by a journal with 3
+replicas in 2 sites. The clearing systems at the bottom are of the ordinary kind,
+and are fed from the engines through a queue.
+
+## How real systems do it
+
+The architecture of this chapter is that of LMAX, a trading venue in London whose
+engineers described it publicly around 2011. All the business logic of the venue,
+the matching of orders and the management of risk for every customer, ran on a
+single thread, with its state entirely in memory, and that thread was reported to
+process 6 million orders per second on the hardware of the time. The state was made
+durable in the manner described here. Every input event was written to a journal
+before it was processed and was replicated to other nodes, which processed the same
+events, and the state could be rebuilt by replaying the journal from a snapshot
+taken each night. The engineers' own account is that they arrived at the single
+thread after trying the alternatives, and found that the cost of coordinating
+threads exceeded the cost of the work.
+
+The component that carried events between the thread and the outside world, a ring
+buffer written and read without locks, was published separately as the Disruptor,
+and it embodies the observation that queues between threads are expensive mainly
+because of contention for the processor's caches.
+
+For entry and for market data, exchanges use compact binary protocols over
+persistent connections. The protocols of Nasdaq are published and give a concrete
+picture: 1 for entering orders, and another that publishes every event of the order
+book, each with a sequence number, from which a recipient detects a gap and asks for
+it to be filled, as described under publishing prices.
+
+The equalising of paths is taken further at 1 American exchange, IEX, which passes
+every incoming order through a coil of 38 miles of optical fibre. The resulting
+delay of 350 microseconds is intended to remove the advantage of those who learn of
+a price change a few microseconds before others. Fairness in this business is thus
+partly a matter of physics, and the designers of an exchange have to say what they
+mean by it.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -455,6 +501,14 @@ The steps follow the arrows of figure 27.match-design.
 ## The simulation
 
 @sim matchsim
+
+## References
+
+- M. Fowler, "The LMAX Architecture", martinfowler.com, 2011.
+- M. Thompson and others, "Disruptor: High performance alternative to bounded queues for exchanging data between concurrent threads", LMAX technical paper, 2011.
+- Nasdaq, *TotalView-ITCH* and *OUCH* protocol specifications.
+- IEX Exchange, "The Speed Bump", exchange documentation.
+- FIX Trading Community, *Financial Information eXchange (FIX) Protocol* specification.
 
 ## Terms introduced in this chapter
 

@@ -341,7 +341,7 @@ A rider requests a ride and watches the car approach. A driver reports a positio
 every few seconds and accepts rides.
 
 <figure>
-<img src="figures/nearby-use-cases.svg?v=8740e5a5" alt="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (PUT /v1/drivers/{id}/position), accept a ride (PUT /v1/rides/{id}/driver).">
+<img src="figures/nearby-use-cases.svg?v=3f254e0c" alt="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (POST /v1/drivers/{id}/positions), accept a ride (PUT /v1/rides/{id}/assignments/{driver}).">
 <figcaption><b>Figure 21.4</b> The actors and what each of them does.</figcaption>
 </figure>
 
@@ -406,14 +406,15 @@ which of the system's data is of which kind.
 
 ## The API
 
-A driver's position is a single resource that is replaced on every report, which is
-what `PUT` denotes. A ride is created with `POST`. A driver accepts by setting the
-driver of the ride, again with `PUT`.
+Every report of a position creates a new position in the collection of that driver's
+positions, with `POST`. A ride is created with `POST` as well. A driver accepts by
+writing the assignment of that driver to the ride, with `PUT`, so that repeating the
+request has no further effect.
 
 **A driver reports a position**
 
 ```http
-PUT /v1/drivers/7056/position HTTP/1.1
+POST /v1/drivers/7056/positions HTTP/1.1
 Host: rides.example
 Content-Type: application/json
 
@@ -421,7 +422,7 @@ Content-Type: application/json
 ```
 
 ```http
-HTTP/1.1 204 No Content
+HTTP/1.1 201 Created
 ```
 
 Reports are sent so frequently that many services convey them over an open connection
@@ -455,11 +456,8 @@ summon 2 cars.
 **A driver accepts**
 
 ```http
-PUT /v1/rides/501/driver HTTP/1.1
+PUT /v1/rides/501/assignments/7056 HTTP/1.1
 Host: rides.example
-Content-Type: application/json
-
-{ "driver": 7056 }
 ```
 
 ```http
@@ -494,6 +492,57 @@ The steps follow the arrows of figure 21.6.
 2. The location service computes the square of the position and updates the grid index, moving the driver from 1 square's list to another's when a border has been crossed and renewing the driver's lease.
 3. A rider requests a ride. The matching service computes the rider's square, reads the drivers of that square and its 8 neighbours from the grid index, and ranks the free ones by estimated time of arrival.
 4. The matching service offers the ride to the first of them. When a driver accepts, it writes the assignment to the ride store as a conditional write, which succeeds for 1 driver only.
+
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/nearby-deploy.svg?v=4c9cf5e5" alt="The ride service, deployed. Phones: Drivers (500000), report every 4 s, Riders (1000 req/s), request rides. Edge, in each region: Load balancers (x 8), by connection, Gateways (x 40), open connections, Location service (x 20), position to square. Matching, in each region: Grid index (x 30), in memory, by region, Matching service (x 20), rank and offer. Durable state: Ride store (x 9), shards x 3 replicas, Position log (x 6), routes, for fares.">
+<figcaption><b>Figure 21.7</b> The ride service as it is deployed, with the grid index in memory and the ride store replicated.</figcaption>
+</figure>
+
+The system is deployed separately in each region of the world, since no ride crosses
+between them, and the figure shows 1 region. Drivers and riders hold connections to
+gateways, as the phones of chapter 18 do. The location service is stateless and
+turns each of the 125000 reports per second into an update of the grid index, which
+is divided among 30 machines by area and kept in memory only. The matching service
+reads the index and writes assignments to the ride store, which is the 1 component
+here with replicas in 3 zones and durable storage. The picture makes visible the
+division that the chapter insisted upon, between data that is rebuilt in seconds and
+data that must not be lost.
+
+## How real systems do it
+
+The grid of this chapter corresponds to 3 schemes that are in wide use, and they
+differ in the shape of the cell and in how the cells are named.
+
+The *geohash* divides the world by latitude and longitude, halving alternately in
+each direction, and writes the result as a short string in which every further
+character selects a smaller cell within the last. It is the hierarchy of names with
+shared prefixes described above, and several in-memory stores offer queries by
+radius that are built on it. Its cells are rectangles whose width varies with
+latitude.
+
+Google's S2 library projects the sphere onto the faces of a cube and numbers the
+cells along a space-filling curve, so that a cell is a 64-bit integer and cells that
+are close on the curve are close on the ground. A region is covered by a small set
+of cells of mixed sizes, and a search becomes a few scans of ranges of integers.
+
+Uber developed H3, which it published in 2018, and which uses hexagons. The stated
+reason is the one given above: the centres of all 6 neighbours of a hexagon are at
+the same distance, which makes it natural to reason about rings of cells around a
+point and about movement between adjacent cells, where a square has neighbours at 2
+different distances. H3 has 16 levels of resolution, each cell containing 7 of the
+next, and since hexagons do not divide exactly into smaller hexagons, a child cell
+is only approximately contained in its parent. The surface of a sphere cannot be
+covered by hexagons alone, and every level contains exactly 12 pentagons, placed
+where they are least likely to matter.
+
+For the estimate of arrival time, the technique of computing in advance along the
+important roads is known as contraction hierarchies, and it answers a query on the
+road network of a continent in about a millisecond. And Uber has described assigning
+the work for each area to particular servers with a ring of consistent hashing whose
+membership spreads by gossip, which is the alternative to a coordinator that chapter
+1 described.
 
 ## Mistakes to avoid
 
@@ -540,6 +589,15 @@ The steps follow the arrows of figure 21.6.
 **Simulation in the repository.** The program [`code/nearbysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p nearbysim` in the `code` directory.
 
 </div>
+
+## References
+
+- I. Brodsky, "H3: Uber's Hexagonal Hierarchical Spatial Index", Uber engineering blog, 2018.
+- Google, S2 Geometry Library documentation, "S2 Cells".
+- G. Niemeyer, "geohash.org", 2008.
+- R. Geisberger and others, "Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks", WEA 2008.
+- A. Guttman, "R-Trees: A Dynamic Index Structure for Spatial Searching", SIGMOD 1984.
+- Uber engineering blog, "How Ringpop from Uber Engineering Helps Distribute Your Application", 2016.
 
 ## Terms introduced in this chapter
 

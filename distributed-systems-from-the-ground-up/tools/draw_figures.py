@@ -1636,7 +1636,7 @@ def shortener_figures():
 @figure
 def cache_figures():
     actors("cache-use-cases", "the cache", [
-        ("glasses", "Service", ["reads slow data", "often"], C, [("read through the cache", "GET /v1/cache/{key}"), ("store a value for a time", "PUT, with a TTL"), ("drop a stale value", "DELETE /v1/cache/{key}")]),
+        ("glasses", "Service", ["reads slow data", "often"], C, [("read through the cache", "GET /v1/entries/{key}"), ("store a value for a time", "PUT, with a TTL"), ("drop a stale value", "DELETE /v1/entries/{key}")]),
         ("cap", "Operator", ["runs the nodes"], S, [("add a cache node", "the ring gains its tokens")]),
     ])
     records("cache-entities", [(C, "Item", ["key      string", "value    bytes", "expires  time", "used     time"]), (T, "Cache node", ["id      string", "tokens  u64[]", "memory  bytes"])],
@@ -1688,7 +1688,7 @@ def lock_figures():
 def jobs_figures():
     actors("jobs-use-cases", "the job scheduler", [
         ("glasses", "Developer", ["has work to run", "later"], C, [("submit a job", "POST /v1/jobs"), ("read a job's state", "GET /v1/jobs/{id}")]),
-        ("curly", "Worker", ["runs jobs"], T, [("take a job", "POST /v1/leases"), ("report the result", "PUT /v1/jobs/{id}/result")]),
+        ("curly", "Worker", ["runs jobs"], T, [("take a job", "POST /v1/leases"), ("report the result", "PUT /v1/jobs/{id}/results/{lease}")]),
     ])
     records("jobs-entities", [(C, "Job", ["id        u64", "payload   bytes", "state     waiting|...", "attempts  u32", "run_at    time"]), (T, "Lease", ["job       u64", "worker    string", "deadline  time"])],
             ["A Lease lends a job to a worker until a deadline. A job whose", "lease runs out goes back to the queue."])
@@ -1721,7 +1721,7 @@ def notify_figures():
 @figure
 def feed_figures():
     actors("feed-use-cases", "the news feed", [
-        ("glasses", "Member", ["posts and reads"], C, [("publish a post", "POST /v1/posts"), ("read the feed", "GET /v1/feed?after="), ("follow an account", "PUT /v1/follows/{id}")]),
+        ("glasses", "Member", ["posts and reads"], C, [("publish a post", "POST /v1/posts"), ("read the feed", "GET /v1/newsfeeds/{user}/posts"), ("follow an account", "PUT /v1/follows/{id}")]),
     ])
     records("feed-entities", [(C, "Post", ["id      u64", "author  string", "body    string", "time    time"]), (T, "Follow", ["follower  string", "followed  string"]),
                               (M, "Feed item", ["owner  string", "post   u64", "time   time"])],
@@ -1756,7 +1756,7 @@ def objects_figures():
 @figure
 def stream_figures():
     actors("stream-use-cases", "the video service", [
-        ("glasses", "Viewer", ["watches videos"], C, [("play a video", "GET /v1/videos/{id}/manifest"), ("fetch the next 4 seconds", "GET .../1200/piece-17.ts")]),
+        ("glasses", "Viewer", ["watches videos"], C, [("play a video", "GET /v1/videos/{id}/manifests/default"), ("fetch the next 4 seconds", "GET .../1200/piece-17.ts")]),
         ("curly", "Creator", ["uploads videos"], T, [("upload a video", "PUT /v1/videos/{id}/source"), ("see when it is ready", "GET /v1/videos/{id}")]),
     ])
     records("stream-entities", [(C, "Video", ["id        u64", "title     string", "duration  seconds", "state     ready|..."]), (T, "Rendition", ["video    u64", "bitrate  kbit/s", "pieces   count"]),
@@ -1830,7 +1830,7 @@ def booking_figures():
 def nearby_figures():
     actors("nearby-use-cases", "the ride service", [
         ("glasses", "Rider", ["wants a ride"], C, [("request a ride", "POST /v1/rides"), ("watch the driver approach", "GET /v1/rides/{id}")]),
-        ("curly", "Driver", ["offers rides"], T, [("report a position", "PUT /v1/drivers/{id}/position"), ("accept a ride", "PUT /v1/rides/{id}/driver")]),
+        ("curly", "Driver", ["offers rides"], T, [("report a position", "POST /v1/drivers/{id}/positions"), ("accept a ride", "PUT /v1/rides/{id}/assignments/{driver}")]),
     ])
     records("nearby-entities", [(C, "Driver", ["id        string", "position  x, y", "square    column, row", "state     free|busy"]), (T, "Ride", ["id      u64", "rider   string", "driver  string", "state   requested|..."])],
             ["A driver's square is computed from the position. The service", "keeps, for every square, the list of drivers inside it."])
@@ -2612,12 +2612,12 @@ def jobs_states():
     parts = [card(140, 100, 200, 50, "idle", "Waiting", ["in the queue"], glyph="clock"),
              card(140, 214, 200, 50, "client", "Running", ["lent to 1 worker"], glyph="gear"),
              card(32, 336, 190, 50, "good", "Succeeded", ["nothing more to do"], glyph="doc"),
-             card(258, 336, 190, 50, "danger", "Dead", ["set aside for a person"], glyph="eye"),
+             card(258, 336, 190, 50, "danger", "Dead", ["kept for a person"], glyph="eye"),
              wire([(220, 150), (220, 214)]), badge(202, 182, 1),
              wire([(340, 239), (400, 239), (400, 125), (340, 125)]), badge(400, 182, 2),
              wire([(190, 264), (190, 300), (127, 300), (127, 336)]), badge(158, 300, 3),
              wire([(290, 264), (290, 300), (353, 300), (353, 336)]), badge(322, 300, 4)]
-    legend_, bottom = legend_steps(420, ["A worker takes the job and receives a lease.", "The job failed, or its lease ran out: it waits for another try.",
+    legend_, bottom = legend_steps(420, ["A worker takes the job and receives a lease.", "The job failed, or its lease ran out: it waits again.",
                                          "The worker reported success before its lease ran out.", "The job has failed 5 times and is tried no more."])
     save(OUT / "jobs-states.svg", WIDTH, bottom + 10,
          "The states of a job. A waiting job becomes running when a worker takes it and receives a lease. A running job returns "
@@ -2696,7 +2696,7 @@ def steps_notify_backoff():
 @figure
 def steps_notify_breaker():
     f = lambda state, failures, call, active: [("CIRCUIT BREAKER FOR THE SMS PROVIDER", ["state: %s" % state, "failures in a row: %d" % failures], active), ("THE NEXT NOTIFICATION", [call], False)]
-    story("steps-notify-breaker", "A circuit breaker in front of a provider", [
+    story("steps-notify-breaker", "A circuit breaker before a provider", [
         (f("closed", 0, "> sent to the provider: accepted", False), "A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state."),
         (f("closed", 4, "! sent to the provider: timed out after 10 s", True), "The provider stops answering. 4 notifications in a row have each waited 10 seconds for an answer that did not come."),
         (f("open", 5, "! sent to the provider: timed out after 10 s", True), "The fifth failure in a row reaches the limit, and the breaker opens."),
@@ -3574,6 +3574,188 @@ def steps_click_watermark():
         (f("! a click that happened at 2 s, arriving at 62 s", "21 s", ["20-30 s: 1", ""], ["0-10 s: 7", "10-20 s: 4"], "d"),
          "A click from the first window arrives a minute late. Its window was finished long ago. The click is not thrown away: it is recorded as late, and a correction of the published count is made afterwards. The true count was 8."),
     ])
+
+
+# ------------------------------------------------ deployment views
+
+def deploy(name, title, tiers, note=()):
+    """A deployment picture: tiers from top to bottom, each a labelled area with up to 3 kinds of
+    machine and how many of each run. `tiers` are (label, cards, flow); a card is
+    (name, sub, glyph, kind, count), and `flow` is the label on the arrow to the next tier."""
+    width, parts, y = 860, [], 108
+    alt = "%s. %s" % (title, " ".join(
+        "%s: %s." % (label.capitalize(), ", ".join("%s (%s), %s" % (card[0], card[4], card[1]) for card in cards)) for label, cards, flow in tiers))
+
+    for k, (label, cards, flow) in enumerate(tiers):
+        parts.append(zone(40, y, 780, 96, label))
+        span = 260 * len(cards) - 16
+        left = 40 + (780 - span) / 2
+
+        for n, (who, sub, glyph, kind, count) in enumerate(cards):
+            parts.append(card(left + 260 * n, y + 24, 244, 56, kind, who, [sub], glyph=glyph))
+            parts.append(tag(left + 260 * n + 232, y + 14, count, kind, anchor="end"))
+
+        if k + 1 < len(tiers):
+            parts.append(wire([(430, y + 96), (430, y + 96 + 46)], label=flow or None))
+
+        y += 96 + 58
+
+    rows = lines(40, y - 12, list(note), "sub") if note else ""
+    save(OUT / (name + ".svg"), width, y + 17 * len(note), alt, title, "Each box is a kind of machine. The label on its corner says how many run.", parts + [rows])
+
+
+DEPLOYS = {
+    "kv": ("The key-value store, deployed", [
+        ("applications", [("Applications", "keep their state here", "laptop", C, "120000 req/s")], "120000 req/s"),
+        ("edge", [("Load balancers", "active and standby", "swap", I, "x 2"), ("Routers", "stateless, hold the ring", "curve", I, "x 12")], "each request to 1 shard leader"),
+        ("storage, in 3 zones", [("Storage nodes", "zone a", "stack", S, "x 8"), ("Storage nodes", "zone b", "stack", S, "x 8"), ("Storage nodes", "zone c", "stack", S, "x 8")], "changes of the ring only"),
+        ("control", [("Coordinator", "holds the ring", "key", M, "x 3"), ("Monitoring", "health and metrics", "eye", O, "x 2")], None),
+    ], ["The 3 replicas of every shard are in 3 different zones, so that the loss of", "a whole zone leaves a majority of every shard."]),
+    "limiter": ("The rate limiter, deployed", [
+        ("clients", [("Clients", "1 million of them", "laptop", C, "50000 req/s")], "50000 req/s"),
+        ("edge, in 3 zones", [("Load balancers", "1 pair in each zone", "swap", I, "x 6"), ("API gateways", "authenticate and ask", "listen", I, "x 30")], "1 check for each request"),
+        ("limiting, in 3 zones", [("Limiter nodes", "token bucket rule", "clock", M, "x 9"), ("Counter store", "1 leader, 2 followers", "stack", S, "x 3")], "requests that passed"),
+        ("the protected api", [("API servers", "do the work", "chip", T, "x 100")], None),
+    ], ["A limiter node holds no buckets. Any of the 9 can check any request, and", "all of them update the same bucket in the counter store."]),
+    "idgen": ("The id generator, deployed", [
+        ("callers", [("Services", "need ids for new records", "laptop", C, "1 million ids/s")], "POST /v1/ids"),
+        ("edge", [("Load balancers", "any id node will do", "swap", I, "x 2")], "to any node"),
+        ("id nodes, in 3 zones", [("Id nodes", "zone a, numbers 0-99", "chip", T, "x 4"), ("Id nodes", "zone b, numbers 100-199", "chip", T, "x 4"), ("Id nodes", "zone c, numbers 200-299", "chip", T, "x 4")], "at startup only"),
+        ("control", [("Coordinator", "gives out node numbers", "key", M, "x 3")], None),
+    ], ["No arrow joins 1 id node to another. Each makes ids from its own clock,", "its own number and its own counter."]),
+    "cache": ("The cache, deployed", [
+        ("services", [("Service instances", "cache library inside", "laptop", C, "x 400")], "200000 reads/s, each to 1 node"),
+        ("cache nodes, in 3 zones", [("Cache nodes", "zone a", "clock", M, "x 3"), ("Cache nodes", "zone b", "clock", M, "x 3"), ("Cache nodes", "zone c", "clock", M, "x 2")], "misses only: about 2000/s"),
+        ("the source of truth", [("Database leader", "takes the writes", "stack", S, "x 1"), ("Database followers", "take the reads", "stack", S, "x 2")], None),
+    ], ["There is no load balancer in front of the cache. The library in each", "service hashes the key and talks to the node that owns it."]),
+    "lock": ("The lock service, deployed", [
+        ("workers", [("Workers", "must be alone in a step", "laptop", C, "x 1000")], "acquire, renew, release"),
+        ("lock service, 1 node in each zone", [("Lock node", "zone a, the leader", "lock", M, "x 1"), ("Lock node", "zone b, a follower", "lock", M, "x 1"), ("Lock node", "zone c, a follower", "lock", M, "x 1")], "every write carries a token"),
+        ("what the lock protects", [("Storage", "checks the token", "stack", S, "replicated")], None),
+    ], ["The lower arrow runs from the workers to the storage. The lock service", "never talks to the storage, which is why the storage must check tokens."]),
+    "queue": ("The message queue, deployed", [
+        ("producers", [("Producing services", "publish events", "pencil", C, "x 200")], "to the leader of a partition"),
+        ("brokers, in 3 zones", [("Brokers", "zone a", "chip", T, "x 4"), ("Brokers", "zone b", "chip", T, "x 4"), ("Brokers", "zone c", "chip", T, "x 4")], "fetched by offset"),
+        ("consumers", [("Consumer groups", "1 group for each service", "laptop", C, "x 30"), ("Offset store", "committed offsets", "stack", M, "x 3")], None),
+    ], ["Every partition has 3 replicas on brokers in 3 zones, and leadership is", "spread so that each broker leads about a third of what it holds."]),
+    "jobs": ("The job scheduler, deployed", [
+        ("submitters", [("Services", "submit jobs", "laptop", C, "116 jobs/s")], "POST /v1/jobs"),
+        ("scheduler, in 3 zones", [("Load balancers", "any scheduler node", "swap", I, "x 2"), ("Scheduler nodes", "stateless", "clock", I, "x 6"), ("Reclaimer", "1 of 2 is active", "search", M, "x 2")], "conditional writes"),
+        ("job store, in 3 zones", [("Job store", "1 leader, 2 followers", "stack", S, "x 3")], "leases, taken by asking"),
+        ("workers", [("Workers", "ask, run, report", "chip", T, "x 200")], None),
+    ], ["Workers call the scheduler through the same load balancers. The lower", "arrow shows where the work goes, and who asks is the worker."]),
+    "notify": ("The notification service, deployed", [
+        ("callers", [("Calling services", "report events", "laptop", C, "580 req/s")], "POST /v1/notifications"),
+        ("api, in 3 zones", [("Load balancers", "any API node", "swap", I, "x 2"), ("API nodes", "check key, preferences", "listen", I, "x 8"), ("Key store", "keys seen, with outbox", "stack", S, "x 3")], "1 message for each notification"),
+        ("queues and senders", [("Queue brokers", "1 queue per priority", "stack", S, "x 6"), ("Senders", "a pool for each channel", "chip", T, "x 40")], "paced below each provider's limit"),
+        ("outside", [("Email provider", "outside our control", "swap", O, "x 1"), ("SMS providers", "a second as fallback", "swap", O, "x 2"), ("Push providers", "1 per phone system", "swap", O, "x 2")], None),
+    ], ["Each provider has its own circuit breaker and its own pacing, so that", "a failing provider cannot hold up the other channels."]),
+    "shortener": ("The URL shortener, deployed", [
+        ("visitors", [("Visitors", "open short links", "browser", C, "3900 redirects/s")], "GET /{code}"),
+        ("edge, in 3 zones", [("Load balancers", "any web server", "swap", I, "x 2"), ("Web servers", "hold no data", "chip", T, "x 12")], "cache first, then the store"),
+        ("data, in 3 zones", [("Cache nodes", "popular links", "clock", M, "x 6"), ("Key-value store", "8 shards x 3 replicas", "stack", S, "x 24"), ("Id counter", "blocks of numbers", "key", O, "x 3")], "1 record for each click"),
+        ("counting", [("Click queue", "see chapter 11", "stack", S, "x 3"), ("Click counters", "sum each minute", "gear", T, "x 4")], None),
+    ], ["A redirect touches the cache and, on a miss, 1 shard of the store.", "Nothing on that path waits for the counting tier."]),
+    "feed": ("The news feed, deployed", [
+        ("members", [("Members", "post and read", "browser", C, "10 million")], "reads far outnumber posts"),
+        ("services, in 3 zones", [("Load balancers", "by service", "swap", I, "x 4"), ("Post service", "stores posts", "doc", T, "x 20"), ("Feed service", "merges and filters", "curve", I, "x 40")], "lists by member, posts by id"),
+        ("data, in 3 zones", [("Feed cache", "1 list for each member", "clock", M, "x 12"), ("Post store", "shards x 3 replicas", "stack", S, "x 30"), ("Follow store", "who follows whom", "stack", S, "x 9")], "1 task for each post"),
+        ("fan-out", [("Queue brokers", "see chapter 11", "stack", S, "x 6"), ("Fan-out workers", "copy to followers", "chip", T, "x 60")], None),
+    ], ["The feed service reads the cache and the stores. The fan-out workers", "are the only writers of the feed cache."]),
+    "objects": ("The object store, deployed", [
+        ("applications", [("Applications", "upload and download", "laptop", C, "100 PB stored")], "PUT and GET over HTTP"),
+        ("front end, in 3 zones", [("Load balancers", "any API server", "swap", I, "x 6"), ("API servers", "chunk, place, assemble", "chip", I, "x 200")], "names here, bytes there"),
+        ("storage, in 3 zones", [("Metadata store", "20 shards x 3 replicas", "stack", S, "x 60"), ("Storage nodes", "36 disks in each", "doc", T, "x 600")], "work that never stops"),
+        ("background", [("Scrubbers", "verify every chunk", "eye", M, "on each node"), ("Repair workers", "replace lost copies", "gear", M, "x 20"), ("Garbage collector", "after a day of grace", "gear", O, "x 4")], None),
+    ], ["The copies or pieces of a chunk are placed on nodes in different racks", "and zones, so that no single failure removes more than 1 of them."]),
+    "stream": ("The video service, deployed", [
+        ("viewers", [("Viewers", "players choose quality", "browser", C, "millions")], "pieces, over plain HTTP"),
+        ("near the viewers", [("Edge servers", "in hundreds of cities", "clock", M, "x 1000s")], "a miss fetches from the origin"),
+        ("origin, in 3 zones", [("Video API", "manifests, rights", "curve", I, "x 20"), ("Object store", "every piece, chapter 16", "doc", S, "origin"), ("Catalogue store", "videos and states", "stack", S, "x 9")], "pieces written once, by encoders"),
+        ("upload and encoding", [("Upload service", "stores the source", "listen", I, "x 10"), ("Job scheduler", "see chapter 12", "clock", S, "x 6"), ("Encoders", "1 section at 1 quality", "gear", T, "x 500")], None),
+    ], ["The last arrow points upwards in effect: encoders write pieces into the", "object store, and viewers never reach the encoding tier."]),
+    "chat": ("The chat service, deployed", [
+        ("phones", [("Phones", "1 open connection each", "laptop", C, "50 million online")], "connections, spread by balancers"),
+        ("connections, in 3 zones", [("Load balancers", "by connection", "swap", I, "x 20"), ("Gateways", "100000 connections each", "listen", I, "x 500")], "messages in, deliveries out"),
+        ("services, in 3 zones", [("Chat service", "numbers, stores, forwards", "curve", T, "x 200"), ("Session store", "who is on which gateway", "search", M, "x 12")], "append to a conversation"),
+        ("storage", [("Message store", "100 shards x 3 replicas", "stack", S, "x 300"), ("Notification service", "see chapter 13", "listen", O, "for offline phones")], None),
+    ], ["A conversation lives on 1 shard, whose leader gives its messages their", "numbers. Gateways hold connections and nothing else."]),
+    "pay": ("The payment system, deployed", [
+        ("shops", [("Shops", "charge and refund", "laptop", C, "1000 payments/s")], "POST /v1/payments, with a key"),
+        ("api, in 3 zones", [("Load balancers", "any API node", "swap", I, "x 2"), ("Payment API", "stateless", "listen", I, "x 12"), ("Vault", "card numbers, isolated", "lock", D, "x 3")], "1 transaction: key, entries, outbox"),
+        ("ledger, in 3 zones", [("Ledger database", "1 leader, 2 followers", "stack", S, "x 3")], "read by background workers"),
+        ("background", [("Outbox relay", "publishes events", "gear", M, "x 2"), ("Status poller", "asks about pending", "clock", M, "x 4"), ("Reconciliation", "ledger against bank", "search", M, "nightly")], "charges, and questions"),
+        ("outside", [("Card network", "outside our control", "swap", O, "x 1")], None),
+    ], ["The ledger confirms a write only when a follower in another zone holds", "it. When no follower can be reached, payments are refused."]),
+    "booking": ("The booking system, deployed", [
+        ("buyers", [("Buyers", "at the opening of a sale", "browser", C, "33000 arrivals/s")], "everyone, at once"),
+        ("in front of the sale", [("Edge servers", "serve the waiting page", "clock", M, "x 100s"), ("Waiting room", "positions and tokens", "listen", I, "x 6")], "500 admitted per second"),
+        ("booking, in 3 zones", [("Load balancers", "any API node", "swap", I, "x 2"), ("Booking API", "conditional writes", "listen", I, "x 20"), ("Seat map cache", "up to 2 s old", "clock", M, "x 4")], "1 conditional write for each seat"),
+        ("state", [("Seat store", "by show, x 3 replicas", "stack", S, "x 9"), ("Payment system", "see chapter 19", "key", O, "its own tier")], None),
+    ], ["The crowd is held in the second tier. The booking tier and the seat", "store see a steady 500 buyers per second, whatever arrives above."]),
+    "nearby": ("The ride service, deployed", [
+        ("phones", [("Drivers", "report every 4 s", "laptop", C, "500000"), ("Riders", "request rides", "browser", C, "1000 req/s")], "125000 position reports/s"),
+        ("edge, in each region", [("Load balancers", "by connection", "swap", I, "x 8"), ("Gateways", "open connections", "listen", I, "x 40"), ("Location service", "position to square", "curve", I, "x 20")], "by region, then by square"),
+        ("matching, in each region", [("Grid index", "in memory, by region", "search", M, "x 30"), ("Matching service", "rank and offer", "swap", T, "x 20")], "assignments and states"),
+        ("durable state", [("Ride store", "shards x 3 replicas", "stack", S, "x 9"), ("Position log", "routes, for fares", "stack", S, "x 6")], None),
+    ], ["The grid index is not replicated. If a node is lost, the drivers of its", "region reappear within 4 seconds, from their next reports."]),
+    "typeahead": ("The suggestion service, deployed", [
+        ("browsers", [("Browsers", "keep answers they had", "browser", C, "1 million req/s")], "most answered before the service"),
+        ("near the users", [("Edge servers", "cache by prefix, 5 min", "clock", M, "x 100s")], "200000 req/s get this far"),
+        ("serving, in 3 zones", [("Load balancers", "by range of prefixes", "swap", I, "x 4"), ("Suggestion API", "whole table in memory", "listen", I, "x 24")], "a new table every hour"),
+        ("building, offline", [("Search log", "every search made", "doc", S, "x 6"), ("Counting job", "normalise, count, decay", "gear", T, "batch"), ("Trending processor", "the last hour", "gear", M, "x 4")], None),
+    ], ["The serving tier only reads. It is fed from below, by a build that runs", "apart from it and can fail without affecting a single request."]),
+    "crawl": ("The crawler, deployed", [
+        ("control", [("Operator", "seeds and rules", "laptop", C, "1 crawl")], "seed addresses"),
+        ("crawling", [("Frontier machines", "hosts assigned by hash", "stack", S, "x 40"), ("Fetchers", "many connections each", "chip", T, "x 300"), ("Resolver cache", "names to addresses", "search", M, "x 6")], "pages, 4000 per second"),
+        ("processing", [("Parsers", "links, checksums", "doc", I, "x 60"), ("Seen set", "hashes or a filter", "eye", M, "x 8"), ("Link queue", "to the owning machine", "stack", S, "x 6")], "content"),
+        ("storage", [("Page store", "an object store", "doc", S, "1 PB")], None),
+    ], ["Every host belongs to exactly 1 frontier machine, which alone keeps", "that host's queue, its waiting time and its rules."]),
+    "metrics": ("The monitoring system, deployed", [
+        ("what is watched", [("Service instances", "expose current values", "laptop", C, "x 100000")], "asked every 10 seconds"),
+        ("collection", [("Collectors", "2 for each group", "listen", I, "x 60")], "1 million points/s, to 2 nodes each"),
+        ("storage", [("Series store", "2 copies of each series", "stack", S, "x 40"), ("Block storage", "finished blocks", "doc", S, "object store"), ("Rollup jobs", "per minute, per hour", "gear", M, "x 6")], "queries"),
+        ("reading and alerting", [("Query service", "bounded queries", "curve", T, "x 12"), ("Alert evaluators", "both run every rule", "clock", O, "x 2"), ("Second watcher", "watches the watcher", "eye", D, "elsewhere")], None),
+    ], ["Nothing in this picture is shared with the services being watched:", "not the machines, not the network path, not the storage."]),
+    "sync": ("The sync service, deployed", [
+        ("devices", [("Devices", "laptops and phones", "laptop", C, "40 million online")], "commits, and open connections"),
+        ("services, in 3 zones", [("Load balancers", "by kind of request", "swap", I, "x 12"), ("Sync service", "compares versions", "listen", I, "x 100"), ("Notifiers", "1 connection per device", "swap", M, "x 400")], "metadata here, bytes there"),
+        ("storage", [("Metadata store", "30 shards x 3 replicas", "stack", S, "x 90"), ("Chunk store", "see chapter 16", "doc", S, "1 EB")], None),
+    ], ["Devices upload and download chunks directly from the chunk store.", "Only small requests about metadata pass through the sync service."]),
+    "edit": ("The editing service, deployed", [
+        ("authors", [("Authors", "1 open connection each", "pencil", C, "20 million")], "operations, both ways"),
+        ("connections, in 3 zones", [("Load balancers", "by connection", "swap", I, "x 8"), ("Gateways", "route by document", "listen", I, "x 100")], "every author of a document, 1 server"),
+        ("sessions", [("Session servers", "1 owner per document", "curve", T, "x 300"), ("Document directory", "which server owns what", "search", M, "x 3")], "append, then acknowledge"),
+        ("storage", [("Operation log", "shards x 3 replicas", "stack", S, "x 30"), ("Snapshot store", "an object store", "doc", S, "chapter 16")], None),
+    ], ["A document is owned by 1 session server, chosen by hashing its id.", "If that server fails, another loads the snapshot and the log."]),
+    "match": ("The exchange, deployed", [
+        ("participants", [("Trading firms", "programs, not people", "laptop", C, "210000 orders/s")], "paths of equal length"),
+        ("entry", [("Gateways", "syntax, risk, rate", "listen", I, "x 16")], "orders that passed the checks"),
+        ("ordering", [("Sequencer", "primary and standby", "stack", S, "x 2"), ("Journal", "3 replicas, in 2 sites", "doc", S, "x 3")], "1 sequence of events"),
+        ("matching", [("Matching engines", "1 thread, some shares", "chip", T, "x 10"), ("Standby engines", "apply the same events", "chip", I, "x 10"), ("Market data", "to all, at once", "curve", M, "x 4")], "trades"),
+        ("after the trade", [("Clearing", "ordinary databases", "stack", O, "not on the fast path")], None),
+    ], ["There is no load balancer anywhere on the fast path. A share is matched", "by 1 engine, and capacity is added by dividing the shares."]),
+    "click": ("The click counter, deployed", [
+        ("browsers", [("Browsers", "report each click", "browser", C, "100000 clicks/s")], "POST /v1/clicks"),
+        ("collection, in 3 zones", [("Load balancers", "any collector", "swap", I, "x 4"), ("Collectors", "append, and nothing else", "listen", I, "x 40")], "partitioned by advertisement"),
+        ("the log", [("Click log", "brokers, chapter 11", "stack", S, "x 12"), ("Archive", "every raw click", "doc", S, "73 TB a year")], "read by position"),
+        ("counting", [("Stream processors", "state in checkpoints", "gear", T, "x 24"), ("Nightly batch", "final counts", "gear", M, "from the archive")], "1 row for each window"),
+        ("serving", [("Count store", "by ad and window", "stack", S, "x 9"), ("Counts API", "dashboards, invoices", "curve", I, "x 8")], None),
+    ], ["Collectors stay simple so that they stay up. Everything below the log", "can be stopped and started again without losing a click."]),
+}
+
+
+def _deployment(slug, title, tiers, note):
+    def draw():
+        deploy(slug + "-deploy", title, tiers, note)
+
+    draw.__name__ = slug + "_deploy"
+
+    return figure(draw)
+
+
+for _slug, (_title, _tiers, _note) in DEPLOYS.items():
+    _deployment(_slug, _title, _tiers, _note)
 
 
 for name in sys.argv[1:] or list(FIGURES):
