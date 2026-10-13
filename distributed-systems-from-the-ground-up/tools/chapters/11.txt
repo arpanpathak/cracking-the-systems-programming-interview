@@ -1,0 +1,544 @@
+# Message Queue: System Design
+
+When one service needs another to do something, the direct course is to call it and
+wait for the answer. An order service that has accepted an order calls the billing
+service to issue an invoice, then the warehouse to reserve the goods, then the mail
+service to send a confirmation, and replies to the customer when all 3 have answered.
+This works, and it binds the 4 services together more tightly than is good for any of
+them. The order service is now as slow as the slowest of the 3 and as available as all
+of them together, so that an outage of the mail service, which is surely the least
+important of the 3, prevents customers from placing orders.
+
+A *message queue* loosens this binding. The order service records the fact that an
+order was created by writing a short *message* to the queue, and its part is then
+finished. Billing, the warehouse and the mail service each read the message when they
+are able to, at their own pace, and a service that is down for an hour reads it an
+hour late and is otherwise none the worse. The sender and the receivers need not be
+running at the same time, need not be equally fast, and need not know of one
+another's existence.
+
+What the queue takes on in exchange is a set of promises that are easy to state and
+hard to keep: that a message once accepted is not lost, that it reaches every party
+entitled to it, that related messages arrive in the order in which they were sent, and
+that all of this continues to hold when machines fail in the middle of things. This
+chapter designs a queue of the kind that keeps its messages in a log, and most of it
+is devoted to stating exactly what can and what cannot be promised about delivery.
+
+<div class="covers">
+
+This chapter covers
+
+- what a queue changes in the relationship between 2 services
+- 2 kinds of queue: one that hands out tasks, and one that keeps a log
+- partitions, keys, and what ordering a queue can preserve
+- consumer groups, and how partitions are shared and reassigned
+- at most once, at least once, and why "exactly once" needs the consumer's help
+- what a producer must do so that a retry does not duplicate a message
+- how a queue stays durable, using the replication of chapter 3
+- messages that can never be processed, consumers that fall behind, and publishing together with a database write
+
+</div>
+
+## What a queue changes
+
+A queue placed between 2 services alters their relationship in 3 respects, each of
+which is a reason for introducing one.
+
+It separates them in time. The sender, called the *producer*, hands its message to the
+queue and proceeds without waiting for anybody to act on it, and the receiver, called
+the *consumer*, takes the message whenever it is ready. Neither depends on the other
+being available at that moment, and the availability of the producer is no longer
+limited by that of its consumers.
+
+It absorbs differences in speed. If orders arrive in a burst of 1000 per second for a
+minute while the billing service can process 200 per second, direct calls would
+overwhelm billing or force the order service to refuse customers. With a queue between
+them, the burst accumulates as a backlog of 48000 messages, which billing works
+through in the following 4 minutes. The queue has levelled the load, turning a peak
+that billing could not meet into a delay that it can.
+
+And it permits several independent receivers. The order service publishes a single
+message, "order 7 created", and has no need to know who is interested. A new service,
+written next year to compute sales statistics, can begin reading the same messages
+without any change to the producer.
+
+These benefits come at a definite cost, which should be acknowledged at the outset.
+The producer no longer learns whether its message was acted upon, or when. Errors that
+a direct call would have reported immediately now occur later, in another service, and
+have to be found there. And the system as a whole has become *eventually consistent*
+in the sense of chapter 1: for some time after an order is accepted, no invoice exists
+for it, and every part of the system has to be designed in the knowledge that this
+interval exists and is sometimes long.
+
+## 2 kinds of queue
+
+The word "queue" is applied to 2 designs that share the vocabulary of producers and
+consumers and differ in almost everything else.
+
+The older design, which we may call a *task queue*, treats a message as a piece of
+work to be done once. Consumers take messages from the front, and each message is
+given to exactly 1 of them. When the consumer reports that it has finished, by sending
+an *acknowledgement*, the queue deletes the message. If the consumer fails to
+acknowledge within a set time, the queue assumes it has crashed and makes the message
+available to another. The queue holds only what has not yet been done, and a message
+that has been processed is gone.
+
+The newer design is a *log*. Messages are appended to the end of a file and stay
+there, each identified by its position, which is called its *offset*. Reading a
+message does not remove it. A consumer keeps track of the offset it has reached, reads
+onward from there, and periodically records its position with the queue. Messages are
+deleted only when they exceed a configured age or the log exceeds a configured size,
+quite independently of whether anybody has read them.
+
+| | Task queue | Log |
+|---|---|---|
+| After a message is processed | it is deleted | it remains until it is old |
+| Several independent readers | each message goes to 1 of them | each reader sees every message |
+| Reading old messages again | impossible | start from an earlier offset |
+| What the queue tracks per consumer | which messages are outstanding | 1 number, the offset |
+| Order of processing | lost when consumers work in parallel | kept within a partition |
+| Typical use | distributing jobs among workers | publishing events to many services |
+
+The log has become the more common basis for communication between services, chiefly
+on account of the second and third rows. Because reading does not consume, any number
+of services can read the same messages, each at its own offset. Because messages are
+retained, a consumer that had a defect can be corrected and set back to reprocess the
+last day's messages, and a newly written service can begin from the start of the log
+and build its state from history. The log is also the structure this book already
+knows best: it is the append-only log of chapter 2, replicated as in chapter 3, and
+offered to other services as a product.
+
+The task queue remains the better choice for what its name describes, the distribution
+of independent jobs among a pool of workers, and it reappears in chapter 12. The
+remainder of this chapter concerns the log.
+
+## Partitions and order
+
+A single log has a single end to which every message is appended, and is therefore
+limited to the rate at which 1 machine can write and to the capacity of 1 disk. To go
+beyond that, a named stream of messages, called a *topic*, is divided into several
+logs, called *partitions*, which can be placed on different machines and written
+concurrently.
+
+Dividing the topic raises the matter of order. Within 1 partition, messages have a
+definite order, that of their offsets, and every consumer reads them in that order.
+Between partitions there is no order at all: if one message is in partition 0 and
+another in partition 1, nothing records which was published first, and 2 consumers may
+process them in either sequence.
+
+For many messages this is of no consequence. For some it matters a great deal. "Order
+7 created", "order 7 paid" and "order 7 shipped" must be processed in that order,
+while the order of "order 7 paid" relative to "order 8 created" is immaterial. The
+requirement, in other words, is for order among messages about the same thing, and
+the queue provides exactly this by means of a *key*. The producer attaches a key to
+each message, here the order number, and the queue chooses the partition by hashing
+the key, so that all messages with the same key are appended to the same partition,
+where their order is preserved.
+
+@figure queue-partitions :: Messages are distributed among partitions by key, so that every message about 1 order is in 1 partition.
+
+3 consequences of this arrangement tend to be discovered later than they should
+be. The first is that the choice of key is a design decision with lasting effects,
+since it fixes which messages are ordered relative to which. The second is that the
+number of partitions cannot be changed casually: the partition of a key is its hash
+modulo the number of partitions, so that adding partitions sends new messages for an
+existing key to a different partition from the old ones, and their order across the
+change is lost. The third is that a key which accounts for a large share of all
+messages, such as a single very large customer, makes its partition far busier than
+the others, and no number of additional partitions relieves it.
+
+## Consumer groups
+
+A topic with 4 partitions can be read by 4 consumers working in parallel, and the
+mechanism that coordinates them is the *consumer group*. All instances of 1 service,
+for example the 4 running copies of the billing service, belong to 1 group, and the
+queue ensures that each partition is read by exactly 1 member of the group at any
+moment. Different services form different groups, and each group reads the whole
+topic independently, with its own offsets.
+
+@steps steps-queue-group :: Consumers join and leave a group, and the partitions are divided among the members.
+
+Confining each partition to 1 reader per group is what preserves order during
+processing. If 2 members of the same group read the same partition, one might process
+"order 7 paid" before the other had finished with "order 7 created". The rule has the
+further consequence, shown in the fourth step, that the number of partitions is an
+upper limit on parallelism. A fifth consumer in a group that reads 4 partitions has
+nothing to do.
+
+The redistribution of partitions when a member joins or leaves is called a
+*rebalance*, and it is a regular source of trouble in operation. The group detects a
+failed member by the absence of its periodic *heartbeat*, a short message that says
+only "I am alive". While a rebalance is in progress, the partitions being moved are
+read by nobody. A consumer that is merely slow, taking longer over a batch of messages
+than the heartbeat timeout allows, is declared dead, loses its partitions, and
+rejoins, which triggers another rebalance, and a group can spend a large part of its
+time rebalancing in this way without any member having actually failed. The remedies
+are to send heartbeats from a thread separate from the one doing the work, and to
+limit the number of messages fetched at once so that a batch is always finished well
+within the timeout.
+
+## What "delivered" can mean
+
+A consumer that handles a message does 2 things: it performs the work that the message
+calls for, and it records with the queue that the message has been dealt with, which
+in a log is done by *committing* an offset. These are separate operations on separate
+systems, and a consumer can crash between them. The order in which it performs them
+determines what the system guarantees, and there are only 2 orders to choose from.
+
+If the consumer does the work first and commits afterwards, a crash between the 2
+leaves the work done and the offset not advanced.
+
+@steps steps-queue-after :: The consumer works first and commits afterwards, and crashes in between.
+
+The replacement consumer begins from the last committed offset and repeats work that
+was already done. No message is ever skipped, and some are processed more than once.
+This guarantee is called *at least once*.
+
+If the consumer commits first and does the work afterwards, a crash between the 2
+leaves the offset advanced and the work not done.
+
+@steps steps-queue-before :: The consumer commits first and works afterwards, and crashes in between.
+
+Now the replacement begins after the message that was never processed, and that
+message is lost for good. Nothing is processed twice, and some messages are not
+processed at all. This guarantee is called *at most once*.
+
+There is no third order, and it follows that a queue cannot on its own deliver each
+message *exactly once*. One naturally asks whether the work and the commit could be
+made a single atomic step, and in general they cannot, because they affect different
+systems: the invoice is sent by a mail server, and the offset is stored by the queue.
+Making 2 independent systems change together or not at all is the hard problem of
+distributed transactions, and for something like sending an email it is
+impossible, since an email cannot be unsent.
+
+What can be achieved, and what careful systems mean when they speak of exactly-once
+processing, is an *effect* that occurs exactly once. The queue delivers at least once,
+and the consumer is built so that processing a message a second time changes nothing.
+An operation with this property is *idempotent*, and there are 2 standard ways of
+obtaining it. Some operations are idempotent by nature: "set the status of order 7 to
+paid" may be applied any number of times with the same result, whereas "add 1 to the
+count of paid orders" may not. For the others, the consumer records the identifier of
+every message it has processed, in the same database transaction as the effect of the
+message, and on receiving a message it has already recorded it does nothing. The
+simulation for this chapter uses this second method: a consumer crashes after acting
+on 6 messages and before committing, its successor is given the same 6 messages
+again, recognises each of them, and the total number of actions taken remains 6.
+
+The choice between the 2 guarantees should be made by asking which failure is the
+more tolerable. For most business events it is plainly better to risk a duplicate,
+which idempotency can neutralise, than a loss, which nothing can repair, and at least
+once with idempotent consumers is the standard combination. At most once is
+appropriate where a late or repeated message is worthless or harmful, such as a
+reading from a sensor that will be superseded by the next reading a second later.
+
+## The producer's side
+
+The same difficulty exists on the producing side, where it is less often noticed. A
+producer sends a message and waits for the queue to confirm that it has been stored.
+If no confirmation arrives within the expected time, the producer cannot tell whether
+the message was lost on the way to the queue or stored successfully with only the
+confirmation lost on the way back. If it does not send again, the message may be
+lost, and if it does, the message may be stored twice.
+
+The solution again consists in making the repetition harmless. Each producer is given
+an identity by the queue, and numbers its messages to each partition consecutively.
+The partition remembers the highest number it has stored for each producer and
+discards any message whose number it has already seen. A producer can then resend
+without hesitation, and the log contains each message once.
+
+The producer also decides how much durability to wait for, by choosing what
+constitutes a confirmation. It may send without waiting for any confirmation, which is
+fastest and loses messages whenever a machine fails. It may wait until the leader of
+the partition has written the message, in which case a message is lost if the leader
+fails before its followers have copied it. Or it may wait until the message is stored
+on a majority of the replicas, which is the rule of chapter 3 and the only setting
+under which a confirmed message survives the failure of a machine. Our design uses the
+third.
+
+## Durability and replication
+
+Each partition is a log, and it is kept durable and available by precisely the means
+that chapter 3 applied to the log of a key-value shard. One of the machines that hold
+a copy of the partition, the machines being called *brokers*, is its leader and
+receives all appends. The others are followers, which copy the leader's log, and a
+message counts as stored when a majority holds it. If the leader fails, a follower
+that holds every stored message is elected in its place, by the procedure of chapter
+4.
+
+Consumers are permitted to read a message only once it is stored on a majority. The
+reason is the one given in chapter 3 for not applying a record before it is
+committed. If a consumer were allowed to read a message that existed on the leader
+alone, and the leader then failed, the new leader's log would not contain that
+message, and the consumer would have acted on something that, as far as the queue is
+concerned, never happened.
+
+The committed offsets of consumer groups are themselves data that must survive
+failures, since losing them would cause every group to reprocess its entire topic.
+They are small and frequently updated, and are kept in a replicated store of their
+own, shown in the design as the offset store.
+
+## Difficulties in operation
+
+### Messages that cannot be processed
+
+Suppose a message is malformed in a way the consumer does not anticipate, so that
+every attempt to process it raises an error. Under at least once delivery the consumer
+does not commit past it, and so it receives the same message again, fails again, and
+continues to do so indefinitely. A single such message, known as a *poison message*,
+halts its entire partition, since no later message in the partition can be reached.
+
+The remedy is to limit the number of attempts. After a message has failed a set number
+of times, 5 for example, the consumer publishes it to a separate topic reserved for
+failures, called a *dead-letter queue*, commits past it, and continues. An alert draws
+an engineer's attention to the dead-letter queue, where the message can be examined
+and, once the defect is corrected, published again. The cost is that the failed
+message has been overtaken by its successors, so that the order within its key is
+broken, and whether that is acceptable has to be decided for each topic.
+
+### Consumers that fall behind
+
+The difference between the offset of the newest message in a partition and the offset
+that a group has committed is the group's *lag*. It is the most informative single
+measurement in the operation of a queue, because it states directly how far a
+consumer is behind its producers. A lag that fluctuates around a small value indicates
+health. A lag that rises steadily indicates that messages arrive faster than they are
+consumed, and since messages are retained only for a limited period, a lag that
+continues to rise ends with the oldest unread messages being deleted before the
+consumer has reached them, which is a loss of data that no setting on the producer can
+prevent.
+
+### Publishing together with a database write
+
+A service very often needs to do 2 things in response to 1 request: change its own
+database and publish a message announcing the change. The order service inserts an
+order and publishes "order 7 created". Performed as 2 separate operations, these can
+come apart. If the service writes the database and crashes before publishing, an order
+exists of which no other service will ever hear. If it publishes first and the
+database write then fails, other services act on an order that does not exist.
+
+The *outbox* pattern makes the 2 operations one. The service writes the message, as an
+ordinary row, into a table of its own database called the outbox, in the same
+transaction as the order itself, so that the database guarantees that both are written
+or neither is. A separate process then reads the outbox and publishes its rows to the
+queue.
+
+@figure queue-outbox :: The order and its message are written in 1 transaction, and a relay publishes the message afterwards.
+
+The relay may crash between publishing a row and marking it as published, and will in
+that case publish it again on restarting. The pattern therefore delivers at least
+once, which returns us to the idempotent consumer, and it will be noticed how many of
+the questions in this chapter have ended at that same answer.
+
+### Keeping the latest value only
+
+Retaining messages for a fixed period suits a stream of events. Some topics, however,
+carry the current state of things, each message being the latest value for its key,
+such as a customer's current address. For these, old values are of no interest and
+the latest must be kept however old it is. A log can be *compacted* for this purpose:
+a background process rewrites it, keeping for every key only the most recent message.
+A new consumer reading a compacted topic from the beginning thereby obtains the
+current value of every key, and can construct a complete copy of the data from the
+topic alone.
+
+## Use cases
+
+Producers publish, consumers fetch and commit, and operators decide how many
+partitions a topic has.
+
+@figure queue-use-cases :: The actors and what each of them does.
+
+## Functional requirements
+
+| No. | Functional requirement |
+|---|---|
+| 0 | A producer can publish a message to a topic. Messages with the same key are delivered in the order they were published. |
+| 1 | A consumer can fetch messages starting from an offset. |
+| 2 | A group of consumers shares a topic: each message goes to 1 member of the group. |
+| 3 | A consumer can commit an offset, and after a restart it continues from the committed offset. |
+| 4 | Messages are kept for 7 days, whether or not they were read. |
+
+## Non-functional requirements
+
+| No. | Property | Non-functional requirement |
+|---|---|---|
+| 0 | Durability | A published message survives the loss of 1 broker. |
+| 1 | Consistency | Strong within a partition: every consumer sees the same messages in the same order. |
+| 2 | Delivery | At least once. A message can be delivered again after a consumer crash. |
+| 3 | Scale | 100000 messages per second of 1 KB each. |
+
+The queue is strongly consistent within a partition, which means that all consumers
+see the same messages at the same offsets, and that a message which has been confirmed
+to its producer will be seen by every consumer. It makes no promise about the relative
+order of messages in different partitions. The system built from the queue and its
+consumers is eventually consistent, as the opening section explained, since a consumer
+acts on a message some time after it was published.
+
+## Core entities
+
+@figure queue-entities :: The core entities and their fields.
+
+## Capacity estimate
+
+<div class="estimate">
+
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+
+**Arithmetic ahead.** 7 days of messages are 60 TB for 1 copy and 181 TB for 3, about 46 brokers with 4 TB disks.
+
+<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+
+<details>
+<summary>Show the calculation</summary>
+
+| Quantity | Calculation | Result |
+|---|---|---|
+| Bytes per day | 100000 × 1 KB × 86400 s | 8.64 TB |
+| 7 days, 1 copy | 8.64 × 7 | 60.5 TB |
+| 3 copies | 60.5 × 3 | 181 TB |
+| Brokers with 4 TB disks | 181 ÷ 4 | 45.4, so 46 |
+
+</details>
+
+</div>
+
+## The API
+
+Publishing creates a message within a topic. Fetching reads from a partition, starting
+at an offset. Committing replaces the stored offset of a group.
+
+**Publish a message**
+
+```http
+POST /v1/topics/orders/messages HTTP/1.1
+Host: queue.example
+Content-Type: application/json
+
+{ "key": "order-7", "body": "paid" }
+```
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{ "partition": 1, "offset": 2 }
+```
+
+Its key chooses the partition, and the response says where the message now lives.
+
+**Commit an offset**
+
+```http
+PUT /v1/topics/orders/partitions/1/offsets/billing HTTP/1.1
+Host: queue.example
+Content-Type: application/json
+
+{ "committed": 6 }
+```
+
+```http
+HTTP/1.1 204 No Content
+```
+
+`PUT` is idempotent, so committing the same offset twice is harmless.
+
+Consumers fetch messages, and the queue does not push them. This allows each consumer
+to proceed at its own pace and to ask for as many messages as it can handle, where a
+queue that pushed would have to guess at the capacity of every consumer. So that an
+idle consumer does not issue requests continuously, a fetch that finds no new messages
+is held open by the broker for a short time and answered as soon as a message arrives.
+
+## High-level design
+
+@figure queue-design :: The components and the path of a request. The steps are numbered.
+
+| Component | Role | State it holds | When 1 instance fails |
+|---|---|---|---|
+| Broker | stores partitions as logs and serves fetches | the logs | a follower of each partition it led takes over |
+| Consumer | fetches, acts, commits | none that must survive | another member of its group takes over its partitions |
+| Offset store | remembers each group's committed offsets | the offsets, replicated | consumers keep working and commit later |
+
+### One request, step by step
+
+The steps follow the arrows of figure 11.queue-design.
+
+1. A producer sends a message with the key `order-7`. A hash of the key picks partition 0, and the request goes to the broker that leads it.
+2. The leader appends the message to the partition's log and copies it to a follower, as in chapter 3. Then it answers with the offset.
+3. A consumer asks the leader for messages from its committed offset onward.
+4. The consumer acts on each message. When the batch is done, it stores the new offset in the offset store.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| Expecting each message to arrive exactly once | A consumer that crashes before committing receives its messages again and repeats their effects. | Deliver at least once and make the consumer idempotent. |
+| Committing before the work | A crash after the commit loses the message. | Do the work, then commit, unless losing messages is acceptable. |
+| Publishing without a key, or with a random one | Messages about the same thing land in different partitions and are processed out of order. | Use as the key the thing whose messages must stay in order. |
+| Adding partitions to a topic in use | New messages for a key go to a different partition from the old ones. | Choose the number of partitions generously at the start. |
+| More consumers than partitions | The extra consumers receive nothing. | Size the partitions for the parallelism that will be needed. |
+| Retrying a failing message without limit | 1 message stops its whole partition. | After a fixed number of attempts, move it to a dead-letter queue. |
+| Writing the database and publishing as 2 steps | A crash between them leaves the 2 in disagreement. | Write the message to an outbox in the same transaction. |
+| Waiting only for the leader's confirmation | A message is lost when the leader fails before its followers have it. | Wait for a majority. |
+| Heartbeats from the thread that does the work | A slow batch is taken for a crash, and the group rebalances repeatedly. | Send heartbeats separately, and fetch small batches. |
+| Not watching lag | A consumer falls so far behind that unread messages are deleted. | Raise an alert when lag grows steadily. |
+| Processing 1 partition with several threads | Messages of the same key are handled out of order. | Use 1 thread per partition, or distribute within the consumer by key. |
+
+## Failures
+
+| Failure | What users see | How the system recovers |
+|---|---|---|
+| A consumer crashes before it commits | nothing, if the consumer ignores repeats | its messages are delivered again |
+| A broker is lost | a pause of about 1 second for its partitions | followers are elected leaders, as in chapter 4 |
+| A consumer is too slow | its messages wait longer | more partitions and more group members; the log holds the backlog |
+
+## Trade-offs
+
+| Decision | What it gains | What it costs |
+|---|---|---|
+| Partitions | parallel consumers and more throughput | no order across partitions |
+| Offsets kept by position | the broker stores 1 number per group | a consumer cannot skip 1 bad message without moving past it |
+| At-least-once delivery | no message is lost | consumers must tolerate repeats |
+
+## The simulation
+
+@sim queuesim
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Message | a small record of something that happened, or of work to be done |
+| Producer, consumer | the service that publishes a message, and a service that reads it |
+| Task queue | a queue that gives each message to 1 consumer and deletes it when acknowledged |
+| Log | a queue that appends messages and keeps them, read by offset |
+| Topic | a named stream of messages |
+| Partition | 1 of the logs into which a topic is divided |
+| Offset | the position of a message in its partition |
+| Key | the part of a message that decides its partition |
+| Consumer group | the instances of 1 service, which share the partitions of a topic among themselves |
+| Rebalance | redistributing partitions when a member joins or leaves a group |
+| Heartbeat | a periodic message by which a consumer shows that it is alive |
+| Commit | recording the offset up to which a group has processed a partition |
+| At most once | a guarantee under which a message may be lost and is not repeated |
+| At least once | a guarantee under which a message may be repeated and is not lost |
+| Idempotent | having the same effect whether performed once or several times |
+| Broker | a machine of the queue, which stores partitions |
+| Poison message | a message whose processing always fails |
+| Dead-letter queue | a topic to which messages are moved after repeated failure |
+| Lag | how many messages a group is behind the end of a partition |
+| Outbox | a database table of messages, written in the same transaction as the data they announce |
+| Compaction | rewriting a log to keep only the latest message for each key |
+
+<div class="summary">
+
+## Summary
+
+- A queue separates services in time, absorbs bursts, and lets any number of services read the same messages, and the system becomes eventually consistent in return.
+- A task queue deletes a message once it is processed, and a log keeps messages and lets each reader hold its own offset.
+- Order exists within a partition only, and the key of a message decides which messages are ordered relative to each other.
+- A consumer group gives each partition to 1 of its members, so the number of partitions limits parallelism.
+- Working before committing gives at least once, committing before working gives at most once, and there is no other order.
+- An effect that happens exactly once is obtained by delivering at least once to an idempotent consumer.
+- A producer waits for a majority and numbers its messages, so that a confirmed message survives a failure and a retry is not stored twice.
+- A database write and a message are made 1 step by writing the message to an outbox in the same transaction.
+
+</div>

@@ -1,0 +1,11 @@
+$ curl -i -X PUT http://127.0.0.1:7003/v1/keys/user-1 --data-binary 'ada'
+HTTP/1.1 201 Created
+etag: "2"
+content-length: 0
+
+$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 --data-binary 'x'
+HTTP/1.1 421 Misdirected Request
+content-type: application/problem+json
+content-length: 116
+
+{"type":"/problems/not-leader","title":"This node is not the leader","status":421,"detail":"the leader is member 3"}

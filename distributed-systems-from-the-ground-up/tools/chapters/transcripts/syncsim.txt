@@ -1,0 +1,7 @@
+$ cargo run -p syncsim
+a file of 65536 bytes, and the same file with 1 byte added at the start
+cuts every 1024 bytes: 65 chunks, 65 to upload again
+cuts that depend on the content: 62 chunks, 1 to upload again
+the server holds version 3. the laptop and the phone both change it while offline
+laptop uploads, based on version 3: accepted as version 4
+phone uploads, based on version 3: conflict: the server is at version 4, written by the laptop

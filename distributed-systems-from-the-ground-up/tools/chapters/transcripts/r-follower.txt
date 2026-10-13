@@ -1,0 +1,14 @@
+$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 400 --acked acked.txt &
+$ kill -9 <pid of the node on port 7002>
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":435,"committed":434,"followers":[417,434]}
+400 writes acknowledged
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":700,"committed":700,"followers":[417,700]}
+
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/n2 &
+term 1, log ends at 417
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":700,"committed":700,"followers":[700,700]}
+$ cmp /var/tmp/n1/kv.log /var/tmp/n2/kv.log && echo identical
+identical

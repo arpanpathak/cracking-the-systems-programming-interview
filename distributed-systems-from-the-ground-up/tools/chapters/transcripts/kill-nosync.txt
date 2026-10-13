@@ -1,0 +1,9 @@
+$ ./target/release/kvd --data /var/tmp/kvd --no-sync &
+$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 200000 --acked acked.txt &
+$ sleep 1.5; pkill -9 -x kvd
+write 8595 failed: io: Connection reset by peer (os error 104)
+8594 writes acknowledged
+$ ./target/release/kvd --data /var/tmp/kvd --no-sync &
+recovered 8594 keys from 8594 records, cut 0 bytes from the end of the log
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+8594 acknowledged, 8594 found, 0 missing

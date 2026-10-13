@@ -1,0 +1,37 @@
+[book]
+title = "Distributed Systems from the Ground Up"
+description = "System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust"
+authors = ["Arpan Pathak"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+site-url = "/cracking-the-systems-programming-interview/distributed-systems-from-the-ground-up/"
+default-theme = "light"
+preferred-dark-theme = "navy"
+additional-css = ["theme/custom.css"]
+additional-js = ["theme/figures.js", "theme/proto.js", "theme/code.js", "theme/tables.js", "theme/steps.js"]
+smart-punctuation = true
+git-repository-url = "https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up"
+git-repository-icon = "fab-github"
+edit-url-template = "https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/{path}"
+
+# The listings are parts of programs, printed and offered for copying, with no
+# button to run them.
+[output.html.playground]
+runnable = false
+copyable = true
+
+# Removes the `// ANCHOR:` comments that mark the parts of a program a chapter
+# prints by name. It runs after mdBook has resolved the includes.
+[preprocessor.strip-anchors]
+command = "python3 tools/strip_anchors.py"
+after = ["links"]
+
+[output.html.fold]
+enable = true
+level = 1

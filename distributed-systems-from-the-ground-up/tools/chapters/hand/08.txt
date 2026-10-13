@@ -1,0 +1,447 @@
+# Unique ID Generator: System Design
+
+Almost every record that a system stores needs a name by which the rest of the system
+can refer to it. An order is mentioned in an invoice, a message in a reply, a user in a
+thousand other rows, and each of these references works only if the name it uses
+belongs to exactly 1 record and will never belong to another. Such a name is an
+*identifier*, or id, and for as long as a system consists of a single database the
+question of where ids come from hardly arises, because the database keeps a counter and
+hands out the next number with every insert.
+
+The question becomes interesting when records are created on many machines at once.
+The counter that served 1 database so well now has to be shared, and a shared counter
+is a place where every creation of every record in the system must queue, and a
+machine whose failure stops all of them. This chapter is about producing identifiers
+without that shared point. We examine 4 ways of doing it, of which the last, an id
+composed of a timestamp, a node number and a counter, is the one we then design in
+full, and we give particular attention to the ways in which each scheme can quietly
+produce the same id twice.
+
+<div class="covers">
+
+This chapter covers
+
+- what an identifier is required to do, beyond being unique
+- a counter in 1 database, and what it costs at scale
+- random identifiers, the probability that 2 of them collide, and their effect on an index
+- blocks of numbers handed out by a coordinator
+- identifiers composed of time, node number and counter
+- clocks that run backwards, restarts, and node numbers given out twice
+- what an id reveals to the people who see it
+- why the order of ids from different nodes is only approximate
+
+</div>
+
+## What an identifier has to do
+
+Uniqueness is the one property that cannot be compromised, and it is worth being
+precise about its scope. An id has to differ from every other id of the same kind that
+has ever been issued or ever will be, on any machine, including machines that have
+since been replaced and machines that were restarted a moment ago and have forgotten
+what they did before. Most of the difficulties in this chapter come from that last
+clause, since it is easy to design a generator that never repeats itself while it is
+running and considerably harder to design one that does not repeat itself after it has
+lost its memory.
+
+Several further properties are desirable, and the 4 schemes differ mainly in which of
+them they provide. An id should be small, because it is stored not only in its own
+record but in every record that refers to it and in every index over those references,
+so that the difference between 8 bytes and 16 is multiplied many times over. It should
+be obtainable without a network call, since a call adds latency to every insert and a
+dependency that may be unavailable. And it is very useful if ids increase with time,
+so that an id issued later is larger than one issued earlier.
+
+This last property deserves an explanation, because its value is not obvious until one
+considers how a database stores an index. An index keeps its entries in sorted order,
+divided among pages of fixed size, and an insert has to write the page into which the
+new entry falls. If new ids are always larger than existing ones, every insert falls
+on the last page, which is therefore the only page that needs to be in memory, and
+the index grows by appending. If new ids are scattered at random across the whole
+range, each insert falls on a different page, nearly every page of the index is being
+modified at any moment, and once the index has outgrown memory each insert costs a
+read from disk.
+
+@figure idgen-locality :: Inserts with random ids touch pages throughout the index, while inserts with time-ordered ids touch only the last page.
+
+Time-ordered ids bring smaller conveniences as well. Sorting by id is sorting by age,
+so that "the newest 20 orders" can be read from the end of the primary index without a
+separate index on the creation time, and an engineer looking at 2 ids in a log can
+tell at a glance which came first.
+
+## A counter in 1 database
+
+The traditional source of ids is a counter kept by the database, usually called an
+auto-increment column or a sequence. Its ids are as small as ids can be, they are
+strictly increasing, and uniqueness is guaranteed by the simplest possible argument,
+namely that 1 component gives out each number once.
+
+The cost lies entirely in the phrase "1 component". Every insert anywhere in the
+system must reach that database, which bounds the rate at which the whole system can
+create records by what 1 machine can do, and adds a network round trip for every
+service that is not in the same data centre. If the database is unavailable, nothing
+can be created at all. A system that has divided its data among many shards, as the
+key-value store of chapter 1 does, would be reintroducing through its ids the single
+point of failure that sharding was meant to remove.
+
+A well-known refinement keeps the counter and removes some of the dependence on 1
+machine. 2 databases each maintain a counter, the first giving out odd numbers and
+the second even numbers, so that either can serve requests when the other is down and
+their ids never coincide. The idea extends to n databases, each stepping by n from a
+different starting point. Its weakness is rigidity. The number of databases is built
+into every id that has been issued, and to add a third database to a pair one must
+change the step on machines that are in service, without ever letting 2 of them issue
+the same number during the change. The ids are also no longer ordered in time, since
+one database may be far ahead of the other.
+
+## Random identifiers
+
+At the opposite extreme is the idea of using no coordination whatsoever. Each machine
+picks a number at random from a range so large that 2 machines are extremely
+unlikely ever to pick the same one. The best-known form is the *universally unique
+identifier*, or UUID, a 128-bit value, and in its version 4 all but 6 of those bits
+are random, which leaves 122 random bits.
+
+Whether "extremely unlikely" is unlikely enough can be calculated. Among n ids drawn
+at random from 2 to the power 122 possible values, the probability that at least 2 are
+equal is approximately n squared divided by 2 to the power 123. A system that
+generates a million ids every second for 30 years produces about 10 to the power 15
+ids, and the probability of a single collision among all of them comes to roughly 1 in
+10 million. For nearly every purpose this is as good as certainty, provided the random
+numbers are truly random. That proviso is the practical risk of the scheme: a
+generator seeded from the clock, or 2 virtual machines cloned from the same image
+with the same internal state, will produce identical "random" ids with a probability
+that has nothing to do with the calculation above.
+
+Random ids have 2 real costs. They occupy 16 bytes where a counter needs 8, and that
+is paid again in every reference and every index. And they are scattered uniformly
+over their range, which is the worst case for index locality shown in the figure
+above. Many teams have adopted random UUIDs as primary keys while their tables were
+small and have discovered the second cost only when the index no longer fitted in
+memory and insert throughput fell sharply.
+
+The response to this has been to give up some random bits in exchange for order.
+Version 7 of the UUID standard places a 48-bit timestamp in milliseconds at the front
+and fills the rest with random bits, so that ids generated later sort after ids
+generated earlier, to the precision of a millisecond, while 2 ids from the same
+millisecond are distinguished by 74 random bits. This keeps the great advantage of
+random ids, which is that a machine needs nothing from anybody in order to make one,
+and removes the scattered inserts. What it cannot remove is the size, and if ids must
+fit in 64 bits, as they must wherever they are to be stored as an ordinary integer
+column, there is not enough room for both a useful timestamp and enough random bits to
+make collisions negligible.
+
+## Blocks of numbers
+
+A third scheme returns to the counter and reduces the cost of sharing it. A
+coordinator holds a single durable counter. A node that needs ids asks the coordinator
+for a block of them, 1000 at once for example, upon which the coordinator advances its
+counter by 1000 and the node gives out the numbers of its block one by one from
+memory. The node contacts the coordinator again only when the block is used up.
+
+@figure idgen-ranges :: 2 nodes take blocks from a coordinator and give out the numbers locally.
+
+Uniqueness follows from the fact that no number belongs to 2 blocks, and the
+coordinator is consulted once per 1000 ids, so that its load and its influence on
+latency are a thousandth of what they were with a plain shared counter. If the
+coordinator fails, every node can continue until its current block is exhausted, which
+with a suitable block size gives operators ample time to restore it.
+
+2 properties are lost. The ids contain gaps, because a node that crashes or is
+restarted discards the unused remainder of its block, and anyone who assumed that ids
+are consecutive, for instance in order to count records by subtracting one id from
+another, will be misled. And the ids are no longer ordered in time across nodes, since
+a slow node may still be giving out numbers from an old block long after a busy node
+has moved on to much larger ones. Where neither property is needed, this is a simple
+and dependable scheme, and it yields the smallest ids of any distributed method.
+
+## Time, node number and counter
+
+The fourth scheme obtains uniqueness without any communication while a node is
+running, keeps the id within 64 bits, and preserves the order of time. It does so by
+composing each id from 3 numbers that the node already has at hand: the current time
+in milliseconds, the node's own number, and a counter of the ids the node has made in
+the current millisecond. The arrangement became widely known through a generator that
+a large social network published in 2010 under the name Snowflake, and ids of this
+form are often called by that name.
+
+@figure idgen-layout :: The 3 fields of an id and the unused first bit.
+
+The argument for uniqueness considers the ways in which 2 ids might be related, and
+shows that in each case they differ in at least 1 field. If they were made by
+different nodes, they differ in the node number, provided every node has a number of
+its own. If they were made by the same node in different milliseconds, they differ in
+the time, provided the node's clock does not return to a millisecond it has already
+used. And if they were made by the same node in the same millisecond, they differ in
+the counter, provided the node does not issue more ids in a millisecond than the
+counter can count. The 3 provisos are the whole of the engineering problem. Each
+corresponds to a way in which the scheme fails if it is neglected, and the 3 sections
+after the next deal with them in turn.
+
+@steps steps-idgen-make :: 2 nodes make 6 ids without exchanging a message.
+
+The order of the fields within the id is what makes ids sortable by time. Because the
+time occupies the most significant bits, comparing 2 ids as integers compares their
+times first, and only when the times are equal does the comparison fall through to
+the node number and the counter.
+
+The sizes of the fields are a budget of 63 bits to be divided, and the division shown
+is the common one. 41 bits of milliseconds last for 69 years, counted from a starting
+date that the service chooses for itself, and choosing a recent date in place of the
+conventional 1970 gives the scheme its full 69 years from the day it goes into
+service. 10 bits allow 1024 nodes. 12 bits allow each node 4096 ids per millisecond,
+or about 4 million per second. A system with few nodes and a very high rate might
+prefer 8 bits of node and 14 of counter, and a system spread over many small machines
+the reverse, and the only firm rule is that the division must be fixed before the
+first id is issued, since ids made under 2 different divisions cannot safely coexist.
+
+### When a millisecond is full
+
+A node that has issued 4096 ids within 1 millisecond has no counter values left for
+that millisecond. The correct response is to wait until the clock has advanced and to
+continue with a counter of 0, which delays the caller by less than a millisecond. In
+the simulation for this chapter, 3 nodes are each asked for 5000 ids in every one of
+100 milliseconds, and each makes exactly 4096 per millisecond, so that 1228800 ids are
+made in all, every one of them different, and 271200 requests have to wait.
+
+The response to avoid is letting the counter overflow. An overflowing counter carries
+into the adjacent field, which in this layout is the node number, and the node then
+issues ids that appear to come from its neighbour and may coincide with ids that the
+neighbour has really made.
+
+## The clock
+
+The second proviso, that a node's clock never returns to a millisecond it has already
+used, is not one that a computer's clock satisfies without help. The clock of a
+machine drifts, by an amount that is typically some tens of milliseconds a day, and a
+time service corrects it periodically by comparison with better clocks. When the
+machine's clock is found to be ahead, the correction may set it back, and for a brief
+period afterwards the clock shows times that it has shown before.
+
+@steps steps-idgen-clock :: The clock is set back by 3 ms, and the node refuses to make ids until the clock has passed the time of its last id.
+
+The defence shown in these steps is for the node to remember the time of the last id
+it issued and to refuse to issue an id for any earlier time. A step backwards of a few
+milliseconds is then waited out. A step of seconds or minutes indicates that
+something is wrong with the machine or its time service, and it is better for the
+node to report itself unhealthy, so that callers go elsewhere and an operator is
+alerted, than to stall silently for as long as the step lasts.
+
+This defence depends on the node's memory of its last id, and that memory is lost
+when the node restarts. Consider a node that issues an id at a time its clock calls
+5000, crashes, and is running again 20 ms later with a clock that has meanwhile been
+corrected backwards by 50 ms. The restarted node remembers nothing, reads 4970 from
+its clock, and issues ids for milliseconds that its former self has already used. 2
+precautions are taken against this. The node can record on disk, every few seconds, a
+time somewhat in the future before which it promises not to issue ids after a restart,
+and on starting it waits until its clock has passed the recorded time. Alternatively,
+or in addition, a starting node can wait for longer than the largest clock
+correction that is considered possible before it issues its first id. Both cost a
+short delay at startup and nothing afterwards.
+
+It is tempting to avoid the problem by using the machine's monotonic clock, which the
+operating system guarantees never to run backwards. That clock, however, measures time
+from an arbitrary starting point, commonly the moment the machine was switched on, and
+its readings are therefore meaningless on any other machine and after any reboot. It
+can serve to detect that the wall clock has jumped, by comparing the progress of the
+2, and it cannot replace the wall clock as the source of the timestamp.
+
+## The node number
+
+The first proviso requires that no 2 nodes that are making ids ever hold the same
+number. Of the 3 provisos it is the one whose violation is most damaging, because 2
+nodes with the same number and reasonably accurate clocks produce identical ids
+continuously, and nothing in an id or in either node can reveal that this is
+happening. The duplicates surface later and elsewhere, as rejected inserts if the ids
+are primary keys with a uniqueness constraint, or as 2 different records answering to
+1 name if they are not.
+
+Node numbers therefore need an authority. The usual arrangement is the one of our
+design, in which a starting node obtains its number from a coordinator of the kind
+described in chapter 1, which records the numbers in use and gives each to 1 node
+only. The alternatives are to write the numbers into the configuration of each
+machine, which is workable for a handful of machines administered by hand and
+dangerous wherever machines are created from a common image, or to derive the number
+from something assumed to be unique to the machine, such as part of its network
+address, which holds only as long as the assumption does.
+
+Reusing a number requires care for the same reason that restarting a node does. When
+a node has been retired and its number is given to a new node, the new node must not
+issue ids for any millisecond that the old one used, and since the 2 clocks may
+disagree, the coordinator should withhold a released number for longer than the
+largest clock difference that is thought possible. With 1024 numbers available and
+far fewer nodes in service, there is rarely any pressure to reuse a number quickly.
+
+## What an id reveals
+
+An id that is handed to the outside world, in a URL or an API response, tells its
+recipient whatever its construction encodes, and it is as well to decide in advance
+whether that is acceptable.
+
+An id of the time, node and counter form discloses exactly when the record was
+created, to the millisecond, to anyone who knows the layout, and the layout of such
+ids is common knowledge. For a public post this hardly matters, while for a medical
+record or an account it may. Sequential ids from a counter disclose something of
+commercial interest: a competitor who places an order today and another a
+week later, and subtracts the 2 order numbers, learns how many orders the business
+took in that week.
+
+Ordered ids are also guessable. Given one valid id, neighbouring values are likely to
+be valid as well, and a service that returns a record to anyone presenting its id,
+without checking that the caller is entitled to see it, can be read from end to end by
+counting. The proper remedy is the authorisation check, and an id should never be
+relied upon as a secret. Where an unguessable reference is truly required, as in a
+link for resetting a password, it should be a separate random token, kept apart from the id of
+the record.
+
+## The order of ids is approximate
+
+Since the time is the leading field, it is natural to read the order of 2 ids as the
+order in which 2 events occurred, and within a single node that reading is correct.
+Between nodes it holds only to the accuracy of their clocks. If the clock of node 1 is
+15 ms ahead of the clock of node 2, an id that node 2 makes now is smaller than an id
+that node 1 made 10 ms ago, although it was made later.
+
+Ids of this kind are accordingly described as *roughly sorted*: any 2 ids made further
+apart in time than the largest difference between clocks are in the right order, and
+ids made closer together than that may be in either order. This is entirely adequate
+for the purposes mentioned at the start of the chapter, such as index locality and
+listing recent records. It is inadequate as evidence that one event caused or preceded
+another. A system that needs to know the true order of 2 writes, for example in order
+to decide which of them should prevail, must obtain that order from a mechanism that
+establishes it, such as the sequence numbers that a leader assigns in chapter 3, and
+must not infer it from identifiers.
+
+## The 4 schemes compared
+
+| | Counter in 1 database | Random (UUID version 4) | Blocks of numbers | Time, node, counter |
+|---|---|---|---|---|
+| Size | 64 bits | 128 bits | 64 bits | 64 bits |
+| Network call | 1 per id | none | 1 per block | none, after startup |
+| Ordered by time | exactly | no | no | roughly |
+| What uniqueness rests on | 1 machine | the quality of random numbers | the coordinator's counter | distinct node numbers and a clock that does not repeat |
+| Fails silently when | it does not | random state is cloned | it does not | 2 nodes share a number, or a clock repeats |
+| When the shared component is down | no ids | not applicable | ids until blocks run out | running nodes are unaffected |
+
+The row on silent failure explains why the last scheme, for all its advantages, asks
+for more care than the others. The counter and the block schemes derive uniqueness
+from a single durable number and cannot produce a duplicate without losing that
+number. The schemes that need no coordination purchase their independence with
+assumptions about the environment, and when an assumption fails, no component is in a
+position to notice.
+
+Our design uses time, node number and counter, because the requirements below ask for
+64-bit ids, rough ordering by time, and continued operation when every other
+component is down, and no other scheme provides all 3.
+
+## Use cases
+
+Services ask for ids, at a very high rate and with no interest in how they are made.
+Operators have a single duty, which is to see that every node receives a number of
+its own.
+
+@part use_cases
+
+## Functional requirements
+
+@part functional
+
+## Non-functional requirements
+
+@part non_functional
+
+The consistency models of chapter 1 do not apply to this design in the ordinary
+sense, because the nodes share no data that could be consistent or inconsistent. The
+uniqueness of ids follows from their layout. The only fact that nodes must agree on is
+which number belongs to which node, and that fact is established once, at startup, by
+a coordinator that is strongly consistent.
+
+## Core entities
+
+@part entities
+
+## Capacity estimate
+
+@part capacity
+
+## The API
+
+The service has a single operation. Callers that need ids in very large numbers often
+link the generator into their own process as a library, each such process being a
+node with its own number, and thereby avoid the network altogether.
+
+@part api
+
+The id is returned as a string for a reason that has caught many APIs unprepared. JSON
+itself places no limit on the size of a number, but the most widely used JSON parsers,
+those of web browsers, read every number as a 64-bit floating-point value, which
+represents integers exactly only up to 2 to the power 53. A larger id is silently
+rounded to a nearby value, so that 2 different ids can arrive in the browser as the
+same number.
+
+## High-level design
+
+@part design
+
+### One request, step by step
+
+@part walk
+
+It is the absence of arrows between the id nodes that characterises this design. Once
+a node holds its number, it needs nothing from the coordinator or from any other node,
+and the availability of the service as a whole is that of whichever single node a
+caller manages to reach.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| Giving 2 nodes the same number | Both issue identical ids for as long as they run, and nothing reports it. | Let 1 coordinator assign the numbers, and hold a released number back before reusing it. |
+| Trusting the clock to move forwards | After a correction backwards, a node repeats ids it has already issued. | Remember the time of the last id and refuse to issue one for an earlier time. |
+| Forgetting the last time on restart | A restarted node with a corrected clock reuses milliseconds from before the crash. | Record a time on disk before which no id will be issued, or wait at startup for longer than any possible correction. |
+| Letting the counter overflow | The overflow carries into the node number, and the ids collide with another node's. | Wait for the next millisecond when the counter is used up. |
+| Sending ids as JSON numbers | Browsers round integers above 2 to the power 53, and 2 ids become equal. | Send ids as strings. |
+| Using random ids as the key of a large table | Inserts are scattered over the whole index, which must then stay in memory. | Use ids that begin with a timestamp. |
+| Treating an id as a secret | Neighbouring ids are valid and can be guessed. | Check on every request that the caller may see the record. |
+| Reading the order of ids as the order of events | Ids from 2 nodes can be out of order by the difference between their clocks. | Take the order of events from a log's sequence numbers. |
+| Changing the sizes of the fields after launch | Ids made under the old and the new layout can coincide. | Fix the layout before the first id is issued. |
+
+## Failures
+
+@part failures
+
+## Trade-offs
+
+@part tradeoffs
+
+## The simulation
+
+@part sim
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Identifier, id | a value that names 1 record and no other |
+| Sequence | a counter kept by a database that gives out the next number on request |
+| UUID | a 128-bit identifier, of which version 4 is random and version 7 begins with a timestamp |
+| Collision | 2 records receiving the same id |
+| Block | a range of consecutive numbers given to 1 node to hand out |
+| Node number | a small number that belongs to exactly 1 generator node |
+| Counter | the count of ids that a node has made in the current millisecond |
+| Clock correction | an adjustment of a machine's clock by a time service, possibly backwards |
+| Monotonic clock | a clock that never runs backwards and has no meaning outside its own machine |
+| Roughly sorted | in the right order except among ids made within a short time of each other |
+
+<div class="summary">
+
+## Summary
+
+- An id must be unique across every machine and every restart, and it is the restarts that make this hard.
+- A counter in 1 database is exact and small, and makes every insert depend on 1 machine.
+- Random 128-bit ids need no coordination and collide with negligible probability, at the cost of size and of scattered inserts unless they begin with a timestamp.
+- Blocks of numbers reduce a shared counter to 1 call per block, and give up consecutive numbers and order in time.
+- An id composed of time, node number and counter fits in 64 bits, needs no communication, and sorts roughly by time.
+- That scheme is correct only if node numbers are distinct, the clock never repeats a millisecond, and the counter does not overflow, and it fails silently when one of these does not hold.
+- The order of ids from different nodes is accurate only to the difference between their clocks.
+
+</div>

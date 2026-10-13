@@ -1,0 +1,12 @@
+$ ./target/release/kvd --data /var/tmp/kvd &
+recovered 0 keys from 0 records, cut 0 bytes from the end of the log
+listening on 127.0.0.1:7001
+$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 5000 --acked acked.txt &
+$ sleep 3; pkill -9 -x kvd
+write 495 failed: io: Peer disconnected
+494 writes acknowledged
+$ ./target/release/kvd --data /var/tmp/kvd &
+recovered 495 keys from 495 records, cut 0 bytes from the end of the log
+listening on 127.0.0.1:7001
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+494 acknowledged, 494 found, 0 missing

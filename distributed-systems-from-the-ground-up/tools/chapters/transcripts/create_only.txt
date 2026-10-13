@@ -1,0 +1,6 @@
+$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 -H 'If-None-Match: *' --data-binary 'someone else'
+HTTP/1.1 412 Precondition Failed
+content-type: application/problem+json
+content-length: 144
+
+{"type":"/problems/condition-failed","title":"The condition on the key's version does not hold","status":412,"detail":"the key is at version 2"}

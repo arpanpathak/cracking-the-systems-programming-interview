@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 372" width="444" height="372" role="img" aria-label="The state of a replica. Its log holds records 1 to 9. Records 1 to 7 are committed: they are on a majority of the logs and are applied to the entries. Records 8 and 9 are on this log and perhaps on others, are not applied and are not visible to reads. The replica keeps 2 positions, last, the end of the log, and committed, the last record known to be on a majority.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="392" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Committed and uncommitted records</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A replica with 9 records, of which 7 are committed.</text>
+  <text x="32.0" y="124.0" class="name" text-anchor="start" xml:space="preserve">log</text>
+  <rect x="128.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="143.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="161.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="176.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">2</text>
+  <rect x="194.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="209.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">3</text>
+  <rect x="227.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="242.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">4</text>
+  <rect x="260.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="275.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">5</text>
+  <rect x="293.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="308.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">6</text>
+  <rect x="326.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="341.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">7</text>
+  <rect x="359.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="374.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">8</text>
+  <rect x="392.0" y="104.0" width="30.0" height="30.0" rx="5" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="407.0" y="124.0" class="mono strong" text-anchor="middle" xml:space="preserve">9</text>
+  <line x1="357.5" y1="96" x2="357.5" y2="170" stroke="#1B2430" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="351.0" y="162.0" class="pill" text-anchor="end" style="fill:#1B2430" xml:space="preserve">committed: 7</text>
+  <text x="365.0" y="162.0" class="pill" text-anchor="start" style="fill:#1B2430" xml:space="preserve">last: 9</text>
+  <rect x="32" y="190" width="200" height="78" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,190.7 H38 V267.3 H44 A11.3,11.3 0 0 1 32.7,256 V202 A11.3,11.3 0 0 1 44,190.7 Z" fill="#2E8B3D"/>
+  <text x="52.0" y="216.0" class="name" text-anchor="start" xml:space="preserve">records 1 to 7</text>
+  <text x="52.0" y="234.0" class="sub" text-anchor="start" xml:space="preserve">On a majority of logs</text>
+  <text x="52.0" y="252.0" class="sub" text-anchor="start" xml:space="preserve">Applied to entries</text>
+  <rect x="248" y="190" width="200" height="78" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M260,190.7 H254 V267.3 H260 A11.3,11.3 0 0 1 248.7,256 V202 A11.3,11.3 0 0 1 260,190.7 Z" fill="#B7791F"/>
+  <text x="268.0" y="216.0" class="name" text-anchor="start" xml:space="preserve">records 8 and 9</text>
+  <text x="268.0" y="234.0" class="sub" text-anchor="start" xml:space="preserve">not yet on a majority</text>
+  <text x="268.0" y="252.0" class="sub" text-anchor="start" xml:space="preserve">not applied, not visible</text>
+  <text x="32.0" y="300.0" class="sub" text-anchor="start" xml:space="preserve">A replica keeps 2 positions in its log. Last is the end of log.</text>
+  <text x="32.0" y="317.0" class="sub" text-anchor="start" xml:space="preserve">committed is the last record known to be on a majority.</text>
+  <text x="32.0" y="334.0" class="sub" text-anchor="start" xml:space="preserve">Reads see entries, which contain records up to committed.</text>
+  <text x="32.0" y="351.0" class="sub" text-anchor="start" xml:space="preserve">A record moves from right group to left when a majority</text>
+  <text x="32.0" y="368.0" class="sub" text-anchor="start" xml:space="preserve">Of replicas has stored it.</text>
+</svg>

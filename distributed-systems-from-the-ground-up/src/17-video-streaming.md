@@ -1,0 +1,523 @@
+<img class="plate" src="art/ch17.svg?v=81fa550e" alt="A whale swims beside a sign that reads: 4 seconds at a time, in 4 qualities.">
+
+# Video Streaming: System Design
+
+A film of 2 hours in high definition occupies about 4.5 GB. A viewer who presses play
+expects the picture to appear within a second and to continue without interruption,
+on a phone connected through a mobile network whose speed changes from moment to
+moment as readily as on a television connected by cable, and a popular film is
+watched by millions of such viewers at once, in every part of the world. Video
+accounts for the greater part of all the bytes carried by the internet, and a service
+that delivers it is, before it is anything else, a system for moving very large
+quantities of data to very many places under conditions it cannot control.
+
+The observation on which every such system rests is that a video does not have to be
+delivered as a video. It can be cut into short pieces, each an ordinary file of a few
+megabytes, and delivered as files. Once this is done, the difficult parts of the
+problem turn out to have been solved already. Files of this size can be kept in the
+object store of chapter 16, served by ordinary web servers, and held in caches close
+to the viewers, and the player, which is the only component that knows how fast the
+viewer's connection is at this instant, can decide for itself, piece by piece, which
+quality of picture to ask for. This chapter follows a video from the moment it is
+uploaded to the moment it is watched, and explains each of these steps.
+
+<div class="covers">
+
+This chapter covers
+
+- why a video is delivered as a sequence of small files
+- encoding 1 upload at several qualities, and dividing that work among many machines
+- the manifest, which tells a player what pieces exist
+- how a player chooses a quality for each piece, and what it does when the connection worsens
+- the buffer, and the balance between quality and interruptions
+- edge servers that keep copies of pieces near the viewers
+- what determines the cost of the service
+- how live video differs from video on demand
+
+</div>
+
+## Why a video is delivered in pieces
+
+The earliest method of delivering video over the internet treated it as a single file.
+The browser requested the file and played it as it arrived, and for a short clip on a
+fast connection this is adequate. For anything longer it has several defects, all of
+which follow from the indivisibility of the file. The quality is fixed when the
+download begins, so that a viewer whose connection deteriorates must either wait for
+the picture to catch up or abandon it. A viewer who wishes to skip to the middle must
+wait for everything before it, unless the server supports requests for ranges of
+bytes. And a viewer who leaves after 2 minutes may by then have received 20 minutes'
+worth of data, which was paid for and never watched.
+
+A second method, common for some years, used protocols designed especially for video,
+in which a server kept a connection open to each viewer and sent a continuous stream
+at whatever rate the connection would bear. This adapted well to changing conditions
+and scaled badly, since the server had to maintain state for every viewer and nothing
+between the server and the viewer was able to cache a stream.
+
+The method that prevailed is simpler than either. The video is cut into pieces of a
+few seconds each, and every piece is stored as a separate file. The player fetches the
+pieces in order, by ordinary HTTP requests, and plays each as it arrives. The server
+keeps no state about any viewer, since each request is complete in itself and any
+server can answer any request. Skipping to the middle is a matter of requesting a
+later piece. And because pieces are ordinary files with ordinary addresses, the whole
+existing apparatus for delivering files over HTTP, caches above all, applies to video
+without modification.
+
+## Several qualities of 1 video
+
+Viewers differ too widely for any single version of a video to suit them all. A phone
+on a weak mobile signal can receive perhaps 500 kilobits per second, while a
+television on a fibre connection can receive 50 times as much and has the screen to
+show the difference. A version small enough for the phone would look poor on the
+television, and a version suited to the television could not be played on the phone at
+all.
+
+The service therefore prepares each video at several qualities. The process of
+producing a compressed video at a given picture size and data rate is called
+*encoding*, and each complete version so produced is a *rendition*. The data rate of a
+rendition, the number of bits it needs for each second of video, is its *bitrate*.
+
+<figure>
+<img src="figures/stream-ladder.svg?v=08525f60" alt="The same video encoded 4 times: at 240 lines and 400 kbit/s, at 480 lines and 1200 kbit/s, at 720 lines and 2500 kbit/s, and at 1080 lines and 5000 kbit/s. Each version is cut at the same moments into pieces of 4 seconds.">
+<figcaption><b>Figure 17.1</b> 1 video encoded at 4 bitrates, each cut into pieces at the same moments.</figcaption>
+</figure>
+
+A detail of this figure is essential to everything that follows. All renditions are
+cut into pieces at exactly the same points in time, so that piece 17 covers the same 4
+seconds of the film in each of them. A player can therefore take piece 17 from one
+rendition and piece 18 from another, and the picture continues without a break,
+changing only in sharpness. For this to work, every piece must begin with a complete picture. Most frames of a
+compressed video are stored only as a description of how they differ from the frame
+before, and the encoder is instructed to place a complete picture at the start of
+every piece.
+
+The length of a piece is a compromise. Short pieces allow the player to change
+quality quickly and to begin playing sooner, and they compress less efficiently and
+multiply the number of requests. Long pieces are the reverse. Values between 2 and 6
+seconds are usual, and this chapter uses 4.
+
+## From an upload to pieces
+
+A creator uploads a single file, in whatever format their camera or editing software
+produced. Before anyone can watch it, the service must encode it at every quality and
+cut each result into pieces, and encoding is among the most computationally expensive
+operations in common use. To encode a film of 2 hours at 1 quality may take a single
+machine an hour or more, and there are 4 qualities.
+
+The work is made tolerable by dividing it. The source is first cut into sections of
+about a minute, at points where a complete picture begins, so that each section can be
+encoded without reference to any other. Each section, at each quality, then becomes an
+independent job, and the jobs are distributed among a pool of encoding machines by a
+scheduler of the kind designed in chapter 12.
+
+<figure>
+<img src="figures/stream-encode.svg?v=a363a722" alt="5 steps. The uploaded file is stored as it is. The source is cut into sections of 1 minute. Each section becomes 4 encoding jobs, 1 for each quality. Each job cuts its result into pieces of 4 seconds and stores them in the object store. A manifest lists every piece, and the video is ready to play.">
+<figcaption><b>Figure 17.2</b> An upload is stored, cut into sections, encoded by many machines in parallel, and stored as pieces.</figcaption>
+</figure>
+
+A film of 2 hours yields 120 sections and so 480 jobs, which 100 machines complete in
+roughly the time that 1 machine would need for 5 of them. The arrangement also
+confines the effect of failures. If an encoder crashes, the scheduler reissues that 1
+job, as chapter 12 described, and a minute of video at a single quality is encoded
+again, the remainder being unaffected. Encoding jobs are idempotent without any
+special effort, since encoding the same section twice produces the same pieces under
+the same names.
+
+The original upload is retained permanently, in the object store, although nobody will
+ever watch it directly. Encoding technology improves steadily, and a service will in
+time wish to encode its catalogue again in a more efficient format. This can be done
+well only from the source, since every encoding discards information, and to encode
+again from an already encoded version would compound the loss.
+
+Not all videos need be treated alike. The distribution of views is extremely uneven,
+a small number of videos accounting for most of the watching and most uploads being
+watched a handful of times. A service may therefore encode every upload quickly at 2
+or 3 qualities, so that it is soon available, and spend the considerable additional
+effort of a full set of carefully optimised renditions only on videos that prove
+popular.
+
+## The manifest
+
+A player that is to fetch pieces must know what pieces exist. This information is
+supplied by a small text file called a *manifest*, which the player requests first. It
+lists the renditions available, with the bitrate and picture size of each, and, for
+each rendition, the addresses of its pieces in order together with their durations.
+
+With the manifest in hand, the player needs nothing further from the service except
+the pieces themselves. It knows how long the video is, what qualities are offered, and
+the address of the piece that covers any given moment at any given quality. All
+subsequent decisions, including which quality to request and when, are taken by the
+player alone.
+
+That the intelligence should reside in the player, with the server left ignorant, is a
+deliberate feature of the design and one of its chief strengths. The server answers
+requests for files and need not know that the files are video. The player is the 1
+participant that can observe the speed of this particular viewer's connection at this
+moment, the size of the screen, and the amount of video already downloaded, and it is
+therefore the participant best placed to choose.
+
+## Choosing a quality for each piece
+
+Before requesting each piece, the player must decide which rendition to take it from.
+If it chooses too high a bitrate, the piece takes longer to download than it takes to
+play, the player eventually has nothing left to show, and the picture stops while the
+viewer waits. If it chooses too low a bitrate, the picture is needlessly poor.
+Choosing well, piece after piece, as conditions change, is called *adaptive bitrate*
+selection.
+
+The player has 2 measurements to guide it. It knows how fast recent pieces were
+downloaded, which is an estimate of the present speed of the connection. And it knows
+how much video it has downloaded but has yet to play, an amount called the *buffer*.
+
+The simplest rule uses the first measurement alone: request the highest bitrate that
+is comfortably below the measured speed. The simulation for this chapter applies this
+rule with a margin of 20%, taking the best rendition whose bitrate is at most 80% of
+the speed of the last download, to a connection whose speed drops twice and then
+recovers.
+
+<figure class="steps" data-prefix="figures/steps-stream-adapt" data-count="10" data-version="949cd732">
+<img src="figures/steps-stream-adapt-01.svg?v=949cd732" alt="The player adapts to the connection, step 1 of 10. The player knows nothing about the connection yet, so it starts with the lowest quality. The piece arrives in 0.3 seconds, which tells the player that the connection is fast.">
+<figcaption><b>Figure 17.3</b> A player chooses a quality for each of 10 pieces while the speed of the connection falls and rises again. Use Next and Back to move through the 10 steps.</figcaption>
+</figure>
+
+The steps show both the virtue of the rule and its inherent limitation. The player
+always acts on the speed of the previous download, and is consequently 1 piece behind
+events. When the speed fell from 6000 to 1500 at piece 4, the player had already
+committed itself to a piece at 2500, which took 6.7 seconds to arrive and consumed
+part of the buffer. It is the buffer that absorbed the error. The picture did not
+stop, because nearly 9 seconds of video were in hand when the slow download began.
+Over the 10 pieces, the only time without video was the fraction of a second before
+the first piece arrived.
+
+The buffer is thus what allows the player to make mistakes without the viewer
+noticing, and the size at which to maintain it is another compromise. A large buffer
+tolerates long periods of poor connection. It also represents video that has been
+downloaded and may never be watched if the viewer leaves, and it delays the effect of
+a change of quality, since everything already in the buffer will be played at the
+quality at which it was fetched. Players commonly aim to hold between 10 and 30
+seconds.
+
+More refined rules take the buffer into account as well as the speed. When the buffer
+is nearly empty, such a rule chooses conservatively whatever the measured speed,
+because the cost of a mistake is an interruption. When the buffer is full, it can
+afford to try a higher quality, since an error will cost only some seconds of buffer.
+Some players ignore the measured speed altogether and select the quality as a function
+of the buffer alone, on the grounds that the level of the buffer already reflects
+everything the connection has recently done.
+
+Whatever the rule, it must respect an asymmetry in what viewers will tolerate. An
+interruption, during which the picture freezes, is far more objectionable than a
+period of reduced sharpness, and viewers who experience interruptions stop watching.
+A change of quality is also somewhat disturbing in itself, so that a rule which
+switches up and down with every fluctuation of the measured speed is worse than one
+which holds a steady, slightly lower quality. A good rule accordingly steps down
+promptly, steps up cautiously, and prefers stability.
+
+The first piece is a special case. The player has no measurement of the connection
+when it starts, and viewers are impatient for the picture to appear. Players therefore
+begin with a low bitrate, which arrives quickly whatever the connection, and improve
+within a few seconds as measurements accumulate.
+
+## Copies near the viewers
+
+Pieces are stored in the object store, in 1 or a few locations. A viewer on another
+continent is separated from that location by a network path with a delay of perhaps
+150 ms in each direction and a capacity shared with a great many others, and if every
+viewer fetched every piece from the origin, the origin's network connection would have
+to carry the entire traffic of the service.
+
+A *content delivery network*, or CDN, removes both problems. It consists of a large
+number of servers, called *edge servers*, placed in or near the networks of the
+internet providers that viewers use, in hundreds of cities. Each edge server is a
+cache, of the kind described in chapter 9, for the files of the origin.
+
+<figure>
+<img src="figures/stream-edge.svg?v=0969da55" alt="4 steps. A viewer in Lisbon asks for piece 17, and the request goes to the nearest edge server. If the edge has the piece, it answers from its own disk. If it lacks the piece, it fetches the piece from the origin. The edge keeps a copy, so the next viewer in Lisbon is served from the edge.">
+<figcaption><b>Figure 17.4</b> A request for a piece is answered by a nearby edge server, which fetches the piece from the origin only if it lacks a copy.</figcaption>
+</figure>
+
+A viewer's request is directed to a nearby edge server, most often by the name
+resolution system returning the address of a server close to wherever the question
+came from. If that server holds the piece, it answers immediately. If not, it obtains
+the piece from the origin, answers, and retains a copy for subsequent viewers.
+
+Video suits this arrangement exceptionally well, for 2 reasons. A piece, once
+encoded, never changes, so that the problem of stale copies, which dominated chapter
+9, does not arise, and pieces can be cached for as long as there is room for them. And
+the demand for video is highly concentrated, so that an edge server which holds the
+pieces of the currently popular videos answers the great majority of the requests it
+receives. For a popular video the origin serves each piece once to each edge server,
+and the edge servers serve it to millions.
+
+The manifest of an ordinary video is equally immutable and is cached in the same way.
+The requests that must reach the service itself are thus reduced to those that depend
+on who is asking, such as checking that the viewer is entitled to watch.
+
+2 refinements are common. When a film is expected to be in great demand on its
+release, its pieces are copied to the edge servers beforehand, so that the first
+viewers do not all miss at once and produce at the origin the stampede described in
+chapter 9. And for videos that are rarely watched, an edge server may hold only the
+first few pieces, which is sufficient for playback to start promptly, and fetch the
+remainder from the origin when a viewer in fact continues.
+
+## What the service costs
+
+It is instructive to ask where the money goes in such a service, since the answer
+shapes many decisions that would otherwise seem arbitrary.
+
+Storage is not the principal cost. The renditions of a film amount to a few gigabytes,
+and a catalogue of 100 million videos to some hundreds of petabytes, which is
+substantial and, with the erasure coding of chapter 16, affordable. Encoding is a cost
+incurred once for each video.
+
+The cost that recurs and dominates is the delivery of bytes. Every hour watched at
+2500 kilobits per second is rather more than 1 GB transferred, and a service whose
+members watch a billion hours a month transfers more than an exabyte a year. Almost
+any measure that reduces the bytes delivered per hour watched therefore repays its
+cost: more efficient encoding formats, which convey the same picture in fewer bits and
+justify the expense of encoding the catalogue again; the avoidance of renditions
+beyond what a device's screen can display; a limit on how far ahead the player
+buffers, so that less is wasted when viewers leave; and arrangements with internet
+providers to place edge servers inside their networks.
+
+## Live video
+
+Everything described so far concerns video that exists in full before anyone watches
+it. A live broadcast uses the same machinery, with 1 important difference: the pieces
+are produced while the event is taking place.
+
+The camera's signal is encoded continuously at several qualities, and every 4 seconds
+a new piece of each rendition is completed and stored. The manifest is no longer fixed.
+It lists the most recent pieces, is revised as each new piece appears, and is fetched
+by players again and again, every few seconds, so that they learn of new pieces. It
+may accordingly be cached only very briefly.
+
+The price of this simplicity is *latency*, the delay between an event and its
+appearance on the viewer's screen. A piece cannot be delivered until it has been
+completed, which takes 4 seconds, and players hold several pieces in the buffer to
+guard against interruptions, so that viewers of a live stream built in this way are
+typically 15 to 30 seconds behind reality. For a concert this is immaterial. For a
+football match it means hearing the neighbours celebrate a goal that has not yet
+appeared, and for a conversation between 2 people it is unusable. Shorter pieces and
+the delivery of pieces while they are still being produced bring the delay down to a
+few seconds, and truly interactive video, such as a call, requires a different kind of
+protocol altogether, one which sends each frame as soon as it is captured and accepts
+occasional loss in exchange for immediacy.
+
+Live video also changes the pattern of load on the caches. Every viewer wants the same
+new piece in the same instant, at the moment it comes into existence and before any
+edge server holds it. Edge servers must therefore ensure that the first request for a
+new piece fetches it from the origin once while the others wait for that fetch to
+complete, which is the remedy for the stampede given in chapter 9.
+
+## Use cases
+
+Viewers play videos, in very large numbers. Creators upload them.
+
+<figure>
+<img src="figures/stream-use-cases.svg?v=fe540d94" alt="A use case diagram of the video service. Viewer: play a video (GET /v1/videos/{id}/manifest), fetch the next 4 seconds (GET .../1200/piece-17.ts). Creator: upload a video (PUT /v1/videos/{id}/source), see when it is ready (GET /v1/videos/{id}).">
+<figcaption><b>Figure 17.5</b> The actors and what each of them does.</figcaption>
+</figure>
+
+## Functional requirements
+
+| No. | Functional requirement |
+|---|---|
+| 0 | A creator can upload a video file of up to 10 GB. |
+| 1 | After processing, the video can be played on any device. |
+| 2 | Playback starts within 2 seconds. |
+| 3 | The quality adapts to the viewer's connection while the video plays. |
+| 4 | A viewer can jump to any point of the video. |
+
+## Non-functional requirements
+
+| No. | Property | Non-functional requirement |
+|---|---|---|
+| 0 | Availability | 99.95% for playback. |
+| 1 | Latency | The first piece arrives within 1 second of pressing play. |
+| 2 | Consistency | Eventual. A new video may take minutes to appear, and that is acceptable. |
+| 3 | Scale | 10 million viewers at the same time, and 500 hours of video uploaded per minute. |
+
+Consistency is scarcely an issue in the playback path, for the reason that has
+appeared repeatedly: pieces and the manifests of finished videos do not change after
+they are written, and unchanging data cannot be inconsistent. The catalogue of videos
+and their states is ordinary metadata and is kept in a strongly consistent store. The
+1 window of eventual consistency a creator can observe is between completing an upload
+and the video's becoming playable, which lasts as long as the encoding does.
+
+## Core entities
+
+<figure>
+<img src="figures/stream-entities.svg?v=8cb8fa34" alt="The core entities. Video has the fields id u64, title string, duration seconds, state ready|.... Rendition has the fields video u64, bitrate kbit/s, pieces count. Piece has the fields rendition u64, number u32, seconds 4, bytes in object store. A Rendition is the whole video at 1 quality. A Piece is 4 seconds of 1 rendition, stored as an object.">
+<figcaption><b>Figure 17.6</b> The core entities and their fields.</figcaption>
+</figure>
+
+## Capacity estimate
+
+<div class="estimate">
+
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+
+**Arithmetic ahead.** 10 million viewers at an average of 2500 kbit/s need 25000 Gbit/s, far more than 1 site can send, so pieces are served from a CDN.
+
+<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+
+<details>
+<summary>Show the calculation</summary>
+
+| Quantity | Calculation | Result |
+|---|---|---|
+| Outgoing traffic | 10000000 viewers × 2500 kbit/s | 25000 Gbit/s |
+| Storage per hour of video, 4 qualities | (400 + 1200 + 2500 + 5000) kbit/s × 3600 s | 4.1 GB |
+| New storage per day | 500 hours × 60 × 24 × 4.1 GB | 2.95 PB |
+| Pieces per hour of video | 3600 ÷ 4 × 4 qualities | 3600 |
+
+</details>
+
+</div>
+
+## The API
+
+A viewer's player makes 2 kinds of request: 1 for the manifest, and then a long series
+for pieces.
+
+**Get the manifest of a video**
+
+```http
+GET /v1/videos/8842/manifest HTTP/1.1
+Host: video.example
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "piece_seconds": 4,
+  "pieces": 450,
+  "qualities": [
+    { "kbit": 400,  "url": "https://cdn.example/8842/400/piece-{n}.ts" },
+    { "kbit": 1200, "url": "https://cdn.example/8842/1200/piece-{n}.ts" },
+    { "kbit": 2500, "url": "https://cdn.example/8842/2500/piece-{n}.ts" },
+    { "kbit": 5000, "url": "https://cdn.example/8842/5000/piece-{n}.ts" }
+  ]
+}
+```
+
+The manifest tells the player which qualities exist and how to build the URL of any piece.
+
+**Get 1 piece**
+
+```http
+GET /8842/1200/piece-17.ts HTTP/1.1
+Host: cdn.example
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: video/mp2t
+Cache-Control: max-age=31536000, immutable
+Content-Length: 600000
+
+(600000 bytes)
+```
+
+`immutable` tells every cache that this piece will not change, so it can be kept for a year.
+
+## High-level design
+
+<figure class="wide">
+<img src="figures/stream-design.svg?v=d503392b" alt="Uploading and playing a video. The components are Creator, Upload service, Queue, Encoders, Object store, CDN, Viewer, Video API. Step 1: A creator uploads the source file. Step 2: The upload service queues an encoding task. Step 3: Encoders make 4 qualities, cut into pieces. Step 4: Every piece is stored as an object. Step 5: A viewer asks for the manifest: the list of pieces. Step 6: The player fetches pieces from the CDN.">
+<figcaption><b>Figure 17.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+
+| Component | Role | State it holds | When 1 instance fails |
+|---|---|---|---|
+| Upload service | receives the source file and stores it | none | the creator's upload resumes on another instance |
+| Encoders | turn the source into pieces at 4 qualities | none | the task is delivered again, as in chapter 11 |
+| Object store | keeps the source and every piece | everything, see chapter 16 | chunks have 3 copies |
+| Video API | returns the manifest | video records | another instance answers |
+| CDN | keeps copies of pieces close to viewers | copies only | viewers are served from the next nearest site |
+
+### One request, step by step
+
+The steps follow the arrows of figure 17.7.
+
+1. A creator uploads the source file. Large uploads are sent in parts, so that a broken upload continues where it stopped.
+2. The upload service stores the source in the object store and puts 1 task on the queue.
+3. An encoder takes the task and produces the video at 4 qualities, each cut into pieces of 4 seconds.
+4. Each piece is stored as its own object. When all are stored, the video is marked ready.
+5. A viewer presses play. The player asks the video API for the manifest.
+6. The player fetches pieces from the CDN, 1 after another. A CDN site that does not have a piece fetches it from the object store once and keeps it.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| Delivering a video as 1 file | The quality cannot change, and caches hold all of it or none. | Cut it into pieces of a few seconds. |
+| Cutting each quality at different moments | A change of quality causes a jump or a gap in the picture. | Cut all renditions at the same times, each piece beginning with a complete picture. |
+| Encoding a long video as 1 job | It takes hours, and a failure starts it again from the beginning. | Split the source into sections and encode them as separate jobs. |
+| Discarding the uploaded source | The catalogue cannot later be encoded in a better format. | Keep the source. |
+| Choosing the quality on the server | The server cannot see the viewer's connection or buffer. | Let the player choose, from its own measurements. |
+| Requesting the highest quality the last measurement allows | Any drop in speed empties the buffer and stops the picture. | Keep a margin, and take the buffer into account. |
+| Changing quality with every fluctuation | The picture flickers between sharp and soft. | Step down promptly and step up cautiously. |
+| Serving every piece from the origin | Distant viewers start slowly, and the origin carries all the traffic. | Serve pieces from edge servers near the viewers. |
+| A popular release with cold caches | The first viewers all miss and overload the origin. | Copy the pieces to the edge beforehand. |
+| Caching the manifest of a live stream for long | Players do not learn of new pieces. | Cache it for a second or 2 only. |
+| Buffering as far ahead as possible | Viewers who leave have downloaded video they never watched. | Limit the buffer to some tens of seconds. |
+
+## Failures
+
+| Failure | What users see | How the system recovers |
+|---|---|---|
+| An encoder crashes during a video | the video is ready later | the task returns to the queue and another encoder takes it |
+| A CDN site fails | a short pause, then playback continues | the player's requests go to another site |
+| The viewer's connection slows down | the picture gets less sharp | the player picks a lower quality for the next piece |
+
+## Trade-offs
+
+| Decision | What it gains | What it costs |
+|---|---|---|
+| Pieces of 4 seconds | quick reaction to speed changes, cheap seeking | many small files per video |
+| 4 qualities | smooth playback on most connections | 4 times the encoding work and storage |
+| A CDN | short distance to viewers, low load on the origin | cost, and a new video takes time to spread |
+
+## The simulation
+
+<div class="simulation">
+
+**Simulation in the repository.** The program [`code/streamsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/streamsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p streamsim` in the `code` directory.
+
+</div>
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Encoding | producing a compressed video at a chosen picture size and bitrate |
+| Bitrate | the number of bits a video uses for each second of playing time |
+| Rendition | 1 complete version of a video at 1 quality |
+| Piece | a few seconds of 1 rendition, stored as a file |
+| Manifest | a file that lists the renditions of a video and the addresses of their pieces |
+| Adaptive bitrate | choosing the quality of each piece according to current conditions |
+| Buffer | video that the player has downloaded and not yet shown |
+| Interruption | a pause in playback because the buffer is empty |
+| Origin | the place where the service itself stores its files |
+| Content delivery network, CDN | a large set of caches placed near viewers |
+| Edge server | 1 of those caches |
+| Latency of a live stream | the delay between an event and its appearance on the screen |
+
+<div class="summary">
+
+## Summary
+
+- A video is delivered as a sequence of small files, which makes it cacheable, stateless to serve, and adjustable in quality.
+- Each upload is encoded at several bitrates, all cut into pieces at the same moments, by many machines working on separate sections.
+- A manifest tells the player which pieces exist, and the player alone decides what to fetch.
+- The player chooses a quality for each piece from the measured speed and the state of its buffer, and gives up sharpness to avoid interruptions.
+- The buffer absorbs the player's errors, since the player learns of a change in speed only after the next download.
+- Edge servers near the viewers hold copies of pieces, which never change and are in highly concentrated demand.
+- The dominant cost is the delivery of bytes, which is why efficient encoding and well-placed caches matter so much.
+- Live video uses the same pieces, produced as the event happens, at the price of some seconds of delay.
+
+</div>

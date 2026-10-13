@@ -1,0 +1,6 @@
+$ curl -i 'http://127.0.0.1:7001/v1/keys?prefix=user-&limit=1'
+HTTP/1.1 200 OK
+content-type: application/json
+content-length: 71
+
+{"keys":[{"key":"user-1","version":2,"size":12}],"next_after":"user-1"}

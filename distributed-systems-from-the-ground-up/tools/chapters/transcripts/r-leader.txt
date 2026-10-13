@@ -1,0 +1,21 @@
+$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 2000 --acked acked.txt &
+$ kill -9 <pid of the leader>
+write 229 failed: io: Peer disconnected
+228 writes acknowledged
+$ mv /var/tmp/n1 /var/tmp/n1.lost
+$ for port in 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
+{"role":"follower","term":1,"last_sequence":228,"committed":227,"followers":[]}
+{"role":"follower","term":1,"last_sequence":228,"committed":227,"followers":[]}
+
+$ kill -9 <pid of the node on port 7003>
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7001 --replication 127.0.0.1:7101 --data /var/tmp/n1 &
+$ ./target/release/kvnode --role leader --term 2 --listen 127.0.0.1:7003 --data /var/tmp/n3 \
+      --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7101 &
+term 2, log ends at 228
+listening on 127.0.0.1:7003
+$ for port in 7003 7002 7001; do curl http://127.0.0.1:$port/healthz; echo; done
+{"role":"leader","term":2,"last_sequence":228,"committed":228,"followers":[228,228]}
+{"role":"follower","term":2,"last_sequence":228,"committed":228,"followers":[]}
+{"role":"follower","term":2,"last_sequence":228,"committed":228,"followers":[]}
+$ ./target/release/kvctl verify --server http://127.0.0.1:7003 --acked acked.txt
+228 acknowledged, 228 found, 0 missing

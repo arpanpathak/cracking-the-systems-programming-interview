@@ -1,0 +1,12 @@
+$ ./target/release/kvnode --role leader --term 1 --listen 127.0.0.1:7009 --data /var/tmp/n9 \
+      --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7101 &
+$ curl -i -X PUT http://127.0.0.1:7009/v1/keys/stale --data-binary 'x'
+HTTP/1.1 421 Misdirected Request
+content-type: application/problem+json
+content-length: 125
+
+{"type":"/problems/not-leader","title":"This node is not the leader","status":421,"detail":"a leader of a newer term exists"}
+$ curl http://127.0.0.1:7002/healthz
+{"role":"follower","term":2,"last_sequence":228,"committed":228,"followers":[]}
+$ curl -o /dev/null -w '%{http_code}\n' -X PUT http://127.0.0.1:7003/v1/keys/fresh --data-binary 'x'
+201

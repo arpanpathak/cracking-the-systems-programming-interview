@@ -1,0 +1,613 @@
+# Key-Value Store: Leader Election (Low-Level Design)
+
+In [chapter 3](03-key-value-store-replication.md) the leader of each shard was
+appointed by an operator, and when a leader was lost its shard could accept no writes
+until somebody promoted a follower by hand. Non-functional requirement 1 of
+[chapter 1](01-key-value-store-system-design.md) allows 21.6 minutes of failed
+requests in a month, and no procedure that depends on a person noticing a failure,
+understanding it and typing commands can be relied upon to stay within such a limit.
+The members of a shard have to choose their own leader.
+
+Stated so, the task sounds modest, and it is in fact the hardest problem in this
+book. The members must agree on a leader although they can communicate only by
+messages that may be lost, although any of them may crash and return at any moment
+with whatever it had on disk, and although none of them can tell a crashed member
+from one that is merely slow or cut off. The agreement must be such that 2 members
+are never leaders at once, since each would then accept writes of which the other
+knew nothing. And whoever is chosen must already hold every write that has ever been
+acknowledged, since a leader that lacked one would proceed to overwrite it. A group
+of machines reaching a decision under these conditions is said to reach *consensus*.
+
+The algorithm used in this chapter is *Raft*, published by Diego Ongaro and John
+Ousterhout in 2014 with the stated aim of being understandable, which it is to a
+degree that its predecessors were not. Raft combines the replication of chapter 3
+with a procedure for voting. We first describe the roles of a member and the rule by
+which it votes, and show why that rule guarantees that every new leader holds every
+acknowledged record. We then deal with a case that chapter 3 excluded, that of a
+member whose log differs from its leader's. Raft is implemented as a library without
+any network code, tested by a simulation that crashes members and loses messages at
+random, and then run over gRPC as `kvraft`. Finally we measure for how long a shard
+of 3 nodes is unavailable when its leader is killed.
+
+<div class="covers">
+
+This chapter covers
+
+- the roles of a member: follower, candidate and leader
+- terms, and the state that a member must keep on disk
+- election timeouts and the voting rule
+- term markers, which record the term of every record without changing the format of the log
+- repairing a log that differs from the leader's
+- the commit rule for records of earlier terms
+- a simulation of 200 random runs with crashes and lost messages
+- checking that the simulation would detect a faulty implementation
+- `kvraft`: driving Raft with a clock and gRPC
+- a measurement of the pause that follows the loss of a leader
+- the limitations that remain
+
+</div>
+
+## Overview
+
+Every member of a shard runs the same program and is started in the same way, and
+none is configured as the leader. At any moment each member is in 1 of 3 roles.
+
+@figure elect-roles :: The roles of a member and the transitions between them.
+
+Time is divided into *terms*, numbered from 1. Every term begins with an election and
+has at most 1 leader. When no candidate obtains a majority, the term has no leader,
+and another election follows in the next. The implementation keeps the invariants of
+chapter 3 and adds 3 more.
+
+5. At most 1 member leads any given term.
+6. An elected leader holds every record that was acknowledged in an earlier term.
+7. A member removes a record from its log only if the record was not committed.
+
+Invariant 5 holds because every member votes at most once in a term and a candidate
+needs the votes of a majority. Any 2 majorities have a member in common, and for 2
+candidates to win the same term that member would have had to vote twice. Invariants
+6 and 7 are established in the sections on voting and on the repair of logs.
+
+## The messages
+
+Elections add a second call to the protocol of chapter 1, and 2 fields to the
+existing `Append` call.
+
+@code proto/store.proto election :: The election service in the schema
+
+@code proto/store.proto replication :: The replication service, with fields 6 and 7 added
+
+`AppendRequest` has gained the fields `previous_term` and `leader`, under the unused
+numbers 6 and 7. This is the evolution of a schema as chapter 1 described it. The
+existing fields have kept their numbers, `kvnode`, the program of chapter 3, makes no
+use of the new ones, and a node built from the earlier schema passes over them when it
+decodes a message.
+
+As in chapter 3, the library has message types of its own.
+
+@code raft/src/lib.rs messages :: The messages of the library
+
+## The state of a member
+
+@code raft/src/lib.rs member :: The roles, the election timeout, and the state of a member
+
+A member holds 3 kinds of state, which differ in whether they have to survive a
+restart, and the distinction is among the most important things to understand about
+the algorithm.
+
+@figure elect-disk-memory :: The state of a member, divided into what is on disk and what is rebuilt.
+
+| State | Fields | On disk | Why |
+|---|---|---|---|
+| The log | `log`, `records`, `terms` | yes | The log is the data. |
+| The term and the vote | `term`, `voted_for` | yes, in the file `state` | A member that forgot its vote in a restart could vote a second time in the same term, and 2 leaders could then be elected in 1 term. |
+| Everything else | `role`, `leader`, `committed`, `entries`, `progress` | no | This state is derived from the log and from messages, and is rebuilt after a restart. |
+
+The second row is easily overlooked. It is natural to think of a vote as a passing
+event, of no interest once the election is over. But the whole guarantee of invariant
+5 rests on each member voting once, and a member that crashed after voting and
+returned with no memory of having done so could give a second vote in the same term
+to a different candidate. A vote is therefore a promise, and it is written to disk
+before it is sent.
+
+`Member::open` reads both files. From the log it obtains the records and, by means of
+the term markers described below, the term of each. From the state file it obtains
+the term and the vote. Everything else begins from fixed values: a member that has
+been opened is a follower, knows of no leader, and has applied nothing.
+
+@code raft/src/lib.rs open :: Opening a member
+
+The state file is replaced by writing a new file and renaming it over the old one. On
+POSIX file systems, a rename within a directory is atomic, so that after a crash the
+file holds either the old state or the new and never a mixture. A member writes this
+file before it sends any message that depends on a new term or a new vote.
+
+@code raft/src/lib.rs state :: Reading and writing the term and the vote
+
+### The term of a record
+
+Raft needs to know in which term each record was written. The record format of
+chapter 2 has no field for it, and the implementation records terms without altering
+that format, by means of a *term marker*: the first record that a new leader writes
+is a `Put` with an empty key and the leader's term as its value. Clients cannot write
+an empty key, since the API requires at least 1 character, so that a marker cannot
+collide with any client's data. The term of any record is then the term of the most
+recent marker at or before it.
+
+@code raft/src/lib.rs terms :: Term markers, and the term of each record of a log
+
+The markers have a second function, which is described under the commit rule.
+
+## Elections
+
+### The election timeout
+
+A follower expects a message from its leader at least once in every tick of 100 ms.
+Having received none for the whole of its *election timeout*, it concludes that the
+leader has failed and stands for election.
+
+If all followers used the same timeout, they would all stand at the same moment, each
+would vote for itself, and no candidate would obtain a majority. The timeouts are
+therefore made to differ. `election_timeout`, in the listing above, computes a value
+between 10 and 19 ticks from the id of the member and its term. Within a term, the
+members of a shard obtain different values, and each member obtains a different value
+in each term, so that 2 members which happen to coincide once do not coincide again.
+Raft as published uses random timeouts for this purpose. Timeouts that are computed
+make the simulation later in the chapter repeatable.
+
+On reaching its timeout, a member calls `stand`. It increases its term, records a
+vote for itself, and stores both on disk before any request leaves. Every
+`VoteRequest` carries the end of the candidate's log, which the voting rule below
+compares with the log of each voter.
+
+@code raft/src/lib.rs stand :: Standing for election
+
+@figure elect-steps :: The first election of a shard. The steps are numbered from 1 to 8.
+
+### The voting rule
+
+A member grants its vote to a candidate when 3 conditions are satisfied.
+
+| Condition | Purpose |
+|---|---|
+| The candidate's term equals the member's term. A request with a higher term first moves the member to that term. | A candidate of an earlier term cannot win. |
+| The member has not voted for a different candidate in this term. | At most 1 leader in a term (invariant 5). |
+| The candidate's log ends at least as far as the member's own. The terms of the last records are compared first, and the sequences if the terms are equal. | The leader holds every acknowledged record (invariant 6). |
+
+@code raft/src/lib.rs vote :: Granting a vote, and counting the votes received
+
+@figure elect-vote-rule :: The voting rule applied to 3 logs.
+
+The third condition establishes invariant 6, by the argument that chapter 1 gave in
+outline. An acknowledged record is stored on a majority of the members, and a
+candidate needs the votes of a majority. Since 2 majorities share at least 1 member,
+some voter holds the record. That voter grants its vote only to a candidate whose log
+ends at least as far as its own, and such a candidate holds the record as well. A
+candidate that lacks an acknowledged record therefore cannot collect a majority. The
+choice that an operator made in chapter 3, by reading 2 numbers and promoting the
+follower with the longer log, is here made by the members themselves, each refusing
+its vote to anyone who knows less than it does.
+
+In `on_vote`, the 3 conditions are `request.term == self.term`, `free` and
+`complete`. Tuples in Rust are compared by their first elements, with the second
+consulted only in a tie, so that `(last_term, last_sequence) >= (...)` is precisely
+the comparison that the rule requires. A vote that is granted is written to disk
+before any answer is returned. `on_voted` counts the votes for a candidate, and the
+vote that completes a majority triggers `lead`.
+
+Terms are compared before sequences because a longer log is not necessarily a more
+complete one. In figure 4.elect-vote-rule, a member that had been isolated might have
+accumulated several uncommitted records of term 1, and its log would then be longer
+than that of member 2. A record of term 2 at the end of member 2's log shows that
+member 2 has received records from a later leader, and its log takes precedence.
+
+### Becoming the leader
+
+`lead` does 3 things. For every follower it records where to begin sending, namely at
+the end of its own log, as a first guess that a refusal will correct. It then appends
+the marker of its term, and finally sends its first messages.
+
+@code raft/src/lib.rs lead :: Becoming the leader
+
+### Returning to follower
+
+Every message carries the term of its sender. On seeing, in any message, a term
+higher than its own, a member calls `step_down`: it adopts that term, clears its
+vote, since the vote belonged to an earlier term, and continues as a follower. For a
+leader, this is how the arrival of a successor makes itself known.
+
+@code raft/src/lib.rs step_down :: Adopting a higher term
+
+## Repairing a log that differs
+
+In chapter 3 the log of a follower was always a prefix of its leader's, and a former
+leader had to rejoin with an empty log. With elections, a member can hold records
+that its present leader lacks. This comes about when a leader appends a record and
+fails before sending it. The record exists on 1 member only and was never
+acknowledged, and the new leader writes a different record at the same sequence.
+
+`Append` detects such a difference through the field `previous_term`. A follower
+appends records only if its own record at `previous_sequence` has the term
+`previous_term`. The check is sufficient on account of a single property: if 2 logs
+contain a record with the same sequence and the same term, the 2 logs are identical
+up to that record. The property holds because each term has 1 leader, a leader writes
+each sequence once, and the check is applied on every append, so that agreement at 1
+position has always been built upon agreement at the position before.
+
+@figure elect-repair :: The repair of a member that holds a record which the leader does not have.
+
+On the follower's side, the handling of `Append` consists of 3 checks followed by the
+repair itself.
+
+@figure elect-append-flow :: The checks that a member applies to an `Append` message, in order.
+
+The third check carries a hint for the leader. When its record at `previous_sequence`
+has a different term, the member answers with `previous_sequence - 1`, and the leader
+begins its next message 1 record earlier. By repeating this, the leader moves
+backwards through its log until it arrives at a record on which the 2 logs agree.
+
+@code raft/src/lib.rs on_append :: The checks of `Append`
+
+Once all the checks have passed, the 2 logs are known to be equal up to
+`previous_sequence`, and `store` makes the member's log equal to the leader's for
+every record that follows.
+
+@figure elect-store-example :: The method `store` applied to a log that differs from the leader's at record 6.
+
+@code raft/src/lib.rs store :: Skipping equal records, removing differing ones, and appending the rest
+
+For each incoming record, `store` computes a term from `previous_term` and from the
+markers among the incoming records, exactly as `terms_of` does for a whole log. 2
+records count as equal only if both their terms and their contents agree.
+
+@code raft/src/lib.rs truncate :: Removing uncommitted records
+
+`truncate` refuses to remove a committed record and returns an error. By invariant 6
+the situation cannot arise, since a leader holds every committed record and its log
+cannot differ from a follower's at a committed position. The check is there
+nonetheless, and for a good reason. Should the invariant ever be violated, through a
+defect in this code or a fault in a disk, the result without the check would be
+acknowledged data silently destroyed, and with it the member stops. A program that
+verifies what it believes to be impossible converts its own undiscovered defects from
+corruption into failures that somebody will notice.
+
+In order to truncate its file, a member needs the byte offset at which the last
+record to be kept ends. It computes that offset by encoding the records that are kept
+and summing their lengths, which avoids storing an offset for every record.
+
+The log of chapter 2 gains a method for removing records from its end.
+
+@code kv/src/log.rs truncate :: Removing records from the end of the log
+
+This method qualifies invariant 4 of chapter 2, which stated that the log is modified
+only by appending. Stated exactly, no committed record is ever modified. Records
+beyond the committed sequence may be removed, and invariant 7 of this chapter ensures
+that only such records are.
+
+### The leader's view of a follower
+
+For every follower, the leader keeps 2 sequences. `next` is where its next message
+will begin, and it moves backwards on a refusal. `matched` is the highest sequence
+that the follower has confirmed, and it only ever increases. The commit rule uses
+`matched`, since `next` is a guess. `on_appended` updates both from an answer, applies
+the commit rule, and returns a further message when the follower is still behind.
+
+@code raft/src/lib.rs on_appended :: Processing the answer of a follower
+
+## The commit rule
+
+@code raft/src/lib.rs commit :: Applying committed records, and the leader's commit rule
+
+The commit rule of chapter 3 committed a record as soon as a majority had stored it.
+`advance` adds a condition, that the record at the majority position must belong to
+the leader's own term, and the reason for it is the subtlest point in Raft. A record
+of an earlier term can still be replaced even when a majority holds it, if a member
+that lacks it comes to be elected by members that lack it too, which remains possible
+for as long as no record of the current term is stored on a majority. Counting
+replicas is therefore safe only for records of the current term. Records of earlier
+terms are committed indirectly, at the moment when a record of the current term at a
+later sequence is committed.
+
+It is here that the markers perform their second function. A new leader appends a
+marker as the first record of its term, and as soon as a majority has stored it, the
+marker and every record before it are committed together. Without markers, the
+records inherited from earlier terms would remain uncommitted until the first write
+of a client in the new term happened to arrive.
+
+## The clock and the messages
+
+The library reads no clock and opens no connection. Its caller invokes `tick` at a
+fixed interval and `handle` for every incoming message, and sends whatever messages
+either method returns. As in chapter 3, this separation is what makes the algorithm
+testable, since a test can then supply the clock and the network itself.
+
+@code raft/src/lib.rs tick :: The clock: heartbeats for a leader, the election timeout for the others
+
+@code raft/src/lib.rs handle :: Dispatching a message
+
+@code raft/src/lib.rs client :: The operations for client requests
+
+`can_read` permits a read when the member is the leader, when the marker of its term
+is committed, and when a majority of the members has answered within the last 10
+ticks. The second of these conditions ensures that the entries reflect every record
+that was committed in earlier terms.
+
+## Simulating crashes and lost messages
+
+Because the library is free of clocks and connections, a test has control of all of
+them. `raftsim` runs 3 members in a single process. It decides when the clock of each
+member ticks, which message is delivered next, which messages are lost, and when a
+member crashes and restarts.
+
+@code raftsim/src/main.rs random :: A repeatable source of pseudo-random numbers
+
+@code raftsim/src/main.rs cluster :: The cluster: members, messages in transit, and writes
+
+After every step, `raftsim` checks 3 properties.
+
+@code raftsim/src/main.rs check :: The properties checked after every step
+
+A write counts as acknowledged under exactly the condition that the node itself
+applies: the member that accepted it has committed its record while still leading the
+same term.
+
+@code raftsim/src/main.rs cases :: A scripted election, a crashed leader, and the repair of its log
+
+@code raftsim/src/main.rs runs :: 200 random runs, and the recovery at the end of each
+
+Each run takes 600 random steps. A step ticks the clock of a member (40%), delivers a
+message (42%), loses a message (5%), crashes a member (3%), restarts a member (4%) or
+sends a write (6%). At the end of a run, all members are started, all messages are
+delivered, and `raftsim` verifies that the members agree on a leader and on a log, and
+that the leader returns every acknowledged write.
+
+@code raftsim/src/main.rs main :: Running the simulation
+
+@out raftsim
+
+| Output | What it shows |
+|---|---|
+| after 11 ticks: member 3 is Leader of term 1, all logs at 1 | Member 3 has the shortest timeout in term 0. Record 1 is the term marker. |
+| leader 3 appends record 5 and crashes: the others have 4 records | Record 5 exists on member 3 only and was not acknowledged. |
+| after 10 ticks: member 1 is Leader of term 2, logs at 5 | Member 1 was elected by itself and member 2. Its record 5 is the marker of term 2. |
+| member 3 returns: Follower, term 1, log 5 | Member 3 holds a record 5 that differs from the leader's record 5. |
+| after 2 ticks: member 3 at term 2, log 6; it discarded 1 record | The repair removed the uncommitted record and installed the leader's records. |
+| 480 leaders were elected, and no term had 2 leaders | Invariant 5 held at every step of every run. |
+| 504 writes were acknowledged, and every one was present after recovery | Invariant 6 held. |
+| 18 uncommitted records were discarded | The runs produced logs that differed, and the repair resolved them without the loss of an acknowledged write. |
+
+### Checking the simulation
+
+A simulation that reports no failure is informative only if it would have reported
+one for an incorrect implementation, and this is a question that can be put to the
+test. We disabled 3 rules of Raft in turn and ran the simulation against each
+modified library.
+
+| Rule disabled | Result |
+|---|---|
+| A member votes only for a candidate whose log is at least as complete as its own. | detected: `member 2 lost acknowledged write of key-1` |
+| A member votes at most once in a term. | detected: `members 1 and 3 both lead term 4` |
+| The leader commits by counting only for records of its own term. | not detected: all 200 runs passed |
+
+The third result has to be stated with care. The correctness of Raft requires this
+condition, and the implementation contains it. With 3 members and 200 runs, however,
+the simulation did not produce a sequence of events in which the absence of the
+condition leads to an error. In the paper on Raft, such a sequence involves 5 members
+and several successive failures of leaders at particular moments. The simulation
+therefore provides evidence for the voting rules and for the repair of logs, and
+provides none for this condition. It would have been easy to report "200 runs passed"
+and to leave the reader with the impression that everything had been verified, and
+the difference between what a test exercises and what it merely fails to contradict
+is one that this book tries to keep in view.
+
+## Design overview
+
+<div class="lld">
+
+Low-level design: leader election
+
+**Crates**
+
+| Crate | Kind | Contents |
+|---|---|---|
+| `raft` | library | `Member`: roles, voting, the repair of logs, the commit rule, with no network and no clock |
+| `raftsim` | program | the simulation |
+| `kvraft` | program | a node: `rpc` (both gRPC services), `node` (the clock, sending messages, writes and reads), `main` (the HTTP API) |
+| `probe` | program | a client that measures the longest pause between acknowledged writes |
+
+**Rules of a member**
+
+| Event | Action |
+|---|---|
+| Any message with a higher term | adopt the term, clear the vote, become a follower |
+| `Append` with a lower term | refuse, and report the member's own term |
+| `Append` whose `previous_sequence` is beyond the end of the log | refuse, and report the end of the log |
+| `Append` whose `previous_term` differs from the term of the member's record at that sequence | refuse, and report the sequence before it |
+| `Append` that matches | skip identical records, remove the first differing record and everything after it, append the rest, apply up to the committed sequence |
+| `RequestVote` | grant if the term is current, no other vote was given in this term, and the candidate's log ends at least as far |
+| No message from a leader for the election timeout | increase the term, vote for itself, send `RequestVote` to all members |
+| Votes from a majority | become the leader, append the term marker, send `Append` to all members |
+
+**Timing**
+
+| Quantity | Value |
+|---|---|
+| Tick | 100 ms |
+| Heartbeat interval of a leader | 1 tick |
+| Election timeout | 10 to 19 ticks, computed from the member's id and term |
+| Time a write waits for its record to be committed | 1 s |
+
+</div>
+
+## The node
+
+`kvraft` connects the library to a clock, to a network and to an HTTP API. All
+members are started with the same options, apart from their ids and addresses.
+
+@code kvraft/src/main.rs options :: The options of the command line
+
+@code kvraft/src/rpc.rs convert :: Conversion between the generated types and the library's messages
+
+Each gRPC call delivers 1 message to a member, and the member's answer is returned as
+the response to the call.
+
+@code kvraft/src/rpc.rs service :: The server side of `Append` and `RequestVote`
+
+Around the member, a node consists of a small loop, which is shown in figure
+4.elect-node-loop.
+
+@code kvraft/src/node.rs types :: The state of a node
+
+@figure elect-node-loop :: The loop that connects a member to the clock and to the other members.
+
+`with_member` is the single point of entry to the member. It takes the lock, runs the
+operation it is given, and publishes the committed sequence afterwards, so that no
+operation can change that sequence without the waiting writes being informed.
+
+@code kvraft/src/node.rs with_member :: Running an operation on the member
+
+`dispatch` starts 1 task for each message, and `send` performs a gRPC call with a
+time limit. Each response is converted into the corresponding answer message and
+handed to `deliver`, which passes it to the member and dispatches whatever the member
+returns. A call that fails or times out produces no message at all, which Raft
+tolerates without any special provision, since the next tick sends a new message to
+the same member.
+
+@code kvraft/src/node.rs send :: Sending a message and delivering the answer
+
+`run_clock` calls `tick` every 100 ms. `answer` serves the gRPC handlers: an incoming
+request is 1 message for the member, which returns exactly 1 answer to it.
+
+@code kvraft/src/node.rs clock :: The clock, and answering a request from another member
+
+@code kvraft/src/node.rs write :: Writes and reads
+
+The write path has the structure of chapter 3, with 1 addition after the wait. If a
+member loses its leadership while a write is waiting, its uncommitted record may be
+replaced by a record of the new leader at the same sequence, and the committed
+sequence may then pass that position without the write having been stored at all. A
+handler therefore acknowledges a write only if its member still leads the term in
+which the record was appended. Otherwise it answers `503`, and the outcome of the
+write is unknown to its client, to be resolved as chapter 3 described.
+
+Any member that is not the leader answers `421 Misdirected Request` and names the
+leader it knows of in the `detail` field.
+
+@code kvraft/src/main.rs handlers :: The HTTP handlers and the health of a node
+
+@code kvraft/src/main.rs main :: Starting a node
+
+## Running 3 nodes
+
+@out e-start
+
+All 3 members were started without any indication of who should lead. Within 2
+seconds, member 3 had been elected in term 1. Every log contains 1 record, the marker
+of term 1.
+
+@out e-first
+
+The first write of a client receives version 2, since record 1 is the term marker.
+Versions remain strictly increasing, which is all that a client is entitled to rely
+upon.
+
+## Experiments
+
+As in chapter 3, the 3 nodes run on 1 machine and share its disk.
+
+### The leader is lost
+
+`probe` writes keys continuously for a fixed time. When a node refuses a write or
+fails to respond, `probe` sends the write to the next node. It records every
+acknowledged key, and the longest interval between 2 consecutive acknowledged writes.
+
+@code probe/src/main.rs probe :: Measuring the longest pause between acknowledged writes
+
+The leader is killed 6 seconds into a run of 20 seconds.
+
+@out e-probe
+
+@figure elect-probe :: The run of 20 seconds, with the pause caused by the loss of the leader.
+
+| Output | What it shows |
+|---|---|
+| member 1: leader, term 2 | A new leader was elected without any action by an operator. |
+| longest pause was 1.05 s | Writes were unavailable for about 1 second, which is the election timeout of member 1 in term 1 (10 ticks) together with the exchange of votes and of the term marker. |
+| 51 attempts refused | During the pause, `probe` tried the nodes in turn and was refused until member 1 had been elected. |
+| 1443 acknowledged, 1443 found, 0 missing | No acknowledged write was lost. |
+
+The measured pause can be set against the availability allowance of chapter 1. For
+the shards led by 1 node of 24, a pause of 1 second consumes about 0.04 seconds of a
+monthly allowance of 1296. The promotion by hand of chapter 3 would have consumed
+minutes.
+
+### The former leader returns
+
+The member that was killed is started again with its data directory intact, which
+chapter 3 did not permit.
+
+@out e-return
+
+It rejoined as a follower of term 2 and received the records it lacked. The 3 logs
+are identical, and the state file of member 1 contains `2 1`: term 2, and a vote for
+member 1, which it gave to itself when it stood for election.
+
+### A member is left alone
+
+The leader and 1 follower are killed, so that a single member remains.
+
+@out e-alone
+
+| Output | What it shows |
+|---|---|
+| candidate, term 6, then term 8 | The remaining member stands for election again and again. It cannot obtain a second vote, and every attempt increases its term. |
+| the shard has no leader at the moment | Writes and reads are refused. 1 member of 3 cannot determine whether the other 2 have failed or have elected a leader between themselves. |
+| after the others return: leader of term 9 | The shard resumed in a term above those that the isolated member had reached. |
+
+This is the minority side of a partition once more, seen from the inside. The lone
+member behaves exactly as it would if the other 2 were running and unreachable, as
+from its own position it must, since it has no means of telling the 2 situations
+apart.
+
+## Limitations
+
+| Limitation | Consequence |
+|---|---|
+| An isolated member increases its term at every attempt at election. | When it reconnects, its higher term obliges the current leader to step down and causes an unnecessary election. Implementations of Raft avoid this with a preliminary vote that does not increase the term. |
+| The set of members is fixed when a node starts. | Adding or replacing a member requires all nodes to be restarted with new options. The procedure of chapter 1 for a node joining the ring is not implemented. |
+| Writes are processed in turn. | As in chapter 3, the write rate is 1 write for each round trip: 72 writes per second in the run above. Chapter 6 addresses this. |
+| Every member holds all its records in memory, and the log grows without limit. | The time to restart and the memory used grow with the age of the shard. |
+| Clients must find the leader for themselves. | `probe` tries each node in turn. The router of chapter 5 does this on the clients' behalf. |
+| The commit condition for records of earlier terms is not covered by the simulation. | The condition is implemented, and its absence was not detected by the test. |
+
+## The complete programs
+
+@full raft/src/lib.rs
+
+@full raftsim/src/main.rs
+
+@full kvraft/Cargo.toml
+
+@full kvraft/src/rpc.rs
+
+@full kvraft/src/node.rs
+
+@full kvraft/src/main.rs
+
+@full probe/src/main.rs
+
+<div class="summary">
+
+## Summary
+
+- Every member starts as a follower, and a follower that hears nothing from a leader for its election timeout becomes a candidate and asks all the others for their votes.
+- A member votes at most once in a term, so that a term has at most 1 leader, and the term and the vote are stored on disk before any answer that depends on them is sent.
+- A member votes only for a candidate whose log ends at least as far as its own, with terms compared before sequences, from which it follows that an elected leader holds every acknowledged record.
+- A term marker, the first record of a leader, records the term of every record without changing the format of the log, and commits the records of earlier terms.
+- `Append` carries the term of the record that precedes its new records. A follower whose record at that position has a different term refuses, the leader steps back, and the follower replaces its differing records with the leader's.
+- Only uncommitted records are ever removed from a log.
+- In 200 simulated runs with crashes and lost messages, 480 leaders were elected with no term having 2, and all 504 acknowledged writes were present after recovery.
+- The simulation detected 2 disabled voting rules, and did not detect a disabled commit condition for earlier terms.
+- With 3 nodes, killing the leader interrupted writes for 1.05 seconds, and none of 1443 acknowledged writes was lost.
+
+</div>

@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 442" width="444" height="442" role="img" aria-label="How a gossip protocol spreads a new ring among 8 nodes without a coordinator. At the start, 1 node has ring version 8 and 7 have version 7. After round 1, 2 nodes have version 8. After round 2, 4 nodes. After round 3, all 8. Once per second, every node picks another node at random and the 2 compare ring versions, and the one with the older ring takes the newer. The number of nodes that know doubles each round, so 24 nodes need about 5 rounds and 1000 nodes about 10.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="462" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Gossip: Ring without a coordinator</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Each box is a node and shows ring version it holds.</text>
+  <text x="32.0" y="104.0" class="tab" text-anchor="start" xml:space="preserve">START: 1 NODE OF 8 HAS RING VERSION 8</text>
+  <rect x="32.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="54.0" y="135.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="84.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="106.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="136.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="158.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="188.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="210.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="240.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="262.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="292.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="314.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="344.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="366.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="396.0" y="114.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="418.0" y="135.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <text x="32.0" y="176.0" class="tab" text-anchor="start" xml:space="preserve">AFTER ROUND 1: 2 NODES</text>
+  <rect x="32.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="54.0" y="207.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="84.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="106.0" y="207.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="136.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="158.0" y="207.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="188.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="210.0" y="207.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="240.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="262.0" y="207.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="292.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="314.0" y="207.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="344.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="366.0" y="207.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="396.0" y="186.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="418.0" y="207.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <text x="32.0" y="248.0" class="tab" text-anchor="start" xml:space="preserve">AFTER ROUND 2: 4 NODES</text>
+  <rect x="32.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="54.0" y="279.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="84.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="106.0" y="279.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="136.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="158.0" y="279.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="188.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="210.0" y="279.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="240.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="262.0" y="279.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <rect x="292.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="314.0" y="279.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="344.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="366.0" y="279.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="396.0" y="258.0" width="44.0" height="32.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="418.0" y="279.0" class="mono dim" text-anchor="middle" xml:space="preserve">v7</text>
+  <text x="32.0" y="320.0" class="tab" text-anchor="start" xml:space="preserve">AFTER ROUND 3: ALL 8 NODES</text>
+  <rect x="32.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="54.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="84.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="106.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="136.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="158.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="188.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="210.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="240.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="262.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="292.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="314.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="344.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="366.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <rect x="396.0" y="330.0" width="44.0" height="32.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="418.0" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">v8</text>
+  <text x="32.0" y="392.0" class="sub" text-anchor="start" xml:space="preserve">Once per second, every node picks another node at random and</text>
+  <text x="32.0" y="409.0" class="sub" text-anchor="start" xml:space="preserve">2 compare ring versions. One with older ring takes</text>
+  <text x="32.0" y="426.0" class="sub" text-anchor="start" xml:space="preserve">newer. Number of nodes that know doubles each round,</text>
+  <text x="32.0" y="443.0" class="sub" text-anchor="start" xml:space="preserve">so 24 nodes need about 5 rounds and 1000 nodes about 10.</text>
+</svg>

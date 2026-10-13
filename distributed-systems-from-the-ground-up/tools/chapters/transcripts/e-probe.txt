@@ -1,0 +1,11 @@
+$ ./target/release/probe --seconds 20 --acked acked.txt \
+      --server http://127.0.0.1:7001 --server http://127.0.0.1:7002 --server http://127.0.0.1:7003 &
+$ sleep 6; kill -9 <pid of member 3, the leader>
+$ sleep 3; for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
+{"id":1,"role":"leader","term":2,"leader":1,"last_sequence":610,"committed":609}
+{"id":2,"role":"follower","term":2,"leader":1,"last_sequence":611,"committed":610}
+curl: (7) Failed to connect to 127.0.0.1 port 7003
+1443 writes acknowledged in 20 seconds, 51 attempts refused
+the longest pause between 2 acknowledged writes was 1.05 s, ending 7.1 s after the start
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+1443 acknowledged, 1443 found, 0 missing

@@ -1,0 +1,8 @@
+$ ./target/release/kvd --data /var/tmp/kvd &
+$ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 12 --acked acked.txt
+64 clients: 768 writes acknowledged in 4.27 s, 180 writes per second
+
+$ ./target/release/kvgroup --data /var/tmp/kvgroup &
+$ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 400 --acked acked.txt
+64 clients: 25600 writes acknowledged in 5.13 s, 4993 writes per second
+25535 writes in 800 batches, 31.9 writes per batch

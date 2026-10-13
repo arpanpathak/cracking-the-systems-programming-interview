@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 428" width="444" height="428" role="img" aria-label="A tree of letters. From the top, branches lead to k and r. Below k are a, e and u. Below ka are f, r and y, which lead to kafka, karaoke and kayak. The path from the top through k to a is marked, and every search that begins with ka lies below it.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="448" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A tree of prefixes</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The searches of the example, letter by letter.</text>
+  <line x1="240" y1="112" x2="150" y2="176" stroke="#CF4526" stroke-width="2.6"/>
+  <line x1="240" y1="112" x2="382" y2="176" stroke="#5D6B7A" stroke-width="1.4"/>
+  <line x1="150" y1="176" x2="70" y2="244" stroke="#CF4526" stroke-width="2.6"/>
+  <line x1="150" y1="176" x2="170" y2="244" stroke="#5D6B7A" stroke-width="1.4"/>
+  <line x1="150" y1="176" x2="250" y2="244" stroke="#5D6B7A" stroke-width="1.4"/>
+  <line x1="382" y1="176" x2="382" y2="244" stroke="#5D6B7A" stroke-width="1.4"/>
+  <line x1="70" y1="244" x2="52" y2="312" stroke="#5D6B7A" stroke-width="1.4"/>
+  <line x1="70" y1="244" x2="100" y2="312" stroke="#5D6B7A" stroke-width="1.4"/>
+  <line x1="70" y1="244" x2="148" y2="312" stroke="#5D6B7A" stroke-width="1.4"/>
+  <circle cx="240" cy="112" r="15" fill="#FCEBE6" stroke="#CF4526" stroke-width="2"/>
+  <text x="240.0" y="116.5" class="mono strong" text-anchor="middle" xml:space="preserve">*</text>
+  <circle cx="150" cy="176" r="15" fill="#FCEBE6" stroke="#CF4526" stroke-width="2"/>
+  <text x="150.0" y="180.5" class="mono strong" text-anchor="middle" xml:space="preserve">k</text>
+  <circle cx="382" cy="176" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="382.0" y="180.5" class="mono strong" text-anchor="middle" xml:space="preserve">r</text>
+  <circle cx="70" cy="244" r="15" fill="#FCEBE6" stroke="#CF4526" stroke-width="2"/>
+  <text x="70.0" y="248.5" class="mono strong" text-anchor="middle" xml:space="preserve">a</text>
+  <circle cx="170" cy="244" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="170.0" y="248.5" class="mono strong" text-anchor="middle" xml:space="preserve">e</text>
+  <circle cx="250" cy="244" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="250.0" y="248.5" class="mono strong" text-anchor="middle" xml:space="preserve">u</text>
+  <circle cx="382" cy="244" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="382.0" y="248.5" class="mono strong" text-anchor="middle" xml:space="preserve">a</text>
+  <circle cx="52" cy="312" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="52.0" y="316.5" class="mono strong" text-anchor="middle" xml:space="preserve">f</text>
+  <circle cx="100" cy="312" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="100.0" y="316.5" class="mono strong" text-anchor="middle" xml:space="preserve">r</text>
+  <circle cx="148" cy="312" r="15" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="148.0" y="316.5" class="mono strong" text-anchor="middle" xml:space="preserve">y</text>
+  <text x="52.0" y="340.0" class="mono dim" text-anchor="middle" xml:space="preserve">kafka</text>
+  <text x="100.0" y="356.0" class="mono dim" text-anchor="middle" xml:space="preserve">karaoke</text>
+  <text x="148.0" y="340.0" class="mono dim" text-anchor="middle" xml:space="preserve">kayak</text>
+  <text x="170.0" y="272.0" class="mono dim" text-anchor="middle" xml:space="preserve">key...</text>
+  <text x="250.0" y="272.0" class="mono dim" text-anchor="middle" xml:space="preserve">kubernetes</text>
+  <text x="382.0" y="272.0" class="mono dim" text-anchor="middle" xml:space="preserve">raft, rate...</text>
+  <text x="32.0" y="392.0" class="sub" text-anchor="start" xml:space="preserve">Each circle is 1 letter, and the path from the top to a circle spells</text>
+  <text x="32.0" y="409.0" class="sub" text-anchor="start" xml:space="preserve">a prefix. The red path spells &#x27;ka&#x27;. Every search that begins with &#x27;ka&#x27;</text>
+  <text x="32.0" y="426.0" class="sub" text-anchor="start" xml:space="preserve">lies below the last red circle, and nothing else does.</text>
+</svg>

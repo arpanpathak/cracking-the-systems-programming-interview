@@ -1,0 +1,13 @@
+$ kill -9 <pid of member 2, the leader> <pid of member 3>
+$ sleep 5; curl http://127.0.0.1:7001/healthz
+{"id":1,"role":"candidate","term":6,"leader":null,"last_sequence":1449,"committed":1449}
+$ curl -X PUT http://127.0.0.1:7001/v1/keys/alone --data-binary 'x'
+{"type":"/problems/store-unavailable","title":"The node cannot serve the request","status":503,"detail":"the shard has no leader at the moment"}
+$ sleep 3; curl http://127.0.0.1:7001/healthz
+{"id":1,"role":"candidate","term":8,"leader":null,"last_sequence":1449,"committed":1449}
+
+$ (members 2 and 3 are started again)
+$ sleep 4; for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
+{"id":1,"role":"leader","term":9,"leader":1,"last_sequence":1450,"committed":1450}
+{"id":2,"role":"follower","term":9,"leader":1,"last_sequence":1450,"committed":1450}
+{"id":3,"role":"follower","term":9,"leader":1,"last_sequence":1450,"committed":1450}

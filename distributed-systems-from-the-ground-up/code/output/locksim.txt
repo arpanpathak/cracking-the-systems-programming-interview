@@ -1,0 +1,7 @@
+t=0   client-a acquires the lock: token Some(1), lease until t=10
+t=1   client-b asks for the lock: None
+t=2   client-a stops for 15 seconds (a long pause of its process)
+t=12  the lease has ended. client-b acquires the lock: token Some(2)
+t=13  client-b writes with token 2: accepted true
+t=17  client-a wakes up, still believes it holds the lock, writes with token 1: accepted false
+the storage holds: written by client-b

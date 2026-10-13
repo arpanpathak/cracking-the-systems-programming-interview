@@ -1,0 +1,491 @@
+<img class="plate" src="art/ch15.svg?v=92a697af" alt="Echo, an owl, stands beside a sign that reads: copy on write, or collect on read.">
+
+# News Feed: System Design
+
+A *news feed* is the page that a member of a social service sees on opening it: the
+recent posts of the accounts that the member follows, gathered into a single list with
+the newest at the top. Described as a query, it is brief. Take the accounts this
+member follows, take their posts, sort by time, and return the first 20.
+
+The difficulty is that this query must be answered for every member, at every visit,
+within a fraction of a second, and that its cost grows with numbers which have no
+natural bound. A member may follow thousands of accounts, an account may be followed
+by millions of members, and a busy service receives far more requests to read feeds
+than to write posts. A naive evaluation of the query touches the posts of every
+followed account on every visit and cannot meet these demands. The standard remedy is
+to do the work in advance, at the moment a post is written, and this in turn becomes
+ruinously expensive for the small number of accounts that have a very large
+following. The design of a feed is a matter of choosing, for each post, when the work
+of delivering it should be done, and this chapter develops the 2 pure answers and the
+mixture that practical systems adopt.
+
+<div class="covers">
+
+This chapter covers
+
+- the feed as a query, and why it cannot be evaluated as written
+- copying a post to every follower's list when it is written
+- collecting posts from every followed account when the feed is read
+- the account with millions of followers, and the mixture of both schemes
+- what a feed list contains, and how much of it is kept
+- reading a feed in pages, with a cursor
+- the delays and anomalies that members can see, and which of them matter
+- following, unfollowing, deleting, and ranking by something other than time
+
+</div>
+
+## The feed as a query
+
+Suppose that posts are kept in 1 table and the relation of who follows whom in
+another. The feed of a member is then the result of joining the 2: all posts whose
+author is among the accounts the member follows, ordered by time, newest first,
+limited to the first page.
+
+On a single database with a modest number of members, this query can be
+executed, and a service in its early days should do exactly that. Its cost is
+dominated by the number of accounts the member follows, since the recent posts of
+each have to be located before the newest overall can be chosen. For a member who
+follows 200 accounts this means 200 separate lookups in an index, or a scan that is
+equivalent to them, on every visit.
+
+The arrangement breaks down as the service grows, for 2 reasons that reinforce each
+other. The data no longer fits on 1 machine, so that the posts of 200 authors lie on
+many different shards, and the query becomes 200 network requests whose results must
+be merged. And feeds are read very often. A member may publish 2 posts a day and open
+the feed 20 times, so that the expensive operation is also the frequent one. A design
+in which the common operation is costly and the rare one cheap has its costs the wrong
+way round, and the natural response is to move work from reading to writing.
+
+## Copying when a post is written
+
+In the first scheme, every member has a *feed list* that is stored and kept ready.
+The list contains references to the posts the member should see, in order, and reading
+the feed consists of nothing more than fetching this list. The work is done at the
+time of writing. When an author publishes a post, the service looks up the author's
+followers and adds a reference to the new post at the front of each follower's list.
+Delivering 1 post to many lists in this way is called *fan-out*, and this scheme is
+*fan-out on write*, or informally the push model.
+
+<figure class="steps" data-prefix="figures/steps-feed-push" data-count="5" data-version="a62e5f91">
+<img src="figures/steps-feed-push-01.svg?v=a62e5f91" alt="Copy on write, step 1 of 5. Every member has a feed list, kept ready in a cache. It holds the numbers of the posts that the member should see, newest first. Cy follows Dan and already has post 41.">
+<figcaption><b>Figure 15.1</b> A post is stored once and a reference to it is added to the list of each follower. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+
+Reading under this scheme is as inexpensive as reading can be. A single lookup by the
+member's identifier returns a list that is already assembled and already sorted, and
+the feed service has only to fetch the posts it refers to. The feed can be served in
+a few milliseconds regardless of how many accounts the member follows.
+
+The cost has been transferred to publishing, where it is proportional to the number
+of followers. For an author with 200 followers, a post gives rise to 200 small writes,
+which is perfectly acceptable. The copying is not done while the author waits. The
+post is stored, the author receives a reply, and a task describing the copying is
+placed in a message queue, from which workers perform it in the background, in the
+manner of chapters 11 and 12. A follower's list therefore receives the post some
+moments after it was published, and the feed is eventually consistent by construction.
+
+2 further costs are less conspicuous. Lists are maintained for all members,
+including those who have not opened the service in months, so that much of the copying
+is done for readers who will never see its result. And the lists occupy memory in
+proportion to the number of members, which obliges the service to bound the length of
+each.
+
+## Collecting when the feed is read
+
+The second scheme stores no feed lists at all. Each author's posts are kept together,
+indexed by author and time, and publishing a post is a single write to the author's
+own collection. The feed is assembled when it is requested: the service looks up the
+accounts the reader follows, fetches the recent posts of each, and merges the results
+by time. This is *fan-out on read*, or the pull model, and it is the query of the
+first section carried out against data arranged to make each of its parts efficient.
+
+<figure class="steps" data-prefix="figures/steps-feed-pull" data-count="5" data-version="fd606b4a">
+<img src="figures/steps-feed-pull-01.svg?v=fd606b4a" alt="Collect on read, step 1 of 5. Under the other scheme no feed lists exist. Each author&#x27;s posts are kept together, and publishing a post adds 1 line to the author&#x27;s own list and does nothing else.">
+<figcaption><b>Figure 15.2</b> Nothing is prepared in advance, and the feed is assembled from the posts of each followed account. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+
+Publishing is now trivially cheap and its cost is independent of the size of the
+author's following. No work is done on behalf of members who never read. A post is
+visible to its readers the instant it is stored, there being no copying to wait for.
+And when a member follows a new account or stops following one, the feed reflects the
+change immediately and without any repair, since it is computed afresh from the
+current list of followed accounts.
+
+The cost is borne by every read, and is proportional to the number of accounts the
+reader follows. With 200 followed accounts, a visit to the feed requires 200 fetches,
+which can be issued in parallel and must nevertheless all be awaited, so that the
+response is as slow as the slowest of them. Since reads are far more numerous than
+writes, the total work is much greater than under the first scheme for a typical
+population of accounts.
+
+## The account with millions of followers
+
+The choice between the 2 schemes would be straightforward, in favour of copying on
+write, if all accounts resembled one another. They do not. In every social service the
+number of followers is distributed with extreme inequality: the great majority of
+accounts have a few hundred followers or fewer, and a small number have millions.
+
+For such an account, copying on write is a very different proposition. A single post
+by an account with 2 million followers gives rise to 2 million writes. Performed by a
+pool of workers at 10000 writes per second, this takes more than 3 minutes, during
+which some followers have the post and others do not, and the queue of copying tasks
+is occupied to the detriment of everybody else's posts. If several such accounts post
+at about the same time, as they tend to during events of general interest, the backlog
+grows to many minutes.
+
+The simulation for this chapter makes the imbalance concrete. It models 1000 ordinary
+accounts, each with 200 followers, publishing 2 posts and reading the feed 20 times a
+day, together with a single account that has 2 million followers and publishes 10
+posts a day.
+
+<figure>
+<img src="figures/feed-cost.svg?v=98bf6514" alt="3 bars of work per day for 1000 ordinary accounts and 1 account with 2 million followers. Copy on write for everyone makes 20400000 copies. Collect on read for everyone makes 4000500 fetches. The mixture makes 400000 copies and 20005 fetches.">
+<figcaption><b>Figure 15.3</b> The work per day under each scheme for 1000 ordinary accounts and 1 very large one.</figcaption>
+</figure>
+
+Under copying on write, the 1000 ordinary accounts cause 400000 copies a day between
+them, and the 1 large account causes 20 million. A single account is responsible for
+98% of all the work in the system. Under collecting on read, the total is about 4
+million fetches, nearly all of them attributable to the ordinary accounts' 20000 daily
+reads of 200 lists each.
+
+The figures suggest the remedy, which is to treat the 2 kinds of account differently.
+Posts by ordinary accounts are copied to their followers' lists on writing, as in the
+first scheme. Posts by accounts whose following exceeds some threshold, 10000 in the
+simulation, are not copied at all. When a member's feed is read, the service takes the
+member's stored list and merges into it the recent posts of the few large accounts
+that the member follows, which it fetches at that moment as in the second scheme. In
+the simulation this mixture requires 400000 copies and 20005 fetches a day, about a
+fiftieth of the work of either pure scheme.
+
+The mixture succeeds because it assigns each scheme to the case in which it is cheap.
+Copying on write costs in proportion to an author's followers, and is applied where
+followers are few. Collecting on read costs in proportion to the number of accounts
+fetched, and is applied to the handful of large accounts that any 1 member follows. It
+helps, too, that the recent posts of a very large account are requested by so many
+readers that they are almost always in a cache, so that the additional fetches at
+reading time are inexpensive.
+
+| | Copy on write | Collect on read | Mixture |
+|---|---|---|---|
+| Cost of publishing | 1 write per follower | 1 write | 1 write per follower, for ordinary authors only |
+| Cost of reading | 1 list | 1 fetch per followed account | 1 list, and 1 fetch per large account followed |
+| Delay before a post is visible | until the copying is done | none | none for large accounts, brief for others |
+| Work for inactive members | wasted | none | wasted for ordinary authors' posts only |
+| After following or unfollowing | the list has to be repaired | correct at once | partly repaired, partly correct at once |
+
+## What a feed list contains
+
+A feed list could in principle hold complete posts. It holds only references, each
+consisting of the identifier of a post and its time, about 16 bytes in all, and the
+posts themselves are stored once and fetched by identifier when a page of the feed is
+displayed. The reasons are those of any normalised design. A post with a million
+readers would otherwise exist in a million copies, and an edit or deletion would have
+to find and alter every one of them. With references, an edited post is changed in 1
+place, and a deleted post is found to be absent when the feed service tries to
+fetch it and is omitted from the page.
+
+The length of each list is bounded, commonly at a few hundred entries, the oldest
+being discarded as new ones arrive. Hardly any member scrolls back further than this,
+and for the rare one who does, the service falls back on collecting on read for the
+older portion. With 500 entries of 16 bytes for each of 10 million members, the lists
+occupy 80 GB, which is held in a cache spread over several nodes as described in
+chapter 9.
+
+Because the lists are held in a cache, outside durable storage, a list can be lost,
+through the failure of a cache node or through eviction. This is acceptable only
+because a list can always be reconstructed from the durable data, by running the
+collect-on-read procedure once for that member and storing the result. The lists of
+members who have been inactive for some weeks may deliberately be allowed to lapse and
+be rebuilt in this way on their return, which recovers much of the wasted work noted
+above.
+
+## Reading a feed in pages
+
+A feed is delivered in pages, and the method by which the client asks for the
+next page deserves more attention than it usually receives.
+
+The obvious method is by position: the first request asks for items 1 to 20 and the
+second for items 21 to 40. This fails in a characteristic way on any list to which
+items are being added at the front, which a feed always is.
+
+<figure class="steps" data-prefix="figures/steps-feed-page" data-count="4" data-version="b2de92bc">
+<img src="figures/steps-feed-page-01.svg?v=b2de92bc" alt="A new post arrives between 2 pages, step 1 of 4. A reader opens the feed and receives the first page, 2 items: posts 50 and 49.">
+<figcaption><b>Figure 15.4</b> A post is added while the reader is on the first page, and a request by position returns an item that was already shown. Use Next and Back to move through the 4 steps.</figcaption>
+</figure>
+
+Every insertion at the front shifts all existing items down by 1 position, so that the
+boundary between pages moves under the reader's feet and the second page begins with
+items from the end of the first. Deletions shift items the other way and cause items
+to be missed. The remedy is to ask for the next page by reference to an item,
+in the form "20 items older than the last one I have". The identifier of that last
+item, returned by the service with each page for use in the next request, is called a
+*cursor*. Since it denotes a fixed point in the sequence, insertions before it have no
+effect on what follows it. A request by cursor is also cheaper for the store to
+answer, since an ordered index can be entered directly at the cursor, whereas a
+request for position 10000 obliges the store to count past 10000 entries. Chapter 1
+used the same technique for listing keys.
+
+## What members can observe
+
+Since the feed is eventually consistent, members can observe states of affairs that a
+strongly consistent system would exclude, and it has to be decided which of these are
+tolerable.
+
+After publishing a post, an author expects to see it at once. Under copying on write,
+the author's own list is updated by the same background process as everyone else's,
+and a quick reload might not yet show the post, which authors interpret as its having
+been lost. The property that is wanted is called *read your own writes*, and it is
+usually secured for this 1 case by having the feed service add the author's own most
+recent posts to the author's feed at reading time, without waiting for the copying.
+
+Followers receive a post at slightly different moments, as the copying proceeds. This
+passes unnoticed in itself and becomes visible through replies: a member may be shown
+a reply to a post that has not yet reached the member's own list. Services deal with
+this by fetching the original together with any reply to it, so that the pair is
+always displayed together.
+
+A subtler requirement is that a member who has seen a post should not find it gone on
+the next reload. This can occur when 2 successive requests are answered by 2 cache
+replicas of which the second is behind the first. Directing all of a member's requests
+within a session to the same replica is generally sufficient to prevent it.
+
+None of these anomalies does lasting harm, and that is the justification for choosing
+eventual consistency here. A feed that is a few seconds stale is still a perfectly
+good feed, whereas a feed service that refused to respond until every replica agreed
+would be unavailable on many occasions when a slightly stale answer would have served.
+
+## Following, deleting and ranking
+
+Changes in who follows whom require the stored lists to be repaired. When a member
+follows a new account, that account's recent posts should appear in the member's
+feed, and so the service merges them into the member's list as a background task. When
+a member stops following an account, the posts of that account should disappear, and
+the simplest method is not to remove them from the list and to filter them out at
+reading time, by checking each entry against the member's current list of followed
+accounts.
+
+The same filtering at reading time disposes of several other cases at once: posts
+that have been deleted, authors whom the reader has blocked, and posts withdrawn by
+moderators. A design that depended on locating and removing every copy of a reference
+from millions of lists would be slow and unreliable, while a check at the moment of
+display is immediate and certain. The general principle is that anything which must
+take effect at once should be enforced when the feed is read, and the stored lists
+should be regarded as a hint about what to show, subject to verification.
+
+Finally, many services order the feed by an estimate of what the member will find
+interesting, and no longer strictly by time. This alters the pipeline less than might
+be supposed. The stored list becomes a pool of candidates, perhaps the 500 most recent
+references, and at reading time a ranking function assigns a score to each candidate
+and the highest are shown. Fan-out, storage and the treatment of large accounts are
+unchanged. What changes is that paging by cursor becomes harder, since the order is no
+longer fixed, and services commonly rank a batch of candidates once, at the start of a
+session, and page through that fixed result.
+
+## Use cases
+
+A member publishes posts, reads the feed, and chooses whom to follow.
+
+<figure>
+<img src="figures/feed-use-cases.svg?v=4e55b5f6" alt="A use case diagram of the news feed. Member: publish a post (POST /v1/posts), read the feed (GET /v1/feed?after=), follow an account (PUT /v1/follows/{id}).">
+<figcaption><b>Figure 15.5</b> The actors and what each of them does.</figcaption>
+</figure>
+
+## Functional requirements
+
+| No. | Functional requirement |
+|---|---|
+| 0 | A member can publish a post. |
+| 1 | A member can follow and unfollow an account. |
+| 2 | A member can read a feed of recent posts from followed accounts, newest first, in pages. |
+| 3 | A new post appears in followers' feeds within 5 seconds. |
+
+## Non-functional requirements
+
+| No. | Property | Non-functional requirement |
+|---|---|---|
+| 0 | Latency | Reading a feed takes under 200 ms. |
+| 1 | Availability | 99.9% for reading feeds. |
+| 2 | Consistency | Eventual. Followers may see a post a few seconds apart, and in slightly different order. |
+| 3 | Scale | 10 million members, 20 feed reads for every post. |
+
+The feed is eventually consistent, and deliberately so. A post may take some seconds
+to reach all of its author's followers, and 2 followers may see it at different
+moments. The posts themselves and the relation of who follows whom are stored durably
+and consistently in a replicated store, and the feed lists are a derived and
+disposable view of that data, which can be rebuilt whenever they are lost.
+
+## Core entities
+
+<figure>
+<img src="figures/feed-entities.svg?v=feba5166" alt="The core entities. Post has the fields id u64, author string, body string, time time. Follow has the fields follower string, followed string. Feed item has the fields owner string, post u64, time time. A Feed item is a copy of a pointer to a post, kept for 1 reader. The post itself is stored once.">
+<figcaption><b>Figure 15.6</b> The core entities and their fields.</figcaption>
+</figure>
+
+## Capacity estimate
+
+<div class="estimate">
+
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+
+**Arithmetic ahead.** A feed entry is 16 bytes, so the newest 500 entries for 10 million members are 80 GB of cache.
+
+<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+
+<details>
+<summary>Show the calculation</summary>
+
+| Quantity | Calculation | Result |
+|---|---|---|
+| Feed entry | post id 8 bytes + time 8 bytes | 16 bytes |
+| Entries kept per member | the newest 500 | 500 |
+| Feed cache | 10000000 × 500 × 16 bytes | 80 GB |
+| Posts per day | 10000000 members × 2 | 20 million |
+
+</details>
+
+</div>
+
+## The API
+
+Publishing creates a post. Reading the feed returns a page together with the cursor
+for the page that follows.
+
+**Publish a post**
+
+```http
+POST /v1/posts HTTP/1.1
+Host: feed.example
+Content-Type: application/json
+
+{ "body": "Shipped the new release." }
+```
+
+```http
+HTTP/1.1 201 Created
+Location: /v1/posts/90210
+Content-Type: application/json
+
+{ "id": 90210, "time": "2026-10-14T09:00:00Z" }
+```
+
+We store the post before the response and copy it to followers afterwards.
+
+**Read a page of the feed**
+
+```http
+GET /v1/feed?limit=2 HTTP/1.1
+Host: feed.example
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "posts": [
+    { "id": 90210, "author": "ada", "body": "Shipped the new release." },
+    { "id": 90188, "author": "grace", "body": "Found the bug." }
+  ],
+  "next_after": "90188"
+}
+```
+
+`next_after` is the id of the last post on the page.
+
+## High-level design
+
+<figure class="wide">
+<img src="figures/feed-design.svg?v=e7ffe354" alt="A news feed. The components are Authors, Post service, Queue, Fan-out workers, Readers, Feed service, Feed cache. Step 1: An author publishes a post. Step 2: The post is stored, and a task is queued. Step 3: A worker takes the task. Step 4: It adds the post to each follower&#x27;s list. Step 5: A reader opens the feed. Step 6: The feed service reads the reader&#x27;s list.">
+<figcaption><b>Figure 15.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+
+| Component | Role | State it holds | When 1 instance fails |
+|---|---|---|---|
+| Post service | stores a post and queues the copying | posts, in the key-value store | another instance serves requests |
+| Fan-out workers | add a post to each follower's list | none | their tasks are delivered again, as in chapter 11 |
+| Feed cache | 1 list of recent post ids per member | lists, in memory | lists are rebuilt from the posts on the next read |
+| Feed service | reads a member's list and fetches the posts | none | another instance serves requests |
+
+### One request, step by step
+
+The steps follow the arrows of figure 15.7.
+
+1. An author sends `POST /v1/posts`.
+2. The post service stores the post once and puts a small task on the queue: "post 90210 by ada".
+3. A fan-out worker takes the task and looks up ada's followers.
+4. For each follower, the worker adds the post's id to that follower's list in the feed cache.
+5. A reader sends `GET /v1/feed`.
+6. The feed service reads the reader's list, merges in recent posts of any very large accounts the reader follows, and fetches the posts themselves.
+
+For a reader who follows a very large account, the feed service adds 1 step to this
+path. Having read the stored list, it fetches the recent posts of each large account
+the reader follows, from a cache in which they are nearly always present, and merges
+them into the list by time before returning the page.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| Evaluating the feed query on every visit | Each read touches every followed account and is slow at scale. | Keep a feed list per member, prepared when posts are written. |
+| Copying every post to every follower | 1 post by an account with millions of followers produces millions of writes and delays all other posts. | Above a threshold of followers, collect that author's posts at reading time. |
+| Copying while the author waits | Publishing takes as long as the copying. | Store the post, reply, and copy from a queue. |
+| Storing whole posts in the lists | Edits and deletions must find every copy. | Store references, and fetch posts by identifier. |
+| Lists of unlimited length | Memory grows without bound for entries nobody reads. | Keep the newest few hundred, and collect on read beyond that. |
+| Treating the lists as the only copy | A lost cache node loses feeds. | Rebuild a list from the durable posts and follows. |
+| Paging by position | A new post shifts everything, and the next page repeats an item. | Page with a cursor that names the last item seen. |
+| Removing references when a post is deleted or an account unfollowed | Millions of lists must be searched, slowly and unreliably. | Filter at reading time. |
+| The author's own post arriving with everyone else's | The author reloads and concludes the post was lost. | Add the author's recent posts to the author's own feed at reading time. |
+| Maintaining lists for members who never return | Most copying is done for nobody. | Let inactive members' lists lapse, and rebuild on return. |
+
+## Failures
+
+| Failure | What users see | How the system recovers |
+|---|---|---|
+| Fan-out workers fall behind | posts appear in feeds late | the queue holds the tasks; more workers are added |
+| The feed cache is lost | the first read of each feed is slow | lists are rebuilt by collecting on read |
+| A member unfollows an account | old posts of that account may remain in the list briefly | they are filtered out when the feed is read |
+
+## Trade-offs
+
+| Decision | What it gains | What it costs |
+|---|---|---|
+| Copy on write | reads are 1 lookup | an account with many followers makes writes expensive |
+| Collect on read | writes cost nothing extra | every read fetches from many accounts |
+| A mixture with a threshold | both costs stay small | 2 code paths, and a threshold to tune |
+
+## The simulation
+
+<div class="simulation">
+
+**Simulation in the repository.** The program [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/feedsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p feedsim` in the `code` directory.
+
+</div>
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Feed | the recent posts of the accounts a member follows, newest first |
+| Follow | the relation between a member and an account whose posts the member wishes to see |
+| Feed list | a stored list of references to the posts 1 member should see |
+| Fan-out | delivering 1 post to many readers |
+| Fan-out on write | copying a reference to each follower's list when a post is published |
+| Fan-out on read | collecting posts from each followed account when the feed is requested |
+| Cursor | a reference to the last item seen, from which the next page continues |
+| Read your own writes | the property that a member sees the effect of their own actions at once |
+| Ranking | ordering the feed by an estimate of interest in place of time |
+
+<div class="summary">
+
+## Summary
+
+- A feed is a join of posts and follows that is too costly to evaluate on every visit once the data is spread over many machines.
+- Copying on write prepares a list for every member, so that reading is 1 lookup and publishing costs 1 write per follower.
+- Collecting on read prepares nothing, so that publishing is 1 write and reading costs 1 fetch per followed account.
+- An account with millions of followers makes copying on write impractical, and such accounts are few.
+- The mixture copies the posts of ordinary accounts and collects those of large accounts at reading time, at about a fiftieth of the work in the measured example.
+- Feed lists hold references, are bounded in length, live in a cache, and can be rebuilt from durable data.
+- Pages are requested by cursor, and deletions, blocks and unfollows are enforced by filtering when the feed is read.
+
+</div>

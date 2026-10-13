@@ -1,0 +1,105 @@
+// The messages that the nodes of the store send to each other. Clients use
+// the HTTP API and never see these.
+syntax = "proto3";
+
+package store.v1;
+
+// ANCHOR: record
+// A change to one key, as the leader of a shard wrote it to its log.
+message Record {
+  uint64 sequence = 1;
+  oneof change {
+    Put put = 2;
+    Delete delete = 3;
+  }
+}
+
+message Put {
+  string key = 1;
+  bytes value = 2;
+}
+
+message Delete {
+  string key = 1;
+}
+// ANCHOR_END: record
+
+// ANCHOR: replication
+// Sent by the leader of a shard to each follower.
+service Replication {
+  // Appends records to the follower's log. A call with no records is a
+  // heartbeat: it tells the follower that the leader is alive.
+  rpc Append(AppendRequest) returns (AppendResponse);
+}
+
+message AppendRequest {
+  // The shard, named by the last position it owns.
+  fixed64 shard = 1;
+  // The term of the sender. A follower rejects a leader of an older term.
+  uint64 term = 2;
+  // The sequence of the record that precedes `records` in the leader's log.
+  uint64 previous_sequence = 3;
+  repeated Record records = 4;
+  // Every record up to this sequence is on a majority of the replicas.
+  uint64 committed_sequence = 5;
+  // Added for leader election. The term of the record at previous_sequence,
+  // and the id of the sender.
+  uint64 previous_term = 6;
+  uint32 leader = 7;
+}
+
+message AppendResponse {
+  uint64 term = 1;
+  // False when the follower's log does not end at `previous_sequence`.
+  bool appended = 2;
+  // The sequence of the last record in the follower's log.
+  uint64 last_sequence = 3;
+}
+// ANCHOR_END: replication
+
+// ANCHOR: election
+// Sent by a candidate to every other member of the shard.
+service Election {
+  rpc RequestVote(VoteRequest) returns (VoteResponse);
+}
+
+message VoteRequest {
+  uint64 term = 1;
+  uint32 candidate = 2;
+  // The end of the candidate's log, and the term of its last record.
+  uint64 last_sequence = 3;
+  uint64 last_term = 4;
+}
+
+message VoteResponse {
+  uint64 term = 1;
+  bool granted = 2;
+}
+// ANCHOR_END: election
+
+// ANCHOR: ring
+// The ring, as the coordinator stores it. Routers and nodes read it and watch it
+// for changes.
+message Ring {
+  uint64 version = 1;
+  repeated Node nodes = 2;
+  repeated Shard shards = 3;
+}
+
+message Node {
+  string id = 1;
+  string address = 2;
+  // The positions this node owns on the ring.
+  repeated fixed64 tokens = 3;
+}
+
+// A range of the ring and the nodes that hold its keys.
+message Shard {
+  // The shard owns the positions from first_token to last_token, both included.
+  fixed64 first_token = 1;
+  fixed64 last_token = 2;
+  uint64 term = 3;
+  string leader = 4;
+  repeated string followers = 5;
+}
+// ANCHOR_END: ring
