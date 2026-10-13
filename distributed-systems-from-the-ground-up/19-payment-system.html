@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -626,6 +626,49 @@ Content-Type: application/problem+json
 <li>For a new key, the ledger checks the balance and writes 2 entries, minus 4000 for the customer and plus 4000 for the shop, together with the key’s result, in 1 transaction.</li>
 <li>The card network is asked to move the money between the banks. Its answer can take seconds, so the payment is first <em>pending</em> and becomes <em>done</em> when the answer arrives.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/pay-deploy.svg?v=4cee6bd5" alt="The payment system, deployed. Shops: Shops (1000 payments/s), charge and refund. Api, in 3 zones: Load balancers (x 2), any API node, Payment API (x 12), stateless, Vault (x 3), card numbers, isolated. Ledger, in 3 zones: Ledger database (x 3), 1 leader, 2 followers. Background: Outbox relay (x 2), publishes events, Status poller (x 4), asks about pending, Reconciliation (nightly), ledger against bank. Outside: Card network (x 1), outside our control.">
+<figcaption><b>Figure 19.8</b> The payment system as it is deployed, with the vault isolated and the card network outside.</figcaption>
+</figure>
+<p>By the standards of this book the payment system is small, since 1000 payments per
+second is a modest load, and its deployment is shaped by correctness and isolation
+more than by scale. The payment API is stateless. The ledger is a single database
+with a leader and 2 followers in 3 zones, which confirms a write only when a
+follower in another zone holds it. The vault that holds card numbers is drawn in red
+because it is a separate system with its own network, its own access rules and its
+own audit, which the rest of the system can reach only to exchange a token. The
+background tier carries the work that follows a payment: publishing events from the
+outbox, asking the card network about pending payments, and the nightly
+reconciliation.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The idempotency key is the centrepiece of Stripe’s public API, and an engineer of
+that company has published the most detailed account of implementing it. The
+account divides a request into <em>atomic phases</em>, each a database transaction that
+ends at a call to an outside service, and records after each phase how far the
+request has progressed, so that a retry with the same key resumes from the last
+completed phase and does not start again. This is a more careful version of the
+pending state described above, generalised to requests with several outside calls.
+Airbnb has described a similar design for its own payments, in which a request is
+divided into a phase before the outside call, the call itself and a phase after it,
+with the rule that no outside call may be made inside a database transaction.</p>
+<p>The saga comes from a paper of 1987, which proposed it for transactions that run
+too long to hold locks. The 2-phase commit protocol and its weakness, the
+participant left in doubt when the coordinator fails, are described in the classic
+literature on transaction processing.</p>
+<p>For the ledger, several companies have described building append-only stores
+specifically for double-entry records, with the immutability enforced by the store
+itself, whatever the application attempts. Whatever the store, the rule of
+keeping card numbers in an isolated component is not a matter of taste. The security
+standard of the card industry applies to every system that stores, processes or
+transmits card numbers, and the tokenising vault exists to keep as much of the
+system as possible outside its scope.</p>
+<p>What this chapter leaves out is considerable. A real card payment involves a
+standard message format between the parties, further authentication of the
+cardholder in many countries, the screening of every payment for fraud before it is
+authorised, the conversion of currencies, and the rules of each card network on
+disputes. Each is a subject in itself, and none of them changes the 3 ideas on which
+the chapter rests.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -680,6 +723,15 @@ Content-Type: application/problem+json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/paysim/src/main.rs"><code>code/paysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p paysim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>B. Leach, “Implementing Stripe-like Idempotency Keys in Postgres”, 2017.</li>
+<li>Stripe API reference, “Idempotent requests”.</li>
+<li>J. Chew, “Avoiding Double Payments in a Distributed Payments System”, Airbnb engineering blog, 2019.</li>
+<li>H. Garcia-Molina and K. Salem, “Sagas”, SIGMOD 1987.</li>
+<li>J. Gray and A. Reuter, <em>Transaction Processing: Concepts and Techniques</em>, Morgan Kaufmann, 1992.</li>
+<li>PCI Security Standards Council, <em>Payment Card Industry Data Security Standard</em>.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

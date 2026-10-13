@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -577,6 +577,7 @@ API correctly without knowing anything about key-value stores.</p>
 </thead>
 <tbody>
 <tr><td>A URL identifies a resource, and consists of nouns.</td><td><code>/v1/keys/user-1</code> identifies the key <code>user-1</code>. The API has no URLs such as <code>/setKey</code>.</td></tr>
+<tr><td>A collection is named by a plural noun, and a member by the collection followed by its identifier.</td><td><code>/v1/keys</code> is the collection of keys, and <code>/v1/keys/user-1</code> is 1 member of it.</td></tr>
 <tr><td>The HTTP method expresses the operation.</td><td><code>GET</code> reads a resource, <code>PUT</code> replaces it and <code>DELETE</code> removes it.</td></tr>
 <tr><td><code>GET</code> has no side effects.</td><td>Clients and intermediaries may repeat, cache and retry a <code>GET</code> freely.</td></tr>
 <tr><td><code>PUT</code> and <code>DELETE</code> are idempotent.</td><td>An operation is <em>idempotent</em> if performing it several times has the same effect as performing it once, so that a client may repeat these requests after a lost response.</td></tr>
@@ -1481,6 +1482,54 @@ allowance. Several thousand such failures a month would be within it. In practic
 therefore, the requirement is not threatened by the failures of individual machines,
 which this design absorbs, and is limited by events that affect many nodes together,
 such as a faulty release of the software or the loss of a segment of the network.</p>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/kv-deploy.svg?v=b2e0d15c" alt="The key-value store, deployed. Applications: Applications (120000 req/s), keep their state here. Edge: Load balancers (x 2), active and standby, Routers (x 12), stateless, hold the ring. Storage, in 3 zones: Storage nodes (x 8), zone a, Storage nodes (x 8), zone b, Storage nodes (x 8), zone c. Control: Coordinator (x 3), holds the ring, Monitoring (x 2), health and metrics.">
+<figcaption><b>Figure 1.18</b> The key-value store as it is deployed: 12 routers, 24 storage nodes in 3 zones, and a coordinator of 3 machines.</figcaption>
+</figure>
+<p>The figure of the high-level design showed 1 box for each kind of component. A
+running system has many of each, and their number and placement are part of the
+design. Applications reach the store through a pair of load balancers, of which 1 is
+active and the other takes over its address if it fails. Behind them are 12 routers,
+which can be any number, since they are stateless. The 24 storage nodes are divided
+equally among 3 <em>availability zones</em>, which are separate buildings or halls with
+their own power and network, and the ring is constructed so that the 3 replicas of
+every shard fall in 3 different zones. The loss of an entire zone then removes 1
+replica of each shard and leaves a majority of every one. The coordinator has 1
+machine in each zone for the same reason.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The design of this chapter is not the only way of building a key-value store, and it
+is instructive to place it among the systems that are in use.</p>
+<p>Its 2 ancestors are quite different from each other. <em>Dynamo</em>, described by Amazon in
+2007, introduced to a wide audience the combination of consistent hashing, virtual
+nodes and replication to the next nodes on the ring that this chapter uses for
+placement. In every other respect Dynamo chose the opposite course. It has no leaders.
+Any replica accepts a write, a request succeeds when W of N replicas have answered,
+conflicting versions are detected with vector clocks and handed back to the
+application to be reconciled, and membership spreads by gossip. It is the model of
+eventual and tunable consistency described earlier, and Cassandra and Riak descend
+from it. The other ancestor is the line of consensus protocols, Paxos and later
+Raft, in which a leader orders the writes and a majority must store each one. The
+coordinator of this chapter is a system of that kind, as etcd and ZooKeeper are.</p>
+<p>The design here combines the 2: placement by a hash ring, as in Dynamo, with a
+consensus group for each shard, as in Raft. Systems that are built this way in
+practice, among them CockroachDB, TiKV and YugabyteDB, differ from our design in 1
+important respect. They do not hash keys. They divide the ordered key space into
+contiguous ranges, each replicated by its own Raft group, and they split a range
+when it grows beyond a set size and merge ranges that shrink. This keeps
+neighbouring keys together, so that a listing by prefix reads 1 or 2 ranges where
+ours must ask every node, and it lets the system move load by moving the boundaries.
+The price is the machinery for splitting, merging and rebalancing, which a hash ring
+does not need. Google’s Bigtable and Spanner also partition by range.</p>
+<p>Several things that a production store requires are absent from this chapter and
+from the code that follows. A log that grows for ever must be cut short by taking
+<em>snapshots</em> of the state. Changing the set of members of a shard while it runs needs
+a protocol of its own, which Raft calls joint consensus. Reads served by a leader on
+the strength of a recent heartbeat depend on clocks behaving reasonably, and stricter
+systems confirm leadership with a majority for each read. And none of this has been
+tested here in the way that such systems are tested in earnest, by a tool such as
+Jepsen, which partitions a real cluster at random and checks every response against
+the definition of linearizability.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -1524,6 +1573,17 @@ of this chapter appear in its code under the same names.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ringsim/src/main.rs"><code>code/ringsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p ringsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>G. DeCandia and others, “Dynamo: Amazon’s Highly Available Key-value Store”, SOSP 2007.</li>
+<li>D. Ongaro and J. Ousterhout, “In Search of an Understandable Consensus Algorithm”, USENIX ATC 2014.</li>
+<li>D. Karger and others, “Consistent Hashing and Random Trees”, STOC 1997.</li>
+<li>F. Chang and others, “Bigtable: A Distributed Storage System for Structured Data”, OSDI 2006.</li>
+<li>J. Corbett and others, “Spanner: Google’s Globally-Distributed Database”, OSDI 2012.</li>
+<li>M. Herlihy and J. Wing, “Linearizability: A Correctness Condition for Concurrent Objects”, ACM TOPLAS, 1990.</li>
+<li>S. Gilbert and N. Lynch, “Brewer’s Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services”, ACM SIGACT News, 2002.</li>
+<li>M. Kleppmann, <em>Designing Data-Intensive Applications</em>, O’Reilly, 2017.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -4605,6 +4665,13 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="further-reading"><a class="header" href="#further-reading">Further reading</a></h2>
+<ul>
+<li>T. Pillai and others, “All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications”, OSDI 2014.</li>
+<li>A. Rebello and others, “Can Applications Recover from fsync Failures?”, USENIX ATC 2020.</li>
+<li>C. Mohan and others, “ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging”, ACM Transactions on Database Systems, 1992.</li>
+<li>A. Petrov, <em>Database Internals</em>, O’Reilly, 2019.</li>
+</ul>
 <div class="summary">
 <h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <ul>
@@ -7712,6 +7779,12 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="further-reading-1"><a class="header" href="#further-reading-1">Further reading</a></h2>
+<ul>
+<li>B. Oki and B. Liskov, “Viewstamped Replication: A New Primary Copy Method to Support Highly-Available Distributed Systems”, PODC 1988.</li>
+<li>D. Ongaro and J. Ousterhout, “In Search of an Understandable Consensus Algorithm”, USENIX ATC 2014.</li>
+<li>R. van Renesse and F. Schneider, “Chain Replication for Supporting High Throughput and Availability”, OSDI 2004.</li>
+</ul>
 <div class="summary">
 <h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
@@ -12434,6 +12507,15 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="further-reading-2"><a class="header" href="#further-reading-2">Further reading</a></h2>
+<ul>
+<li>D. Ongaro and J. Ousterhout, “In Search of an Understandable Consensus Algorithm”, USENIX ATC 2014.</li>
+<li>D. Ongaro, <em>Consensus: Bridging Theory and Practice</em>, doctoral dissertation, Stanford University, 2014.</li>
+<li>L. Lamport, “Paxos Made Simple”, ACM SIGACT News, 2001.</li>
+<li>T. Chandra, R. Griesemer and J. Redstone, “Paxos Made Live: An Engineering Perspective”, PODC 2007.</li>
+<li>M. Fischer, N. Lynch and M. Paterson, “Impossibility of Distributed Consensus with One Faulty Process”, Journal of the ACM, 1985.</li>
+<li>K. Kingsbury, the Jepsen analyses, jepsen.io.</li>
+</ul>
 <div class="summary">
 <h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <ul>
@@ -14011,6 +14093,11 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="further-reading-3"><a class="header" href="#further-reading-3">Further reading</a></h2>
+<ul>
+<li>D. DeWitt and others, “Implementation Techniques for Main Memory Database Systems”, SIGMOD 1984, which introduced group commit.</li>
+<li>J. Gray and A. Reuter, <em>Transaction Processing: Concepts and Techniques</em>, Morgan Kaufmann, 1992.</li>
+</ul>
 <div class="summary">
 <h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
 <ul>
@@ -14890,6 +14977,46 @@ leader may lack the most recent updates, because an in-memory store commonly
 replicates without waiting for a majority to confirm. For buckets this is harmless,
 amounting to a few extra tokens for a few clients, and it is the eventual consistency
 of non-functional requirement 2 as it appears in practice.</p>
+<h2 id="the-design-deployed-1"><a class="header" href="#the-design-deployed-1">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/limiter-deploy.svg?v=5481d1bc" alt="The rate limiter, deployed. Clients: Clients (50000 req/s), 1 million of them. Edge, in 3 zones: Load balancers (x 6), 1 pair in each zone, API gateways (x 30), authenticate and ask. Limiting, in 3 zones: Limiter nodes (x 9), token bucket rule, Counter store (x 3), 1 leader, 2 followers. The protected api: API servers (x 100), do the work.">
+<figcaption><b>Figure 7.14</b> The rate limiter as it is deployed, with the number of machines of each kind.</figcaption>
+</figure>
+<p>At 50000 requests per second, no component of the design is a single machine. Clients
+reach 1 of 3 zones, each with a pair of load balancers in front of 10 API gateways.
+Every gateway asks a limiter node in its own zone, and the 9 limiter nodes are
+interchangeable, since none of them holds a bucket. All of them read and update the
+buckets in a single counter store, which runs as a leader with 2 followers in the
+other zones. Only requests that pass reach the 100 API servers, which are the reason
+for the whole arrangement and by far the largest tier.</p>
+<h2 id="how-real-systems-do-it-1"><a class="header" href="#how-real-systems-do-it-1">How real systems do it</a></h2>
+<p>The algorithms of this chapter are all in production somewhere, and the published
+accounts agree closely with what was said of each.</p>
+<p>Stripe has described 4 limiters that it runs in front of its API. The most important
+is a request rate limiter for each user, built as a token bucket whose state is held
+in an in-memory store, as in this chapter. Beside it is a limiter on the number of
+requests a user may have in progress at once, which catches expensive requests that a
+rate alone would miss. The other 2 are load shedders, which act on the state of the
+whole system and reserve capacity for critical requests, and which are the load
+shedding that the opening section distinguished from rate limiting.</p>
+<p>Cloudflare chose the sliding window counter for the limiter at its edge and published
+a measurement of its accuracy. Over 400 million requests from 270000 sources, the
+estimate from 2 counters wrongly allowed or refused 0.003% of requests, with an
+average difference of 6% between the estimated and the true rate. This supports the
+statement above that the error is small for real traffic, and it should be read with
+the caution that it describes 1 network’s traffic.</p>
+<p>The generic cell rate algorithm comes from the standards for ATM networks of the
+1990s, and it is the basis of several widely used limiter libraries. Envoy, a proxy
+commonly used as a gateway, offers both arrangements described under counting on many
+machines: a token bucket local to each proxy, and a call to a shared rate limit
+service, and the 2 can be combined, with the local one as a first line of
+defence in front of the shared one. The response headers shown in the API section
+follow a draft of the IETF, which has changed between versions and is not yet a
+standard, whereas the status <code>429</code> and the header <code>Retry-After</code> are standardised.</p>
+<p>One technique in common use is missing from this chapter. A well-behaved client can
+limit itself adaptively, lowering its own rate when it sees refusals and raising it
+slowly when it does not, which the AWS client libraries do with a token bucket for
+retries. Chapter 13 describes the same idea from the side of the caller.</p>
 <h2 id="mistakes-to-avoid-1"><a class="header" href="#mistakes-to-avoid-1">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -14945,6 +15072,16 @@ of non-functional requirement 2 as it appears in practice.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit/src/main.rs"><code>code/ratelimit</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p ratelimit</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-1"><a class="header" href="#references-1">References</a></h2>
+<ul>
+<li>P. Tarjan, “Scaling your API with rate limiters”, Stripe engineering blog, 2017.</li>
+<li>J. Desgats, “How we built rate limiting capable of scaling to millions of domains”, Cloudflare blog, 2017.</li>
+<li>ATM Forum, <em>Traffic Management Specification Version 4.0</em>, 1996, for the generic cell rate algorithm.</li>
+<li>RFC 6585, <em>Additional HTTP Status Codes</em>, 2012, for status 429.</li>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, for <code>Retry-After</code>.</li>
+<li>IETF HTTP API working group, “RateLimit header fields for HTTP”, Internet-Draft.</li>
+<li>Envoy proxy documentation, “Global rate limiting” and “Local rate limiting”.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-1"><a class="header" href="#terms-introduced-in-this-chapter-1">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -15405,6 +15542,43 @@ same number.</p>
 a node holds its number, it needs nothing from the coordinator or from any other node,
 and the availability of the service as a whole is that of whichever single node a
 caller manages to reach.</p>
+<h2 id="the-design-deployed-2"><a class="header" href="#the-design-deployed-2">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/idgen-deploy.svg?v=5c07a3ba" alt="The id generator, deployed. Callers: Services (1 million ids/s), need ids for new records. Edge: Load balancers (x 2), any id node will do. Id nodes, in 3 zones: Id nodes (x 4), zone a, numbers 0-99, Id nodes (x 4), zone b, numbers 100-199, Id nodes (x 4), zone c, numbers 200-299. Control: Coordinator (x 3), gives out node numbers.">
+<figcaption><b>Figure 8.9</b> The id generator as it is deployed: 12 nodes in 3 zones, each with its own number.</figcaption>
+</figure>
+<p>The id nodes are spread over 3 zones and placed behind a load balancer only as a
+convenience for callers, since any node can answer any request. Each zone is given a
+range of node numbers, so that the number in an id also says where the id was made,
+which helps when a duplicate has to be traced. The coordinator is consulted when a
+node starts and at no other time. Callers with very high rates do not use the
+network at all: they link the generator into their own processes, each of which then
+holds a node number of its own.</p>
+<h2 id="how-real-systems-do-it-2"><a class="header" href="#how-real-systems-do-it-2">How real systems do it</a></h2>
+<p>The scheme of time, node number and counter is the one that Twitter announced in June
+2010 under the name Snowflake, with exactly the division used here: 1 unused bit, 41
+bits of milliseconds, 10 bits for the machine and 12 for a sequence. Twitter adopted
+it when it moved its tweets from a single database to a sharded store and could no
+longer rely on the database’s counter. The layout has been widely copied with
+different divisions. Instagram described a variant in 2012 with 41 bits of time, 13
+bits for the logical shard and 10 for a sequence, generated inside the database
+itself, so that no separate service is needed. Discord uses the original layout with
+its own starting date.</p>
+<p>The counter in a pair of databases, stepping by 2, is the scheme that Flickr published
+as its ticket servers. Blocks of numbers handed out by a coordinator are how many
+database sequences are cached in practice.</p>
+<p>Version 7 of the UUID, with a millisecond timestamp in its first 48 bits, was
+standardised in RFC 9562 in 2024, and it exists because of the problem of index
+locality described at the start of this chapter.</p>
+<p>There is an important case in which the advice of this chapter is reversed. In a
+store that partitions its data by ranges of keys, as Spanner, CockroachDB and Bigtable
+do, keys that increase with time send every insert to the last range, and that 1
+range and the machines holding it become a bottleneck however large the cluster. The
+documentation of such stores warns against time-ordered primary keys for exactly this
+reason, and recommends keys whose leading bits are spread out, by a hash or by
+reversing the bits of a sequence. The locality that helps an index on 1 machine
+becomes a hot spot on many, and which of the 2 effects governs depends on how the
+store beneath partitions its keys.</p>
 <h2 id="mistakes-to-avoid-2"><a class="header" href="#mistakes-to-avoid-2">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -15455,6 +15629,14 @@ caller manages to reach.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs"><code>code/idgen</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p idgen</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-2"><a class="header" href="#references-2">References</a></h2>
+<ul>
+<li>R. King, “Announcing Snowflake”, Twitter engineering blog, 2010.</li>
+<li>Instagram engineering blog, “Sharding &amp; IDs at Instagram”, 2012.</li>
+<li>K. Elliott-McCrea, “Ticket Servers: Distributed Unique Primary Keys on the Cheap”, Flickr code blog, 2010.</li>
+<li>RFC 9562, <em>Universally Unique IDentifiers (UUIDs)</em>, 2024.</li>
+<li>Google Cloud Spanner documentation, “Schema design best practices”, on avoiding monotonically increasing keys.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-2"><a class="header" href="#terms-introduced-in-this-chapter-2">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -15831,7 +16013,7 @@ different nodes and have readers choose among them at random.</p>
 <p>Services read through the cache and inform it when the data behind an entry has
 changed. Operators add and remove nodes.</p>
 <figure>
-<img src="figures/cache-use-cases.svg?v=ed291d5d" alt="A use case diagram of the cache. Service: read through the cache (GET /v1/cache/{key}), store a value for a time (PUT, with a TTL), drop a stale value (DELETE /v1/cache/{key}). Operator: add a cache node (the ring gains its tokens).">
+<img src="figures/cache-use-cases.svg?v=b8f8dfff" alt="A use case diagram of the cache. Service: read through the cache (GET /v1/entries/{key}), store a value for a time (PUT, with a TTL), drop a stale value (DELETE /v1/entries/{key}). Operator: add a cache node (the ring gains its tokens).">
 <figcaption><b>Figure 9.6</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements-3"><a class="header" href="#functional-requirements-3">Functional requirements</a></h2>
@@ -15900,7 +16082,7 @@ indefinitely.</p>
 <p>Values are opaque bytes, as in the key-value store of chapter 1, and the time limit of
 an entry travels in a header.</p>
 <p><strong>Store a value for 60 seconds</strong></p>
-<pre><code class="language-http">PUT /v1/cache/user-42 HTTP/1.1
+<pre><code class="language-http">PUT /v1/entries/user-42 HTTP/1.1
 Host: cache.example
 Cache-Control: max-age=60
 Content-Length: 9
@@ -15911,7 +16093,7 @@ ada, 1815
 </code></pre>
 <p>After 60 seconds the entry is gone, whether or not it was read.</p>
 <p><strong>Read a value that is not cached</strong></p>
-<pre><code class="language-http">GET /v1/cache/user-43 HTTP/1.1
+<pre><code class="language-http">GET /v1/entries/user-43 HTTP/1.1
 Host: cache.example
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 404 Not Found
@@ -15949,6 +16131,48 @@ responds to it by reading the database and storing the result.</p>
 when the database has confirmed, it sends <code>DELETE</code> for the key to the cache node that
 owns it. If that <code>DELETE</code> fails because the node is unreachable, the entry survives
 with the old value until its TTL expires, which is the case the TTL exists for.</p>
+<h2 id="the-design-deployed-3"><a class="header" href="#the-design-deployed-3">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/cache-deploy.svg?v=cfb968f5" alt="The cache, deployed. Services: Service instances (x 400), cache library inside. Cache nodes, in 3 zones: Cache nodes (x 3), zone a, Cache nodes (x 3), zone b, Cache nodes (x 2), zone c. The source of truth: Database leader (x 1), takes the writes, Database followers (x 2), take the reads.">
+<figcaption><b>Figure 9.9</b> The cache as it is deployed: a library in every service, 8 cache nodes in 3 zones, and the database behind them.</figcaption>
+</figure>
+<p>The deployment has a feature that distinguishes it from most others in this book,
+which is the absence of a load balancer. Each of the 400 service instances contains
+the cache library with its copy of the ring, and sends every request directly to the
+1 cache node that owns the key. The 8 nodes are spread over 3 zones. With a hit
+ratio of 99%, about 2000 of the 200000 reads per second go on to the database, whose
+followers serve them. The figure makes the dependence plain: the database tier is
+sized for the traffic that passes the cache, and would receive 100 times as much if
+the cache tier were lost.</p>
+<h2 id="how-real-systems-do-it-3"><a class="header" href="#how-real-systems-do-it-3">How real systems do it</a></h2>
+<p>The most thorough public account of a cache at scale is Facebook’s paper on its use
+of memcached, and nearly every difficulty in this chapter appears in it with the
+remedy that Facebook adopted.</p>
+<p>The stale value left by an overlapping read and write, and the stampede on a missing
+entry, are both solved there by 1 mechanism, the <em>lease</em>. On a miss, the cache gives
+the client a token that entitles it to fill the entry. A delete invalidates any
+outstanding token, so that a late fill with an old value is rejected, which is the
+conditional store described above. And the cache issues a token for a given key only
+at intervals, telling other clients that miss in the meantime to wait briefly and try
+again, which prevents the stampede. The paper reports that leases reduced the peak
+rate of database queries for a set of keys prone to stampedes from 17000 per second
+to 1300.</p>
+<p>The paper also describes what it does about the avalanche. When a cache server
+fails, its keys are not moved to the remaining servers, which might then be
+overloaded in turn. Requests for them go to a small set of idle machines kept for the
+purpose, called the gutter. Invalidation is driven from the database’s own log of
+committed changes, which is more dependable than relying on every application to
+issue its deletes, and a cluster that starts empty is warmed by reading from a
+neighbouring cluster’s cache before it is allowed to reach the database.</p>
+<p>On eviction, the rule of sampling a few entries and removing the least recently used
+among them is what Redis does by default, with 5 samples. The admission policy that
+compares the estimated frequency of a newcomer with that of the entry it would
+replace is TinyLFU, implemented in the Caffeine library. A study of the cache
+clusters at Twitter found, among other things, that for many workloads at realistic
+cache sizes plain first in, first out performed about as well as LRU, which has
+since led to a family of simple queue-based policies. The technique of refreshing an
+entry early with a probability that rises towards its expiry has been analysed
+formally and shown to be optimal in a certain sense.</p>
 <h2 id="mistakes-to-avoid-3"><a class="header" href="#mistakes-to-avoid-3">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -16001,6 +16225,15 @@ with the old value until its TTL expires, which is the case the TTL exists for.<
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs"><code>code/cachesim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p cachesim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-3"><a class="header" href="#references-3">References</a></h2>
+<ul>
+<li>R. Nishtala and others, “Scaling Memcache at Facebook”, NSDI 2013.</li>
+<li>G. Einziger, R. Friedman and B. Manes, “TinyLFU: A Highly Efficient Cache Admission Policy”, ACM Transactions on Storage, 2017.</li>
+<li>J. Yang, Y. Yue and K. Rashmi, “A Large Scale Analysis of Hundreds of In-memory Cache Clusters at Twitter”, OSDI 2020.</li>
+<li>A. Vattani, F. Chierichetti and K. Lowenstein, “Optimal Probabilistic Cache Stampede Prevention”, VLDB 2015.</li>
+<li>Redis documentation, “Key eviction”, on approximated LRU.</li>
+<li>B. Bloom, “Space/Time Trade-offs in Hash Coding with Allowable Errors”, Communications of the ACM, 1970.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-3"><a class="header" href="#terms-introduced-in-this-chapter-3">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -16415,6 +16648,40 @@ from the storage. Its output for the fenced case reads as follows.</p>
 </table>
 </div>
 <p>At the end the storage holds what worker B wrote.</p>
+<h2 id="the-design-deployed-4"><a class="header" href="#the-design-deployed-4">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/lock-deploy.svg?v=6624d339" alt="The lock service, deployed. Workers: Workers (x 1000), must be alone in a step. Lock service, 1 node in each zone: Lock node (x 1), zone a, the leader, Lock node (x 1), zone b, a follower, Lock node (x 1), zone c, a follower. What the lock protects: Storage (replicated), checks the token.">
+<figcaption><b>Figure 10.7</b> The lock service as it is deployed: 3 nodes in 3 zones, and the storage that checks the tokens.</figcaption>
+</figure>
+<p>The lock service is small. It has 3 nodes, 1 in each zone, which form a single
+consensus group of the kind built in chapter 4, and workers reach whichever of them
+is the leader. It needs no more machines than this, because a well-designed system
+takes locks rarely and holds them for long periods, so that the rate of requests is
+low. What the figure is chiefly meant to show is the second arrow. The workers write
+to the protected storage directly, and the lock service is not on that path at all,
+which is why the last line of defence has to be in the storage.</p>
+<h2 id="how-real-systems-do-it-4"><a class="header" href="#how-real-systems-do-it-4">How real systems do it</a></h2>
+<p>The lock service of this chapter is modelled on Chubby, which Google described in
+2006 and which is the origin of most of the vocabulary. Chubby is a small replicated
+store whose locks are leases renewed by periodic messages, and its paper makes 2
+observations that bear directly on this chapter. It introduces the <em>sequencer</em>, a
+token obtained with a lock that the holder passes to the servers it uses and that
+they check, which is the fencing token under its original name. And it reports that
+the service was designed for coarse locks held for hours or days, chiefly for
+electing leaders, and that using it for fine-grained locking is discouraged.</p>
+<p>ZooKeeper provides the queue of waiters described above as a standard recipe. Each
+waiter creates a node that is numbered in sequence and tied to its session, and
+watches only the node immediately before its own. In etcd, a lock is a key attached
+to a lease, and the revision number at which the key was created, which increases
+with every change to the store, serves as a fencing token.</p>
+<p>The approach of acquiring a lock on a majority of independent in-memory stores is
+the Redlock algorithm proposed by the author of Redis. Martin Kleppmann’s analysis
+of it in 2016 set out the argument of this chapter: that a pause of the process or a
+jump of a clock can leave 2 clients each believing that it holds the lock, that no
+lease-based lock can prevent this, and that safety therefore requires fencing, which
+Redlock does not provide since it has no source of increasing numbers. The author of
+Redis replied in defence of the algorithm, and the exchange remains the clearest
+public discussion of what a distributed lock can and cannot promise.</p>
 <h2 id="mistakes-to-avoid-4"><a class="header" href="#mistakes-to-avoid-4">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -16466,6 +16733,14 @@ from the storage. Its output for the fenced case reads as follows.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs"><code>code/locksim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p locksim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-4"><a class="header" href="#references-4">References</a></h2>
+<ul>
+<li>M. Burrows, “The Chubby Lock Service for Loosely-Coupled Distributed Systems”, OSDI 2006.</li>
+<li>P. Hunt and others, “ZooKeeper: Wait-free Coordination for Internet-scale Systems”, USENIX ATC 2010.</li>
+<li>M. Kleppmann, “How to do distributed locking”, 2016.</li>
+<li>S. Sanfilippo, “Is Redlock safe?”, 2016.</li>
+<li>C. Gray and D. Cheriton, “Leases: An Efficient Fault-Tolerant Mechanism for Distributed File Cache Consistency”, SOSP 1989.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-4"><a class="header" href="#terms-introduced-in-this-chapter-4">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -16930,6 +17205,43 @@ is held open by the broker for a short time and answered as soon as a message ar
 <li>A consumer asks the leader for messages from its committed offset onward.</li>
 <li>The consumer acts on each message. When the batch is done, it stores the new offset in the offset store.</li>
 </ol>
+<h2 id="the-design-deployed-5"><a class="header" href="#the-design-deployed-5">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/queue-deploy.svg?v=71d89ed5" alt="The message queue, deployed. Producers: Producing services (x 200), publish events. Brokers, in 3 zones: Brokers (x 4), zone a, Brokers (x 4), zone b, Brokers (x 4), zone c. Consumers: Consumer groups (x 30), 1 group for each service, Offset store (x 3), committed offsets.">
+<figcaption><b>Figure 11.9</b> The message queue as it is deployed: 12 brokers in 3 zones between the producers and the consumer groups.</figcaption>
+</figure>
+<p>The 12 brokers are divided among 3 zones, and each partition has 1 replica in each
+zone. Leadership is spread evenly, so that every broker leads roughly a third of the
+partitions it holds, and the failure of a broker moves the leadership of only those.
+Producers and consumers hold a list of the brokers and connect directly to the
+leader of each partition they use, so that here too there is no load balancer on the
+path of the data. The offsets of the consumer groups are kept in a small replicated
+store of their own.</p>
+<h2 id="how-real-systems-do-it-5"><a class="header" href="#how-real-systems-do-it-5">How real systems do it</a></h2>
+<p>The log-structured queue of this chapter is Kafka, which LinkedIn described in 2011.
+The partitioned log, the offset kept by the consumer, the consumer group and the
+retention of messages by age all come from that design, as do the compaction of a
+log by key and the producer that numbers its messages so that a retry is not stored
+twice, which was added in 2017 together with transactions.</p>
+<p>In 1 respect Kafka differs from this chapter, and the difference is instructive.
+This chapter replicates a partition as chapter 3 does, confirming a message when a
+majority of replicas hold it. Kafka uses a different rule. The leader keeps a list
+of the replicas that are fully caught up, the <em>in-sync replicas</em>, and confirms a
+message when every one of them has it. A replica that falls behind is removed from
+the list, and the partition continues with those that remain. With this rule, f + 1
+replicas tolerate f failures, where a majority rule needs 2f + 1, which matters for
+a system that stores a great deal of data. The cost is that the list itself must be
+agreed upon by some other means, for which Kafka relied on ZooKeeper and now on a
+Raft-based controller of its own, and that a setting for the smallest permitted size
+of the list has to be chosen with care, since a list that has shrunk to the leader
+alone confirms messages that exist on 1 machine.</p>
+<p>The task queue described at the start of the chapter is the model of Amazon’s SQS,
+whose <em>visibility timeout</em> is the period after which an unacknowledged message is
+given to another consumer, and of RabbitMQ. Pulsar separates the brokers, which
+serve requests, from the storage of the log, which is delegated to a separate
+replicated service. And the outbox pattern is commonly implemented without a relay
+process, by reading the database’s own log of changes and publishing from that, a
+technique called change data capture.</p>
 <h2 id="mistakes-to-avoid-5"><a class="header" href="#mistakes-to-avoid-5">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -16982,6 +17294,15 @@ is held open by the broker for a short time and answered as soon as a message ar
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs"><code>code/queuesim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p queuesim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-5"><a class="header" href="#references-5">References</a></h2>
+<ul>
+<li>J. Kreps, N. Narkhede and J. Rao, “Kafka: a Distributed Messaging System for Log Processing”, NetDB 2011.</li>
+<li>J. Kreps, “The Log: What every software engineer should know about real-time data’s unifying abstraction”, LinkedIn engineering blog, 2013.</li>
+<li>Apache Kafka documentation, “Replication”, on in-sync replicas.</li>
+<li>Apache Kafka, KIP-98, “Exactly Once Delivery and Transactional Messaging”, 2017.</li>
+<li>Amazon SQS documentation, “Visibility timeout”.</li>
+<li>C. Richardson, <em>Microservices Patterns</em>, Manning, 2018, for the transactional outbox.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-5"><a class="header" href="#terms-introduced-in-this-chapter-5">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -17064,7 +17385,7 @@ tolerated.</p>
 <p>Every job in the scheduler is in exactly 1 of a small number of states, and the whole
 behaviour of the system can be described by the permitted movements between them.</p>
 <figure>
-<img src="figures/jobs-states.svg?v=0c58619a" alt="The states of a job. A waiting job becomes running when a worker takes it and receives a lease. A running job returns to waiting when it fails or its lease runs out. A running job becomes succeeded when the worker reports success before its lease runs out. A running job becomes dead when it has failed 5 times.">
+<img src="figures/jobs-states.svg?v=4c672151" alt="The states of a job. A waiting job becomes running when a worker takes it and receives a lease. A running job returns to waiting when it fails or its lease runs out. A running job becomes succeeded when the worker reports success before its lease runs out. A running job becomes dead when it has failed 5 times.">
 <figcaption><b>Figure 12.1</b> The 4 states of a job and the transitions between them.</figcaption>
 </figure>
 <p>A newly submitted job is <em>waiting</em>. When a worker takes it, the job becomes <em>running</em>,
@@ -17263,7 +17584,7 @@ serves the same end.</p>
 <p>Developers submit jobs and ask about their state. Workers take jobs and report
 results.</p>
 <figure>
-<img src="figures/jobs-use-cases.svg?v=fab2f690" alt="A use case diagram of the job scheduler. Developer: submit a job (POST /v1/jobs), read a job&#39;s state (GET /v1/jobs/{id}). Worker: take a job (POST /v1/leases), report the result (PUT /v1/jobs/{id}/result).">
+<img src="figures/jobs-use-cases.svg?v=901b0dc0" alt="A use case diagram of the job scheduler. Developer: submit a job (POST /v1/jobs), read a job&#39;s state (GET /v1/jobs/{id}). Worker: take a job (POST /v1/leases), report the result (PUT /v1/jobs/{id}/results/{lease}).">
 <figcaption><b>Figure 12.5</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements-6"><a class="header" href="#functional-requirements-6">Functional requirements</a></h2>
@@ -17332,8 +17653,8 @@ than once.</p>
 
 <h2 id="the-api-6"><a class="header" href="#the-api-6">The API</a></h2>
 <p>A worker takes a job by creating a lease, which is why the request is a <code>POST</code> to the
-collection of leases, and it reports by replacing the result of the job, which is a
-<code>PUT</code>.</p>
+collection of leases, and it reports by writing the result that belongs to its lease,
+which is a <code>PUT</code> to an address that names the job and the lease.</p>
 <p><strong>Submit a job</strong></p>
 <pre><code class="language-http">POST /v1/jobs HTTP/1.1
 Host: jobs.example
@@ -17363,11 +17684,11 @@ Content-Type: application/json
 </code></pre>
 <p>A worker takes a job by creating a lease, so the path names a thing and the method says what happens to it. The scheduler picks the job. When no job is waiting, the answer is <code>204 No Content</code>.</p>
 <p><strong>Report the result</strong></p>
-<pre><code class="language-http">PUT /v1/jobs/8231/result HTTP/1.1
+<pre><code class="language-http">PUT /v1/jobs/8231/results/771 HTTP/1.1
 Host: jobs.example
 Content-Type: application/json
 
-{ "lease": 771, "outcome": "succeeded" }
+{ "outcome": "succeeded" }
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 204 No Content
 </code></pre>
@@ -17402,6 +17723,42 @@ scheduler to learn the capacity of each worker.</p>
 <li>A worker sends <code>POST /v1/leases</code>. The scheduler picks a waiting job, marks it <em>running</em> with this worker and a deadline, and returns it.</li>
 <li>Every few seconds the reclaimer looks for running jobs whose deadline has passed and sets them back to <em>waiting</em>.</li>
 </ol>
+<h2 id="the-design-deployed-6"><a class="header" href="#the-design-deployed-6">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/jobs-deploy.svg?v=f1df67a5" alt="The job scheduler, deployed. Submitters: Services (116 jobs/s), submit jobs. Scheduler, in 3 zones: Load balancers (x 2), any scheduler node, Scheduler nodes (x 6), stateless, Reclaimer (x 2), 1 of 2 is active. Job store, in 3 zones: Job store (x 3), 1 leader, 2 followers. Workers: Workers (x 200), ask, run, report.">
+<figcaption><b>Figure 12.8</b> The job scheduler as it is deployed: stateless scheduler nodes, a replicated job store, and 200 workers.</figcaption>
+</figure>
+<p>The scheduler nodes hold no state and stand behind a pair of load balancers, through
+which both submitters and workers reach them. All state is in the job store, a
+leader with 2 followers in 3 zones. The reclaimer, which returns jobs with expired
+leases to the queue, runs as 2 instances of which 1 is active, chosen through the
+lock service of chapter 10, and since reclaiming is itself a conditional write, a
+moment in which both believe themselves active does no harm. The 200 workers are the
+only tier whose size follows the amount of work, and it can be changed freely.</p>
+<h2 id="how-real-systems-do-it-6"><a class="header" href="#how-real-systems-do-it-6">How real systems do it</a></h2>
+<p>Google has published an account of its distributed cron service that agrees with
+this chapter on the essentials and is frank about the same limits. The service keeps
+its state in a store replicated by Paxos, and only the leader launches jobs. The
+authors state that the system cannot guarantee that a job is launched exactly once,
+since the leader may fail between launching and recording the launch, and that the
+owners of each job must therefore decide whether it is worse for the job to be
+skipped or to run twice. They recommend making launches idempotent, and naming each
+launch after its scheduled time so that a repeat can be recognised, as this chapter
+does.</p>
+<p>The remedy for many workers competing for the same waiting job, a query that passes
+over rows locked by other transactions, is the clause <code>SKIP LOCKED</code>, which
+PostgreSQL has offered since version 9.5 and which is the basis of several job
+queues built on that database. For keeping very large numbers of timers in memory,
+the classical structure is the timing wheel, in which timers are placed in slots by
+their expiry time and a pointer advances 1 slot at each tick, so that starting and
+stopping a timer take constant time.</p>
+<p>A more recent development goes beyond anything in this chapter. Systems such as
+Temporal, which descends from Uber’s Cadence, record every step of a long-running
+piece of work in a durable history, and recover a failed worker by replaying that
+history to the point it had reached. A job in such a system is a program that
+appears to run for days without interruption, and the leases, retries and
+idempotency of this chapter are handled beneath it. The underlying guarantee is
+unchanged: each step runs at least once, and the steps must tolerate repetition.</p>
 <h2 id="mistakes-to-avoid-6"><a class="header" href="#mistakes-to-avoid-6">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -17455,6 +17812,13 @@ scheduler to learn the capacity of each worker.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs"><code>code/jobsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p jobsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-6"><a class="header" href="#references-6">References</a></h2>
+<ul>
+<li>S. Davidovic and K. Guliani, “Reliable Cron across the Planet”, ACM Queue, 2015.</li>
+<li>PostgreSQL documentation, “SELECT”, on <code>FOR UPDATE SKIP LOCKED</code>.</li>
+<li>G. Varghese and A. Lauck, “Hashed and Hierarchical Timing Wheels”, SOSP 1987.</li>
+<li>Temporal documentation, “Workflow execution” and “Event history”.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-6"><a class="header" href="#terms-introduced-in-this-chapter-6">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -17670,8 +18034,8 @@ senders are waiting on the provider that is not.</p>
 dependency and, when the dependency is plainly failing, stops calling it for a time.
 It takes its name from the electrical device that cuts off a circuit in which too much
 current is flowing.</p>
-<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="82b99825">
-<img src="figures/steps-notify-breaker-01.svg?v=82b99825" alt="A circuit breaker in front of a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
+<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="07ad94bb">
+<img src="figures/steps-notify-breaker-01.svg?v=07ad94bb" alt="A circuit breaker before a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
 <figcaption><b>Figure 13.3</b> A circuit breaker opens after 5 failures in a row, refuses calls for 30 seconds, and closes again after a successful trial. Use Next and Back to move through the 6 steps.</figcaption>
 </figure>
 <p>The breaker has 3 states. While it is <em>closed</em>, calls pass through to the provider and
@@ -17889,6 +18253,43 @@ Content-Type: application/json
 <li>The sender calls the provider. On failure it waits and tries again, with a pause that doubles.</li>
 <li>After 5 failed tries the sender moves the notification to a separate list for a person to look at.</li>
 </ol>
+<h2 id="the-design-deployed-7"><a class="header" href="#the-design-deployed-7">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/notify-deploy.svg?v=4f8e9ac4" alt="The notification service, deployed. Callers: Calling services (580 req/s), report events. Api, in 3 zones: Load balancers (x 2), any API node, API nodes (x 8), check key, preferences, Key store (x 3), keys seen, with outbox. Queues and senders: Queue brokers (x 6), 1 queue per priority, Senders (x 40), a pool for each channel. Outside: Email provider (x 1), outside our control, SMS providers (x 2), a second as fallback, Push providers (x 2), 1 per phone system.">
+<figcaption><b>Figure 13.8</b> The notification service as it is deployed, from the calling services to the outside providers.</figcaption>
+</figure>
+<p>The deployment falls into 2 halves joined by queues. The upper half, the API nodes
+with their key store, must always be available, since it is what the calling
+services depend on, and it does very little. The lower half, the senders, is where
+the slow and uncertain work is done, and it is divided into separate pools for each
+channel and each priority, so that a pool blocked on a failing provider cannot
+starve the others. The providers at the bottom are outside the system, and for the
+channel that matters most there are 2 of them.</p>
+<h2 id="how-real-systems-do-it-7"><a class="header" href="#how-real-systems-do-it-7">How real systems do it</a></h2>
+<p>The treatment of retries in this chapter follows an article from Amazon that has
+become the standard reference. It simulates many clients contending for a resource
+and compares several ways of randomising the pause. The form used in this chapter,
+a random time between 0 and the full exponential value, is the one the article calls
+full jitter, and it found that this did the least total work, with a variant that
+keeps half of the pause fixed close behind and a third variant, in which each pause
+is derived from the previous one, somewhat worse. The author has since added the
+caution that backoff and jitter spread a burst of load out and do not reduce a
+sustained overload, for which the load itself must be reduced.</p>
+<p>That further step is the <em>retry budget</em>. Google’s book on site reliability
+engineering recommends that a client limit its retries to a fixed proportion of its
+ordinary requests, 10% for example, in addition to a limit for each request, so that
+when a dependency is failing completely, the retries add a tenth to the load, where
+unlimited retries would multiply it. A circuit breaker achieves a similar end by different means.</p>
+<p>The circuit breaker was described by Michael Nygard in his book on production
+failures and was made widely known by a library from Netflix. The same book treats
+its companions, the timeout and the <em>bulkhead</em>, which is the separation of pools
+used in the deployment above.</p>
+<p>For push notifications, the providers are Apple’s and Google’s services, each of
+which reports a token that is no longer valid in its reply to a send, so that
+sending is also the means by which dead tokens are discovered. Most providers of
+email and text messages report delivery by webhook, and they retry their webhooks
+for hours when the receiver is down, so that the receiver must be idempotent, in a
+reversal of the usual roles.</p>
 <h2 id="mistakes-to-avoid-7"><a class="header" href="#mistakes-to-avoid-7">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -17942,6 +18343,14 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs"><code>code/notifysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p notifysim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-7"><a class="header" href="#references-7">References</a></h2>
+<ul>
+<li>M. Brooker, “Exponential Backoff And Jitter”, AWS Architecture Blog, 2015.</li>
+<li>M. Brooker, “Timeouts, retries, and backoff with jitter”, Amazon Builders’ Library.</li>
+<li>B. Beyer and others (editors), <em>Site Reliability Engineering</em>, O’Reilly, 2016, chapter 22, “Addressing Cascading Failures”.</li>
+<li>M. Nygard, <em>Release It!</em>, Pragmatic Bookshelf, second edition, 2018.</li>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, for status 202.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-7"><a class="header" href="#terms-introduced-in-this-chapter-7">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -18378,6 +18787,38 @@ Cache-Control: max-age=86400
 <li>When an author creates a link, the web server takes the next number from the id generator and writes it in base 62.</li>
 <li>The visitor receives <code>301</code> with the long address in <code>Location</code>, and the browser goes there.</li>
 </ol>
+<h2 id="the-design-deployed-8"><a class="header" href="#the-design-deployed-8">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/shortener-deploy.svg?v=be160444" alt="The URL shortener, deployed. Visitors: Visitors (3900 redirects/s), open short links. Edge, in 3 zones: Load balancers (x 2), any web server, Web servers (x 12), hold no data. Data, in 3 zones: Cache nodes (x 6), popular links, Key-value store (x 24), 8 shards x 3 replicas, Id counter (x 3), blocks of numbers. Counting: Click queue (x 3), see chapter 11, Click counters (x 4), sum each minute.">
+<figcaption><b>Figure 14.7</b> The URL shortener as it is deployed, with the tier that counts clicks kept off the path of a redirect.</figcaption>
+</figure>
+<p>Visitors reach a pair of load balancers in front of 12 web servers in 3 zones, any
+of which can answer any request. A redirect reads the cache and, on a miss, 1 of the
+8 shards of the key-value store, each of which has a replica in every zone. The
+counter that supplies numbers for new links is consulted once for each block of 1000
+and stands to 1 side. Below the line, the click queue and its counters form a
+separate tier, which a redirect writes to and never waits for. In front of all this,
+a service of this kind normally places the edge servers of a content delivery
+network, which can answer a popular redirect without reaching the origin at all.</p>
+<h2 id="how-real-systems-do-it-8"><a class="header" href="#how-real-systems-do-it-8">How real systems do it</a></h2>
+<p>The published material on URL shorteners is thinner than on most systems in this
+book, since their operators have written little about them, and this section is
+accordingly short and confined to what can be supported.</p>
+<p>The semantics of the redirects are fixed by the HTTP standard, which also defines 2
+further status codes, <code>307</code> and <code>308</code>. These are the temporary and permanent
+redirects that additionally require the browser to repeat the request with the same
+method, where <code>301</code> and <code>302</code> allow a <code>POST</code> to be turned into a <code>GET</code>. For a link
+that is only ever followed with <code>GET</code>, the difference does not arise.</p>
+<p>The scrambling of a counter described above is an instance of <em>format-preserving
+encryption</em>, a cipher whose output lies in the same range as its input. The
+construction generally used for small ranges is a Feistel network of a few rounds,
+and it should be distinguished from libraries that merely obfuscate numbers by a
+fixed shuffle of the alphabet, which resist casual inspection and do not resist
+analysis.</p>
+<p>The alphabet of 58 characters that omits the easily confused ones is known as
+Base58, and Flickr has described using it for its short addresses. The checking of
+submitted addresses against lists of harmful sites is offered as a public service by
+the makers of the major browsers.</p>
 <h2 id="mistakes-to-avoid-8"><a class="header" href="#mistakes-to-avoid-8">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -18429,6 +18870,13 @@ Cache-Control: max-age=86400
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/shortener/src/main.rs"><code>code/shortener</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p shortener</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-8"><a class="header" href="#references-8">References</a></h2>
+<ul>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, sections on status codes 301, 302, 307 and 308.</li>
+<li>M. Bellare and others, “Format-Preserving Encryption”, Selected Areas in Cryptography, 2009.</li>
+<li>J. Black and P. Rogaway, “Ciphers with Arbitrary Finite Domains”, CT-RSA 2002.</li>
+<li>Flickr API documentation, “URLs”, on short addresses in base 58.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-8"><a class="header" href="#terms-introduced-in-this-chapter-8">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -18708,7 +19156,7 @@ session, and page through that fixed result.</p>
 <h2 id="use-cases-9"><a class="header" href="#use-cases-9">Use cases</a></h2>
 <p>A member publishes posts, reads the feed, and chooses whom to follow.</p>
 <figure>
-<img src="figures/feed-use-cases.svg?v=4e55b5f6" alt="A use case diagram of the news feed. Member: publish a post (POST /v1/posts), read the feed (GET /v1/feed?after=), follow an account (PUT /v1/follows/{id}).">
+<img src="figures/feed-use-cases.svg?v=341e2b0c" alt="A use case diagram of the news feed. Member: publish a post (POST /v1/posts), read the feed (GET /v1/newsfeeds/{user}/posts), follow an account (PUT /v1/follows/{id}).">
 <figcaption><b>Figure 15.5</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements-9"><a class="header" href="#functional-requirements-9">Functional requirements</a></h2>
@@ -18773,7 +19221,9 @@ disposable view of that data, which can be rebuilt whenever they are lost.</p>
 </div>
 
 <h2 id="the-api-9"><a class="header" href="#the-api-9">The API</a></h2>
-<p>Publishing creates a post. Reading the feed returns a page together with the cursor
+<p>Publishing creates a post in the collection of posts. Every member has a news feed,
+so the feeds form a collection too, <code>/v1/newsfeeds</code>, in which a feed is identified
+by its owner, and reading a feed returns a page of its posts together with the cursor
 for the page that follows.</p>
 <p><strong>Publish a post</strong></p>
 <pre><code class="language-http">POST /v1/posts HTTP/1.1
@@ -18790,7 +19240,7 @@ Content-Type: application/json
 </code></pre>
 <p>We store the post before the response and copy it to followers afterwards.</p>
 <p><strong>Read a page of the feed</strong></p>
-<pre><code class="language-http">GET /v1/feed?limit=2 HTTP/1.1
+<pre><code class="language-http">GET /v1/newsfeeds/ada/posts?limit=2 HTTP/1.1
 Host: feed.example
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 200 OK
@@ -18830,13 +19280,48 @@ Content-Type: application/json
 <li>The post service stores the post once and puts a small task on the queue: “post 90210 by ada”.</li>
 <li>A fan-out worker takes the task and looks up ada’s followers.</li>
 <li>For each follower, the worker adds the post’s id to that follower’s list in the feed cache.</li>
-<li>A reader sends <code>GET /v1/feed</code>.</li>
+<li>A reader sends <code>GET /v1/newsfeeds/{user}/posts</code>.</li>
 <li>The feed service reads the reader’s list, merges in recent posts of any very large accounts the reader follows, and fetches the posts themselves.</li>
 </ol>
 <p>For a reader who follows a very large account, the feed service adds 1 step to this
 path. Having read the stored list, it fetches the recent posts of each large account
 the reader follows, from a cache in which they are nearly always present, and merges
 them into the list by time before returning the page.</p>
+<h2 id="the-design-deployed-9"><a class="header" href="#the-design-deployed-9">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/feed-deploy.svg?v=a56764a6" alt="The news feed, deployed. Members: Members (10 million), post and read. Services, in 3 zones: Load balancers (x 4), by service, Post service (x 20), stores posts, Feed service (x 40), merges and filters. Data, in 3 zones: Feed cache (x 12), 1 list for each member, Post store (x 30), shards x 3 replicas, Follow store (x 9), who follows whom. Fan-out: Queue brokers (x 6), see chapter 11, Fan-out workers (x 60), copy to followers.">
+<figcaption><b>Figure 15.8</b> The news feed as it is deployed, with the fan-out workers as the only writers of the feed cache.</figcaption>
+</figure>
+<p>The feed service is the largest stateless tier, since reads dominate, and it stands
+with the post service behind load balancers in 3 zones. Below them are 3 stores of
+different kinds: the feed cache, in memory, holding 1 list for each member, and the
+post store and follow store, both sharded and replicated across the zones. The
+fan-out workers at the bottom take 1 task for each post from the queue and are the
+only component that writes to the feed cache, which keeps the read path free of any
+concern with copying.</p>
+<h2 id="how-real-systems-do-it-9"><a class="header" href="#how-real-systems-do-it-9">How real systems do it</a></h2>
+<p>The best documented feed is Twitter’s home timeline, described in a talk of 2012
+that is the source of the arrangement in this chapter. Twitter then had about 150
+million active users. Timelines were read some 300000 times per second and written
+a few thousand times per second, a ratio that settled the choice in favour of doing
+the work on writing. Every tweet was inserted, by its identifier, into a list held
+in an in-memory store for each follower, exactly as the feed lists here. The talk
+gives the aim of delivering a tweet to all followers within 5 seconds, and
+acknowledges that for accounts with tens of millions of followers this was not
+always achieved, and that the company was therefore moving to merge the tweets of
+such accounts at reading time, which is the mixture this chapter recommends.</p>
+<p>Facebook’s news feed has taken the other course from the beginning. Its feed is
+assembled when it is requested, by aggregator servers that query a set of leaf
+servers holding recent activity and rank what they collect, which suits a feed that
+is ordered by predicted interest and drawn from many kinds of story. The social
+graph beneath it, who is connected to whom, is served by a system called TAO, a
+read-optimised cache over a sharded database, whose paper is the standard account
+of storing a graph of followers at scale.</p>
+<p>The 2 examples show that the choice between the schemes is not settled by size
+alone. Twitter’s feed, chronological and with extremely skewed followings, favoured
+copying with an exception for the largest accounts. Facebook’s, ranked and with
+bounded numbers of friends, favoured collecting. LinkedIn has described a feed for
+its own service that is likewise assembled at reading time.</p>
 <h2 id="mistakes-to-avoid-9"><a class="header" href="#mistakes-to-avoid-9">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -18888,6 +19373,13 @@ them into the list by time before returning the page.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/feedsim/src/main.rs"><code>code/feedsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p feedsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-9"><a class="header" href="#references-9">References</a></h2>
+<ul>
+<li>R. Krikorian, “Timelines at Scale”, QCon San Francisco, 2012.</li>
+<li>N. Bronson and others, “TAO: Facebook’s Distributed Data Store for the Social Graph”, USENIX ATC 2013.</li>
+<li>Facebook engineering blog, “Serving Facebook Multifeed: Efficiency, performance gains through redesign”, 2015.</li>
+<li>LinkedIn engineering blog, “FollowFeed: LinkedIn’s Feed Made Faster and Smarter”, 2016.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-9"><a class="header" href="#terms-introduced-in-this-chapter-9">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -19315,6 +19807,51 @@ and the store verifies the signature without needing to consult the application.
 <li>When every chunk is stored, the API server writes 1 record to the metadata store: the object’s name and its list of chunk names.</li>
 <li>In the background, the repair worker checks that every chunk still has 3 good copies, and makes a new copy where 1 is missing.</li>
 </ol>
+<h2 id="the-design-deployed-10"><a class="header" href="#the-design-deployed-10">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/objects-deploy.svg?v=7bb77468" alt="The object store, deployed. Applications: Applications (100 PB stored), upload and download. Front end, in 3 zones: Load balancers (x 6), any API server, API servers (x 200), chunk, place, assemble. Storage, in 3 zones: Metadata store (x 60), 20 shards x 3 replicas, Storage nodes (x 600), 36 disks in each. Background: Scrubbers (on each node), verify every chunk, Repair workers (x 20), replace lost copies, Garbage collector (x 4), after a day of grace.">
+<figcaption><b>Figure 16.8</b> The object store as it is deployed, with the background tier that scrubs, repairs and collects.</figcaption>
+</figure>
+<p>The front end is a large stateless tier of API servers behind load balancers. Below
+it the 2 kinds of storage are plainly separate: 60 machines of the metadata store,
+which is 20 shards of 3 replicas each, and 600 storage nodes with some 36 disks
+apiece, which hold the bytes. The bottom tier is peculiar to storage systems. It
+serves no request, and it runs all the time: a scrubber on every node reading its
+disks in rotation, a pool of repair workers, and the garbage collector. A store of
+this size loses a disk on most days, and this tier is what turns that from an event
+into routine.</p>
+<h2 id="how-real-systems-do-it-10"><a class="header" href="#how-real-systems-do-it-10">How real systems do it</a></h2>
+<p>The published designs of large stores show a clear progression, and this chapter
+compresses several generations into 1.</p>
+<p>The Google File System of 2003 established the pattern of a metadata service and
+many chunk servers, with chunks of 64 MB kept in 3 copies. Facebook’s Haystack, in
+2010, addressed a problem that this chapter passes over: a store of billions of small
+photographs spends most of its disk operations on locating files and very few on
+reading them, and Haystack packed many photographs into each large file with an
+index held in memory, so that a read needs a single disk operation. Any store of
+small objects has to do something of the kind, and a design that kept every object
+as a separate file would not survive.</p>
+<p>For data that is seldom read, Facebook then built f4, which replaces copies by
+erasure coding with exactly the scheme of this chapter, 10 data blocks and 4 parity
+blocks, at 1.4 times the size of the data within a data centre. The paper gives the
+effective overhead of Haystack as 3.6, since it kept 3 copies on disks that were
+themselves in redundant arrays, and that of f4 as 2.1 once a further coding across
+data centres is included. Microsoft’s storage system uses a variant, local
+reconstruction codes, which adds parity blocks that each cover half of the data
+blocks, so that the common case of a single lost block is repaired by reading 6
+blocks where the plain scheme reads 10 or more.</p>
+<p>On placement, a paper from Stanford made precise the danger of correlated failures.
+When replicas are placed on nodes chosen at random, almost any simultaneous loss of 3
+nodes in a large cluster destroys some chunk, because nearly every combination of 3
+nodes holds the replicas of something. Restricting placement to a limited number of
+fixed groups of nodes makes a simultaneous loss far less likely to hit all copies of
+anything, at the cost of losing more when it does.</p>
+<p>The deduplication of identical chunks described in this chapter is characteristic of
+backup and file synchronisation systems, and public object stores generally do not
+practise it across customers, in part because it lets 1 customer discover whether
+another holds a given file. And the consistency that this chapter requires of
+metadata was for many years not provided by the largest public store, Amazon’s S3,
+which offered it only from the end of 2020.</p>
 <h2 id="mistakes-to-avoid-10"><a class="header" href="#mistakes-to-avoid-10">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -19368,6 +19905,16 @@ and the store verifies the signature without needing to consult the application.
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/objectsim/src/main.rs"><code>code/objectsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p objectsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-10"><a class="header" href="#references-10">References</a></h2>
+<ul>
+<li>S. Ghemawat, H. Gobioff and S. Leung, “The Google File System”, SOSP 2003.</li>
+<li>D. Beaver and others, “Finding a Needle in Haystack: Facebook’s Photo Storage”, OSDI 2010.</li>
+<li>S. Muralidhar and others, “f4: Facebook’s Warm BLOB Storage System”, OSDI 2014.</li>
+<li>C. Huang and others, “Erasure Coding in Windows Azure Storage”, USENIX ATC 2012.</li>
+<li>A. Cidon and others, “Copysets: Reducing the Frequency of Data Loss in Cloud Storage”, USENIX ATC 2013.</li>
+<li>B. Calder and others, “Windows Azure Storage: A Highly Available Cloud Storage Service with Strong Consistency”, SOSP 2011.</li>
+<li>Amazon Web Services, “Amazon S3 Update: Strong Read-After-Write Consistency”, 2020.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-10"><a class="header" href="#terms-introduced-in-this-chapter-10">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -19672,7 +20219,7 @@ complete, which is the remedy for the stampede given in chapter 9.</p>
 <h2 id="use-cases-11"><a class="header" href="#use-cases-11">Use cases</a></h2>
 <p>Viewers play videos, in very large numbers. Creators upload them.</p>
 <figure>
-<img src="figures/stream-use-cases.svg?v=fe540d94" alt="A use case diagram of the video service. Viewer: play a video (GET /v1/videos/{id}/manifest), fetch the next 4 seconds (GET .../1200/piece-17.ts). Creator: upload a video (PUT /v1/videos/{id}/source), see when it is ready (GET /v1/videos/{id}).">
+<img src="figures/stream-use-cases.svg?v=4c5aa391" alt="A use case diagram of the video service. Viewer: play a video (GET /v1/videos/{id}/manifests/default), fetch the next 4 seconds (GET .../1200/piece-17.ts). Creator: upload a video (PUT /v1/videos/{id}/source), see when it is ready (GET /v1/videos/{id}).">
 <figcaption><b>Figure 17.5</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements-11"><a class="header" href="#functional-requirements-11">Functional requirements</a></h2>
@@ -19742,7 +20289,7 @@ and the video’s becoming playable, which lasts as long as the encoding does.</
 <p>A viewer’s player makes 2 kinds of request: 1 for the manifest, and then a long series
 for pieces.</p>
 <p><strong>Get the manifest of a video</strong></p>
-<pre><code class="language-http">GET /v1/videos/8842/manifest HTTP/1.1
+<pre><code class="language-http">GET /v1/videos/8842/manifests/default HTTP/1.1
 Host: video.example
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 200 OK
@@ -19801,6 +20348,46 @@ Content-Length: 600000
 <li>A viewer presses play. The player asks the video API for the manifest.</li>
 <li>The player fetches pieces from the CDN, 1 after another. A CDN site that does not have a piece fetches it from the object store once and keeps it.</li>
 </ol>
+<h2 id="the-design-deployed-11"><a class="header" href="#the-design-deployed-11">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/stream-deploy.svg?v=1f1fe965" alt="The video service, deployed. Viewers: Viewers (millions), players choose quality. Near the viewers: Edge servers (x 1000s), in hundreds of cities. Origin, in 3 zones: Video API (x 20), manifests, rights, Object store (origin), every piece, chapter 16, Catalogue store (x 9), videos and states. Upload and encoding: Upload service (x 10), stores the source, Job scheduler (x 6), see chapter 12, Encoders (x 500), 1 section at 1 quality.">
+<figcaption><b>Figure 17.8</b> The video service as it is deployed: edge servers near the viewers, an origin, and the encoding tier behind it.</figcaption>
+</figure>
+<p>The tiers of this system are separated by geography as much as by function. The
+edge servers number in the thousands and stand in hundreds of cities, inside or
+beside the networks of the internet providers. The origin is in a few places only,
+and consists of the video API, the object store that holds every piece, and the
+catalogue. The encoding tier is furthest from the viewers and is never reached by
+them. It is the largest consumer of computation in the system, and since its work is
+a queue of independent jobs with no deadline measured in milliseconds, it can use
+whatever machines are cheapest.</p>
+<h2 id="how-real-systems-do-it-11"><a class="header" href="#how-real-systems-do-it-11">How real systems do it</a></h2>
+<p>Delivery in pieces over ordinary HTTP is standardised in 2 forms that differ in
+detail and agree in principle. Apple’s HTTP Live Streaming is specified in RFC 8216,
+and Dynamic Adaptive Streaming over HTTP, usually called DASH, is an international
+standard. Both describe a manifest that lists renditions and their segments, and
+both leave the choice of rendition entirely to the player, as this chapter does.</p>
+<p>The choice itself has been the subject of a good deal of research, and the simple
+rule of the simulation, which follows the measured speed with a margin, is the
+starting point, and the state of the art has moved well beyond it. A study carried out on Netflix’s
+service showed that estimates of capacity are unreliable enough that a player does
+better, once playback is under way, to choose the rendition from the level of the
+buffer alone, and reported between 10% and 20% fewer interruptions than the
+algorithm then in use, at a similar average quality. Later work formulated the
+choice as an optimisation over a short horizon of future pieces, and still later
+work trained a model to make it. A production player today usually combines an
+estimate of speed with the state of the buffer.</p>
+<p>On the encoding side, Netflix has described abandoning a fixed list of bitrates for
+all titles. An animated film and a film of rapid action need very different numbers
+of bits for the same apparent quality, and each title, and later each scene, is
+analysed and given its own list. Netflix also places its own caching servers inside
+the networks of internet providers, under the name Open Connect, which is the
+arrangement with providers mentioned under the costs of the service.</p>
+<p>For live video, the delay of 15 to 30 seconds described above is what the plain
+protocols give. Both standards have since gained low-latency modes, which publish a
+piece in smaller parts while it is still being produced and bring the delay down to
+a few seconds, and conversation in real time uses a different family of protocols
+altogether, of which WebRTC is the one built into browsers.</p>
 <h2 id="mistakes-to-avoid-11"><a class="header" href="#mistakes-to-avoid-11">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -19853,6 +20440,16 @@ Content-Length: 600000
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/streamsim/src/main.rs"><code>code/streamsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p streamsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-11"><a class="header" href="#references-11">References</a></h2>
+<ul>
+<li>RFC 8216, <em>HTTP Live Streaming</em>, 2017.</li>
+<li>ISO/IEC 23009-1, <em>Dynamic adaptive streaming over HTTP (DASH)</em>.</li>
+<li>T. Huang and others, “A Buffer-Based Approach to Rate Adaptation: Evidence from a Large Video Streaming Service”, SIGCOMM 2014.</li>
+<li>X. Yin and others, “A Control-Theoretic Approach for Dynamic Adaptive Video Streaming over HTTP”, SIGCOMM 2015.</li>
+<li>K. Spiteri, R. Urgaonkar and R. Sitaraman, “BOLA: Near-Optimal Bitrate Adaptation for Online Videos”, INFOCOM 2016.</li>
+<li>H. Mao, R. Netravali and M. Alizadeh, “Neural Adaptive Video Streaming with Pensieve”, SIGCOMM 2017.</li>
+<li>Netflix technology blog, “Per-Title Encode Optimization”, 2015.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-11"><a class="header" href="#terms-introduced-in-this-chapter-11">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -20323,6 +20920,45 @@ Content-Type: application/json
 <li>The chat service looks up the receiver in the session store, finds gateway B, and forwards the message there. A receiver who is offline is skipped: the message waits in the store.</li>
 <li>Gateway B pushes the message down the receiver’s open connection.</li>
 </ol>
+<h2 id="the-design-deployed-12"><a class="header" href="#the-design-deployed-12">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/chat-deploy.svg?v=ae76ca2b" alt="The chat service, deployed. Phones: Phones (50 million online), 1 open connection each. Connections, in 3 zones: Load balancers (x 20), by connection, Gateways (x 500), 100000 connections each. Services, in 3 zones: Chat service (x 200), numbers, stores, forwards, Session store (x 12), who is on which gateway. Storage: Message store (x 300), 100 shards x 3 replicas, Notification service (for offline phones), see chapter 13.">
+<figcaption><b>Figure 18.7</b> The chat service as it is deployed: 500 gateways holding 50 million connections, and the services and stores behind them.</figcaption>
+</figure>
+<p>The gateway tier is the one that this system has and most others lack. Its 500
+machines hold 100000 connections each, and the load balancers in front of them
+distribute connections, which last for hours, where other systems distribute requests. Because a
+connection is tied to its gateway, this tier cannot be drained quickly: replacing
+the software on a gateway means disconnecting 100000 phones, and deployments are
+therefore made in small groups of gateways. Behind the gateways, the chat service is
+stateless and the message store is sharded by conversation, with 3 replicas of each
+shard in 3 zones.</p>
+<h2 id="how-real-systems-do-it-12"><a class="header" href="#how-real-systems-do-it-12">How real systems do it</a></h2>
+<p>WhatsApp is the best known example of how few machines the connection tier needs
+when it is built with care. In 2012 its engineers reported more than 2 million
+connections held open on a single server, running a server written in Erlang on
+FreeBSD, and later accounts put the figure between 2 and 3 million. The figure of
+100000 for each gateway used in this chapter is therefore conservative, and the
+difference is mostly a matter of memory for each connection and of how much work
+the gateway is asked to do beyond holding it.</p>
+<p>For storage, Discord has published 2 accounts that follow the same service as it
+grew, first on Cassandra when it held billions of messages and later on ScyllaDB
+when it held trillions. In both, messages are keyed by channel and by a bucket of
+time, so that the messages of a channel for a given period lie together and a
+request for recent history reads 1 partition, which is the layout described under
+storing messages. The accounts are candid about the hot key: a single very large and
+active channel overloads the partition that holds it, and much of the later work
+concerns protecting the store from that.</p>
+<p>The numbering of messages by the server within a conversation, and the client’s
+cursor, are the common practice of such services. Protocols differ in the transport.
+Facebook described building its mobile messenger on MQTT, a lightweight protocol of
+publishing and subscribing designed for unreliable networks, in order to keep the
+connection cheap in power.</p>
+<p>End-to-end encryption, where it is offered, is nearly always the Signal protocol,
+whose central mechanism derives a fresh key for every message, so that the capture
+of 1 key exposes neither earlier messages nor later ones. For groups, each sender
+distributes a key of their own to the members, which is why adding and removing
+members of a large encrypted group is expensive.</p>
 <h2 id="mistakes-to-avoid-12"><a class="header" href="#mistakes-to-avoid-12">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -20375,6 +21011,15 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/chatsim/src/main.rs"><code>code/chatsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p chatsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-12"><a class="header" href="#references-12">References</a></h2>
+<ul>
+<li>WhatsApp blog, “1 million is so 2011”, 2012.</li>
+<li>S. Vishnevskiy, “How Discord Stores Billions of Messages”, Discord blog, 2017.</li>
+<li>B. Ingram, “How Discord Stores Trillions of Messages”, Discord blog, 2023.</li>
+<li>RFC 6455, <em>The WebSocket Protocol</em>, 2011.</li>
+<li>M. Marlinspike and T. Perrin, “The Double Ratchet Algorithm”, Signal specifications, 2016.</li>
+<li>L. Zhang, “Building Facebook Messenger”, Facebook engineering blog, 2011.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-12"><a class="header" href="#terms-introduced-in-this-chapter-12">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -20856,6 +21501,49 @@ Content-Type: application/problem+json
 <li>For a new key, the ledger checks the balance and writes 2 entries, minus 4000 for the customer and plus 4000 for the shop, together with the key’s result, in 1 transaction.</li>
 <li>The card network is asked to move the money between the banks. Its answer can take seconds, so the payment is first <em>pending</em> and becomes <em>done</em> when the answer arrives.</li>
 </ol>
+<h2 id="the-design-deployed-13"><a class="header" href="#the-design-deployed-13">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/pay-deploy.svg?v=4cee6bd5" alt="The payment system, deployed. Shops: Shops (1000 payments/s), charge and refund. Api, in 3 zones: Load balancers (x 2), any API node, Payment API (x 12), stateless, Vault (x 3), card numbers, isolated. Ledger, in 3 zones: Ledger database (x 3), 1 leader, 2 followers. Background: Outbox relay (x 2), publishes events, Status poller (x 4), asks about pending, Reconciliation (nightly), ledger against bank. Outside: Card network (x 1), outside our control.">
+<figcaption><b>Figure 19.8</b> The payment system as it is deployed, with the vault isolated and the card network outside.</figcaption>
+</figure>
+<p>By the standards of this book the payment system is small, since 1000 payments per
+second is a modest load, and its deployment is shaped by correctness and isolation
+more than by scale. The payment API is stateless. The ledger is a single database
+with a leader and 2 followers in 3 zones, which confirms a write only when a
+follower in another zone holds it. The vault that holds card numbers is drawn in red
+because it is a separate system with its own network, its own access rules and its
+own audit, which the rest of the system can reach only to exchange a token. The
+background tier carries the work that follows a payment: publishing events from the
+outbox, asking the card network about pending payments, and the nightly
+reconciliation.</p>
+<h2 id="how-real-systems-do-it-13"><a class="header" href="#how-real-systems-do-it-13">How real systems do it</a></h2>
+<p>The idempotency key is the centrepiece of Stripe’s public API, and an engineer of
+that company has published the most detailed account of implementing it. The
+account divides a request into <em>atomic phases</em>, each a database transaction that
+ends at a call to an outside service, and records after each phase how far the
+request has progressed, so that a retry with the same key resumes from the last
+completed phase and does not start again. This is a more careful version of the
+pending state described above, generalised to requests with several outside calls.
+Airbnb has described a similar design for its own payments, in which a request is
+divided into a phase before the outside call, the call itself and a phase after it,
+with the rule that no outside call may be made inside a database transaction.</p>
+<p>The saga comes from a paper of 1987, which proposed it for transactions that run
+too long to hold locks. The 2-phase commit protocol and its weakness, the
+participant left in doubt when the coordinator fails, are described in the classic
+literature on transaction processing.</p>
+<p>For the ledger, several companies have described building append-only stores
+specifically for double-entry records, with the immutability enforced by the store
+itself, whatever the application attempts. Whatever the store, the rule of
+keeping card numbers in an isolated component is not a matter of taste. The security
+standard of the card industry applies to every system that stores, processes or
+transmits card numbers, and the tokenising vault exists to keep as much of the
+system as possible outside its scope.</p>
+<p>What this chapter leaves out is considerable. A real card payment involves a
+standard message format between the parties, further authentication of the
+cardholder in many countries, the screening of every payment for fraud before it is
+authorised, the conversion of currencies, and the rules of each card network on
+disputes. Each is a subject in itself, and none of them changes the 3 ideas on which
+the chapter rests.</p>
 <h2 id="mistakes-to-avoid-13"><a class="header" href="#mistakes-to-avoid-13">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -20910,6 +21598,15 @@ Content-Type: application/problem+json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/paysim/src/main.rs"><code>code/paysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p paysim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-13"><a class="header" href="#references-13">References</a></h2>
+<ul>
+<li>B. Leach, “Implementing Stripe-like Idempotency Keys in Postgres”, 2017.</li>
+<li>Stripe API reference, “Idempotent requests”.</li>
+<li>J. Chew, “Avoiding Double Payments in a Distributed Payments System”, Airbnb engineering blog, 2019.</li>
+<li>H. Garcia-Molina and K. Salem, “Sagas”, SIGMOD 1987.</li>
+<li>J. Gray and A. Reuter, <em>Transaction Processing: Concepts and Techniques</em>, Morgan Kaufmann, 1992.</li>
+<li>PCI Security Standards Council, <em>Payment Card Industry Data Security Standard</em>.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-13"><a class="header" href="#terms-introduced-in-this-chapter-13">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -21396,6 +22093,46 @@ booking system never handles a card number.</p>
 <li>The buyer submits payment. The API first extends the hold, conditionally, and then asks the payment system to charge the buyer. When the charge succeeds, the API sends a second conditional write: set A1 to sold to this buyer, provided that it is still held by them.</li>
 <li>Independently of any request, holds whose time has passed are cleared from the records. No sale depends on this, since an expired hold is already treated as free.</li>
 </ol>
+<h2 id="the-design-deployed-14"><a class="header" href="#the-design-deployed-14">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/booking-deploy.svg?v=5d0e03a6" alt="The booking system, deployed. Buyers: Buyers (33000 arrivals/s), at the opening of a sale. In front of the sale: Edge servers (x 100s), serve the waiting page, Waiting room (x 6), positions and tokens. Booking, in 3 zones: Load balancers (x 2), any API node, Booking API (x 20), conditional writes, Seat map cache (x 4), up to 2 s old. State: Seat store (x 9), by show, x 3 replicas, Payment system (its own tier), see chapter 19.">
+<figcaption><b>Figure 20.7</b> The booking system as it is deployed, with the waiting room holding the crowd above the booking tier.</figcaption>
+</figure>
+<p>The figure shows where the load goes. At the opening of a great sale, 33000 people
+arrive each second, and they are met by the edge servers and the waiting room, which
+do almost no work for each of them. Only 500 a second pass through to the booking
+tier, which is an ordinary arrangement of load balancers, stateless API servers and
+a cache for the seat map. The seat store at the bottom, 3 replicas of each shard
+with shards assigned by showing, therefore sees a load that it can serve with strong
+consistency. The numbers of machines in the lower tiers do not change between an
+ordinary day and the largest sale.</p>
+<h2 id="how-real-systems-do-it-14"><a class="header" href="#how-real-systems-do-it-14">How real systems do it</a></h2>
+<p>The mechanisms of this chapter are those of database practice more than of any 1
+published system, and the references are accordingly to the foundations.</p>
+<p>Optimistic concurrency control, the method of proceeding without locks and checking
+at the moment of writing whether anything has changed, was set out in a paper of
+1981 that also states the condition for preferring it, which is that conflicts be
+rare. A sale in which hundreds of buyers want the same seat does not meet that
+condition for the popular seats, and the consequence is the one this chapter
+accepts: most of those buyers are refused and choose again. Systems that cannot
+accept this lock in advance, or avoid the contention altogether by assigning seats
+to buyers, on the principle of “best available”, so that buyers do not choose.</p>
+<p>For sales in which stock is a count, a pattern often described for the largest
+shopping events takes the deduction out of the database altogether during the peak.
+The remaining stock of each item is held in an in-memory store, a purchase is a
+small script that checks and decrements it atomically, and the orders are written to
+the database afterwards from a queue. This is the conditional update of this
+chapter, moved to a faster store, at the cost of a period in which the 2 stores have
+to be reconciled.</p>
+<p>The waiting room is offered as a product by several content delivery networks, and
+their descriptions match the design here: a queue held at the edge, a signed cookie
+or token for those admitted, a controlled rate of admission, and a choice between
+admitting in order of arrival and admitting at random from those present when the
+sale opens. The random choice exists for the reason given above, that order of
+arrival in the first second measures the speed of connections and of programs.</p>
+<p>Deliberate overbooking is studied under the name of revenue management, and the
+airlines’ practice rests on decades of statistics about how many passengers fail to
+appear on each route.</p>
 <h2 id="mistakes-to-avoid-14"><a class="header" href="#mistakes-to-avoid-14">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -21455,6 +22192,14 @@ booking system never handles a card number.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim/src/main.rs"><code>code/bookingsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p bookingsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-14"><a class="header" href="#references-14">References</a></h2>
+<ul>
+<li>H. Kung and J. Robinson, “On Optimistic Methods for Concurrency Control”, ACM Transactions on Database Systems, 1981.</li>
+<li>PostgreSQL documentation, “Explicit Locking”, on <code>SELECT ... FOR UPDATE</code>.</li>
+<li>Cloudflare documentation, “Waiting Room”, on queueing methods.</li>
+<li>K. Talluri and G. van Ryzin, <em>The Theory and Practice of Revenue Management</em>, Springer, 2004.</li>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, for status 409.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-14"><a class="header" href="#terms-introduced-in-this-chapter-14">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -21777,7 +22522,7 @@ drivers to it and to moderate the demand.</p>
 <p>A rider requests a ride and watches the car approach. A driver reports a position
 every few seconds and accepts rides.</p>
 <figure>
-<img src="figures/nearby-use-cases.svg?v=8740e5a5" alt="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (PUT /v1/drivers/{id}/position), accept a ride (PUT /v1/rides/{id}/driver).">
+<img src="figures/nearby-use-cases.svg?v=3f254e0c" alt="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (POST /v1/drivers/{id}/positions), accept a ride (PUT /v1/rides/{id}/assignments/{driver}).">
 <figcaption><b>Figure 21.4</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements-15"><a class="header" href="#functional-requirements-15">Functional requirements</a></h2>
@@ -21846,17 +22591,18 @@ which of the system’s data is of which kind.</p>
 </div>
 
 <h2 id="the-api-15"><a class="header" href="#the-api-15">The API</a></h2>
-<p>A driver’s position is a single resource that is replaced on every report, which is
-what <code>PUT</code> denotes. A ride is created with <code>POST</code>. A driver accepts by setting the
-driver of the ride, again with <code>PUT</code>.</p>
+<p>Every report of a position creates a new position in the collection of that driver’s
+positions, with <code>POST</code>. A ride is created with <code>POST</code> as well. A driver accepts by
+writing the assignment of that driver to the ride, with <code>PUT</code>, so that repeating the
+request has no further effect.</p>
 <p><strong>A driver reports a position</strong></p>
-<pre><code class="language-http">PUT /v1/drivers/7056/position HTTP/1.1
+<pre><code class="language-http">POST /v1/drivers/7056/positions HTTP/1.1
 Host: rides.example
 Content-Type: application/json
 
 { "latitude": 38.7223, "longitude": -9.1393, "heading": 270 }
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 204 No Content
+<pre><code class="language-http">HTTP/1.1 201 Created
 </code></pre>
 <p>Reports are sent so frequently that many services convey them over an open connection
 in a compact binary form, without a separate HTTP request for each. The meaning is unchanged.</p>
@@ -21880,11 +22626,8 @@ Content-Type: application/json
 <p>The key ensures that a rider whose application retries after a lost reply does not
 summon 2 cars.</p>
 <p><strong>A driver accepts</strong></p>
-<pre><code class="language-http">PUT /v1/rides/501/driver HTTP/1.1
+<pre><code class="language-http">PUT /v1/rides/501/assignments/7056 HTTP/1.1
 Host: rides.example
-Content-Type: application/json
-
-{ "driver": 7056 }
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 200 OK
 Content-Type: application/json
@@ -21919,6 +22662,48 @@ receives <code>409 Conflict</code>.</p>
 <li>A rider requests a ride. The matching service computes the rider’s square, reads the drivers of that square and its 8 neighbours from the grid index, and ranks the free ones by estimated time of arrival.</li>
 <li>The matching service offers the ride to the first of them. When a driver accepts, it writes the assignment to the ride store as a conditional write, which succeeds for 1 driver only.</li>
 </ol>
+<h2 id="the-design-deployed-15"><a class="header" href="#the-design-deployed-15">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/nearby-deploy.svg?v=4c9cf5e5" alt="The ride service, deployed. Phones: Drivers (500000), report every 4 s, Riders (1000 req/s), request rides. Edge, in each region: Load balancers (x 8), by connection, Gateways (x 40), open connections, Location service (x 20), position to square. Matching, in each region: Grid index (x 30), in memory, by region, Matching service (x 20), rank and offer. Durable state: Ride store (x 9), shards x 3 replicas, Position log (x 6), routes, for fares.">
+<figcaption><b>Figure 21.7</b> The ride service as it is deployed, with the grid index in memory and the ride store replicated.</figcaption>
+</figure>
+<p>The system is deployed separately in each region of the world, since no ride crosses
+between them, and the figure shows 1 region. Drivers and riders hold connections to
+gateways, as the phones of chapter 18 do. The location service is stateless and
+turns each of the 125000 reports per second into an update of the grid index, which
+is divided among 30 machines by area and kept in memory only. The matching service
+reads the index and writes assignments to the ride store, which is the 1 component
+here with replicas in 3 zones and durable storage. The picture makes visible the
+division that the chapter insisted upon, between data that is rebuilt in seconds and
+data that must not be lost.</p>
+<h2 id="how-real-systems-do-it-15"><a class="header" href="#how-real-systems-do-it-15">How real systems do it</a></h2>
+<p>The grid of this chapter corresponds to 3 schemes that are in wide use, and they
+differ in the shape of the cell and in how the cells are named.</p>
+<p>The <em>geohash</em> divides the world by latitude and longitude, halving alternately in
+each direction, and writes the result as a short string in which every further
+character selects a smaller cell within the last. It is the hierarchy of names with
+shared prefixes described above, and several in-memory stores offer queries by
+radius that are built on it. Its cells are rectangles whose width varies with
+latitude.</p>
+<p>Google’s S2 library projects the sphere onto the faces of a cube and numbers the
+cells along a space-filling curve, so that a cell is a 64-bit integer and cells that
+are close on the curve are close on the ground. A region is covered by a small set
+of cells of mixed sizes, and a search becomes a few scans of ranges of integers.</p>
+<p>Uber developed H3, which it published in 2018, and which uses hexagons. The stated
+reason is the one given above: the centres of all 6 neighbours of a hexagon are at
+the same distance, which makes it natural to reason about rings of cells around a
+point and about movement between adjacent cells, where a square has neighbours at 2
+different distances. H3 has 16 levels of resolution, each cell containing 7 of the
+next, and since hexagons do not divide exactly into smaller hexagons, a child cell
+is only approximately contained in its parent. The surface of a sphere cannot be
+covered by hexagons alone, and every level contains exactly 12 pentagons, placed
+where they are least likely to matter.</p>
+<p>For the estimate of arrival time, the technique of computing in advance along the
+important roads is known as contraction hierarchies, and it answers a query on the
+road network of a continent in about a millisecond. And Uber has described assigning
+the work for each area to particular servers with a ring of consistent hashing whose
+membership spreads by gossip, which is the alternative to a coordinator that chapter
+1 described.</p>
 <h2 id="mistakes-to-avoid-15"><a class="header" href="#mistakes-to-avoid-15">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -21977,6 +22762,15 @@ receives <code>409 Conflict</code>.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim/src/main.rs"><code>code/nearbysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p nearbysim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-15"><a class="header" href="#references-15">References</a></h2>
+<ul>
+<li>I. Brodsky, “H3: Uber’s Hexagonal Hierarchical Spatial Index”, Uber engineering blog, 2018.</li>
+<li>Google, S2 Geometry Library documentation, “S2 Cells”.</li>
+<li>G. Niemeyer, “geohash.org”, 2008.</li>
+<li>R. Geisberger and others, “Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks”, WEA 2008.</li>
+<li>A. Guttman, “R-Trees: A Dynamic Index Structure for Spatial Searching”, SIGMOD 1984.</li>
+<li>Uber engineering blog, “How Ringpop from Uber Engineering Helps Distribute Your Application”, 2016.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-15"><a class="header" href="#terms-introduced-in-this-chapter-15">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -22415,6 +23209,44 @@ nowhere.</p>
 <li>At intervals, the counting job reads the log and brings the count of every search up to date, reducing older counts.</li>
 <li>A new table of prefix lists is built from the counts, checked, and distributed to the replicas, which begin serving it in place of the old one.</li>
 </ol>
+<h2 id="the-design-deployed-16"><a class="header" href="#the-design-deployed-16">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/typeahead-deploy.svg?v=0a7a695f" alt="The suggestion service, deployed. Browsers: Browsers (1 million req/s), keep answers they had. Near the users: Edge servers (x 100s), cache by prefix, 5 min. Serving, in 3 zones: Load balancers (x 4), by range of prefixes, Suggestion API (x 24), whole table in memory. Building, offline: Search log (x 6), every search made, Counting job (batch), normalise, count, decay, Trending processor (x 4), the last hour.">
+<figcaption><b>Figure 22.7</b> The suggestion service as it is deployed: caches in front, a serving tier that only reads, and an offline build behind.</figcaption>
+</figure>
+<p>Most of the million requests per second are answered before they reach this
+system, by the browser’s own memory of earlier answers and by edge servers that
+cache each prefix for 5 minutes. The serving tier receives about a fifth of them. It
+consists of 24 machines, each holding a part of the table in memory, behind load
+balancers that route by the range of the prefix. Nothing in the serving tier ever
+writes. The table is produced by the build tier below, from the log of searches, and
+handed upwards once an hour as a finished file, so that a fault in the building can
+at worst leave the serving tier with an old table.</p>
+<h2 id="how-real-systems-do-it-16"><a class="header" href="#how-real-systems-do-it-16">How real systems do it</a></h2>
+<p>Facebook published an early and clear account of a typeahead in 2010, for the search
+box that suggests people and pages. Its design starts in the browser, which is
+loaded with the user’s own friends and pages before a letter is typed and answers
+from that list first, and which caches every reply so that deleting a letter costs
+nothing. Only then is the service asked, and the service is a set of indexes, 1 for
+each kind of result, queried in parallel and merged by an aggregator. The emphasis
+on the client is the same as in this chapter, and the personal first stage is a
+form of the personalisation that this chapter mentions only in passing.</p>
+<p>The data structure for the general problem, the most frequent completions of a
+prefix, has been studied as <em>top-k completion</em>. A paper from Microsoft compares
+several structures and shows that a trie which stores at each node the best score
+beneath it can find the best completions without visiting the whole subtree, in
+space close to that of the compressed strings. This is a middle way between the 2
+extremes of this chapter, the trie that must be searched and the table that stores
+every answer, and it is what a system uses when the table would be too large. Search
+libraries commonly implement completion with a compact automaton that shares both
+the prefixes and the suffixes of the stored strings.</p>
+<p>On what must not be shown, the operators of the large search engines publish
+policies stating which kinds of prediction they remove, covering violence, sexually
+explicit and hateful predictions and those that make damaging statements about
+named people, together with a means of reporting. The existence of these policies
+is the practical evidence for the section on suggestions that must not be shown.
+The threshold of distinct users is an application of the idea of k-anonymity, that
+no released item should be traceable to fewer than k people.</p>
 <h2 id="mistakes-to-avoid-16"><a class="header" href="#mistakes-to-avoid-16">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -22476,6 +23308,13 @@ answers are cached is therefore chosen with removals in mind, and it is the reas
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/typeahead/src/main.rs"><code>code/typeahead</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p typeahead</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-16"><a class="header" href="#references-16">References</a></h2>
+<ul>
+<li>Facebook engineering blog, “The Life of a Typeahead Query”, 2010.</li>
+<li>B. Hsu and G. Ottaviano, “Space-Efficient Data Structures for Top-k Completion”, WWW 2013.</li>
+<li>Google Search Help, “How Google autocomplete predictions work”.</li>
+<li>L. Sweeney, “k-Anonymity: A Model for Protecting Privacy”, International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems, 2002.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-16"><a class="header" href="#terms-introduced-in-this-chapter-16">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -22873,6 +23712,45 @@ Content-Type: application/json
 <li>The parser extracts the links, normalises them, and passes them to the link filter.</li>
 <li>The filter drops every address that is in the seen set, adds the others to the set, and sends them to the frontier, where each joins the queue of its host.</li>
 </ol>
+<h2 id="the-design-deployed-17"><a class="header" href="#the-design-deployed-17">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/crawl-deploy.svg?v=97f125a6" alt="The crawler, deployed. Control: Operator (1 crawl), seeds and rules. Crawling: Frontier machines (x 40), hosts assigned by hash, Fetchers (x 300), many connections each, Resolver cache (x 6), names to addresses. Processing: Parsers (x 60), links, checksums, Seen set (x 8), hashes or a filter, Link queue (x 6), to the owning machine. Storage: Page store (1 PB), an object store.">
+<figcaption><b>Figure 23.6</b> The crawler as it is deployed: frontier machines that each own a set of hosts, and the fetching and processing tiers around them.</figcaption>
+</figure>
+<p>A crawler has no users in the ordinary sense, and its deployment is that of a
+pipeline. The 40 frontier machines are the heart of it. Each owns the hosts whose
+names hash to it, and holds their queues on disk. The 300 fetchers are stateless and
+hold thousands of connections each. Parsers, the seen set and the queue that
+forwards links to the machine owning their host form the processing tier, and the
+pages themselves go to an object store. Since the frontier is the only state that
+cannot be rebuilt quickly, it is the part that is replicated.</p>
+<h2 id="how-real-systems-do-it-17"><a class="header" href="#how-real-systems-do-it-17">How real systems do it</a></h2>
+<p>The frontier of this chapter, with queues by priority feeding queues by host, is
+the design of Mercator, a crawler built at Compaq and described in 1999. Mercator’s
+paper names the 2 stages the front queues and the back queues, keeps exactly 1 back
+queue for each host being crawled, and holds a heap of the times at which each host
+may next be contacted. The paper on the original Google crawler, of the year before,
+describes a simpler arrangement and is of interest chiefly for its account of what
+went wrong when a crawler first met the real web.</p>
+<p>How far a single machine can be taken was shown by IRLbot, which crawled over 6
+billion pages in 41 days from 1 server. Its paper is largely about the 2 problems
+that this chapter treats under the seen set and the endless site. For the first it
+replaces the in-memory set by a structure on disk that checks addresses in large
+sorted batches. For the second it gives each site a budget that depends on how many
+other sites link to it, which is the allowance described above, and it argues that
+without such a budget any crawler at scale is eventually captured by sites that
+generate pages without end.</p>
+<p>The fingerprint under which similar pages receive similar values is <em>simhash</em>.
+Google described using it on a collection of 8 billion pages, with fingerprints of
+64 bits, treating 2 pages as near duplicates when their fingerprints differ in at
+most 3 bits, and the paper’s main contribution is a way of finding all fingerprints
+within that distance of a given one without comparing it with every other.</p>
+<p>The convention of <code>robots.txt</code>, in use since 1994, was written down as a standard
+only in 2022. And the scheduling of revisits according to observed rates of change
+goes back to a study which showed, among other things, that revisiting every page
+equally often keeps a collection fresher than revisiting each in proportion to how
+often it changes, since pages that change constantly can never be kept fresh and
+absorb the effort.</p>
 <h2 id="mistakes-to-avoid-17"><a class="header" href="#mistakes-to-avoid-17">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -22930,6 +23808,15 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim/src/main.rs"><code>code/crawlsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p crawlsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-17"><a class="header" href="#references-17">References</a></h2>
+<ul>
+<li>A. Heydon and M. Najork, “Mercator: A Scalable, Extensible Web Crawler”, World Wide Web, 1999.</li>
+<li>S. Brin and L. Page, “The Anatomy of a Large-Scale Hypertextual Web Search Engine”, WWW 1998.</li>
+<li>H. Lee, D. Leonard, X. Wang and D. Loguinov, “IRLbot: Scaling to 6 Billion Pages and Beyond”, WWW 2008.</li>
+<li>G. Manku, A. Jain and A. Das Sarma, “Detecting Near-Duplicates for Web Crawling”, WWW 2007.</li>
+<li>RFC 9309, <em>Robots Exclusion Protocol</em>, 2022.</li>
+<li>J. Cho and H. Garcia-Molina, “Effective Page Refresh Policies for Web Crawlers”, ACM Transactions on Database Systems, 2003.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-17"><a class="header" href="#terms-introduced-in-this-chapter-17">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -23376,6 +24263,47 @@ continuously for 5 minutes.</p>
 to 2 machines, each of which builds its own blocks independently. The 2 copies are
 not kept identical by any protocol, and may differ by a point here and there. For
 this data that is acceptable, and the query service merges whatever it receives.</p>
+<h2 id="the-design-deployed-18"><a class="header" href="#the-design-deployed-18">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/metrics-deploy.svg?v=d471eee9" alt="The monitoring system, deployed. What is watched: Service instances (x 100000), expose current values. Collection: Collectors (x 60), 2 for each group. Storage: Series store (x 40), 2 copies of each series, Block storage (object store), finished blocks, Rollup jobs (x 6), per minute, per hour. Reading and alerting: Query service (x 12), bounded queries, Alert evaluators (x 2), both run every rule, Second watcher (elsewhere), watches the watcher.">
+<figcaption><b>Figure 24.6</b> The monitoring system as it is deployed, on infrastructure that it shares with nothing it watches.</figcaption>
+</figure>
+<p>The system watches 100000 service instances with 60 collectors, arranged so that
+every group of services is visited by 2 of them. Each collector sends its points to
+2 nodes of the series store, which build their blocks independently, and finished
+blocks are copied to an object store. The reading tier is kept apart from the
+writing tier, with its own machines, so that a flood of queries during an incident
+cannot delay the storing of new points. The last box is the smallest and among the
+most important: a second, minimal monitor in another place, which checks nothing
+except that the first is alive.</p>
+<h2 id="how-real-systems-do-it-18"><a class="header" href="#how-real-systems-do-it-18">How real systems do it</a></h2>
+<p>The compression described in this chapter is that of Gorilla, an in-memory store
+that Facebook described in 2015. The paper introduced the 2 techniques together:
+storing each timestamp as the difference between successive differences, and
+storing each value as the result of combining its bits with those of the previous
+value, which for a floating-point number that changes little leaves mostly zeros. It
+reports an average of 1.37 bytes for each point against 16 uncompressed, a
+reduction of 12 times, which is somewhat better than the 2 bytes of the simulation
+here, whose encoding works on whole bytes. The paper also argues for the priorities
+adopted in this chapter, that a monitoring store should favour availability for
+writing and for recent reads over consistency, and should tolerate the loss of a
+small amount of data.</p>
+<p>Prometheus is the widely used system that collects by pulling, and its storage
+engine adopts Gorilla’s encoding, with blocks of 2 hours that are written once and
+merged into larger blocks as they age. Google’s Monarch, described in 2020, is a
+system on a far larger scale that receives pushes and keeps recent data in memory
+in every region, and its paper gives as a design principle the independence from
+other systems that this chapter set out under watching the watcher.</p>
+<p>The advice on alerts is drawn from Google’s book on site reliability engineering,
+which distinguishes symptoms from causes and proposes 4 signals to watch for any
+service that answers requests: latency, traffic, errors and saturation. The danger
+of the average, and the way in which a small proportion of slow requests comes to
+affect most users of a service built from many parts, is the subject of a well
+known article by Dean and Barroso.</p>
+<p>For percentiles, fixed buckets are the simplest histogram, and better ones exist. More
+recent structures choose their buckets so that the relative error of any percentile
+is bounded, and can still be merged across machines, which removes the need to
+guess the boundaries in advance.</p>
 <h2 id="mistakes-to-avoid-18"><a class="header" href="#mistakes-to-avoid-18">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -23434,6 +24362,15 @@ this data that is acceptable, and the query service merges whatever it receives.
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/metricsim/src/main.rs"><code>code/metricsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p metricsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-18"><a class="header" href="#references-18">References</a></h2>
+<ul>
+<li>T. Pelkonen and others, “Gorilla: A Fast, Scalable, In-Memory Time Series Database”, VLDB 2015.</li>
+<li>C. Adams and others, “Monarch: Google’s Planet-Scale In-Memory Time Series Database”, VLDB 2020.</li>
+<li>Prometheus documentation, “Storage”.</li>
+<li>B. Beyer and others (editors), <em>Site Reliability Engineering</em>, O’Reilly, 2016, chapter 6, “Monitoring Distributed Systems”.</li>
+<li>J. Dean and L. Barroso, “The Tail at Scale”, Communications of the ACM, 2013.</li>
+<li>C. Masson, J. Rim and H. Lee, “DDSketch: A Fast and Fully-Mergeable Quantile Sketch with Relative-Error Guarantees”, VLDB 2019.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-18"><a class="header" href="#terms-introduced-in-this-chapter-18">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -23843,6 +24780,46 @@ Content-Type: application/json
 <li>The sync service tells the notifier that the account has a change.</li>
 <li>The notifier passes the signal to the phone over its open connection. The phone asks for the changes after its cursor, downloads the chunks it lacks from the chunk store, assembles the file, and moves its cursor forward.</li>
 </ol>
+<h2 id="the-design-deployed-19"><a class="header" href="#the-design-deployed-19">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/sync-deploy.svg?v=a21c394c" alt="The sync service, deployed. Devices: Devices (40 million online), laptops and phones. Services, in 3 zones: Load balancers (x 12), by kind of request, Sync service (x 100), compares versions, Notifiers (x 400), 1 connection per device. Storage: Metadata store (x 90), 30 shards x 3 replicas, Chunk store (1 EB), see chapter 16.">
+<figcaption><b>Figure 25.6</b> The sync service as it is deployed, with the bytes travelling directly between devices and the chunk store.</figcaption>
+</figure>
+<p>The deployment separates 3 kinds of traffic that have nothing in common. Small
+requests about metadata go through load balancers to the 100 instances of the sync
+service and from there to the metadata store, which is sharded by account with 3
+replicas of each shard. Long-lived connections, 1 for every online device, are held
+by 400 notifiers, a tier of the same kind as the gateways of chapter 18. And the
+bytes of the files travel directly between the devices and the chunk store, without
+passing through either of the other tiers, which is what keeps them small.</p>
+<h2 id="how-real-systems-do-it-19"><a class="header" href="#how-real-systems-do-it-19">How real systems do it</a></h2>
+<p>Dropbox has described the protocol of its service, and it matches the outline of
+this chapter closely. A file is divided into blocks of 4 MB, each named by a
+cryptographic hash of its contents, and the list of those hashes identifies the
+contents of the file. To upload, a client sends the list to a metadata server. If
+the server lacks some of the blocks, it says which, the client sends them to a
+separate block server, and the commit is then repeated and recorded in a journal of
+changes for the account, which is the ordered list of changes from which other
+clients read with a cursor.</p>
+<p>In 1 respect the published design differs from the recommendation of this chapter,
+and the difference should be stated plainly. Dropbox’s blocks are of fixed size.
+Cutting at positions determined by the content, which this chapter presents as the
+remedy for insertions, is the method of the Low-Bandwidth File System, a research
+system of 2001, and it is used today mainly by backup programs, for which
+deduplication across many versions matters most. A fixed block size is simpler, and
+a service can limit the damage of an insertion by other means, notably by
+transferring within a changed block only the differences from its previous version.
+That technique comes from rsync, whose rolling checksum is the original of the
+rolling hash described above.</p>
+<p>The cost of the rolling hash has itself been reduced. A method published in 2016
+replaces the traditional fingerprint by a much cheaper one and adjusts the
+condition for a cut so as to avoid very small and very large chunks, and reports
+chunking several times faster with nearly the same deduplication.</p>
+<p>For the storage of the blocks, Dropbox built its own system of the kind described
+in chapter 16, holding exabytes, and has described rewriting its client’s
+synchronisation engine after concluding that the hardest part of the problem is
+the client, which has to reconcile the server’s view with a local file system that
+other programs are changing all the time.</p>
 <h2 id="mistakes-to-avoid-19"><a class="header" href="#mistakes-to-avoid-19">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -23900,6 +24877,14 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/syncsim/src/main.rs"><code>code/syncsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p syncsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-19"><a class="header" href="#references-19">References</a></h2>
+<ul>
+<li>N. Koorapati, “Streaming File Synchronization”, Dropbox tech blog, 2014.</li>
+<li>A. Muthitacharoen, B. Chen and D. Mazieres, “A Low-bandwidth Network File System”, SOSP 2001.</li>
+<li>A. Tridgell and P. Mackerras, “The rsync algorithm”, Australian National University technical report, 1996.</li>
+<li>W. Xia and others, “FastCDC: A Fast and Efficient Content-Defined Chunking Approach for Data Deduplication”, USENIX ATC 2016.</li>
+<li>Dropbox tech blog, “Rewriting the heart of our sync engine”, 2020.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-19"><a class="header" href="#terms-introduced-in-this-chapter-19">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -24332,6 +25317,47 @@ Content-Type: application/json
 <li>The server sends the transformed operation to author B, whose client transforms it against any operations of its own that the server has not yet acknowledged, and applies it.</li>
 <li>Every few hundred operations, the current text is saved as a snapshot.</li>
 </ol>
+<h2 id="the-design-deployed-20"><a class="header" href="#the-design-deployed-20">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/edit-deploy.svg?v=c827b2d1" alt="The editing service, deployed. Authors: Authors (20 million), 1 open connection each. Connections, in 3 zones: Load balancers (x 8), by connection, Gateways (x 100), route by document. Sessions: Session servers (x 300), 1 owner per document, Document directory (x 3), which server owns what. Storage: Operation log (x 30), shards x 3 replicas, Snapshot store (chapter 16), an object store.">
+<figcaption><b>Figure 26.6</b> The editing service as it is deployed, with every document owned by 1 session server.</figcaption>
+</figure>
+<p>Authors hold connections to gateways, as in the chat service. What is particular to
+this system is the tier below. Each open document is owned by exactly 1 of the 300
+session servers, which holds its text in memory and decides the order of its
+operations, and a small directory records which server owns which document, so that
+the gateways can route every author of a document to the same place. The session
+servers are therefore not interchangeable in the way that stateless servers are. If
+1 fails, each of its documents is taken over by another server, which loads the
+latest snapshot and replays the log from there.</p>
+<h2 id="how-real-systems-do-it-20"><a class="header" href="#how-real-systems-do-it-20">How real systems do it</a></h2>
+<p>Operational transformation was introduced in 1989, in a paper on a group editor
+that exchanged operations directly among its participants. The arrangement with a
+central server, in which each client synchronises with the server alone and the
+server fixes the order, is that of the Jupiter system of 1995, and it is the form
+that Google adopted for its collaborative documents. Its attraction is the one
+given in this chapter: with a server in the middle, the transformation functions
+have to satisfy only the simpler of the 2 correctness conditions that the general
+case requires. The warning that published algorithms have been found faulty refers
+to the other condition, needed when there is no server, for which several
+algorithms were shown by formal analysis to diverge in particular cases, years
+after they were published.</p>
+<p>Conflict-free replicated data types were given their name and a systematic theory
+in 2011. For text, the scheme of this chapter, in which each character has a
+position drawn from a dense ordered set, is that of a family of early designs. It
+has a defect that should be mentioned, since the simulation does not show it. When 2
+people type whole words at the same place at the same time, their characters can
+become interleaved letter by letter, because the positions that each chooses fall
+among the other’s. Designs in which a new character names the character it was
+typed after, and ties are broken consistently, keep each person’s run together, and
+the libraries in common use today work in that way.</p>
+<p>Not every collaborative product uses either method in its pure form. The makers of
+Figma have described a design in which a central server orders changes, as with
+operational transformation, while each property of each object is a simple register
+in which the last write prevails, as in a basic CRDT. Their argument is that a
+design tool’s documents are trees of objects with properties, for which that is
+enough, and that the full generality of either method serves the editing of long
+texts and is not needed elsewhere.</p>
 <h2 id="mistakes-to-avoid-20"><a class="header" href="#mistakes-to-avoid-20">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -24387,6 +25413,15 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/editsim/src/main.rs"><code>code/editsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p editsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-20"><a class="header" href="#references-20">References</a></h2>
+<ul>
+<li>C. Ellis and S. Gibbs, “Concurrency Control in Groupware Systems”, SIGMOD 1989.</li>
+<li>D. Nichols and others, “High-Latency, Low-Bandwidth Windowing in the Jupiter Collaboration System”, UIST 1995.</li>
+<li>M. Shapiro, N. Preguica, C. Baquero and M. Zawirski, “Conflict-free Replicated Data Types”, SSS 2011.</li>
+<li>M. Kleppmann and others, “Interleaving Anomalies in Collaborative Text Editors”, PaPoC 2019.</li>
+<li>E. Wallace, “How Figma’s multiplayer technology works”, Figma blog, 2019.</li>
+<li>M. Kleppmann and others, “Local-First Software: You Own Your Data, in Spite of the Cloud”, Onward! 2019.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-20"><a class="header" href="#terms-introduced-in-this-chapter-20">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -24796,6 +25831,47 @@ sequenced, the answer is <code>409 Conflict</code>, since there is nothing left 
 <li>The engine takes the order from the sequence, matches it against the book, and updates the book. The standby engine does the same, a moment later.</li>
 <li>The engine emits the trades and the new best prices, which are published to every participant and passed on for clearing.</li>
 </ol>
+<h2 id="the-design-deployed-21"><a class="header" href="#the-design-deployed-21">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/match-deploy.svg?v=fbea8621" alt="The exchange, deployed. Participants: Trading firms (210000 orders/s), programs, not people. Entry: Gateways (x 16), syntax, risk, rate. Ordering: Sequencer (x 2), primary and standby, Journal (x 3), 3 replicas, in 2 sites. Matching: Matching engines (x 10), 1 thread, some shares, Standby engines (x 10), apply the same events, Market data (x 4), to all, at once. After the trade: Clearing (not on the fast path), ordinary databases.">
+<figcaption><b>Figure 27.6</b> The exchange as it is deployed: gateways, a sequencer with its journal, and matching engines with standbys.</figcaption>
+</figure>
+<p>This is the 1 deployment in the book without a load balancer on its main path, and
+the omission is deliberate. A participant connects to a particular gateway over a
+path whose length is controlled, every gateway feeds the single sequencer, and each
+share is matched by 1 particular engine. There is nowhere that a request could be
+sent to “any available server”, since the whole design depends on there being
+exactly 1 place for each decision. Redundancy is provided by duplicates that follow
+along, a standby sequencer and a standby for every engine, and by a journal with 3
+replicas in 2 sites. The clearing systems at the bottom are of the ordinary kind,
+and are fed from the engines through a queue.</p>
+<h2 id="how-real-systems-do-it-21"><a class="header" href="#how-real-systems-do-it-21">How real systems do it</a></h2>
+<p>The architecture of this chapter is that of LMAX, a trading venue in London whose
+engineers described it publicly around 2011. All the business logic of the venue,
+the matching of orders and the management of risk for every customer, ran on a
+single thread, with its state entirely in memory, and that thread was reported to
+process 6 million orders per second on the hardware of the time. The state was made
+durable in the manner described here. Every input event was written to a journal
+before it was processed and was replicated to other nodes, which processed the same
+events, and the state could be rebuilt by replaying the journal from a snapshot
+taken each night. The engineers’ own account is that they arrived at the single
+thread after trying the alternatives, and found that the cost of coordinating
+threads exceeded the cost of the work.</p>
+<p>The component that carried events between the thread and the outside world, a ring
+buffer written and read without locks, was published separately as the Disruptor,
+and it embodies the observation that queues between threads are expensive mainly
+because of contention for the processor’s caches.</p>
+<p>For entry and for market data, exchanges use compact binary protocols over
+persistent connections. The protocols of Nasdaq are published and give a concrete
+picture: 1 for entering orders, and another that publishes every event of the order
+book, each with a sequence number, from which a recipient detects a gap and asks for
+it to be filled, as described under publishing prices.</p>
+<p>The equalising of paths is taken further at 1 American exchange, IEX, which passes
+every incoming order through a coil of 38 miles of optical fibre. The resulting
+delay of 350 microseconds is intended to remove the advantage of those who learn of
+a price change a few microseconds before others. Fairness in this business is thus
+partly a matter of physics, and the designers of an exchange have to say what they
+mean by it.</p>
 <h2 id="mistakes-to-avoid-21"><a class="header" href="#mistakes-to-avoid-21">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -24853,6 +25929,14 @@ sequenced, the answer is <code>409 Conflict</code>, since there is nothing left 
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/matchsim/src/main.rs"><code>code/matchsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p matchsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-21"><a class="header" href="#references-21">References</a></h2>
+<ul>
+<li>M. Fowler, “The LMAX Architecture”, martinfowler.com, 2011.</li>
+<li>M. Thompson and others, “Disruptor: High performance alternative to bounded queues for exchanging data between concurrent threads”, LMAX technical paper, 2011.</li>
+<li>Nasdaq, <em>TotalView-ITCH</em> and <em>OUCH</em> protocol specifications.</li>
+<li>IEX Exchange, “The Speed Bump”, exchange documentation.</li>
+<li>FIX Trading Community, <em>Financial Information eXchange (FIX) Protocol</em> specification.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-21"><a class="header" href="#terms-introduced-in-this-chapter-21">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
@@ -25255,6 +26339,48 @@ all, and a caller that computes an invoice uses only those marked as final.</p>
 <li>The log is also copied to the archive, from which counts can later be made again.</li>
 <li>When the watermark passes the end of a window, the processor writes that window’s count to the count store, under a key formed from the advertisement and the start of the window.</li>
 </ol>
+<h2 id="the-design-deployed-22"><a class="header" href="#the-design-deployed-22">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/click-deploy.svg?v=05190817" alt="The click counter, deployed. Browsers: Browsers (100000 clicks/s), report each click. Collection, in 3 zones: Load balancers (x 4), any collector, Collectors (x 40), append, and nothing else. The log: Click log (x 12), brokers, chapter 11, Archive (73 TB a year), every raw click. Counting: Stream processors (x 24), state in checkpoints, Nightly batch (from the archive), final counts. Serving: Count store (x 9), by ad and window, Counts API (x 8), dashboards, invoices.">
+<figcaption><b>Figure 28.5</b> The click counter as it is deployed, from the collectors down to the store that serves the counts.</figcaption>
+</figure>
+<p>The tiers follow the path of a click. The collectors are a large and deliberately
+simple stateless tier, since their availability is what matters most. The click log
+of 12 brokers is the point at which the system changes character: above it,
+everything must be available at every moment, and below it, everything can be
+stopped, corrected and run again from a position in the log. The 24 stream
+processors hold their state in checkpoints, and the nightly batch reads the archive.
+At the bottom, a small serving tier answers dashboards and the billing system from
+the count store.</p>
+<h2 id="how-real-systems-do-it-22"><a class="header" href="#how-real-systems-do-it-22">How real systems do it</a></h2>
+<p>The vocabulary of this chapter, event time and processing time, windows, watermarks
+and late data, was fixed by a paper from Google in 2015 that presents the Dataflow
+model. The paper’s central argument is the one made here, that a stream is
+unbounded and its completeness is never known, so that a system must offer the
+means to trade correctness, delay and cost against one another explicitly. It adds
+a concept that this chapter touched on without naming, the <em>trigger</em>, which says
+when the result of a window is to be emitted: early and provisionally, at the
+watermark, and again for each late arrival. The earlier MillWheel paper describes
+the system beneath, including low watermarks and the removal of duplicate records
+by recording the identifiers of those processed.</p>
+<p>Apache Flink is the open implementation in widest use, and its checkpoints are the
+ones described here. They are taken without stopping the stream, by passing markers
+through it that tell each operator when to record its state, a method derived from
+a classical algorithm for taking a consistent snapshot of a distributed system.</p>
+<p>The problem of this very chapter, the joining and counting of clicks for billing,
+is the subject of a paper on Photon, the system that Google built for its
+advertising business. Photon runs in several data centres at once, so that the loss
+of 1 does not delay the counts, and it prevents a click from being processed twice
+by recording the identifier of every processed click in a store that is replicated
+between the data centres by Paxos. A click is thereby counted at most once at all
+times and exactly once eventually, which is the guarantee sought here, obtained
+across data centres.</p>
+<p>The practice of running a stream and a batch side by side was named the lambda
+architecture. The objection that the same logic then exists twice, and the proposal
+to reprocess by running the stream code again over a retained log, were made in an
+article by an author of Kafka. And for counting the number of distinct visitors,
+which cannot be done by adding partial counts, the standard tool is a sketch that
+estimates the number from a few kilobytes of state.</p>
 <h2 id="mistakes-to-avoid-22"><a class="header" href="#mistakes-to-avoid-22">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -25314,6 +26440,16 @@ all, and a caller that computes an invoice uses only those marked as final.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/clicksim/src/main.rs"><code>code/clicksim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p clicksim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references-22"><a class="header" href="#references-22">References</a></h2>
+<ul>
+<li>T. Akidau and others, “The Dataflow Model: A Practical Approach to Balancing Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order Data Processing”, VLDB 2015.</li>
+<li>T. Akidau and others, “MillWheel: Fault-Tolerant Stream Processing at Internet Scale”, VLDB 2013.</li>
+<li>R. Ananthanarayanan and others, “Photon: Fault-tolerant and Scalable Joining of Continuous Data Streams”, SIGMOD 2013.</li>
+<li>P. Carbone and others, “Lightweight Asynchronous Snapshots for Distributed Dataflows”, 2015.</li>
+<li>K. Chandy and L. Lamport, “Distributed Snapshots: Determining Global States of Distributed Systems”, ACM Transactions on Computer Systems, 1985.</li>
+<li>J. Kreps, “Questioning the Lambda Architecture”, O’Reilly Radar, 2014.</li>
+<li>P. Flajolet and others, “HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm”, AofA 2007.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter-22"><a class="header" href="#terms-introduced-in-this-chapter-22">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -443,7 +443,7 @@ complete, which is the remedy for the stampede given in chapter 9.</p>
 <h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
 <p>Viewers play videos, in very large numbers. Creators upload them.</p>
 <figure>
-<img src="figures/stream-use-cases.svg?v=fe540d94" alt="A use case diagram of the video service. Viewer: play a video (GET /v1/videos/{id}/manifest), fetch the next 4 seconds (GET .../1200/piece-17.ts). Creator: upload a video (PUT /v1/videos/{id}/source), see when it is ready (GET /v1/videos/{id}).">
+<img src="figures/stream-use-cases.svg?v=4c5aa391" alt="A use case diagram of the video service. Viewer: play a video (GET /v1/videos/{id}/manifests/default), fetch the next 4 seconds (GET .../1200/piece-17.ts). Creator: upload a video (PUT /v1/videos/{id}/source), see when it is ready (GET /v1/videos/{id}).">
 <figcaption><b>Figure 17.5</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
@@ -513,7 +513,7 @@ and the video’s becoming playable, which lasts as long as the encoding does.</
 <p>A viewer’s player makes 2 kinds of request: 1 for the manifest, and then a long series
 for pieces.</p>
 <p><strong>Get the manifest of a video</strong></p>
-<pre><code class="language-http">GET /v1/videos/8842/manifest HTTP/1.1
+<pre><code class="language-http">GET /v1/videos/8842/manifests/default HTTP/1.1
 Host: video.example
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 200 OK
@@ -572,6 +572,46 @@ Content-Length: 600000
 <li>A viewer presses play. The player asks the video API for the manifest.</li>
 <li>The player fetches pieces from the CDN, 1 after another. A CDN site that does not have a piece fetches it from the object store once and keeps it.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/stream-deploy.svg?v=1f1fe965" alt="The video service, deployed. Viewers: Viewers (millions), players choose quality. Near the viewers: Edge servers (x 1000s), in hundreds of cities. Origin, in 3 zones: Video API (x 20), manifests, rights, Object store (origin), every piece, chapter 16, Catalogue store (x 9), videos and states. Upload and encoding: Upload service (x 10), stores the source, Job scheduler (x 6), see chapter 12, Encoders (x 500), 1 section at 1 quality.">
+<figcaption><b>Figure 17.8</b> The video service as it is deployed: edge servers near the viewers, an origin, and the encoding tier behind it.</figcaption>
+</figure>
+<p>The tiers of this system are separated by geography as much as by function. The
+edge servers number in the thousands and stand in hundreds of cities, inside or
+beside the networks of the internet providers. The origin is in a few places only,
+and consists of the video API, the object store that holds every piece, and the
+catalogue. The encoding tier is furthest from the viewers and is never reached by
+them. It is the largest consumer of computation in the system, and since its work is
+a queue of independent jobs with no deadline measured in milliseconds, it can use
+whatever machines are cheapest.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>Delivery in pieces over ordinary HTTP is standardised in 2 forms that differ in
+detail and agree in principle. Apple’s HTTP Live Streaming is specified in RFC 8216,
+and Dynamic Adaptive Streaming over HTTP, usually called DASH, is an international
+standard. Both describe a manifest that lists renditions and their segments, and
+both leave the choice of rendition entirely to the player, as this chapter does.</p>
+<p>The choice itself has been the subject of a good deal of research, and the simple
+rule of the simulation, which follows the measured speed with a margin, is the
+starting point, and the state of the art has moved well beyond it. A study carried out on Netflix’s
+service showed that estimates of capacity are unreliable enough that a player does
+better, once playback is under way, to choose the rendition from the level of the
+buffer alone, and reported between 10% and 20% fewer interruptions than the
+algorithm then in use, at a similar average quality. Later work formulated the
+choice as an optimisation over a short horizon of future pieces, and still later
+work trained a model to make it. A production player today usually combines an
+estimate of speed with the state of the buffer.</p>
+<p>On the encoding side, Netflix has described abandoning a fixed list of bitrates for
+all titles. An animated film and a film of rapid action need very different numbers
+of bits for the same apparent quality, and each title, and later each scene, is
+analysed and given its own list. Netflix also places its own caching servers inside
+the networks of internet providers, under the name Open Connect, which is the
+arrangement with providers mentioned under the costs of the service.</p>
+<p>For live video, the delay of 15 to 30 seconds described above is what the plain
+protocols give. Both standards have since gained low-latency modes, which publish a
+piece in smaller parts while it is still being produced and bring the delay down to
+a few seconds, and conversation in real time uses a different family of protocols
+altogether, of which WebRTC is the one built into browsers.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -624,6 +664,16 @@ Content-Length: 600000
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/streamsim/src/main.rs"><code>code/streamsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p streamsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>RFC 8216, <em>HTTP Live Streaming</em>, 2017.</li>
+<li>ISO/IEC 23009-1, <em>Dynamic adaptive streaming over HTTP (DASH)</em>.</li>
+<li>T. Huang and others, “A Buffer-Based Approach to Rate Adaptation: Evidence from a Large Video Streaming Service”, SIGCOMM 2014.</li>
+<li>X. Yin and others, “A Control-Theoretic Approach for Dynamic Adaptive Video Streaming over HTTP”, SIGCOMM 2015.</li>
+<li>K. Spiteri, R. Urgaonkar and R. Sitaraman, “BOLA: Near-Optimal Bitrate Adaptation for Online Videos”, INFOCOM 2016.</li>
+<li>H. Mao, R. Netravali and M. Alizadeh, “Neural Adaptive Video Streaming with Pensieve”, SIGCOMM 2017.</li>
+<li>Netflix technology blog, “Per-Title Encode Optimization”, 2015.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

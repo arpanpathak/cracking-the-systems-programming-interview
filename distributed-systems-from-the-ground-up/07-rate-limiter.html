@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -1049,6 +1049,46 @@ leader may lack the most recent updates, because an in-memory store commonly
 replicates without waiting for a majority to confirm. For buckets this is harmless,
 amounting to a few extra tokens for a few clients, and it is the eventual consistency
 of non-functional requirement 2 as it appears in practice.</p>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/limiter-deploy.svg?v=5481d1bc" alt="The rate limiter, deployed. Clients: Clients (50000 req/s), 1 million of them. Edge, in 3 zones: Load balancers (x 6), 1 pair in each zone, API gateways (x 30), authenticate and ask. Limiting, in 3 zones: Limiter nodes (x 9), token bucket rule, Counter store (x 3), 1 leader, 2 followers. The protected api: API servers (x 100), do the work.">
+<figcaption><b>Figure 7.14</b> The rate limiter as it is deployed, with the number of machines of each kind.</figcaption>
+</figure>
+<p>At 50000 requests per second, no component of the design is a single machine. Clients
+reach 1 of 3 zones, each with a pair of load balancers in front of 10 API gateways.
+Every gateway asks a limiter node in its own zone, and the 9 limiter nodes are
+interchangeable, since none of them holds a bucket. All of them read and update the
+buckets in a single counter store, which runs as a leader with 2 followers in the
+other zones. Only requests that pass reach the 100 API servers, which are the reason
+for the whole arrangement and by far the largest tier.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The algorithms of this chapter are all in production somewhere, and the published
+accounts agree closely with what was said of each.</p>
+<p>Stripe has described 4 limiters that it runs in front of its API. The most important
+is a request rate limiter for each user, built as a token bucket whose state is held
+in an in-memory store, as in this chapter. Beside it is a limiter on the number of
+requests a user may have in progress at once, which catches expensive requests that a
+rate alone would miss. The other 2 are load shedders, which act on the state of the
+whole system and reserve capacity for critical requests, and which are the load
+shedding that the opening section distinguished from rate limiting.</p>
+<p>Cloudflare chose the sliding window counter for the limiter at its edge and published
+a measurement of its accuracy. Over 400 million requests from 270000 sources, the
+estimate from 2 counters wrongly allowed or refused 0.003% of requests, with an
+average difference of 6% between the estimated and the true rate. This supports the
+statement above that the error is small for real traffic, and it should be read with
+the caution that it describes 1 network’s traffic.</p>
+<p>The generic cell rate algorithm comes from the standards for ATM networks of the
+1990s, and it is the basis of several widely used limiter libraries. Envoy, a proxy
+commonly used as a gateway, offers both arrangements described under counting on many
+machines: a token bucket local to each proxy, and a call to a shared rate limit
+service, and the 2 can be combined, with the local one as a first line of
+defence in front of the shared one. The response headers shown in the API section
+follow a draft of the IETF, which has changed between versions and is not yet a
+standard, whereas the status <code>429</code> and the header <code>Retry-After</code> are standardised.</p>
+<p>One technique in common use is missing from this chapter. A well-behaved client can
+limit itself adaptively, lowering its own rate when it sees refusals and raising it
+slowly when it does not, which the AWS client libraries do with a token bucket for
+retries. Chapter 13 describes the same idea from the side of the caller.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -1104,6 +1144,16 @@ of non-functional requirement 2 as it appears in practice.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit/src/main.rs"><code>code/ratelimit</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p ratelimit</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>P. Tarjan, “Scaling your API with rate limiters”, Stripe engineering blog, 2017.</li>
+<li>J. Desgats, “How we built rate limiting capable of scaling to millions of domains”, Cloudflare blog, 2017.</li>
+<li>ATM Forum, <em>Traffic Management Specification Version 4.0</em>, 1996, for the generic cell rate algorithm.</li>
+<li>RFC 6585, <em>Additional HTTP Status Codes</em>, 2012, for status 429.</li>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, for <code>Retry-After</code>.</li>
+<li>IETF HTTP API working group, “RateLimit header fields for HTTP”, Internet-Draft.</li>
+<li>Envoy proxy documentation, “Global rate limiting” and “Local rate limiting”.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

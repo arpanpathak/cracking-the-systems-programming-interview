@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -544,6 +544,48 @@ all, and a caller that computes an invoice uses only those marked as final.</p>
 <li>The log is also copied to the archive, from which counts can later be made again.</li>
 <li>When the watermark passes the end of a window, the processor writes that window’s count to the count store, under a key formed from the advertisement and the start of the window.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/click-deploy.svg?v=05190817" alt="The click counter, deployed. Browsers: Browsers (100000 clicks/s), report each click. Collection, in 3 zones: Load balancers (x 4), any collector, Collectors (x 40), append, and nothing else. The log: Click log (x 12), brokers, chapter 11, Archive (73 TB a year), every raw click. Counting: Stream processors (x 24), state in checkpoints, Nightly batch (from the archive), final counts. Serving: Count store (x 9), by ad and window, Counts API (x 8), dashboards, invoices.">
+<figcaption><b>Figure 28.5</b> The click counter as it is deployed, from the collectors down to the store that serves the counts.</figcaption>
+</figure>
+<p>The tiers follow the path of a click. The collectors are a large and deliberately
+simple stateless tier, since their availability is what matters most. The click log
+of 12 brokers is the point at which the system changes character: above it,
+everything must be available at every moment, and below it, everything can be
+stopped, corrected and run again from a position in the log. The 24 stream
+processors hold their state in checkpoints, and the nightly batch reads the archive.
+At the bottom, a small serving tier answers dashboards and the billing system from
+the count store.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The vocabulary of this chapter, event time and processing time, windows, watermarks
+and late data, was fixed by a paper from Google in 2015 that presents the Dataflow
+model. The paper’s central argument is the one made here, that a stream is
+unbounded and its completeness is never known, so that a system must offer the
+means to trade correctness, delay and cost against one another explicitly. It adds
+a concept that this chapter touched on without naming, the <em>trigger</em>, which says
+when the result of a window is to be emitted: early and provisionally, at the
+watermark, and again for each late arrival. The earlier MillWheel paper describes
+the system beneath, including low watermarks and the removal of duplicate records
+by recording the identifiers of those processed.</p>
+<p>Apache Flink is the open implementation in widest use, and its checkpoints are the
+ones described here. They are taken without stopping the stream, by passing markers
+through it that tell each operator when to record its state, a method derived from
+a classical algorithm for taking a consistent snapshot of a distributed system.</p>
+<p>The problem of this very chapter, the joining and counting of clicks for billing,
+is the subject of a paper on Photon, the system that Google built for its
+advertising business. Photon runs in several data centres at once, so that the loss
+of 1 does not delay the counts, and it prevents a click from being processed twice
+by recording the identifier of every processed click in a store that is replicated
+between the data centres by Paxos. A click is thereby counted at most once at all
+times and exactly once eventually, which is the guarantee sought here, obtained
+across data centres.</p>
+<p>The practice of running a stream and a batch side by side was named the lambda
+architecture. The objection that the same logic then exists twice, and the proposal
+to reprocess by running the stream code again over a retained log, were made in an
+article by an author of Kafka. And for counting the number of distinct visitors,
+which cannot be done by adding partial counts, the standard tool is a sketch that
+estimates the number from a few kilobytes of state.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -603,6 +645,16 @@ all, and a caller that computes an invoice uses only those marked as final.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/clicksim/src/main.rs"><code>code/clicksim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p clicksim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>T. Akidau and others, “The Dataflow Model: A Practical Approach to Balancing Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order Data Processing”, VLDB 2015.</li>
+<li>T. Akidau and others, “MillWheel: Fault-Tolerant Stream Processing at Internet Scale”, VLDB 2013.</li>
+<li>R. Ananthanarayanan and others, “Photon: Fault-tolerant and Scalable Joining of Continuous Data Streams”, SIGMOD 2013.</li>
+<li>P. Carbone and others, “Lightweight Asynchronous Snapshots for Distributed Dataflows”, 2015.</li>
+<li>K. Chandy and L. Lamport, “Distributed Snapshots: Determining Global States of Distributed Systems”, ACM Transactions on Computer Systems, 1985.</li>
+<li>J. Kreps, “Questioning the Lambda Architecture”, O’Reilly Radar, 2014.</li>
+<li>P. Flajolet and others, “HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm”, AofA 2007.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

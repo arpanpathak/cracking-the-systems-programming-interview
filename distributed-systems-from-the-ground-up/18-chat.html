@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -615,6 +615,45 @@ Content-Type: application/json
 <li>The chat service looks up the receiver in the session store, finds gateway B, and forwards the message there. A receiver who is offline is skipped: the message waits in the store.</li>
 <li>Gateway B pushes the message down the receiver’s open connection.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/chat-deploy.svg?v=ae76ca2b" alt="The chat service, deployed. Phones: Phones (50 million online), 1 open connection each. Connections, in 3 zones: Load balancers (x 20), by connection, Gateways (x 500), 100000 connections each. Services, in 3 zones: Chat service (x 200), numbers, stores, forwards, Session store (x 12), who is on which gateway. Storage: Message store (x 300), 100 shards x 3 replicas, Notification service (for offline phones), see chapter 13.">
+<figcaption><b>Figure 18.7</b> The chat service as it is deployed: 500 gateways holding 50 million connections, and the services and stores behind them.</figcaption>
+</figure>
+<p>The gateway tier is the one that this system has and most others lack. Its 500
+machines hold 100000 connections each, and the load balancers in front of them
+distribute connections, which last for hours, where other systems distribute requests. Because a
+connection is tied to its gateway, this tier cannot be drained quickly: replacing
+the software on a gateway means disconnecting 100000 phones, and deployments are
+therefore made in small groups of gateways. Behind the gateways, the chat service is
+stateless and the message store is sharded by conversation, with 3 replicas of each
+shard in 3 zones.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>WhatsApp is the best known example of how few machines the connection tier needs
+when it is built with care. In 2012 its engineers reported more than 2 million
+connections held open on a single server, running a server written in Erlang on
+FreeBSD, and later accounts put the figure between 2 and 3 million. The figure of
+100000 for each gateway used in this chapter is therefore conservative, and the
+difference is mostly a matter of memory for each connection and of how much work
+the gateway is asked to do beyond holding it.</p>
+<p>For storage, Discord has published 2 accounts that follow the same service as it
+grew, first on Cassandra when it held billions of messages and later on ScyllaDB
+when it held trillions. In both, messages are keyed by channel and by a bucket of
+time, so that the messages of a channel for a given period lie together and a
+request for recent history reads 1 partition, which is the layout described under
+storing messages. The accounts are candid about the hot key: a single very large and
+active channel overloads the partition that holds it, and much of the later work
+concerns protecting the store from that.</p>
+<p>The numbering of messages by the server within a conversation, and the client’s
+cursor, are the common practice of such services. Protocols differ in the transport.
+Facebook described building its mobile messenger on MQTT, a lightweight protocol of
+publishing and subscribing designed for unreliable networks, in order to keep the
+connection cheap in power.</p>
+<p>End-to-end encryption, where it is offered, is nearly always the Signal protocol,
+whose central mechanism derives a fresh key for every message, so that the capture
+of 1 key exposes neither earlier messages nor later ones. For groups, each sender
+distributes a key of their own to the members, which is why adding and removing
+members of a large encrypted group is expensive.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -667,6 +706,15 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/chatsim/src/main.rs"><code>code/chatsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p chatsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>WhatsApp blog, “1 million is so 2011”, 2012.</li>
+<li>S. Vishnevskiy, “How Discord Stores Billions of Messages”, Discord blog, 2017.</li>
+<li>B. Ingram, “How Discord Stores Trillions of Messages”, Discord blog, 2023.</li>
+<li>RFC 6455, <em>The WebSocket Protocol</em>, 2011.</li>
+<li>M. Marlinspike and T. Perrin, “The Double Ratchet Algorithm”, Signal specifications, 2016.</li>
+<li>L. Zhang, “Building Facebook Messenger”, Facebook engineering blog, 2011.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

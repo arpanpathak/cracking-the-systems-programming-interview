@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -491,6 +491,7 @@ API correctly without knowing anything about key-value stores.</p>
 </thead>
 <tbody>
 <tr><td>A URL identifies a resource, and consists of nouns.</td><td><code>/v1/keys/user-1</code> identifies the key <code>user-1</code>. The API has no URLs such as <code>/setKey</code>.</td></tr>
+<tr><td>A collection is named by a plural noun, and a member by the collection followed by its identifier.</td><td><code>/v1/keys</code> is the collection of keys, and <code>/v1/keys/user-1</code> is 1 member of it.</td></tr>
 <tr><td>The HTTP method expresses the operation.</td><td><code>GET</code> reads a resource, <code>PUT</code> replaces it and <code>DELETE</code> removes it.</td></tr>
 <tr><td><code>GET</code> has no side effects.</td><td>Clients and intermediaries may repeat, cache and retry a <code>GET</code> freely.</td></tr>
 <tr><td><code>PUT</code> and <code>DELETE</code> are idempotent.</td><td>An operation is <em>idempotent</em> if performing it several times has the same effect as performing it once, so that a client may repeat these requests after a lost response.</td></tr>
@@ -1395,6 +1396,54 @@ allowance. Several thousand such failures a month would be within it. In practic
 therefore, the requirement is not threatened by the failures of individual machines,
 which this design absorbs, and is limited by events that affect many nodes together,
 such as a faulty release of the software or the loss of a segment of the network.</p>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/kv-deploy.svg?v=b2e0d15c" alt="The key-value store, deployed. Applications: Applications (120000 req/s), keep their state here. Edge: Load balancers (x 2), active and standby, Routers (x 12), stateless, hold the ring. Storage, in 3 zones: Storage nodes (x 8), zone a, Storage nodes (x 8), zone b, Storage nodes (x 8), zone c. Control: Coordinator (x 3), holds the ring, Monitoring (x 2), health and metrics.">
+<figcaption><b>Figure 1.18</b> The key-value store as it is deployed: 12 routers, 24 storage nodes in 3 zones, and a coordinator of 3 machines.</figcaption>
+</figure>
+<p>The figure of the high-level design showed 1 box for each kind of component. A
+running system has many of each, and their number and placement are part of the
+design. Applications reach the store through a pair of load balancers, of which 1 is
+active and the other takes over its address if it fails. Behind them are 12 routers,
+which can be any number, since they are stateless. The 24 storage nodes are divided
+equally among 3 <em>availability zones</em>, which are separate buildings or halls with
+their own power and network, and the ring is constructed so that the 3 replicas of
+every shard fall in 3 different zones. The loss of an entire zone then removes 1
+replica of each shard and leaves a majority of every one. The coordinator has 1
+machine in each zone for the same reason.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The design of this chapter is not the only way of building a key-value store, and it
+is instructive to place it among the systems that are in use.</p>
+<p>Its 2 ancestors are quite different from each other. <em>Dynamo</em>, described by Amazon in
+2007, introduced to a wide audience the combination of consistent hashing, virtual
+nodes and replication to the next nodes on the ring that this chapter uses for
+placement. In every other respect Dynamo chose the opposite course. It has no leaders.
+Any replica accepts a write, a request succeeds when W of N replicas have answered,
+conflicting versions are detected with vector clocks and handed back to the
+application to be reconciled, and membership spreads by gossip. It is the model of
+eventual and tunable consistency described earlier, and Cassandra and Riak descend
+from it. The other ancestor is the line of consensus protocols, Paxos and later
+Raft, in which a leader orders the writes and a majority must store each one. The
+coordinator of this chapter is a system of that kind, as etcd and ZooKeeper are.</p>
+<p>The design here combines the 2: placement by a hash ring, as in Dynamo, with a
+consensus group for each shard, as in Raft. Systems that are built this way in
+practice, among them CockroachDB, TiKV and YugabyteDB, differ from our design in 1
+important respect. They do not hash keys. They divide the ordered key space into
+contiguous ranges, each replicated by its own Raft group, and they split a range
+when it grows beyond a set size and merge ranges that shrink. This keeps
+neighbouring keys together, so that a listing by prefix reads 1 or 2 ranges where
+ours must ask every node, and it lets the system move load by moving the boundaries.
+The price is the machinery for splitting, merging and rebalancing, which a hash ring
+does not need. Google’s Bigtable and Spanner also partition by range.</p>
+<p>Several things that a production store requires are absent from this chapter and
+from the code that follows. A log that grows for ever must be cut short by taking
+<em>snapshots</em> of the state. Changing the set of members of a shard while it runs needs
+a protocol of its own, which Raft calls joint consensus. Reads served by a leader on
+the strength of a recent heartbeat depend on clocks behaving reasonably, and stricter
+systems confirm leadership with a majority for each read. And none of this has been
+tested here in the way that such systems are tested in earnest, by a tool such as
+Jepsen, which partitions a real cluster at random and checks every response against
+the definition of linearizability.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -1438,6 +1487,17 @@ of this chapter appear in its code under the same names.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ringsim/src/main.rs"><code>code/ringsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p ringsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>G. DeCandia and others, “Dynamo: Amazon’s Highly Available Key-value Store”, SOSP 2007.</li>
+<li>D. Ongaro and J. Ousterhout, “In Search of an Understandable Consensus Algorithm”, USENIX ATC 2014.</li>
+<li>D. Karger and others, “Consistent Hashing and Random Trees”, STOC 1997.</li>
+<li>F. Chang and others, “Bigtable: A Distributed Storage System for Structured Data”, OSDI 2006.</li>
+<li>J. Corbett and others, “Spanner: Google’s Globally-Distributed Database”, OSDI 2012.</li>
+<li>M. Herlihy and J. Wing, “Linearizability: A Correctness Condition for Concurrent Objects”, ACM TOPLAS, 1990.</li>
+<li>S. Gilbert and N. Lynch, “Brewer’s Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services”, ACM SIGACT News, 2002.</li>
+<li>M. Kleppmann, <em>Designing Data-Intensive Applications</em>, O’Reilly, 2017.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

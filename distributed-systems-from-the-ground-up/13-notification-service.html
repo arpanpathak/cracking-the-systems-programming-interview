@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -362,8 +362,8 @@ senders are waiting on the provider that is not.</p>
 dependency and, when the dependency is plainly failing, stops calling it for a time.
 It takes its name from the electrical device that cuts off a circuit in which too much
 current is flowing.</p>
-<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="82b99825">
-<img src="figures/steps-notify-breaker-01.svg?v=82b99825" alt="A circuit breaker in front of a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
+<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="07ad94bb">
+<img src="figures/steps-notify-breaker-01.svg?v=07ad94bb" alt="A circuit breaker before a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
 <figcaption><b>Figure 13.3</b> A circuit breaker opens after 5 failures in a row, refuses calls for 30 seconds, and closes again after a successful trial. Use Next and Back to move through the 6 steps.</figcaption>
 </figure>
 <p>The breaker has 3 states. While it is <em>closed</em>, calls pass through to the provider and
@@ -581,6 +581,43 @@ Content-Type: application/json
 <li>The sender calls the provider. On failure it waits and tries again, with a pause that doubles.</li>
 <li>After 5 failed tries the sender moves the notification to a separate list for a person to look at.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/notify-deploy.svg?v=4f8e9ac4" alt="The notification service, deployed. Callers: Calling services (580 req/s), report events. Api, in 3 zones: Load balancers (x 2), any API node, API nodes (x 8), check key, preferences, Key store (x 3), keys seen, with outbox. Queues and senders: Queue brokers (x 6), 1 queue per priority, Senders (x 40), a pool for each channel. Outside: Email provider (x 1), outside our control, SMS providers (x 2), a second as fallback, Push providers (x 2), 1 per phone system.">
+<figcaption><b>Figure 13.8</b> The notification service as it is deployed, from the calling services to the outside providers.</figcaption>
+</figure>
+<p>The deployment falls into 2 halves joined by queues. The upper half, the API nodes
+with their key store, must always be available, since it is what the calling
+services depend on, and it does very little. The lower half, the senders, is where
+the slow and uncertain work is done, and it is divided into separate pools for each
+channel and each priority, so that a pool blocked on a failing provider cannot
+starve the others. The providers at the bottom are outside the system, and for the
+channel that matters most there are 2 of them.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The treatment of retries in this chapter follows an article from Amazon that has
+become the standard reference. It simulates many clients contending for a resource
+and compares several ways of randomising the pause. The form used in this chapter,
+a random time between 0 and the full exponential value, is the one the article calls
+full jitter, and it found that this did the least total work, with a variant that
+keeps half of the pause fixed close behind and a third variant, in which each pause
+is derived from the previous one, somewhat worse. The author has since added the
+caution that backoff and jitter spread a burst of load out and do not reduce a
+sustained overload, for which the load itself must be reduced.</p>
+<p>That further step is the <em>retry budget</em>. Google’s book on site reliability
+engineering recommends that a client limit its retries to a fixed proportion of its
+ordinary requests, 10% for example, in addition to a limit for each request, so that
+when a dependency is failing completely, the retries add a tenth to the load, where
+unlimited retries would multiply it. A circuit breaker achieves a similar end by different means.</p>
+<p>The circuit breaker was described by Michael Nygard in his book on production
+failures and was made widely known by a library from Netflix. The same book treats
+its companions, the timeout and the <em>bulkhead</em>, which is the separation of pools
+used in the deployment above.</p>
+<p>For push notifications, the providers are Apple’s and Google’s services, each of
+which reports a token that is no longer valid in its reply to a send, so that
+sending is also the means by which dead tokens are discovered. Most providers of
+email and text messages report delivery by webhook, and they retry their webhooks
+for hours when the receiver is down, so that the receiver must be idempotent, in a
+reversal of the usual roles.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -634,6 +671,14 @@ Content-Type: application/json
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs"><code>code/notifysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p notifysim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>M. Brooker, “Exponential Backoff And Jitter”, AWS Architecture Blog, 2015.</li>
+<li>M. Brooker, “Timeouts, retries, and backoff with jitter”, Amazon Builders’ Library.</li>
+<li>B. Beyer and others (editors), <em>Site Reliability Engineering</em>, O’Reilly, 2016, chapter 22, “Addressing Cascading Failures”.</li>
+<li>M. Nygard, <em>Release It!</em>, Pragmatic Bookshelf, second edition, 2018.</li>
+<li>RFC 9110, <em>HTTP Semantics</em>, 2022, for status 202.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -556,6 +556,47 @@ sequenced, the answer is <code>409 Conflict</code>, since there is nothing left 
 <li>The engine takes the order from the sequence, matches it against the book, and updates the book. The standby engine does the same, a moment later.</li>
 <li>The engine emits the trades and the new best prices, which are published to every participant and passed on for clearing.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/match-deploy.svg?v=fbea8621" alt="The exchange, deployed. Participants: Trading firms (210000 orders/s), programs, not people. Entry: Gateways (x 16), syntax, risk, rate. Ordering: Sequencer (x 2), primary and standby, Journal (x 3), 3 replicas, in 2 sites. Matching: Matching engines (x 10), 1 thread, some shares, Standby engines (x 10), apply the same events, Market data (x 4), to all, at once. After the trade: Clearing (not on the fast path), ordinary databases.">
+<figcaption><b>Figure 27.6</b> The exchange as it is deployed: gateways, a sequencer with its journal, and matching engines with standbys.</figcaption>
+</figure>
+<p>This is the 1 deployment in the book without a load balancer on its main path, and
+the omission is deliberate. A participant connects to a particular gateway over a
+path whose length is controlled, every gateway feeds the single sequencer, and each
+share is matched by 1 particular engine. There is nowhere that a request could be
+sent to “any available server”, since the whole design depends on there being
+exactly 1 place for each decision. Redundancy is provided by duplicates that follow
+along, a standby sequencer and a standby for every engine, and by a journal with 3
+replicas in 2 sites. The clearing systems at the bottom are of the ordinary kind,
+and are fed from the engines through a queue.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>The architecture of this chapter is that of LMAX, a trading venue in London whose
+engineers described it publicly around 2011. All the business logic of the venue,
+the matching of orders and the management of risk for every customer, ran on a
+single thread, with its state entirely in memory, and that thread was reported to
+process 6 million orders per second on the hardware of the time. The state was made
+durable in the manner described here. Every input event was written to a journal
+before it was processed and was replicated to other nodes, which processed the same
+events, and the state could be rebuilt by replaying the journal from a snapshot
+taken each night. The engineers’ own account is that they arrived at the single
+thread after trying the alternatives, and found that the cost of coordinating
+threads exceeded the cost of the work.</p>
+<p>The component that carried events between the thread and the outside world, a ring
+buffer written and read without locks, was published separately as the Disruptor,
+and it embodies the observation that queues between threads are expensive mainly
+because of contention for the processor’s caches.</p>
+<p>For entry and for market data, exchanges use compact binary protocols over
+persistent connections. The protocols of Nasdaq are published and give a concrete
+picture: 1 for entering orders, and another that publishes every event of the order
+book, each with a sequence number, from which a recipient detects a gap and asks for
+it to be filled, as described under publishing prices.</p>
+<p>The equalising of paths is taken further at 1 American exchange, IEX, which passes
+every incoming order through a coil of 38 miles of optical fibre. The resulting
+delay of 350 microseconds is intended to remove the advantage of those who learn of
+a price change a few microseconds before others. Fairness in this business is thus
+partly a matter of physics, and the designers of an exchange have to say what they
+mean by it.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -613,6 +654,14 @@ sequenced, the answer is <code>409 Conflict</code>, since there is nothing left 
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/matchsim/src/main.rs"><code>code/matchsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p matchsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>M. Fowler, “The LMAX Architecture”, martinfowler.com, 2011.</li>
+<li>M. Thompson and others, “Disruptor: High performance alternative to bounded queues for exchanging data between concurrent threads”, LMAX technical paper, 2011.</li>
+<li>Nasdaq, <em>TotalView-ITCH</em> and <em>OUCH</em> protocol specifications.</li>
+<li>IEX Exchange, “The Speed Bump”, exchange documentation.</li>
+<li>FIX Trading Community, <em>Financial Information eXchange (FIX) Protocol</em> specification.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>

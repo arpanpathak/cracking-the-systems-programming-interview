@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+            window.path_to_searchindex_js = "searchindex-50a12b87.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cc887274.js"></script>
@@ -218,7 +218,7 @@ tolerated.</p>
 <p>Every job in the scheduler is in exactly 1 of a small number of states, and the whole
 behaviour of the system can be described by the permitted movements between them.</p>
 <figure>
-<img src="figures/jobs-states.svg?v=0c58619a" alt="The states of a job. A waiting job becomes running when a worker takes it and receives a lease. A running job returns to waiting when it fails or its lease runs out. A running job becomes succeeded when the worker reports success before its lease runs out. A running job becomes dead when it has failed 5 times.">
+<img src="figures/jobs-states.svg?v=4c672151" alt="The states of a job. A waiting job becomes running when a worker takes it and receives a lease. A running job returns to waiting when it fails or its lease runs out. A running job becomes succeeded when the worker reports success before its lease runs out. A running job becomes dead when it has failed 5 times.">
 <figcaption><b>Figure 12.1</b> The 4 states of a job and the transitions between them.</figcaption>
 </figure>
 <p>A newly submitted job is <em>waiting</em>. When a worker takes it, the job becomes <em>running</em>,
@@ -417,7 +417,7 @@ serves the same end.</p>
 <p>Developers submit jobs and ask about their state. Workers take jobs and report
 results.</p>
 <figure>
-<img src="figures/jobs-use-cases.svg?v=fab2f690" alt="A use case diagram of the job scheduler. Developer: submit a job (POST /v1/jobs), read a job&#39;s state (GET /v1/jobs/{id}). Worker: take a job (POST /v1/leases), report the result (PUT /v1/jobs/{id}/result).">
+<img src="figures/jobs-use-cases.svg?v=901b0dc0" alt="A use case diagram of the job scheduler. Developer: submit a job (POST /v1/jobs), read a job&#39;s state (GET /v1/jobs/{id}). Worker: take a job (POST /v1/leases), report the result (PUT /v1/jobs/{id}/results/{lease}).">
 <figcaption><b>Figure 12.5</b> The actors and what each of them does.</figcaption>
 </figure>
 <h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
@@ -486,8 +486,8 @@ than once.</p>
 
 <h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
 <p>A worker takes a job by creating a lease, which is why the request is a <code>POST</code> to the
-collection of leases, and it reports by replacing the result of the job, which is a
-<code>PUT</code>.</p>
+collection of leases, and it reports by writing the result that belongs to its lease,
+which is a <code>PUT</code> to an address that names the job and the lease.</p>
 <p><strong>Submit a job</strong></p>
 <pre><code class="language-http">POST /v1/jobs HTTP/1.1
 Host: jobs.example
@@ -517,11 +517,11 @@ Content-Type: application/json
 </code></pre>
 <p>A worker takes a job by creating a lease, so the path names a thing and the method says what happens to it. The scheduler picks the job. When no job is waiting, the answer is <code>204 No Content</code>.</p>
 <p><strong>Report the result</strong></p>
-<pre><code class="language-http">PUT /v1/jobs/8231/result HTTP/1.1
+<pre><code class="language-http">PUT /v1/jobs/8231/results/771 HTTP/1.1
 Host: jobs.example
 Content-Type: application/json
 
-{ "lease": 771, "outcome": "succeeded" }
+{ "outcome": "succeeded" }
 </code></pre>
 <pre><code class="language-http">HTTP/1.1 204 No Content
 </code></pre>
@@ -556,6 +556,42 @@ scheduler to learn the capacity of each worker.</p>
 <li>A worker sends <code>POST /v1/leases</code>. The scheduler picks a waiting job, marks it <em>running</em> with this worker and a deadline, and returns it.</li>
 <li>Every few seconds the reclaimer looks for running jobs whose deadline has passed and sets them back to <em>waiting</em>.</li>
 </ol>
+<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
+<figure class="wide">
+<img src="figures/jobs-deploy.svg?v=f1df67a5" alt="The job scheduler, deployed. Submitters: Services (116 jobs/s), submit jobs. Scheduler, in 3 zones: Load balancers (x 2), any scheduler node, Scheduler nodes (x 6), stateless, Reclaimer (x 2), 1 of 2 is active. Job store, in 3 zones: Job store (x 3), 1 leader, 2 followers. Workers: Workers (x 200), ask, run, report.">
+<figcaption><b>Figure 12.8</b> The job scheduler as it is deployed: stateless scheduler nodes, a replicated job store, and 200 workers.</figcaption>
+</figure>
+<p>The scheduler nodes hold no state and stand behind a pair of load balancers, through
+which both submitters and workers reach them. All state is in the job store, a
+leader with 2 followers in 3 zones. The reclaimer, which returns jobs with expired
+leases to the queue, runs as 2 instances of which 1 is active, chosen through the
+lock service of chapter 10, and since reclaiming is itself a conditional write, a
+moment in which both believe themselves active does no harm. The 200 workers are the
+only tier whose size follows the amount of work, and it can be changed freely.</p>
+<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
+<p>Google has published an account of its distributed cron service that agrees with
+this chapter on the essentials and is frank about the same limits. The service keeps
+its state in a store replicated by Paxos, and only the leader launches jobs. The
+authors state that the system cannot guarantee that a job is launched exactly once,
+since the leader may fail between launching and recording the launch, and that the
+owners of each job must therefore decide whether it is worse for the job to be
+skipped or to run twice. They recommend making launches idempotent, and naming each
+launch after its scheduled time so that a repeat can be recognised, as this chapter
+does.</p>
+<p>The remedy for many workers competing for the same waiting job, a query that passes
+over rows locked by other transactions, is the clause <code>SKIP LOCKED</code>, which
+PostgreSQL has offered since version 9.5 and which is the basis of several job
+queues built on that database. For keeping very large numbers of timers in memory,
+the classical structure is the timing wheel, in which timers are placed in slots by
+their expiry time and a pointer advances 1 slot at each tick, so that starting and
+stopping a timer take constant time.</p>
+<p>A more recent development goes beyond anything in this chapter. Systems such as
+Temporal, which descends from Uber’s Cadence, record every step of a long-running
+piece of work in a durable history, and recover a failed worker by replaying that
+history to the point it had reached. A job in such a system is a program that
+appears to run for days without interruption, and the leases, retries and
+idempotency of this chapter are handled beneath it. The underlying guarantee is
+unchanged: each step runs at least once, and the steps must tolerate repetition.</p>
 <h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
 <div class="table-wrapper">
 <table>
@@ -609,6 +645,13 @@ scheduler to learn the capacity of each worker.</p>
 <p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs"><code>code/jobsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p jobsim</code> in the <code>code</code> directory.</p>
 </div>
 
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li>S. Davidovic and K. Guliani, “Reliable Cron across the Planet”, ACM Queue, 2015.</li>
+<li>PostgreSQL documentation, “SELECT”, on <code>FOR UPDATE SKIP LOCKED</code>.</li>
+<li>G. Varghese and A. Lauck, “Hashed and Hierarchical Timing Wheels”, SOSP 1987.</li>
+<li>Temporal documentation, “Workflow execution” and “Event history”.</li>
+</ul>
 <h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
 <div class="table-wrapper">
 <table>
