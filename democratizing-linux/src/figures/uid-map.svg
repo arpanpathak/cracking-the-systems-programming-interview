@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 522" width="480" height="522" role="img" aria-label="A user namespace with the mapping 0 1000 1. Inside the namespace the process is user 0, root, with all capabilities, and other users are unmapped and shown as 65534. User 0 inside maps to user 1000 outside, an ordinary user on the host.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="522" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A user namespace maps user numbers</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Privileged inside, ordinary outside.</text>
+  <rect x="32" y="104" width="416" height="150" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="224.6" height="22" rx="11" fill="#1B2430"/>
+  <text x="162.3" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">INSIDE THE USER NAMESPACE</text>
+  <rect x="48" y="128" width="184" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,128.7 H54 V191.3 H60 A11.3,11.3 0 0 1 48.7,180 V140 A11.3,11.3 0 0 1 60,128.7 Z" fill="#2E8B3D"/>
+  <text x="68.0" y="156.0" class="name" text-anchor="start" xml:space="preserve">user 0</text>
+  <text x="68.0" y="174.0" class="sub" text-anchor="start" xml:space="preserve">root, all capabilities</text>
+  <rect x="248" y="128" width="184" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M260,128.7 H254 V191.3 H260 A11.3,11.3 0 0 1 248.7,180 V140 A11.3,11.3 0 0 1 260,128.7 Z" fill="#7F8EA0"/>
+  <text x="268.0" y="156.0" class="name" text-anchor="start" xml:space="preserve">other users</text>
+  <text x="268.0" y="174.0" class="sub" text-anchor="start" xml:space="preserve">unmapped: seen as 65534</text>
+  <text x="240.0" y="232.0" class="mono strong" text-anchor="middle" xml:space="preserve">uid_map:   0   1000   1</text>
+  <path class="wire" d="M140,254 L140,312" marker-end="url(#head)"/>
+  <rect x="109.9" y="274.0" width="60.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="140.0" y="286.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">maps to</text>
+  <rect x="32" y="312" width="416" height="110" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="301" width="161.7" height="22" rx="11" fill="#1B2430"/>
+  <text x="130.9" y="316.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">OUTSIDE: THE HOST</text>
+  <rect x="48" y="336" width="184" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M60,336.7 H54 V399.3 H60 A11.3,11.3 0 0 1 48.7,388 V348 A11.3,11.3 0 0 1 60,336.7 Z" fill="#2F6FDB"/>
+  <text x="68.0" y="364.0" class="name" text-anchor="start" xml:space="preserve">user 1000</text>
+  <text x="68.0" y="382.0" class="sub" text-anchor="start" xml:space="preserve">an ordinary user</text>
+  <text x="32.0" y="450.0" class="note" text-anchor="start" xml:space="preserve">The 3 numbers of a line of uid_map are: the first user number inside,</text>
+  <text x="32.0" y="467.0" class="note" text-anchor="start" xml:space="preserve">the first user number outside, and how many numbers are mapped.</text>
+  <text x="32.0" y="484.0" class="note" text-anchor="start" xml:space="preserve">Capabilities held inside apply to objects the namespace owns. A file</text>
+  <text x="32.0" y="501.0" class="note" text-anchor="start" xml:space="preserve">on the host is still accessed as user 1000.</text>
+</svg>

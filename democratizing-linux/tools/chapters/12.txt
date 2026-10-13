@@ -1,0 +1,383 @@
+# Control Groups
+
+A control group, or cgroup, is a set of processes that the kernel accounts for and
+limits as a unit. Where a namespace controls what a process can see, a control group
+controls how much it can use: how many processes it may contain, how much memory, how
+much CPU time. Control groups form a tree, and a limit on a group applies to everything
+below it.
+
+In this chapter, we will learn how processes are placed in a group and how the kernel
+enforces a limit. We will first create a group and measure 2 limits with `cgfacts`.
+Then we will write `cgmodel`, a model of hierarchical accounting, and follow a fork and
+an allocation that are stopped by a limit set on a parent group.
+
+<div class="covers">
+
+This chapter covers
+
+- the control group file system: groups as directories, settings as files
+- how a process is moved into a group, and where its children start
+- controllers, and which of them a parent passes on to its children
+- the kernel structures: `struct cgroup`, `struct css_set` and `struct page_counter`
+- the checks the kernel makes on `fork` and on a page fault
+- `pids.max`: what happens to a fork beyond the limit
+- `memory.max`: what happens to an allocation beyond the limit
+- hierarchical accounting: a limit covers the whole subtree
+- the CPU and I/O controllers in brief
+- how to read the limits and the usage of a group on a running system
+
+</div>
+
+## The interface
+
+Control groups have no system calls of their own. The kernel presents them as a file
+system, mounted at `/sys/fs/cgroup`. A directory is a group. Creating a directory creates
+a group, and the kernel fills it with control files.
+
+<figure>
+<img src="figures/cgroup-files.svg" alt="A control group is a directory under /sys/fs/cgroup. It contains cgroup.procs, which lists the processes in the group; pids.max, pids.current and pids.events; memory.max, memory.current and memory.events; and a subdirectory for each child group. mkdir creates a group and rmdir removes an empty one.">
+<figcaption><b>Figure 12.1</b> The control files of a group.</figcaption>
+</figure>
+
+| File | Meaning |
+|---|---|
+| `cgroup.procs` | the processes in the group; writing a pid to it moves that process into the group |
+| `cgroup.controllers` | the controllers available in this group |
+| `cgroup.subtree_control` | the controllers this group passes on to its children |
+| `pids.max`, `memory.max` | limits; the value `max` means no limit |
+| `pids.current`, `memory.current` | the current usage of the group and its descendants |
+| `pids.events`, `memory.events` | counters of how often a limit was hit |
+
+Every process is in exactly 1 group, shown in `/proc/<pid>/cgroup`. A child process
+starts in the group of its parent, so a process that has been moved into a group cannot
+leave the group's accounting by forking.
+
+A *controller* is the part of the kernel that accounts for 1 kind of resource: `pids`,
+`memory`, `cpu`, `io`. A group has the control files of a controller only when its
+parent lists that controller in `cgroup.subtree_control`. On this machine the user's
+session is given the `memory` and `pids` controllers, which is why the chapter measures
+those 2.
+
+The group of the shell this chapter was written in, and the controllers available to
+it:
+
+```console
+$ cat /proc/self/cgroup
+0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.gnome.Terminal.slice/vte-spawn-1f7da0d1-a682-46b3-8151-d6603c0e21ae.scope
+$ cat /sys/fs/cgroup/cgroup.controllers
+cpuset cpu io memory hugetlb pids
+$ cat /sys/fs/cgroup/user.slice/user-1000.slice/cgroup.controllers
+memory pids
+```
+
+<figure>
+<img src="figures/cgroup-path-tree.svg" alt="The cgroup path of a shell drawn as nested groups: user.slice for all users, user-1000.slice for user 1000 where memory and pids are counted, user@1000.service for the session manager, app.slice for applications, a slice for the terminal program, and a scope for 1 terminal window that contains the shell.">
+<figcaption><b>Figure 12.new-cgroup-path-tree</b> The path of the shell's group, drawn as groups inside groups.</figcaption>
+</figure>
+
+The line in `/proc/self/cgroup` is a path below `/sys/fs/cgroup`. Each component is a
+group, created by the service manager `systemd`: a group for all users, a group for user
+1000, a group for that user's session manager, and so on down to a group for a single
+terminal window. The root group has 6 controllers, and the group of user 1000 has
+received 2 of them.
+
+The counters of a group can be read at any time. For the group of user 1000:
+
+```console
+$ cd /sys/fs/cgroup/user.slice/user-1000.slice
+$ cat pids.current pids.max
+1347
+40594
+$ cat memory.current memory.max
+12315291648
+max
+$ grep -E '^(anon|file) ' memory.stat
+anon 5923209216
+file 5730648064
+```
+
+<figure>
+<img src="figures/cgroup-gauges.svg" alt="3 gauges for the group of user 1000. pids.current is 1347 of 40594 tasks allowed. Of the 12315 MB of memory in use, 5923 MB is anonymous memory of programs and 5731 MB is page cache.">
+<figcaption><b>Figure 12.new-cgroup-gauges</b> The counters of the group of user 1000, to scale.</figcaption>
+</figure>
+
+All processes of the user together are 1347 tasks, of 40594 allowed, and use 12.3 GB,
+with no limit. `memory.stat` divides the usage by kind: 5.9 GB is anonymous memory of
+programs, and 5.7 GB is page cache, which is charged to the group whose process first
+read the file ([chapter 8](08-the-page-cache.md)).
+
+## The kernel's structures
+
+A group is a `struct cgroup`. A task does not point to its group directly. It points to
+a `struct css_set`, which holds, for each controller, the state of the group the task
+belongs to. Tasks in the same groups share a `css_set`, so `fork` only has to copy a
+pointer. These are fields from `include/linux/cgroup-defs.h` and
+`include/linux/page_counter.h` of Linux 5.15.
+
+```c
+struct css_set {
+        struct cgroup_subsys_state *subsys[CGROUP_SUBSYS_COUNT]; /* state per controller */
+        struct list_head tasks;                /* the tasks that use this set */
+        struct cgroup *dfl_cgrp;               /* the group, in the unified tree */
+        /* ... */
+};
+
+struct cgroup {
+        struct cgroup_subsys_state self;       /* links to the parent group */
+        int level;                             /* depth in the tree */
+        struct kernfs_node *kn;                /* its directory under /sys/fs/cgroup */
+        u16 subtree_control;                   /* controllers passed to children */
+        struct cgroup_subsys_state *subsys[CGROUP_SUBSYS_COUNT];
+        /* ... */
+};
+
+struct cgroup_subsys_state {
+        struct cgroup *cgroup;                 /* the group this state belongs to */
+        struct cgroup_subsys_state *parent;    /* the same controller, parent group */
+        /* ... */
+};
+
+struct page_counter {
+        atomic_long_t usage;                   /* pages charged: memory.current */
+        unsigned long max;                     /* the limit: memory.max */
+        struct page_counter *parent;           /* the counter of the parent group */
+        /* ... */
+};
+```
+
+| Structure | Meaning |
+|---|---|
+| `struct cgroup` | A group: a directory of the control group file system. |
+| `struct cgroup_subsys_state` | The state of 1 controller in 1 group. Each controller embeds it in a structure of its own, such as the pids counter or the memory counters. Its `parent` pointer is what makes accounting hierarchical. |
+| `struct css_set` | The set of controller states that applies to a task. `task_struct.cgroups` points to it. |
+| `struct page_counter` | The memory controller's counter: a usage, a limit, and a pointer to the counter of the parent group. |
+
+<figure>
+<img src="figures/cgroup-structs.svg" alt="The structures of control groups. struct task_struct has cgroups, a pointer to a struct css_set. The css_set has, for each controller, the state of the group the task is in, and the list of tasks that share the set. A struct cgroup is a directory, with its node in cgroupfs, its level, subtree_control and its state for each controller. For each controller and group there is a state: for pids a counter, a limit and events; for memory a struct page_counter with usage, max and parent.">
+<figcaption><b>Figure 12.2</b> From a task to the counters that limit it.</figcaption>
+</figure>
+
+## Measuring limits
+
+`cgfacts` needs only the standard libraries. It reads and writes files and starts shell
+commands.
+
+```console
+$ cargo new cgfacts
+```
+
+A `group` is a path. `set` and `get` write and read a control file, and `event` reads a
+counter from a file such as `pids.events`.
+
+@pair cgfacts files :: Reading and writing control files
+
+`create` finds a place for a new group. It walks up from the group of the program to
+the nearest group whose `cgroup.subtree_control` contains `memory` and `pids`, and makes
+a directory there. An ordinary user can do this because the system's service manager
+has given the user ownership of that part of the tree.
+
+`command` builds a shell command that first writes its own pid to the `cgroup.procs` of
+the new group. `remove` deletes the group. A group can be removed only when it is
+empty, so `remove` first writes to `cgroup.kill`, which ends every process in the group.
+
+@pair cgfacts create :: Creating a group, entering it, and removing it
+
+`count` starts a process in the group and reads `pids.current`.
+
+@pair cgfacts count :: The kernel counts the processes of a group
+
+`limitPids` sets `pids.max` to 4. The shell, which is in the group, then tries to start
+6 background commands and prints a line for each success.
+
+@pair cgfacts pids :: A limit on the number of processes
+
+`limitMemory` sets `memory.max` to 32 MiB and `memory.swap.max` to 0, so that the group
+cannot move its memory to swap space. It then runs `tail /dev/zero`. `tail` keeps the
+last lines of its input in memory, and `/dev/zero` supplies bytes without a line end, so
+the memory of the process grows without bound.
+
+@pair cgfacts memory :: A limit on memory
+
+```text
+{{#include ../code/output/cgfacts.txt}}
+```
+
+| Output | Conclusion |
+|---|---|
+| `pids.current` 1 | The shell moved itself into the group by writing to `cgroup.procs`, and the kernel counts it. |
+| started 3, forks refused 1 | The shell and 3 commands are 4 processes. The next `fork` fails with `EAGAIN`, and the shell gives up at that point. |
+| killed by signal 9, `oom_kill` 1 | When the group could not stay within `memory.max`, the kernel ended the process with `SIGKILL`. |
+
+The 2 controllers react differently because the resources differ. A fork can be refused
+with an error, and the program can handle it. An ordinary memory access has no way to
+return an error. When a group reaches its memory limit, the kernel first tries to free
+memory inside the group by discarding clean page cache pages and writing out dirty ones.
+When that is not enough, the *OOM killer* selects a process in the group and ends it.
+
+@crab angry :: At `memory.max` the kernel ends a process of the group with `SIGKILL`. Check `memory.events` when a process disappears without a message.
+
+## Hierarchical accounting
+
+The counters of a group include all of its descendants. A process in a child group is
+counted in the child, in the parent, and in every group up to the root, and a limit at
+any of those levels can stop it.
+
+<figure>
+<img src="figures/cgroup-tree.svg" alt="The group team has pids.max 4 and memory.max 100. Its children job-a and job-b have no limits of their own. job-a holds 3 processes and 60 units of memory, job-b holds 1 process and no memory, and team counts both: 4 processes and 60 units.">
+<figcaption><b>Figure 12.3</b> The limits of a parent group cover its children together.</figcaption>
+</figure>
+
+The kernel enforces a limit at the moment a resource is requested, by walking up the
+tree. For the `pids` controller the moment is `fork`.
+
+<figure>
+<img src="figures/cgroup-fork-check.svg" alt="The check the kernel makes on fork for a process in the group job-b. job-b has no limit, so it is charged and its count becomes 2. Its parent team is at 4 of 4, so the charge is refused. The kernel undoes the charge in job-b, fork fails with EAGAIN, and the max counter in pids.events of team is increased.">
+<figcaption><b>Figure 12.4</b> The check on <code>fork</code>, from the group of the process toward the root.</figcaption>
+</figure>
+
+For the `memory` controller the moment is the allocation of a frame, usually inside a
+page fault ([chapter 7](07-virtual-memory.md)). A page fault cannot return an error to
+the program, so the kernel has to make room or end a process.
+
+<figure>
+<img src="figures/memory-charge.svg" alt="What happens when a process in a limited group needs memory. The process touches a new page and the page fault needs a frame. The kernel charges the frame to the group and every group above. If a group would exceed memory.max, the kernel reclaims memory inside that group by dropping clean cache pages, writing dirty pages and swapping. If enough was freed, the charge succeeds and the fault returns. If too little was freed, the OOM killer ends a process of the group.">
+<figcaption><b>Figure 12.5</b> The charge of a frame against a memory limit.</figcaption>
+</figure>
+
+The events are counted hierarchically as well. `memory.events` of the group of user 1000
+on this machine shows `oom_kill 16`, and those 16 kills include every run of `cgfacts`
+made while this chapter was written, 4 levels further down the tree.
+
+This is what makes delegation safe. An administrator sets a limit on a group and hands
+the subtree below it to a user or to a container. The owner of the subtree can create
+groups and distribute the resource among them, and cannot exceed the limit set above.
+
+<div class="lld">
+
+Low-level design: `cgmodel`
+
+| Type | Fields | Meaning |
+|---|---|---|
+| `group` | `parent`, `pidsMax`, `memoryMax` | a node of the tree and its limits |
+| | `pids`, `memory` | usage of the group and all its descendants |
+| | `refused`, `oomKills` | the counters of `pids.events` and `memory.events` |
+| `process` | `home`, `memory` | the group of the process and the memory it holds |
+
+| Operation | Behaviour |
+|---|---|
+| `spawn(name)` | fails with `EAGAIN` when the group or any ancestor is at `pidsMax`; otherwise counts the process at every level |
+| `allocate(amount)` | charges every level; while a level exceeds `memoryMax`, kills the largest process in that level's subtree |
+| `kill()` | removes a process and returns its memory and its place in the count |
+
+</div>
+
+## Modelling the hierarchy
+
+@pair cgmodel types :: Groups and processes
+
+`spawn` checks every level before it changes any counter. The refusal is recorded in
+the group whose limit was reached, which is where the kernel increments `pids.events`.
+
+@pair cgmodel pids :: Starting a process under a hierarchy of limits
+
+`allocate` charges first and then enforces. For each level that is over its limit, it
+selects the process with the most memory in the subtree of that level. The victim is
+chosen from the whole subtree, so it can be a process in a different child group from
+the one that made the allocation.
+
+@pair cgmodel memory :: Charging memory, and ending the largest process
+
+@pair cgmodel trace :: The trace
+
+```text
+{{#include ../code/output/cgmodel.txt}}
+```
+
+| Line | What it shows |
+|---|---|
+| `job-a 3, job-b 1, team 4` | Each process is counted in its own group and in `team`. |
+| `EAGAIN` | `job-b` has no limit. The fork is refused by the limit of `team`. |
+| `a1 allocates 60` | The memory is charged to `job-a` and to `team`. |
+| `killed [a1]` | The allocation by `b1` puts `team` over its limit, and the largest process below `team` is `a1`, in the other child group. |
+| the last line | After the kill, `team` is within its limit and has 3 processes. |
+
+<div class="callout">
+
+**Correspondence with the kernel source.** `pids_can_fork` in `kernel/cgroup/pids.c`
+walks from the group to the root and charges each level, undoing the charges when a
+level is at its limit, as `spawn` does. Memory is charged in `try_charge_memcg` in
+`mm/memcontrol.c`, which climbs the hierarchy of `struct page_counter`, starts reclaim
+at the level that is over its limit, and calls `mem_cgroup_out_of_memory` when reclaim
+fails. The victim is chosen by `oom_badness`, which scores a process mainly by its
+memory use. The model omits reclaim.
+
+</div>
+
+## The other controllers
+
+The session of an ordinary user on this machine has only `memory` and `pids`. A
+container runtime that runs with privilege, or a service manager, also uses these.
+
+| Controller | Main file | Effect |
+|---|---|---|
+| `cpu` | `cpu.max`, for example `50000 100000` | The group may use 50 ms of CPU time in every period of 100 ms. A group that has used its quota is not scheduled until the next period. |
+| `cpu` | `cpu.weight` | A weight for the fair scheduler, applied to the group as a whole ([chapter 6](06-cpu-scheduling.md)). |
+| `cpuset` | `cpuset.cpus` | The CPUs the tasks of the group may run on. |
+| `io` | `io.max` | Limits on bytes and operations per second for a block device. |
+| `memory` | `memory.high` | A softer limit: above it, the group is slowed down and reclaimed, without the OOM killer. |
+
+`cpu.max` and `memory.max` are what the options `--cpus` and `--memory` of a container
+runtime set, and the resource limits of a Kubernetes pod are written to these files.
+
+This chapter describes *cgroup v2*, in which all controllers share a single tree. The
+older cgroup v1 gave each controller a tree of its own, mounted separately, and it is
+still found on older systems. `stat -fc %T /sys/fs/cgroup` prints `cgroup2fs` on a
+system that uses v2.
+
+## Inspecting control groups on a live system
+
+| Command | Shows |
+|---|---|
+| `cat /proc/<pid>/cgroup` | the group of a process |
+| `cat <group>/cgroup.procs` | the processes of a group |
+| `cat <group>/memory.current`, `pids.current` | the usage of a group and its descendants |
+| `cat <group>/memory.stat` | the memory of a group by kind |
+| `cat <group>/memory.events`, `pids.events` | how often a limit was hit, and how many processes were killed |
+| `systemd-cgls` | the whole tree, with the processes in each group |
+| `systemd-cgtop` | the groups ordered by their use of CPU and memory |
+
+A process that disappears without an error message has often been ended by the OOM
+killer of its group. `memory.events` of the group, and the kernel log shown by `dmesg`,
+record it.
+
+## The complete programs
+
+@full cgfacts
+
+@full cgmodel
+
+<div class="summary">
+
+## Summary
+
+- A control group is a set of processes with shared accounting and limits. Groups are
+  directories under `/sys/fs/cgroup`, and their settings are files.
+- Writing a pid to `cgroup.procs` moves a process into a group. Its children start in
+  the same group.
+- A group has the files of a controller only if its parent passes that controller on in
+  `cgroup.subtree_control`.
+- At `pids.max`, a `fork` in the group fails with `EAGAIN`.
+- At `memory.max`, the kernel reclaims memory from the group, and when that fails it
+  ends a process in the group with `SIGKILL`.
+- The counters and limits of a group cover its whole subtree.
+
+</div>
+
+## References
+
+- `cgroups(7)`, Linux manual page:
+  <https://man7.org/linux/man-pages/man7/cgroups.7.html>
+- *Control Group v2*, Linux kernel documentation:
+  <https://www.kernel.org/doc/html/v5.15/admin-guide/cgroup-v2.html>
+- `kernel/cgroup/pids.c` and `mm/memcontrol.c`, Linux 5.15:
+  <https://elixir.bootlin.com/linux/v5.15/source/kernel/cgroup/pids.c>

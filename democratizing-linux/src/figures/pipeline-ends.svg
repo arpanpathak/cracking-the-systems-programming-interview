@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 744" width="480" height="744" role="img" aria-label="A pipeline of 3 commands and 3 pipes, top to bottom. The standard output of seq 1 100000 is the write end of pipe 1, and the standard input of grep 7 is its read end; 588895 bytes pass through. grep writes to pipe 2, which wc -l reads; 241976 bytes pass through. wc writes 6 bytes to pipe 3, which the pipeline program reads: 40951.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="744" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A pipeline of commands</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Each command&#x27;s output is the next command&#x27;s input.</text>
+  <rect x="32" y="96" width="250" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,96.7 H38 V151.3 H44 A11.3,11.3 0 0 1 32.7,140 V108 A11.3,11.3 0 0 1 44,96.7 Z" fill="#2F6FDB"/>
+  <rect x="48" y="108.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(54.0,114.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="90.0" y="120.0" class="name" text-anchor="start" xml:space="preserve">seq 1 100000</text>
+  <text x="90.0" y="138.0" class="sub" text-anchor="start" xml:space="preserve">writes 100000 lines</text>
+  <path class="wire" d="M157,152 L157,196" marker-end="url(#head)"/>
+  <rect x="130.2" y="165.0" width="53.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="157.0" y="177.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">stdout</text>
+  <rect x="82.0" y="196.0" width="150.0" height="30.0" rx="15" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="157.0" y="215.5" class="mono strong" text-anchor="middle" xml:space="preserve">pipe 1</text>
+  <path class="wire" d="M157,226 L157,270" marker-end="url(#head)"/>
+  <rect x="133.5" y="239.0" width="47.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="157.0" y="251.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">stdin</text>
+  <text x="300.0" y="207.0" class="note" text-anchor="start" xml:space="preserve">588895 bytes pass</text>
+  <text x="300.0" y="224.0" class="note" text-anchor="start" xml:space="preserve">through pipe 1</text>
+  <rect x="32" y="270" width="250" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,270.7 H38 V325.3 H44 A11.3,11.3 0 0 1 32.7,314 V282 A11.3,11.3 0 0 1 44,270.7 Z" fill="#2F6FDB"/>
+  <rect x="48" y="282.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(54.0,288.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="90.0" y="294.0" class="name" text-anchor="start" xml:space="preserve">grep 7</text>
+  <text x="90.0" y="312.0" class="sub" text-anchor="start" xml:space="preserve">keeps lines with a 7</text>
+  <path class="wire" d="M157,326 L157,370" marker-end="url(#head)"/>
+  <rect x="130.2" y="339.0" width="53.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="157.0" y="351.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">stdout</text>
+  <rect x="82.0" y="370.0" width="150.0" height="30.0" rx="15" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="157.0" y="389.5" class="mono strong" text-anchor="middle" xml:space="preserve">pipe 2</text>
+  <path class="wire" d="M157,400 L157,444" marker-end="url(#head)"/>
+  <rect x="133.5" y="413.0" width="47.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="157.0" y="425.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">stdin</text>
+  <text x="300.0" y="381.0" class="note" text-anchor="start" xml:space="preserve">241976 bytes pass</text>
+  <text x="300.0" y="398.0" class="note" text-anchor="start" xml:space="preserve">through pipe 2</text>
+  <rect x="32" y="444" width="250" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,444.7 H38 V499.3 H44 A11.3,11.3 0 0 1 32.7,488 V456 A11.3,11.3 0 0 1 44,444.7 Z" fill="#2F6FDB"/>
+  <rect x="48" y="456.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(54.0,462.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="90.0" y="468.0" class="name" text-anchor="start" xml:space="preserve">wc -l</text>
+  <text x="90.0" y="486.0" class="sub" text-anchor="start" xml:space="preserve">counts the lines</text>
+  <path class="wire" d="M157,500 L157,544" marker-end="url(#head)"/>
+  <rect x="130.2" y="513.0" width="53.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="157.0" y="525.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">stdout</text>
+  <rect x="82.0" y="544.0" width="150.0" height="30.0" rx="15" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="157.0" y="563.5" class="mono strong" text-anchor="middle" xml:space="preserve">pipe 3</text>
+  <path class="wire" d="M157,574 L157,618" marker-end="url(#head)"/>
+  <rect x="123.6" y="587.0" width="66.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="157.0" y="599.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">read end</text>
+  <text x="300.0" y="555.0" class="note" text-anchor="start" xml:space="preserve">6 bytes pass</text>
+  <text x="300.0" y="572.0" class="note" text-anchor="start" xml:space="preserve">through pipe 3</text>
+  <rect x="32" y="618" width="250" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,618.7 H38 V673.3 H44 A11.3,11.3 0 0 1 32.7,662 V630 A11.3,11.3 0 0 1 44,618.7 Z" fill="#1F8A70"/>
+  <rect x="48" y="630.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(54.0,636.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="90.0" y="642.0" class="name" text-anchor="start" xml:space="preserve">pipeline</text>
+  <text x="90.0" y="660.0" class="sub" text-anchor="start" xml:space="preserve">reads the count: 40951</text>
+  <text x="32.0" y="702.0" class="note" text-anchor="start" xml:space="preserve">pipeline creates each pipe and starts the command that writes</text>
+  <text x="32.0" y="719.0" class="note" text-anchor="start" xml:space="preserve">to it. Then it closes its own copies of the ends it gave away.</text>
+</svg>

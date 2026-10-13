@@ -1,0 +1,9 @@
+child in new user, UTS and PID namespaces: false
+  same UTS namespace as the parent true, same PID namespace true
+  sethostname fails with EPERM; host name inside is "box" false, outside unchanged true
+  pid inside is 1 false; uid inside is 0 false
+child in new user, UTS and PID namespaces: true
+  same UTS namespace as the parent false, same PID namespace false
+  sethostname succeeds; host name inside is "box" true, outside unchanged true
+  pid inside is 1 true; uid inside is 0 true
+  uid map: user 0 inside is user 1000 outside

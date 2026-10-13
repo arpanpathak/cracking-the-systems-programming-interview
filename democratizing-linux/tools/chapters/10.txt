@@ -1,0 +1,400 @@
+# TCP Sockets
+
+A socket is the endpoint of a network connection, held by a process as a file
+descriptor. Behind the descriptor the kernel keeps the state of the connection: who the
+peer is, a buffer of data waiting to be sent, and a buffer of data received and not yet
+read. `read` and `write` work on a connected socket as they do on a pipe, and the same
+descriptor can be registered with epoll.
+
+In this chapter, we will learn what the kernel does for a TCP connection between the
+calls a program makes. We will first measure a connection on the loopback interface with
+`sockfacts`. Then we will write `sockmodel`, a model of the receiving side: the table
+that finds the socket for an arriving packet, the accept queue of a listener, and the
+receive buffer that limits the sender.
+
+<div class="covers">
+
+This chapter covers
+
+- the layers between a `write` and the network
+- the segments of a connection: the handshake, sequence numbers, and acknowledgements
+- the calls that set up a connection: `listen`, `connect` and `accept`
+- the kernel structures: `struct sock` and `struct tcp_sock`
+- what identifies a connection, and how many connections share a port
+- the accept queue and its backlog
+- TCP as a stream of bytes without message boundaries
+- the send buffer, the receive buffer, and the window that stops a fast sender
+- how the end of a stream and a closed peer are reported
+- how to inspect the connections of a running system with `ss`
+
+</div>
+
+## From write to the network
+
+A network carries *packets*: blocks of at most about 1500 bytes on Ethernet, each
+delivered independently, and each of which may be lost, duplicated or delivered out of
+order. A program wants something else: a stream of bytes that arrives complete and in
+order. The kernel's network stack builds the second from the first, in layers.
+
+<figure>
+<img src="figures/net-layers.svg" alt="The layers a write passes through. The program calls write. The socket copies the data into the send buffer. TCP cuts it into segments and adds sequence numbers and the window. IP adds the addresses and chooses a route. A network device, Ethernet, Wi-Fi or loopback, carries the packet. The peer's kernel passes it through the same layers upward.">
+<figcaption><b>Figure 10.1</b> The layers between a <code>write</code> and the network.</figcaption>
+</figure>
+
+| Layer | Adds | Responsible for |
+|---|---|---|
+| Socket | nothing | the descriptor, the buffers, and blocking |
+| TCP | a header with 2 *ports*, a sequence number, an acknowledgement number and a window | reliability, order, and flow control between 2 programs |
+| IP | a header with 2 *IP addresses* | delivering a packet to the right machine |
+| Device | a frame for the medium | moving the packet to the next machine |
+
+An IP address names a machine, and a *port* is a 16-bit number that names a program on
+it. The *loopback* device, with the address 127.0.0.1, delivers packets to the same
+machine without any hardware, and the programs of this chapter use it.
+
+### The segments of a connection
+
+TCP makes an unreliable network reliable by numbering. Every byte of a stream has a
+*sequence number*. Each packet of TCP, called a *segment*, says which bytes it carries.
+The receiver answers with an *acknowledgement*: the number of the next byte it expects,
+which confirms everything before it. The sender keeps each byte until it is
+acknowledged, and sends it again if no acknowledgement arrives in time. Out-of-order
+segments are put in order by their numbers, and duplicates are recognised and dropped.
+
+An example with small numbers shows the whole mechanism. The client sends `hello`, 5
+bytes, and its stream is currently at byte 1001.
+
+<figure>
+<img src="figures/seq-worked.svg" alt="The 5 bytes of hello numbered 1001 to 1005 in the client&#x27;s stream. They travel in 1 segment with sequence number 1001. The server now has bytes 1001 to 1005 and expects 1006 next, and it sends an acknowledgement with ack 1006. The client reads it as: everything before 1006 arrived, and discards its copy. If the segment is lost, no such acknowledgement arrives, and the client sends the bytes again after a timeout.">
+<figcaption><b>Figure 10.new-seq-worked</b> 5 bytes sent, acknowledged, and the rule for sending them again.</figcaption>
+</figure>
+
+The acknowledgement is a single number, and it confirms a whole range. This keeps the
+protocol simple: the receiver always says "the next byte I need is this one", and
+whatever went wrong, the sender knows where to continue.
+
+Before any data, the 2 sides have to agree on their starting sequence numbers. This is
+the *handshake*, 3 segments marked with the flags `SYN` and `ACK`.
+
+<figure>
+<img src="figures/tcp-exchange.svg" alt="The segments of a short TCP connection between a client and the server's kernel. The client sends SYN with sequence number 1000. The server answers SYN and ACK with its own sequence number 5000 and acknowledgement 1001. The client sends ACK with acknowledgement 5001, and the connection is established. The client sends 5 bytes at sequence 1001, and the server acknowledges 1006 with a window of 65531. The client sends FIN at sequence 1006, and the server acknowledges 1007.">
+<figcaption><b>Figure 10.2</b> A connection: the handshake, 5 bytes, and the close of the client's direction.</figcaption>
+</figure>
+
+1. `SYN`: the client proposes its starting number, 1000.
+2. `SYN` and `ACK`: the server acknowledges it with 1001 and proposes its own, 5000.
+3. `ACK`: the client acknowledges 5001. Both sides now know both numbers, and the
+   connection is *established*.
+4. The client sends 5 bytes, numbered 1001 to 1005.
+5. The server acknowledges 1006 and reports its *window*, the space left in its receive
+   buffer.
+6. `FIN`: the client has nothing more to send. This closes its direction of the stream.
+7. The server acknowledges. Its program's next `read` returns 0. The server can still
+   send, until it sends a `FIN` of its own.
+
+All of this is done by the kernels. The programs call `connect`, `write`, `read` and
+`close`, and do not see a segment.
+
+## Setting up a connection
+
+TCP gives 2 programs a reliable stream of bytes in each direction. A server and a
+client reach that state through different calls.
+
+| Call | Made by | Effect |
+|---|---|---|
+| `socket` | both | creates an unconnected socket and returns a descriptor |
+| `bind` | server | gives the socket a local address and port |
+| `listen` | server | marks the socket as a *listener* and sets the length of its accept queue |
+| `connect` | client | exchanges 3 packets with the server's kernel, the *handshake*, and returns when the connection is established |
+| `accept` | server | returns a new descriptor for an established connection |
+
+The handshake is carried out by the server's kernel. The server program takes no part in
+it. An established connection waits in the *accept queue* of the listener until the
+program calls `accept`.
+
+A connection is identified by 4 values: the local address, the local port, the remote
+address and the remote port. A listener and all the connections accepted from it have
+the same local port. An arriving packet, called a *segment* in TCP, is matched against
+the 4 values of the existing connections. A segment that matches none and asks to open a
+connection, a `SYN`, is given to the listener on its port.
+
+<figure>
+<img src="figures/socket-demux.svg" alt="A segment arrives from 10.0.0.2 port 5000 for local port 80. The kernel looks it up in the table of connections, which is keyed by remote endpoint and local port. The entry for 10.0.0.1 port 5000 is a different connection on port 80. The entry for 10.0.0.2 port 5000 matches, and the data goes to that socket. A SYN that matches no connection goes to the listener on port 80, whose accept queue has a backlog of 2 and is full, so a further SYN is dropped.">
+<figcaption><b>Figure 10.3</b> The kernel finds the socket for a segment by the addresses and ports of the connection.</figcaption>
+</figure>
+
+## The kernel's structures
+
+Behind a socket descriptor is a `struct file` ([chapter 2](02-file-descriptors.md))
+whose function table is the socket's, and behind that a `struct sock`. For TCP the
+`struct sock` is the first part of a larger `struct tcp_sock`. These are fields from
+`include/net/sock.h` and `include/linux/tcp.h` of Linux 5.15.
+
+```c
+struct sock_common {
+        __be32 skc_daddr;                      /* remote IP address */
+        __be32 skc_rcv_saddr;                  /* local IP address */
+        __be16 skc_dport;                      /* remote port */
+        __u16 skc_num;                         /* local port */
+        volatile unsigned char skc_state;      /* TCP_LISTEN, TCP_ESTABLISHED, ... */
+        /* ... */
+};
+
+struct sock {
+        struct sock_common __sk_common;
+        struct sk_buff_head sk_receive_queue;  /* segments received, not yet read */
+        int sk_rcvbuf;                         /* limit of the receive queue, bytes */
+        struct sk_buff_head sk_write_queue;    /* data written, not yet acknowledged */
+        int sk_sndbuf;                         /* limit of the write queue, bytes */
+        u32 sk_ack_backlog;                    /* connections waiting for accept */
+        u32 sk_max_ack_backlog;                /* the backlog given to listen */
+        /* ... */
+};
+
+struct tcp_sock {
+        u32 rcv_nxt;                           /* next byte we expect to receive */
+        u32 snd_nxt;                           /* next byte we will send */
+        u32 snd_una;                           /* oldest byte sent and not acknowledged */
+        u32 snd_wnd;                           /* the window the peer offered */
+        u32 snd_cwnd;                          /* congestion window */
+        /* ... */
+};
+```
+
+| Field | Meaning |
+|---|---|
+| `skc_daddr`, `skc_dport`, `skc_rcv_saddr`, `skc_num` | The 4 values that identify the connection. |
+| `skc_state` | The state of the connection, shown by `ss` as `LISTEN`, `ESTAB` and others. |
+| `sk_receive_queue`, `sk_rcvbuf` | The receive buffer and its limit. `read` takes from this queue. |
+| `sk_write_queue`, `sk_sndbuf` | The send buffer and its limit. `write` adds to this queue and blocks when the limit is reached. |
+| `snd_una`, `snd_nxt` | The bytes between them have been sent and are waiting for an acknowledgement. |
+| `rcv_nxt` | The acknowledgement number this side sends. |
+| `snd_wnd` | The peer's window: this side sends no byte beyond `snd_una + snd_wnd`. |
+| `snd_cwnd` | A second limit that TCP computes itself, to avoid overloading the network between the machines. |
+
+<figure>
+<img src="figures/sock-structs.svg" alt="The structures of a TCP socket. A struct file leads to a struct sock, which has the remote address and port, the local address and port, the state, the receive queue with its limit sk_rcvbuf, and the write queue with its limit sk_sndbuf. A struct tcp_sock extends it with snd_una, snd_nxt, rcv_nxt, snd_wnd and snd_cwnd.">
+<figcaption><b>Figure 10.4</b> A socket descriptor, the socket, and its TCP state.</figcaption>
+</figure>
+
+The `ss` command prints these fields for the sockets of a system. Here a server listens
+on port 9099 and a client has connected to it over loopback:
+
+```console
+$ ss -tln 'sport = :9099'
+State  Recv-Q Send-Q Local Address:Port Peer Address:Port
+LISTEN 0      1          127.0.0.1:9099      0.0.0.0:*
+$ ss -tn 'sport = :9099 or dport = :9099'
+State Recv-Q Send-Q Local Address:Port  Peer Address:Port
+ESTAB 0      0          127.0.0.1:9099     127.0.0.1:51252
+ESTAB 0      0          127.0.0.1:51252    127.0.0.1:9099
+```
+
+<figure>
+<img src="figures/ss-annotated.svg" alt="3 lines of ss explained. The LISTEN line is a listener on port 9099 with no peer yet, 0 connections waiting for accept and a backlog of 1. The first ESTAB line is the server&#x27;s end of a connection, with 0 bytes received and unread and 0 bytes unsent. The second ESTAB line is the client&#x27;s end of the same connection, with the same 4 values, local and peer exchanged.">
+<figcaption><b>Figure 10.new-ss-annotated</b> The 3 lines of the listing, column by column.</figcaption>
+</figure>
+
+The first command shows the listener. For a listener, `Send-Q` is the backlog, 1 here,
+and `Recv-Q` is the number of connections waiting for `accept`. The second shows the
+connection 2 times, because both ends are on this machine: the server's socket with
+local port 9099, and the client's with the port 51252 that the kernel chose for it. The
+4 values of one line are the 4 values of the other, exchanged.
+
+## Measuring a connection
+
+`sockfacts` makes its connections over the loopback address 127.0.0.1, with both ends in
+the same process. The Go version calls the socket system calls through
+`golang.org/x/sys/unix`. The Rust version uses `std::net` and the `nix` crate with the
+`socket` feature for socket options.
+
+```console
+$ cargo new sockfacts
+$ cargo add -p sockfacts nix --features socket
+```
+
+`listen` binds to port 0, which asks the kernel for any free port.
+
+@pair sockfacts pair :: A listener and a client on the loopback interface
+
+`establish` calls `connect` before the server has called `accept`. Then it accepts and
+compares the addresses of the ends.
+
+@pair sockfacts establish :: Connecting before accept, and the ports of both ends
+
+`stream` sends `ab` and `cd` with separate calls to `write`, and the server reads 3
+bytes and then 1. After that the client closes its socket. The server reads again, and
+then writes until a write fails.
+
+@pair sockfacts stream :: A stream of bytes, and the end of the stream
+
+`flow` reduces the buffers of a connection, so that the numbers are small, and writes to
+the client socket in non-blocking mode until the kernel refuses a write. The server does
+not read during that time. Then the server reads everything, and the client tries again.
+
+@pair sockfacts flow :: A sender whose peer does not read
+
+```text
+{{#include ../code/output/sockfacts.txt}}
+```
+
+| Output | Conclusion |
+|---|---|
+| `connect` succeeds before `accept` | The kernel completes the handshake. The connection waits in the accept queue. |
+| a new descriptor on the listener's port | `accept` creates a socket for the connection. The listener stays open for further connections. |
+| client's local port is the server's peer port | Both ends hold the same 4 values, each from its own side. |
+| `abc` and `d` | TCP delivers bytes in order and keeps no record of where a `write` ended. |
+| read returns 0 | The end of the peer's stream is reported as on a pipe. |
+| a later write fails with `EPIPE` | The first write after the close is accepted locally. The peer's kernel answers it with a reset, and the following write fails. |
+| stopped after 7168 bytes | Both buffers are full. A blocking `write` would be suspended here. |
+| can write again after the server has read | Space in the receive buffer lets the sender continue. |
+
+Row 4 has a practical consequence. A protocol built on TCP has to mark the
+boundaries of its messages itself, with a length before each message or with a
+delimiter such as a newline, and a reader has to be prepared to receive part of a
+message or several messages in a single `read`.
+
+@crab shocked :: TCP keeps no message boundaries. A `read` can return half a message, or 2 messages at once.
+
+## Buffers and the window
+
+A `write` on a socket copies the data into the socket's *send buffer* and returns. The
+kernel transmits from that buffer and keeps each byte until the peer has acknowledged
+it. On the other side, arriving data is placed in the *receive buffer* until the program
+reads it.
+
+The 2 buffers are connected by the *window*. With every acknowledgement, the receiver
+reports how much free space its receive buffer has, and the sender transmits no more
+than that. When the receiving program stops reading, the receive buffer fills, the
+window becomes 0, the sender's kernel stops transmitting, the send buffer fills, and
+`write` blocks. This is the flow control of a pipe, extended across a network. The 7168
+bytes of the measurement are the contents of both buffers at that point.
+
+<figure>
+<img src="figures/socket-buffers.svg" alt="The sender's write copies into a send buffer. The kernel sends segments from it, up to the window, to the receive buffer of the peer. The receiver's read copies out of the receive buffer. The receiver reports the free space of its receive buffer back to the sender as the window. When the window is 0 the sender stops sending, its send buffer fills, and write blocks.">
+<figcaption><b>Figure 10.5</b> The send buffer, the receive buffer, and the window between them.</figcaption>
+</figure>
+
+<div class="lld">
+
+Low-level design: `sockmodel`
+
+| Type | Fields | Meaning |
+|---|---|---|
+| `endpoint` | `address`, `port` | one side of a connection |
+| `key` | `remote`, `port` | identifies a connection: the remote endpoint and the local port |
+| `socket` | `received`, `capacity`, `finished` | the receive buffer; whether the sender has ended its stream |
+| `listener` | `backlog`, `queue` | the accept queue and its maximum length |
+| `stack` | `listeners`, `connections` | listeners by port; connections by key |
+
+| Operation | Behaviour |
+|---|---|
+| `receive(segment)` | delivers to the matching connection; gives a `SYN` to the listener; otherwise answers with a reset |
+| `deliver(segment)` | appends data up to the window; records a `FIN` |
+| `accept(port)` | removes the oldest connection from the accept queue |
+| `read(n)` | removes bytes from the receive buffer; reports the end of the stream |
+
+</div>
+
+## Modelling the receiving side
+
+The model covers the receiving half of TCP and omits transmission, acknowledgements and
+retransmission.
+
+@pair sockmodel types :: Endpoints, sockets, listeners and segments
+
+`receive` is the lookup of figure 10.3. The table of connections is consulted first,
+which is why data for an established connection reaches its own socket while a listener
+exists on the same port. A `SYN` for a full accept queue is dropped without an answer.
+The client's kernel sends it again after a timeout, which gives the server time to call
+`accept`.
+
+@pair sockmodel receive :: Finding the socket for a segment
+
+`deliver` accepts data up to the window. `window` is the free space of the receive
+buffer, the value a real receiver reports to the sender.
+
+`accept` takes connections in the order they were established. `read` returns the end
+of the stream only when the buffer is empty and the `FIN`, the segment that ends the
+sender's stream, has arrived, so data that was sent before a close is not lost.
+
+@pair sockmodel calls :: Accepting a connection, and reading from it
+
+@pair sockmodel trace :: The trace
+
+```text
+{{#include ../code/output/sockmodel.txt}}
+```
+
+| Line | What it shows |
+|---|---|
+| lines 1 and 2 | Connections are established and queued without a call to `accept`. |
+| `dropped, the accept queue is full` | The backlog of 2 is reached. |
+| `reset, no listener on the port` | A `SYN` for a port without a listener is refused. A client sees this as `ECONNREFUSED`. |
+| `accept on port 80` | The oldest connection is returned. |
+| 5 bytes from `10.0.0.2` and from `10.0.0.1` | Both connections use local port 80, and each segment reaches its own socket. |
+| `accepted 3, window 0` | The receive buffer of 8 bytes is full. A real sender would have sent only 3 bytes, having been told the window. |
+| `reset, no connection` | The `SYN` of `10.0.0.3` was dropped, so no connection exists for its data. |
+| the reads after the `FIN` | The buffered bytes are returned first. The end of the stream follows. |
+
+<div class="callout">
+
+**Correspondence with the kernel source.** `__inet_lookup_established` and
+`__inet_lookup_listener` in `net/ipv4/inet_hashtables.c` are the 2 lookups of `receive`.
+A connected socket is `struct tcp_sock`, with the receive buffer in `sk_receive_queue`
+and its limit in `sk_rcvbuf`. `tcp_select_window` computes the window, and
+`tcp_data_queue` in `net/ipv4/tcp_input.c` queues arriving data. The accept queue is
+`icsk_accept_queue`, limited by the backlog given to `listen` and by
+`/proc/sys/net/core/somaxconn`, which is 4096 on this machine.
+
+</div>
+
+## Inspecting sockets on a live system
+
+| Command | Shows |
+|---|---|
+| `ss -tln` | the listening TCP sockets, with their backlog |
+| `ss -tn` | the established connections, with the bytes waiting in each queue |
+| `ss -tni` | per connection: the congestion window, the round-trip time, and the window |
+| `ss -tnp` | the process that owns each socket |
+| `cat /proc/sys/net/core/somaxconn` | the largest backlog `listen` may set: 4096 here |
+| `cat /proc/sys/net/ipv4/tcp_rmem` | the minimum, initial and maximum size of a receive buffer |
+
+`Recv-Q` on an established connection is data that has arrived and that the program has
+not read. A value that stays high means the program is slow to read, and the sender is
+being held back by the window.
+
+## The complete programs
+
+@full sockfacts
+
+@full sockmodel
+
+<div class="summary">
+
+## Summary
+
+- A socket is a descriptor for the endpoint of a connection. The kernel keeps a send
+  buffer and a receive buffer behind it.
+- The kernel completes the handshake of a connection and queues it on the listener.
+  `accept` returns a new descriptor for a queued connection.
+- A connection is identified by local address, local port, remote address and remote
+  port. Connections accepted from a listener share its port.
+- TCP is a stream of bytes. The boundaries of `write` calls are not preserved.
+- The receiver reports the free space of its receive buffer as the window, and the
+  sender transmits no more than that. A receiver that does not read stops the sender.
+- A closed peer is reported by a `read` that returns 0. Writing to it fails with
+  `EPIPE` after the peer's kernel has answered with a reset.
+
+</div>
+
+## References
+
+- `tcp(7)`, `socket(7)` and `listen(2)`, Linux manual pages:
+  <https://man7.org/linux/man-pages/man7/tcp.7.html>
+- W. R. Stevens, B. Fenner, A. M. Rudoff, *UNIX Network Programming, Volume 1*, 3rd
+  edition, Addison-Wesley, 2003.
+- RFC 9293, *Transmission Control Protocol (TCP)*:
+  <https://www.rfc-editor.org/rfc/rfc9293>
+- `net/ipv4/tcp_input.c` and `net/ipv4/inet_hashtables.c`, Linux 5.15:
+  <https://elixir.bootlin.com/linux/v5.15/source/net/ipv4/tcp_input.c>

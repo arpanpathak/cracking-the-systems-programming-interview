@@ -1,0 +1,5 @@
+3 processes in job-a and 1 in job-b: pids.current job-a 3, job-b 1, team 4
+another process in job-b, team at pids.max 4: EAGAIN, pids.events max of team 1
+a1 allocates 60: memory.current job-a 60, job-b 0, team 60
+b1 allocates 50, team at memory.max 100: killed [a1], oom_kill of team 1
+afterwards: memory.current job-a 0, job-b 50, team 50, pids.current team 3

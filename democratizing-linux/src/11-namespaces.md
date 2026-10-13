@@ -1,0 +1,501 @@
+<img class="plate" src="art/ch11.svg" alt="3 cats sit in 3 cardboard boxes. Every box is marked number 1, and each cat is sure it is the first. An owl on a branch above can see all 3.">
+
+# Namespaces
+
+A namespace is a kernel object that gives a group of processes their own instance of a
+global resource: their own process numbers, their own host name, their own mounted file
+systems, or their own network interfaces. Processes inside a namespace see and change
+the instance of that namespace, and processes outside are unaffected. Namespaces are
+the isolation half of a container. Chapter 12 covers the other half, limits.
+
+In this chapter, we will learn how a process enters a new namespace and what changes
+for it. We will first measure a child in new user, UTS and PID namespaces with
+`nsfacts`. Then we will write `nsmodel`, a model of nested PID namespaces and of the
+UTS namespace.
+
+<div class="covers">
+
+This chapter covers
+
+- the kinds of namespace and what each isolates
+- how to see the namespaces of a process under `/proc`
+- the kernel structures: `struct nsproxy`, `struct pid` and `struct upid`
+- how a process is placed in a new namespace: `clone` flags, `unshare` and `setns`
+- the user namespace: why an unprivileged user can be user 0 inside
+- the PID namespace: a process has a number at every level
+- which processes a PID namespace can see
+- the UTS namespace and the host name
+- what the mount and network namespaces isolate
+
+</div>
+
+## The kinds of namespace
+
+Linux 5.15 has 8 kinds of namespace. Every process is in exactly 1 namespace of each
+kind, and a child starts in the namespaces of its parent. On a system without containers
+all processes share 1 namespace of each kind, and the resources appear global.
+
+<figure>
+<img src="figures/namespace-kinds.svg" alt="The 8 kinds of namespace and what each isolates: pid, process numbers; mnt, mounted file systems; uts, host name; net, interfaces, ports and routes; user, user and group numbers; ipc, shared memory and queues; cgroup, the control group root; time, clock offsets.">
+<figcaption><b>Figure 11.1</b> The kinds of namespace. The name is the entry under <code>/proc/&lt;pid&gt;/ns</code>.</figcaption>
+</figure>
+
+| Kind | Isolates | A process in a new one sees |
+|---|---|---|
+| `pid` | process numbers | only the processes of the namespace, numbered from 1 |
+| `mnt` | the list of mounted file systems | a copy of the parent's mounts, which it can change privately ([chapter 13](13-building-a-container.md)) |
+| `uts` | the host name | a copy of the host name, which it can change |
+| `net` | network interfaces, addresses, routes, ports | a loopback interface that is down, and nothing else |
+| `user` | user and group numbers, and capabilities | its own numbering of users, mapped to the numbers outside |
+| `ipc` | shared memory segments and message queues | none of the objects outside |
+| `cgroup` | the root of the control group tree | its own group as the root ([chapter 12](12-control-groups.md)) |
+| `time` | the offsets of the monotonic and boot clocks | clocks that can be shifted |
+
+The kernel shows the namespaces of a process as symbolic links:
+
+```console
+$ ls -l /proc/self/ns
+cgroup -> cgroup:[4026531835]
+ipc -> ipc:[4026531839]
+mnt -> mnt:[4026531841]
+net -> net:[4026531840]
+pid -> pid:[4026531836]
+pid_for_children -> pid:[4026531836]
+time -> time:[4026531834]
+user -> user:[4026531837]
+uts -> uts:[4026531838]
+```
+
+The number in brackets identifies the namespace. Processes that show the same number for
+a kind are in the same namespace of that kind. `pid_for_children` is the PID namespace
+that children of the process will be created in, which can differ from the one the
+process itself is in.
+
+## The kernel's structures
+
+A task refers to its namespaces through `struct nsproxy`. This is the complete
+definition from `include/linux/nsproxy.h` of Linux 5.15, with comments added.
+
+```c
+struct nsproxy {
+        atomic_t count;                        /* tasks that share this nsproxy */
+        struct uts_namespace *uts_ns;
+        struct ipc_namespace *ipc_ns;
+        struct mnt_namespace *mnt_ns;
+        struct pid_namespace *pid_ns_for_children;
+        struct net *net_ns;
+        struct time_namespace *time_ns;
+        struct time_namespace *time_ns_for_children;
+        struct cgroup_namespace *cgroup_ns;
+};
+```
+
+The structure is a set of pointers, 1 for each kind. Processes that are in the same
+namespaces share a single `nsproxy`. The user namespace is absent from the list: it is
+reached through the credentials of the task, `task->cred->user_ns`, because it decides
+what the task is permitted to do.
+
+The PID namespace of a task is recorded in a different place, together with its
+numbers. These are the definitions from `include/linux/pid.h` and
+`include/linux/pid_namespace.h`.
+
+```c
+struct upid {
+        int nr;                                /* the number in 1 namespace */
+        struct pid_namespace *ns;              /* that namespace */
+};
+
+struct pid {
+        unsigned int level;                    /* depth of the task's PID namespace */
+        struct upid numbers[1];                /* 1 entry per level, 0 to level */
+        /* ... */
+};
+
+struct pid_namespace {
+        struct task_struct *child_reaper;      /* its process 1, which adopts orphans */
+        unsigned int level;                    /* 0 for the root namespace */
+        struct pid_namespace *parent;          /* the enclosing namespace */
+        struct user_namespace *user_ns;        /* the user namespace that owns it */
+        /* ... */
+};
+```
+
+| Field | Meaning |
+|---|---|
+| `struct pid` | What `task_struct.thread_pid` points to: the identity of a task in every PID namespace that can see it. |
+| `numbers` | An array with `level + 1` entries. `numbers[0]` is the number in the root namespace, and `numbers[level]` is the number in the task's own namespace. |
+| `child_reaper` | The first process of the namespace. Orphans of the namespace are given to it ([chapter 3](03-processes.md)). |
+| `parent`, `level` | PID namespaces form a tree, and `level` is the depth in it. |
+| `user_ns` | Every namespace is owned by a user namespace. A process needs privilege in the owner to change the namespace. |
+
+<figure>
+<img src="figures/nsproxy-map.svg" alt="How a task refers to its namespaces. struct task_struct has nsproxy, a pointer to its user namespace through cred, and thread_pid. struct nsproxy has a pointer for each of the UTS, IPC, mount, network, cgroup and time namespaces, and pid_ns_for_children. struct pid has the level of its PID namespace and an array numbers with a struct upid for each level, holding the number at that level and the namespace.">
+<figcaption><b>Figure 11.2</b> A task, its <code>nsproxy</code>, and its numbers in each PID namespace.</figcaption>
+</figure>
+
+## Entering a namespace
+
+A process gets into a namespace in 3 ways.
+
+| Call | Effect |
+|---|---|
+| `clone` with flags such as `CLONE_NEWUTS` | creates a child that starts in new namespaces of the given kinds |
+| `unshare` with the same flags | moves the calling process into new namespaces |
+| `setns` with a descriptor for `/proc/<pid>/ns/<kind>` | moves the calling process into an existing namespace; this is how `docker exec` enters a running container |
+
+<figure>
+<img src="figures/ns-create.svg" alt="What clone does with namespace flags. The parent calls clone with CLONE_NEWUTS and CLONE_NEWPID. The kernel checks that the caller has CAP_SYS_ADMIN in its user namespace. It creates new namespace objects; the UTS one starts as a copy of the parent's. It builds a new struct nsproxy with new pointers for those 2 kinds and the old pointers for the rest. The child starts as pid 1 in the new PID namespace. The parent keeps its own nsproxy.">
+<figcaption><b>Figure 11.3</b> <code>clone</code> with namespace flags gives the child a new <code>nsproxy</code>.</figcaption>
+</figure>
+
+A namespace exists for as long as something refers to it: a process that is in it, or an
+open descriptor for its `/proc` link. When the last process leaves, the namespace is
+destroyed.
+
+### User namespaces
+
+Creating a namespace requires a *capability*. Linux divides the power of the
+administrator into separate capabilities, and the one needed here is `CAP_SYS_ADMIN`.
+There is a single exception: any user may create a *user namespace*. Inside it, the kernel maps user numbers. The creator can map user 0
+inside to its own user number outside, and it then holds all privileges over the
+resources that the user namespace owns, which include the other namespaces created
+together with it. Toward everything outside, it remains the unprivileged user it was.
+This is what lets an ordinary user start a container.
+
+The mapping is written to `/proc/<pid>/uid_map`, a line of 3 numbers: the first user
+number inside, the first user number outside, and the count of numbers mapped. In the
+root namespace every number maps to itself:
+
+```console
+$ cat /proc/self/uid_map
+         0          0 4294967295
+```
+
+In the namespace that `nsfacts` creates below, the line is `0 1000 1`: user 0 inside is
+user 1000 outside, and no other number is mapped.
+
+<figure>
+<img src="figures/uid-map.svg" alt="A user namespace with the mapping 0 1000 1. Inside the namespace the process is user 0, root, with all capabilities, and other users are unmapped and shown as 65534. User 0 inside maps to user 1000 outside, an ordinary user on the host.">
+<figcaption><b>Figure 11.4</b> The user mapping of an unprivileged container.</figcaption>
+</figure>
+
+The capabilities a process holds inside a user namespace are checked against the owner
+of the object it acts on. It may set the host name of a UTS namespace that its user
+namespace owns. It may not set the clock of the machine, mount a disk, or read a file
+that user 1000 cannot read, because those belong to the root user namespace.
+
+<div class="crab crab-cute">
+
+User 0 inside a user namespace is an ordinary user outside it. The privilege ends at the edge of the namespace.
+
+</div>
+
+## Measuring namespaces
+
+`nsfacts` uses `golang.org/x/sys/unix` in Go and the `nix` crate with the `hostname`,
+`sched` and `user` features in Rust.
+
+```console
+$ cargo new nsfacts
+$ cargo add -p nsfacts nix --features hostname,sched,user
+```
+
+The kernel shows the namespaces of a process as symbolic links under `/proc/<pid>/ns`.
+The target of a link, such as `uts:[4026531838]`, names the namespace, and processes
+with equal targets are in the same namespace.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.1</b> The imports of <code>nsfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/nsfacts/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.2</b> The imports of <code>nsfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsfacts/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.3</b> Reading the namespaces of a process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/nsfacts/main.go:identity}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.4</b> Reading the namespaces of a process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsfacts/src/main.rs:identity}}
+```
+
+
+The program runs itself again as a child with the argument `inside`. The child tries to
+set the host name to `box` and prints what it sees.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.5</b> What the child reports, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/nsfacts/main.go:inside}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.6</b> What the child reports, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsfacts/src/main.rs:inside}}
+```
+
+
+The child is started once in the parent's namespaces and once in new user, UTS and PID
+namespaces. The languages create the namespaces differently. Go's `SysProcAttr` passes
+the `clone` flags and the user mappings to the call that creates the child. `unshare` of
+a user namespace is refused in a process with several threads, which a Go program always
+is. The Rust program is single-threaded, so its helper process calls `unshare`, writes
+the mappings to `/proc/self/uid_map` and `/proc/self/gid_map`, and then starts the
+child.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.7</b> Starting the child in new namespaces, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/nsfacts/main.go:start}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.8</b> Starting the child in new namespaces, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsfacts/src/main.rs:start}}
+```
+
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.9</b> Comparing the child with the parent, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/nsfacts/main.go:compare}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.10</b> Comparing the child with the parent, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsfacts/src/main.rs:compare}}
+```
+
+
+```text
+{{#include ../code/output/nsfacts.txt}}
+```
+
+| Output | Conclusion |
+|---|---|
+| ordinary child: same namespaces | A child inherits the namespaces of its parent. |
+| ordinary child: `sethostname` fails with `EPERM` | Changing the host name requires privilege, and the user has none. |
+| new namespaces: different UTS and PID namespace | The flags gave the child its own instances. |
+| `sethostname` succeeds, and the host name outside is unchanged | The child is privileged over its own UTS namespace, and the change stays inside it. |
+| pid inside is 1 | The first process of a PID namespace has number 1 there. |
+| uid inside is 0, mapped to 1000 outside | User 0 inside the user namespace is the ordinary user outside. |
+
+The measurement is clearer with the 2 points of view side by side. Nothing about the
+child process itself differs between the columns. What differs is the answer the kernel
+gives when it is asked.
+
+<figure>
+<img src="figures/ns-views.svg" alt="A process in new namespaces seen from outside and from inside. Its process number is 565534 on the host and 1 inside. Its user is 1000 on the host and 0 inside. The host name is yahboom outside and box inside. It may set the host name inside and gets EPERM outside.">
+<figcaption><b>Figure 11.5</b> The child of <code>nsfacts</code>, as the host sees it and as it sees itself.</figcaption>
+</figure>
+
+## PID namespaces
+
+PID namespaces are nested. A new PID namespace is a child of the namespace in which it
+was created, and a process in it has a process number in its own namespace and in every
+namespace above it, up to the root. The numbers are independent of each other.
+
+Visibility follows the nesting. A namespace sees the processes in itself and in the
+namespaces below it. It has no number for a process in a namespace above it or beside
+it, so it cannot name such a process in `kill` or find it under `/proc`.
+
+The first process of a PID namespace takes the role that process 1 has on the whole
+machine: it adopts the orphans of its namespace, and when it ends, the kernel ends every
+other process in the namespace.
+
+<figure>
+<img src="figures/pid-namespaces.svg" alt="The root PID namespace contains the first process, pid 1, and a shell, pid 2. It encloses namespace A and namespace B. In A, the first process has pid 1 inside and pid 3 in the root, and its child has pid 2 inside and pid 4 in the root. A namespace nested in A has a first process with pid 1 inside, pid 3 in A, and pid 6 in the root. In B, the first process has pid 1 inside and pid 5 in the root.">
+<figcaption><b>Figure 11.6</b> The processes of the model's trace, with their number at each level.</figcaption>
+</figure>
+
+<div class="lld">
+
+Low-level design: `nsmodel`
+
+| Type | Fields | Meaning |
+|---|---|---|
+| `pidNamespace` | `parent`, `level`, `last` | a namespace, its depth below the root, and the last number it gave out |
+| `utsNamespace` | `hostname` | the host name of its processes |
+| `process` | `pid`, `uts`, `numbers` | its namespaces; its number in each PID namespace from the root down |
+
+| Operation | Behaviour |
+|---|---|
+| `fork(parent, newPID, newUTS)` | creates a child in the parent's namespaces or in new ones; allocates a number at every level |
+| `numberIn(namespace)` | returns the number of a process in a namespace, when the namespace can see it |
+
+</div>
+
+## Modelling namespaces
+
+The Go version links namespaces with pointers. The Rust version keeps them in vectors
+owned by a `Kernel` value and refers to them by index.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.11</b> The imports of <code>nsmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/nsmodel/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.12</b> PID namespaces, UTS namespaces and processes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/nsmodel/main.go:types}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.13</b> PID namespaces, UTS namespaces and processes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsmodel/src/main.rs:types}}
+```
+
+
+`fork` walks from the child's PID namespace up to the root and allocates a number in
+each. A new UTS namespace starts as a copy of the parent's, so the child initially sees
+the same host name.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.14</b> Creating a process, with or without new namespaces, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/nsmodel/main.go:fork}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.15</b> Creating a process, with or without new namespaces, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsmodel/src/main.rs:fork}}
+```
+
+
+`numberIn` decides visibility. It climbs from the process's own namespace to the level
+of the asking namespace and checks that it arrives at that namespace.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.16</b> The number of a process in a namespace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/nsmodel/main.go:visible}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.17</b> The number of a process in a namespace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsmodel/src/main.rs:visible}}
+```
+
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.18</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/nsmodel/main.go:trace}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.19</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsmodel/src/main.rs:trace}}
+```
+
+
+```text
+{{#include ../code/output/nsmodel.txt}}
+```
+
+| Line | What it shows |
+|---|---|
+| `first process of A`: `[3 1]` | Number 3 in the root namespace and 1 in its own, as `nsfacts` measured. |
+| `first process of B`: `[5 1]` | A and B both have a process 1. The numbers of a namespace are its own. |
+| `nested below A`: `[6 3 1]` | A process 2 levels down has 3 numbers. |
+| B seen from the root: pid 5 | The root namespace sees every process. |
+| B seen from A: not visible | A namespace cannot see a namespace beside it. |
+| the shell seen from A: not visible | A namespace cannot see the namespace above it. |
+| the nested process seen from A: pid 3 | A namespace sees the namespaces below it. |
+| the host name line | The change in A is seen by A and by its child, which shares A's UTS namespace. B and the shell are unaffected. |
+
+<div class="callout">
+
+**Correspondence with the kernel source.** A process refers to its namespaces through
+`struct nsproxy` (`include/linux/nsproxy.h`), with a pointer for each kind. The numbers
+of a process are in `struct pid` (`include/linux/pid.h`), whose array `numbers` has an
+entry for each level, as in the model. `pid_nr_ns` is the kernel's `numberIn`.
+`copy_namespaces` in `kernel/nsproxy.c` handles the `clone` flags, and
+`zap_pid_ns_processes` ends a namespace when its first process ends.
+
+</div>
+
+## Inspecting namespaces on a live system
+
+| Command | Shows |
+|---|---|
+| `ls -l /proc/<pid>/ns` | the namespaces of a process |
+| `lsns` | every namespace of the system, with the number of processes in it |
+| `cat /proc/<pid>/uid_map` | the user mapping of the user namespace of a process |
+| `unshare --user --map-root-user --uts --pid --fork sh` | starts a shell in new namespaces, as `nsfacts` does |
+| `nsenter --target <pid> --uts --pid sh` | starts a shell in the namespaces of another process, with `setns` |
+| `cat /proc/sys/user/max_user_namespaces` | how many user namespaces a user may create: 61507 here |
+
+Comparing the links of 2 processes is the quickest way to learn whether they are in the
+same container.
+
+## The complete programs
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.20</b> The complete <code>nsfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/nsfacts/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 11.21</b> The complete <code>nsfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsfacts/src/main.rs}}
+```
+
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.22</b> The complete <code>nsmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/nsmodel/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 11.23</b> The complete <code>nsmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/nsmodel/src/main.rs}}
+```
+
+
+<div class="summary">
+
+## Summary
+
+- A namespace gives a group of processes their own instance of a resource. Linux 5.15
+  has 8 kinds, and a process is in 1 of each.
+- A child inherits its parent's namespaces. `clone` flags and `unshare` create new ones.
+- An unprivileged user may create a user namespace and be user 0 inside it, with
+  privilege over the namespaces created with it and none outside.
+- A process has a number in its own PID namespace and in every enclosing one. The first
+  process of a PID namespace has number 1 there.
+- A PID namespace sees the processes in itself and below it.
+- A change to the host name stays inside the UTS namespace in which it was made.
+
+</div>
+
+## References
+
+- `namespaces(7)`, `user_namespaces(7)`, `pid_namespaces(7)` and `unshare(2)`, Linux
+  manual pages: <https://man7.org/linux/man-pages/man7/namespaces.7.html>
+- M. Kerrisk, *Namespaces in operation*, LWN.net, 2013:
+  <https://lwn.net/Articles/531114/>
+- `kernel/nsproxy.c`, `kernel/pid_namespace.c` and `kernel/user_namespace.c`, Linux
+  5.15: <https://elixir.bootlin.com/linux/v5.15/source/kernel/nsproxy.c>

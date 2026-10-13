@@ -1,0 +1,602 @@
+# File Descriptors
+
+Every `read`, `write` and `close` in a program takes a small integer as its first
+argument. That integer is a *file descriptor*. It is the only handle a process has on a
+file, a pipe, a terminal or a network connection, and the kernel translates it on every
+call into the object the process means.
+
+In this chapter, we will follow that translation from the integer to the bytes on disk.
+We will meet the kernel structures on the way, one at a time and in the order a `read`
+visits them: the descriptor table of the process, the open file, the directory entry,
+and the inode. For each structure we will look at its definition in the kernel source,
+say what each field is for, and confirm its behaviour with an experiment. Then we will
+write `fdfacts`, which measures all of this on a running kernel, and `fdtable`, a model
+of the same structures that gives the same results.
+
+<div class="covers">
+
+This chapter covers
+
+- why a process refers to a file by a number
+- the path of one `read` through the kernel
+- the descriptor table: `struct fdtable`, the lowest-free-number rule, and the limit on
+  descriptors
+- the open file: `struct file`, the offset, and the status flags
+- names and files: directory entries, `struct inode`, and hard links
+- reference counts: when an open file and an inode are released
+- what `dup`, `fork` and `exec` do to descriptors
+- shell redirection, including `2>&1`
+- how to inspect the descriptors of a running process
+
+</div>
+
+## Why a number
+
+A program runs in *user mode*, in which the processor lets it touch only its own memory.
+The kernel runs in *kernel mode* and keeps its data in memory that user-mode code cannot
+read or write. A *system call* is the controlled way from one to the other: the program
+puts a call number and arguments in registers and executes an instruction that switches
+the processor to kernel mode at a fixed entry point.
+
+The objects that describe an open file live in kernel memory. The kernel cannot hand a
+process a pointer to them, because the process could not use the pointer and must not be
+able to forge one. It keeps a table for each process and gives the process an index into
+that table. The process can pass any integer it likes. The kernel looks the integer up
+in the caller's own table, so a process can only ever name the files that the kernel has
+put there.
+
+By convention the first 3 entries have fixed roles: descriptor 0 is the standard input,
+1 the standard output, and 2 the standard error. A program started from a terminal finds
+all 3 referring to that terminal.
+
+## One read, step by step
+
+Suppose a process has opened a file and received descriptor 3, and now calls
+`read(3, buf, 100)`. The kernel does the following.
+
+1. It takes entry 3 of the calling process's descriptor table. The entry is a pointer
+   to a `struct file`, the kernel's record of one open file. An empty entry ends the
+   call with the error `EBADF`, "bad file descriptor".
+2. It reads the current position in the file from the `struct file`. This position is
+   the *offset*: the number of bytes from the start of the file at which the next read
+   or write takes place.
+3. It calls the read function of whatever the file is. The `struct file` holds a table
+   of functions, and a disk file, a pipe and a socket each supply their own.
+4. For a disk file, that function finds the file's *inode*, the kernel's record of the
+   file itself, and through it the cached pages of the file. The page cache is the
+   subject of [chapter 8](08-the-page-cache.md).
+5. It copies up to 100 bytes from those pages into `buf`, in the memory of the process.
+6. It adds the number of bytes copied to the offset and returns that number.
+
+<figure>
+<img src="figures/read-path.svg" alt="The path of read(3, buf, 100) through the kernel. The process enters the kernel. Entry 3 of the descriptor table gives a struct file. The struct file supplies the offset, f_pos. The read function of the file system is found through f_op. The struct inode gives the size of the file and its page cache. The bytes are copied to buf, and f_pos is increased by the number of bytes copied.">
+<figcaption><b>Figure 2.1</b> The path of a <code>read</code> through the kernel.</figcaption>
+</figure>
+
+The steps name 3 objects: the table entry, the open file, and the inode. The rest of
+the chapter takes them in that order. The question to keep in mind for each is which
+state it holds, because that decides what is shared when a descriptor is duplicated or
+inherited.
+
+## The descriptor table
+
+Each process has a `struct files_struct`, which contains its descriptor table. The
+table itself is a `struct fdtable`. These are the definitions from
+`include/linux/fdtable.h` in Linux 5.15, with the fields that concern locking left out.
+
+```c
+struct fdtable {
+        unsigned int max_fds;          /* number of entries in fd[] */
+        struct file **fd;              /* the table: one pointer per descriptor */
+        unsigned long *close_on_exec;  /* bitmap: descriptors closed by exec */
+        unsigned long *open_fds;       /* bitmap: descriptors in use */
+        /* ... */
+};
+
+struct files_struct {
+        atomic_t count;                /* processes and threads sharing this table */
+        struct fdtable *fdt;           /* the current table */
+        unsigned int next_fd;          /* where the search for a free number starts */
+        struct file *fd_array[64];     /* a first table, large enough for most programs */
+        /* ... */
+};
+```
+
+| Field | Meaning |
+|---|---|
+| `fd` | An array of pointers. `fd[3]` is the open file behind descriptor 3, or `NULL`. |
+| `open_fds` | 1 bit per descriptor, set while the number is in use. |
+| `close_on_exec` | 1 bit per descriptor: the close-on-exec flag, described below. |
+| `max_fds` | The current length of `fd`. The table starts with 64 entries and is replaced by a larger one when a higher number is needed. |
+| `count` | How many tasks use this table. The threads of a process share 1 table. |
+
+The table gives rise to 2 rules that every Unix program depends on.
+
+**A new descriptor gets the lowest free number.** The kernel searches `open_fds` for the
+first clear bit, starting at `next_fd`. After a process closes descriptor 0, the next
+`open` returns 0.
+
+**The number of descriptors is limited.** Each process has a resource limit,
+`RLIMIT_NOFILE`, and an `open` that would need a number at or above it fails with
+`EMFILE`, "too many open files". `ulimit -n` shows the limit in a shell. On this machine
+it is 1048576 for a process started from the terminal, and many systems set 1024. The
+kernel as a whole has a second limit, on the number of open files in all processes
+together. `/proc/sys/fs/file-nr` shows the current number first:
+
+```console
+$ cat /proc/sys/fs/file-nr
+17312	0	9223372036854775807
+```
+
+A server that forgets to close descriptors, a *descriptor leak*, eventually hits
+`EMFILE` and can accept no more connections, although memory and CPU are free.
+
+## The open file
+
+The pointers in the table refer to `struct file` objects. The POSIX standard calls this
+object an *open file description*, and the name is worth learning because the manual
+pages use it. A `struct file` is created by each successful `open`, and also by `pipe`,
+`socket` and `accept`. This is the definition from `include/linux/fs.h`, reduced to the
+fields this chapter uses.
+
+```c
+struct file {
+        struct path f_path;                    /* the directory entry it was opened by */
+        struct inode *f_inode;                 /* the file itself */
+        const struct file_operations *f_op;    /* read, write, ... for this kind of file */
+        atomic_long_t f_count;                 /* references to this struct file */
+        unsigned int f_flags;                  /* O_APPEND, O_NONBLOCK, ... */
+        fmode_t f_mode;                        /* opened for reading, writing, or both */
+        loff_t f_pos;                          /* the offset */
+        /* ... */
+};
+```
+
+| Field | Meaning |
+|---|---|
+| `f_pos` | The offset. `read` and `write` start here and advance it. `lseek` sets it. |
+| `f_flags` | The *status flags* given to `open`, such as `O_APPEND` (every write goes to the end of the file) and `O_NONBLOCK` (calls return `EAGAIN` where they would block). `fcntl` with `F_GETFL` and `F_SETFL` reads and changes them. |
+| `f_mode` | Whether the file was opened for reading, for writing, or both. A `write` on a file opened read-only fails with `EBADF`. |
+| `f_count` | The number of references to this `struct file`: table entries in any process, plus system calls in progress. |
+| `f_inode` | The inode of the file. |
+| `f_op` | A table of function pointers. `read` calls `f_op->read_iter`, `write` calls `f_op->write_iter`. |
+
+`f_op` is the mechanism behind the phrase "everything is a file". The system call
+`read` contains no code for disks, pipes or sockets. It calls through `f_op`, and each
+kind of object installs its own functions when the `struct file` is created: ext4 for a
+file on disk, the pipe code of [chapter 1](01-pipes.md) for a pipe, TCP for the socket
+of [chapter 10](10-tcp-sockets.md). A program that reads descriptor 0 therefore works
+unchanged whether descriptor 0 is a terminal, a file or a pipe.
+
+The important point for the rest of the chapter is where the offset lives. It is in the
+`struct file`, and neither in the table entry nor in the inode. Table entries that point
+to the same `struct file` share an offset. Separate `struct file` objects for the same
+file on disk each have their own.
+
+## Names, directory entries and inodes
+
+A `struct file` refers to an *inode*. The inode is the file: its type, its owner, its
+permissions, its size, its timestamps, and the location of its data. It is identified by
+a number, the *inode number*, which is unique within a file system.
+
+An inode contains no name. Names are kept in directories. A directory is itself a file
+whose contents are a list of *directory entries*, each a pair of a name and an inode
+number. Opening `/tmp/x/report.txt` means reading the directory `/`, finding the entry
+`tmp` and its inode, reading that directory, and so on to the last name. The kernel
+caches each step in a `struct dentry`, so that a path which has been used recently is
+resolved without reading directories from disk.
+
+```c
+struct dentry {
+        struct dentry *d_parent;       /* the directory that contains this entry */
+        struct qstr d_name;            /* the name: a single component of a path */
+        struct inode *d_inode;         /* the inode the name refers to */
+        /* ... */
+};
+
+struct inode {
+        umode_t i_mode;                /* type (file, directory, ...) and permissions */
+        kuid_t i_uid;                  /* owner */
+        kgid_t i_gid;                  /* group */
+        unsigned long i_ino;           /* the inode number */
+        unsigned int i_nlink;          /* directory entries that refer to this inode */
+        loff_t i_size;                 /* size in bytes */
+        struct timespec64 i_atime;     /* last access */
+        struct timespec64 i_mtime;     /* last change of the contents */
+        struct timespec64 i_ctime;     /* last change of the inode */
+        blkcnt_t i_blocks;             /* disk space used, in 512-byte units */
+        atomic_t i_count;              /* references from inside the kernel */
+        const struct file_operations *i_fop;   /* copied to f_op at open */
+        struct address_space *i_mapping;       /* the cached pages of the file */
+        /* ... */
+};
+```
+
+`stat` prints the fields of an inode, and `ls -i` prints inode numbers. Since the name
+is outside the inode, several directory entries can hold the same inode number. Such an
+entry is a *hard link*, created by `ln` or the `link` system call. On this machine:
+
+```console
+$ echo hello > report.txt
+$ ln report.txt copy.txt
+$ ls -li
+19927765 -rw-rw-r-- 2 jetson jetson 6 Oct 12 22:56 copy.txt
+19927765 -rw-rw-r-- 2 jetson jetson 6 Oct 12 22:56 report.txt
+$ stat report.txt
+  File: report.txt
+  Size: 6         	Blocks: 8          IO Block: 4096   regular file
+Device: 10301h/66305d	Inode: 19927765    Links: 2
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/  jetson)   Gid: ( 1000/  jetson)
+```
+
+<figure>
+<img src="figures/stat-annotated.svg" alt="The output of ls -li and stat explained. In each line of ls, 19927765 is the inode number, the 2 after the permissions is the link count, and 6 is the size. Both lines have the same inode number, so they are the same file, and only the name differs. stat prints the same fields with their names, and Blocks counts units of 512 bytes.">
+<figcaption><b>Figure 2.new-stat-annotated</b> The same output, with the inode field behind each value.</figcaption>
+</figure>
+
+Both names show inode 19927765. The `2` after the permissions, `Links: 2` in the output
+of `stat`, is `i_nlink`. The names are equal in every respect: neither is the original,
+and a change made through one is visible through the other, because there is a single
+inode and a single copy of the data.
+
+<figure>
+<img src="figures/names-inodes.svg" alt="The directory /tmp/x has the entries report.txt and copy.txt, and both hold the inode number 19927765. That inode has a link count of 2 and a size of 6, the owner, the permissions and the times, and the location of the data, which is the text hello followed by a newline.">
+<figcaption><b>Figure 2.2</b> A directory maps names to inode numbers. Everything else about the file is in the inode.</figcaption>
+</figure>
+
+Several everyday facts follow from this split.
+
+- Renaming a file within a file system is fast at any size. `rename` changes a
+  directory entry and does not touch the inode or the data.
+- Permissions belong to the inode, so they are the same through every name.
+- Removing a file is called `unlink` because it removes a link: a directory entry. What
+  happens to the inode is the subject of the next section.
+
+Figure 2.3 puts the structures together.
+
+<figure>
+<img src="figures/file-structs.svg" alt="The kernel structures behind a descriptor, top to bottom, each pointing to the next. struct fdtable has the array fd with one pointer per descriptor and the bitmaps open_fds and close_on_exec. struct file has f_pos, f_flags, f_count, f_inode and f_path. struct dentry has d_name, d_parent and d_inode. struct inode has i_ino, i_mode, i_nlink, i_size, the owner and times, and i_mapping.">
+<figcaption><b>Figure 2.3</b> From a descriptor to an inode: the structures and the pointers between them.</figcaption>
+</figure>
+
+## What is shared
+
+We can now answer the question a programmer has to ask: when a process has 2
+descriptors, what do they share? It depends on how the second descriptor came to exist.
+
+| The second descriptor comes from | New table entry | New `struct file` | The descriptors share |
+|---|---|---|---|
+| `dup` or `dup2` | yes | no | the offset, the status flags, and the file |
+| `fork`, in the child | yes | no | the offset, the status flags, and the file |
+| a second `open` of the same name | yes | yes | only the file |
+
+<figure>
+<img src="figures/fd-tables.svg" alt="The descriptor table of a process has entries 0, 1 and 2 for the terminal, entry 3 from an open, entry 4 from a dup of 3, and entry 5 from a second open of the same file. Entries 3 and 4 refer to one open file description with offset 5. Entry 5 refers to another description with offset 0. Both descriptions refer to the same inode, a file of 5 bytes.">
+<figcaption><b>Figure 2.4</b> Descriptors 3 and 4 share a <code>struct file</code>, and therefore an offset. Descriptor 5 has its own.</figcaption>
+</figure>
+
+The reason for sharing the offset through `dup` and `fork` is sequential output. When a
+shell runs `(date; ls) > file`, both commands inherit the same `struct file`, and `ls`
+continues at the offset where `date` stopped. If each had its own offset, the second
+command would overwrite the output of the first. We will measure exactly that below.
+
+The *close-on-exec* flag is deliberately excluded from sharing. It
+tells the kernel to close the descriptor when the process executes a new program, and it
+is stored in the `close_on_exec` bitmap of the table, outside the `struct file`. A
+program can therefore keep a descriptor for itself and still pass a duplicate of it to a
+child.
+
+## Lifetimes
+
+An object in the kernel is released when nothing refers to it any more, and each of the
+objects of this chapter keeps a count for that purpose.
+
+| Object | Count | Raised by | Lowered by | At 0 |
+|---|---|---|---|---|
+| `struct file` | `f_count` | `open`, `dup`, `fork` | `close`, exit of a process | the open file is closed, and its reference to the inode is dropped |
+| inode | `i_nlink` | `link`, creating the file | `unlink`, `rename` over the name | the file has no name |
+| inode | open count | each `struct file` that refers to it | closing a `struct file` | the file is not open |
+
+A `struct file` is closed when the last descriptor for it is closed. `close` on a
+descriptor that was duplicated or inherited only lowers `f_count`. This is the rule that
+[chapter 1](01-pipes.md) needed: a pipe reports the end of the stream when the last
+descriptor for its write end is gone, in whichever process that descriptor was.
+
+An inode and its data are freed when it has no name and is not open. Both conditions
+are required. A file that is unlinked while a process has it open keeps its inode and
+its data until that process closes it.
+
+<figure>
+<img src="figures/unlink-open.svg" alt="The counts of an inode through 4 calls. After create it has 1 name and is open 0 times, and it exists. After open it has 1 name and is open once. After unlink it has 0 names and is still open once, so it exists without a name. After close both counts are 0 and the inode is freed.">
+<figcaption><b>Figure 2.5</b> An inode is freed when its last name and its last open file are both gone.</figcaption>
+</figure>
+
+The kernel shows such a file under `/proc`. Here a shell opens `report.txt` on
+descriptor 7 and then removes both names:
+
+```console
+$ exec 7< report.txt
+$ rm report.txt copy.txt
+$ ls -l /proc/$$/fd/7
+7 -> /tmp/x/report.txt (deleted)
+$ cat <&7
+hello
+```
+
+The consequences are practical. A program can create a temporary file, open it and
+unlink it at once, and the file disappears when the program ends, however it ends. And a
+large log file that is deleted while a server still writes to it continues to occupy the
+disk, which is the usual explanation when `df` reports a full disk and `du` cannot find
+the files.
+
+@crab shocked :: A file that is deleted while a process has it open keeps its inode, its data and its disk space until that process closes it.
+
+## fork and exec
+
+`fork` gives the child a copy of the parent's descriptor table. The copy is a new
+`struct fdtable` with the same pointers, and `f_count` of every open file is raised by 1.
+Parent and child then have independent tables, so either can close or reassign a
+descriptor without affecting the other, and they share every open file that both still
+hold.
+
+<figure>
+<img src="figures/fork-shared.svg" alt="A parent has descriptor 1 on the terminal and descriptor 3 on a log file. After fork the child has the same entries, and they point to the same open file descriptions: the terminal, with a reference count of 2, and the log file, with offset 120 and a reference count of 2.">
+<figcaption><b>Figure 2.6</b> After <code>fork</code>, the tables are separate and the open files are shared.</figcaption>
+</figure>
+
+`exec` replaces the program and keeps the table, with 1 exception: descriptors whose
+close-on-exec bit is set are closed. A program sets the bit with the `O_CLOEXEC` flag of
+`open`, or later with `fcntl` and `F_SETFD`. Without it, every descriptor a program has
+open is passed to every program it starts, including descriptors for files those
+programs have no business with. Go's standard library and Rust's standard library set
+the flag on every descriptor they create, and pass a descriptor to a child only when the
+program asks for it.
+
+[Chapter 3](03-processes.md) covers `fork` and `exec` themselves.
+
+## Measuring descriptors
+
+`fdfacts` checks the statements of this chapter on a running kernel. It uses
+`golang.org/x/sys/unix` in Go and the `nix` crate with the `fs` and `resource` features
+in Rust.
+
+```console
+$ cargo new fdfacts
+$ cargo add -p fdfacts nix --features fs,resource
+```
+
+`numbers` closes descriptor 0 and opens a file.
+
+@pair fdfacts numbers :: The number of a new descriptor
+
+`limit` lowers `RLIMIT_NOFILE` to 32 and opens a file until `open` fails. It reports the
+highest number it received and the error.
+
+@pair fdfacts limit :: The limit on descriptors
+
+`offsets` opens a file, duplicates the descriptor, and opens the file again. It writes 5
+bytes through the first descriptor and reads the offset through the other 2. `lseek`
+with a distance of 0 from the current position returns the offset without changing it.
+
+@pair fdfacts offsets :: The offset through a duplicate and through a second open
+
+`flags` sets `O_APPEND` and close-on-exec on a duplicate and reads both through the
+original. `F_GETFL` and `F_SETFL` address `f_flags` in the `struct file`. `F_GETFD` and
+`F_SETFD` address the bitmap in the table.
+
+@pair fdfacts flags :: Status flags and descriptor flags
+
+`names` creates a file, gives it a second name with `link`, and compares the inode
+numbers behind the names.
+
+@pair fdfacts names :: A second name for a file
+
+`unlinked` opens a file, removes its name, and then reads the link count and the
+contents through the descriptor.
+
+@pair fdfacts unlinked :: A file removed while it is open
+
+`redirections` runs a shell command that writes `out` to descriptor 1 and then `err` to
+descriptor 2, with both descriptors on the same file. In the first run descriptor 2 is a
+duplicate of descriptor 1. In the other run the file is opened once for each.
+
+@pair fdfacts redirect :: Descriptors 1 and 2 on the same file
+
+```text
+{{#include ../code/output/fdfacts.txt}}
+```
+
+| Output | Conclusion |
+|---|---|
+| with 0 closed, `open` returns 0 | A new descriptor gets the lowest free number. |
+| highest number 31, then `EMFILE` | With a limit of 32, the usable numbers are 0 to 31. |
+| offset 5 through the duplicate | `dup` shares the `struct file`, and the offset is in it. |
+| offset 0 through a second open | Each `open` creates a `struct file` with its own offset. |
+| `O_APPEND` is visible on the original | Status flags are in the `struct file`. |
+| close-on-exec is not visible on the original | The close-on-exec flag is in the table. |
+| same inode, link count 2 | 2 names refer to 1 inode. |
+| link count 0, and the read returns `hello` | An inode without a name exists for as long as it is open. |
+| `> file 2>&1` leaves `out err` | With a shared offset, the second write continues after the first. |
+| `> file 2> file` leaves `err` | With separate offsets, both writes start at 0 and the second overwrites the first. |
+
+## Modelling the tables
+
+`fdtable` implements the structures of this chapter in user space, with the same
+reference counts, and runs the experiments of `fdfacts` on them.
+
+<div class="lld">
+
+Low-level design: `fdtable`
+
+| Type | Kernel structure | Fields | Invariant |
+|---|---|---|---|
+| `inode` | `struct inode` | `number`, `data`, `links`, `opens` | freed when `links` and `opens` are both 0 |
+| `filesystem` | a directory and the inode table | `names`, `inodes` | every name maps to an inode in `inodes` |
+| `description` | `struct file` | `file`, `offset`, `appendMode`, `refs` | closed when `refs` is 0 |
+| `descriptor` | an entry of `fd[]` and its close-on-exec bit | `open`, `cloexec` | belongs to 1 table |
+| `process` | `struct files_struct` | `table`, `limit` | the index of an entry is the descriptor number |
+
+| Operation | Behaviour | Error |
+|---|---|---|
+| `create(name)`, `link(old, new)`, `unlink(name)` | add and remove names; `unlink` frees the inode when nothing else refers to it | `ENOENT` |
+| `install(description)` | places a description at the lowest free index | `EMFILE` at the limit |
+| `open(name)` | looks the name up, creates a description with offset 0, installs it | `ENOENT`, `EMFILE` |
+| `dup(fd)`, `dup2(from, to)` | install an existing description again | `EBADF` |
+| `close(fd)` | frees the entry; closes the description at the last reference | `EBADF` |
+| `read(fd, n)`, `write(fd, data)` | use and advance the description's offset | `EBADF` |
+| `fork()` | copies the table and counts every copy | |
+| `exec()` | closes the entries that have `cloexec` set | |
+
+</div>
+
+The Go version links the objects with pointers, as the kernel does. The Rust version
+keeps the inodes and the open file descriptions in tables owned by a `Kernel` value and
+refers to them by number, which avoids shared mutable ownership.
+
+An inode has its contents and its 2 counts.
+
+@pair fdtable inode :: The inode, and the tables that hold inodes
+
+`create`, `link` and `unlink` change the directory and the link count. `release` is the
+single place where an inode is freed, and it requires both counts to be 0.
+
+@pair fdtable names :: Names: create, link, unlink, and release
+
+The description corresponds to `struct file`, and the descriptor to a table entry
+together with its close-on-exec bit.
+
+@pair fdtable tables :: The description, the descriptor, and the process
+
+`install` implements both rules of the descriptor table: the lowest free number and the
+limit. `open` creates a description, and `dup` installs an existing one, which is the
+whole difference between them.
+
+@pair fdtable install :: Creating descriptors
+
+`close` lowers the count of the description and, at 0, the open count of the inode.
+`dup2` closes its target first, which is why redirecting descriptor 1 releases whatever
+descriptor 1 was before.
+
+@pair fdtable close :: Closing a descriptor, and dup2
+
+`read` and `write` take the offset from the description. With `appendMode` set, `write`
+first moves the offset to the end of the file. The kernel performs that move and the
+write as a single atomic step, so concurrent appends do not overwrite each other.
+
+@pair fdtable io :: Reading and writing through a descriptor
+
+`fork` copies the table and raises the count of every description. `exec` applies the
+close-on-exec flag.
+
+@pair fdtable fork :: Inheriting descriptors
+
+The experiments repeat `fdfacts` on the model.
+
+@pair fdtable experiments :: Numbers, the limit, offsets and flags on the model
+
+@pair fdtable lifetime :: Names and the lifetime of an inode on the model
+
+`redirect` does what a shell does between `fork` and `exec`: it rearranges the child's
+descriptors 1 and 2 with `dup2`. The parent's table is unchanged.
+
+@pair fdtable redirect :: Redirection on the model
+
+```text
+{{#include ../code/output/fdtable.txt}}
+```
+
+The output is identical to the output of `fdfacts`, line for line.
+
+## Redirection
+
+A shell applies redirections from left to right, each as a `dup2` in the child before
+`exec`.
+
+- `> file` opens the file and makes descriptor 1 refer to the new `struct file`.
+- `2>&1` makes descriptor 2 refer to the `struct file` that descriptor 1 refers to at
+  that moment.
+
+<figure>
+<img src="figures/redirect-shared.svg" alt="With > file 2>&1, descriptors 1 and 2 refer to one open file description. The write of out moves its offset from 0 to 4, the write of err continues at 4, and the file holds out and err. With > file 2> file, each descriptor has its own description with offset 0. The write of err starts at offset 0 and overwrites out, and the file holds err.">
+<figcaption><b>Figure 2.7</b> The same file reached through 1 <code>struct file</code> and through 2.</figcaption>
+</figure>
+
+The order of redirections therefore changes the result. In `> file 2>&1`, descriptor 1
+is on the file when descriptor 2 is duplicated from it, and both write to the file. In
+`2>&1 > file`, descriptor 2 is duplicated first, while descriptor 1 is still the
+terminal. Descriptor 1 then moves to the file, and errors continue to go to the
+terminal.
+
+`>> file 2>> file` is safe with separate `struct file` objects. Both are opened with
+`O_APPEND`, so each write goes to the current end of the file regardless of the offset.
+
+[Chapter 4](04-building-a-shell.md) builds a shell that performs these redirections.
+
+## Inspecting a running process
+
+The kernel publishes the descriptor table of every process under `/proc`, which makes
+the structures of this chapter visible on a live system.
+
+| Command | Shows |
+|---|---|
+| `ls -l /proc/<pid>/fd` | each descriptor of the process and what it refers to |
+| `cat /proc/<pid>/fdinfo/<n>` | the offset, the flags and the inode number of descriptor `n` |
+| `ulimit -n` | the limit on descriptors for processes started from this shell |
+| `cat /proc/sys/fs/file-nr` | the number of open files in the whole system |
+
+For descriptor 7 of the shell above, after the names were removed:
+
+```console
+$ cat /proc/$$/fdinfo/7
+pos:	0
+flags:	0400000
+mnt_id:	28
+ino:	19927765
+```
+
+`pos` is `f_pos`. `flags` is `f_flags` in octal: the last digit 0 is `O_RDONLY`, and
+0400000 is `O_LARGEFILE`, which the kernel sets on every open on a 64-bit system. `ino`
+is the inode number, the same 19927765 that `ls -li` printed while the file had names.
+
+## The complete programs
+
+@full fdfacts
+
+@full fdtable
+
+<div class="summary">
+
+## Summary
+
+- A file descriptor is an index into a per-process table, `struct fdtable`. A process
+  can name only the objects in its own table.
+- A new descriptor gets the lowest free number. `RLIMIT_NOFILE` limits the numbers, and
+  `open` fails with `EMFILE` at the limit.
+- A table entry points to a `struct file`, the open file description. It holds the
+  offset `f_pos`, the status flags `f_flags`, and the function table `f_op` through
+  which `read` and `write` reach a file, a pipe or a socket.
+- A `struct file` refers to an inode. The inode holds the type, owner, permissions, size
+  and data location of a file, and no name.
+- Names are directory entries. Several entries may refer to the same inode, and
+  `i_nlink` counts them.
+- `dup` and `fork` create table entries for an existing `struct file`, so the offset and
+  the status flags are shared. Each `open` creates a new `struct file`.
+- A `struct file` is closed when its last descriptor is closed. An inode is freed when
+  it has no name and is not open.
+- The close-on-exec flag belongs to the table entry. `exec` closes the descriptors that
+  have it.
+- `2>&1` duplicates descriptor 1 onto descriptor 2. The descriptors then share an
+  offset, and their output appears in order.
+
+</div>
+
+## References
+
+- `open(2)`, `dup(2)`, `fcntl(2)`, `link(2)`, `unlink(2)`, `stat(2)` and `inode(7)`,
+  Linux manual pages: <https://man7.org/linux/man-pages/man7/inode.7.html>
+- M. Kerrisk, *The Linux Programming Interface*, No Starch Press, 2010, chapters 4, 5
+  and 18.
+- `include/linux/fdtable.h`, `include/linux/fs.h`, `include/linux/dcache.h` and
+  `fs/file.c`, Linux 5.15: <https://elixir.bootlin.com/linux/v5.15/source/include/linux/fs.h>
+- *Overview of the Linux Virtual File System*, Linux kernel documentation:
+  <https://www.kernel.org/doc/html/v5.15/filesystems/vfs.html>

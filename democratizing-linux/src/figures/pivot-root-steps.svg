@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 464" width="480" height="464" role="img" aria-label="The root directory of the container in 3 steps. Before, the root is the host&#x27;s file system, and the tmpfs with usr, dev and proc is mounted at tmp/box-root. After pivot_root, the tmpfs is the root, and the host&#x27;s file system is attached at old inside it. After unmounting old, only the tmpfs remains and the host is unreachable.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="464" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Changing the root directory</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">pivot_root, then unmount the old root.</text>
+  <rect x="32.0" y="104.0" width="200.0" height="118.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="104.0" width="200.0" height="28.0" rx="10" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="44.0" y="123.0" class="mono strong" text-anchor="start" xml:space="preserve">1. before</text>
+  <text x="44.0" y="154.0" class="mono" text-anchor="start" xml:space="preserve">/          the host</text>
+  <text x="44.0" y="173.0" class="mono" text-anchor="start" xml:space="preserve">  usr  home  etc</text>
+  <text x="44.0" y="192.0" class="mono" text-anchor="start" xml:space="preserve">  tmp/box-root  tmpfs</text>
+  <text x="44.0" y="211.0" class="mono" text-anchor="start" xml:space="preserve">    usr  dev  proc</text>
+  <rect x="248.0" y="104.0" width="200.0" height="118.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="248.0" y="104.0" width="200.0" height="28.0" rx="10" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="260.0" y="123.0" class="mono strong" text-anchor="start" xml:space="preserve">2. after pivot_root</text>
+  <text x="260.0" y="154.0" class="mono" text-anchor="start" xml:space="preserve">/          the tmpfs</text>
+  <text x="260.0" y="173.0" class="mono" text-anchor="start" xml:space="preserve">  usr  dev  proc</text>
+  <text x="260.0" y="192.0" class="mono" text-anchor="start" xml:space="preserve">  old      the host</text>
+  <text x="260.0" y="211.0" class="mono" text-anchor="start" xml:space="preserve">    usr  home  etc</text>
+  <rect x="140.0" y="266.0" width="200.0" height="118.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="140.0" y="266.0" width="200.0" height="28.0" rx="10" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="152.0" y="285.0" class="mono strong" text-anchor="start" xml:space="preserve">3. after unmounting /old</text>
+  <text x="152.0" y="316.0" class="mono" text-anchor="start" xml:space="preserve">/          the tmpfs</text>
+  <text x="152.0" y="335.0" class="mono" text-anchor="start" xml:space="preserve">  usr  dev  proc</text>
+  <text x="152.0" y="354.0" class="mono" text-anchor="start" xml:space="preserve"></text>
+  <text x="152.0" y="373.0" class="mono" text-anchor="start" xml:space="preserve">the host is unreachable</text>
+  <path class="wire" d="M232,163.0 L248,163.0" marker-end="url(#head)"/>
+  <path class="wire" d="M348,222 L348,235 Q348,244 339,244 L249,244 Q240,244 240,253 L240,266" marker-end="url(#head)"/>
+  <text x="32.0" y="412.0" class="note" text-anchor="start" xml:space="preserve">pivot_root exchanges the 2 mounts: the tmpfs becomes the root, and</text>
+  <text x="32.0" y="429.0" class="note" text-anchor="start" xml:space="preserve">the old root is attached inside it. All of this happens in the</text>
+  <text x="32.0" y="446.0" class="note" text-anchor="start" xml:space="preserve">container&#x27;s mount namespace, and the host&#x27;s mounts do not change.</text>
+</svg>

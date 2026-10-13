@@ -1,0 +1,6 @@
+nice 0 and nice 0 on 1 CPU: 50% and 50%
+nice 0 and nice 5 on 1 CPU: 75% and 25%
+nice 0 and nice 10 on 1 CPU: 90% and 10%
+A and B at nice 0, C at nice 5: A B C A B A B A B C A B
+C wakes with its old virtual runtime: it receives 30 of the next 30 slices
+C wakes and is placed at the minimum: it receives 10 of the next 30 slices

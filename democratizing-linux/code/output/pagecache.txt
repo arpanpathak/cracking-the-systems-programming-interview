@@ -1,0 +1,7 @@
+16 pages read in order: 4 disk requests
+16 pages read in reverse order: 16 disk requests
+16 pages read in order, 2 times: 4 disk requests
+write of x to page 3: 0 pages written, the disk holds -
+sync: 1 page written, the disk holds x
+capacity 4, pages 3 2 1 0 3 used, then page 8: cache holds [0 1 3 8]
+write of y to page 1, then pages 0 3 8 12 used: cache holds [0 3 8 12], the disk holds y

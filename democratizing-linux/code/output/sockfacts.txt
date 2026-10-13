@@ -1,0 +1,8 @@
+connect before the server calls accept: succeeded true
+accept returns a new descriptor: true, on the listener's port: true
+the client's local port is the server's peer port: true
+writes of "ab" and "cd", reads of 3 bytes and 1 byte: "abc" and "d"
+the client closed: read returns 0
+writes to the closed peer: the first is accepted, a later one fails with EPIPE
+the server does not read: the client is stopped after 7168 bytes
+the server has read everything: the client can write again: true

@@ -1,0 +1,11 @@
+first process        numbers from the root namespace down: [1]
+shell                numbers from the root namespace down: [2]
+first process of A   numbers from the root namespace down: [3 1]
+its child            numbers from the root namespace down: [4 2]
+first process of B   numbers from the root namespace down: [5 1]
+nested below A       numbers from the root namespace down: [6 3 1]
+the first process of B, seen from the root namespace: pid 5
+the first process of B, seen from A: not visible
+the shell, seen from A: not visible
+the nested process, seen from A: pid 3
+host name set to "box" in A: A sees "box", its child "box", B "host", the shell "host"

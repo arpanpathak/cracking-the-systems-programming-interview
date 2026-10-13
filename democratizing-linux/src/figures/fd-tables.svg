@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 508" width="480" height="508" role="img" aria-label="The descriptor table of a process has entries 0, 1 and 2 for the terminal, entry 3 from an open, entry 4 from a dup of 3, and entry 5 from a second open of the same file. Entries 3 and 4 refer to one open file description with offset 5. Entry 5 refers to another description with offset 0. Both descriptions refer to the same inode, a file of 5 bytes.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="508" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">From a descriptor to the file</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Descriptor, then description, then inode.</text>
+  <rect x="32" y="104" width="416" height="92" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="271.8" height="22" rx="11" fill="#1B2430"/>
+  <text x="185.9" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">DESCRIPTOR TABLE OF THE PROCESS</text>
+  <rect x="48.0" y="128.0" width="104.0" height="50.0" rx="8" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="100.0" y="150.0" class="mono strong" text-anchor="middle" xml:space="preserve">0 1 2</text>
+  <text x="100.0" y="167.0" class="note" text-anchor="middle" xml:space="preserve">terminal</text>
+  <rect x="168.0" y="128.0" width="64.0" height="50.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="200.0" y="150.0" class="mono strong" text-anchor="middle" xml:space="preserve">3</text>
+  <text x="200.0" y="167.0" class="note" text-anchor="middle" xml:space="preserve">open</text>
+  <rect x="248.0" y="128.0" width="64.0" height="50.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="280.0" y="150.0" class="mono strong" text-anchor="middle" xml:space="preserve">4</text>
+  <text x="280.0" y="167.0" class="note" text-anchor="middle" xml:space="preserve">dup of 3</text>
+  <rect x="336.0" y="128.0" width="96.0" height="50.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="384.0" y="150.0" class="mono strong" text-anchor="middle" xml:space="preserve">5</text>
+  <text x="384.0" y="167.0" class="note" text-anchor="middle" xml:space="preserve">second open</text>
+  <rect x="32" y="236" width="416" height="104" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="225" width="122.4" height="22" rx="11" fill="#1B2430"/>
+  <text x="111.2" y="240.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">DESCRIPTIONS</text>
+  <rect x="160" y="260" width="160" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M172,260.7 H166 V319.3 H172 A11.3,11.3 0 0 1 160.7,308 V272 A11.3,11.3 0 0 1 172,260.7 Z" fill="#1F8A70"/>
+  <text x="180.0" y="286.0" class="name" text-anchor="start" xml:space="preserve">offset 5</text>
+  <text x="180.0" y="304.0" class="sub" text-anchor="start" xml:space="preserve">O_WRONLY</text>
+  <rect x="328" y="260" width="104" height="60" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M340,260.7 H334 V319.3 H340 A11.3,11.3 0 0 1 328.7,308 V272 A11.3,11.3 0 0 1 340,260.7 Z" fill="#1F8A70"/>
+  <text x="348.0" y="286.0" class="name" text-anchor="start" xml:space="preserve">offset 0</text>
+  <text x="348.0" y="304.0" class="sub" text-anchor="start" xml:space="preserve">O_WRONLY</text>
+  <path class="wire" d="M200,178 L200,260" marker-end="url(#head)"/>
+  <path class="wire" d="M280,178 L280,260" marker-end="url(#head)"/>
+  <path class="wire" d="M384,178 L384,260" marker-end="url(#head)"/>
+  <rect x="32" y="380" width="416" height="104" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="369" width="75.2" height="22" rx="11" fill="#1B2430"/>
+  <text x="87.6" y="384.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">INODES</text>
+  <path d="M180,409 A130.0,9 0 0 1 440,409 V459 A130.0,9 0 0 1 180,459 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="310.0" cy="409" rx="130.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="310.0" y="437.0" class="name" text-anchor="middle" xml:space="preserve">file</text>
+  <text x="310.0" y="455.0" class="sub" text-anchor="middle" xml:space="preserve">5 bytes: hello</text>
+  <path class="wire" d="M240,320 L240,404" marker-end="url(#head)"/>
+  <path class="wire" d="M380,320 L380,404" marker-end="url(#head)"/>
+  <text x="48.0" y="276.0" class="note" text-anchor="start" xml:space="preserve">offset and</text>
+  <text x="48.0" y="293.0" class="note" text-anchor="start" xml:space="preserve">status flags</text>
+  <text x="48.0" y="310.0" class="note" text-anchor="start" xml:space="preserve">live here</text>
+  <text x="48.0" y="420.0" class="note" text-anchor="start" xml:space="preserve">the data</text>
+  <text x="48.0" y="437.0" class="note" text-anchor="start" xml:space="preserve">lives here</text>
+</svg>

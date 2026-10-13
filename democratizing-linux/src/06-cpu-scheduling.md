@@ -1,0 +1,563 @@
+<img class="plate" src="art/ch06.svg" alt="Tick, a gnu in a referee&#x27;s shirt, holds a stopwatch over a single running lane. A hare and a tortoise wait their turn, and the bib with the smallest number runs next.">
+
+# CPU Scheduling
+
+A machine has a fixed number of CPUs and usually many more tasks that want to run. The
+*scheduler* is the part of the kernel that decides, for each CPU and at each moment,
+which task runs. A *task* is the unit it schedules: a process with a single thread, or
+one thread of a process with several ([chapter 3](03-processes.md)).
+
+In this chapter, we will learn how the Completely Fair Scheduler, the default of Linux
+5.15, makes that decision. We will first see how the scheduler gets control of a CPU at
+all, and follow a switch from one task to the next. Then we will measure how it divides
+a CPU between busy processes of different priorities with `schedfacts`, and write `cfs`,
+a model of its central rule that produces the measured shares.
+
+<div class="covers">
+
+This chapter covers
+
+- when the scheduler runs: system calls, sleeping, and the timer interrupt
+- a context switch, step by step
+- scheduling classes and policies, and where ordinary tasks fit
+- the requirement a fair scheduler has to meet
+- nice values, weights, and shares of a CPU
+- virtual runtime, and the rule "run the task with the smallest"
+- the kernel structures: `struct sched_entity` and `struct cfs_rq`
+- the length of a time slice
+- what the scheduler does with a task that wakes after a long sleep
+- several CPUs: a run queue for each, load balancing, and affinity
+
+</div>
+
+## When the scheduler runs
+
+A task that is running holds its CPU, and the kernel is not executing. The scheduler can
+act only when control passes to the kernel. That happens in 3 ways.
+
+| Event | What happens |
+|---|---|
+| The task makes a system call that has to wait | A `read` with no data puts the task to sleep. The task gives up the CPU voluntarily, and the scheduler picks another. |
+| The task ends | `exit` releases the CPU. |
+| An interrupt arrives | The processor stops the task and enters the kernel. The most important one for scheduling is the *timer interrupt*, which a hardware timer raises at a fixed rate. |
+
+The timer interrupt is what makes it impossible for a task to keep a CPU for ever. A
+program in an endless loop makes no system calls, and it is still interrupted, 250 times
+per second on our machine. Taking the CPU from a task that did not offer it is called
+*preemption*.
+
+The kernel counts both kinds of switch for every task. This is a shell loop that had
+been running for a second on a busy machine:
+
+```console
+$ grep ctxt /proc/577022/status
+voluntary_ctxt_switches:	0
+nonvoluntary_ctxt_switches:	37
+```
+
+The loop did not sleep once, and was preempted 37 times. A program that waits for input
+shows the opposite pattern.
+
+### From one task to the next
+
+1. Task A is running on a CPU. The timer interrupt arrives, and the processor enters the
+   kernel on A's behalf.
+2. The kernel charges A for the time it has run since it was last charged.
+3. It checks whether A has had its share for now. If so, it sets a flag on A that asks
+   for a reschedule.
+4. On the way back to user mode, the kernel sees the flag and calls the scheduler.
+5. The scheduler picks the next task, B, from the *run queue*: the set of tasks that are
+   ready to run on this CPU.
+6. The kernel performs a *context switch*. It saves the registers of A in A's
+   `task_struct`, loads the registers of B, and switches to B's address space. A's
+   state remains complete, so it will continue later as if nothing had happened.
+7. The return to user mode now resumes B. A waits in the run queue.
+
+<figure>
+<img src="figures/sched-tick.svg" alt="How the scheduler takes a CPU from a task. Task A is running on CPU 0. A timer interrupt arrives. The kernel charges A: its vruntime grows by the time it ran times 1024 divided by its weight. If A has used its slice, it is marked for rescheduling. The scheduler picks the task with the smallest vruntime in the queue and performs a context switch, saving A's registers and loading B's. Task B is now running and A waits in the run queue.">
+<figcaption><b>Figure 6.1</b> A timer interrupt, a decision, and a context switch.</figcaption>
+</figure>
+
+Steps 2, 3 and 5 are the scheduling *policy*: how much each task is charged, when it has
+had enough, and who is next. The rest of the chapter is about those 3 decisions.
+
+## Classes and policies
+
+Linux has several schedulers side by side, called *scheduling classes*. Each task
+belongs to one, selected by its *policy*. When a CPU needs a task, the kernel asks the
+classes in a fixed order and takes the first task offered.
+
+<figure>
+<img src="figures/sched-classes.svg" alt="The scheduling classes in order of precedence. Deadline, with the policy SCHED_DEADLINE, runs first. Real time, with SCHED_FIFO and SCHED_RR, has fixed priorities 1 to 99. Fair, with SCHED_OTHER and SCHED_BATCH, uses nice values -20 to 19. Idle, with SCHED_IDLE, runs when nothing else is runnable.">
+<figcaption><b>Figure 6.2</b> The scheduling classes, in the order in which they are asked for a task.</figcaption>
+</figure>
+
+```console
+$ chrt -p 577022
+pid 577022's current scheduling policy: SCHED_OTHER
+pid 577022's current scheduling priority: 0
+```
+
+`SCHED_OTHER` is the policy of every task that has not asked for something else, and it
+belongs to the fair class. The real-time policies are for tasks that must run within a
+bounded time of becoming runnable, such as audio processing, and they require privilege,
+because a real-time task in an endless loop keeps its CPU from every ordinary task. The
+rest of this chapter concerns the fair class.
+
+## The requirement
+
+The goal of the fair class is stated in terms of an ideal: if `n` tasks of equal
+priority are runnable on a CPU, each should receive `1/n` of it, and a task of higher
+priority should receive a proportionally larger part. A real CPU runs a single task at a
+time, so the scheduler approximates the ideal by switching between tasks and keeping
+account of what each has received.
+
+The priority of a task in the fair class is its *nice value*, an integer from -20 to 19.
+A higher value means a lower priority: the task is "nicer" to the others. The `nice`
+command and the `setpriority` system call set it, and only a privileged process may set
+a negative value. The kernel converts the nice value to a *weight* with a fixed table,
+in which nice 0 has weight 1024 and each step changes the weight by about 25%. The
+share of a task is its weight divided by the sum of the weights of all runnable tasks on
+the CPU.
+
+<figure>
+<img src="figures/nice-shares.svg" alt="The weight of 4 nice values and the share of a CPU each receives against a task of nice 0. Nice -5 has weight 3121 and receives 75%. Nice 0 has weight 1024 and receives 50%. Nice 5 has weight 335 and receives 25%. Nice 10 has weight 110 and receives 10%.">
+<figcaption><b>Figure 6.3</b> Weights from the kernel's table, and the share each gives against a task of nice 0.</figcaption>
+</figure>
+
+A share is relative. A task of nice 19 that is alone on a CPU receives all of it. The
+nice value has an effect only when tasks compete.
+
+## Measuring shares
+
+`schedfacts` starts 2 busy processes, restricts both to CPU 0 with `taskset`, and sets
+their nice values with `nice`. Restricting them to the same CPU makes them compete: on
+an idle machine with 8 CPUs each would otherwise get a CPU of its own. After 2 seconds
+the program reads the CPU time of each from `/proc/<pid>/stat`. It needs only the
+standard libraries.
+
+```console
+$ cargo new schedfacts
+```
+
+`spin` starts a busy shell loop, and `cpuTime` reads the time a process has spent on a
+CPU. The kernel reports it in *clock ticks* of 10 ms, in separate fields for the time
+spent in user mode and in kernel mode.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.1</b> The imports of <code>schedfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/schedfacts/main.go">code/go/schedfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/schedfacts/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.2</b> The imports of <code>schedfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/schedfacts/src/main.rs">code/rust/schedfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/schedfacts/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.3</b> Starting a busy process on CPU 0, and reading its CPU time, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/schedfacts/main.go">code/go/schedfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/schedfacts/main.go:spin}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.4</b> Starting a busy process on CPU 0, and reading its CPU time, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/schedfacts/src/main.rs">code/rust/schedfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/schedfacts/src/main.rs:spin}}
+```
+
+
+`share` lets a process of nice 0 compete with a process of a given nice value, and
+prints the percentage each received. The percentages are rounded to the nearest 5, since
+a measurement over 2 seconds varies by a few ticks between runs.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.5</b> Measuring the division of a CPU, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/schedfacts/main.go">code/go/schedfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/schedfacts/main.go:share}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.6</b> Measuring the division of a CPU, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/schedfacts/src/main.rs">code/rust/schedfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/schedfacts/src/main.rs:share}}
+```
+
+
+```text
+{{#include ../code/output/schedfacts.txt}}
+```
+
+The shares predicted from the table are 1024/2048 = 50%, 1024/1359 = 75.3% and
+1024/1134 = 90.3%. The measurement agrees with all of them.
+
+## Virtual runtime
+
+The scheduler needs a rule that produces these shares without computing them. It keeps
+a number for each task, the *virtual runtime* or *vruntime*, and follows 2 rules.
+
+1. When a task has run for a time `t`, its vruntime increases by `t × 1024 / weight`.
+2. The task with the smallest vruntime runs next.
+
+For a task of weight 1024, vruntime is the real time it has run. A task of weight 335
+is charged about 3.06 ms for each millisecond, and a task of weight 3121 is charged
+about 0.33 ms.
+
+To see why this produces the shares, take a task A of weight 1024 and a task C of weight
+335. Rule 2 always runs the one that is behind, so their vruntimes stay close together.
+Suppose both have advanced by 300 ms of vruntime. A was charged at the real rate, so it
+ran for 300 ms. C was charged 3.06 ms per millisecond, so it ran for 98 ms. The ratio
+300 to 98 is the ratio of the weights, 1024 to 335. Equal progress in virtual time means
+weighted progress in real time.
+
+<figure>
+<img src="figures/cfs-queue.svg" alt="A run queue of 3 tasks ordered by virtual runtime. B, at nice 0 with weight 1024, has 2.00 ms and runs next. A, also nice 0, has 3.00 ms. C, at nice 5 with weight 335, has 3.06 ms. After a task runs for a slice, its virtual runtime grows by the slice times 1024 divided by its weight, and it is put back in order.">
+<figcaption><b>Figure 6.4</b> The run queue. The task at the front runs, is charged, and is inserted again.</figcaption>
+</figure>
+
+## The kernel's structures
+
+The scheduling data of a task is a `struct sched_entity`, embedded in its `task_struct`
+as the field `se`. Each CPU has a `struct cfs_rq`, the run queue of the fair class.
+These are the definitions in Linux 5.15, from `include/linux/sched.h` and
+`kernel/sched/sched.h`, reduced to the fields we use.
+
+```c
+struct load_weight {
+        unsigned long weight;                  /* 1024 for nice 0 */
+        u32 inv_weight;                        /* precomputed 2^32 / weight */
+};
+
+struct sched_entity {
+        struct load_weight load;
+        struct rb_node run_node;               /* its node in the run queue's tree */
+        unsigned int on_rq;                    /* 1 while it is in the run queue */
+        u64 exec_start;                        /* when it was last put on a CPU */
+        u64 sum_exec_runtime;                  /* real CPU time received, in ns */
+        u64 vruntime;                          /* virtual runtime, in ns */
+        /* ... */
+};
+
+struct cfs_rq {
+        struct load_weight load;               /* sum of the weights in the queue */
+        unsigned int nr_running;               /* number of runnable entities */
+        u64 min_vruntime;                      /* a floor that only increases */
+        struct rb_root_cached tasks_timeline;  /* the tree, ordered by vruntime */
+        struct sched_entity *curr;             /* the entity on the CPU */
+        /* ... */
+};
+```
+
+| Field | Meaning |
+|---|---|
+| `load.weight` | The weight from the nice table. |
+| `inv_weight` | A precomputed reciprocal, so that the division in rule 1 becomes a multiplication. |
+| `vruntime` | The virtual runtime of the task. |
+| `sum_exec_runtime` | The real CPU time, the number behind the measurement of `schedfacts`. |
+| `tasks_timeline` | A *red-black tree*, a balanced search tree, with the runnable entities ordered by `vruntime`. |
+| `run_node` | The place of the entity in that tree. |
+| `min_vruntime` | The smallest vruntime in the queue, kept so that it only increases. It is used when a task wakes up. |
+
+<figure>
+<img src="figures/sched-structs.svg" alt="The scheduler's structures. struct task_struct has the policy, static_prio derived from the nice value, and the entity se. struct sched_entity has load.weight, vruntime, sum_exec_runtime, on_rq and run_node. Each CPU has a struct cfs_rq with tasks_timeline, a tree ordered by vruntime, min_vruntime, nr_running and curr.">
+<figcaption><b>Figure 6.5</b> A task, its scheduling entity, and the run queue of a CPU.</figcaption>
+</figure>
+
+Rule 2 needs a data structure that returns its smallest element and accepts insertions,
+both quickly. A red-black tree does each in time proportional to the logarithm of the
+number of tasks, and the kernel keeps a pointer to the leftmost node, so finding the
+next task takes constant time.
+
+### The length of a slice
+
+How long a task runs before the scheduler chooses again is also derived from the
+weights. The scheduler aims to run every runnable task once within a period called the
+*scheduling latency*, and gives each task the part of the period that corresponds to its
+weight. With more tasks the parts become shorter, down to a minimum, so that the cost of
+switching does not dominate. The defaults in Linux 5.15 are a latency of 6 ms and a
+minimum of 0.75 ms, both multiplied by a factor that grows with the number of CPUs: 4 on
+a machine with 8 or more CPUs, giving 24 ms and 3 ms here.
+
+An example with the 3 tasks of this chapter makes the rule concrete. A and B have weight
+1024 and C has weight 335, a total of 2383. In a period of 24 ms, A receives
+24 × 1024 / 2383 = 10.3 ms, B the same, and C receives 24 × 335 / 2383 = 3.4 ms.
+
+<figure>
+<img src="figures/slice-division.svg" alt="A scheduling period of 24 ms divided between 3 tasks by weight. A and B, each with weight 1024, get 10.3 ms. C, with weight 335, gets 3.4 ms. The weights add up to 2383, so A and B each get 43 percent and C gets 14 percent. The period then repeats.">
+<figcaption><b>Figure 6.6</b> A period of 24 ms divided between A, B and C in proportion to their weights.</figcaption>
+</figure>
+
+<div class="lld">
+
+Low-level design: `cfs`
+
+| Type | Kernel structure | Fields | Invariant |
+|---|---|---|---|
+| `task` | `struct sched_entity` | `name`, `weight`, `vruntime`, `slices` | `vruntime` only increases |
+| `scheduler` | `struct cfs_rq` | `runnable`, `minVruntime` | `runnable` is ordered by `vruntime`; `minVruntime` only increases |
+
+| Operation | Kernel function | Behaviour |
+|---|---|---|
+| `tick()` | `update_curr`, `pick_next_entity` | removes the task with the smallest vruntime, charges it for 1 slice, inserts it again |
+| `wake(task, place)` | `place_entity`, `enqueue_entity` | inserts a task; with `place`, first raises its vruntime to `minVruntime` |
+
+</div>
+
+## Modelling the scheduler
+
+The weights are the kernel's table `sched_prio_to_weight`. The model uses a fixed slice
+of 1 ms, which is enough to reproduce the shares.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.7</b> The imports of <code>cfs</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.8</b> The imports of <code>cfs</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.9</b> Weights and tasks, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:weights}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.10</b> Weights and tasks, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:weights}}
+```
+
+
+The run queue orders tasks by vruntime. The Go version is a binary heap from
+`container/heap`, and the Rust version is a `BTreeSet` of keys. Both give the operations
+rule 2 needs.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.11</b> The run queue, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:queue}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.12</b> The run queue, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:queue}}
+```
+
+
+`tick` applies both rules. `minVruntime` follows the vruntime of the task at the front
+of the queue.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.13</b> Running the task with the smallest vruntime, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:tick}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.14</b> Running the task with the smallest vruntime, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:tick}}
+```
+
+
+`share` repeats the measurement on the model: a task of nice 0 against a task of
+another nice value, for 2000 slices.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.15</b> The shares on the model, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:share}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.16</b> The shares on the model, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:share}}
+```
+
+
+`order` prints which task runs in each of the first 12 slices when A and B have nice 0
+and C has nice 5.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.17</b> The order of the first slices, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:order}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.18</b> The order of the first slices, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:order}}
+```
+
+
+<figure class="anim">
+<video class="motion" src="figures/cfs-pick.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Tasks A and B have weight 1024 and task C has weight 335. All start with a virtual runtime of 0. A runs for 1 ms and reaches 1.00, then B reaches 1.00, then C runs and is charged 3.06. A and B take turns until both pass 3.06, at 4.00 each. C runs again and reaches 6.11. The order of the first slices is A B C A B A B A B C A B." data-chapters="[[0.0, &quot;start&quot;], [8.22, &quot;weight&quot;], [14.22, &quot;catch up&quot;], [22.86, &quot;again&quot;]]"><img src="figures/cfs-pick.gif" alt="Tasks A and B have weight 1024 and task C has weight 335. All start with a virtual runtime of 0. A runs for 1 ms and reaches 1.00, then B reaches 1.00, then C runs and is charged 3.06. A and B take turns until both pass 3.06, at 4.00 each. C runs again and reaches 6.11. The order of the first slices is A B C A B A B A B C A B."></video>
+<figcaption><b>Animation 6.1</b> The first 12 slices. The task with the smallest vruntime is highlighted before it runs.</figcaption>
+</figure>
+
+### A task that wakes up
+
+A task that sleeps is removed from the run queue, and its vruntime stops increasing.
+After a long sleep its vruntime is far below that of the tasks that kept running. Under
+rule 2 alone it would then run without interruption until it had caught up, and every
+other task would stop for that time. A task that had slept for an hour could claim the
+CPU for many minutes.
+
+The scheduler prevents this when the task wakes: it raises the task's vruntime to the
+`min_vruntime` of the queue. The task is treated as if it had kept pace while it slept.
+It competes on equal terms from the moment it wakes and receives no credit for the time
+it did not use.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.19</b> Waking a task with and without placement, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go:sleeper}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.20</b> Waking a task with and without placement, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs:sleeper}}
+```
+
+
+```text
+{{#include ../code/output/cfs.txt}}
+```
+
+| Line | What it shows |
+|---|---|
+| lines 1 to 3 | The model gives the shares that `schedfacts` measured. |
+| `A B C A B A B A B C A B` | C runs in slices 3 and 10: 2 slices of 12, against 5 each for A and B. |
+| 30 of the next 30 slices | With its old vruntime, the woken task monopolises the CPU. |
+| 10 of the next 30 slices | Placed at the minimum, it receives the same share as A and B. |
+
+<div class="crab crab-sleepy">
+
+A task that sleeps for an hour is placed at the minimum vruntime when it wakes. It gets its fair share from that moment, and no credit for the hour.
+
+</div>
+
+## Several CPUs
+
+Everything so far concerned a single CPU. A machine with several CPUs has a run queue
+for each, with its own tree and its own lock, so that the CPUs can schedule without
+waiting for each other. A task is in the queue of exactly 1 CPU at a time.
+
+<figure>
+<img src="figures/sched-cpus.svg" alt="CPU 0 has its own run queue with 4 tasks, A, B, C and D, of which A is running. CPU 1 has its own run queue with 1 task, E. Load balancing moves a task from the longer queue to the shorter one.">
+<figcaption><b>Figure 6.7</b> Each CPU has its own run queue, and the kernel balances their lengths.</figcaption>
+</figure>
+
+Separate queues can become uneven, with tasks waiting on one CPU while another is idle.
+*Load balancing* corrects this: periodically, and whenever a CPU runs out of tasks, the
+kernel compares the queues and moves tasks from a loaded CPU to a lighter one. Moving
+has a cost, because the task's data is in the caches of the CPU it leaves, so the
+balancer prefers to leave a task where it last ran.
+
+A program can restrict the CPUs a task may use, its *affinity*, with
+`sched_setaffinity` or the `taskset` command. `schedfacts` used this to force its 2
+processes onto the same CPU.
+
+```console
+$ taskset -p 577022
+pid 577022's current affinity mask: ff
+```
+
+The mask `ff` has 8 bits set: the task may run on any of the 8 CPUs.
+
+<div class="callout">
+
+**Correspondence with the kernel source.** The model corresponds to
+`kernel/sched/fair.c`. `update_curr` charges the running task with `calc_delta_fair`,
+`pick_next_entity` takes the leftmost node of `tasks_timeline`, and `place_entity` sets
+the vruntime of a waking task from `min_vruntime`. The model simplifies 2 points. The
+kernel computes the length of a slice in `sched_slice`, where the model uses 1 ms. And
+`place_entity` grants a waking task a small bonus below `min_vruntime`, so that
+interactive tasks respond quickly. Linux 6.6 replaced this policy with EEVDF, which
+keeps weights and virtual time and changes how the next task is selected.
+
+</div>
+
+## Inspecting the scheduler on a live system
+
+| Command | Shows |
+|---|---|
+| `top` or `ps -eo pid,ni,pcpu,comm --sort=-pcpu` | the nice value and CPU use of each process |
+| `chrt -p <pid>` | the scheduling policy and real-time priority of a task |
+| `taskset -p <pid>` | the CPUs a task may run on |
+| `grep ctxt /proc/<pid>/status` | voluntary and involuntary context switches |
+| `cat /proc/loadavg` | the average number of runnable tasks over 1, 5 and 15 minutes |
+| `nice -n 10 cmd`, `renice 10 -p <pid>` | starts a command with a nice value, or changes one |
+
+A high count of involuntary switches means the task wants more CPU than it gets. A high
+count of voluntary switches means it mostly waits.
+
+## The complete programs
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.21</b> The complete <code>schedfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/schedfacts/main.go">code/go/schedfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/schedfacts/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 6.22</b> The complete <code>schedfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/schedfacts/src/main.rs">code/rust/schedfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/schedfacts/src/main.rs}}
+```
+
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 6.23</b> The complete <code>cfs</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cfs/main.go">code/go/cfs/main.go</a></p>
+
+```go
+{{#include ../code/go/cfs/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 6.24</b> The complete <code>cfs</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cfs/src/main.rs">code/rust/cfs/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/cfs/src/main.rs}}
+```
+
+
+<div class="summary">
+
+## Summary
+
+- The scheduler runs when a task sleeps, ends, or is interrupted. The timer interrupt
+  lets the kernel take a CPU from a task that does not give it up.
+- A context switch saves the registers of one task and loads those of another.
+- Tasks belong to scheduling classes. Ordinary tasks are in the fair class and are
+  ordered by nice value.
+- A nice value maps to a weight through a fixed table. Nice 0 is 1024, and each step
+  changes the weight by about 25%.
+- Each task has a virtual runtime that grows by `t × 1024 / weight` when the task runs
+  for a time `t`. The task with the smallest virtual runtime runs next, which divides
+  the CPU in proportion to the weights.
+- The run queue is a red-black tree ordered by virtual runtime, one for each CPU.
+- A waking task is placed at the minimum virtual runtime of the queue, so a long sleep
+  does not turn into a long uninterrupted run.
+- Load balancing moves tasks between the queues of the CPUs, and affinity restricts
+  where a task may run.
+
+</div>
+
+## References
+
+- `sched(7)`, `nice(2)`, `sched_setaffinity(2)` and `chrt(1)`, Linux manual pages:
+  <https://man7.org/linux/man-pages/man7/sched.7.html>
+- *CFS Scheduler*, Linux kernel documentation:
+  <https://www.kernel.org/doc/html/v5.15/scheduler/sched-design-CFS.html>
+- `kernel/sched/fair.c`, `kernel/sched/core.c` and `include/linux/sched.h`, Linux 5.15:
+  <https://elixir.bootlin.com/linux/v5.15/source/kernel/sched/fair.c>

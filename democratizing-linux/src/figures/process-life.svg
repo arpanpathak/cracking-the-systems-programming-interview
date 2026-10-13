@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 572" width="480" height="572" role="img" aria-label="The life of a process, top to bottom. Fork gives the parent a child with a new pid. The child runs; exec replaces its program and keeps the pid, the parent and the descriptors. After exit or a signal the process is a zombie: its memory and descriptors are released and its table entry keeps the exit status. When the parent calls wait, the entry is removed and the pid can be given out again.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="572" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The life of a process</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A table entry is created by fork and removed by wait.</text>
+  <rect x="70" y="96" width="340" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,96.7 H76 V159.3 H82 A11.3,11.3 0 0 1 70.7,148 V108 A11.3,11.3 0 0 1 82,96.7 Z" fill="#2F6FDB"/>
+  <rect x="86" y="112.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(92.0,118.0) scale(0.8333)"><path d="M7 4 2 9l5 5v-3.5h9V8H7zm10 6v3.5H8V16h9v3.5l5-5z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="128.0" y="124.0" class="name" text-anchor="start" xml:space="preserve">fork</text>
+  <text x="128.0" y="142.0" class="sub" text-anchor="start" xml:space="preserve">the parent gets a child with a new pid</text>
+  <path class="wire" d="M240,160 L240,204" marker-end="url(#head)"/>
+  <rect x="70" y="204" width="340" height="82" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,204.7 H76 V285.3 H82 A11.3,11.3 0 0 1 70.7,274 V216 A11.3,11.3 0 0 1 82,204.7 Z" fill="#2E8B3D"/>
+  <rect x="86" y="229.0" width="32" height="32" rx="8" fill="#E7F5E9"/>
+  <g transform="translate(92.0,235.0) scale(0.8333)"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" fill="#2E8B3D" fill-rule="evenodd"/></g>
+  <text x="128.0" y="232.0" class="name" text-anchor="start" xml:space="preserve">Running</text>
+  <text x="128.0" y="250.0" class="sub" text-anchor="start" xml:space="preserve">exec replaces the program;</text>
+  <text x="128.0" y="268.0" class="sub" text-anchor="start" xml:space="preserve">pid, parent and descriptors stay</text>
+  <path class="wire" d="M240,286 L240,342" marker-end="url(#head)"/>
+  <rect x="176.9" y="305.0" width="126.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="317.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">exit, or a signal</text>
+  <rect x="70" y="342" width="340" height="82" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,342.7 H76 V423.3 H82 A11.3,11.3 0 0 1 70.7,412 V354 A11.3,11.3 0 0 1 82,342.7 Z" fill="#B7791F"/>
+  <rect x="86" y="367.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(92.0,373.0) scale(0.8333)"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2.4a7.6 7.6 0 1 0 0 15.2 7.6 7.6 0 0 0 0-15.2zM11 7h2v4.6l3.3 2-1 1.7-4.3-2.6z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="128.0" y="370.0" class="name" text-anchor="start" xml:space="preserve">Zombie</text>
+  <text x="128.0" y="388.0" class="sub" text-anchor="start" xml:space="preserve">memory and descriptors are released;</text>
+  <text x="128.0" y="406.0" class="sub" text-anchor="start" xml:space="preserve">the entry keeps the exit status</text>
+  <path class="wire" d="M240,424 L240,480" marker-end="url(#head)"/>
+  <rect x="173.6" y="443.0" width="132.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="455.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">wait by the parent</text>
+  <rect x="70" y="480" width="340" height="64" rx="12" fill="#F1F4F7" stroke="#7F8EA0" stroke-dasharray="6 5" stroke-width="1.3"/>
+  <path d="M82,480.7 H76 V543.3 H82 A11.3,11.3 0 0 1 70.7,532 V492 A11.3,11.3 0 0 1 82,480.7 Z" fill="#7F8EA0"/>
+  <text x="90.0" y="508.0" class="name" text-anchor="start" xml:space="preserve">Entry removed</text>
+  <text x="90.0" y="526.0" class="sub" text-anchor="start" xml:space="preserve">the pid can be given out again</text>
+</svg>

@@ -1,0 +1,662 @@
+<img class="plate" src="art/ch07.svg" alt="Atlas, an elephant, draws a map divided into numbered pages with a pencil held in its trunk. Most squares are blank, a few are filled in, and one is being drawn now that it is needed.">
+
+# Virtual Memory
+
+The address space of a process is the set of memory addresses the process can use and
+the meaning the kernel has given to each. The addresses are *virtual*: they are
+translated to locations in physical memory by the processor, through a table that the
+kernel maintains for each process. Different processes can use the same virtual address
+for different memory, and neither can reach the memory of the other.
+
+In this chapter, we will learn how the kernel fills an address space. We will first
+measure with `vmfacts` when a mapped page receives physical memory and where a write
+through a file mapping ends up. Then we will write `vmmodel`, a model with mappings, a
+page table and a page fault handler, and use it to follow copy-on-write after `fork`.
+
+<div class="covers">
+
+This chapter covers
+
+- the layout of a process's address space, read from `/proc/self/maps`
+- pages, frames, and how the processor translates an address
+- the kernel structures: `struct mm_struct`, `struct vm_area_struct`, `struct page`
+- mappings, and what `mmap` does and leaves undone
+- demand paging: a page receives memory when it is first used
+- the shared zero page
+- private and shared file mappings
+- copy-on-write, and why `fork` does not copy the memory of a process
+- which accesses end in `SIGSEGV`
+- how much memory a process uses: virtual size, resident size, and overcommit
+
+</div>
+
+## Why addresses are virtual
+
+Suppose programs used the addresses of physical memory directly. A program compiled to
+keep a variable at address 0x1000 could run only when that memory was free, and 2 copies
+of it could not run together. Any program could read or overwrite the memory of any
+other by using its addresses. And a program could use no more memory than was physically
+free at the moment it started.
+
+Virtual addresses remove all 3 problems with a single idea: the addresses a program uses
+are private to it, and a table per process says which physical memory, if any, stands
+behind each of them.
+
+<figure>
+<img src="figures/same-address.svg" alt="Process A and process B both read address 0x1000. A&#x27;s page table maps page 1 to frame 5, and B&#x27;s page table maps page 1 to frame 7. The same address leads to different frames of physical memory, because each process has its own page table.">
+<figcaption><b>Figure 7.1</b> Both processes use address 0x1000, and each reaches its own memory.</figcaption>
+</figure>
+
+With this arrangement every program can be built as if it had the machine to itself.
+The kernel decides which physical memory each address reaches, and it can decide late,
+at the moment the address is first used. The rest of the chapter is about how the table
+is organised and when it is filled in.
+
+## The layout of an address space
+
+Before the mechanism, we look at what an address space contains. The kernel lists the
+address ranges a process can use in `/proc/<pid>/maps`. This is the listing of a `cat`
+process on our machine, with 3 of its columns removed.
+
+```console
+$ cat /proc/self/maps
+aaaab7c80000-aaaab7c86000 r-xp 00000000 /usr/bin/cat
+aaaab7c95000-aaaab7c96000 r--p 00005000 /usr/bin/cat
+aaaab7c96000-aaaab7c97000 rw-p 00006000 /usr/bin/cat
+aaaacae31000-aaaacae52000 rw-p 00000000 [heap]
+ffffaa650000-ffffaa7d8000 r-xp 00000000 /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffaa7e7000-ffffaa7eb000 r--p 00187000 /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffaa7eb000-ffffaa7ed000 rw-p 0018b000 /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffaa80b000-ffffaa82d000 rw-p 00000000
+ffffaa82d000-ffffaa858000 r-xp 00000000 /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffffaa866000-ffffaa867000 r-xp 00000000 [vdso]
+fffff2ebe000-fffff2ee0000 rw-p 00000000 [stack]
+```
+
+The numbers are addresses in hexadecimal, and they are less forbidding than they look.
+A line gives a start and an end, and the size of the range is the difference. For the
+first line, 0xaaaab7c86000 - 0xaaaab7c80000 = 0x6000, which is 6 × 4096 bytes: the code
+of `cat` occupies 6 pages. Only the differences carry information. The absolute values
+change on every run.
+
+<figure>
+<img src="figures/maps-annotated.svg" alt="4 lines of /proc/pid/maps explained. The line for /usr/bin/cat covers 0x6000 bytes, 6 pages, readable and executable: the program&#x27;s code. The heap line covers 0x21000 bytes, 33 pages, readable and writable: memory from malloc. The libc line covers 0x188000 bytes, 392 pages of library code shared by every program that uses libc. The stack line covers 0x22000 bytes, 34 pages, for local variables and return addresses.">
+<figcaption><b>Figure 7.2</b> 4 lines of the listing, with the size of each range worked out.</figcaption>
+</figure>
+
+Each line is a *mapping*: a range of addresses with the same permissions and the same
+source.
+
+| Column | Meaning |
+|---|---|
+| `aaaab7c80000-aaaab7c86000` | the first address of the range, and the first address after it |
+| `r-xp` | read, write and execute permission, then `p` for a private mapping or `s` for a shared one |
+| `00005000` | for a mapping of a file: the offset in the file at which the range starts |
+| the last column | the file that is mapped, a name in brackets for a special region, or nothing for anonymous memory |
+
+| Region | Contents |
+|---|---|
+| `/usr/bin/cat`, `r-xp` | the instructions of the program, read from the program file; executable and read-only |
+| `/usr/bin/cat`, `rw-p` | the global variables of the program |
+| `[heap]` | memory for small allocations by `malloc`, grown with the `brk` system call |
+| `libc.so.6`, `ld-linux-aarch64.so.1` | shared libraries, each with its own code and data ranges |
+| no name | *anonymous* memory: not backed by a file, and filled with zeros when first used |
+| `[vdso]` | a small library that the kernel maps into every process, which lets calls such as `clock_gettime` run without entering the kernel |
+| `[stack]` | the stack of the main thread: local variables and return addresses |
+
+<figure>
+<img src="figures/address-layout.svg" alt="The address space of a cat process from high addresses to low. The stack, read-write, holds local variables and grows downward. Below it are the shared libraries libc and ld-linux, mapped from files. Then anonymous mappings for large allocations and thread stacks. Then the heap, read-write, used by malloc and grown upward with brk. Then the data of /usr/bin/cat, read-write, with its global variables. At the lowest addresses is the code of /usr/bin/cat, readable and executable.">
+<figcaption><b>Figure 7.3</b> The regions of a small process, from high addresses to low.</figcaption>
+</figure>
+
+The ranges are far apart, and most of the space between them is unmapped. An access to
+an unmapped address ends the process with `SIGSEGV`. The addresses differ from run to
+run, because the kernel chooses the positions of the regions at random for each new
+program, which makes attacks that depend on known addresses harder.
+
+## Pages, mappings and the page table
+
+Virtual and physical memory are both divided into units of the same size, 4096 bytes on
+this machine. A unit of virtual memory is a *page*, and a unit of physical memory is a
+*frame*. The address space is described at 2 levels.
+
+| Level | Kept by | Contents |
+|---|---|---|
+| Mappings | the kernel | a list of address ranges; for each, the permitted access and where its contents come from: a file, or nothing (*anonymous* memory, initially zero) |
+| Page table | the kernel, read by the processor | for each page that is in use: the frame that holds it, and whether writing is allowed |
+
+### Translating an address
+
+Translation is easiest to follow on a machine small enough to work by hand. Imagine
+addresses of 16 bits and pages of 256 bytes. An address then has 2 hexadecimal digits
+for the page number and 2 for the offset within the page. To translate 0x1234, split it
+into page 0x12 and offset 0x34, look up entry 0x12 of the page table, find frame 0x7A
+there, and attach the offset: the physical address is 0x7A34.
+
+<figure>
+<img src="figures/address-worked.svg" alt="The translation of address 0x1234 on a small machine with 16-bit addresses and pages of 256 bytes. The address splits into page 0x12 and offset 0x34. Entry 0x12 of the page table holds frame 0x7A. The physical address is frame 0x7A followed by the unchanged offset 0x34: 0x7A34.">
+<figcaption><b>Figure 7.4</b> Address 0x1234 translated by hand on a machine with pages of 256 bytes.</figcaption>
+</figure>
+
+A real machine does exactly this, with larger numbers and with a table that is split
+into several levels to save space.
+
+The processor translates every address a program uses, in hardware. An address of this
+machine has 48 significant bits. The low 12 bits are the *offset* within a page, since a
+page has 4096 = 2<sup>12</sup> bytes. The remaining 36 bits are the *page number*, and
+they are used in 4 groups of 9 bits.
+
+<figure>
+<img src="figures/va-split.svg" alt="A virtual address of 48 bits is divided into 5 fields: 4 index fields of 9 bits each, for levels 0 to 3 of the page table, and an offset of 12 bits. Each index selects 1 of 512 entries of a table, and the offset selects a byte within the frame.">
+<figcaption><b>Figure 7.5</b> The fields of a virtual address on arm64 with pages of 4096 bytes.</figcaption>
+</figure>
+
+The page table is a tree of tables, each a page of 512 entries. The processor starts at
+the root table of the process, uses the first 9 bits to select an entry, follows it to a
+table of the next level, and repeats this 4 times. The last entry holds the number of
+the frame and the permission bits. The frame number and the offset together are the
+physical address.
+
+<figure>
+<img src="figures/page-table-walk.svg" alt="The translation of a virtual address. The address is split into 4 indexes and an offset. The level 0 table, the root that mm->pgd points to, is indexed with index 0, and the entry leads to a level 1 table. Index 1 leads to a level 2 table, index 2 to a level 3 table, and index 3 selects the page table entry, which gives the frame. The frame and the offset form the physical address.">
+<figcaption><b>Figure 7.6</b> The processor walks 4 levels of tables to find the frame of a page.</figcaption>
+</figure>
+
+A tree is used because the address space is almost empty. A flat table for 2<sup>36</sup>
+pages would need 512 GiB for each process. In the tree, a table exists only for the
+regions that are in use, and the `cat` process above needs a few dozen kilobytes.
+
+Walking 4 tables for every memory access would be slow, so the processor keeps the
+results of recent translations in a cache, the *translation lookaside buffer* or TLB.
+Most accesses are answered from the TLB. When the kernel changes a page table entry, it
+tells the processor to discard the cached translation.
+
+`mmap` adds a mapping. It writes no page table entry and allocates no frame. A mapping
+is a promise: these addresses are valid, and this is what they contain.
+
+The promise is kept later. When the program uses an address whose page has no entry, or
+writes where the entry forbids writing, the processor cannot complete the instruction.
+It raises a *page fault*, which transfers control to the kernel. The kernel looks up the
+address in the mappings. If a mapping permits the access, the kernel provides a frame,
+writes the entry, and returns, and the processor repeats the instruction. If no mapping
+permits it, the kernel sends the process the signal `SIGSEGV`.
+
+<figure>
+<img src="figures/page-fault.svg" alt="A program reads or writes a virtual address. The processor looks in the page table for an entry that allows the access. When there is none, it raises a page fault. The kernel checks whether a mapping allows the access. If so, it fills in the page table entry with the zero frame, a new frame or a private copy, and the access is retried. If no mapping allows it, the kernel sends SIGSEGV.">
+<figcaption><b>Figure 7.7</b> The page table is filled in by page faults.</figcaption>
+</figure>
+
+Filling the table on demand means that memory is spent only on pages that are used. A
+program can map a large range and touch a small part of it, and a large program starts
+quickly because its code is read from disk page by page as it runs.
+
+## The kernel's structures
+
+The kernel describes an address space with 3 structures. These are the definitions in
+`include/linux/mm_types.h` of Linux 5.15, reduced to the fields we use.
+
+```c
+struct mm_struct {
+        struct vm_area_struct *mmap;           /* the mappings, as a list */
+        struct rb_root mm_rb;                  /* the mappings, as a tree by address */
+        pgd_t *pgd;                            /* the root of the page table */
+        int map_count;                         /* number of mappings */
+        unsigned long total_vm;                /* pages mapped */
+        unsigned long start_brk, brk;          /* the heap */
+        unsigned long start_stack;             /* the stack */
+        /* ... */
+};
+
+struct vm_area_struct {
+        unsigned long vm_start;                /* first address of the mapping */
+        unsigned long vm_end;                  /* first address after it */
+        struct vm_area_struct *vm_next, *vm_prev;
+        struct mm_struct *vm_mm;               /* the address space it belongs to */
+        unsigned long vm_flags;                /* VM_READ, VM_WRITE, VM_EXEC, VM_SHARED */
+        unsigned long vm_pgoff;                /* offset in the file, in pages */
+        struct file *vm_file;                  /* the mapped file, or NULL */
+        /* ... */
+};
+
+struct page {
+        unsigned long flags;                   /* dirty, locked, ... */
+        struct address_space *mapping;         /* the file this frame caches, if any */
+        pgoff_t index;                         /* its page number in that file */
+        atomic_t _mapcount;                    /* page table entries that map it */
+        atomic_t _refcount;                    /* users of the frame */
+        /* ... */
+};
+```
+
+| Structure | Exists | Meaning |
+|---|---|---|
+| `struct mm_struct` | once per process | The address space. `task_struct.mm` points to it, and the threads of a process share it. |
+| `struct vm_area_struct` | once per mapping | A line of `/proc/<pid>/maps`. The kernel calls it a VMA. |
+| `struct page` | once per frame of physical memory | The kernel's record of a frame: who uses it and what it contains. |
+
+| Field | Meaning |
+|---|---|
+| `mmap`, `mm_rb` | The mappings of the process, as a list in address order and as a tree for fast lookup of the mapping that contains an address. |
+| `pgd` | The address of the root table that the processor walks. A context switch loads it into the processor ([chapter 6](06-cpu-scheduling.md)). |
+| `vm_start`, `vm_end` | The 2 addresses in the first column of `maps`. |
+| `vm_flags` | The permissions in the second column. |
+| `vm_file`, `vm_pgoff` | The file and the offset in the last columns. `vm_file` is a `struct file` ([chapter 2](02-file-descriptors.md)). |
+| `_refcount`, `_mapcount` | Counts that decide when a frame is free and whether it is shared, used for copy-on-write below. |
+
+<figure>
+<img src="figures/vm-structs.svg" alt="The memory structures. Each process has a struct mm_struct with the list and tree of mappings, pgd, the root of the page table, map_count, total_vm, and the bounds of the heap and the stack. Each mapping is a struct vm_area_struct with vm_start and vm_end, vm_flags, vm_file and vm_pgoff. Each frame of physical memory has a struct page with _refcount, _mapcount, mapping and flags.">
+<figcaption><b>Figure 7.8</b> The address space, its mappings, and the frames behind them.</figcaption>
+</figure>
+
+There are 2 descriptions of the same address space, and the difference between them is
+the subject of this chapter. The list of VMAs says what the process is allowed to use.
+The page table says what has actually been given a frame. `mmap` changes only the
+first.
+
+<div class="crab crab-shocked">
+
+`mmap` of 1 GiB allocates no memory. The frames arrive page by page, at the first access to each page.
+
+</div>
+
+## Measuring an address space
+
+`vmfacts` uses `golang.org/x/sys/unix` in Go and the `memmap2` crate in Rust.
+
+```console
+$ cargo new vmfacts
+$ cargo add -p vmfacts memmap2
+```
+
+The kernel publishes the page table of a process in `/proc/self/pagemap`: 8 bytes for
+each virtual page, in which bit 63 is set when the page has a frame. `resident` counts
+those pages for a mapping.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.1</b> The imports of <code>vmfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/vmfacts/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.2</b> The imports of <code>vmfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmfacts/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.3</b> Counting the pages of a mapping that have a frame, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/vmfacts/main.go:resident}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.4</b> Counting the pages of a mapping that have a frame, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmfacts/src/main.rs:resident}}
+```
+
+
+`demand` maps 64 pages of anonymous memory and counts the resident pages 3 times: after
+`mmap`, after writing to 10 pages, and after reading 1 further page.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.5</b> When a page receives memory, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/vmfacts/main.go:demand}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.6</b> When a page receives memory, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmfacts/src/main.rs:demand}}
+```
+
+
+`protect` reads the permissions of a mapping from `/proc/self/maps` before and after
+`mprotect` removes the permission to write.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.7</b> The permissions of a mapping, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/vmfacts/main.go:protect}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.8</b> The permissions of a mapping, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmfacts/src/main.rs:protect}}
+```
+
+
+`throughMapping` maps a file that contains `hello`, writes `HELLO` into the mapped
+memory, and reads the file again. It does this with a private mapping and with a shared
+one. Mapping a file is an `unsafe` operation in Rust, because another process could
+change the file while the program holds a slice of it. The comment in the listing states
+why the use is sound here.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.9</b> Writing through a private and a shared file mapping, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/vmfacts/main.go:file}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.10</b> Writing through a private and a shared file mapping, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmfacts/src/main.rs:file}}
+```
+
+
+```text
+{{#include ../code/output/vmfacts.txt}}
+```
+
+| Output | Conclusion |
+|---|---|
+| 64 pages mapped, 0 resident | `mmap` allocates no memory. |
+| 10 resident after writing to 10 pages | A page receives a frame at the first access to it. |
+| 11 resident after a read, and the byte is 0 | A read is also an access. An untouched anonymous page reads as zeros. |
+| `rw-p` becomes `r--p` | Permissions are a property of the mapping. The `p` marks a private mapping. |
+| private mapping: the file holds `hello` | A write to a private mapping changes a copy that belongs to the process. |
+| shared mapping: the file holds `HELLO` | A write to a shared mapping changes the file's own page. |
+
+## Modelling an address space
+
+<div class="lld">
+
+Low-level design: `vmmodel`
+
+| Type | Fields | Meaning |
+|---|---|---|
+| `frame` | `data`, `refs` | a page of physical memory and the number of entries that refer to it |
+| `memory` | `frames`, `zero` | the count of allocated frames; the shared frame of zeros |
+| `mapping` | `start`, `pages`, `writable` | a range of virtual pages and its permission |
+| `entry` | `frame`, `writable` | a page table entry |
+| `space` | `mappings`, `table`, `faults` | an address space |
+
+| Operation | Behaviour |
+|---|---|
+| `mmap(pages, writable)` | adds a mapping; returns its address |
+| `read(address)`, `write(address, value)` | use the entry when it permits the access; otherwise call `fault` and repeat |
+| `fault(page, write)` | fails with `SIGSEGV`, or installs an entry |
+| `fork()` | returns a space with the same mappings and entries, all read-only on both sides |
+
+</div>
+
+In the Rust version, a frame is an `Rc` of an array, and the reference count of the `Rc`
+is the `refs` field of the Go version.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.11</b> The imports of <code>vmmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.12</b> The imports of <code>vmmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:imports}}
+```
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.13</b> Frames, mappings, entries and the address space, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:types}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.14</b> Frames, mappings, entries and the address space, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:types}}
+```
+
+
+`mmap` only records the range.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.15</b> Adding a mapping, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:mmap}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.16</b> Adding a mapping, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:mmap}}
+```
+
+
+`read` and `write` play the part of the processor. They consult the page table and call
+`fault` when the entry is missing or forbids the access.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.17</b> An access through the page table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:access}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.18</b> An access through the page table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:access}}
+```
+
+
+`fault` is the kernel's handler. After the check against the mappings it has 4 cases.
+
+| Access | Entry | Action |
+|---|---|---|
+| read | none | map the shared zero frame, read-only |
+| write | none | allocate a frame of zeros, writable |
+| write | read-only, and the frame has no other user | make the entry writable |
+| write | read-only, and the frame is shared | allocate a frame, copy the contents, map the copy writable |
+
+Case 1 explains the measurement of 11 resident pages. Every read of an untouched
+anonymous page maps the same frame of zeros, so reading costs no memory. The frame is
+mapped read-only, and the first write replaces it with a private frame through case 4.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.19</b> The page fault handler, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:fault}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.20</b> The page fault handler, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:fault}}
+```
+
+
+### Copy-on-write
+
+`fork` gives the child a copy of the parent's address space. Copying every frame would
+be slow, and most of the work would be wasted, since the usual next step of the child is
+`exec`, which discards the address space. The kernel therefore copies only the page
+table. Parent and child refer to the same frames, and every entry is made read-only in
+both.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.21</b> Forking an address space, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:fork}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.22</b> Forking an address space, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:fork}}
+```
+
+
+Reads continue without faults. The first write to a page by either process faults. The
+handler sees a read-only entry in a writable mapping, copies the frame for the writer,
+and the processes diverge on that page only.
+
+<figure>
+<img src="figures/cow-fork.svg" alt="After fork, page 0 of the parent and page 0 of the child both refer to frame 1, which holds a, and both entries are read-only. After the child writes b, the child's entry is writable and refers to a new frame 3 that holds b. The parent's entry still refers to frame 1.">
+<figcaption><b>Figure 7.9</b> A frame is shared after <code>fork</code> and copied at the first write.</figcaption>
+</figure>
+
+A private file mapping uses the same mechanism. Its pages initially refer to the file's
+frames, read-only, and a write copies the page. The file is unchanged, as `vmfacts`
+measured.
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.23</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go:trace}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.24</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs:trace}}
+```
+
+
+```text
+{{#include ../code/output/vmmodel.txt}}
+```
+
+| Line | What it shows |
+|---|---|
+| `mmap of 4 pages` | No fault and no frame. |
+| `write to page 0` | A write to an untouched page allocates frame 1. |
+| `read of page 1` | A read maps the zero frame: a fault, and no new frame. |
+| `write to page 1` | The zero frame is shared, so the write copies it into frame 2. |
+| `fork, in the child` | The child starts with the parent's 2 frames and none of its own. |
+| `child writes page 0` | The child faults and receives a copy, frame 3. |
+| `parent writes page 0` | The parent also faults, because its entry is read-only. It is now the only user of frame 1, so no copy is made. |
+| the last 2 lines | An address outside every mapping, and a write to a read-only mapping, end in `SIGSEGV`. |
+
+<div class="callout">
+
+**Correspondence with the kernel source.** A mapping is `struct vm_area_struct` in
+`include/linux/mm_types.h`, and the list of mappings is in `struct mm_struct`. On arm64
+the page table is a tree of 4 levels that the processor walks itself; the model replaces
+the tree by a map from page number to entry. The fault handler is `handle_mm_fault` in
+`mm/memory.c`, where `do_anonymous_page` handles the first 2 cases of the table and
+`do_wp_page` the last 2. `/proc/self/maps` prints a line for each `vm_area_struct`.
+
+</div>
+
+## How much memory a process uses
+
+Since mapping and allocating are separate, a process has 2 sizes.
+
+```console
+$ ps -o pid,vsz,rss,min_flt,maj_flt,comm -p 580844
+    PID    VSZ   RSS  MINFL  MAJFL COMMAND
+ 580844  11204   776    114      0 sleep
+```
+
+| Column | Meaning |
+|---|---|
+| `VSZ` | *Virtual size*: the total of all mappings, 11204 kB. It is `total_vm`. |
+| `RSS` | *Resident set size*: the pages that have a frame, 776 kB. |
+| `MINFL` | *Minor faults*: page faults that the kernel resolved without reading from a disk, 114. |
+| `MAJFL` | *Major faults*: page faults that had to wait for a page to be read from a disk, 0. |
+
+<figure>
+<img src="figures/vsz-rss.svg" alt="2 gauges for a sleep process. VSZ, the addresses mapped, is 11204 kB. RSS, the pages that have a frame, is 776 kB, 7 percent of the mapped size.">
+<figcaption><b>Figure 7.10</b> The 2 sizes of the <code>sleep</code> process, to scale.</figcaption>
+</figure>
+
+The `sleep` process has mapped 11 MB and uses under 1 MB, because most of the pages of
+its libraries have not been touched. It took 114 page faults to start, each bringing in a
+single page or a few. `RSS` is the number to look at when asking how much memory a
+process costs, with the reservation that pages shared with other processes, such as the
+code of `libc`, are counted in the `RSS` of each.
+
+Because memory is given out at the first access, the kernel can promise more than it
+has. This is *overcommit*: the sum of the mappings of all processes may exceed physical
+memory and swap, on the assumption that not all of it will be touched. The policy is in
+`/proc/sys/vm/overcommit_memory`, and the value 1 on this machine means that `mmap`
+does not refuse a request for lack of memory. When the promises are called in and no frame
+is free, the kernel first reclaims frames, by discarding page cache pages
+([chapter 8](08-the-page-cache.md)) and by writing anonymous pages to *swap* space on
+disk. When that is not enough, the *OOM killer* ends a process to free its memory.
+[Chapter 12](12-control-groups.md) shows it at work inside a memory limit.
+
+### The heap and the stack
+
+`malloc` is a library function, and the kernel knows nothing about individual
+allocations. The allocator asks the kernel for memory in large pieces and divides them
+itself. It has 2 ways to ask. `brk` moves the end of the `[heap]` mapping, which suits
+many small allocations. For a large request, 128 KiB or more in the allocator of glibc,
+it calls `mmap` for an anonymous mapping of its own, which can be returned to the kernel
+independently. Both give addresses without frames, so memory that a program allocates
+and does not touch costs nothing.
+
+The stack is a mapping that the kernel extends on demand. An access directly below its
+current end causes a page fault, and the handler enlarges the mapping, up to the limit
+shown by `ulimit -s`.
+
+## Inspecting memory on a live system
+
+| Command | Shows |
+|---|---|
+| `cat /proc/<pid>/maps` | the mappings of a process |
+| `cat /proc/<pid>/smaps` | for each mapping: resident, shared, private and swapped pages |
+| `ps -o pid,vsz,rss,min_flt,maj_flt,comm` | virtual size, resident size and page faults |
+| `grep Vm /proc/<pid>/status` | the sizes by kind: data, stack, code, libraries, page tables |
+| `free -m` | memory of the whole system: used, free, and used for the page cache |
+| `cat /proc/sys/vm/overcommit_memory` | the overcommit policy |
+
+## The complete programs
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.25</b> The complete <code>vmfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+```go
+{{#include ../code/go/vmfacts/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 7.26</b> The complete <code>vmfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmfacts/src/main.rs}}
+```
+
+
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.27</b> The complete <code>vmmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+```go
+{{#include ../code/go/vmmodel/main.go}}
+```
+
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 7.28</b> The complete <code>vmmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+```rust
+{{#include ../code/rust/vmmodel/src/main.rs}}
+```
+
+
+<div class="summary">
+
+## Summary
+
+- Each process has its own virtual addresses, translated to physical frames through a
+  page table.
+- `mmap` records a mapping and allocates nothing. A page receives a frame at its first
+  access, through a page fault.
+- A read of an untouched anonymous page maps a shared frame of zeros. The first write
+  replaces it with a private frame.
+- A write through a shared file mapping reaches the file. A write through a private
+  mapping changes a copy.
+- `fork` copies the page table and shares the frames read-only. A frame is copied when
+  one side first writes to it.
+- An access that no mapping permits ends in `SIGSEGV`.
+
+</div>
+
+## References
+
+- `mmap(2)`, `mprotect(2)` and `proc(5)` for `pagemap` and `maps`, Linux manual pages:
+  <https://man7.org/linux/man-pages/man2/mmap.2.html>
+- *Examining Process Page Tables*, Linux kernel documentation:
+  <https://www.kernel.org/doc/html/v5.15/admin-guide/mm/pagemap.html>
+- M. Gorman, *Understanding the Linux Virtual Memory Manager*, Prentice Hall, 2004.
+- `mm/memory.c` and `mm/mmap.c`, Linux 5.15:
+  <https://elixir.bootlin.com/linux/v5.15/source/mm/memory.c>

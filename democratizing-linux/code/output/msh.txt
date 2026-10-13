@@ -1,0 +1,22 @@
+$ seq 1 5 > numbers
+[status 0]
+$ wc -l < numbers
+5
+[status 0]
+$ sort -rn < numbers | head -n 2 >> numbers
+[status 0]
+$ paste -sd, numbers
+1,2,3,4,5,5,4
+[status 0]
+$ false
+[status 1]
+$ nosuchcommand
+msh: nosuchcommand: command not found
+[status 127]
+$ cd /
+[status 0]
+$ pwd
+/
+[status 0]
+$ exit 3
+[the shell exits with status 3]

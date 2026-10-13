@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 542" width="480" height="542" role="img" aria-label="The segments of a short TCP connection between a client and the server&#x27;s kernel. The client sends SYN with sequence number 1000. The server answers SYN and ACK with its own sequence number 5000 and acknowledgement 1001. The client sends ACK with acknowledgement 5001, and the connection is established. The client sends 5 bytes at sequence 1001, and the server acknowledges 1006 with a window of 65531. The client sends FIN at sequence 1006, and the server acknowledges 1007.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="542" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The segments of a connection</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A handshake, 5 bytes of data, and the close of 1 direction.</text>
+  <rect x="32" y="96" width="150" height="44" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,96.7 H38 V139.3 H44 A11.3,11.3 0 0 1 32.7,128 V108 A11.3,11.3 0 0 1 44,96.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="123.0" class="name" text-anchor="start" xml:space="preserve">client</text>
+  <rect x="298" y="96" width="150" height="44" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M310,96.7 H304 V139.3 H310 A11.3,11.3 0 0 1 298.7,128 V108 A11.3,11.3 0 0 1 310,96.7 Z" fill="#1F8A70"/>
+  <text x="318.0" y="123.0" class="name" text-anchor="start" xml:space="preserve">server</text>
+  <line x1="107" y1="140" x2="107" y2="486" stroke="#D5DBE3" stroke-width="2"/>
+  <line x1="373" y1="140" x2="373" y2="486" stroke="#D5DBE3" stroke-width="2"/>
+  <path class="wire" d="M107,172 L373,172" marker-end="url(#head)"/>
+  <rect x="190.1" y="163.0" width="99.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="175.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">SYN, seq 1000</text>
+  <text x="107.0" y="160.0" class="note" text-anchor="middle" xml:space="preserve">connect</text>
+  <path class="wire" d="M373,218 L107,218" marker-end="url(#head)"/>
+  <rect x="137.3" y="209.0" width="205.4" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="221.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">SYN + ACK, seq 5000, ack 1001</text>
+  <path class="wire" d="M107,264 L373,264" marker-end="url(#head)"/>
+  <rect x="190.1" y="255.0" width="99.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="267.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">ACK, ack 5001</text>
+  <text x="107.0" y="252.0" class="note" text-anchor="middle" xml:space="preserve">established</text>
+  <path class="wire" d="M107,310 L373,310" marker-end="url(#head)"/>
+  <rect x="176.9" y="301.0" width="126.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="313.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">5 bytes, seq 1001</text>
+  <text x="107.0" y="298.0" class="note" text-anchor="middle" xml:space="preserve">write</text>
+  <path class="wire" d="M373,356 L107,356" marker-end="url(#head)"/>
+  <rect x="143.9" y="347.0" width="192.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="359.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">ACK, ack 1006, window 65531</text>
+  <path class="wire" d="M107,402 L373,402" marker-end="url(#head)"/>
+  <rect x="190.1" y="393.0" width="99.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="405.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">FIN, seq 1006</text>
+  <text x="107.0" y="390.0" class="note" text-anchor="middle" xml:space="preserve">close</text>
+  <path class="wire" d="M373,448 L107,448" marker-end="url(#head)"/>
+  <rect x="190.1" y="439.0" width="99.8" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="451.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">ACK, ack 1007</text>
+  <text x="373.0" y="436.0" class="note" text-anchor="middle" xml:space="preserve">read returns 0</text>
+  <text x="32.0" y="502.0" class="note" text-anchor="start" xml:space="preserve">Every byte has a sequence number. An acknowledgement names</text>
+  <text x="32.0" y="519.0" class="note" text-anchor="start" xml:space="preserve">the next byte the receiver expects, and carries the window.</text>
+</svg>

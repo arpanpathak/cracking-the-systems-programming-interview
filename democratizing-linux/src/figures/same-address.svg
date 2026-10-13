@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 468" width="480" height="468" role="img" aria-label="Process A and process B both read address 0x1000. A&#x27;s page table maps page 1 to frame 5, and B&#x27;s page table maps page 1 to frame 7. The same address leads to different frames of physical memory, because each process has its own page table.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="468" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The same address in 2 processes</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A virtual address has a meaning only inside its own process.</text>
+  <rect x="32" y="104" width="196" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,104.7 H38 V167.3 H44 A11.3,11.3 0 0 1 32.7,156 V116 A11.3,11.3 0 0 1 44,104.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="132.0" class="name" text-anchor="start" xml:space="preserve">process A</text>
+  <text x="52.0" y="150.0" class="sub" text-anchor="start" xml:space="preserve">reads address 0x1000</text>
+  <rect x="252" y="104" width="196" height="64" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M264,104.7 H258 V167.3 H264 A11.3,11.3 0 0 1 252.7,156 V116 A11.3,11.3 0 0 1 264,104.7 Z" fill="#7A4FD0"/>
+  <text x="272.0" y="132.0" class="name" text-anchor="start" xml:space="preserve">process B</text>
+  <text x="272.0" y="150.0" class="sub" text-anchor="start" xml:space="preserve">reads address 0x1000</text>
+  <rect x="32" y="198" width="196" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M44,198.7 H38 V253.3 H44 A11.3,11.3 0 0 1 32.7,242 V210 A11.3,11.3 0 0 1 44,198.7 Z" fill="#2F6FDB"/>
+  <text x="52.0" y="222.0" class="name" text-anchor="start" xml:space="preserve">A&#x27;s page table</text>
+  <text x="52.0" y="240.0" class="sub" text-anchor="start" xml:space="preserve">page 1 -&gt; frame 5</text>
+  <rect x="252" y="198" width="196" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M264,198.7 H258 V253.3 H264 A11.3,11.3 0 0 1 252.7,242 V210 A11.3,11.3 0 0 1 264,198.7 Z" fill="#7A4FD0"/>
+  <text x="272.0" y="222.0" class="name" text-anchor="start" xml:space="preserve">B&#x27;s page table</text>
+  <text x="272.0" y="240.0" class="sub" text-anchor="start" xml:space="preserve">page 1 -&gt; frame 7</text>
+  <path class="wire" d="M130,168 L130,198" marker-end="url(#head)"/>
+  <path class="wire" d="M350,168 L350,198" marker-end="url(#head)"/>
+  <rect x="32" y="300" width="416" height="100" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="289" width="208.9" height="22" rx="11" fill="#1B2430"/>
+  <text x="154.5" y="304.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">PHYSICAL MEMORY: FRAMES</text>
+  <rect x="48.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="68.5" y="351.0" class="mono dim" text-anchor="middle" xml:space="preserve">0</text>
+  <rect x="97.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="117.5" y="351.0" class="mono dim" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="146.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="166.5" y="351.0" class="mono dim" text-anchor="middle" xml:space="preserve">2</text>
+  <rect x="195.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="215.5" y="351.0" class="mono dim" text-anchor="middle" xml:space="preserve">3</text>
+  <rect x="244.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="264.5" y="351.0" class="mono dim" text-anchor="middle" xml:space="preserve">4</text>
+  <rect x="293.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="313.5" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">5</text>
+  <rect x="342.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="362.5" y="351.0" class="mono dim" text-anchor="middle" xml:space="preserve">6</text>
+  <rect x="391.0" y="326.0" width="41.0" height="40.0" rx="6" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="411.5" y="351.0" class="mono strong" text-anchor="middle" xml:space="preserve">7</text>
+  <path class="wire" d="M130,254 L130,281 Q130,290 139,290 L304,290 Q313,290 313,299 L313,326" marker-end="url(#head)"/>
+  <path class="wire" d="M350,254 L350,271 Q350,280 359,280 L402,280 Q411,280 411,289 L411,326" marker-end="url(#head)"/>
+  <text x="32.0" y="428.0" class="note" text-anchor="start" xml:space="preserve">The same address leads to different memory in each process, because</text>
+  <text x="32.0" y="445.0" class="note" text-anchor="start" xml:space="preserve">each process has its own table. Neither can name the other&#x27;s frame.</text>
+</svg>
