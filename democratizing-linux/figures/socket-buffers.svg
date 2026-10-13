@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 504" width="480" height="504" role="img" aria-label="The sender&#x27;s write copies into a send buffer. The kernel sends segments from it, up to the window, to the receive buffer of the peer. The receiver&#x27;s read copies out of the receive buffer. The receiver reports the free space of its receive buffer back to the sender as the window. When the window is 0 the sender stops sending, its send buffer fills, and write blocks.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="504" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The buffers of a connection</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The receiver&#x27;s free space limits the sender.</text>
+  <rect x="90" y="96" width="300" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M102,96.7 H96 V151.3 H102 A11.3,11.3 0 0 1 90.7,140 V108 A11.3,11.3 0 0 1 102,96.7 Z" fill="#2F6FDB"/>
+  <rect x="106" y="108.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(112.0,114.0) scale(0.8333)"><path d="M3 21l1.5-5.5L15.2 4.8l4 4L8.5 19.5zM16.6 3.4l1.3-1.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4l-1.3 1.3z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="148.0" y="120.0" class="name" text-anchor="start" xml:space="preserve">Sender: write</text>
+  <text x="148.0" y="138.0" class="sub" text-anchor="start" xml:space="preserve">copies into the send buffer</text>
+  <path class="wire" d="M240,152 L240,184" marker-end="url(#head)"/>
+  <rect x="110.0" y="184.0" width="260.0" height="40.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="240.0" y="209.0" class="mono strong" text-anchor="middle" xml:space="preserve">send buffer</text>
+  <path class="wire" d="M240,224 L240,286" marker-end="url(#head)"/>
+  <rect x="147.2" y="246.0" width="185.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="258.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">segments, up to the window</text>
+  <rect x="110.0" y="286.0" width="260.0" height="40.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="240.0" y="311.0" class="mono strong" text-anchor="middle" xml:space="preserve">receive buffer</text>
+  <path class="wire" d="M240,326 L240,358" marker-end="url(#head)"/>
+  <rect x="90" y="358" width="300" height="56" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M102,358.7 H96 V413.3 H102 A11.3,11.3 0 0 1 90.7,402 V370 A11.3,11.3 0 0 1 102,358.7 Z" fill="#1F8A70"/>
+  <rect x="106" y="370.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(112.0,376.0) scale(0.8333)"><path d="M12 5c5 0 8.5 3.5 10 7-1.5 3.5-5 7-10 7S3.5 15.5 2 12c1.5-3.5 5-7 10-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="148.0" y="382.0" class="name" text-anchor="start" xml:space="preserve">Receiver: read</text>
+  <text x="148.0" y="400.0" class="sub" text-anchor="start" xml:space="preserve">copies out of the receive buffer</text>
+  <path class="wire idle" d="M370,306 L423,306 Q432,306 432,297 L432,213 Q432,204 423,204 L370,204" marker-end="url(#head-idle)"/>
+  <text x="32.0" y="448.0" class="note" text-anchor="start" xml:space="preserve">The receiver reports the free space of its receive buffer in every</text>
+  <text x="32.0" y="465.0" class="note" text-anchor="start" xml:space="preserve">acknowledgement. That number is the window. When it reaches 0 the</text>
+  <text x="32.0" y="482.0" class="note" text-anchor="start" xml:space="preserve">sender stops sending, its send buffer fills, and write blocks.</text>
+  <text x="436.0" y="262.0" class="note" text-anchor="middle" xml:space="preserve">window</text>
+</svg>

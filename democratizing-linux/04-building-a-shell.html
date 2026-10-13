@@ -1,0 +1,1819 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Building a Shell - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/04-building-a-shell.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch04.svg" alt="Conch, a hermit crab, lives in a shell and types at a terminal. The screen shows a pipeline, and behind the terminal 3 small penguins stand in a row, each passing a fish to the next.">
+<h1 id="building-a-shell"><a class="header" href="#building-a-shell">Building a Shell</a></h1>
+<p>A shell is a user program that reads command lines and converts each into the system
+calls of the previous chapters: <code>pipe</code>, <code>fork</code>, <code>dup2</code>, <code>exec</code> and <code>wait</code>. It has no
+special privileges and no private interface to the kernel. Everything a shell does, any
+program can do.</p>
+<p>In this chapter, we will write <code>msh</code>, a shell that runs pipelines with input and output
+redirection and has the built-in commands <code>cd</code> and <code>exit</code>. We will first watch a real
+shell at work, by tracing the system calls it makes for a single line. Then we will
+build <code>msh</code> in stages: the parser, the redirections, the launch of a pipeline, the
+collection of statuses, and the built-in commands.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the loop of a shell: read, parse, start, wait</li>
+<li>a system call trace of a shell running a pipeline</li>
+<li>how a shell finds a program: the <code>PATH</code> variable</li>
+<li>the environment, and how it reaches a new program</li>
+<li>the system calls behind <code>|</code>, <code>&lt;</code>, <code>&gt;</code> and <code>&gt;&gt;</code></li>
+<li>why the shell closes its own copies of every descriptor it hands to a child</li>
+<li>the status a shell reports for a pipeline, a signal, and a missing command</li>
+<li>why <code>cd</code> and <code>exit</code> cannot be separate programs</li>
+<li>what a full shell adds: expansion, quoting, and job control</li>
+</ul>
+</div>
+
+<h2 id="the-loop-of-a-shell"><a class="header" href="#the-loop-of-a-shell">The loop of a shell</a></h2>
+<p>A shell repeats 4 steps. It reads a line. It parses the line into commands. It starts a
+process for each command, with the descriptors of each process arranged as the line
+asks. It waits for the processes to end and remembers the status of the last one. A few
+commands, the <em>built-in</em> commands, are carried out by the shell itself in place of the
+third step.</p>
+<figure>
+<img src="figures/shell-loop.svg" alt="The loop of a shell, top to bottom: read a line; parse it into words, pipes and redirections; if the command is cd or exit, run it inside the shell process; otherwise start a child process for each command with its descriptors 0 and 1 arranged; wait for all of them and keep the status of the last; then read the next line.">
+<figcaption><b>Figure 4.1</b> The loop of a shell.</figcaption>
+</figure>
+<p>Each element of a command line corresponds to a small number of system calls.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Syntax</th><th>What the shell does</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cmd args</code></td><td>starts a child process that executes <code>cmd</code>, then waits for it</td></tr>
+<tr><td><code>a | b</code></td><td>creates a pipe; starts <code>a</code> with descriptor 1 on the write end and <code>b</code> with descriptor 0 on the read end</td></tr>
+<tr><td><code>cmd &lt; file</code></td><td>opens <code>file</code> for reading and makes it descriptor 0 of the child</td></tr>
+<tr><td><code>cmd &gt; file</code></td><td>opens <code>file</code> with <code>O_CREAT</code> and <code>O_TRUNC</code> and makes it descriptor 1 of the child</td></tr>
+<tr><td><code>cmd &gt;&gt; file</code></td><td>the same with <code>O_APPEND</code> in place of <code>O_TRUNC</code></td></tr>
+<tr><td><code>cd dir</code></td><td>calls <code>chdir</code> in the shell process</td></tr>
+<tr><td><code>exit n</code></td><td>ends the shell process with status <code>n</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="a-real-shell-traced"><a class="header" href="#a-real-shell-traced">A real shell, traced</a></h2>
+<p><code>strace</code> prints the system calls of a process as it makes them. With <code>-f</code> it follows the
+children as well. This is the system shell, <code>sh</code>, running the line
+<code>seq 1 3 | wc -l &gt; count.txt</code> on our machine. The first column is the pid of the caller.
+The calls that load shared libraries are removed, and calls that were interleaved are
+shown in order.</p>
+<pre><code class="language-console">$ strace -f -e trace=pipe2,clone,dup3,execve,wait4,close,openat sh -c 'seq 1 3 | wc -l &gt; count.txt'
+570272 pipe2([3, 4], 0)                                  = 0
+570272 clone(... flags=...|SIGCHLD ...)                  = 570273
+570272 close(4)                                          = 0
+570273 close(3)                                          = 0
+570273 dup3(4, 1, 0)                                     = 1
+570273 close(4)                                          = 0
+570273 execve("/usr/bin/seq", ["seq", "1", "3"], ...)    = 0
+570272 clone(... flags=...|SIGCHLD ...)                  = 570274
+570272 close(3)                                          = 0
+570272 wait4(-1, ...
+570274 dup3(3, 0, 0)                                     = 0
+570274 close(3)                                          = 0
+570274 openat(AT_FDCWD, "count.txt", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3
+570274 close(1)                                          = 0
+570274 dup3(3, 1, 0)                                     = 1
+570274 close(3)                                          = 0
+570274 execve("/usr/bin/wc", ["wc", "-l"], ...)          = 0
+570273 +++ exited with 0 +++
+570272 ... wait4 resumed                                 = 570273
+570274 +++ exited with 0 +++
+570272 wait4(-1, ...)                                    = 570274
+</code></pre>
+<p>Every line of the trace is something we have already met.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pipe2([3, 4], 0)</code></td><td>The shell creates the pipe. Descriptor 3 is the read end and 4 the write end (<a href="01-pipes.html">chapter 1</a>).</td></tr>
+<tr><td><code>clone(...)</code></td><td>The shell creates a child. On Linux, <code>fork</code> is implemented by <code>clone</code> (<a href="03-processes.html">chapter 3</a>). The return value is the pid of the child.</td></tr>
+<tr><td><code>570273 dup3(4, 1, 0)</code></td><td>The first child makes descriptor 1 refer to the write end. <code>dup3</code> is <code>dup2</code> with a flags argument (<a href="02-file-descriptors.html">chapter 2</a>).</td></tr>
+<tr><td><code>570273 close(3)</code>, <code>close(4)</code></td><td>The child closes the pipe descriptors it does not need under their old numbers.</td></tr>
+<tr><td><code>570273 execve("/usr/bin/seq", ...)</code></td><td>The child becomes <code>seq</code>. Its descriptor 1 is the pipe, and <code>seq</code> does not know it.</td></tr>
+<tr><td><code>570272 close(4)</code>, <code>close(3)</code></td><td>The shell closes its own copies of both ends.</td></tr>
+<tr><td><code>570274 openat("count.txt", O_WRONLY|O_CREAT|O_TRUNC, 0666)</code></td><td>The second child opens the output file. The file is truncated here, before <code>wc</code> runs.</td></tr>
+<tr><td><code>570272 wait4(-1, ...)</code></td><td>The shell waits for any child, 2 times.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/shell-syscalls.svg" alt="The system calls of sh for the line seq 1 3 | wc -l &gt; count.txt, in 3 columns. The shell calls pipe2 and gets descriptors 3 and 4, then clone. The first child calls dup3(4, 1) and execve seq, while the shell closes 4 and calls clone again. The second child calls dup3(3, 0), opens count.txt, calls dup3(3, 1) and execve wc, while the shell closes 3 and calls wait4. Both children exit with 0, and wait4 returns their pids.">
+<figcaption><b>Figure 4.2</b> The same trace, with a column for each process.</figcaption>
+</figure>
+<p>A trace is easier to read one process at a time. Follow the lines that begin with
+570273 and ignore the rest: it closes 3, makes 4 its descriptor 1, closes 4, and becomes
+<code>seq</code>. The whole preparation is 3 calls. Figure 4.3 shows the result
+as descriptor tables.</p>
+<figure>
+<img src="figures/shell-fd-states.svg" alt="The descriptor tables at 4 moments of the trace. After pipe2 the shell has the terminal on 0 and 1, the read end of the pipe on 3 and the write end on 4. Before execve, seq has the write end on descriptor 1 and has closed 3 and 4. Before execve, wc has the read end on descriptor 0 and count.txt on descriptor 1. While waiting, the shell has closed 3 and 4 and still has the terminal on 0 and 1.">
+<figcaption><b>Figure 4.3</b> The descriptor table of each process at 4 moments of the trace.</figcaption>
+</figure>
+<p>The redirections are carried out in the children, between <code>clone</code> and <code>execve</code>. The
+shell’s own descriptors 0, 1 and 2 are untouched, so the next command line starts from
+the same state.</p>
+<h2 id="finding-the-program-and-the-environment"><a class="header" href="#finding-the-program-and-the-environment">Finding the program, and the environment</a></h2>
+<p>The trace shows <code>execve("/usr/bin/seq", ...)</code>, although the line said <code>seq</code>. <code>execve</code>
+takes a path, and the shell has to find one. It looks the name up in each directory
+listed in the variable <code>PATH</code>, in order, and uses the first match. A name that contains
+a <code>/</code> is used as it is.</p>
+<pre><code class="language-console">$ type seq cd
+seq is /usr/bin/seq
+cd is a shell builtin
+</code></pre>
+<p><code>PATH</code> is an <em>environment variable</em>. The <em>environment</em> is a list of strings of the form
+<code>NAME=value</code> that every process has. It is the third argument of <code>execve</code>: the trace
+shows <code>/* 92 vars */</code> where <code>strace</code> abbreviated it. A program started without special
+arrangement receives a copy of the environment of the process that started it, which is
+how settings such as <code>PATH</code>, <code>HOME</code> and <code>LANG</code> reach every program in a session. The
+environment lives in the memory of the process, so a change in a child is invisible to
+the parent.</p>
+<p><code>msh</code> leaves the lookup to the standard library. Go’s <code>exec.Command</code> and Rust’s
+<code>Command::new</code> search <code>PATH</code> when the name has no <code>/</code>, and both pass the environment of
+<code>msh</code> on to the child.</p>
+<h2 id="setting-up"><a class="header" href="#setting-up">Setting up</a></h2>
+<p><code>msh</code> uses only the standard libraries.</p>
+<pre><code class="language-console">$ cargo new msh
+</code></pre>
+<div class="lld">
+<p>Low-level design: <code>msh</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>command</code></td><td><code>args</code>, <code>input</code>, <code>output</code>, <code>appendOutput</code></td><td>a stage of a pipeline and its redirections</td></tr>
+<tr><td><code>shell</code></td><td><code>last</code>, <code>exiting</code></td><td>the status of the previous line; whether <code>exit</code> has run</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>parse(line)</code></td><td>splits a line into commands; fails on an empty command or a missing file name</td></tr>
+<tr><td><code>redirect(command)</code></td><td>opens the files named by <code>&lt;</code>, <code>&gt;</code> and <code>&gt;&gt;</code></td></tr>
+<tr><td><code>launch(pipeline)</code></td><td>starts every command with its descriptors; closes the shell’s copies</td></tr>
+<tr><td><code>run(pipeline)</code></td><td>launches, waits for every child, returns the status of the last</td></tr>
+<tr><td><code>execute(line)</code></td><td>runs <code>cd</code> and <code>exit</code> in the shell; passes everything else to <code>run</code></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="parsing"><a class="header" href="#parsing">Parsing</a></h2>
+<p>A pipeline is a list of commands, and a command is a list of arguments with optional
+file names for its input and output. <code>parse</code> reads the words of a line from left to
+right. A <code>|</code> ends the current command, a redirection operator consumes the next word as
+a file name, and every other word is an argument.</p>
+<figure>
+<img src="figures/shell-parse.svg" alt="The line sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers is split at spaces into 10 words. The words form 2 commands. Command 1 has the arguments sort -rn, the input file numbers, and no output file. Command 2 has the arguments head -n 2, no input file, the output file numbers, and append set.">
+<figcaption><b>Figure 4.4</b> A line, its words, and the commands that <code>parse</code> builds.</figcaption>
+</figure>
+<p><code>msh</code> requires spaces around operators and has no quoting, which keeps the parser to a
+single loop.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.1</b> The imports of <code>msh</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.2</b> The imports of <code>msh</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::env;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufRead, PipeReader, Write};
+use std::os::unix::process::ExitStatusExt;
+use std::process::{self, Child, Stdio};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.3</b> Parsing a line into a pipeline, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// A command is one stage of a pipeline: its arguments and the files that
+// replace its standard input and output, when the line names any.
+type command struct {
+	args         []string
+	input        string
+	output       string
+	appendOutput bool
+}
+
+var errSyntax = errors.New("syntax error")
+
+// parse splits a line into the commands of a pipeline. Words and operators
+// are separated by spaces. The operators are | &lt; &gt; and &gt;&gt;.
+func parse(line string) ([]command, error) {
+	pipeline := []command{{}}
+	words := strings.Fields(line)
+
+	for i := 0; i &lt; len(words); i++ {
+		current := &amp;pipeline[len(pipeline)-1]
+
+		switch word := words[i]; word {
+		case "|":
+			if len(current.args) == 0 {
+				return nil, errSyntax
+			}
+
+			pipeline = append(pipeline, command{})
+
+		case "&lt;", "&gt;", "&gt;&gt;":
+			i++
+
+			if i == len(words) {
+				return nil, errSyntax
+			}
+
+			if word == "&lt;" {
+				current.input = words[i]
+			} else {
+				current.output, current.appendOutput = words[i], word == "&gt;&gt;"
+			}
+
+		default:
+			current.args = append(current.args, word)
+		}
+	}
+
+	if len(pipeline[len(pipeline)-1].args) == 0 {
+		return nil, errSyntax
+	}
+
+	return pipeline, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.4</b> Parsing a line into a pipeline, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// One stage of a pipeline: its arguments and the files that replace its
+/// standard input and output, when the line names any.
+#[derive(Default)]
+struct Command {
+    args: Vec&lt;String&gt;,
+    input: Option&lt;String&gt;,
+    output: Option&lt;String&gt;,
+    append_output: bool,
+}
+
+struct SyntaxError;
+
+/// Splits a line into the commands of a pipeline. Words and operators are
+/// separated by spaces. The operators are | &lt; &gt; and &gt;&gt;.
+fn parse(line: &amp;str) -&gt; Result&lt;Vec&lt;Command&gt;, SyntaxError&gt; {
+    let mut pipeline = Vec::new();
+    let mut current = Command::default();
+    let mut words = line.split_whitespace();
+
+    while let Some(word) = words.next() {
+        match word {
+            "|" =&gt; {
+                if current.args.is_empty() {
+                    return Err(SyntaxError);
+                }
+
+                pipeline.push(std::mem::take(&amp;mut current));
+            }
+            "&lt;" | "&gt;" | "&gt;&gt;" =&gt; {
+                let file = words.next().ok_or(SyntaxError)?.to_owned();
+
+                if word == "&lt;" {
+                    current.input = Some(file);
+                } else {
+                    current.output = Some(file);
+                    current.append_output = word == "&gt;&gt;";
+                }
+            }
+            _ =&gt; current.args.push(word.to_owned()),
+        }
+    }
+
+    if current.args.is_empty() {
+        return Err(SyntaxError);
+    }
+
+    pipeline.push(current);
+
+    Ok(pipeline)
+}</code></pre>
+<h2 id="redirections"><a class="header" href="#redirections">Redirections</a></h2>
+<p><code>redirect</code> opens the files a command names. <code>&gt;</code> truncates the file when it is opened,
+which is before the command runs, as the trace showed. For this reason
+<code>sort &lt; numbers &gt; numbers</code> empties the file before <code>sort</code> reads it. <code>&gt;&gt;</code> opens with
+<code>O_APPEND</code> and keeps the contents.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.5</b> Opening the files of a redirection, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// redirect opens the files a command names and returns the files to use as
+// its standard input and output. A nil result means "keep the default".
+func redirect(c command) (input, output *os.File, err error) {
+	if c.input != "" {
+		input, err = os.Open(c.input)
+
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if c.output != "" {
+		flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+
+		if c.appendOutput {
+			flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+
+		output, err = os.OpenFile(c.output, flags, 0o644)
+
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return input, output, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.6</b> Opening the files of a redirection, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Opens the files a command names and returns the files to use as its
+/// standard input and output. `None` means "keep the default".
+fn redirect(command: &amp;Command) -&gt; io::Result&lt;(Option&lt;File&gt;, Option&lt;File&gt;)&gt; {
+    let input = command.input.as_ref().map(File::open).transpose()?;
+
+    let output = command
+        .output
+        .as_ref()
+        .map(|path| {
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(command.append_output)
+                .truncate(!command.append_output)
+                .open(path)
+        })
+        .transpose()?;
+
+    Ok((input, output))
+}</code></pre>
+<h2 id="launching-a-pipeline"><a class="header" href="#launching-a-pipeline">Launching a pipeline</a></h2>
+<p><code>launch</code> walks the pipeline from left to right. For each command except the last it
+creates a pipe, gives the write end to this command as descriptor 1, and carries the
+read end to the next iteration, where it becomes descriptor 0 of the next command. A
+redirection takes precedence over the pipe: when a command names a file for a
+descriptor, the file replaces the pipe end on that descriptor.</p>
+<figure>
+<img src="figures/shell-plan.svg" alt="The plan for the line sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers. Descriptor 0 of sort is the file numbers, opened for reading. Descriptor 1 of sort is the write end of a pipe. Descriptor 0 of head is the read end of that pipe. Descriptor 1 of head is the file numbers, opened with O_APPEND.">
+<figcaption><b>Figure 4.5</b> The descriptors of both children for the line of figure 4.4.</figcaption>
+</figure>
+<p>After a child has started, the shell closes every descriptor it opened for that child,
+as <code>sh</code> did in the trace. The rule from <a href="01-pipes.html">chapter 1</a> applies: a write end
+that stays open in the shell keeps the write count of the pipe above 0, and the next
+command waits for an end of the stream that is not reported.</p>
+<p>The standard libraries perform the <code>clone</code>, the <code>dup3</code> calls and the <code>execve</code> in a
+single call, <code>Start</code> in Go and <code>spawn</code> in Rust. We name the files for descriptors 0 and 1
+of the child, and the library arranges them in the child.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.7</b> Starting the commands of a pipeline, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// launch starts every command of a pipeline and returns the commands that
+// started. Command i reads from the pipe that command i-1 writes to, unless
+// a redirection replaces that descriptor.
+func launch(pipeline []command) []*exec.Cmd {
+	var started []*exec.Cmd
+	var fromPrevious *os.File
+
+	for i, c := range pipeline {
+		stdin, stdout := os.Stdin, os.Stdout
+		var toNext, nextInput *os.File
+
+		if fromPrevious != nil {
+			stdin = fromPrevious
+		}
+
+		if i &lt; len(pipeline)-1 {
+			reader, writer, err := os.Pipe()
+
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "msh:", err)
+
+				break
+			}
+
+			stdout, toNext, nextInput = writer, writer, reader
+		}
+
+		input, output, err := redirect(c)
+
+		if input != nil {
+			stdin = input
+		}
+
+		if output != nil {
+			stdout = output
+		}
+
+		if err == nil {
+			child := exec.Command(c.args[0], c.args[1:]...)
+			child.Stdin, child.Stdout, child.Stderr = stdin, stdout, os.Stderr
+			err = child.Start()
+
+			if err == nil {
+				started = append(started, child)
+			}
+		}
+
+		if errors.Is(err, exec.ErrNotFound) {
+			fmt.Fprintf(os.Stderr, "msh: %s: command not found\n", c.args[0])
+		} else if err != nil {
+			fmt.Fprintln(os.Stderr, "msh:", err)
+		}
+
+		// The child has its own copies. The shell closes every descriptor it
+		// opened for this command.
+		for _, file := range []*os.File{input, output, toNext, fromPrevious} {
+			if file != nil {
+				file.Close()
+			}
+		}
+
+		fromPrevious = nextInput
+	}
+
+	return started
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.8</b> Starting the commands of a pipeline, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Starts every command of a pipeline and returns the children that started.
+/// Command `i` reads from the pipe that command `i - 1` writes to, unless a
+/// redirection replaces that descriptor.
+fn launch(pipeline: &amp;[Command]) -&gt; Vec&lt;Child&gt; {
+    let mut started = Vec::new();
+    let mut from_previous: Option&lt;PipeReader&gt; = None;
+
+    for (i, command) in pipeline.iter().enumerate() {
+        let mut stdin = from_previous
+            .take()
+            .map_or_else(Stdio::inherit, Stdio::from);
+        let mut stdout = Stdio::inherit();
+
+        if i + 1 &lt; pipeline.len() {
+            let Ok((reader, writer)) = io::pipe() else {
+                eprintln!("msh: cannot create a pipe");
+
+                break;
+            };
+
+            stdout = writer.into();
+            from_previous = Some(reader);
+        }
+
+        let (input, output) = match redirect(command) {
+            Ok(files) =&gt; files,
+            Err(error) =&gt; {
+                eprintln!("msh: {error}");
+
+                continue;
+            }
+        };
+
+        if let Some(file) = input {
+            stdin = file.into();
+        }
+
+        if let Some(file) = output {
+            stdout = file.into();
+        }
+
+        // The `Command` owns the shell's copies of the descriptors. It is
+        // dropped when the statement ends, which closes them.
+        let child = process::Command::new(&amp;command.args[0])
+            .args(&amp;command.args[1..])
+            .stdin(stdin)
+            .stdout(stdout)
+            .spawn();
+
+        match child {
+            Ok(child) =&gt; started.push(child),
+            Err(error) if error.kind() == io::ErrorKind::NotFound =&gt; {
+                eprintln!("msh: {}: command not found", command.args[0]);
+            }
+            Err(error) =&gt; eprintln!("msh: {error}"),
+        }
+    }
+
+    started
+}</code></pre>
+<h2 id="collecting-statuses"><a class="header" href="#collecting-statuses">Collecting statuses</a></h2>
+<p>The shell waits for every child. A child that is not waited for remains a zombie, as
+<a href="03-processes.html">chapter 3</a> showed. The status of a pipeline is the status of its last
+command. <code>status</code> applies the conventions of a shell.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Ending of the last command</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td>it called <code>exit(n)</code></td><td><code>n</code></td></tr>
+<tr><td>it was ended by signal <code>n</code></td><td><code>128 + n</code></td></tr>
+<tr><td>it could not be started</td><td>127</td></tr>
+</tbody>
+</table>
+</div>
+<p>By convention 0 means success and any other value means failure, and the commands <code>if</code>
+and <code>while</code> of a full shell test exactly this number.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.9</b> Waiting for the pipeline, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// status converts a wait status to the number a shell reports: the exit
+// status, or 128 plus the signal number.
+func status(child *exec.Cmd) int {
+	child.Wait()
+
+	if wait, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok &amp;&amp; wait.Signaled() {
+		return 128 + int(wait.Signal())
+	}
+
+	return child.ProcessState.ExitCode()
+}
+
+// run starts a pipeline, waits for every command, and returns the status of
+// the last command, or 127 when the last command did not start.
+func run(pipeline []command) int {
+	started := launch(pipeline)
+	last := 127
+
+	for _, child := range started {
+		last = status(child)
+	}
+
+	if len(started) &lt; len(pipeline) {
+		return 127
+	}
+
+	return last
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.10</b> Waiting for the pipeline, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Converts a wait status to the number a shell reports: the exit status, or
+/// 128 plus the signal number.
+fn status(child: &amp;mut Child) -&gt; i32 {
+    let Ok(status) = child.wait() else {
+        return 127;
+    };
+
+    match (status.signal(), status.code()) {
+        (Some(signal), _) =&gt; 128 + signal,
+        (None, Some(code)) =&gt; code,
+        (None, None) =&gt; 127,
+    }
+}
+
+/// Starts a pipeline, waits for every command, and returns the status of the
+/// last command, or 127 when the last command did not start.
+fn run(pipeline: &amp;[Command]) -&gt; i32 {
+    let mut started = launch(pipeline);
+    let mut last = 127;
+
+    for child in &amp;mut started {
+        last = status(child);
+    }
+
+    if started.len() &lt; pipeline.len() {
+        return 127;
+    }
+
+    last
+}</code></pre>
+<h2 id="built-in-commands"><a class="header" href="#built-in-commands">Built-in commands</a></h2>
+<p>The working directory is an attribute of a process, kept by the kernel, and a child
+receives a copy of it. If <code>cd</code> were a separate program, it would change the directory of
+its own process and exit, and the directory of the shell would be unchanged. The same
+reasoning applies to <code>exit</code>. Both therefore run inside the shell process.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.11</b> Running a line: built-in commands and pipelines, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// A shell holds the state that outlives a command line.
+type shell struct {
+	last    int
+	exiting bool
+}
+
+// execute runs one command line. cd and exit change the shell process
+// itself, so they run inside it. Everything else runs in child processes.
+func (s *shell) execute(line string) {
+	pipeline, err := parse(line)
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "msh:", err)
+		s.last = 2
+
+		return
+	}
+
+	switch first := pipeline[0]; {
+	case len(pipeline) == 1 &amp;&amp; first.args[0] == "cd" &amp;&amp; len(first.args) == 2:
+		s.last = 0
+
+		if err := os.Chdir(first.args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "msh:", err)
+			s.last = 1
+		}
+
+	case len(pipeline) == 1 &amp;&amp; first.args[0] == "exit":
+		s.exiting = true
+
+		if len(first.args) == 2 {
+			s.last, _ = strconv.Atoi(first.args[1])
+		}
+
+	default:
+		s.last = run(pipeline)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.12</b> Running a line: built-in commands and pipelines, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The state that outlives a command line.
+#[derive(Default)]
+struct Shell {
+    last: i32,
+    exiting: bool,
+}
+
+impl Shell {
+    /// Runs one command line. cd and exit change the shell process itself, so
+    /// they run inside it. Everything else runs in child processes.
+    fn execute(&amp;mut self, line: &amp;str) {
+        let Ok(pipeline) = parse(line) else {
+            eprintln!("msh: syntax error");
+            self.last = 2;
+
+            return;
+        };
+
+        let args: Vec&lt;&amp;str&gt; = pipeline[0].args.iter().map(String::as_str).collect();
+
+        match (pipeline.len(), args.as_slice()) {
+            (1, ["cd", directory]) =&gt; {
+                self.last = 0;
+
+                if let Err(error) = env::set_current_dir(directory) {
+                    eprintln!("msh: {error}");
+                    self.last = 1;
+                }
+            }
+            (1, ["exit", rest @ ..]) =&gt; {
+                self.exiting = true;
+
+                if let [code] = rest
+                    &amp;&amp; let Ok(code) = code.parse()
+                {
+                    self.last = code;
+                }
+            }
+            _ =&gt; self.last = run(&amp;pipeline),
+        }
+    }
+}</code></pre>
+<div class="crab crab-happy">
+<p><code>cd</code> works because it runs inside the shell. A separate <code>cd</code> program would change its own directory and exit.</p>
+</div>
+
+<h2 id="running-a-script"><a class="header" href="#running-a-script">Running a script</a></h2>
+<p>Without arguments, <code>msh</code> runs a fixed script in a temporary directory and prints the
+status after each line. With <code>-i</code>, it reads lines from standard input.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.13</b> The script, and the interactive loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// script is the demonstration that msh runs without arguments.
+var script = []string{
+	"seq 1 5 &gt; numbers",
+	"wc -l &lt; numbers",
+	"sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers",
+	"paste -sd, numbers",
+	"false",
+	"nosuchcommand",
+	"cd /",
+	"pwd",
+	"exit 3",
+	"echo not reached",
+}
+
+// demonstrate runs the script in a new temporary directory and prints the
+// status after each line.
+func demonstrate() error {
+	dir, err := os.MkdirTemp("", "msh")
+
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(dir)
+
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+
+	s := &amp;shell{}
+
+	for _, line := range script {
+		fmt.Println("$", line)
+		s.execute(line)
+
+		if s.exiting {
+			fmt.Printf("[the shell exits with status %d]\n", s.last)
+
+			return nil
+		}
+
+		fmt.Printf("[status %d]\n", s.last)
+	}
+
+	return nil
+}
+
+// interact reads command lines from standard input until exit or the end of
+// the input, and ends the process with the last status.
+func interact() {
+	s := &amp;shell{}
+	lines := bufio.NewScanner(os.Stdin)
+
+	for !s.exiting {
+		fmt.Print("msh$ ")
+
+		if !lines.Scan() {
+			break
+		}
+
+		if strings.TrimSpace(lines.Text()) != "" {
+			s.execute(lines.Text())
+		}
+	}
+
+	os.Exit(s.last)
+}
+
+func main() {
+	if len(os.Args) &gt; 1 &amp;&amp; os.Args[1] == "-i" {
+		interact()
+	}
+
+	if err := demonstrate(); err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.14</b> The script, and the interactive loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The demonstration that msh runs without arguments.
+const SCRIPT: [&amp;str; 10] = [
+    "seq 1 5 &gt; numbers",
+    "wc -l &lt; numbers",
+    "sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers",
+    "paste -sd, numbers",
+    "false",
+    "nosuchcommand",
+    "cd /",
+    "pwd",
+    "exit 3",
+    "echo not reached",
+];
+
+/// Runs the script in a new temporary directory and prints the status after
+/// each line.
+fn demonstrate() -&gt; io::Result&lt;()&gt; {
+    let dir = env::temp_dir().join(format!("msh-{}", process::id()));
+
+    fs::create_dir_all(&amp;dir)?;
+    env::set_current_dir(&amp;dir)?;
+
+    let mut shell = Shell::default();
+
+    for line in SCRIPT {
+        println!("$ {line}");
+        shell.execute(line);
+
+        if shell.exiting {
+            println!("[the shell exits with status {}]", shell.last);
+
+            break;
+        }
+
+        println!("[status {}]", shell.last);
+    }
+
+    fs::remove_dir_all(&amp;dir)
+}
+
+/// Reads command lines from standard input until exit or the end of the
+/// input, and ends the process with the last status.
+fn interact() -&gt; io::Result&lt;()&gt; {
+    let mut shell = Shell::default();
+    let mut lines = io::stdin().lock().lines();
+
+    while !shell.exiting {
+        print!("msh$ ");
+        io::stdout().flush()?;
+
+        let Some(line) = lines.next().transpose()? else {
+            break;
+        };
+
+        if !line.trim().is_empty() {
+            shell.execute(&amp;line);
+        }
+    }
+
+    process::exit(shell.last);
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    if env::args().nth(1).as_deref() == Some("-i") {
+        interact()?;
+    }
+
+    demonstrate()
+}</code></pre>
+<pre><code class="language-text">$ seq 1 5 &gt; numbers
+[status 0]
+$ wc -l &lt; numbers
+5
+[status 0]
+$ sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers
+[status 0]
+$ paste -sd, numbers
+1,2,3,4,5,5,4
+[status 0]
+$ false
+[status 1]
+$ nosuchcommand
+msh: nosuchcommand: command not found
+[status 127]
+$ cd /
+[status 0]
+$ pwd
+/
+[status 0]
+$ exit 3
+[the shell exits with status 3]
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>seq 1 5 &gt; numbers</code></td><td>Descriptor 1 of <code>seq</code> is the file. Nothing is printed.</td></tr>
+<tr><td><code>wc -l &lt; numbers</code></td><td>Descriptor 0 of <code>wc</code> is the file.</td></tr>
+<tr><td><code>sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers</code></td><td><code>sort</code> reads its whole input before writing, so the 2 lines that <code>head</code> appends are <code>5</code> and <code>4</code>.</td></tr>
+<tr><td><code>paste -sd, numbers</code></td><td>The file now has 7 lines.</td></tr>
+<tr><td><code>false</code></td><td>The status is the exit status of the command, 1.</td></tr>
+<tr><td><code>nosuchcommand</code></td><td>The command could not be started. The status is 127.</td></tr>
+<tr><td><code>cd /</code> then <code>pwd</code></td><td>The child <code>pwd</code> inherits the directory that the built-in <code>cd</code> set in the shell.</td></tr>
+<tr><td><code>exit 3</code></td><td>The shell ends, and the last line of the script is not run.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="what-a-full-shell-adds"><a class="header" href="#what-a-full-shell-adds">What a full shell adds</a></h2>
+<p><code>msh</code> passes each word of a line to the program unchanged. A shell such as <code>bash</code> or
+<code>dash</code> processes the words first, and it is useful to know that these steps happen in
+the shell, before any program starts.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th>What the shell does before <code>exec</code></th></tr>
+</thead>
+<tbody>
+<tr><td>variables</td><td>replaces <code>$HOME</code> with the value of the variable</td></tr>
+<tr><td>wildcards</td><td>replaces <code>*.txt</code> with the list of matching file names; the program receives the names and does not see the <code>*</code></td></tr>
+<tr><td>command substitution</td><td>runs the command inside <code>$(...)</code> with its output on a pipe, and inserts what it reads</td></tr>
+<tr><td>quoting</td><td><code>'...'</code> and <code>"..."</code> keep spaces and operators from being treated as separators</td></tr>
+<tr><td><code>a &amp;&amp; b</code>, <code>a || b</code></td><td>runs <code>b</code> depending on whether the status of <code>a</code> was 0</td></tr>
+<tr><td><code>cmd &amp;</code></td><td>starts the command and does not wait for it</td></tr>
+</tbody>
+</table>
+</div>
+<p>The last row leads to <em>job control</em>. A shell places each pipeline in a <em>process group</em>,
+a set of processes that can be signalled together, and tells the terminal which group is
+in the foreground. When we press Ctrl-C, the terminal driver in the kernel sends
+<code>SIGINT</code> to every process of the foreground group, and the shell itself, which is in a
+different group, is unaffected. Signals are the subject of
+<a href="05-signals.html">chapter 5</a>.</p>
+<h2 id="inspecting-a-shell-at-work"><a class="header" href="#inspecting-a-shell-at-work">Inspecting a shell at work</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>strace -f -e trace=process,pipe2,dup3 sh -c '...'</code></td><td>the system calls of a shell and its children for a line</td></tr>
+<tr><td><code>type name</code></td><td>whether a name is a built-in command or a program, and which file</td></tr>
+<tr><td><code>echo $?</code></td><td>the status of the previous command</td></tr>
+<tr><td><code>set -x</code></td><td>each command, after expansion, as the shell runs it</td></tr>
+<tr><td><code>echo $PATH</code></td><td>the directories searched for programs</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 4.15</b> The complete <code>msh</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/msh/main.go">code/go/msh/main.go</a></p>
+
+<pre><code class="language-go">// Command msh is a small shell. It parses a command line into a pipeline of
+// commands with redirections, starts each command with its descriptors
+// arranged, waits for all of them, and reports the status of the last. The
+// commands cd and exit are built in.
+//
+// Without arguments it runs a fixed script in a temporary directory. With -i
+// it reads command lines from standard input.
+//
+// Run it from code/go with:
+//
+//	go run ./msh
+package main
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+)
+
+
+// A command is one stage of a pipeline: its arguments and the files that
+// replace its standard input and output, when the line names any.
+type command struct {
+	args         []string
+	input        string
+	output       string
+	appendOutput bool
+}
+
+var errSyntax = errors.New("syntax error")
+
+// parse splits a line into the commands of a pipeline. Words and operators
+// are separated by spaces. The operators are | &lt; &gt; and &gt;&gt;.
+func parse(line string) ([]command, error) {
+	pipeline := []command{{}}
+	words := strings.Fields(line)
+
+	for i := 0; i &lt; len(words); i++ {
+		current := &amp;pipeline[len(pipeline)-1]
+
+		switch word := words[i]; word {
+		case "|":
+			if len(current.args) == 0 {
+				return nil, errSyntax
+			}
+
+			pipeline = append(pipeline, command{})
+
+		case "&lt;", "&gt;", "&gt;&gt;":
+			i++
+
+			if i == len(words) {
+				return nil, errSyntax
+			}
+
+			if word == "&lt;" {
+				current.input = words[i]
+			} else {
+				current.output, current.appendOutput = words[i], word == "&gt;&gt;"
+			}
+
+		default:
+			current.args = append(current.args, word)
+		}
+	}
+
+	if len(pipeline[len(pipeline)-1].args) == 0 {
+		return nil, errSyntax
+	}
+
+	return pipeline, nil
+}
+
+
+// redirect opens the files a command names and returns the files to use as
+// its standard input and output. A nil result means "keep the default".
+func redirect(c command) (input, output *os.File, err error) {
+	if c.input != "" {
+		input, err = os.Open(c.input)
+
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	if c.output != "" {
+		flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+
+		if c.appendOutput {
+			flags = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+		}
+
+		output, err = os.OpenFile(c.output, flags, 0o644)
+
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return input, output, nil
+}
+
+
+// launch starts every command of a pipeline and returns the commands that
+// started. Command i reads from the pipe that command i-1 writes to, unless
+// a redirection replaces that descriptor.
+func launch(pipeline []command) []*exec.Cmd {
+	var started []*exec.Cmd
+	var fromPrevious *os.File
+
+	for i, c := range pipeline {
+		stdin, stdout := os.Stdin, os.Stdout
+		var toNext, nextInput *os.File
+
+		if fromPrevious != nil {
+			stdin = fromPrevious
+		}
+
+		if i &lt; len(pipeline)-1 {
+			reader, writer, err := os.Pipe()
+
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "msh:", err)
+
+				break
+			}
+
+			stdout, toNext, nextInput = writer, writer, reader
+		}
+
+		input, output, err := redirect(c)
+
+		if input != nil {
+			stdin = input
+		}
+
+		if output != nil {
+			stdout = output
+		}
+
+		if err == nil {
+			child := exec.Command(c.args[0], c.args[1:]...)
+			child.Stdin, child.Stdout, child.Stderr = stdin, stdout, os.Stderr
+			err = child.Start()
+
+			if err == nil {
+				started = append(started, child)
+			}
+		}
+
+		if errors.Is(err, exec.ErrNotFound) {
+			fmt.Fprintf(os.Stderr, "msh: %s: command not found\n", c.args[0])
+		} else if err != nil {
+			fmt.Fprintln(os.Stderr, "msh:", err)
+		}
+
+		// The child has its own copies. The shell closes every descriptor it
+		// opened for this command.
+		for _, file := range []*os.File{input, output, toNext, fromPrevious} {
+			if file != nil {
+				file.Close()
+			}
+		}
+
+		fromPrevious = nextInput
+	}
+
+	return started
+}
+
+
+// status converts a wait status to the number a shell reports: the exit
+// status, or 128 plus the signal number.
+func status(child *exec.Cmd) int {
+	child.Wait()
+
+	if wait, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok &amp;&amp; wait.Signaled() {
+		return 128 + int(wait.Signal())
+	}
+
+	return child.ProcessState.ExitCode()
+}
+
+// run starts a pipeline, waits for every command, and returns the status of
+// the last command, or 127 when the last command did not start.
+func run(pipeline []command) int {
+	started := launch(pipeline)
+	last := 127
+
+	for _, child := range started {
+		last = status(child)
+	}
+
+	if len(started) &lt; len(pipeline) {
+		return 127
+	}
+
+	return last
+}
+
+
+// A shell holds the state that outlives a command line.
+type shell struct {
+	last    int
+	exiting bool
+}
+
+// execute runs one command line. cd and exit change the shell process
+// itself, so they run inside it. Everything else runs in child processes.
+func (s *shell) execute(line string) {
+	pipeline, err := parse(line)
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "msh:", err)
+		s.last = 2
+
+		return
+	}
+
+	switch first := pipeline[0]; {
+	case len(pipeline) == 1 &amp;&amp; first.args[0] == "cd" &amp;&amp; len(first.args) == 2:
+		s.last = 0
+
+		if err := os.Chdir(first.args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "msh:", err)
+			s.last = 1
+		}
+
+	case len(pipeline) == 1 &amp;&amp; first.args[0] == "exit":
+		s.exiting = true
+
+		if len(first.args) == 2 {
+			s.last, _ = strconv.Atoi(first.args[1])
+		}
+
+	default:
+		s.last = run(pipeline)
+	}
+}
+
+
+// script is the demonstration that msh runs without arguments.
+var script = []string{
+	"seq 1 5 &gt; numbers",
+	"wc -l &lt; numbers",
+	"sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers",
+	"paste -sd, numbers",
+	"false",
+	"nosuchcommand",
+	"cd /",
+	"pwd",
+	"exit 3",
+	"echo not reached",
+}
+
+// demonstrate runs the script in a new temporary directory and prints the
+// status after each line.
+func demonstrate() error {
+	dir, err := os.MkdirTemp("", "msh")
+
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(dir)
+
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+
+	s := &amp;shell{}
+
+	for _, line := range script {
+		fmt.Println("$", line)
+		s.execute(line)
+
+		if s.exiting {
+			fmt.Printf("[the shell exits with status %d]\n", s.last)
+
+			return nil
+		}
+
+		fmt.Printf("[status %d]\n", s.last)
+	}
+
+	return nil
+}
+
+// interact reads command lines from standard input until exit or the end of
+// the input, and ends the process with the last status.
+func interact() {
+	s := &amp;shell{}
+	lines := bufio.NewScanner(os.Stdin)
+
+	for !s.exiting {
+		fmt.Print("msh$ ")
+
+		if !lines.Scan() {
+			break
+		}
+
+		if strings.TrimSpace(lines.Text()) != "" {
+			s.execute(lines.Text())
+		}
+	}
+
+	os.Exit(s.last)
+}
+
+func main() {
+	if len(os.Args) &gt; 1 &amp;&amp; os.Args[1] == "-i" {
+		interact()
+	}
+
+	if err := demonstrate(); err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.16</b> The complete <code>msh</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/msh/src/main.rs">code/rust/msh/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! A small shell. It parses a command line into a pipeline of commands with
+//! redirections, starts each command with its descriptors arranged, waits for
+//! all of them, and reports the status of the last. The commands cd and exit
+//! are built in.
+//!
+//! Without arguments it runs a fixed script in a temporary directory. With -i
+//! it reads command lines from standard input.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p msh
+//! ```
+
+use std::env;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufRead, PipeReader, Write};
+use std::os::unix::process::ExitStatusExt;
+use std::process::{self, Child, Stdio};
+
+/// One stage of a pipeline: its arguments and the files that replace its
+/// standard input and output, when the line names any.
+#[derive(Default)]
+struct Command {
+    args: Vec&lt;String&gt;,
+    input: Option&lt;String&gt;,
+    output: Option&lt;String&gt;,
+    append_output: bool,
+}
+
+struct SyntaxError;
+
+/// Splits a line into the commands of a pipeline. Words and operators are
+/// separated by spaces. The operators are | &lt; &gt; and &gt;&gt;.
+fn parse(line: &amp;str) -&gt; Result&lt;Vec&lt;Command&gt;, SyntaxError&gt; {
+    let mut pipeline = Vec::new();
+    let mut current = Command::default();
+    let mut words = line.split_whitespace();
+
+    while let Some(word) = words.next() {
+        match word {
+            "|" =&gt; {
+                if current.args.is_empty() {
+                    return Err(SyntaxError);
+                }
+
+                pipeline.push(std::mem::take(&amp;mut current));
+            }
+            "&lt;" | "&gt;" | "&gt;&gt;" =&gt; {
+                let file = words.next().ok_or(SyntaxError)?.to_owned();
+
+                if word == "&lt;" {
+                    current.input = Some(file);
+                } else {
+                    current.output = Some(file);
+                    current.append_output = word == "&gt;&gt;";
+                }
+            }
+            _ =&gt; current.args.push(word.to_owned()),
+        }
+    }
+
+    if current.args.is_empty() {
+        return Err(SyntaxError);
+    }
+
+    pipeline.push(current);
+
+    Ok(pipeline)
+}
+
+/// Opens the files a command names and returns the files to use as its
+/// standard input and output. `None` means "keep the default".
+fn redirect(command: &amp;Command) -&gt; io::Result&lt;(Option&lt;File&gt;, Option&lt;File&gt;)&gt; {
+    let input = command.input.as_ref().map(File::open).transpose()?;
+
+    let output = command
+        .output
+        .as_ref()
+        .map(|path| {
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(command.append_output)
+                .truncate(!command.append_output)
+                .open(path)
+        })
+        .transpose()?;
+
+    Ok((input, output))
+}
+
+/// Starts every command of a pipeline and returns the children that started.
+/// Command `i` reads from the pipe that command `i - 1` writes to, unless a
+/// redirection replaces that descriptor.
+fn launch(pipeline: &amp;[Command]) -&gt; Vec&lt;Child&gt; {
+    let mut started = Vec::new();
+    let mut from_previous: Option&lt;PipeReader&gt; = None;
+
+    for (i, command) in pipeline.iter().enumerate() {
+        let mut stdin = from_previous
+            .take()
+            .map_or_else(Stdio::inherit, Stdio::from);
+        let mut stdout = Stdio::inherit();
+
+        if i + 1 &lt; pipeline.len() {
+            let Ok((reader, writer)) = io::pipe() else {
+                eprintln!("msh: cannot create a pipe");
+
+                break;
+            };
+
+            stdout = writer.into();
+            from_previous = Some(reader);
+        }
+
+        let (input, output) = match redirect(command) {
+            Ok(files) =&gt; files,
+            Err(error) =&gt; {
+                eprintln!("msh: {error}");
+
+                continue;
+            }
+        };
+
+        if let Some(file) = input {
+            stdin = file.into();
+        }
+
+        if let Some(file) = output {
+            stdout = file.into();
+        }
+
+        // The `Command` owns the shell's copies of the descriptors. It is
+        // dropped when the statement ends, which closes them.
+        let child = process::Command::new(&amp;command.args[0])
+            .args(&amp;command.args[1..])
+            .stdin(stdin)
+            .stdout(stdout)
+            .spawn();
+
+        match child {
+            Ok(child) =&gt; started.push(child),
+            Err(error) if error.kind() == io::ErrorKind::NotFound =&gt; {
+                eprintln!("msh: {}: command not found", command.args[0]);
+            }
+            Err(error) =&gt; eprintln!("msh: {error}"),
+        }
+    }
+
+    started
+}
+
+/// Converts a wait status to the number a shell reports: the exit status, or
+/// 128 plus the signal number.
+fn status(child: &amp;mut Child) -&gt; i32 {
+    let Ok(status) = child.wait() else {
+        return 127;
+    };
+
+    match (status.signal(), status.code()) {
+        (Some(signal), _) =&gt; 128 + signal,
+        (None, Some(code)) =&gt; code,
+        (None, None) =&gt; 127,
+    }
+}
+
+/// Starts a pipeline, waits for every command, and returns the status of the
+/// last command, or 127 when the last command did not start.
+fn run(pipeline: &amp;[Command]) -&gt; i32 {
+    let mut started = launch(pipeline);
+    let mut last = 127;
+
+    for child in &amp;mut started {
+        last = status(child);
+    }
+
+    if started.len() &lt; pipeline.len() {
+        return 127;
+    }
+
+    last
+}
+
+/// The state that outlives a command line.
+#[derive(Default)]
+struct Shell {
+    last: i32,
+    exiting: bool,
+}
+
+impl Shell {
+    /// Runs one command line. cd and exit change the shell process itself, so
+    /// they run inside it. Everything else runs in child processes.
+    fn execute(&amp;mut self, line: &amp;str) {
+        let Ok(pipeline) = parse(line) else {
+            eprintln!("msh: syntax error");
+            self.last = 2;
+
+            return;
+        };
+
+        let args: Vec&lt;&amp;str&gt; = pipeline[0].args.iter().map(String::as_str).collect();
+
+        match (pipeline.len(), args.as_slice()) {
+            (1, ["cd", directory]) =&gt; {
+                self.last = 0;
+
+                if let Err(error) = env::set_current_dir(directory) {
+                    eprintln!("msh: {error}");
+                    self.last = 1;
+                }
+            }
+            (1, ["exit", rest @ ..]) =&gt; {
+                self.exiting = true;
+
+                if let [code] = rest
+                    &amp;&amp; let Ok(code) = code.parse()
+                {
+                    self.last = code;
+                }
+            }
+            _ =&gt; self.last = run(&amp;pipeline),
+        }
+    }
+}
+
+/// The demonstration that msh runs without arguments.
+const SCRIPT: [&amp;str; 10] = [
+    "seq 1 5 &gt; numbers",
+    "wc -l &lt; numbers",
+    "sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers",
+    "paste -sd, numbers",
+    "false",
+    "nosuchcommand",
+    "cd /",
+    "pwd",
+    "exit 3",
+    "echo not reached",
+];
+
+/// Runs the script in a new temporary directory and prints the status after
+/// each line.
+fn demonstrate() -&gt; io::Result&lt;()&gt; {
+    let dir = env::temp_dir().join(format!("msh-{}", process::id()));
+
+    fs::create_dir_all(&amp;dir)?;
+    env::set_current_dir(&amp;dir)?;
+
+    let mut shell = Shell::default();
+
+    for line in SCRIPT {
+        println!("$ {line}");
+        shell.execute(line);
+
+        if shell.exiting {
+            println!("[the shell exits with status {}]", shell.last);
+
+            break;
+        }
+
+        println!("[status {}]", shell.last);
+    }
+
+    fs::remove_dir_all(&amp;dir)
+}
+
+/// Reads command lines from standard input until exit or the end of the
+/// input, and ends the process with the last status.
+fn interact() -&gt; io::Result&lt;()&gt; {
+    let mut shell = Shell::default();
+    let mut lines = io::stdin().lock().lines();
+
+    while !shell.exiting {
+        print!("msh$ ");
+        io::stdout().flush()?;
+
+        let Some(line) = lines.next().transpose()? else {
+            break;
+        };
+
+        if !line.trim().is_empty() {
+            shell.execute(&amp;line);
+        }
+    }
+
+    process::exit(shell.last);
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    if env::args().nth(1).as_deref() == Some("-i") {
+        interact()?;
+    }
+
+    demonstrate()
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A shell is an ordinary program built on <code>pipe</code>, <code>fork</code>, <code>dup2</code>, <code>exec</code> and <code>wait</code>.</li>
+<li><code>|</code> becomes a pipe between descriptor 1 of one child and descriptor 0 of the next.
+<code>&lt;</code>, <code>&gt;</code> and <code>&gt;&gt;</code> become an <code>open</code> whose result replaces descriptor 0 or 1.</li>
+<li>Redirections are performed in the child, between its creation and <code>exec</code>. The shell’s
+own descriptors do not change.</li>
+<li><code>&gt;</code> truncates its file before the command starts.</li>
+<li>The shell finds a program by searching the directories of <code>PATH</code>, and the environment
+is passed to the program by <code>exec</code>.</li>
+<li>The shell closes its own copies of pipe ends and redirected files after starting each
+child, and waits for every child.</li>
+<li>The status of a pipeline is the status of its last command; a signal is reported as
+<code>128 + n</code>, and a command that cannot be started as 127.</li>
+<li><code>cd</code> and <code>exit</code> act on the shell process and are built in for that reason.</li>
+<li>Variables, wildcards and quoting are processed by the shell before a program starts.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><em>The Open Group Base Specifications, Shell Command Language</em>:
+<a href="https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html">https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html</a></li>
+<li><code>execve(2)</code>, <code>environ(7)</code>, <code>chdir(2)</code> and <code>strace(1)</code>, Linux manual pages:
+<a href="https://man7.org/linux/man-pages/man2/execve.2.html">https://man7.org/linux/man-pages/man2/execve.2.html</a></li>
+<li>M. Kerrisk, <em>The Linux Programming Interface</em>, No Starch Press, 2010, chapters 6, 27,
+34 and 44.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="03-processes.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="05-signals.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="03-processes.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="05-signals.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

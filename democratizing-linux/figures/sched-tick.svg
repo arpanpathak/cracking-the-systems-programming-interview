@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 628" width="480" height="628" role="img" aria-label="How the scheduler takes a CPU from a task. Task A is running on CPU 0. A timer interrupt arrives. The kernel charges A: its vruntime grows by the time it ran times 1024 divided by its weight. If A has used its slice, it is marked for rescheduling. The scheduler picks the task with the smallest vruntime in the queue and performs a context switch, saving A&#x27;s registers and loading B&#x27;s. Task B is now running and A waits in the run queue.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="628" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">From one task to the next</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A timer interrupt gives the scheduler control.</text>
+  <rect x="80" y="96" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,96.7 H86 V153.3 H92 A11.3,11.3 0 0 1 80.7,142 V108 A11.3,11.3 0 0 1 92,96.7 Z" fill="#2F6FDB"/>
+  <rect x="96" y="109.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(102.0,115.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="138.0" y="121.0" class="name" text-anchor="start" xml:space="preserve">Task A is running</text>
+  <text x="138.0" y="139.0" class="sub" text-anchor="start" xml:space="preserve">on CPU 0</text>
+  <rect x="80" y="172" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,172.7 H86 V229.3 H92 A11.3,11.3 0 0 1 80.7,218 V184 A11.3,11.3 0 0 1 92,172.7 Z" fill="#B7791F"/>
+  <rect x="96" y="185.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(102.0,191.0) scale(0.8333)"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2.4a7.6 7.6 0 1 0 0 15.2 7.6 7.6 0 0 0 0-15.2zM11 7h2v4.6l3.3 2-1 1.7-4.3-2.6z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="138.0" y="197.0" class="name" text-anchor="start" xml:space="preserve">Timer interrupt</text>
+  <text x="138.0" y="215.0" class="sub" text-anchor="start" xml:space="preserve">every 4 ms on this machine</text>
+  <path class="wire" d="M240.0,154 L240.0,172" marker-end="url(#head)"/>
+  <rect x="80" y="248" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,248.7 H86 V305.3 H92 A11.3,11.3 0 0 1 80.7,294 V260 A11.3,11.3 0 0 1 92,248.7 Z" fill="#B7791F"/>
+  <rect x="96" y="261.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(102.0,267.0) scale(0.8333)"><path d="M3 21l1.5-5.5L15.2 4.8l4 4L8.5 19.5zM16.6 3.4l1.3-1.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4l-1.3 1.3z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="138.0" y="273.0" class="name" text-anchor="start" xml:space="preserve">Charge A</text>
+  <text x="138.0" y="291.0" class="sub" text-anchor="start" xml:space="preserve">vruntime += time run x 1024 / weight</text>
+  <path class="wire" d="M240.0,230 L240.0,248" marker-end="url(#head)"/>
+  <rect x="80" y="324" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,324.7 H86 V381.3 H92 A11.3,11.3 0 0 1 80.7,370 V336 A11.3,11.3 0 0 1 92,324.7 Z" fill="#B7791F"/>
+  <rect x="96" y="337.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(102.0,343.0) scale(0.8333)"><path d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.7 4.8-1.8 1.8-4.8-4.7A7.5 7.5 0 1 1 10.5 3zm0 2.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="138.0" y="349.0" class="name" text-anchor="start" xml:space="preserve">Has A used its slice?</text>
+  <text x="138.0" y="367.0" class="sub" text-anchor="start" xml:space="preserve">if so, mark A: reschedule</text>
+  <path class="wire" d="M240.0,306 L240.0,324" marker-end="url(#head)"/>
+  <rect x="80" y="400" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,400.7 H86 V457.3 H92 A11.3,11.3 0 0 1 80.7,446 V412 A11.3,11.3 0 0 1 92,400.7 Z" fill="#1F8A70"/>
+  <rect x="96" y="413.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(102.0,419.0) scale(0.8333)"><path d="M12 2 2 7l10 5 10-5zm-7.8 8.6L2 11.7l10 5 10-5-2.2-1.1L12 14.5zm0 4.7L2 16.4l10 5 10-5-2.2-1.1L12 19.2z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="138.0" y="425.0" class="name" text-anchor="start" xml:space="preserve">Pick the next task</text>
+  <text x="138.0" y="443.0" class="sub" text-anchor="start" xml:space="preserve">the smallest vruntime in the queue</text>
+  <path class="wire" d="M240.0,382 L240.0,400" marker-end="url(#head)"/>
+  <rect x="80" y="476" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,476.7 H86 V533.3 H92 A11.3,11.3 0 0 1 80.7,522 V488 A11.3,11.3 0 0 1 92,476.7 Z" fill="#2E8B3D"/>
+  <rect x="96" y="489.0" width="32" height="32" rx="8" fill="#E7F5E9"/>
+  <g transform="translate(102.0,495.0) scale(0.8333)"><path d="M7 4 2 9l5 5v-3.5h9V8H7zm10 6v3.5H8V16h9v3.5l5-5z" fill="#2E8B3D" fill-rule="evenodd"/></g>
+  <text x="138.0" y="501.0" class="name" text-anchor="start" xml:space="preserve">Context switch</text>
+  <text x="138.0" y="519.0" class="sub" text-anchor="start" xml:space="preserve">save A&#x27;s registers, load B&#x27;s</text>
+  <path class="wire" d="M240.0,458 L240.0,476" marker-end="url(#head)"/>
+  <rect x="80" y="552" width="320" height="58" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M92,552.7 H86 V609.3 H92 A11.3,11.3 0 0 1 80.7,598 V564 A11.3,11.3 0 0 1 92,552.7 Z" fill="#2F6FDB"/>
+  <rect x="96" y="565.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(102.0,571.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="138.0" y="577.0" class="name" text-anchor="start" xml:space="preserve">Task B is running</text>
+  <text x="138.0" y="595.0" class="sub" text-anchor="start" xml:space="preserve">A waits in the run queue</text>
+  <path class="wire" d="M240.0,534 L240.0,552" marker-end="url(#head)"/>
+</svg>

@@ -1,0 +1,2249 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>TCP Sockets - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/10-tcp-sockets.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch10.svg" alt="Halyard and Cleat, 2 carrier pigeons on separate posts, face each other. Notes numbered 1, 2 and 3 travel along a line between them, in order.">
+<h1 id="tcp-sockets"><a class="header" href="#tcp-sockets">TCP Sockets</a></h1>
+<p>A socket is the endpoint of a network connection, held by a process as a file
+descriptor. Behind the descriptor the kernel keeps the state of the connection: who the
+peer is, a buffer of data waiting to be sent, and a buffer of data received and not yet
+read. <code>read</code> and <code>write</code> work on a connected socket as they do on a pipe, and the same
+descriptor can be registered with epoll.</p>
+<p>In this chapter, we will learn what the kernel does for a TCP connection between the
+calls a program makes. We will first measure a connection on the loopback interface with
+<code>sockfacts</code>. Then we will write <code>sockmodel</code>, a model of the receiving side: the table
+that finds the socket for an arriving packet, the accept queue of a listener, and the
+receive buffer that limits the sender.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the layers between a <code>write</code> and the network</li>
+<li>the segments of a connection: the handshake, sequence numbers, and acknowledgements</li>
+<li>the calls that set up a connection: <code>listen</code>, <code>connect</code> and <code>accept</code></li>
+<li>the kernel structures: <code>struct sock</code> and <code>struct tcp_sock</code></li>
+<li>what identifies a connection, and how many connections share a port</li>
+<li>the accept queue and its backlog</li>
+<li>TCP as a stream of bytes without message boundaries</li>
+<li>the send buffer, the receive buffer, and the window that stops a fast sender</li>
+<li>how the end of a stream and a closed peer are reported</li>
+<li>how to inspect the connections of a running system with <code>ss</code></li>
+</ul>
+</div>
+
+<h2 id="from-write-to-the-network"><a class="header" href="#from-write-to-the-network">From write to the network</a></h2>
+<p>A network carries <em>packets</em>: blocks of at most about 1500 bytes on Ethernet, each
+delivered independently, and each of which may be lost, duplicated or delivered out of
+order. A program wants something else: a stream of bytes that arrives complete and in
+order. The kernel’s network stack builds the second from the first, in layers.</p>
+<figure>
+<img src="figures/net-layers.svg" alt="The layers a write passes through. The program calls write. The socket copies the data into the send buffer. TCP cuts it into segments and adds sequence numbers and the window. IP adds the addresses and chooses a route. A network device, Ethernet, Wi-Fi or loopback, carries the packet. The peer&#39;s kernel passes it through the same layers upward.">
+<figcaption><b>Figure 10.1</b> The layers between a <code>write</code> and the network.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Layer</th><th>Adds</th><th>Responsible for</th></tr>
+</thead>
+<tbody>
+<tr><td>Socket</td><td>nothing</td><td>the descriptor, the buffers, and blocking</td></tr>
+<tr><td>TCP</td><td>a header with 2 <em>ports</em>, a sequence number, an acknowledgement number and a window</td><td>reliability, order, and flow control between 2 programs</td></tr>
+<tr><td>IP</td><td>a header with 2 <em>IP addresses</em></td><td>delivering a packet to the right machine</td></tr>
+<tr><td>Device</td><td>a frame for the medium</td><td>moving the packet to the next machine</td></tr>
+</tbody>
+</table>
+</div>
+<p>An IP address names a machine, and a <em>port</em> is a 16-bit number that names a program on
+it. The <em>loopback</em> device, with the address 127.0.0.1, delivers packets to the same
+machine without any hardware, and the programs of this chapter use it.</p>
+<h3 id="the-segments-of-a-connection"><a class="header" href="#the-segments-of-a-connection">The segments of a connection</a></h3>
+<p>TCP makes an unreliable network reliable by numbering. Every byte of a stream has a
+<em>sequence number</em>. Each packet of TCP, called a <em>segment</em>, says which bytes it carries.
+The receiver answers with an <em>acknowledgement</em>: the number of the next byte it expects,
+which confirms everything before it. The sender keeps each byte until it is
+acknowledged, and sends it again if no acknowledgement arrives in time. Out-of-order
+segments are put in order by their numbers, and duplicates are recognised and dropped.</p>
+<p>An example with small numbers shows the whole mechanism. The client sends <code>hello</code>, 5
+bytes, and its stream is currently at byte 1001.</p>
+<figure>
+<img src="figures/seq-worked.svg" alt="The 5 bytes of hello numbered 1001 to 1005 in the client&#39;s stream. They travel in 1 segment with sequence number 1001. The server now has bytes 1001 to 1005 and expects 1006 next, and it sends an acknowledgement with ack 1006. The client reads it as: everything before 1006 arrived, and discards its copy. If the segment is lost, no such acknowledgement arrives, and the client sends the bytes again after a timeout.">
+<figcaption><b>Figure 10.2</b> 5 bytes sent, acknowledged, and the rule for sending them again.</figcaption>
+</figure>
+<p>The acknowledgement is a single number, and it confirms a whole range. This keeps the
+protocol simple: the receiver always says “the next byte I need is this one”, and
+whatever went wrong, the sender knows where to continue.</p>
+<p>Before any data, the 2 sides have to agree on their starting sequence numbers. This is
+the <em>handshake</em>, 3 segments marked with the flags <code>SYN</code> and <code>ACK</code>.</p>
+<figure>
+<img src="figures/tcp-exchange.svg" alt="The segments of a short TCP connection between a client and the server&#39;s kernel. The client sends SYN with sequence number 1000. The server answers SYN and ACK with its own sequence number 5000 and acknowledgement 1001. The client sends ACK with acknowledgement 5001, and the connection is established. The client sends 5 bytes at sequence 1001, and the server acknowledges 1006 with a window of 65531. The client sends FIN at sequence 1006, and the server acknowledges 1007.">
+<figcaption><b>Figure 10.3</b> A connection: the handshake, 5 bytes, and the close of the client's direction.</figcaption>
+</figure>
+<ol>
+<li><code>SYN</code>: the client proposes its starting number, 1000.</li>
+<li><code>SYN</code> and <code>ACK</code>: the server acknowledges it with 1001 and proposes its own, 5000.</li>
+<li><code>ACK</code>: the client acknowledges 5001. Both sides now know both numbers, and the
+connection is <em>established</em>.</li>
+<li>The client sends 5 bytes, numbered 1001 to 1005.</li>
+<li>The server acknowledges 1006 and reports its <em>window</em>, the space left in its receive
+buffer.</li>
+<li><code>FIN</code>: the client has nothing more to send. This closes its direction of the stream.</li>
+<li>The server acknowledges. Its program’s next <code>read</code> returns 0. The server can still
+send, until it sends a <code>FIN</code> of its own.</li>
+</ol>
+<p>All of this is done by the kernels. The programs call <code>connect</code>, <code>write</code>, <code>read</code> and
+<code>close</code>, and do not see a segment.</p>
+<h2 id="setting-up-a-connection"><a class="header" href="#setting-up-a-connection">Setting up a connection</a></h2>
+<p>TCP gives 2 programs a reliable stream of bytes in each direction. A server and a
+client reach that state through different calls.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th>Made by</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>socket</code></td><td>both</td><td>creates an unconnected socket and returns a descriptor</td></tr>
+<tr><td><code>bind</code></td><td>server</td><td>gives the socket a local address and port</td></tr>
+<tr><td><code>listen</code></td><td>server</td><td>marks the socket as a <em>listener</em> and sets the length of its accept queue</td></tr>
+<tr><td><code>connect</code></td><td>client</td><td>exchanges 3 packets with the server’s kernel, the <em>handshake</em>, and returns when the connection is established</td></tr>
+<tr><td><code>accept</code></td><td>server</td><td>returns a new descriptor for an established connection</td></tr>
+</tbody>
+</table>
+</div>
+<p>The handshake is carried out by the server’s kernel. The server program takes no part in
+it. An established connection waits in the <em>accept queue</em> of the listener until the
+program calls <code>accept</code>.</p>
+<p>A connection is identified by 4 values: the local address, the local port, the remote
+address and the remote port. A listener and all the connections accepted from it have
+the same local port. An arriving packet, called a <em>segment</em> in TCP, is matched against
+the 4 values of the existing connections. A segment that matches none and asks to open a
+connection, a <code>SYN</code>, is given to the listener on its port.</p>
+<figure>
+<img src="figures/socket-demux.svg" alt="A segment arrives from 10.0.0.2 port 5000 for local port 80. The kernel looks it up in the table of connections, which is keyed by remote endpoint and local port. The entry for 10.0.0.1 port 5000 is a different connection on port 80. The entry for 10.0.0.2 port 5000 matches, and the data goes to that socket. A SYN that matches no connection goes to the listener on port 80, whose accept queue has a backlog of 2 and is full, so a further SYN is dropped.">
+<figcaption><b>Figure 10.4</b> The kernel finds the socket for a segment by the addresses and ports of the connection.</figcaption>
+</figure>
+<h2 id="the-kernels-structures"><a class="header" href="#the-kernels-structures">The kernel’s structures</a></h2>
+<p>Behind a socket descriptor is a <code>struct file</code> (<a href="02-file-descriptors.html">chapter 2</a>)
+whose function table is the socket’s, and behind that a <code>struct sock</code>. For TCP the
+<code>struct sock</code> is the first part of a larger <code>struct tcp_sock</code>. These are fields from
+<code>include/net/sock.h</code> and <code>include/linux/tcp.h</code> of Linux 5.15.</p>
+<pre><code class="language-c">struct sock_common {
+        __be32 skc_daddr;                      /* remote IP address */
+        __be32 skc_rcv_saddr;                  /* local IP address */
+        __be16 skc_dport;                      /* remote port */
+        __u16 skc_num;                         /* local port */
+        volatile unsigned char skc_state;      /* TCP_LISTEN, TCP_ESTABLISHED, ... */
+        /* ... */
+};
+
+struct sock {
+        struct sock_common __sk_common;
+        struct sk_buff_head sk_receive_queue;  /* segments received, not yet read */
+        int sk_rcvbuf;                         /* limit of the receive queue, bytes */
+        struct sk_buff_head sk_write_queue;    /* data written, not yet acknowledged */
+        int sk_sndbuf;                         /* limit of the write queue, bytes */
+        u32 sk_ack_backlog;                    /* connections waiting for accept */
+        u32 sk_max_ack_backlog;                /* the backlog given to listen */
+        /* ... */
+};
+
+struct tcp_sock {
+        u32 rcv_nxt;                           /* next byte we expect to receive */
+        u32 snd_nxt;                           /* next byte we will send */
+        u32 snd_una;                           /* oldest byte sent and not acknowledged */
+        u32 snd_wnd;                           /* the window the peer offered */
+        u32 snd_cwnd;                          /* congestion window */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>skc_daddr</code>, <code>skc_dport</code>, <code>skc_rcv_saddr</code>, <code>skc_num</code></td><td>The 4 values that identify the connection.</td></tr>
+<tr><td><code>skc_state</code></td><td>The state of the connection, shown by <code>ss</code> as <code>LISTEN</code>, <code>ESTAB</code> and others.</td></tr>
+<tr><td><code>sk_receive_queue</code>, <code>sk_rcvbuf</code></td><td>The receive buffer and its limit. <code>read</code> takes from this queue.</td></tr>
+<tr><td><code>sk_write_queue</code>, <code>sk_sndbuf</code></td><td>The send buffer and its limit. <code>write</code> adds to this queue and blocks when the limit is reached.</td></tr>
+<tr><td><code>snd_una</code>, <code>snd_nxt</code></td><td>The bytes between them have been sent and are waiting for an acknowledgement.</td></tr>
+<tr><td><code>rcv_nxt</code></td><td>The acknowledgement number this side sends.</td></tr>
+<tr><td><code>snd_wnd</code></td><td>The peer’s window: this side sends no byte beyond <code>snd_una + snd_wnd</code>.</td></tr>
+<tr><td><code>snd_cwnd</code></td><td>A second limit that TCP computes itself, to avoid overloading the network between the machines.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/sock-structs.svg" alt="The structures of a TCP socket. A struct file leads to a struct sock, which has the remote address and port, the local address and port, the state, the receive queue with its limit sk_rcvbuf, and the write queue with its limit sk_sndbuf. A struct tcp_sock extends it with snd_una, snd_nxt, rcv_nxt, snd_wnd and snd_cwnd.">
+<figcaption><b>Figure 10.5</b> A socket descriptor, the socket, and its TCP state.</figcaption>
+</figure>
+<p>The <code>ss</code> command prints these fields for the sockets of a system. Here a server listens
+on port 9099 and a client has connected to it over loopback:</p>
+<pre><code class="language-console">$ ss -tln 'sport = :9099'
+State  Recv-Q Send-Q Local Address:Port Peer Address:Port
+LISTEN 0      1          127.0.0.1:9099      0.0.0.0:*
+$ ss -tn 'sport = :9099 or dport = :9099'
+State Recv-Q Send-Q Local Address:Port  Peer Address:Port
+ESTAB 0      0          127.0.0.1:9099     127.0.0.1:51252
+ESTAB 0      0          127.0.0.1:51252    127.0.0.1:9099
+</code></pre>
+<figure>
+<img src="figures/ss-annotated.svg" alt="3 lines of ss explained. The LISTEN line is a listener on port 9099 with no peer yet, 0 connections waiting for accept and a backlog of 1. The first ESTAB line is the server&#39;s end of a connection, with 0 bytes received and unread and 0 bytes unsent. The second ESTAB line is the client&#39;s end of the same connection, with the same 4 values, local and peer exchanged.">
+<figcaption><b>Figure 10.6</b> The 3 lines of the listing, column by column.</figcaption>
+</figure>
+<p>The first command shows the listener. For a listener, <code>Send-Q</code> is the backlog, 1 here,
+and <code>Recv-Q</code> is the number of connections waiting for <code>accept</code>. The second shows the
+connection 2 times, because both ends are on this machine: the server’s socket with
+local port 9099, and the client’s with the port 51252 that the kernel chose for it. The
+4 values of one line are the 4 values of the other, exchanged.</p>
+<h2 id="measuring-a-connection"><a class="header" href="#measuring-a-connection">Measuring a connection</a></h2>
+<p><code>sockfacts</code> makes its connections over the loopback address 127.0.0.1, with both ends in
+the same process. The Go version calls the socket system calls through
+<code>golang.org/x/sys/unix</code>. The Rust version uses <code>std::net</code> and the <code>nix</code> crate with the
+<code>socket</code> feature for socket options.</p>
+<pre><code class="language-console">$ cargo new sockfacts
+$ cargo add -p sockfacts nix --features socket
+</code></pre>
+<p><code>listen</code> binds to port 0, which asks the kernel for any free port.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.1</b> The imports of <code>sockfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockfacts/main.go">code/go/sockfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+
+	"golang.org/x/sys/unix"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.2</b> The imports of <code>sockfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockfacts/src/main.rs">code/rust/sockfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::os::fd::AsRawFd;
+
+use nix::errno::Errno;
+use nix::sys::socket::{setsockopt, sockopt};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.3</b> A listener and a client on the loopback interface, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockfacts/main.go">code/go/sockfacts/main.go</a></p>
+
+<pre><code class="language-go">// listen returns a TCP socket that listens on a free port of 127.0.0.1, and
+// its address.
+func listen() (int, *unix.SockaddrInet4, error) {
+	listener, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if err := unix.Bind(listener, &amp;unix.SockaddrInet4{Addr: [4]byte{127, 0, 0, 1}}); err != nil {
+		return 0, nil, err
+	}
+
+	if err := unix.Listen(listener, 16); err != nil {
+		return 0, nil, err
+	}
+
+	address, err := unix.Getsockname(listener)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return listener, address.(*unix.SockaddrInet4), nil
+}
+
+// connect returns a TCP socket connected to an address.
+func connect(address *unix.SockaddrInet4) (int, error) {
+	client, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return client, unix.Connect(client, address)
+}
+
+// name returns the symbolic name of a system call error, such as EPIPE.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+// port returns the port of an address.
+func port(address unix.Sockaddr, err error) int {
+	if inet, ok := address.(*unix.SockaddrInet4); ok &amp;&amp; err == nil {
+		return inet.Port
+	}
+
+	return 0
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.4</b> A listener and a client on the loopback interface, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockfacts/src/main.rs">code/rust/sockfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Returns a TCP socket that listens on a free port of 127.0.0.1.
+fn listen() -&gt; io::Result&lt;TcpListener&gt; {
+    TcpListener::bind("127.0.0.1:0")
+}
+
+/// Returns a TCP socket connected to the address of a listener.
+fn connect(listener: &amp;TcpListener) -&gt; io::Result&lt;TcpStream&gt; {
+    TcpStream::connect(listener.local_addr()?)
+}
+
+/// Returns the symbolic name of a system call error, such as `EPIPE`.
+fn name(error: &amp;io::Error) -&gt; String {
+    match error.raw_os_error() {
+        Some(code) =&gt; format!("{:?}", Errno::from_raw(code)),
+        None =&gt; error.to_string(),
+    }
+}</code></pre>
+<p><code>establish</code> calls <code>connect</code> before the server has called <code>accept</code>. Then it accepts and
+compares the addresses of the ends.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.5</b> Connecting before accept, and the ports of both ends, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockfacts/main.go">code/go/sockfacts/main.go</a></p>
+
+<pre><code class="language-go">// establish connects before the server calls accept, and compares the
+// addresses of both ends.
+func establish() error {
+	listener, address, err := listen()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(listener)
+
+	client, err := connect(address)
+	fmt.Printf("connect before the server calls accept: succeeded %v\n", err == nil)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(client)
+
+	server, _, err := unix.Accept(listener)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(server)
+
+	fmt.Printf("accept returns a new descriptor: %v, on the listener's port: %v\n",
+		server != listener, port(unix.Getsockname(server)) == address.Port)
+	fmt.Printf("the client's local port is the server's peer port: %v\n",
+		port(unix.Getsockname(client)) == port(unix.Getpeername(server)))
+
+	return stream(client, server)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.6</b> Connecting before accept, and the ports of both ends, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockfacts/src/main.rs">code/rust/sockfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Connects before the server calls accept, and compares the addresses of
+/// both ends.
+fn establish() -&gt; io::Result&lt;()&gt; {
+    let listener = listen()?;
+
+    let client = connect(&amp;listener);
+    println!(
+        "connect before the server calls accept: succeeded {}",
+        client.is_ok()
+    );
+
+    let client = client?;
+    let (server, _) = listener.accept()?;
+
+    println!(
+        "accept returns a new descriptor: {}, on the listener's port: {}",
+        server.as_raw_fd() != listener.as_raw_fd(),
+        server.local_addr()?.port() == listener.local_addr()?.port()
+    );
+    println!(
+        "the client's local port is the server's peer port: {}",
+        client.local_addr()?.port() == server.peer_addr()?.port()
+    );
+
+    stream(client, server)
+}</code></pre>
+<p><code>stream</code> sends <code>ab</code> and <code>cd</code> with separate calls to <code>write</code>, and the server reads 3
+bytes and then 1. After that the client closes its socket. The server reads again, and
+then writes until a write fails.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.7</b> A stream of bytes, and the end of the stream, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockfacts/main.go">code/go/sockfacts/main.go</a></p>
+
+<pre><code class="language-go">// readFull reads until buf is full.
+func readFull(fd int, buf []byte) error {
+	for filled := 0; filled &lt; len(buf); {
+		n, err := unix.Read(fd, buf[filled:])
+
+		if err != nil {
+			return err
+		}
+
+		if n == 0 {
+			return errors.New("the stream ended early")
+		}
+
+		filled += n
+	}
+
+	return nil
+}
+
+// stream writes "ab" and "cd" with 2 calls and reads 3 bytes and then 1.
+// Then the client closes, and the server reads and writes again.
+func stream(client, server int) error {
+	for _, part := range []string{"ab", "cd"} {
+		if _, err := unix.Write(client, []byte(part)); err != nil {
+			return err
+		}
+	}
+
+	first, second := make([]byte, 3), make([]byte, 1)
+
+	if err := readFull(server, first); err != nil {
+		return err
+	}
+
+	if err := readFull(server, second); err != nil {
+		return err
+	}
+
+	fmt.Printf("writes of \"ab\" and \"cd\", reads of 3 bytes and 1 byte: %q and %q\n", first, second)
+
+	unix.Close(client)
+
+	n, err := unix.Read(server, first)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the client closed: read returns %d\n", n)
+
+	for err == nil {
+		_, err = unix.Write(server, []byte("x"))
+	}
+
+	fmt.Printf("writes to the closed peer: the first is accepted, a later one fails with %s\n", name(err))
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.8</b> A stream of bytes, and the end of the stream, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockfacts/src/main.rs">code/rust/sockfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes "ab" and "cd" with 2 calls and reads 3 bytes and then 1. Then the
+/// client closes, and the server reads and writes again.
+fn stream(mut client: TcpStream, mut server: TcpStream) -&gt; io::Result&lt;()&gt; {
+    for part in ["ab", "cd"] {
+        client.write_all(part.as_bytes())?;
+    }
+
+    let (mut first, mut second) = ([0u8; 3], [0u8; 1]);
+
+    server.read_exact(&amp;mut first)?;
+    server.read_exact(&amp;mut second)?;
+
+    println!(
+        "writes of \"ab\" and \"cd\", reads of 3 bytes and 1 byte: {:?} and {:?}",
+        String::from_utf8_lossy(&amp;first),
+        String::from_utf8_lossy(&amp;second)
+    );
+
+    drop(client);
+
+    let n = server.read(&amp;mut first)?;
+    println!("the client closed: read returns {n}");
+
+    let error = loop {
+        if let Err(error) = server.write(b"x") {
+            break error;
+        }
+    };
+
+    println!(
+        "writes to the closed peer: the first is accepted, a later one fails with {}",
+        name(&amp;error)
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>flow</code> reduces the buffers of a connection, so that the numbers are small, and writes to
+the client socket in non-blocking mode until the kernel refuses a write. The server does
+not read during that time. Then the server reads everything, and the client tries again.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.9</b> A sender whose peer does not read, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockfacts/main.go">code/go/sockfacts/main.go</a></p>
+
+<pre><code class="language-go">// fill writes blocks to a non-blocking socket until the kernel refuses one
+// and returns the number of bytes accepted.
+func fill(fd int) (int, error) {
+	block := make([]byte, 1024)
+	total := 0
+
+	for {
+		n, err := unix.Write(fd, block)
+
+		if errors.Is(err, unix.EAGAIN) {
+			return total, nil
+		}
+
+		if err != nil {
+			return total, err
+		}
+
+		total += n
+	}
+}
+
+// flow gives a connection small buffers, fills it while the server does not
+// read, lets the server read everything, and fills it again.
+func flow() error {
+	listener, address, err := listen()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(listener)
+
+	if err := unix.SetsockoptInt(listener, unix.SOL_SOCKET, unix.SO_RCVBUF, 4096); err != nil {
+		return err
+	}
+
+	client, err := connect(address)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(client)
+
+	if err := unix.SetsockoptInt(client, unix.SOL_SOCKET, unix.SO_SNDBUF, 4096); err != nil {
+		return err
+	}
+
+	server, _, err := unix.Accept(listener)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(server)
+
+	if err := unix.SetNonblock(client, true); err != nil {
+		return err
+	}
+
+	sent, err := fill(client)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the server does not read: the client is stopped after %d bytes\n", sent)
+
+	if err := readFull(server, make([]byte, sent)); err != nil {
+		return err
+	}
+
+	again, err := fill(client)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the server has read everything: the client can write again: %v\n", again &gt; 0)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.10</b> A sender whose peer does not read, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockfacts/src/main.rs">code/rust/sockfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes blocks to a non-blocking socket until the kernel refuses one and
+/// returns the number of bytes accepted.
+fn fill(mut stream: &amp;TcpStream) -&gt; io::Result&lt;usize&gt; {
+    let block = [0u8; 1024];
+    let mut total = 0;
+
+    loop {
+        match stream.write(&amp;block) {
+            Ok(n) =&gt; total += n,
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock =&gt; return Ok(total),
+            Err(error) =&gt; return Err(error),
+        }
+    }
+}
+
+/// Gives a connection small buffers, fills it while the server does not read,
+/// lets the server read everything, and fills it again.
+fn flow() -&gt; io::Result&lt;()&gt; {
+    let listener = listen()?;
+    setsockopt(&amp;listener, sockopt::RcvBuf, &amp;4096)?;
+
+    let client = connect(&amp;listener)?;
+    setsockopt(&amp;client, sockopt::SndBuf, &amp;4096)?;
+
+    let (mut server, _) = listener.accept()?;
+
+    client.set_nonblocking(true)?;
+
+    let sent = fill(&amp;client)?;
+    println!("the server does not read: the client is stopped after {sent} bytes");
+
+    server.read_exact(&amp;mut vec![0u8; sent])?;
+
+    let again = fill(&amp;client)?;
+    println!(
+        "the server has read everything: the client can write again: {}",
+        again &gt; 0
+    );
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">connect before the server calls accept: succeeded true
+accept returns a new descriptor: true, on the listener's port: true
+the client's local port is the server's peer port: true
+writes of "ab" and "cd", reads of 3 bytes and 1 byte: "abc" and "d"
+the client closed: read returns 0
+writes to the closed peer: the first is accepted, a later one fails with EPIPE
+the server does not read: the client is stopped after 7168 bytes
+the server has read everything: the client can write again: true
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td><code>connect</code> succeeds before <code>accept</code></td><td>The kernel completes the handshake. The connection waits in the accept queue.</td></tr>
+<tr><td>a new descriptor on the listener’s port</td><td><code>accept</code> creates a socket for the connection. The listener stays open for further connections.</td></tr>
+<tr><td>client’s local port is the server’s peer port</td><td>Both ends hold the same 4 values, each from its own side.</td></tr>
+<tr><td><code>abc</code> and <code>d</code></td><td>TCP delivers bytes in order and keeps no record of where a <code>write</code> ended.</td></tr>
+<tr><td>read returns 0</td><td>The end of the peer’s stream is reported as on a pipe.</td></tr>
+<tr><td>a later write fails with <code>EPIPE</code></td><td>The first write after the close is accepted locally. The peer’s kernel answers it with a reset, and the following write fails.</td></tr>
+<tr><td>stopped after 7168 bytes</td><td>Both buffers are full. A blocking <code>write</code> would be suspended here.</td></tr>
+<tr><td>can write again after the server has read</td><td>Space in the receive buffer lets the sender continue.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Row 4 has a practical consequence. A protocol built on TCP has to mark the
+boundaries of its messages itself, with a length before each message or with a
+delimiter such as a newline, and a reader has to be prepared to receive part of a
+message or several messages in a single <code>read</code>.</p>
+<div class="crab crab-shocked">
+<p>TCP keeps no message boundaries. A <code>read</code> can return half a message, or 2 messages at once.</p>
+</div>
+
+<h2 id="buffers-and-the-window"><a class="header" href="#buffers-and-the-window">Buffers and the window</a></h2>
+<p>A <code>write</code> on a socket copies the data into the socket’s <em>send buffer</em> and returns. The
+kernel transmits from that buffer and keeps each byte until the peer has acknowledged
+it. On the other side, arriving data is placed in the <em>receive buffer</em> until the program
+reads it.</p>
+<p>The 2 buffers are connected by the <em>window</em>. With every acknowledgement, the receiver
+reports how much free space its receive buffer has, and the sender transmits no more
+than that. When the receiving program stops reading, the receive buffer fills, the
+window becomes 0, the sender’s kernel stops transmitting, the send buffer fills, and
+<code>write</code> blocks. This is the flow control of a pipe, extended across a network. The 7168
+bytes of the measurement are the contents of both buffers at that point.</p>
+<figure>
+<img src="figures/socket-buffers.svg" alt="The sender&#39;s write copies into a send buffer. The kernel sends segments from it, up to the window, to the receive buffer of the peer. The receiver&#39;s read copies out of the receive buffer. The receiver reports the free space of its receive buffer back to the sender as the window. When the window is 0 the sender stops sending, its send buffer fills, and write blocks.">
+<figcaption><b>Figure 10.7</b> The send buffer, the receive buffer, and the window between them.</figcaption>
+</figure>
+<div class="lld">
+<p>Low-level design: <code>sockmodel</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>endpoint</code></td><td><code>address</code>, <code>port</code></td><td>one side of a connection</td></tr>
+<tr><td><code>key</code></td><td><code>remote</code>, <code>port</code></td><td>identifies a connection: the remote endpoint and the local port</td></tr>
+<tr><td><code>socket</code></td><td><code>received</code>, <code>capacity</code>, <code>finished</code></td><td>the receive buffer; whether the sender has ended its stream</td></tr>
+<tr><td><code>listener</code></td><td><code>backlog</code>, <code>queue</code></td><td>the accept queue and its maximum length</td></tr>
+<tr><td><code>stack</code></td><td><code>listeners</code>, <code>connections</code></td><td>listeners by port; connections by key</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>receive(segment)</code></td><td>delivers to the matching connection; gives a <code>SYN</code> to the listener; otherwise answers with a reset</td></tr>
+<tr><td><code>deliver(segment)</code></td><td>appends data up to the window; records a <code>FIN</code></td></tr>
+<tr><td><code>accept(port)</code></td><td>removes the oldest connection from the accept queue</td></tr>
+<tr><td><code>read(n)</code></td><td>removes bytes from the receive buffer; reports the end of the stream</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="modelling-the-receiving-side"><a class="header" href="#modelling-the-receiving-side">Modelling the receiving side</a></h2>
+<p>The model covers the receiving half of TCP and omits transmission, acknowledgements and
+retransmission.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.11</b> The imports of <code>sockmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockmodel/main.go">code/go/sockmodel/main.go</a></p>
+
+<pre><code class="language-go">import "fmt"
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.12</b> The imports of <code>sockmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockmodel/src/main.rs">code/rust/sockmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::{HashMap, VecDeque};
+use std::fmt;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.13</b> Endpoints, sockets, listeners and segments, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockmodel/main.go">code/go/sockmodel/main.go</a></p>
+
+<pre><code class="language-go">// An endpoint is an IP address and a port.
+type endpoint struct {
+	address string
+	port    int
+}
+
+func (e endpoint) String() string {
+	return fmt.Sprintf("%s:%d", e.address, e.port)
+}
+
+// A socket is one established connection: the bytes received and not yet
+// read, the size of the receive buffer, and whether the sender has finished.
+type socket struct {
+	received []byte
+	capacity int
+	finished bool
+}
+
+// window is the free space of the receive buffer: the number of bytes the
+// sender may still send.
+func (s *socket) window() int {
+	return s.capacity - len(s.received)
+}
+
+// A key identifies a connection on this machine: the remote endpoint and the
+// local port. With the local address, which the model leaves out, it forms
+// the 4 values that identify a TCP connection.
+type key struct {
+	remote endpoint
+	port   int
+}
+
+// A listener accepts connections on a port. queue holds the connections that
+// are established and have not been returned by accept.
+type listener struct {
+	backlog int
+	queue   []key
+}
+
+// A stack is the TCP state of a machine.
+type stack struct {
+	listeners   map[int]*listener
+	connections map[key]*socket
+	bufferSize  int
+}
+
+// A segment is a packet of TCP. syn opens a connection and fin ends the
+// sender's stream.
+type segment struct {
+	from     endpoint
+	port     int
+	syn, fin bool
+	data     string
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.14</b> Endpoints, sockets, listeners and segments, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockmodel/src/main.rs">code/rust/sockmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// An IP address and a port.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Endpoint {
+    address: &amp;'static str,
+    port: u16,
+}
+
+impl fmt::Display for Endpoint {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(f, "{}:{}", self.address, self.port)
+    }
+}
+
+/// One established connection: the bytes received and not yet read, the size
+/// of the receive buffer, and whether the sender has finished.
+struct Socket {
+    received: VecDeque&lt;u8&gt;,
+    capacity: usize,
+    finished: bool,
+}
+
+impl Socket {
+    /// The free space of the receive buffer: the number of bytes the sender
+    /// may still send.
+    fn window(&amp;self) -&gt; usize {
+        self.capacity - self.received.len()
+    }
+}
+
+/// Identifies a connection on this machine: the remote endpoint and the local
+/// port. With the local address, which the model leaves out, it forms the 4
+/// values that identify a TCP connection.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Key {
+    remote: Endpoint,
+    port: u16,
+}
+
+/// Accepts connections on a port. `queue` holds the connections that are
+/// established and have not been returned by accept.
+struct Listener {
+    backlog: usize,
+    queue: VecDeque&lt;Key&gt;,
+}
+
+/// The TCP state of a machine.
+struct Stack {
+    listeners: HashMap&lt;u16, Listener&gt;,
+    connections: HashMap&lt;Key, Socket&gt;,
+    buffer_size: usize,
+}
+
+/// A packet of TCP. `syn` opens a connection and `fin` ends the sender's
+/// stream.
+#[derive(Default)]
+struct Segment {
+    syn: bool,
+    fin: bool,
+    data: &amp;'static str,
+}</code></pre>
+<p><code>receive</code> is the lookup of figure 10.4. The table of connections is consulted first,
+which is why data for an established connection reaches its own socket while a listener
+exists on the same port. A <code>SYN</code> for a full accept queue is dropped without an answer.
+The client’s kernel sends it again after a timeout, which gives the server time to call
+<code>accept</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.15</b> Finding the socket for a segment, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockmodel/main.go">code/go/sockmodel/main.go</a></p>
+
+<pre><code class="language-go">// receive handles an arriving segment and describes the result. A segment
+// belongs to the connection with its remote endpoint and local port. Only
+// when no such connection exists, and the segment is a SYN, is the listener
+// on the port consulted.
+func (st *stack) receive(seg segment) string {
+	id := key{remote: seg.from, port: seg.port}
+
+	if s, ok := st.connections[id]; ok {
+		return s.deliver(seg)
+	}
+
+	if !seg.syn {
+		return "reset, no connection"
+	}
+
+	l, ok := st.listeners[seg.port]
+
+	if !ok {
+		return "reset, no listener on the port"
+	}
+
+	if len(l.queue) == l.backlog {
+		return "dropped, the accept queue is full"
+	}
+
+	st.connections[id] = &amp;socket{capacity: st.bufferSize}
+	l.queue = append(l.queue, id)
+
+	return fmt.Sprintf("established, accept queue %d", len(l.queue))
+}
+
+// deliver puts the data of a segment into the receive buffer, up to the
+// window, and records a FIN.
+func (s *socket) deliver(seg segment) string {
+	if seg.fin {
+		s.finished = true
+
+		return "the sender's stream has ended"
+	}
+
+	accepted := min(len(seg.data), s.window())
+	s.received = append(s.received, seg.data[:accepted]...)
+
+	return fmt.Sprintf("accepted %d, window %d", accepted, s.window())
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.16</b> Finding the socket for a segment, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockmodel/src/main.rs">code/rust/sockmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Stack {
+    /// Handles a segment that arrives from `from` for local port `port`, and
+    /// describes the result. A segment belongs to the connection with its
+    /// remote endpoint and local port. Only when no such connection exists,
+    /// and the segment is a SYN, is the listener on the port consulted.
+    fn receive(&amp;mut self, from: Endpoint, port: u16, segment: &amp;Segment) -&gt; String {
+        let id = Key { remote: from, port };
+
+        if let Some(socket) = self.connections.get_mut(&amp;id) {
+            return socket.deliver(segment);
+        }
+
+        if !segment.syn {
+            return "reset, no connection".into();
+        }
+
+        let Some(listener) = self.listeners.get_mut(&amp;port) else {
+            return "reset, no listener on the port".into();
+        };
+
+        if listener.queue.len() == listener.backlog {
+            return "dropped, the accept queue is full".into();
+        }
+
+        let socket = Socket {
+            received: VecDeque::new(),
+            capacity: self.buffer_size,
+            finished: false,
+        };
+
+        self.connections.insert(id, socket);
+        listener.queue.push_back(id);
+
+        format!("established, accept queue {}", listener.queue.len())
+    }
+}
+
+impl Socket {
+    /// Puts the data of a segment into the receive buffer, up to the window,
+    /// and records a FIN.
+    fn deliver(&amp;mut self, segment: &amp;Segment) -&gt; String {
+        if segment.fin {
+            self.finished = true;
+
+            return "the sender's stream has ended".into();
+        }
+
+        let accepted = segment.data.len().min(self.window());
+        self.received.extend(&amp;segment.data.as_bytes()[..accepted]);
+
+        format!("accepted {accepted}, window {}", self.window())
+    }
+}</code></pre>
+<p><code>deliver</code> accepts data up to the window. <code>window</code> is the free space of the receive
+buffer, the value a real receiver reports to the sender.</p>
+<p><code>accept</code> takes connections in the order they were established. <code>read</code> returns the end
+of the stream only when the buffer is empty and the <code>FIN</code>, the segment that ends the
+sender’s stream, has arrived, so data that was sent before a close is not lost.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.17</b> Accepting a connection, and reading from it, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockmodel/main.go">code/go/sockmodel/main.go</a></p>
+
+<pre><code class="language-go">// accept removes the oldest connection from the accept queue of a port.
+func (st *stack) accept(port int) (key, bool) {
+	l, ok := st.listeners[port]
+
+	if !ok || len(l.queue) == 0 {
+		return key{}, false
+	}
+
+	id := l.queue[0]
+	l.queue = l.queue[1:]
+
+	return id, true
+}
+
+// read removes up to n bytes from the receive buffer. It returns 0 bytes
+// with ended set when the buffer is empty and a FIN has arrived.
+func (s *socket) read(n int) (data string, ended bool) {
+	n = min(n, len(s.received))
+	data, s.received = string(s.received[:n]), s.received[n:]
+
+	return data, n == 0 &amp;&amp; s.finished
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.18</b> Accepting a connection, and reading from it, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockmodel/src/main.rs">code/rust/sockmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Stack {
+    /// Removes the oldest connection from the accept queue of a port.
+    fn accept(&amp;mut self, port: u16) -&gt; Option&lt;Key&gt; {
+        self.listeners.get_mut(&amp;port)?.queue.pop_front()
+    }
+}
+
+impl Socket {
+    /// Removes up to `n` bytes from the receive buffer. It returns 0 bytes
+    /// with the second value set when the buffer is empty and a FIN has
+    /// arrived.
+    fn read(&amp;mut self, n: usize) -&gt; (String, bool) {
+        let n = n.min(self.received.len());
+        let data: Vec&lt;u8&gt; = self.received.drain(..n).collect();
+
+        (
+            String::from_utf8_lossy(&amp;data).into_owned(),
+            n == 0 &amp;&amp; self.finished,
+        )
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.19</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockmodel/main.go">code/go/sockmodel/main.go</a></p>
+
+<pre><code class="language-go">func main() {
+	st := &amp;stack{
+		listeners:   map[int]*listener{80: {backlog: 2}},
+		connections: map[key]*socket{},
+		bufferSize:  8,
+	}
+
+	a, b, c := endpoint{"10.0.0.1", 5000}, endpoint{"10.0.0.2", 5000}, endpoint{"10.0.0.3", 5000}
+
+	for _, seg := range []segment{{from: a, port: 80, syn: true}, {from: b, port: 80, syn: true},
+		{from: c, port: 80, syn: true}, {from: c, port: 81, syn: true}} {
+		fmt.Printf("SYN from %s to port %d: %s\n", seg.from, seg.port, st.receive(seg))
+	}
+
+	if id, ok := st.accept(80); ok {
+		fmt.Printf("accept on port 80: the connection from %s\n", id.remote)
+	}
+
+	for _, from := range []endpoint{b, a, b, c} {
+		fmt.Printf("5 bytes from %s to port 80: %s\n", from, st.receive(segment{from: from, port: 80, data: "hello"}))
+	}
+
+	conn, ok := st.connections[key{remote: b, port: 80}]
+
+	if !ok {
+		return
+	}
+
+	data, ended := conn.read(4)
+	fmt.Printf("read of 4 bytes on the connection from %s: %q, window %d\n", b, data, conn.window())
+
+	fmt.Printf("FIN from %s: %s\n", b, st.receive(segment{from: b, port: 80, fin: true}))
+
+	data, ended = conn.read(16)
+	fmt.Printf("read: %q, stream ended %v\n", data, ended)
+
+	data, ended = conn.read(16)
+	fmt.Printf("read: %q, stream ended %v\n", data, ended)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 10.20</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockmodel/src/main.rs">code/rust/sockmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn endpoint(address: &amp;'static str) -&gt; Endpoint {
+    Endpoint {
+        address,
+        port: 5000,
+    }
+}
+
+fn main() {
+    let listener = Listener {
+        backlog: 2,
+        queue: VecDeque::new(),
+    };
+
+    let mut stack = Stack {
+        listeners: HashMap::from([(80, listener)]),
+        connections: HashMap::new(),
+        buffer_size: 8,
+    };
+
+    let (a, b, c) = (
+        endpoint("10.0.0.1"),
+        endpoint("10.0.0.2"),
+        endpoint("10.0.0.3"),
+    );
+
+    let syn = Segment {
+        syn: true,
+        ..Segment::default()
+    };
+
+    for (from, port) in [(a, 80), (b, 80), (c, 80), (c, 81)] {
+        let result = stack.receive(from, port, &amp;syn);
+        println!("SYN from {from} to port {port}: {result}");
+    }
+
+    if let Some(id) = stack.accept(80) {
+        println!("accept on port 80: the connection from {}", id.remote);
+    }
+
+    let hello = Segment {
+        data: "hello",
+        ..Segment::default()
+    };
+
+    for from in [b, a, b, c] {
+        let result = stack.receive(from, 80, &amp;hello);
+        println!("5 bytes from {from} to port 80: {result}");
+    }
+
+    let id = Key {
+        remote: b,
+        port: 80,
+    };
+
+    if let Some(socket) = stack.connections.get_mut(&amp;id) {
+        let (data, _) = socket.read(4);
+        println!(
+            "read of 4 bytes on the connection from {b}: {data:?}, window {}",
+            socket.window()
+        );
+    }
+
+    let fin = Segment {
+        fin: true,
+        ..Segment::default()
+    };
+
+    println!("FIN from {b}: {}", stack.receive(b, 80, &amp;fin));
+
+    if let Some(socket) = stack.connections.get_mut(&amp;id) {
+        for _ in 0..2 {
+            let (data, ended) = socket.read(16);
+            println!("read: {data:?}, stream ended {ended}");
+        }
+    }
+}</code></pre>
+<pre><code class="language-text">SYN from 10.0.0.1:5000 to port 80: established, accept queue 1
+SYN from 10.0.0.2:5000 to port 80: established, accept queue 2
+SYN from 10.0.0.3:5000 to port 80: dropped, the accept queue is full
+SYN from 10.0.0.3:5000 to port 81: reset, no listener on the port
+accept on port 80: the connection from 10.0.0.1:5000
+5 bytes from 10.0.0.2:5000 to port 80: accepted 5, window 3
+5 bytes from 10.0.0.1:5000 to port 80: accepted 5, window 3
+5 bytes from 10.0.0.2:5000 to port 80: accepted 3, window 0
+5 bytes from 10.0.0.3:5000 to port 80: reset, no connection
+read of 4 bytes on the connection from 10.0.0.2:5000: "hell", window 4
+FIN from 10.0.0.2:5000: the sender's stream has ended
+read: "ohel", stream ended false
+read: "", stream ended true
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>lines 1 and 2</td><td>Connections are established and queued without a call to <code>accept</code>.</td></tr>
+<tr><td><code>dropped, the accept queue is full</code></td><td>The backlog of 2 is reached.</td></tr>
+<tr><td><code>reset, no listener on the port</code></td><td>A <code>SYN</code> for a port without a listener is refused. A client sees this as <code>ECONNREFUSED</code>.</td></tr>
+<tr><td><code>accept on port 80</code></td><td>The oldest connection is returned.</td></tr>
+<tr><td>5 bytes from <code>10.0.0.2</code> and from <code>10.0.0.1</code></td><td>Both connections use local port 80, and each segment reaches its own socket.</td></tr>
+<tr><td><code>accepted 3, window 0</code></td><td>The receive buffer of 8 bytes is full. A real sender would have sent only 3 bytes, having been told the window.</td></tr>
+<tr><td><code>reset, no connection</code></td><td>The <code>SYN</code> of <code>10.0.0.3</code> was dropped, so no connection exists for its data.</td></tr>
+<tr><td>the reads after the <code>FIN</code></td><td>The buffered bytes are returned first. The end of the stream follows.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> <code>__inet_lookup_established</code> and
+<code>__inet_lookup_listener</code> in <code>net/ipv4/inet_hashtables.c</code> are the 2 lookups of <code>receive</code>.
+A connected socket is <code>struct tcp_sock</code>, with the receive buffer in <code>sk_receive_queue</code>
+and its limit in <code>sk_rcvbuf</code>. <code>tcp_select_window</code> computes the window, and
+<code>tcp_data_queue</code> in <code>net/ipv4/tcp_input.c</code> queues arriving data. The accept queue is
+<code>icsk_accept_queue</code>, limited by the backlog given to <code>listen</code> and by
+<code>/proc/sys/net/core/somaxconn</code>, which is 4096 on this machine.</p>
+</div>
+
+<h2 id="inspecting-sockets-on-a-live-system"><a class="header" href="#inspecting-sockets-on-a-live-system">Inspecting sockets on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ss -tln</code></td><td>the listening TCP sockets, with their backlog</td></tr>
+<tr><td><code>ss -tn</code></td><td>the established connections, with the bytes waiting in each queue</td></tr>
+<tr><td><code>ss -tni</code></td><td>per connection: the congestion window, the round-trip time, and the window</td></tr>
+<tr><td><code>ss -tnp</code></td><td>the process that owns each socket</td></tr>
+<tr><td><code>cat /proc/sys/net/core/somaxconn</code></td><td>the largest backlog <code>listen</code> may set: 4096 here</td></tr>
+<tr><td><code>cat /proc/sys/net/ipv4/tcp_rmem</code></td><td>the minimum, initial and maximum size of a receive buffer</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>Recv-Q</code> on an established connection is data that has arrived and that the program has
+not read. A value that stays high means the program is slow to read, and the sender is
+being held back by the window.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.21</b> The complete <code>sockfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockfacts/main.go">code/go/sockfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command sockfacts measures TCP sockets on the loopback interface: when a
+// connection is established, what identifies it, how written bytes arrive,
+// what stops a writer whose peer does not read, and how each side learns
+// that the other has closed.
+//
+// Run it from code/go with:
+//
+//	go run ./sockfacts
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+
+	"golang.org/x/sys/unix"
+)
+
+
+// listen returns a TCP socket that listens on a free port of 127.0.0.1, and
+// its address.
+func listen() (int, *unix.SockaddrInet4, error) {
+	listener, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if err := unix.Bind(listener, &amp;unix.SockaddrInet4{Addr: [4]byte{127, 0, 0, 1}}); err != nil {
+		return 0, nil, err
+	}
+
+	if err := unix.Listen(listener, 16); err != nil {
+		return 0, nil, err
+	}
+
+	address, err := unix.Getsockname(listener)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return listener, address.(*unix.SockaddrInet4), nil
+}
+
+// connect returns a TCP socket connected to an address.
+func connect(address *unix.SockaddrInet4) (int, error) {
+	client, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return client, unix.Connect(client, address)
+}
+
+// name returns the symbolic name of a system call error, such as EPIPE.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+// port returns the port of an address.
+func port(address unix.Sockaddr, err error) int {
+	if inet, ok := address.(*unix.SockaddrInet4); ok &amp;&amp; err == nil {
+		return inet.Port
+	}
+
+	return 0
+}
+
+
+// establish connects before the server calls accept, and compares the
+// addresses of both ends.
+func establish() error {
+	listener, address, err := listen()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(listener)
+
+	client, err := connect(address)
+	fmt.Printf("connect before the server calls accept: succeeded %v\n", err == nil)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(client)
+
+	server, _, err := unix.Accept(listener)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(server)
+
+	fmt.Printf("accept returns a new descriptor: %v, on the listener's port: %v\n",
+		server != listener, port(unix.Getsockname(server)) == address.Port)
+	fmt.Printf("the client's local port is the server's peer port: %v\n",
+		port(unix.Getsockname(client)) == port(unix.Getpeername(server)))
+
+	return stream(client, server)
+}
+
+
+// readFull reads until buf is full.
+func readFull(fd int, buf []byte) error {
+	for filled := 0; filled &lt; len(buf); {
+		n, err := unix.Read(fd, buf[filled:])
+
+		if err != nil {
+			return err
+		}
+
+		if n == 0 {
+			return errors.New("the stream ended early")
+		}
+
+		filled += n
+	}
+
+	return nil
+}
+
+// stream writes "ab" and "cd" with 2 calls and reads 3 bytes and then 1.
+// Then the client closes, and the server reads and writes again.
+func stream(client, server int) error {
+	for _, part := range []string{"ab", "cd"} {
+		if _, err := unix.Write(client, []byte(part)); err != nil {
+			return err
+		}
+	}
+
+	first, second := make([]byte, 3), make([]byte, 1)
+
+	if err := readFull(server, first); err != nil {
+		return err
+	}
+
+	if err := readFull(server, second); err != nil {
+		return err
+	}
+
+	fmt.Printf("writes of \"ab\" and \"cd\", reads of 3 bytes and 1 byte: %q and %q\n", first, second)
+
+	unix.Close(client)
+
+	n, err := unix.Read(server, first)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the client closed: read returns %d\n", n)
+
+	for err == nil {
+		_, err = unix.Write(server, []byte("x"))
+	}
+
+	fmt.Printf("writes to the closed peer: the first is accepted, a later one fails with %s\n", name(err))
+
+	return nil
+}
+
+
+// fill writes blocks to a non-blocking socket until the kernel refuses one
+// and returns the number of bytes accepted.
+func fill(fd int) (int, error) {
+	block := make([]byte, 1024)
+	total := 0
+
+	for {
+		n, err := unix.Write(fd, block)
+
+		if errors.Is(err, unix.EAGAIN) {
+			return total, nil
+		}
+
+		if err != nil {
+			return total, err
+		}
+
+		total += n
+	}
+}
+
+// flow gives a connection small buffers, fills it while the server does not
+// read, lets the server read everything, and fills it again.
+func flow() error {
+	listener, address, err := listen()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(listener)
+
+	if err := unix.SetsockoptInt(listener, unix.SOL_SOCKET, unix.SO_RCVBUF, 4096); err != nil {
+		return err
+	}
+
+	client, err := connect(address)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(client)
+
+	if err := unix.SetsockoptInt(client, unix.SOL_SOCKET, unix.SO_SNDBUF, 4096); err != nil {
+		return err
+	}
+
+	server, _, err := unix.Accept(listener)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(server)
+
+	if err := unix.SetNonblock(client, true); err != nil {
+		return err
+	}
+
+	sent, err := fill(client)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the server does not read: the client is stopped after %d bytes\n", sent)
+
+	if err := readFull(server, make([]byte, sent)); err != nil {
+		return err
+	}
+
+	again, err := fill(client)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the server has read everything: the client can write again: %v\n", again &gt; 0)
+
+	return nil
+}
+
+
+func main() {
+	for _, experiment := range []func() error{establish, flow} {
+		if err := experiment(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 10.22</b> The complete <code>sockfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockfacts/src/main.rs">code/rust/sockfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures TCP sockets on the loopback interface: when a connection is
+//! established, what identifies it, how written bytes arrive, what stops a
+//! writer whose peer does not read, and how each side learns that the other
+//! has closed.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p sockfacts
+//! ```
+
+use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::os::fd::AsRawFd;
+
+use nix::errno::Errno;
+use nix::sys::socket::{setsockopt, sockopt};
+
+/// Returns a TCP socket that listens on a free port of 127.0.0.1.
+fn listen() -&gt; io::Result&lt;TcpListener&gt; {
+    TcpListener::bind("127.0.0.1:0")
+}
+
+/// Returns a TCP socket connected to the address of a listener.
+fn connect(listener: &amp;TcpListener) -&gt; io::Result&lt;TcpStream&gt; {
+    TcpStream::connect(listener.local_addr()?)
+}
+
+/// Returns the symbolic name of a system call error, such as `EPIPE`.
+fn name(error: &amp;io::Error) -&gt; String {
+    match error.raw_os_error() {
+        Some(code) =&gt; format!("{:?}", Errno::from_raw(code)),
+        None =&gt; error.to_string(),
+    }
+}
+
+/// Connects before the server calls accept, and compares the addresses of
+/// both ends.
+fn establish() -&gt; io::Result&lt;()&gt; {
+    let listener = listen()?;
+
+    let client = connect(&amp;listener);
+    println!(
+        "connect before the server calls accept: succeeded {}",
+        client.is_ok()
+    );
+
+    let client = client?;
+    let (server, _) = listener.accept()?;
+
+    println!(
+        "accept returns a new descriptor: {}, on the listener's port: {}",
+        server.as_raw_fd() != listener.as_raw_fd(),
+        server.local_addr()?.port() == listener.local_addr()?.port()
+    );
+    println!(
+        "the client's local port is the server's peer port: {}",
+        client.local_addr()?.port() == server.peer_addr()?.port()
+    );
+
+    stream(client, server)
+}
+
+/// Writes "ab" and "cd" with 2 calls and reads 3 bytes and then 1. Then the
+/// client closes, and the server reads and writes again.
+fn stream(mut client: TcpStream, mut server: TcpStream) -&gt; io::Result&lt;()&gt; {
+    for part in ["ab", "cd"] {
+        client.write_all(part.as_bytes())?;
+    }
+
+    let (mut first, mut second) = ([0u8; 3], [0u8; 1]);
+
+    server.read_exact(&amp;mut first)?;
+    server.read_exact(&amp;mut second)?;
+
+    println!(
+        "writes of \"ab\" and \"cd\", reads of 3 bytes and 1 byte: {:?} and {:?}",
+        String::from_utf8_lossy(&amp;first),
+        String::from_utf8_lossy(&amp;second)
+    );
+
+    drop(client);
+
+    let n = server.read(&amp;mut first)?;
+    println!("the client closed: read returns {n}");
+
+    let error = loop {
+        if let Err(error) = server.write(b"x") {
+            break error;
+        }
+    };
+
+    println!(
+        "writes to the closed peer: the first is accepted, a later one fails with {}",
+        name(&amp;error)
+    );
+
+    Ok(())
+}
+
+/// Writes blocks to a non-blocking socket until the kernel refuses one and
+/// returns the number of bytes accepted.
+fn fill(mut stream: &amp;TcpStream) -&gt; io::Result&lt;usize&gt; {
+    let block = [0u8; 1024];
+    let mut total = 0;
+
+    loop {
+        match stream.write(&amp;block) {
+            Ok(n) =&gt; total += n,
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock =&gt; return Ok(total),
+            Err(error) =&gt; return Err(error),
+        }
+    }
+}
+
+/// Gives a connection small buffers, fills it while the server does not read,
+/// lets the server read everything, and fills it again.
+fn flow() -&gt; io::Result&lt;()&gt; {
+    let listener = listen()?;
+    setsockopt(&amp;listener, sockopt::RcvBuf, &amp;4096)?;
+
+    let client = connect(&amp;listener)?;
+    setsockopt(&amp;client, sockopt::SndBuf, &amp;4096)?;
+
+    let (mut server, _) = listener.accept()?;
+
+    client.set_nonblocking(true)?;
+
+    let sent = fill(&amp;client)?;
+    println!("the server does not read: the client is stopped after {sent} bytes");
+
+    server.read_exact(&amp;mut vec![0u8; sent])?;
+
+    let again = fill(&amp;client)?;
+    println!(
+        "the server has read everything: the client can write again: {}",
+        again &gt; 0
+    );
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    establish()?;
+    flow()
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 10.23</b> The complete <code>sockmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sockmodel/main.go">code/go/sockmodel/main.go</a></p>
+
+<pre><code class="language-go">// Command sockmodel models the receiving side of TCP in the kernel: a table
+// of connections keyed by addresses and ports, listeners with an accept
+// queue of limited length, and a receive buffer whose free space is the
+// window offered to the sender.
+//
+// Run it from code/go with:
+//
+//	go run ./sockmodel
+package main
+
+import "fmt"
+
+
+// An endpoint is an IP address and a port.
+type endpoint struct {
+	address string
+	port    int
+}
+
+func (e endpoint) String() string {
+	return fmt.Sprintf("%s:%d", e.address, e.port)
+}
+
+// A socket is one established connection: the bytes received and not yet
+// read, the size of the receive buffer, and whether the sender has finished.
+type socket struct {
+	received []byte
+	capacity int
+	finished bool
+}
+
+// window is the free space of the receive buffer: the number of bytes the
+// sender may still send.
+func (s *socket) window() int {
+	return s.capacity - len(s.received)
+}
+
+// A key identifies a connection on this machine: the remote endpoint and the
+// local port. With the local address, which the model leaves out, it forms
+// the 4 values that identify a TCP connection.
+type key struct {
+	remote endpoint
+	port   int
+}
+
+// A listener accepts connections on a port. queue holds the connections that
+// are established and have not been returned by accept.
+type listener struct {
+	backlog int
+	queue   []key
+}
+
+// A stack is the TCP state of a machine.
+type stack struct {
+	listeners   map[int]*listener
+	connections map[key]*socket
+	bufferSize  int
+}
+
+// A segment is a packet of TCP. syn opens a connection and fin ends the
+// sender's stream.
+type segment struct {
+	from     endpoint
+	port     int
+	syn, fin bool
+	data     string
+}
+
+
+// receive handles an arriving segment and describes the result. A segment
+// belongs to the connection with its remote endpoint and local port. Only
+// when no such connection exists, and the segment is a SYN, is the listener
+// on the port consulted.
+func (st *stack) receive(seg segment) string {
+	id := key{remote: seg.from, port: seg.port}
+
+	if s, ok := st.connections[id]; ok {
+		return s.deliver(seg)
+	}
+
+	if !seg.syn {
+		return "reset, no connection"
+	}
+
+	l, ok := st.listeners[seg.port]
+
+	if !ok {
+		return "reset, no listener on the port"
+	}
+
+	if len(l.queue) == l.backlog {
+		return "dropped, the accept queue is full"
+	}
+
+	st.connections[id] = &amp;socket{capacity: st.bufferSize}
+	l.queue = append(l.queue, id)
+
+	return fmt.Sprintf("established, accept queue %d", len(l.queue))
+}
+
+// deliver puts the data of a segment into the receive buffer, up to the
+// window, and records a FIN.
+func (s *socket) deliver(seg segment) string {
+	if seg.fin {
+		s.finished = true
+
+		return "the sender's stream has ended"
+	}
+
+	accepted := min(len(seg.data), s.window())
+	s.received = append(s.received, seg.data[:accepted]...)
+
+	return fmt.Sprintf("accepted %d, window %d", accepted, s.window())
+}
+
+
+// accept removes the oldest connection from the accept queue of a port.
+func (st *stack) accept(port int) (key, bool) {
+	l, ok := st.listeners[port]
+
+	if !ok || len(l.queue) == 0 {
+		return key{}, false
+	}
+
+	id := l.queue[0]
+	l.queue = l.queue[1:]
+
+	return id, true
+}
+
+// read removes up to n bytes from the receive buffer. It returns 0 bytes
+// with ended set when the buffer is empty and a FIN has arrived.
+func (s *socket) read(n int) (data string, ended bool) {
+	n = min(n, len(s.received))
+	data, s.received = string(s.received[:n]), s.received[n:]
+
+	return data, n == 0 &amp;&amp; s.finished
+}
+
+
+func main() {
+	st := &amp;stack{
+		listeners:   map[int]*listener{80: {backlog: 2}},
+		connections: map[key]*socket{},
+		bufferSize:  8,
+	}
+
+	a, b, c := endpoint{"10.0.0.1", 5000}, endpoint{"10.0.0.2", 5000}, endpoint{"10.0.0.3", 5000}
+
+	for _, seg := range []segment{{from: a, port: 80, syn: true}, {from: b, port: 80, syn: true},
+		{from: c, port: 80, syn: true}, {from: c, port: 81, syn: true}} {
+		fmt.Printf("SYN from %s to port %d: %s\n", seg.from, seg.port, st.receive(seg))
+	}
+
+	if id, ok := st.accept(80); ok {
+		fmt.Printf("accept on port 80: the connection from %s\n", id.remote)
+	}
+
+	for _, from := range []endpoint{b, a, b, c} {
+		fmt.Printf("5 bytes from %s to port 80: %s\n", from, st.receive(segment{from: from, port: 80, data: "hello"}))
+	}
+
+	conn, ok := st.connections[key{remote: b, port: 80}]
+
+	if !ok {
+		return
+	}
+
+	data, ended := conn.read(4)
+	fmt.Printf("read of 4 bytes on the connection from %s: %q, window %d\n", b, data, conn.window())
+
+	fmt.Printf("FIN from %s: %s\n", b, st.receive(segment{from: b, port: 80, fin: true}))
+
+	data, ended = conn.read(16)
+	fmt.Printf("read: %q, stream ended %v\n", data, ended)
+
+	data, ended = conn.read(16)
+	fmt.Printf("read: %q, stream ended %v\n", data, ended)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 10.24</b> The complete <code>sockmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sockmodel/src/main.rs">code/rust/sockmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the receiving side of TCP in the kernel: a table of connections
+//! keyed by addresses and ports, listeners with an accept queue of limited
+//! length, and a receive buffer whose free space is the window offered to the
+//! sender.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p sockmodel
+//! ```
+
+use std::collections::{HashMap, VecDeque};
+use std::fmt;
+
+/// An IP address and a port.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Endpoint {
+    address: &amp;'static str,
+    port: u16,
+}
+
+impl fmt::Display for Endpoint {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(f, "{}:{}", self.address, self.port)
+    }
+}
+
+/// One established connection: the bytes received and not yet read, the size
+/// of the receive buffer, and whether the sender has finished.
+struct Socket {
+    received: VecDeque&lt;u8&gt;,
+    capacity: usize,
+    finished: bool,
+}
+
+impl Socket {
+    /// The free space of the receive buffer: the number of bytes the sender
+    /// may still send.
+    fn window(&amp;self) -&gt; usize {
+        self.capacity - self.received.len()
+    }
+}
+
+/// Identifies a connection on this machine: the remote endpoint and the local
+/// port. With the local address, which the model leaves out, it forms the 4
+/// values that identify a TCP connection.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Key {
+    remote: Endpoint,
+    port: u16,
+}
+
+/// Accepts connections on a port. `queue` holds the connections that are
+/// established and have not been returned by accept.
+struct Listener {
+    backlog: usize,
+    queue: VecDeque&lt;Key&gt;,
+}
+
+/// The TCP state of a machine.
+struct Stack {
+    listeners: HashMap&lt;u16, Listener&gt;,
+    connections: HashMap&lt;Key, Socket&gt;,
+    buffer_size: usize,
+}
+
+/// A packet of TCP. `syn` opens a connection and `fin` ends the sender's
+/// stream.
+#[derive(Default)]
+struct Segment {
+    syn: bool,
+    fin: bool,
+    data: &amp;'static str,
+}
+
+impl Stack {
+    /// Handles a segment that arrives from `from` for local port `port`, and
+    /// describes the result. A segment belongs to the connection with its
+    /// remote endpoint and local port. Only when no such connection exists,
+    /// and the segment is a SYN, is the listener on the port consulted.
+    fn receive(&amp;mut self, from: Endpoint, port: u16, segment: &amp;Segment) -&gt; String {
+        let id = Key { remote: from, port };
+
+        if let Some(socket) = self.connections.get_mut(&amp;id) {
+            return socket.deliver(segment);
+        }
+
+        if !segment.syn {
+            return "reset, no connection".into();
+        }
+
+        let Some(listener) = self.listeners.get_mut(&amp;port) else {
+            return "reset, no listener on the port".into();
+        };
+
+        if listener.queue.len() == listener.backlog {
+            return "dropped, the accept queue is full".into();
+        }
+
+        let socket = Socket {
+            received: VecDeque::new(),
+            capacity: self.buffer_size,
+            finished: false,
+        };
+
+        self.connections.insert(id, socket);
+        listener.queue.push_back(id);
+
+        format!("established, accept queue {}", listener.queue.len())
+    }
+}
+
+impl Socket {
+    /// Puts the data of a segment into the receive buffer, up to the window,
+    /// and records a FIN.
+    fn deliver(&amp;mut self, segment: &amp;Segment) -&gt; String {
+        if segment.fin {
+            self.finished = true;
+
+            return "the sender's stream has ended".into();
+        }
+
+        let accepted = segment.data.len().min(self.window());
+        self.received.extend(&amp;segment.data.as_bytes()[..accepted]);
+
+        format!("accepted {accepted}, window {}", self.window())
+    }
+}
+
+impl Stack {
+    /// Removes the oldest connection from the accept queue of a port.
+    fn accept(&amp;mut self, port: u16) -&gt; Option&lt;Key&gt; {
+        self.listeners.get_mut(&amp;port)?.queue.pop_front()
+    }
+}
+
+impl Socket {
+    /// Removes up to `n` bytes from the receive buffer. It returns 0 bytes
+    /// with the second value set when the buffer is empty and a FIN has
+    /// arrived.
+    fn read(&amp;mut self, n: usize) -&gt; (String, bool) {
+        let n = n.min(self.received.len());
+        let data: Vec&lt;u8&gt; = self.received.drain(..n).collect();
+
+        (
+            String::from_utf8_lossy(&amp;data).into_owned(),
+            n == 0 &amp;&amp; self.finished,
+        )
+    }
+}
+
+fn endpoint(address: &amp;'static str) -&gt; Endpoint {
+    Endpoint {
+        address,
+        port: 5000,
+    }
+}
+
+fn main() {
+    let listener = Listener {
+        backlog: 2,
+        queue: VecDeque::new(),
+    };
+
+    let mut stack = Stack {
+        listeners: HashMap::from([(80, listener)]),
+        connections: HashMap::new(),
+        buffer_size: 8,
+    };
+
+    let (a, b, c) = (
+        endpoint("10.0.0.1"),
+        endpoint("10.0.0.2"),
+        endpoint("10.0.0.3"),
+    );
+
+    let syn = Segment {
+        syn: true,
+        ..Segment::default()
+    };
+
+    for (from, port) in [(a, 80), (b, 80), (c, 80), (c, 81)] {
+        let result = stack.receive(from, port, &amp;syn);
+        println!("SYN from {from} to port {port}: {result}");
+    }
+
+    if let Some(id) = stack.accept(80) {
+        println!("accept on port 80: the connection from {}", id.remote);
+    }
+
+    let hello = Segment {
+        data: "hello",
+        ..Segment::default()
+    };
+
+    for from in [b, a, b, c] {
+        let result = stack.receive(from, 80, &amp;hello);
+        println!("5 bytes from {from} to port 80: {result}");
+    }
+
+    let id = Key {
+        remote: b,
+        port: 80,
+    };
+
+    if let Some(socket) = stack.connections.get_mut(&amp;id) {
+        let (data, _) = socket.read(4);
+        println!(
+            "read of 4 bytes on the connection from {b}: {data:?}, window {}",
+            socket.window()
+        );
+    }
+
+    let fin = Segment {
+        fin: true,
+        ..Segment::default()
+    };
+
+    println!("FIN from {b}: {}", stack.receive(b, 80, &amp;fin));
+
+    if let Some(socket) = stack.connections.get_mut(&amp;id) {
+        for _ in 0..2 {
+            let (data, ended) = socket.read(16);
+            println!("read: {data:?}, stream ended {ended}");
+        }
+    }
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A socket is a descriptor for the endpoint of a connection. The kernel keeps a send
+buffer and a receive buffer behind it.</li>
+<li>The kernel completes the handshake of a connection and queues it on the listener.
+<code>accept</code> returns a new descriptor for a queued connection.</li>
+<li>A connection is identified by local address, local port, remote address and remote
+port. Connections accepted from a listener share its port.</li>
+<li>TCP is a stream of bytes. The boundaries of <code>write</code> calls are not preserved.</li>
+<li>The receiver reports the free space of its receive buffer as the window, and the
+sender transmits no more than that. A receiver that does not read stops the sender.</li>
+<li>A closed peer is reported by a <code>read</code> that returns 0. Writing to it fails with
+<code>EPIPE</code> after the peer’s kernel has answered with a reset.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>tcp(7)</code>, <code>socket(7)</code> and <code>listen(2)</code>, Linux manual pages:
+<a href="https://man7.org/linux/man-pages/man7/tcp.7.html">https://man7.org/linux/man-pages/man7/tcp.7.html</a></li>
+<li>W. R. Stevens, B. Fenner, A. M. Rudoff, <em>UNIX Network Programming, Volume 1</em>, 3rd
+edition, Addison-Wesley, 2003.</li>
+<li>RFC 9293, <em>Transmission Control Protocol (TCP)</em>:
+<a href="https://www.rfc-editor.org/rfc/rfc9293">https://www.rfc-editor.org/rfc/rfc9293</a></li>
+<li><code>net/ipv4/tcp_input.c</code> and <code>net/ipv4/inet_hashtables.c</code>, Linux 5.15:
+<a href="https://elixir.bootlin.com/linux/v5.15/source/net/ipv4/tcp_input.c">https://elixir.bootlin.com/linux/v5.15/source/net/ipv4/tcp_input.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="09-event-loops-and-epoll.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="11-namespaces.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="09-event-loops-and-epoll.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="11-namespaces.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

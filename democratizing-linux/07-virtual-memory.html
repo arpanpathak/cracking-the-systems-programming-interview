@@ -1,0 +1,2493 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Virtual Memory - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/07-virtual-memory.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch07.svg" alt="Atlas, an elephant, draws a map divided into numbered pages with a pencil held in its trunk. Most squares are blank, a few are filled in, and one is being drawn now that it is needed.">
+<h1 id="virtual-memory"><a class="header" href="#virtual-memory">Virtual Memory</a></h1>
+<p>The address space of a process is the set of memory addresses the process can use and
+the meaning the kernel has given to each. The addresses are <em>virtual</em>: they are
+translated to locations in physical memory by the processor, through a table that the
+kernel maintains for each process. Different processes can use the same virtual address
+for different memory, and neither can reach the memory of the other.</p>
+<p>In this chapter, we will learn how the kernel fills an address space. We will first
+measure with <code>vmfacts</code> when a mapped page receives physical memory and where a write
+through a file mapping ends up. Then we will write <code>vmmodel</code>, a model with mappings, a
+page table and a page fault handler, and use it to follow copy-on-write after <code>fork</code>.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the layout of a process’s address space, read from <code>/proc/self/maps</code></li>
+<li>pages, frames, and how the processor translates an address</li>
+<li>the kernel structures: <code>struct mm_struct</code>, <code>struct vm_area_struct</code>, <code>struct page</code></li>
+<li>mappings, and what <code>mmap</code> does and leaves undone</li>
+<li>demand paging: a page receives memory when it is first used</li>
+<li>the shared zero page</li>
+<li>private and shared file mappings</li>
+<li>copy-on-write, and why <code>fork</code> does not copy the memory of a process</li>
+<li>which accesses end in <code>SIGSEGV</code></li>
+<li>how much memory a process uses: virtual size, resident size, and overcommit</li>
+</ul>
+</div>
+
+<h2 id="why-addresses-are-virtual"><a class="header" href="#why-addresses-are-virtual">Why addresses are virtual</a></h2>
+<p>Suppose programs used the addresses of physical memory directly. A program compiled to
+keep a variable at address 0x1000 could run only when that memory was free, and 2 copies
+of it could not run together. Any program could read or overwrite the memory of any
+other by using its addresses. And a program could use no more memory than was physically
+free at the moment it started.</p>
+<p>Virtual addresses remove all 3 problems with a single idea: the addresses a program uses
+are private to it, and a table per process says which physical memory, if any, stands
+behind each of them.</p>
+<figure>
+<img src="figures/same-address.svg" alt="Process A and process B both read address 0x1000. A&#39;s page table maps page 1 to frame 5, and B&#39;s page table maps page 1 to frame 7. The same address leads to different frames of physical memory, because each process has its own page table.">
+<figcaption><b>Figure 7.1</b> Both processes use address 0x1000, and each reaches its own memory.</figcaption>
+</figure>
+<p>With this arrangement every program can be built as if it had the machine to itself.
+The kernel decides which physical memory each address reaches, and it can decide late,
+at the moment the address is first used. The rest of the chapter is about how the table
+is organised and when it is filled in.</p>
+<h2 id="the-layout-of-an-address-space"><a class="header" href="#the-layout-of-an-address-space">The layout of an address space</a></h2>
+<p>Before the mechanism, we look at what an address space contains. The kernel lists the
+address ranges a process can use in <code>/proc/&lt;pid&gt;/maps</code>. This is the listing of a <code>cat</code>
+process on our machine, with 3 of its columns removed.</p>
+<pre><code class="language-console">$ cat /proc/self/maps
+aaaab7c80000-aaaab7c86000 r-xp 00000000 /usr/bin/cat
+aaaab7c95000-aaaab7c96000 r--p 00005000 /usr/bin/cat
+aaaab7c96000-aaaab7c97000 rw-p 00006000 /usr/bin/cat
+aaaacae31000-aaaacae52000 rw-p 00000000 [heap]
+ffffaa650000-ffffaa7d8000 r-xp 00000000 /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffaa7e7000-ffffaa7eb000 r--p 00187000 /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffaa7eb000-ffffaa7ed000 rw-p 0018b000 /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffaa80b000-ffffaa82d000 rw-p 00000000
+ffffaa82d000-ffffaa858000 r-xp 00000000 /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffffaa866000-ffffaa867000 r-xp 00000000 [vdso]
+fffff2ebe000-fffff2ee0000 rw-p 00000000 [stack]
+</code></pre>
+<p>The numbers are addresses in hexadecimal, and they are less forbidding than they look.
+A line gives a start and an end, and the size of the range is the difference. For the
+first line, 0xaaaab7c86000 - 0xaaaab7c80000 = 0x6000, which is 6 × 4096 bytes: the code
+of <code>cat</code> occupies 6 pages. Only the differences carry information. The absolute values
+change on every run.</p>
+<figure>
+<img src="figures/maps-annotated.svg" alt="4 lines of /proc/pid/maps explained. The line for /usr/bin/cat covers 0x6000 bytes, 6 pages, readable and executable: the program&#39;s code. The heap line covers 0x21000 bytes, 33 pages, readable and writable: memory from malloc. The libc line covers 0x188000 bytes, 392 pages of library code shared by every program that uses libc. The stack line covers 0x22000 bytes, 34 pages, for local variables and return addresses.">
+<figcaption><b>Figure 7.2</b> 4 lines of the listing, with the size of each range worked out.</figcaption>
+</figure>
+<p>Each line is a <em>mapping</em>: a range of addresses with the same permissions and the same
+source.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Column</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>aaaab7c80000-aaaab7c86000</code></td><td>the first address of the range, and the first address after it</td></tr>
+<tr><td><code>r-xp</code></td><td>read, write and execute permission, then <code>p</code> for a private mapping or <code>s</code> for a shared one</td></tr>
+<tr><td><code>00005000</code></td><td>for a mapping of a file: the offset in the file at which the range starts</td></tr>
+<tr><td>the last column</td><td>the file that is mapped, a name in brackets for a special region, or nothing for anonymous memory</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Region</th><th>Contents</th></tr>
+</thead>
+<tbody>
+<tr><td><code>/usr/bin/cat</code>, <code>r-xp</code></td><td>the instructions of the program, read from the program file; executable and read-only</td></tr>
+<tr><td><code>/usr/bin/cat</code>, <code>rw-p</code></td><td>the global variables of the program</td></tr>
+<tr><td><code>[heap]</code></td><td>memory for small allocations by <code>malloc</code>, grown with the <code>brk</code> system call</td></tr>
+<tr><td><code>libc.so.6</code>, <code>ld-linux-aarch64.so.1</code></td><td>shared libraries, each with its own code and data ranges</td></tr>
+<tr><td>no name</td><td><em>anonymous</em> memory: not backed by a file, and filled with zeros when first used</td></tr>
+<tr><td><code>[vdso]</code></td><td>a small library that the kernel maps into every process, which lets calls such as <code>clock_gettime</code> run without entering the kernel</td></tr>
+<tr><td><code>[stack]</code></td><td>the stack of the main thread: local variables and return addresses</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/address-layout.svg" alt="The address space of a cat process from high addresses to low. The stack, read-write, holds local variables and grows downward. Below it are the shared libraries libc and ld-linux, mapped from files. Then anonymous mappings for large allocations and thread stacks. Then the heap, read-write, used by malloc and grown upward with brk. Then the data of /usr/bin/cat, read-write, with its global variables. At the lowest addresses is the code of /usr/bin/cat, readable and executable.">
+<figcaption><b>Figure 7.3</b> The regions of a small process, from high addresses to low.</figcaption>
+</figure>
+<p>The ranges are far apart, and most of the space between them is unmapped. An access to
+an unmapped address ends the process with <code>SIGSEGV</code>. The addresses differ from run to
+run, because the kernel chooses the positions of the regions at random for each new
+program, which makes attacks that depend on known addresses harder.</p>
+<h2 id="pages-mappings-and-the-page-table"><a class="header" href="#pages-mappings-and-the-page-table">Pages, mappings and the page table</a></h2>
+<p>Virtual and physical memory are both divided into units of the same size, 4096 bytes on
+this machine. A unit of virtual memory is a <em>page</em>, and a unit of physical memory is a
+<em>frame</em>. The address space is described at 2 levels.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Level</th><th>Kept by</th><th>Contents</th></tr>
+</thead>
+<tbody>
+<tr><td>Mappings</td><td>the kernel</td><td>a list of address ranges; for each, the permitted access and where its contents come from: a file, or nothing (<em>anonymous</em> memory, initially zero)</td></tr>
+<tr><td>Page table</td><td>the kernel, read by the processor</td><td>for each page that is in use: the frame that holds it, and whether writing is allowed</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="translating-an-address"><a class="header" href="#translating-an-address">Translating an address</a></h3>
+<p>Translation is easiest to follow on a machine small enough to work by hand. Imagine
+addresses of 16 bits and pages of 256 bytes. An address then has 2 hexadecimal digits
+for the page number and 2 for the offset within the page. To translate 0x1234, split it
+into page 0x12 and offset 0x34, look up entry 0x12 of the page table, find frame 0x7A
+there, and attach the offset: the physical address is 0x7A34.</p>
+<figure>
+<img src="figures/address-worked.svg" alt="The translation of address 0x1234 on a small machine with 16-bit addresses and pages of 256 bytes. The address splits into page 0x12 and offset 0x34. Entry 0x12 of the page table holds frame 0x7A. The physical address is frame 0x7A followed by the unchanged offset 0x34: 0x7A34.">
+<figcaption><b>Figure 7.4</b> Address 0x1234 translated by hand on a machine with pages of 256 bytes.</figcaption>
+</figure>
+<p>A real machine does exactly this, with larger numbers and with a table that is split
+into several levels to save space.</p>
+<p>The processor translates every address a program uses, in hardware. An address of this
+machine has 48 significant bits. The low 12 bits are the <em>offset</em> within a page, since a
+page has 4096 = 2<sup>12</sup> bytes. The remaining 36 bits are the <em>page number</em>, and
+they are used in 4 groups of 9 bits.</p>
+<figure>
+<img src="figures/va-split.svg" alt="A virtual address of 48 bits is divided into 5 fields: 4 index fields of 9 bits each, for levels 0 to 3 of the page table, and an offset of 12 bits. Each index selects 1 of 512 entries of a table, and the offset selects a byte within the frame.">
+<figcaption><b>Figure 7.5</b> The fields of a virtual address on arm64 with pages of 4096 bytes.</figcaption>
+</figure>
+<p>The page table is a tree of tables, each a page of 512 entries. The processor starts at
+the root table of the process, uses the first 9 bits to select an entry, follows it to a
+table of the next level, and repeats this 4 times. The last entry holds the number of
+the frame and the permission bits. The frame number and the offset together are the
+physical address.</p>
+<figure>
+<img src="figures/page-table-walk.svg" alt="The translation of a virtual address. The address is split into 4 indexes and an offset. The level 0 table, the root that mm-&gt;pgd points to, is indexed with index 0, and the entry leads to a level 1 table. Index 1 leads to a level 2 table, index 2 to a level 3 table, and index 3 selects the page table entry, which gives the frame. The frame and the offset form the physical address.">
+<figcaption><b>Figure 7.6</b> The processor walks 4 levels of tables to find the frame of a page.</figcaption>
+</figure>
+<p>A tree is used because the address space is almost empty. A flat table for 2<sup>36</sup>
+pages would need 512 GiB for each process. In the tree, a table exists only for the
+regions that are in use, and the <code>cat</code> process above needs a few dozen kilobytes.</p>
+<p>Walking 4 tables for every memory access would be slow, so the processor keeps the
+results of recent translations in a cache, the <em>translation lookaside buffer</em> or TLB.
+Most accesses are answered from the TLB. When the kernel changes a page table entry, it
+tells the processor to discard the cached translation.</p>
+<p><code>mmap</code> adds a mapping. It writes no page table entry and allocates no frame. A mapping
+is a promise: these addresses are valid, and this is what they contain.</p>
+<p>The promise is kept later. When the program uses an address whose page has no entry, or
+writes where the entry forbids writing, the processor cannot complete the instruction.
+It raises a <em>page fault</em>, which transfers control to the kernel. The kernel looks up the
+address in the mappings. If a mapping permits the access, the kernel provides a frame,
+writes the entry, and returns, and the processor repeats the instruction. If no mapping
+permits it, the kernel sends the process the signal <code>SIGSEGV</code>.</p>
+<figure>
+<img src="figures/page-fault.svg" alt="A program reads or writes a virtual address. The processor looks in the page table for an entry that allows the access. When there is none, it raises a page fault. The kernel checks whether a mapping allows the access. If so, it fills in the page table entry with the zero frame, a new frame or a private copy, and the access is retried. If no mapping allows it, the kernel sends SIGSEGV.">
+<figcaption><b>Figure 7.7</b> The page table is filled in by page faults.</figcaption>
+</figure>
+<p>Filling the table on demand means that memory is spent only on pages that are used. A
+program can map a large range and touch a small part of it, and a large program starts
+quickly because its code is read from disk page by page as it runs.</p>
+<h2 id="the-kernels-structures"><a class="header" href="#the-kernels-structures">The kernel’s structures</a></h2>
+<p>The kernel describes an address space with 3 structures. These are the definitions in
+<code>include/linux/mm_types.h</code> of Linux 5.15, reduced to the fields we use.</p>
+<pre><code class="language-c">struct mm_struct {
+        struct vm_area_struct *mmap;           /* the mappings, as a list */
+        struct rb_root mm_rb;                  /* the mappings, as a tree by address */
+        pgd_t *pgd;                            /* the root of the page table */
+        int map_count;                         /* number of mappings */
+        unsigned long total_vm;                /* pages mapped */
+        unsigned long start_brk, brk;          /* the heap */
+        unsigned long start_stack;             /* the stack */
+        /* ... */
+};
+
+struct vm_area_struct {
+        unsigned long vm_start;                /* first address of the mapping */
+        unsigned long vm_end;                  /* first address after it */
+        struct vm_area_struct *vm_next, *vm_prev;
+        struct mm_struct *vm_mm;               /* the address space it belongs to */
+        unsigned long vm_flags;                /* VM_READ, VM_WRITE, VM_EXEC, VM_SHARED */
+        unsigned long vm_pgoff;                /* offset in the file, in pages */
+        struct file *vm_file;                  /* the mapped file, or NULL */
+        /* ... */
+};
+
+struct page {
+        unsigned long flags;                   /* dirty, locked, ... */
+        struct address_space *mapping;         /* the file this frame caches, if any */
+        pgoff_t index;                         /* its page number in that file */
+        atomic_t _mapcount;                    /* page table entries that map it */
+        atomic_t _refcount;                    /* users of the frame */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Structure</th><th>Exists</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>struct mm_struct</code></td><td>once per process</td><td>The address space. <code>task_struct.mm</code> points to it, and the threads of a process share it.</td></tr>
+<tr><td><code>struct vm_area_struct</code></td><td>once per mapping</td><td>A line of <code>/proc/&lt;pid&gt;/maps</code>. The kernel calls it a VMA.</td></tr>
+<tr><td><code>struct page</code></td><td>once per frame of physical memory</td><td>The kernel’s record of a frame: who uses it and what it contains.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>mmap</code>, <code>mm_rb</code></td><td>The mappings of the process, as a list in address order and as a tree for fast lookup of the mapping that contains an address.</td></tr>
+<tr><td><code>pgd</code></td><td>The address of the root table that the processor walks. A context switch loads it into the processor (<a href="06-cpu-scheduling.html">chapter 6</a>).</td></tr>
+<tr><td><code>vm_start</code>, <code>vm_end</code></td><td>The 2 addresses in the first column of <code>maps</code>.</td></tr>
+<tr><td><code>vm_flags</code></td><td>The permissions in the second column.</td></tr>
+<tr><td><code>vm_file</code>, <code>vm_pgoff</code></td><td>The file and the offset in the last columns. <code>vm_file</code> is a <code>struct file</code> (<a href="02-file-descriptors.html">chapter 2</a>).</td></tr>
+<tr><td><code>_refcount</code>, <code>_mapcount</code></td><td>Counts that decide when a frame is free and whether it is shared, used for copy-on-write below.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/vm-structs.svg" alt="The memory structures. Each process has a struct mm_struct with the list and tree of mappings, pgd, the root of the page table, map_count, total_vm, and the bounds of the heap and the stack. Each mapping is a struct vm_area_struct with vm_start and vm_end, vm_flags, vm_file and vm_pgoff. Each frame of physical memory has a struct page with _refcount, _mapcount, mapping and flags.">
+<figcaption><b>Figure 7.8</b> The address space, its mappings, and the frames behind them.</figcaption>
+</figure>
+<p>There are 2 descriptions of the same address space, and the difference between them is
+the subject of this chapter. The list of VMAs says what the process is allowed to use.
+The page table says what has actually been given a frame. <code>mmap</code> changes only the
+first.</p>
+<div class="crab crab-shocked">
+<p><code>mmap</code> of 1 GiB allocates no memory. The frames arrive page by page, at the first access to each page.</p>
+</div>
+
+<h2 id="measuring-an-address-space"><a class="header" href="#measuring-an-address-space">Measuring an address space</a></h2>
+<p><code>vmfacts</code> uses <code>golang.org/x/sys/unix</code> in Go and the <code>memmap2</code> crate in Rust.</p>
+<pre><code class="language-console">$ cargo new vmfacts
+$ cargo add -p vmfacts memmap2
+</code></pre>
+<p>The kernel publishes the page table of a process in <code>/proc/self/pagemap</code>: 8 bytes for
+each virtual page, in which bit 63 is set when the page has a frame. <code>resident</code> counts
+those pages for a mapping.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.1</b> The imports of <code>vmfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"bufio"
+	"encoding/binary"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+
+	"golang.org/x/sys/unix"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.2</b> The imports of <code>vmfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fs::{self, File, OpenOptions};
+use std::io;
+use std::os::unix::fs::FileExt;
+use std::path::Path;
+
+use memmap2::{MmapMut, MmapOptions};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.3</b> Counting the pages of a mapping that have a frame, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+<pre><code class="language-go">const pageSize = 4096
+
+// address returns the virtual address of the first byte of a mapping.
+func address(mapping []byte) uintptr {
+	return reflect.ValueOf(mapping).Pointer()
+}
+
+// resident counts the pages of a mapping that have physical memory. The
+// kernel publishes 8 bytes per virtual page in /proc/self/pagemap, and bit 63
+// of an entry is set when the page is present in memory.
+func resident(mapping []byte) (int, error) {
+	pagemap, err := os.Open("/proc/self/pagemap")
+
+	if err != nil {
+		return 0, err
+	}
+
+	defer pagemap.Close()
+
+	entries := make([]byte, 8*len(mapping)/pageSize)
+
+	if _, err := pagemap.ReadAt(entries, int64(address(mapping)/pageSize*8)); err != nil {
+		return 0, err
+	}
+
+	count := 0
+
+	for i := 0; i &lt; len(entries); i += 8 {
+		if binary.LittleEndian.Uint64(entries[i:])&gt;&gt;63 == 1 {
+			count++
+		}
+	}
+
+	return count, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.4</b> Counting the pages of a mapping that have a frame, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">const PAGE_SIZE: usize = 4096;
+
+/// Counts the pages of a mapping that have physical memory. The kernel
+/// publishes 8 bytes per virtual page in `/proc/self/pagemap`, and bit 63 of
+/// an entry is set when the page is present in memory.
+fn resident(mapping: &amp;[u8]) -&gt; io::Result&lt;usize&gt; {
+    let pagemap = File::open("/proc/self/pagemap")?;
+    let mut entries = vec![0u8; 8 * mapping.len() / PAGE_SIZE];
+    let offset = mapping.as_ptr() as usize / PAGE_SIZE * 8;
+
+    pagemap.read_exact_at(&amp;mut entries, offset as u64)?;
+
+    let (entries, _) = entries.as_chunks::&lt;8&gt;();
+    let count = entries.iter().filter(|entry| entry[7] &gt;&gt; 7 == 1).count();
+
+    Ok(count)
+}</code></pre>
+<p><code>demand</code> maps 64 pages of anonymous memory and counts the resident pages 3 times: after
+<code>mmap</code>, after writing to 10 pages, and after reading 1 further page.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.5</b> When a page receives memory, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+<pre><code class="language-go">// demand maps 64 pages of anonymous memory, writes to 10 of them, reads 1
+// more, and counts the resident pages after each step.
+func demand() error {
+	mapping, err := unix.Mmap(-1, 0, 64*pageSize, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Munmap(mapping)
+
+	before, err := resident(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	for page := range 10 {
+		mapping[page*pageSize] = 1
+	}
+
+	written, err := resident(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	value := mapping[20*pageSize]
+	read, err := resident(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("64 pages mapped: %d resident\n", before)
+	fmt.Printf("after writing to 10 pages: %d resident\n", written)
+	fmt.Printf("after reading 1 more page: %d resident, the byte read is %d\n", read, value)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.6</b> When a page receives memory, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Maps 64 pages of anonymous memory, writes to 10 of them, reads 1 more, and
+/// counts the resident pages after each step.
+fn demand() -&gt; io::Result&lt;()&gt; {
+    let mut mapping = MmapMut::map_anon(64 * PAGE_SIZE)?;
+
+    let before = resident(&amp;mapping)?;
+
+    for page in 0..10 {
+        mapping[page * PAGE_SIZE] = 1;
+    }
+
+    let written = resident(&amp;mapping)?;
+
+    let value = mapping[20 * PAGE_SIZE];
+    let read = resident(&amp;mapping)?;
+
+    println!("64 pages mapped: {before} resident");
+    println!("after writing to 10 pages: {written} resident");
+    println!("after reading 1 more page: {read} resident, the byte read is {value}");
+
+    Ok(())
+}</code></pre>
+<p><code>protect</code> reads the permissions of a mapping from <code>/proc/self/maps</code> before and after
+<code>mprotect</code> removes the permission to write.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.7</b> The permissions of a mapping, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+<pre><code class="language-go">// permissions returns the permission column of the line in /proc/self/maps
+// that starts at the address of a mapping.
+func permissions(mapping []byte) (string, error) {
+	maps, err := os.Open("/proc/self/maps")
+
+	if err != nil {
+		return "", err
+	}
+
+	defer maps.Close()
+
+	start := fmt.Sprintf("%x-", address(mapping))
+
+	for lines := bufio.NewScanner(maps); lines.Scan(); {
+		if fields := strings.Fields(lines.Text()); strings.HasPrefix(fields[0], start) {
+			return fields[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("mapping at %s not found", start)
+}
+
+// protect reads the permissions of a mapping before and after mprotect
+// removes the permission to write.
+func protect() error {
+	mapping, err := unix.Mmap(-1, 0, pageSize, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Munmap(mapping)
+
+	before, err := permissions(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	if err := unix.Mprotect(mapping, unix.PROT_READ); err != nil {
+		return err
+	}
+
+	after, err := permissions(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("permissions of the mapping: %s, after mprotect: %s\n", before, after)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.8</b> The permissions of a mapping, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Returns the permission column of the line in `/proc/self/maps` that starts
+/// at the address of a mapping.
+fn permissions(mapping: &amp;[u8]) -&gt; io::Result&lt;String&gt; {
+    let start = format!("{:x}-", mapping.as_ptr() as usize);
+
+    fs::read_to_string("/proc/self/maps")?
+        .lines()
+        .filter(|line| line.starts_with(&amp;start))
+        .find_map(|line| line.split_whitespace().nth(1))
+        .map(str::to_owned)
+        .ok_or_else(|| io::ErrorKind::NotFound.into())
+}
+
+/// Reads the permissions of a mapping before and after mprotect removes the
+/// permission to write.
+fn protect() -&gt; io::Result&lt;()&gt; {
+    let mapping = MmapMut::map_anon(PAGE_SIZE)?;
+    let before = permissions(&amp;mapping)?;
+
+    let mapping = mapping.make_read_only()?;
+    let after = permissions(&amp;mapping)?;
+
+    println!("permissions of the mapping: {before}, after mprotect: {after}");
+
+    Ok(())
+}</code></pre>
+<p><code>throughMapping</code> maps a file that contains <code>hello</code>, writes <code>HELLO</code> into the mapped
+memory, and reads the file again. It does this with a private mapping and with a shared
+one. Mapping a file is an <code>unsafe</code> operation in Rust, because another process could
+change the file while the program holds a slice of it. The comment in the listing states
+why the use is sound here.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.9</b> Writing through a private and a shared file mapping, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+<pre><code class="language-go">// throughMapping maps a file that holds "hello", writes "HELLO" through the
+// mapping, unmaps it, and returns the contents of the file.
+func throughMapping(path string, flags int) (string, error) {
+	if err := os.WriteFile(path, []byte("hello"), 0o644); err != nil {
+		return "", err
+	}
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	mapping, err := unix.Mmap(int(file.Fd()), 0, 5, unix.PROT_READ|unix.PROT_WRITE, flags)
+
+	if err != nil {
+		return "", err
+	}
+
+	copy(mapping, "HELLO")
+
+	if err := unix.Munmap(mapping); err != nil {
+		return "", err
+	}
+
+	text, err := os.ReadFile(path)
+
+	return string(text), err
+}
+
+// files compares a private file mapping with a shared one.
+func files() error {
+	dir, err := os.MkdirTemp("", "vmfacts")
+
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(dir)
+
+	path := filepath.Join(dir, "file")
+
+	for _, kind := range []struct {
+		name  string
+		flags int
+	}{{"private", unix.MAP_PRIVATE}, {"shared", unix.MAP_SHARED}} {
+		text, err := throughMapping(path, kind.flags)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("HELLO written through a %s file mapping: the file holds %q\n", kind.name, text)
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.10</b> Writing through a private and a shared file mapping, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Maps a file that holds "hello", writes "HELLO" through the mapping, unmaps
+/// it, and returns the contents of the file.
+fn through_mapping(path: &amp;Path, shared: bool) -&gt; io::Result&lt;String&gt; {
+    fs::write(path, "hello")?;
+
+    let file = OpenOptions::new().read(true).write(true).open(path)?;
+    let options = MmapOptions::new();
+
+    // SAFETY: mapping a file is unsafe in Rust because another process could
+    // change the file while the slice exists. This file is in a directory the
+    // program has just created, and nothing else opens it.
+    let mut mapping = unsafe {
+        if shared {
+            options.map_mut(&amp;file)?
+        } else {
+            options.map_copy(&amp;file)?
+        }
+    };
+
+    mapping.copy_from_slice(b"HELLO");
+    drop(mapping);
+
+    fs::read_to_string(path)
+}
+
+/// Compares a private file mapping with a shared one.
+fn files() -&gt; io::Result&lt;()&gt; {
+    let dir = std::env::temp_dir().join(format!("vmfacts-{}", std::process::id()));
+    let path = dir.join("file");
+
+    fs::create_dir_all(&amp;dir)?;
+
+    for (name, shared) in [("private", false), ("shared", true)] {
+        let text = through_mapping(&amp;path, shared)?;
+        println!("HELLO written through a {name} file mapping: the file holds {text:?}");
+    }
+
+    fs::remove_dir_all(&amp;dir)
+}</code></pre>
+<pre><code class="language-text">64 pages mapped: 0 resident
+after writing to 10 pages: 10 resident
+after reading 1 more page: 11 resident, the byte read is 0
+permissions of the mapping: rw-p, after mprotect: r--p
+HELLO written through a private file mapping: the file holds "hello"
+HELLO written through a shared file mapping: the file holds "HELLO"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>64 pages mapped, 0 resident</td><td><code>mmap</code> allocates no memory.</td></tr>
+<tr><td>10 resident after writing to 10 pages</td><td>A page receives a frame at the first access to it.</td></tr>
+<tr><td>11 resident after a read, and the byte is 0</td><td>A read is also an access. An untouched anonymous page reads as zeros.</td></tr>
+<tr><td><code>rw-p</code> becomes <code>r--p</code></td><td>Permissions are a property of the mapping. The <code>p</code> marks a private mapping.</td></tr>
+<tr><td>private mapping: the file holds <code>hello</code></td><td>A write to a private mapping changes a copy that belongs to the process.</td></tr>
+<tr><td>shared mapping: the file holds <code>HELLO</code></td><td>A write to a shared mapping changes the file’s own page.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="modelling-an-address-space"><a class="header" href="#modelling-an-address-space">Modelling an address space</a></h2>
+<div class="lld">
+<p>Low-level design: <code>vmmodel</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>frame</code></td><td><code>data</code>, <code>refs</code></td><td>a page of physical memory and the number of entries that refer to it</td></tr>
+<tr><td><code>memory</code></td><td><code>frames</code>, <code>zero</code></td><td>the count of allocated frames; the shared frame of zeros</td></tr>
+<tr><td><code>mapping</code></td><td><code>start</code>, <code>pages</code>, <code>writable</code></td><td>a range of virtual pages and its permission</td></tr>
+<tr><td><code>entry</code></td><td><code>frame</code>, <code>writable</code></td><td>a page table entry</td></tr>
+<tr><td><code>space</code></td><td><code>mappings</code>, <code>table</code>, <code>faults</code></td><td>an address space</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>mmap(pages, writable)</code></td><td>adds a mapping; returns its address</td></tr>
+<tr><td><code>read(address)</code>, <code>write(address, value)</code></td><td>use the entry when it permits the access; otherwise call <code>fault</code> and repeat</td></tr>
+<tr><td><code>fault(page, write)</code></td><td>fails with <code>SIGSEGV</code>, or installs an entry</td></tr>
+<tr><td><code>fork()</code></td><td>returns a space with the same mappings and entries, all read-only on both sides</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>In the Rust version, a frame is an <code>Rc</code> of an array, and the reference count of the <code>Rc</code>
+is the <code>refs</code> field of the Go version.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.11</b> The imports of <code>vmmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.12</b> The imports of <code>vmmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::cell::Cell;
+use std::collections::HashMap;
+use std::fmt;
+use std::rc::Rc;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.13</b> Frames, mappings, entries and the address space, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">const pageSize = 4096
+
+// errSegv is the result of an access that no mapping allows. The kernel
+// sends the process the signal SIGSEGV.
+var errSegv = errors.New("SIGSEGV")
+
+// A frame is a page of physical memory. refs counts the page table entries
+// that refer to it.
+type frame struct {
+	data [pageSize]byte
+	refs int
+}
+
+// memory is the physical memory shared by all address spaces: the number of
+// frames allocated, and the frame of zeros that every read of an untouched
+// page maps.
+type memory struct {
+	frames int
+	zero   *frame
+}
+
+func (m *memory) allocate() *frame {
+	m.frames++
+
+	return &amp;frame{refs: 1}
+}
+
+// A mapping is a range of virtual pages and the access it permits.
+type mapping struct {
+	start, pages int
+	writable     bool
+}
+
+// An entry is a page table entry: the frame behind a virtual page, and
+// whether the processor may write to it without a fault.
+type entry struct {
+	frame    *frame
+	writable bool
+}
+
+// A space is the address space of a process.
+type space struct {
+	memory   *memory
+	mappings []mapping
+	table    map[int]entry
+	faults   int
+	nextPage int
+}
+
+func newSpace() *space {
+	return &amp;space{
+		memory:   &amp;memory{zero: &amp;frame{refs: 1}},
+		table:    map[int]entry{},
+		nextPage: 16,
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.14</b> Frames, mappings, entries and the address space, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">const PAGE_SIZE: usize = 4096;
+
+/// The result of an access that no mapping allows. The kernel sends the
+/// process the signal `SIGSEGV`.
+#[derive(Debug)]
+struct Segv;
+
+impl fmt::Display for Segv {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("SIGSEGV")
+    }
+}
+
+/// A page of physical memory. The reference count of the `Rc` is the number
+/// of page table entries that refer to it.
+type Frame = Rc&lt;[u8; PAGE_SIZE]&gt;;
+
+/// The physical memory shared by all address spaces: the number of frames
+/// allocated, and the frame of zeros that every read of an untouched page
+/// maps.
+struct Memory {
+    frames: Cell&lt;usize&gt;,
+    zero: Frame,
+}
+
+impl Memory {
+    fn allocate(&amp;self, contents: [u8; PAGE_SIZE]) -&gt; Frame {
+        self.frames.set(self.frames.get() + 1);
+
+        Rc::new(contents)
+    }
+}
+
+/// A range of virtual pages and the access it permits.
+#[derive(Clone, Copy)]
+struct Mapping {
+    start: usize,
+    pages: usize,
+    writable: bool,
+}
+
+/// A page table entry: the frame behind a virtual page, and whether the
+/// processor may write to it without a fault.
+#[derive(Clone)]
+struct Entry {
+    frame: Frame,
+    writable: bool,
+}
+
+/// The address space of a process.
+struct Space {
+    memory: Rc&lt;Memory&gt;,
+    mappings: Vec&lt;Mapping&gt;,
+    table: HashMap&lt;usize, Entry&gt;,
+    faults: usize,
+    next_page: usize,
+}
+
+impl Space {
+    fn new() -&gt; Space {
+        let memory = Memory {
+            frames: Cell::new(0),
+            zero: Rc::new([0; PAGE_SIZE]),
+        };
+
+        Space {
+            memory: Rc::new(memory),
+            mappings: Vec::new(),
+            table: HashMap::new(),
+            faults: 0,
+            next_page: 16,
+        }
+    }
+}</code></pre>
+<p><code>mmap</code> only records the range.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.15</b> Adding a mapping, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">// mmap records a new mapping and returns its address. It allocates no frame
+// and writes no page table entry.
+func (s *space) mmap(pages int, writable bool) int {
+	start := s.nextPage
+	s.mappings = append(s.mappings, mapping{start: start, pages: pages, writable: writable})
+	s.nextPage += pages + 1
+
+	return start * pageSize
+}
+
+// find returns the mapping that contains a page.
+func (s *space) find(page int) (mapping, bool) {
+	for _, m := range s.mappings {
+		if page &gt;= m.start &amp;&amp; page &lt; m.start+m.pages {
+			return m, true
+		}
+	}
+
+	return mapping{}, false
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.16</b> Adding a mapping, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Space {
+    /// Records a new mapping and returns its address. It allocates no frame
+    /// and writes no page table entry.
+    fn mmap(&amp;mut self, pages: usize, writable: bool) -&gt; usize {
+        let start = self.next_page;
+
+        self.mappings.push(Mapping {
+            start,
+            pages,
+            writable,
+        });
+        self.next_page += pages + 1;
+
+        start * PAGE_SIZE
+    }
+
+    /// Returns the mapping that contains a page.
+    fn find(&amp;self, page: usize) -&gt; Option&lt;Mapping&gt; {
+        self.mappings
+            .iter()
+            .copied()
+            .find(|mapping| (mapping.start..mapping.start + mapping.pages).contains(&amp;page))
+    }
+}</code></pre>
+<p><code>read</code> and <code>write</code> play the part of the processor. They consult the page table and call
+<code>fault</code> when the entry is missing or forbids the access.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.17</b> An access through the page table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">// read returns the byte at an address. The processor uses the page table
+// entry when one exists, and faults when none does.
+func (s *space) read(address int) (byte, error) {
+	page, offset := address/pageSize, address%pageSize
+
+	if _, present := s.table[page]; !present {
+		if err := s.fault(page, false); err != nil {
+			return 0, err
+		}
+	}
+
+	return s.table[page].frame.data[offset], nil
+}
+
+// write stores a byte at an address. It faults when the page has no entry or
+// the entry does not permit writing.
+func (s *space) write(address int, value byte) error {
+	page, offset := address/pageSize, address%pageSize
+
+	if !s.table[page].writable {
+		if err := s.fault(page, true); err != nil {
+			return err
+		}
+	}
+
+	s.table[page].frame.data[offset] = value
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.18</b> An access through the page table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Space {
+    /// Returns the byte at an address. The processor uses the page table
+    /// entry when one exists, and faults when none does.
+    fn read(&amp;mut self, address: usize) -&gt; Result&lt;u8, Segv&gt; {
+        let (page, offset) = (address / PAGE_SIZE, address % PAGE_SIZE);
+
+        if !self.table.contains_key(&amp;page) {
+            self.fault(page, false)?;
+        }
+
+        self.table
+            .get(&amp;page)
+            .map(|entry| entry.frame[offset])
+            .ok_or(Segv)
+    }
+
+    /// Stores a byte at an address. It faults when the page has no entry or
+    /// the entry does not permit writing.
+    fn write(&amp;mut self, address: usize, value: u8) -&gt; Result&lt;(), Segv&gt; {
+        let (page, offset) = (address / PAGE_SIZE, address % PAGE_SIZE);
+
+        if !self.table.get(&amp;page).is_some_and(|entry| entry.writable) {
+            self.fault(page, true)?;
+        }
+
+        let entry = self.table.get_mut(&amp;page).ok_or(Segv)?;
+
+        // A writable entry is the only user of its frame, so `make_mut`
+        // returns the frame itself.
+        Rc::make_mut(&amp;mut entry.frame)[offset] = value;
+
+        Ok(())
+    }
+}</code></pre>
+<p><code>fault</code> is the kernel’s handler. After the check against the mappings it has 4 cases.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Access</th><th>Entry</th><th>Action</th></tr>
+</thead>
+<tbody>
+<tr><td>read</td><td>none</td><td>map the shared zero frame, read-only</td></tr>
+<tr><td>write</td><td>none</td><td>allocate a frame of zeros, writable</td></tr>
+<tr><td>write</td><td>read-only, and the frame has no other user</td><td>make the entry writable</td></tr>
+<tr><td>write</td><td>read-only, and the frame is shared</td><td>allocate a frame, copy the contents, map the copy writable</td></tr>
+</tbody>
+</table>
+</div>
+<p>Case 1 explains the measurement of 11 resident pages. Every read of an untouched
+anonymous page maps the same frame of zeros, so reading costs no memory. The frame is
+mapped read-only, and the first write replaces it with a private frame through case 4.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.19</b> The page fault handler, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">// fault is the kernel's page fault handler. It checks the access against
+// the mappings and then repairs the page table entry so that the access can
+// be repeated.
+func (s *space) fault(page int, write bool) error {
+	m, ok := s.find(page)
+
+	if !ok || write &amp;&amp; !m.writable {
+		return errSegv
+	}
+
+	s.faults++
+	e, present := s.table[page]
+
+	switch {
+	case !write:
+		// A read of an untouched page maps the shared zero frame.
+		s.memory.zero.refs++
+		s.table[page] = entry{frame: s.memory.zero}
+
+	case !present:
+		// A write to an untouched page gets a new frame of zeros.
+		s.table[page] = entry{frame: s.memory.allocate(), writable: true}
+
+	case e.frame.refs == 1:
+		// The frame has no other user. Writing is enabled in place.
+		s.table[page] = entry{frame: e.frame, writable: true}
+
+	default:
+		// The frame is shared. The writer gets a private copy.
+		private := s.memory.allocate()
+		private.data = e.frame.data
+		e.frame.refs--
+		s.table[page] = entry{frame: private, writable: true}
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.20</b> The page fault handler, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Space {
+    /// The kernel's page fault handler. It checks the access against the
+    /// mappings and then repairs the page table entry so that the access can
+    /// be repeated.
+    fn fault(&amp;mut self, page: usize, write: bool) -&gt; Result&lt;(), Segv&gt; {
+        let mapping = self.find(page).ok_or(Segv)?;
+
+        if write &amp;&amp; !mapping.writable {
+            return Err(Segv);
+        }
+
+        self.faults += 1;
+
+        let entry = match (write, self.table.remove(&amp;page)) {
+            // A read of an untouched page maps the shared zero frame.
+            (false, _) =&gt; Entry {
+                frame: Rc::clone(&amp;self.memory.zero),
+                writable: false,
+            },
+
+            // A write to an untouched page gets a new frame of zeros.
+            (true, None) =&gt; Entry {
+                frame: self.memory.allocate([0; PAGE_SIZE]),
+                writable: true,
+            },
+
+            // The frame has no other user. Writing is enabled in place.
+            (true, Some(entry)) if Rc::strong_count(&amp;entry.frame) == 1 =&gt; Entry {
+                frame: entry.frame,
+                writable: true,
+            },
+
+            // The frame is shared. The writer gets a private copy.
+            (true, Some(entry)) =&gt; Entry {
+                frame: self.memory.allocate(*entry.frame),
+                writable: true,
+            },
+        };
+
+        self.table.insert(page, entry);
+
+        Ok(())
+    }
+}</code></pre>
+<h3 id="copy-on-write"><a class="header" href="#copy-on-write">Copy-on-write</a></h3>
+<p><code>fork</code> gives the child a copy of the parent’s address space. Copying every frame would
+be slow, and most of the work would be wasted, since the usual next step of the child is
+<code>exec</code>, which discards the address space. The kernel therefore copies only the page
+table. Parent and child refer to the same frames, and every entry is made read-only in
+both.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.21</b> Forking an address space, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">// fork returns a child with the same mappings and a page table that refers
+// to the same frames. Every entry is made read-only in the parent and in the
+// child, so that the first write by either causes a fault.
+func (s *space) fork() *space {
+	child := &amp;space{
+		memory:   s.memory,
+		mappings: append([]mapping(nil), s.mappings...),
+		table:    map[int]entry{},
+		nextPage: s.nextPage,
+	}
+
+	for page, e := range s.table {
+		e.frame.refs++
+		e.writable = false
+		s.table[page], child.table[page] = e, e
+	}
+
+	return child
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.22</b> Forking an address space, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Space {
+    /// Returns a child with the same mappings and a page table that refers to
+    /// the same frames. Every entry is made read-only in the parent and in
+    /// the child, so that the first write by either causes a fault.
+    fn fork(&amp;mut self) -&gt; Space {
+        for entry in self.table.values_mut() {
+            entry.writable = false;
+        }
+
+        Space {
+            memory: Rc::clone(&amp;self.memory),
+            mappings: self.mappings.clone(),
+            table: self.table.clone(),
+            faults: 0,
+            next_page: self.next_page,
+        }
+    }
+}</code></pre>
+<p>Reads continue without faults. The first write to a page by either process faults. The
+handler sees a read-only entry in a writable mapping, copies the frame for the writer,
+and the processes diverge on that page only.</p>
+<figure>
+<img src="figures/cow-fork.svg" alt="After fork, page 0 of the parent and page 0 of the child both refer to frame 1, which holds a, and both entries are read-only. After the child writes b, the child&#39;s entry is writable and refers to a new frame 3 that holds b. The parent&#39;s entry still refers to frame 1.">
+<figcaption><b>Figure 7.9</b> A frame is shared after <code>fork</code> and copied at the first write.</figcaption>
+</figure>
+<p>A private file mapping uses the same mechanism. Its pages initially refer to the file’s
+frames, read-only, and a write copies the page. The file is unchanged, as <code>vmfacts</code>
+measured.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.23</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">// report prints a step with the fault count of a space and the number of
+// frames allocated.
+func (s *space) report(step string) {
+	fmt.Printf("%-34s faults %d, frames %d\n", step, s.faults, s.memory.frames)
+}
+
+func run() error {
+	parent := newSpace()
+	base := parent.mmap(4, true)
+	parent.report("mmap of 4 pages:")
+
+	if err := parent.write(base, 'a'); err != nil {
+		return err
+	}
+
+	parent.report("write to page 0:")
+
+	value, err := parent.read(base + pageSize)
+
+	if err != nil {
+		return err
+	}
+
+	parent.report(fmt.Sprintf("read of page 1, value %d:", value))
+
+	if err := parent.write(base+pageSize, 'x'); err != nil {
+		return err
+	}
+
+	parent.report("write to page 1:")
+
+	child := parent.fork()
+	child.report("fork, in the child:")
+
+	if err := child.write(base, 'b'); err != nil {
+		return err
+	}
+
+	child.report("child writes page 0:")
+
+	if err := parent.write(base, 'c'); err != nil {
+		return err
+	}
+
+	parent.report("parent writes page 0:")
+
+	inParent, err := parent.read(base)
+
+	if err != nil {
+		return err
+	}
+
+	inChild, err := child.read(base)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("page 0 holds %q in the parent and %q in the child\n", inParent, inChild)
+
+	fmt.Printf("write outside every mapping: %v\n", parent.write(base+100*pageSize, 1))
+
+	readOnly := parent.mmap(1, false)
+	fmt.Printf("write to a read-only mapping: %v\n", parent.write(readOnly, 1))
+
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 7.24</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Space {
+    /// Prints a step with the fault count of a space and the number of frames
+    /// allocated.
+    fn report(&amp;self, step: &amp;str) {
+        println!(
+            "{step:&lt;34} faults {}, frames {}",
+            self.faults,
+            self.memory.frames.get()
+        );
+    }
+}
+
+fn run() -&gt; Result&lt;(), Segv&gt; {
+    let mut parent = Space::new();
+    let base = parent.mmap(4, true);
+    parent.report("mmap of 4 pages:");
+
+    parent.write(base, b'a')?;
+    parent.report("write to page 0:");
+
+    let value = parent.read(base + PAGE_SIZE)?;
+    parent.report(&amp;format!("read of page 1, value {value}:"));
+
+    parent.write(base + PAGE_SIZE, b'x')?;
+    parent.report("write to page 1:");
+
+    let mut child = parent.fork();
+    child.report("fork, in the child:");
+
+    child.write(base, b'b')?;
+    child.report("child writes page 0:");
+
+    parent.write(base, b'c')?;
+    parent.report("parent writes page 0:");
+
+    println!(
+        "page 0 holds {:?} in the parent and {:?} in the child",
+        char::from(parent.read(base)?),
+        char::from(child.read(base)?)
+    );
+
+    if let Err(error) = parent.write(base + 100 * PAGE_SIZE, 1) {
+        println!("write outside every mapping: {error}");
+    }
+
+    let read_only = parent.mmap(1, false);
+
+    if let Err(error) = parent.write(read_only, 1) {
+        println!("write to a read-only mapping: {error}");
+    }
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(error) = run() {
+        println!("{error}");
+    }
+}</code></pre>
+<pre><code class="language-text">mmap of 4 pages:                   faults 0, frames 0
+write to page 0:                   faults 1, frames 1
+read of page 1, value 0:           faults 2, frames 1
+write to page 1:                   faults 3, frames 2
+fork, in the child:                faults 0, frames 2
+child writes page 0:               faults 1, frames 3
+parent writes page 0:              faults 4, frames 3
+page 0 holds 'c' in the parent and 'b' in the child
+write outside every mapping: SIGSEGV
+write to a read-only mapping: SIGSEGV
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>mmap of 4 pages</code></td><td>No fault and no frame.</td></tr>
+<tr><td><code>write to page 0</code></td><td>A write to an untouched page allocates frame 1.</td></tr>
+<tr><td><code>read of page 1</code></td><td>A read maps the zero frame: a fault, and no new frame.</td></tr>
+<tr><td><code>write to page 1</code></td><td>The zero frame is shared, so the write copies it into frame 2.</td></tr>
+<tr><td><code>fork, in the child</code></td><td>The child starts with the parent’s 2 frames and none of its own.</td></tr>
+<tr><td><code>child writes page 0</code></td><td>The child faults and receives a copy, frame 3.</td></tr>
+<tr><td><code>parent writes page 0</code></td><td>The parent also faults, because its entry is read-only. It is now the only user of frame 1, so no copy is made.</td></tr>
+<tr><td>the last 2 lines</td><td>An address outside every mapping, and a write to a read-only mapping, end in <code>SIGSEGV</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> A mapping is <code>struct vm_area_struct</code> in
+<code>include/linux/mm_types.h</code>, and the list of mappings is in <code>struct mm_struct</code>. On arm64
+the page table is a tree of 4 levels that the processor walks itself; the model replaces
+the tree by a map from page number to entry. The fault handler is <code>handle_mm_fault</code> in
+<code>mm/memory.c</code>, where <code>do_anonymous_page</code> handles the first 2 cases of the table and
+<code>do_wp_page</code> the last 2. <code>/proc/self/maps</code> prints a line for each <code>vm_area_struct</code>.</p>
+</div>
+
+<h2 id="how-much-memory-a-process-uses"><a class="header" href="#how-much-memory-a-process-uses">How much memory a process uses</a></h2>
+<p>Since mapping and allocating are separate, a process has 2 sizes.</p>
+<pre><code class="language-console">$ ps -o pid,vsz,rss,min_flt,maj_flt,comm -p 580844
+    PID    VSZ   RSS  MINFL  MAJFL COMMAND
+ 580844  11204   776    114      0 sleep
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Column</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>VSZ</code></td><td><em>Virtual size</em>: the total of all mappings, 11204 kB. It is <code>total_vm</code>.</td></tr>
+<tr><td><code>RSS</code></td><td><em>Resident set size</em>: the pages that have a frame, 776 kB.</td></tr>
+<tr><td><code>MINFL</code></td><td><em>Minor faults</em>: page faults that the kernel resolved without reading from a disk, 114.</td></tr>
+<tr><td><code>MAJFL</code></td><td><em>Major faults</em>: page faults that had to wait for a page to be read from a disk, 0.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/vsz-rss.svg" alt="2 gauges for a sleep process. VSZ, the addresses mapped, is 11204 kB. RSS, the pages that have a frame, is 776 kB, 7 percent of the mapped size.">
+<figcaption><b>Figure 7.10</b> The 2 sizes of the <code>sleep</code> process, to scale.</figcaption>
+</figure>
+<p>The <code>sleep</code> process has mapped 11 MB and uses under 1 MB, because most of the pages of
+its libraries have not been touched. It took 114 page faults to start, each bringing in a
+single page or a few. <code>RSS</code> is the number to look at when asking how much memory a
+process costs, with the reservation that pages shared with other processes, such as the
+code of <code>libc</code>, are counted in the <code>RSS</code> of each.</p>
+<p>Because memory is given out at the first access, the kernel can promise more than it
+has. This is <em>overcommit</em>: the sum of the mappings of all processes may exceed physical
+memory and swap, on the assumption that not all of it will be touched. The policy is in
+<code>/proc/sys/vm/overcommit_memory</code>, and the value 1 on this machine means that <code>mmap</code>
+does not refuse a request for lack of memory. When the promises are called in and no frame
+is free, the kernel first reclaims frames, by discarding page cache pages
+(<a href="08-the-page-cache.html">chapter 8</a>) and by writing anonymous pages to <em>swap</em> space on
+disk. When that is not enough, the <em>OOM killer</em> ends a process to free its memory.
+<a href="12-control-groups.html">Chapter 12</a> shows it at work inside a memory limit.</p>
+<h3 id="the-heap-and-the-stack"><a class="header" href="#the-heap-and-the-stack">The heap and the stack</a></h3>
+<p><code>malloc</code> is a library function, and the kernel knows nothing about individual
+allocations. The allocator asks the kernel for memory in large pieces and divides them
+itself. It has 2 ways to ask. <code>brk</code> moves the end of the <code>[heap]</code> mapping, which suits
+many small allocations. For a large request, 128 KiB or more in the allocator of glibc,
+it calls <code>mmap</code> for an anonymous mapping of its own, which can be returned to the kernel
+independently. Both give addresses without frames, so memory that a program allocates
+and does not touch costs nothing.</p>
+<p>The stack is a mapping that the kernel extends on demand. An access directly below its
+current end causes a page fault, and the handler enlarges the mapping, up to the limit
+shown by <code>ulimit -s</code>.</p>
+<h2 id="inspecting-memory-on-a-live-system"><a class="header" href="#inspecting-memory-on-a-live-system">Inspecting memory on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cat /proc/&lt;pid&gt;/maps</code></td><td>the mappings of a process</td></tr>
+<tr><td><code>cat /proc/&lt;pid&gt;/smaps</code></td><td>for each mapping: resident, shared, private and swapped pages</td></tr>
+<tr><td><code>ps -o pid,vsz,rss,min_flt,maj_flt,comm</code></td><td>virtual size, resident size and page faults</td></tr>
+<tr><td><code>grep Vm /proc/&lt;pid&gt;/status</code></td><td>the sizes by kind: data, stack, code, libraries, page tables</td></tr>
+<tr><td><code>free -m</code></td><td>memory of the whole system: used, free, and used for the page cache</td></tr>
+<tr><td><code>cat /proc/sys/vm/overcommit_memory</code></td><td>the overcommit policy</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.25</b> The complete <code>vmfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmfacts/main.go">code/go/vmfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command vmfacts measures how the kernel fills an address space: when a
+// mapped page receives physical memory, what an untouched page contains, how
+// a mapping's permissions appear in /proc/self/maps, and where a write
+// through a private or a shared file mapping ends up.
+//
+// Run it from code/go with:
+//
+//	go run ./vmfacts
+package main
+
+import (
+	"bufio"
+	"encoding/binary"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+
+	"golang.org/x/sys/unix"
+)
+
+
+const pageSize = 4096
+
+// address returns the virtual address of the first byte of a mapping.
+func address(mapping []byte) uintptr {
+	return reflect.ValueOf(mapping).Pointer()
+}
+
+// resident counts the pages of a mapping that have physical memory. The
+// kernel publishes 8 bytes per virtual page in /proc/self/pagemap, and bit 63
+// of an entry is set when the page is present in memory.
+func resident(mapping []byte) (int, error) {
+	pagemap, err := os.Open("/proc/self/pagemap")
+
+	if err != nil {
+		return 0, err
+	}
+
+	defer pagemap.Close()
+
+	entries := make([]byte, 8*len(mapping)/pageSize)
+
+	if _, err := pagemap.ReadAt(entries, int64(address(mapping)/pageSize*8)); err != nil {
+		return 0, err
+	}
+
+	count := 0
+
+	for i := 0; i &lt; len(entries); i += 8 {
+		if binary.LittleEndian.Uint64(entries[i:])&gt;&gt;63 == 1 {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+
+// demand maps 64 pages of anonymous memory, writes to 10 of them, reads 1
+// more, and counts the resident pages after each step.
+func demand() error {
+	mapping, err := unix.Mmap(-1, 0, 64*pageSize, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Munmap(mapping)
+
+	before, err := resident(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	for page := range 10 {
+		mapping[page*pageSize] = 1
+	}
+
+	written, err := resident(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	value := mapping[20*pageSize]
+	read, err := resident(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("64 pages mapped: %d resident\n", before)
+	fmt.Printf("after writing to 10 pages: %d resident\n", written)
+	fmt.Printf("after reading 1 more page: %d resident, the byte read is %d\n", read, value)
+
+	return nil
+}
+
+
+// permissions returns the permission column of the line in /proc/self/maps
+// that starts at the address of a mapping.
+func permissions(mapping []byte) (string, error) {
+	maps, err := os.Open("/proc/self/maps")
+
+	if err != nil {
+		return "", err
+	}
+
+	defer maps.Close()
+
+	start := fmt.Sprintf("%x-", address(mapping))
+
+	for lines := bufio.NewScanner(maps); lines.Scan(); {
+		if fields := strings.Fields(lines.Text()); strings.HasPrefix(fields[0], start) {
+			return fields[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("mapping at %s not found", start)
+}
+
+// protect reads the permissions of a mapping before and after mprotect
+// removes the permission to write.
+func protect() error {
+	mapping, err := unix.Mmap(-1, 0, pageSize, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_PRIVATE|unix.MAP_ANONYMOUS)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Munmap(mapping)
+
+	before, err := permissions(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	if err := unix.Mprotect(mapping, unix.PROT_READ); err != nil {
+		return err
+	}
+
+	after, err := permissions(mapping)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("permissions of the mapping: %s, after mprotect: %s\n", before, after)
+
+	return nil
+}
+
+
+// throughMapping maps a file that holds "hello", writes "HELLO" through the
+// mapping, unmaps it, and returns the contents of the file.
+func throughMapping(path string, flags int) (string, error) {
+	if err := os.WriteFile(path, []byte("hello"), 0o644); err != nil {
+		return "", err
+	}
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	mapping, err := unix.Mmap(int(file.Fd()), 0, 5, unix.PROT_READ|unix.PROT_WRITE, flags)
+
+	if err != nil {
+		return "", err
+	}
+
+	copy(mapping, "HELLO")
+
+	if err := unix.Munmap(mapping); err != nil {
+		return "", err
+	}
+
+	text, err := os.ReadFile(path)
+
+	return string(text), err
+}
+
+// files compares a private file mapping with a shared one.
+func files() error {
+	dir, err := os.MkdirTemp("", "vmfacts")
+
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(dir)
+
+	path := filepath.Join(dir, "file")
+
+	for _, kind := range []struct {
+		name  string
+		flags int
+	}{{"private", unix.MAP_PRIVATE}, {"shared", unix.MAP_SHARED}} {
+		text, err := throughMapping(path, kind.flags)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("HELLO written through a %s file mapping: the file holds %q\n", kind.name, text)
+	}
+
+	return nil
+}
+
+
+func main() {
+	for _, experiment := range []func() error{demand, protect, files} {
+		if err := experiment(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 7.26</b> The complete <code>vmfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmfacts/src/main.rs">code/rust/vmfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures how the kernel fills an address space: when a mapped page
+//! receives physical memory, what an untouched page contains, how a mapping's
+//! permissions appear in `/proc/self/maps`, and where a write through a
+//! private or a shared file mapping ends up.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p vmfacts
+//! ```
+
+use std::fs::{self, File, OpenOptions};
+use std::io;
+use std::os::unix::fs::FileExt;
+use std::path::Path;
+
+use memmap2::{MmapMut, MmapOptions};
+
+const PAGE_SIZE: usize = 4096;
+
+/// Counts the pages of a mapping that have physical memory. The kernel
+/// publishes 8 bytes per virtual page in `/proc/self/pagemap`, and bit 63 of
+/// an entry is set when the page is present in memory.
+fn resident(mapping: &amp;[u8]) -&gt; io::Result&lt;usize&gt; {
+    let pagemap = File::open("/proc/self/pagemap")?;
+    let mut entries = vec![0u8; 8 * mapping.len() / PAGE_SIZE];
+    let offset = mapping.as_ptr() as usize / PAGE_SIZE * 8;
+
+    pagemap.read_exact_at(&amp;mut entries, offset as u64)?;
+
+    let (entries, _) = entries.as_chunks::&lt;8&gt;();
+    let count = entries.iter().filter(|entry| entry[7] &gt;&gt; 7 == 1).count();
+
+    Ok(count)
+}
+
+/// Maps 64 pages of anonymous memory, writes to 10 of them, reads 1 more, and
+/// counts the resident pages after each step.
+fn demand() -&gt; io::Result&lt;()&gt; {
+    let mut mapping = MmapMut::map_anon(64 * PAGE_SIZE)?;
+
+    let before = resident(&amp;mapping)?;
+
+    for page in 0..10 {
+        mapping[page * PAGE_SIZE] = 1;
+    }
+
+    let written = resident(&amp;mapping)?;
+
+    let value = mapping[20 * PAGE_SIZE];
+    let read = resident(&amp;mapping)?;
+
+    println!("64 pages mapped: {before} resident");
+    println!("after writing to 10 pages: {written} resident");
+    println!("after reading 1 more page: {read} resident, the byte read is {value}");
+
+    Ok(())
+}
+
+/// Returns the permission column of the line in `/proc/self/maps` that starts
+/// at the address of a mapping.
+fn permissions(mapping: &amp;[u8]) -&gt; io::Result&lt;String&gt; {
+    let start = format!("{:x}-", mapping.as_ptr() as usize);
+
+    fs::read_to_string("/proc/self/maps")?
+        .lines()
+        .filter(|line| line.starts_with(&amp;start))
+        .find_map(|line| line.split_whitespace().nth(1))
+        .map(str::to_owned)
+        .ok_or_else(|| io::ErrorKind::NotFound.into())
+}
+
+/// Reads the permissions of a mapping before and after mprotect removes the
+/// permission to write.
+fn protect() -&gt; io::Result&lt;()&gt; {
+    let mapping = MmapMut::map_anon(PAGE_SIZE)?;
+    let before = permissions(&amp;mapping)?;
+
+    let mapping = mapping.make_read_only()?;
+    let after = permissions(&amp;mapping)?;
+
+    println!("permissions of the mapping: {before}, after mprotect: {after}");
+
+    Ok(())
+}
+
+/// Maps a file that holds "hello", writes "HELLO" through the mapping, unmaps
+/// it, and returns the contents of the file.
+fn through_mapping(path: &amp;Path, shared: bool) -&gt; io::Result&lt;String&gt; {
+    fs::write(path, "hello")?;
+
+    let file = OpenOptions::new().read(true).write(true).open(path)?;
+    let options = MmapOptions::new();
+
+    // SAFETY: mapping a file is unsafe in Rust because another process could
+    // change the file while the slice exists. This file is in a directory the
+    // program has just created, and nothing else opens it.
+    let mut mapping = unsafe {
+        if shared {
+            options.map_mut(&amp;file)?
+        } else {
+            options.map_copy(&amp;file)?
+        }
+    };
+
+    mapping.copy_from_slice(b"HELLO");
+    drop(mapping);
+
+    fs::read_to_string(path)
+}
+
+/// Compares a private file mapping with a shared one.
+fn files() -&gt; io::Result&lt;()&gt; {
+    let dir = std::env::temp_dir().join(format!("vmfacts-{}", std::process::id()));
+    let path = dir.join("file");
+
+    fs::create_dir_all(&amp;dir)?;
+
+    for (name, shared) in [("private", false), ("shared", true)] {
+        let text = through_mapping(&amp;path, shared)?;
+        println!("HELLO written through a {name} file mapping: the file holds {text:?}");
+    }
+
+    fs::remove_dir_all(&amp;dir)
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    demand()?;
+    protect()?;
+    files()
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 7.27</b> The complete <code>vmmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/vmmodel/main.go">code/go/vmmodel/main.go</a></p>
+
+<pre><code class="language-go">// Command vmmodel models an address space: a list of mappings, a page table
+// that is filled on demand by page faults, a shared zero page, and
+// copy-on-write after fork.
+//
+// Run it from code/go with:
+//
+//	go run ./vmmodel
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+
+const pageSize = 4096
+
+// errSegv is the result of an access that no mapping allows. The kernel
+// sends the process the signal SIGSEGV.
+var errSegv = errors.New("SIGSEGV")
+
+// A frame is a page of physical memory. refs counts the page table entries
+// that refer to it.
+type frame struct {
+	data [pageSize]byte
+	refs int
+}
+
+// memory is the physical memory shared by all address spaces: the number of
+// frames allocated, and the frame of zeros that every read of an untouched
+// page maps.
+type memory struct {
+	frames int
+	zero   *frame
+}
+
+func (m *memory) allocate() *frame {
+	m.frames++
+
+	return &amp;frame{refs: 1}
+}
+
+// A mapping is a range of virtual pages and the access it permits.
+type mapping struct {
+	start, pages int
+	writable     bool
+}
+
+// An entry is a page table entry: the frame behind a virtual page, and
+// whether the processor may write to it without a fault.
+type entry struct {
+	frame    *frame
+	writable bool
+}
+
+// A space is the address space of a process.
+type space struct {
+	memory   *memory
+	mappings []mapping
+	table    map[int]entry
+	faults   int
+	nextPage int
+}
+
+func newSpace() *space {
+	return &amp;space{
+		memory:   &amp;memory{zero: &amp;frame{refs: 1}},
+		table:    map[int]entry{},
+		nextPage: 16,
+	}
+}
+
+
+// mmap records a new mapping and returns its address. It allocates no frame
+// and writes no page table entry.
+func (s *space) mmap(pages int, writable bool) int {
+	start := s.nextPage
+	s.mappings = append(s.mappings, mapping{start: start, pages: pages, writable: writable})
+	s.nextPage += pages + 1
+
+	return start * pageSize
+}
+
+// find returns the mapping that contains a page.
+func (s *space) find(page int) (mapping, bool) {
+	for _, m := range s.mappings {
+		if page &gt;= m.start &amp;&amp; page &lt; m.start+m.pages {
+			return m, true
+		}
+	}
+
+	return mapping{}, false
+}
+
+
+// read returns the byte at an address. The processor uses the page table
+// entry when one exists, and faults when none does.
+func (s *space) read(address int) (byte, error) {
+	page, offset := address/pageSize, address%pageSize
+
+	if _, present := s.table[page]; !present {
+		if err := s.fault(page, false); err != nil {
+			return 0, err
+		}
+	}
+
+	return s.table[page].frame.data[offset], nil
+}
+
+// write stores a byte at an address. It faults when the page has no entry or
+// the entry does not permit writing.
+func (s *space) write(address int, value byte) error {
+	page, offset := address/pageSize, address%pageSize
+
+	if !s.table[page].writable {
+		if err := s.fault(page, true); err != nil {
+			return err
+		}
+	}
+
+	s.table[page].frame.data[offset] = value
+
+	return nil
+}
+
+
+// fault is the kernel's page fault handler. It checks the access against
+// the mappings and then repairs the page table entry so that the access can
+// be repeated.
+func (s *space) fault(page int, write bool) error {
+	m, ok := s.find(page)
+
+	if !ok || write &amp;&amp; !m.writable {
+		return errSegv
+	}
+
+	s.faults++
+	e, present := s.table[page]
+
+	switch {
+	case !write:
+		// A read of an untouched page maps the shared zero frame.
+		s.memory.zero.refs++
+		s.table[page] = entry{frame: s.memory.zero}
+
+	case !present:
+		// A write to an untouched page gets a new frame of zeros.
+		s.table[page] = entry{frame: s.memory.allocate(), writable: true}
+
+	case e.frame.refs == 1:
+		// The frame has no other user. Writing is enabled in place.
+		s.table[page] = entry{frame: e.frame, writable: true}
+
+	default:
+		// The frame is shared. The writer gets a private copy.
+		private := s.memory.allocate()
+		private.data = e.frame.data
+		e.frame.refs--
+		s.table[page] = entry{frame: private, writable: true}
+	}
+
+	return nil
+}
+
+
+// fork returns a child with the same mappings and a page table that refers
+// to the same frames. Every entry is made read-only in the parent and in the
+// child, so that the first write by either causes a fault.
+func (s *space) fork() *space {
+	child := &amp;space{
+		memory:   s.memory,
+		mappings: append([]mapping(nil), s.mappings...),
+		table:    map[int]entry{},
+		nextPage: s.nextPage,
+	}
+
+	for page, e := range s.table {
+		e.frame.refs++
+		e.writable = false
+		s.table[page], child.table[page] = e, e
+	}
+
+	return child
+}
+
+
+// report prints a step with the fault count of a space and the number of
+// frames allocated.
+func (s *space) report(step string) {
+	fmt.Printf("%-34s faults %d, frames %d\n", step, s.faults, s.memory.frames)
+}
+
+func run() error {
+	parent := newSpace()
+	base := parent.mmap(4, true)
+	parent.report("mmap of 4 pages:")
+
+	if err := parent.write(base, 'a'); err != nil {
+		return err
+	}
+
+	parent.report("write to page 0:")
+
+	value, err := parent.read(base + pageSize)
+
+	if err != nil {
+		return err
+	}
+
+	parent.report(fmt.Sprintf("read of page 1, value %d:", value))
+
+	if err := parent.write(base+pageSize, 'x'); err != nil {
+		return err
+	}
+
+	parent.report("write to page 1:")
+
+	child := parent.fork()
+	child.report("fork, in the child:")
+
+	if err := child.write(base, 'b'); err != nil {
+		return err
+	}
+
+	child.report("child writes page 0:")
+
+	if err := parent.write(base, 'c'); err != nil {
+		return err
+	}
+
+	parent.report("parent writes page 0:")
+
+	inParent, err := parent.read(base)
+
+	if err != nil {
+		return err
+	}
+
+	inChild, err := child.read(base)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("page 0 holds %q in the parent and %q in the child\n", inParent, inChild)
+
+	fmt.Printf("write outside every mapping: %v\n", parent.write(base+100*pageSize, 1))
+
+	readOnly := parent.mmap(1, false)
+	fmt.Printf("write to a read-only mapping: %v\n", parent.write(readOnly, 1))
+
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 7.28</b> The complete <code>vmmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/vmmodel/src/main.rs">code/rust/vmmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models an address space: a list of mappings, a page table that is filled
+//! on demand by page faults, a shared zero page, and copy-on-write after
+//! fork.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p vmmodel
+//! ```
+
+use std::cell::Cell;
+use std::collections::HashMap;
+use std::fmt;
+use std::rc::Rc;
+
+const PAGE_SIZE: usize = 4096;
+
+/// The result of an access that no mapping allows. The kernel sends the
+/// process the signal `SIGSEGV`.
+#[derive(Debug)]
+struct Segv;
+
+impl fmt::Display for Segv {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("SIGSEGV")
+    }
+}
+
+/// A page of physical memory. The reference count of the `Rc` is the number
+/// of page table entries that refer to it.
+type Frame = Rc&lt;[u8; PAGE_SIZE]&gt;;
+
+/// The physical memory shared by all address spaces: the number of frames
+/// allocated, and the frame of zeros that every read of an untouched page
+/// maps.
+struct Memory {
+    frames: Cell&lt;usize&gt;,
+    zero: Frame,
+}
+
+impl Memory {
+    fn allocate(&amp;self, contents: [u8; PAGE_SIZE]) -&gt; Frame {
+        self.frames.set(self.frames.get() + 1);
+
+        Rc::new(contents)
+    }
+}
+
+/// A range of virtual pages and the access it permits.
+#[derive(Clone, Copy)]
+struct Mapping {
+    start: usize,
+    pages: usize,
+    writable: bool,
+}
+
+/// A page table entry: the frame behind a virtual page, and whether the
+/// processor may write to it without a fault.
+#[derive(Clone)]
+struct Entry {
+    frame: Frame,
+    writable: bool,
+}
+
+/// The address space of a process.
+struct Space {
+    memory: Rc&lt;Memory&gt;,
+    mappings: Vec&lt;Mapping&gt;,
+    table: HashMap&lt;usize, Entry&gt;,
+    faults: usize,
+    next_page: usize,
+}
+
+impl Space {
+    fn new() -&gt; Space {
+        let memory = Memory {
+            frames: Cell::new(0),
+            zero: Rc::new([0; PAGE_SIZE]),
+        };
+
+        Space {
+            memory: Rc::new(memory),
+            mappings: Vec::new(),
+            table: HashMap::new(),
+            faults: 0,
+            next_page: 16,
+        }
+    }
+}
+
+impl Space {
+    /// Records a new mapping and returns its address. It allocates no frame
+    /// and writes no page table entry.
+    fn mmap(&amp;mut self, pages: usize, writable: bool) -&gt; usize {
+        let start = self.next_page;
+
+        self.mappings.push(Mapping {
+            start,
+            pages,
+            writable,
+        });
+        self.next_page += pages + 1;
+
+        start * PAGE_SIZE
+    }
+
+    /// Returns the mapping that contains a page.
+    fn find(&amp;self, page: usize) -&gt; Option&lt;Mapping&gt; {
+        self.mappings
+            .iter()
+            .copied()
+            .find(|mapping| (mapping.start..mapping.start + mapping.pages).contains(&amp;page))
+    }
+}
+
+impl Space {
+    /// Returns the byte at an address. The processor uses the page table
+    /// entry when one exists, and faults when none does.
+    fn read(&amp;mut self, address: usize) -&gt; Result&lt;u8, Segv&gt; {
+        let (page, offset) = (address / PAGE_SIZE, address % PAGE_SIZE);
+
+        if !self.table.contains_key(&amp;page) {
+            self.fault(page, false)?;
+        }
+
+        self.table
+            .get(&amp;page)
+            .map(|entry| entry.frame[offset])
+            .ok_or(Segv)
+    }
+
+    /// Stores a byte at an address. It faults when the page has no entry or
+    /// the entry does not permit writing.
+    fn write(&amp;mut self, address: usize, value: u8) -&gt; Result&lt;(), Segv&gt; {
+        let (page, offset) = (address / PAGE_SIZE, address % PAGE_SIZE);
+
+        if !self.table.get(&amp;page).is_some_and(|entry| entry.writable) {
+            self.fault(page, true)?;
+        }
+
+        let entry = self.table.get_mut(&amp;page).ok_or(Segv)?;
+
+        // A writable entry is the only user of its frame, so `make_mut`
+        // returns the frame itself.
+        Rc::make_mut(&amp;mut entry.frame)[offset] = value;
+
+        Ok(())
+    }
+}
+
+impl Space {
+    /// The kernel's page fault handler. It checks the access against the
+    /// mappings and then repairs the page table entry so that the access can
+    /// be repeated.
+    fn fault(&amp;mut self, page: usize, write: bool) -&gt; Result&lt;(), Segv&gt; {
+        let mapping = self.find(page).ok_or(Segv)?;
+
+        if write &amp;&amp; !mapping.writable {
+            return Err(Segv);
+        }
+
+        self.faults += 1;
+
+        let entry = match (write, self.table.remove(&amp;page)) {
+            // A read of an untouched page maps the shared zero frame.
+            (false, _) =&gt; Entry {
+                frame: Rc::clone(&amp;self.memory.zero),
+                writable: false,
+            },
+
+            // A write to an untouched page gets a new frame of zeros.
+            (true, None) =&gt; Entry {
+                frame: self.memory.allocate([0; PAGE_SIZE]),
+                writable: true,
+            },
+
+            // The frame has no other user. Writing is enabled in place.
+            (true, Some(entry)) if Rc::strong_count(&amp;entry.frame) == 1 =&gt; Entry {
+                frame: entry.frame,
+                writable: true,
+            },
+
+            // The frame is shared. The writer gets a private copy.
+            (true, Some(entry)) =&gt; Entry {
+                frame: self.memory.allocate(*entry.frame),
+                writable: true,
+            },
+        };
+
+        self.table.insert(page, entry);
+
+        Ok(())
+    }
+}
+
+impl Space {
+    /// Returns a child with the same mappings and a page table that refers to
+    /// the same frames. Every entry is made read-only in the parent and in
+    /// the child, so that the first write by either causes a fault.
+    fn fork(&amp;mut self) -&gt; Space {
+        for entry in self.table.values_mut() {
+            entry.writable = false;
+        }
+
+        Space {
+            memory: Rc::clone(&amp;self.memory),
+            mappings: self.mappings.clone(),
+            table: self.table.clone(),
+            faults: 0,
+            next_page: self.next_page,
+        }
+    }
+}
+
+impl Space {
+    /// Prints a step with the fault count of a space and the number of frames
+    /// allocated.
+    fn report(&amp;self, step: &amp;str) {
+        println!(
+            "{step:&lt;34} faults {}, frames {}",
+            self.faults,
+            self.memory.frames.get()
+        );
+    }
+}
+
+fn run() -&gt; Result&lt;(), Segv&gt; {
+    let mut parent = Space::new();
+    let base = parent.mmap(4, true);
+    parent.report("mmap of 4 pages:");
+
+    parent.write(base, b'a')?;
+    parent.report("write to page 0:");
+
+    let value = parent.read(base + PAGE_SIZE)?;
+    parent.report(&amp;format!("read of page 1, value {value}:"));
+
+    parent.write(base + PAGE_SIZE, b'x')?;
+    parent.report("write to page 1:");
+
+    let mut child = parent.fork();
+    child.report("fork, in the child:");
+
+    child.write(base, b'b')?;
+    child.report("child writes page 0:");
+
+    parent.write(base, b'c')?;
+    parent.report("parent writes page 0:");
+
+    println!(
+        "page 0 holds {:?} in the parent and {:?} in the child",
+        char::from(parent.read(base)?),
+        char::from(child.read(base)?)
+    );
+
+    if let Err(error) = parent.write(base + 100 * PAGE_SIZE, 1) {
+        println!("write outside every mapping: {error}");
+    }
+
+    let read_only = parent.mmap(1, false);
+
+    if let Err(error) = parent.write(read_only, 1) {
+        println!("write to a read-only mapping: {error}");
+    }
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(error) = run() {
+        println!("{error}");
+    }
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Each process has its own virtual addresses, translated to physical frames through a
+page table.</li>
+<li><code>mmap</code> records a mapping and allocates nothing. A page receives a frame at its first
+access, through a page fault.</li>
+<li>A read of an untouched anonymous page maps a shared frame of zeros. The first write
+replaces it with a private frame.</li>
+<li>A write through a shared file mapping reaches the file. A write through a private
+mapping changes a copy.</li>
+<li><code>fork</code> copies the page table and shares the frames read-only. A frame is copied when
+one side first writes to it.</li>
+<li>An access that no mapping permits ends in <code>SIGSEGV</code>.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>mmap(2)</code>, <code>mprotect(2)</code> and <code>proc(5)</code> for <code>pagemap</code> and <code>maps</code>, Linux manual pages:
+<a href="https://man7.org/linux/man-pages/man2/mmap.2.html">https://man7.org/linux/man-pages/man2/mmap.2.html</a></li>
+<li><em>Examining Process Page Tables</em>, Linux kernel documentation:
+<a href="https://www.kernel.org/doc/html/v5.15/admin-guide/mm/pagemap.html">https://www.kernel.org/doc/html/v5.15/admin-guide/mm/pagemap.html</a></li>
+<li>M. Gorman, <em>Understanding the Linux Virtual Memory Manager</em>, Prentice Hall, 2004.</li>
+<li><code>mm/memory.c</code> and <code>mm/mmap.c</code>, Linux 5.15:
+<a href="https://elixir.bootlin.com/linux/v5.15/source/mm/memory.c">https://elixir.bootlin.com/linux/v5.15/source/mm/memory.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="06-cpu-scheduling.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="08-the-page-cache.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="06-cpu-scheduling.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="08-the-page-cache.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

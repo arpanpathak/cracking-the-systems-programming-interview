@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 460" width="480" height="460" role="img" aria-label="The line sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers is split at spaces into 10 words. The words form 2 commands. Command 1 has the arguments sort -rn, the input file numbers, and no output file. Command 2 has the arguments head -n 2, no input file, the output file numbers, and append set.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="460" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">From a line to a pipeline</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The parser turns words into a list of commands.</text>
+  <text x="240.0" y="104.0" class="mono strong" text-anchor="middle" xml:space="preserve">sort -rn &lt; numbers | head -n 2 &gt;&gt; numbers</text>
+  <path class="wire" d="M240,114 L240,144" marker-end="url(#head)"/>
+  <rect x="183.5" y="120.0" width="113.0" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="240.0" y="132.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">split at spaces</text>
+  <rect x="32.0" y="144.0" width="66.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="65.0" y="163.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">sort</text>
+  <rect x="104.0" y="144.0" width="57.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="132.5" y="163.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">-rn</text>
+  <rect x="167.0" y="144.0" width="39.0" height="30.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="186.5" y="163.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">&lt;</text>
+  <rect x="212.0" y="144.0" width="93.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="258.5" y="163.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">numbers</text>
+  <rect x="311.0" y="144.0" width="39.0" height="30.0" rx="8" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="330.5" y="163.0" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">|</text>
+  <rect x="32.0" y="184.0" width="66.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="65.0" y="203.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">head</text>
+  <rect x="104.0" y="184.0" width="48.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="128.0" y="203.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">-n</text>
+  <rect x="158.0" y="184.0" width="39.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="177.5" y="203.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">2</text>
+  <rect x="203.0" y="184.0" width="48.0" height="30.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="227.0" y="203.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">&gt;&gt;</text>
+  <rect x="257.0" y="184.0" width="93.0" height="30.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="303.5" y="203.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">numbers</text>
+  <path class="wire" d="M240,224 L240,243 Q240,252 231,252 L141,252 Q132,252 132,261 L132,274" marker-end="url(#head)"/>
+  <path class="wire" d="M240,224 L240,243 Q240,252 249,252 L339,252 Q348,252 348,261 L348,274" marker-end="url(#head)"/>
+  <rect x="32.0" y="274.0" width="200.0" height="118.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="274.0" width="200.0" height="28.0" rx="10" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="44.0" y="293.0" class="mono strong" text-anchor="start" xml:space="preserve">command 1</text>
+  <text x="44.0" y="324.0" class="mono" text-anchor="start" xml:space="preserve">args    sort -rn</text>
+  <text x="44.0" y="343.0" class="mono" text-anchor="start" xml:space="preserve">input   numbers</text>
+  <text x="44.0" y="362.0" class="mono" text-anchor="start" xml:space="preserve">output  (none)</text>
+  <text x="44.0" y="381.0" class="mono" text-anchor="start" xml:space="preserve">append  false</text>
+  <rect x="248.0" y="274.0" width="200.0" height="118.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="248.0" y="274.0" width="200.0" height="28.0" rx="10" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="260.0" y="293.0" class="mono strong" text-anchor="start" xml:space="preserve">command 2</text>
+  <text x="260.0" y="324.0" class="mono" text-anchor="start" xml:space="preserve">args    head -n 2</text>
+  <text x="260.0" y="343.0" class="mono" text-anchor="start" xml:space="preserve">input   (none)</text>
+  <text x="260.0" y="362.0" class="mono" text-anchor="start" xml:space="preserve">output  numbers</text>
+  <text x="260.0" y="381.0" class="mono" text-anchor="start" xml:space="preserve">append  true</text>
+  <text x="32.0" y="422.0" class="note" text-anchor="start" xml:space="preserve">A | starts a new command. A redirection operator takes the next word</text>
+  <text x="32.0" y="439.0" class="note" text-anchor="start" xml:space="preserve">as a file name. Every other word is an argument.</text>
+</svg>

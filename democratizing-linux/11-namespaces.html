@@ -1,0 +1,1807 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Namespaces - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/11-namespaces.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch11.svg" alt="3 cats sit in 3 cardboard boxes. Every box is marked number 1, and each cat is sure it is the first. An owl on a branch above can see all 3.">
+<h1 id="namespaces"><a class="header" href="#namespaces">Namespaces</a></h1>
+<p>A namespace is a kernel object that gives a group of processes their own instance of a
+global resource: their own process numbers, their own host name, their own mounted file
+systems, or their own network interfaces. Processes inside a namespace see and change
+the instance of that namespace, and processes outside are unaffected. Namespaces are
+the isolation half of a container. Chapter 12 covers the other half, limits.</p>
+<p>In this chapter, we will learn how a process enters a new namespace and what changes
+for it. We will first measure a child in new user, UTS and PID namespaces with
+<code>nsfacts</code>. Then we will write <code>nsmodel</code>, a model of nested PID namespaces and of the
+UTS namespace.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the kinds of namespace and what each isolates</li>
+<li>how to see the namespaces of a process under <code>/proc</code></li>
+<li>the kernel structures: <code>struct nsproxy</code>, <code>struct pid</code> and <code>struct upid</code></li>
+<li>how a process is placed in a new namespace: <code>clone</code> flags, <code>unshare</code> and <code>setns</code></li>
+<li>the user namespace: why an unprivileged user can be user 0 inside</li>
+<li>the PID namespace: a process has a number at every level</li>
+<li>which processes a PID namespace can see</li>
+<li>the UTS namespace and the host name</li>
+<li>what the mount and network namespaces isolate</li>
+</ul>
+</div>
+
+<h2 id="the-kinds-of-namespace"><a class="header" href="#the-kinds-of-namespace">The kinds of namespace</a></h2>
+<p>Linux 5.15 has 8 kinds of namespace. Every process is in exactly 1 namespace of each
+kind, and a child starts in the namespaces of its parent. On a system without containers
+all processes share 1 namespace of each kind, and the resources appear global.</p>
+<figure>
+<img src="figures/namespace-kinds.svg" alt="The 8 kinds of namespace and what each isolates: pid, process numbers; mnt, mounted file systems; uts, host name; net, interfaces, ports and routes; user, user and group numbers; ipc, shared memory and queues; cgroup, the control group root; time, clock offsets.">
+<figcaption><b>Figure 11.1</b> The kinds of namespace. The name is the entry under <code>/proc/&lt;pid&gt;/ns</code>.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Isolates</th><th>A process in a new one sees</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pid</code></td><td>process numbers</td><td>only the processes of the namespace, numbered from 1</td></tr>
+<tr><td><code>mnt</code></td><td>the list of mounted file systems</td><td>a copy of the parent’s mounts, which it can change privately (<a href="13-building-a-container.html">chapter 13</a>)</td></tr>
+<tr><td><code>uts</code></td><td>the host name</td><td>a copy of the host name, which it can change</td></tr>
+<tr><td><code>net</code></td><td>network interfaces, addresses, routes, ports</td><td>a loopback interface that is down, and nothing else</td></tr>
+<tr><td><code>user</code></td><td>user and group numbers, and capabilities</td><td>its own numbering of users, mapped to the numbers outside</td></tr>
+<tr><td><code>ipc</code></td><td>shared memory segments and message queues</td><td>none of the objects outside</td></tr>
+<tr><td><code>cgroup</code></td><td>the root of the control group tree</td><td>its own group as the root (<a href="12-control-groups.html">chapter 12</a>)</td></tr>
+<tr><td><code>time</code></td><td>the offsets of the monotonic and boot clocks</td><td>clocks that can be shifted</td></tr>
+</tbody>
+</table>
+</div>
+<p>The kernel shows the namespaces of a process as symbolic links:</p>
+<pre><code class="language-console">$ ls -l /proc/self/ns
+cgroup -&gt; cgroup:[4026531835]
+ipc -&gt; ipc:[4026531839]
+mnt -&gt; mnt:[4026531841]
+net -&gt; net:[4026531840]
+pid -&gt; pid:[4026531836]
+pid_for_children -&gt; pid:[4026531836]
+time -&gt; time:[4026531834]
+user -&gt; user:[4026531837]
+uts -&gt; uts:[4026531838]
+</code></pre>
+<p>The number in brackets identifies the namespace. Processes that show the same number for
+a kind are in the same namespace of that kind. <code>pid_for_children</code> is the PID namespace
+that children of the process will be created in, which can differ from the one the
+process itself is in.</p>
+<h2 id="the-kernels-structures"><a class="header" href="#the-kernels-structures">The kernel’s structures</a></h2>
+<p>A task refers to its namespaces through <code>struct nsproxy</code>. This is the complete
+definition from <code>include/linux/nsproxy.h</code> of Linux 5.15, with comments added.</p>
+<pre><code class="language-c">struct nsproxy {
+        atomic_t count;                        /* tasks that share this nsproxy */
+        struct uts_namespace *uts_ns;
+        struct ipc_namespace *ipc_ns;
+        struct mnt_namespace *mnt_ns;
+        struct pid_namespace *pid_ns_for_children;
+        struct net *net_ns;
+        struct time_namespace *time_ns;
+        struct time_namespace *time_ns_for_children;
+        struct cgroup_namespace *cgroup_ns;
+};
+</code></pre>
+<p>The structure is a set of pointers, 1 for each kind. Processes that are in the same
+namespaces share a single <code>nsproxy</code>. The user namespace is absent from the list: it is
+reached through the credentials of the task, <code>task-&gt;cred-&gt;user_ns</code>, because it decides
+what the task is permitted to do.</p>
+<p>The PID namespace of a task is recorded in a different place, together with its
+numbers. These are the definitions from <code>include/linux/pid.h</code> and
+<code>include/linux/pid_namespace.h</code>.</p>
+<pre><code class="language-c">struct upid {
+        int nr;                                /* the number in 1 namespace */
+        struct pid_namespace *ns;              /* that namespace */
+};
+
+struct pid {
+        unsigned int level;                    /* depth of the task's PID namespace */
+        struct upid numbers[1];                /* 1 entry per level, 0 to level */
+        /* ... */
+};
+
+struct pid_namespace {
+        struct task_struct *child_reaper;      /* its process 1, which adopts orphans */
+        unsigned int level;                    /* 0 for the root namespace */
+        struct pid_namespace *parent;          /* the enclosing namespace */
+        struct user_namespace *user_ns;        /* the user namespace that owns it */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>struct pid</code></td><td>What <code>task_struct.thread_pid</code> points to: the identity of a task in every PID namespace that can see it.</td></tr>
+<tr><td><code>numbers</code></td><td>An array with <code>level + 1</code> entries. <code>numbers[0]</code> is the number in the root namespace, and <code>numbers[level]</code> is the number in the task’s own namespace.</td></tr>
+<tr><td><code>child_reaper</code></td><td>The first process of the namespace. Orphans of the namespace are given to it (<a href="03-processes.html">chapter 3</a>).</td></tr>
+<tr><td><code>parent</code>, <code>level</code></td><td>PID namespaces form a tree, and <code>level</code> is the depth in it.</td></tr>
+<tr><td><code>user_ns</code></td><td>Every namespace is owned by a user namespace. A process needs privilege in the owner to change the namespace.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/nsproxy-map.svg" alt="How a task refers to its namespaces. struct task_struct has nsproxy, a pointer to its user namespace through cred, and thread_pid. struct nsproxy has a pointer for each of the UTS, IPC, mount, network, cgroup and time namespaces, and pid_ns_for_children. struct pid has the level of its PID namespace and an array numbers with a struct upid for each level, holding the number at that level and the namespace.">
+<figcaption><b>Figure 11.2</b> A task, its <code>nsproxy</code>, and its numbers in each PID namespace.</figcaption>
+</figure>
+<h2 id="entering-a-namespace"><a class="header" href="#entering-a-namespace">Entering a namespace</a></h2>
+<p>A process gets into a namespace in 3 ways.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>clone</code> with flags such as <code>CLONE_NEWUTS</code></td><td>creates a child that starts in new namespaces of the given kinds</td></tr>
+<tr><td><code>unshare</code> with the same flags</td><td>moves the calling process into new namespaces</td></tr>
+<tr><td><code>setns</code> with a descriptor for <code>/proc/&lt;pid&gt;/ns/&lt;kind&gt;</code></td><td>moves the calling process into an existing namespace; this is how <code>docker exec</code> enters a running container</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/ns-create.svg" alt="What clone does with namespace flags. The parent calls clone with CLONE_NEWUTS and CLONE_NEWPID. The kernel checks that the caller has CAP_SYS_ADMIN in its user namespace. It creates new namespace objects; the UTS one starts as a copy of the parent&#39;s. It builds a new struct nsproxy with new pointers for those 2 kinds and the old pointers for the rest. The child starts as pid 1 in the new PID namespace. The parent keeps its own nsproxy.">
+<figcaption><b>Figure 11.3</b> <code>clone</code> with namespace flags gives the child a new <code>nsproxy</code>.</figcaption>
+</figure>
+<p>A namespace exists for as long as something refers to it: a process that is in it, or an
+open descriptor for its <code>/proc</code> link. When the last process leaves, the namespace is
+destroyed.</p>
+<h3 id="user-namespaces"><a class="header" href="#user-namespaces">User namespaces</a></h3>
+<p>Creating a namespace requires a <em>capability</em>. Linux divides the power of the
+administrator into separate capabilities, and the one needed here is <code>CAP_SYS_ADMIN</code>.
+There is a single exception: any user may create a <em>user namespace</em>. Inside it, the kernel maps user numbers. The creator can map user 0
+inside to its own user number outside, and it then holds all privileges over the
+resources that the user namespace owns, which include the other namespaces created
+together with it. Toward everything outside, it remains the unprivileged user it was.
+This is what lets an ordinary user start a container.</p>
+<p>The mapping is written to <code>/proc/&lt;pid&gt;/uid_map</code>, a line of 3 numbers: the first user
+number inside, the first user number outside, and the count of numbers mapped. In the
+root namespace every number maps to itself:</p>
+<pre><code class="language-console">$ cat /proc/self/uid_map
+         0          0 4294967295
+</code></pre>
+<p>In the namespace that <code>nsfacts</code> creates below, the line is <code>0 1000 1</code>: user 0 inside is
+user 1000 outside, and no other number is mapped.</p>
+<figure>
+<img src="figures/uid-map.svg" alt="A user namespace with the mapping 0 1000 1. Inside the namespace the process is user 0, root, with all capabilities, and other users are unmapped and shown as 65534. User 0 inside maps to user 1000 outside, an ordinary user on the host.">
+<figcaption><b>Figure 11.4</b> The user mapping of an unprivileged container.</figcaption>
+</figure>
+<p>The capabilities a process holds inside a user namespace are checked against the owner
+of the object it acts on. It may set the host name of a UTS namespace that its user
+namespace owns. It may not set the clock of the machine, mount a disk, or read a file
+that user 1000 cannot read, because those belong to the root user namespace.</p>
+<div class="crab crab-cute">
+<p>User 0 inside a user namespace is an ordinary user outside it. The privilege ends at the edge of the namespace.</p>
+</div>
+
+<h2 id="measuring-namespaces"><a class="header" href="#measuring-namespaces">Measuring namespaces</a></h2>
+<p><code>nsfacts</code> uses <code>golang.org/x/sys/unix</code> in Go and the <code>nix</code> crate with the <code>hostname</code>,
+<code>sched</code> and <code>user</code> features in Rust.</p>
+<pre><code class="language-console">$ cargo new nsfacts
+$ cargo add -p nsfacts nix --features hostname,sched,user
+</code></pre>
+<p>The kernel shows the namespaces of a process as symbolic links under <code>/proc/&lt;pid&gt;/ns</code>.
+The target of a link, such as <code>uts:[4026531838]</code>, names the namespace, and processes
+with equal targets are in the same namespace.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.1</b> The imports of <code>nsfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
+
+	"golang.org/x/sys/unix"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.2</b> The imports of <code>nsfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::HashMap;
+use std::env;
+use std::fs;
+use std::io;
+use std::process::{self, Command};
+
+use nix::sched::{CloneFlags, unshare};
+use nix::unistd::{getgid, gethostname, getpid, getuid, sethostname};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.3</b> Reading the namespaces of a process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+<pre><code class="language-go">// kinds are the namespace types of Linux 5.15, as named under /proc/&lt;pid&gt;/ns.
+var kinds = []string{"cgroup", "ipc", "mnt", "net", "pid", "time", "user", "uts"}
+
+// namespaces returns the identity of each namespace of a process. The kernel
+// shows it as the target of a symbolic link, such as "uts:[4026531838]".
+// Processes are in the same namespace when the targets are equal.
+func namespaces(pid string) (map[string]string, error) {
+	ids := map[string]string{}
+
+	for _, kind := range kinds {
+		id, err := os.Readlink("/proc/" + pid + "/ns/" + kind)
+
+		if err != nil {
+			return nil, err
+		}
+
+		ids[kind] = id
+	}
+
+	return ids, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.4</b> Reading the namespaces of a process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The namespace types of Linux 5.15, as named under `/proc/&lt;pid&gt;/ns`.
+const KINDS: [&amp;str; 8] = ["cgroup", "ipc", "mnt", "net", "pid", "time", "user", "uts"];
+
+/// Returns the identity of each namespace of a process. The kernel shows it
+/// as the target of a symbolic link, such as `uts:[4026531838]`.
+/// Processes are in the same namespace when the targets are equal.
+fn namespaces(pid: &amp;str) -&gt; io::Result&lt;HashMap&lt;&amp;'static str, String&gt;&gt; {
+    KINDS
+        .iter()
+        .map(|&amp;kind| {
+            let id = fs::read_link(format!("/proc/{pid}/ns/{kind}"))?;
+
+            Ok((kind, id.to_string_lossy().into_owned()))
+        })
+        .collect()
+}
+
+fn hostname() -&gt; io::Result&lt;String&gt; {
+    Ok(gethostname()?.to_string_lossy().into_owned())
+}</code></pre>
+<p>The program runs itself again as a child with the argument <code>inside</code>. The child tries to
+set the host name to <code>box</code> and prints what it sees.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.5</b> What the child reports, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+<pre><code class="language-go">// name returns the symbolic name of a system call error, such as EPERM.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+// inside runs in the child. It tries to change the host name, and prints
+// what it sees as key=value lines for the parent to read.
+func inside() error {
+	outcome := "succeeds"
+
+	if err := unix.Sethostname([]byte("box")); err != nil {
+		outcome = "fails with " + name(err)
+	}
+
+	host, err := os.Hostname()
+
+	if err != nil {
+		return err
+	}
+
+	ids, err := namespaces("self")
+
+	if err != nil {
+		return err
+	}
+
+	uidMap, err := os.ReadFile("/proc/self/uid_map")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("sethostname=%s\nhostname=%s\npid=%d\nuid=%d\n", outcome, host, os.Getpid(), os.Getuid())
+	fmt.Printf("map=%s\nuts=%s\npidns=%s\n", strings.Join(strings.Fields(string(uidMap)), " "), ids["uts"], ids["pid"])
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.6</b> What the child reports, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Runs in the child. It tries to change the host name, and prints what it
+/// sees as key=value lines for the parent to read.
+fn inside() -&gt; io::Result&lt;()&gt; {
+    let outcome = match sethostname("box") {
+        Ok(()) =&gt; "succeeds".to_owned(),
+        Err(error) =&gt; format!("fails with {error:?}"),
+    };
+
+    let ids = namespaces("self")?;
+    let uid_map = fs::read_to_string("/proc/self/uid_map")?;
+    let uid_map: Vec&lt;&amp;str&gt; = uid_map.split_whitespace().collect();
+
+    println!("sethostname={outcome}");
+    println!("hostname={}", hostname()?);
+    println!("pid={}", getpid());
+    println!("uid={}", getuid());
+    println!("map={}", uid_map.join(" "));
+    println!("uts={}", ids["uts"]);
+    println!("pidns={}", ids["pid"]);
+
+    Ok(())
+}</code></pre>
+<p>The child is started once in the parent’s namespaces and once in new user, UTS and PID
+namespaces. The languages create the namespaces differently. Go’s <code>SysProcAttr</code> passes
+the <code>clone</code> flags and the user mappings to the call that creates the child. <code>unshare</code> of
+a user namespace is refused in a process with several threads, which a Go program always
+is. The Rust program is single-threaded, so its helper process calls <code>unshare</code>, writes
+the mappings to <code>/proc/self/uid_map</code> and <code>/proc/self/gid_map</code>, and then starts the
+child.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.7</b> Starting the child in new namespaces, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+<pre><code class="language-go">// report runs this program again as a child and returns the lines the child
+// prints, as a map. With isolate set, the child is created in new user, UTS
+// and PID namespaces, and user 0 inside is mapped to the current user.
+func report(isolate bool) (map[string]string, error) {
+	child := exec.Command("/proc/self/exe", "inside")
+	child.Stderr = os.Stderr
+
+	if isolate {
+		child.SysProcAttr = &amp;syscall.SysProcAttr{
+			Cloneflags:  syscall.CLONE_NEWUSER | syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
+			UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
+			GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
+		}
+	}
+
+	output, err := child.Output()
+
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]string{}
+
+	for lines := bufio.NewScanner(strings.NewReader(string(output))); lines.Scan(); {
+		if key, value, ok := strings.Cut(lines.Text(), "="); ok {
+			seen[key] = value
+		}
+	}
+
+	return seen, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.8</b> Starting the child in new namespaces, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Moves this process into new user and UTS namespaces, maps user 0 inside to
+/// the current user, and runs the program again as a child. A new PID
+/// namespace applies to the children of the process that asks for it, so the
+/// child is the first process of that namespace.
+fn isolated() -&gt; io::Result&lt;()&gt; {
+    let (uid, gid) = (getuid(), getgid());
+
+    unshare(CloneFlags::CLONE_NEWUSER | CloneFlags::CLONE_NEWUTS | CloneFlags::CLONE_NEWPID)?;
+
+    fs::write("/proc/self/setgroups", "deny")?;
+    fs::write("/proc/self/uid_map", format!("0 {uid} 1"))?;
+    fs::write("/proc/self/gid_map", format!("0 {gid} 1"))?;
+
+    let status = Command::new("/proc/self/exe").arg("inside").status()?;
+
+    process::exit(if status.success() { 0 } else { 1 });
+}
+
+/// Runs this program again as a child and returns the lines the child prints,
+/// as a map. With `isolate` set, the child is created in new namespaces.
+fn report(isolate: bool) -&gt; io::Result&lt;HashMap&lt;String, String&gt;&gt; {
+    let mode = if isolate { "isolated" } else { "inside" };
+    let output = Command::new("/proc/self/exe").arg(mode).output()?;
+
+    let seen = String::from_utf8_lossy(&amp;output.stdout)
+        .lines()
+        .filter_map(|line| line.split_once('='))
+        .map(|(key, value)| (key.to_owned(), value.to_owned()))
+        .collect();
+
+    Ok(seen)
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.9</b> Comparing the child with the parent, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+<pre><code class="language-go">func run() error {
+	mine, err := namespaces("self")
+
+	if err != nil {
+		return err
+	}
+
+	name, err := os.Hostname()
+
+	if err != nil {
+		return err
+	}
+
+	for _, isolate := range []bool{false, true} {
+		seen, err := report(isolate)
+
+		if err != nil {
+			return err
+		}
+
+		after, err := os.Hostname()
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("child in new user, UTS and PID namespaces: %v\n", isolate)
+		fmt.Printf("  same UTS namespace as the parent %v, same PID namespace %v\n",
+			seen["uts"] == mine["uts"], seen["pidns"] == mine["pid"])
+		fmt.Printf("  sethostname %s; host name inside is \"box\" %v, outside unchanged %v\n",
+			seen["sethostname"], seen["hostname"] == "box", after == name)
+		fmt.Printf("  pid inside is 1 %v; uid inside is 0 %v\n", seen["pid"] == "1", seen["uid"] == "0")
+
+		if fields := strings.Fields(seen["map"]); isolate &amp;&amp; len(fields) == 3 {
+			fmt.Printf("  uid map: user 0 inside is user %s outside\n", fields[1])
+		}
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.10</b> Comparing the child with the parent, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn run() -&gt; io::Result&lt;()&gt; {
+    let mine = namespaces("self")?;
+    let name = hostname()?;
+
+    for isolate in [false, true] {
+        let seen = report(isolate)?;
+        let get = |key: &amp;str| seen.get(key).map_or("", String::as_str);
+
+        println!("child in new user, UTS and PID namespaces: {isolate}");
+        println!(
+            "  same UTS namespace as the parent {}, same PID namespace {}",
+            get("uts") == mine["uts"],
+            get("pidns") == mine["pid"]
+        );
+        println!(
+            "  sethostname {}; host name inside is \"box\" {}, outside unchanged {}",
+            get("sethostname"),
+            get("hostname") == "box",
+            hostname()? == name
+        );
+        println!(
+            "  pid inside is 1 {}; uid inside is 0 {}",
+            get("pid") == "1",
+            get("uid") == "0"
+        );
+
+        let map: Vec&lt;&amp;str&gt; = get("map").split_whitespace().collect();
+
+        if let (true, [_, outside, _]) = (isolate, map.as_slice()) {
+            println!("  uid map: user 0 inside is user {outside} outside");
+        }
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">child in new user, UTS and PID namespaces: false
+  same UTS namespace as the parent true, same PID namespace true
+  sethostname fails with EPERM; host name inside is "box" false, outside unchanged true
+  pid inside is 1 false; uid inside is 0 false
+child in new user, UTS and PID namespaces: true
+  same UTS namespace as the parent false, same PID namespace false
+  sethostname succeeds; host name inside is "box" true, outside unchanged true
+  pid inside is 1 true; uid inside is 0 true
+  uid map: user 0 inside is user 1000 outside
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>ordinary child: same namespaces</td><td>A child inherits the namespaces of its parent.</td></tr>
+<tr><td>ordinary child: <code>sethostname</code> fails with <code>EPERM</code></td><td>Changing the host name requires privilege, and the user has none.</td></tr>
+<tr><td>new namespaces: different UTS and PID namespace</td><td>The flags gave the child its own instances.</td></tr>
+<tr><td><code>sethostname</code> succeeds, and the host name outside is unchanged</td><td>The child is privileged over its own UTS namespace, and the change stays inside it.</td></tr>
+<tr><td>pid inside is 1</td><td>The first process of a PID namespace has number 1 there.</td></tr>
+<tr><td>uid inside is 0, mapped to 1000 outside</td><td>User 0 inside the user namespace is the ordinary user outside.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The measurement is clearer with the 2 points of view side by side. Nothing about the
+child process itself differs between the columns. What differs is the answer the kernel
+gives when it is asked.</p>
+<figure>
+<img src="figures/ns-views.svg" alt="A process in new namespaces seen from outside and from inside. Its process number is 565534 on the host and 1 inside. Its user is 1000 on the host and 0 inside. The host name is yahboom outside and box inside. It may set the host name inside and gets EPERM outside.">
+<figcaption><b>Figure 11.5</b> The child of <code>nsfacts</code>, as the host sees it and as it sees itself.</figcaption>
+</figure>
+<h2 id="pid-namespaces"><a class="header" href="#pid-namespaces">PID namespaces</a></h2>
+<p>PID namespaces are nested. A new PID namespace is a child of the namespace in which it
+was created, and a process in it has a process number in its own namespace and in every
+namespace above it, up to the root. The numbers are independent of each other.</p>
+<p>Visibility follows the nesting. A namespace sees the processes in itself and in the
+namespaces below it. It has no number for a process in a namespace above it or beside
+it, so it cannot name such a process in <code>kill</code> or find it under <code>/proc</code>.</p>
+<p>The first process of a PID namespace takes the role that process 1 has on the whole
+machine: it adopts the orphans of its namespace, and when it ends, the kernel ends every
+other process in the namespace.</p>
+<figure>
+<img src="figures/pid-namespaces.svg" alt="The root PID namespace contains the first process, pid 1, and a shell, pid 2. It encloses namespace A and namespace B. In A, the first process has pid 1 inside and pid 3 in the root, and its child has pid 2 inside and pid 4 in the root. A namespace nested in A has a first process with pid 1 inside, pid 3 in A, and pid 6 in the root. In B, the first process has pid 1 inside and pid 5 in the root.">
+<figcaption><b>Figure 11.6</b> The processes of the model's trace, with their number at each level.</figcaption>
+</figure>
+<div class="lld">
+<p>Low-level design: <code>nsmodel</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pidNamespace</code></td><td><code>parent</code>, <code>level</code>, <code>last</code></td><td>a namespace, its depth below the root, and the last number it gave out</td></tr>
+<tr><td><code>utsNamespace</code></td><td><code>hostname</code></td><td>the host name of its processes</td></tr>
+<tr><td><code>process</code></td><td><code>pid</code>, <code>uts</code>, <code>numbers</code></td><td>its namespaces; its number in each PID namespace from the root down</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>fork(parent, newPID, newUTS)</code></td><td>creates a child in the parent’s namespaces or in new ones; allocates a number at every level</td></tr>
+<tr><td><code>numberIn(namespace)</code></td><td>returns the number of a process in a namespace, when the namespace can see it</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="modelling-namespaces"><a class="header" href="#modelling-namespaces">Modelling namespaces</a></h2>
+<p>The Go version links namespaces with pointers. The Rust version keeps them in vectors
+owned by a <code>Kernel</code> value and refers to them by index.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.11</b> The imports of <code>nsmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+<pre><code class="language-go">import "fmt"
+</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.12</b> PID namespaces, UTS namespaces and processes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+<pre><code class="language-go">// A pidNamespace hands out process numbers. level is its depth below the
+// root namespace, which has level 0.
+type pidNamespace struct {
+	parent *pidNamespace
+	level  int
+	last   int
+}
+
+// allocate returns the next unused number of the namespace.
+func (ns *pidNamespace) allocate() int {
+	ns.last++
+
+	return ns.last
+}
+
+// A utsNamespace holds the host name that its processes see.
+type utsNamespace struct {
+	hostname string
+}
+
+// A process belongs to one namespace of each kind. numbers holds its process
+// number in every PID namespace from the root, at index 0, down to its own.
+type process struct {
+	pid     *pidNamespace
+	uts     *utsNamespace
+	numbers []int
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.13</b> PID namespaces, UTS namespaces and processes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Hands out process numbers. `level` is its depth below the root namespace,
+/// which has level 0. `parent` is the index of the enclosing namespace.
+struct PidNamespace {
+    parent: Option&lt;usize&gt;,
+    level: usize,
+    last: u32,
+}
+
+/// A process belongs to one namespace of each kind, named here by its index
+/// in the kernel's tables. `numbers` holds its process number in every PID
+/// namespace from the root, at index 0, down to its own.
+struct Process {
+    pid: usize,
+    uts: usize,
+    numbers: Vec&lt;u32&gt;,
+}
+
+/// The namespaces of a machine. A UTS namespace is the host name that its
+/// processes see.
+struct Kernel {
+    pid_namespaces: Vec&lt;PidNamespace&gt;,
+    hostnames: Vec&lt;String&gt;,
+}
+
+impl Kernel {
+    /// Returns the next unused number of a PID namespace.
+    fn allocate(&amp;mut self, namespace: usize) -&gt; u32 {
+        self.pid_namespaces[namespace].last += 1;
+
+        self.pid_namespaces[namespace].last
+    }
+}</code></pre>
+<p><code>fork</code> walks from the child’s PID namespace up to the root and allocates a number in
+each. A new UTS namespace starts as a copy of the parent’s, so the child initially sees
+the same host name.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.14</b> Creating a process, with or without new namespaces, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+<pre><code class="language-go">// fork creates a child. By default the child is in its parent's namespaces.
+// With newPID it is the first process of a new PID namespace below the
+// parent's. With newUTS it gets a copy of the parent's UTS namespace.
+func fork(parent *process, newPID, newUTS bool) *process {
+	child := &amp;process{pid: parent.pid, uts: parent.uts}
+
+	if newPID {
+		child.pid = &amp;pidNamespace{parent: parent.pid, level: parent.pid.level + 1}
+	}
+
+	if newUTS {
+		child.uts = &amp;utsNamespace{hostname: parent.uts.hostname}
+	}
+
+	child.numbers = make([]int, child.pid.level+1)
+
+	for ns := child.pid; ns != nil; ns = ns.parent {
+		child.numbers[ns.level] = ns.allocate()
+	}
+
+	return child
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.15</b> Creating a process, with or without new namespaces, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Creates a child. By default the child is in its parent's namespaces.
+    /// With `new_pid` it is the first process of a new PID namespace below
+    /// the parent's. With `new_uts` it gets a copy of the parent's UTS
+    /// namespace.
+    fn fork(&amp;mut self, parent: &amp;Process, new_pid: bool, new_uts: bool) -&gt; Process {
+        let (mut pid, mut uts) = (parent.pid, parent.uts);
+
+        if new_pid {
+            self.pid_namespaces.push(PidNamespace {
+                parent: Some(parent.pid),
+                level: self.pid_namespaces[parent.pid].level + 1,
+                last: 0,
+            });
+            pid = self.pid_namespaces.len() - 1;
+        }
+
+        if new_uts {
+            self.hostnames.push(self.hostnames[parent.uts].clone());
+            uts = self.hostnames.len() - 1;
+        }
+
+        let mut numbers = vec![0; self.pid_namespaces[pid].level + 1];
+        let mut namespace = Some(pid);
+
+        while let Some(current) = namespace {
+            numbers[self.pid_namespaces[current].level] = self.allocate(current);
+            namespace = self.pid_namespaces[current].parent;
+        }
+
+        Process { pid, uts, numbers }
+    }
+}</code></pre>
+<p><code>numberIn</code> decides visibility. It climbs from the process’s own namespace to the level
+of the asking namespace and checks that it arrives at that namespace.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.16</b> The number of a process in a namespace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+<pre><code class="language-go">// numberIn returns the number by which a process is known in a namespace. A
+// process is visible in its own PID namespace and in every namespace that
+// encloses it, and in no other.
+func (p *process) numberIn(ns *pidNamespace) (int, bool) {
+	own := p.pid
+
+	for own != nil &amp;&amp; own.level &gt; ns.level {
+		own = own.parent
+	}
+
+	if own != ns {
+		return 0, false
+	}
+
+	return p.numbers[ns.level], true
+}
+
+// seen describes a process as a namespace sees it.
+func seen(p *process, ns *pidNamespace) string {
+	if number, ok := p.numberIn(ns); ok {
+		return fmt.Sprintf("pid %d", number)
+	}
+
+	return "not visible"
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.17</b> The number of a process in a namespace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Returns the number by which a process is known in a namespace. A
+    /// process is visible in its own PID namespace and in every namespace
+    /// that encloses it, and in no other.
+    fn number_in(&amp;self, process: &amp;Process, namespace: usize) -&gt; Option&lt;u32&gt; {
+        let level = self.pid_namespaces[namespace].level;
+        let mut own = Some(process.pid);
+
+        while let Some(current) = own
+            &amp;&amp; self.pid_namespaces[current].level &gt; level
+        {
+            own = self.pid_namespaces[current].parent;
+        }
+
+        if own != Some(namespace) {
+            return None;
+        }
+
+        process.numbers.get(level).copied()
+    }
+
+    /// Describes a process as a namespace sees it.
+    fn seen(&amp;self, process: &amp;Process, namespace: usize) -&gt; String {
+        match self.number_in(process, namespace) {
+            Some(number) =&gt; format!("pid {number}"),
+            None =&gt; "not visible".to_owned(),
+        }
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.18</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+<pre><code class="language-go">func main() {
+	root := &amp;pidNamespace{}
+	host := &amp;utsNamespace{hostname: "host"}
+
+	first := &amp;process{pid: root, uts: host, numbers: []int{root.allocate()}}
+	shell := fork(first, false, false)
+	a := fork(shell, true, true)
+	child := fork(a, false, false)
+	b := fork(shell, true, true)
+	nested := fork(child, true, false)
+
+	rows := []struct {
+		name string
+		p    *process
+	}{{"first process", first}, {"shell", shell}, {"first process of A", a}, {"its child", child},
+		{"first process of B", b}, {"nested below A", nested}}
+
+	for _, row := range rows {
+		fmt.Printf("%-20s numbers from the root namespace down: %v\n", row.name, row.p.numbers)
+	}
+
+	fmt.Printf("the first process of B, seen from the root namespace: %s\n", seen(b, root))
+	fmt.Printf("the first process of B, seen from A: %s\n", seen(b, a.pid))
+	fmt.Printf("the shell, seen from A: %s\n", seen(shell, a.pid))
+	fmt.Printf("the nested process, seen from A: %s\n", seen(nested, a.pid))
+
+	a.uts.hostname = "box"
+	fmt.Printf("host name set to \"box\" in A: A sees %q, its child %q, B %q, the shell %q\n",
+		a.uts.hostname, child.uts.hostname, b.uts.hostname, shell.uts.hostname)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 11.19</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Formats numbers the way Go prints a slice.
+fn list(numbers: &amp;[u32]) -&gt; String {
+    let words: Vec&lt;String&gt; = numbers.iter().map(u32::to_string).collect();
+
+    format!("[{}]", words.join(" "))
+}
+
+fn main() {
+    let root = PidNamespace {
+        parent: None,
+        level: 0,
+        last: 0,
+    };
+
+    let mut kernel = Kernel {
+        pid_namespaces: vec![root],
+        hostnames: vec!["host".to_owned()],
+    };
+
+    let first = Process {
+        pid: 0,
+        uts: 0,
+        numbers: vec![kernel.allocate(0)],
+    };
+
+    let shell = kernel.fork(&amp;first, false, false);
+    let a = kernel.fork(&amp;shell, true, true);
+    let child = kernel.fork(&amp;a, false, false);
+    let b = kernel.fork(&amp;shell, true, true);
+    let nested = kernel.fork(&amp;child, true, false);
+
+    let rows = [
+        ("first process", &amp;first),
+        ("shell", &amp;shell),
+        ("first process of A", &amp;a),
+        ("its child", &amp;child),
+        ("first process of B", &amp;b),
+        ("nested below A", &amp;nested),
+    ];
+
+    for (name, process) in rows {
+        println!(
+            "{name:&lt;20} numbers from the root namespace down: {}",
+            list(&amp;process.numbers)
+        );
+    }
+
+    println!(
+        "the first process of B, seen from the root namespace: {}",
+        kernel.seen(&amp;b, 0)
+    );
+    println!(
+        "the first process of B, seen from A: {}",
+        kernel.seen(&amp;b, a.pid)
+    );
+    println!("the shell, seen from A: {}", kernel.seen(&amp;shell, a.pid));
+    println!(
+        "the nested process, seen from A: {}",
+        kernel.seen(&amp;nested, a.pid)
+    );
+
+    kernel.hostnames[a.uts] = "box".to_owned();
+    println!(
+        "host name set to \"box\" in A: A sees {:?}, its child {:?}, B {:?}, the shell {:?}",
+        kernel.hostnames[a.uts],
+        kernel.hostnames[child.uts],
+        kernel.hostnames[b.uts],
+        kernel.hostnames[shell.uts]
+    );
+}</code></pre>
+<pre><code class="language-text">first process        numbers from the root namespace down: [1]
+shell                numbers from the root namespace down: [2]
+first process of A   numbers from the root namespace down: [3 1]
+its child            numbers from the root namespace down: [4 2]
+first process of B   numbers from the root namespace down: [5 1]
+nested below A       numbers from the root namespace down: [6 3 1]
+the first process of B, seen from the root namespace: pid 5
+the first process of B, seen from A: not visible
+the shell, seen from A: not visible
+the nested process, seen from A: pid 3
+host name set to "box" in A: A sees "box", its child "box", B "host", the shell "host"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>first process of A</code>: <code>[3 1]</code></td><td>Number 3 in the root namespace and 1 in its own, as <code>nsfacts</code> measured.</td></tr>
+<tr><td><code>first process of B</code>: <code>[5 1]</code></td><td>A and B both have a process 1. The numbers of a namespace are its own.</td></tr>
+<tr><td><code>nested below A</code>: <code>[6 3 1]</code></td><td>A process 2 levels down has 3 numbers.</td></tr>
+<tr><td>B seen from the root: pid 5</td><td>The root namespace sees every process.</td></tr>
+<tr><td>B seen from A: not visible</td><td>A namespace cannot see a namespace beside it.</td></tr>
+<tr><td>the shell seen from A: not visible</td><td>A namespace cannot see the namespace above it.</td></tr>
+<tr><td>the nested process seen from A: pid 3</td><td>A namespace sees the namespaces below it.</td></tr>
+<tr><td>the host name line</td><td>The change in A is seen by A and by its child, which shares A’s UTS namespace. B and the shell are unaffected.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> A process refers to its namespaces through
+<code>struct nsproxy</code> (<code>include/linux/nsproxy.h</code>), with a pointer for each kind. The numbers
+of a process are in <code>struct pid</code> (<code>include/linux/pid.h</code>), whose array <code>numbers</code> has an
+entry for each level, as in the model. <code>pid_nr_ns</code> is the kernel’s <code>numberIn</code>.
+<code>copy_namespaces</code> in <code>kernel/nsproxy.c</code> handles the <code>clone</code> flags, and
+<code>zap_pid_ns_processes</code> ends a namespace when its first process ends.</p>
+</div>
+
+<h2 id="inspecting-namespaces-on-a-live-system"><a class="header" href="#inspecting-namespaces-on-a-live-system">Inspecting namespaces on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ls -l /proc/&lt;pid&gt;/ns</code></td><td>the namespaces of a process</td></tr>
+<tr><td><code>lsns</code></td><td>every namespace of the system, with the number of processes in it</td></tr>
+<tr><td><code>cat /proc/&lt;pid&gt;/uid_map</code></td><td>the user mapping of the user namespace of a process</td></tr>
+<tr><td><code>unshare --user --map-root-user --uts --pid --fork sh</code></td><td>starts a shell in new namespaces, as <code>nsfacts</code> does</td></tr>
+<tr><td><code>nsenter --target &lt;pid&gt; --uts --pid sh</code></td><td>starts a shell in the namespaces of another process, with <code>setns</code></td></tr>
+<tr><td><code>cat /proc/sys/user/max_user_namespaces</code></td><td>how many user namespaces a user may create: 61507 here</td></tr>
+</tbody>
+</table>
+</div>
+<p>Comparing the links of 2 processes is the quickest way to learn whether they are in the
+same container.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.20</b> The complete <code>nsfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsfacts/main.go">code/go/nsfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command nsfacts measures namespaces. It compares the namespaces of a
+// process with those of an ordinary child, and then starts a child in new
+// user, UTS and PID namespaces and reports what that child sees.
+//
+// Run it from code/go with:
+//
+//	go run ./nsfacts
+package main
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
+
+	"golang.org/x/sys/unix"
+)
+
+
+// kinds are the namespace types of Linux 5.15, as named under /proc/&lt;pid&gt;/ns.
+var kinds = []string{"cgroup", "ipc", "mnt", "net", "pid", "time", "user", "uts"}
+
+// namespaces returns the identity of each namespace of a process. The kernel
+// shows it as the target of a symbolic link, such as "uts:[4026531838]".
+// Processes are in the same namespace when the targets are equal.
+func namespaces(pid string) (map[string]string, error) {
+	ids := map[string]string{}
+
+	for _, kind := range kinds {
+		id, err := os.Readlink("/proc/" + pid + "/ns/" + kind)
+
+		if err != nil {
+			return nil, err
+		}
+
+		ids[kind] = id
+	}
+
+	return ids, nil
+}
+
+
+// name returns the symbolic name of a system call error, such as EPERM.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+// inside runs in the child. It tries to change the host name, and prints
+// what it sees as key=value lines for the parent to read.
+func inside() error {
+	outcome := "succeeds"
+
+	if err := unix.Sethostname([]byte("box")); err != nil {
+		outcome = "fails with " + name(err)
+	}
+
+	host, err := os.Hostname()
+
+	if err != nil {
+		return err
+	}
+
+	ids, err := namespaces("self")
+
+	if err != nil {
+		return err
+	}
+
+	uidMap, err := os.ReadFile("/proc/self/uid_map")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("sethostname=%s\nhostname=%s\npid=%d\nuid=%d\n", outcome, host, os.Getpid(), os.Getuid())
+	fmt.Printf("map=%s\nuts=%s\npidns=%s\n", strings.Join(strings.Fields(string(uidMap)), " "), ids["uts"], ids["pid"])
+
+	return nil
+}
+
+
+// report runs this program again as a child and returns the lines the child
+// prints, as a map. With isolate set, the child is created in new user, UTS
+// and PID namespaces, and user 0 inside is mapped to the current user.
+func report(isolate bool) (map[string]string, error) {
+	child := exec.Command("/proc/self/exe", "inside")
+	child.Stderr = os.Stderr
+
+	if isolate {
+		child.SysProcAttr = &amp;syscall.SysProcAttr{
+			Cloneflags:  syscall.CLONE_NEWUSER | syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
+			UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}},
+			GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}},
+		}
+	}
+
+	output, err := child.Output()
+
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]string{}
+
+	for lines := bufio.NewScanner(strings.NewReader(string(output))); lines.Scan(); {
+		if key, value, ok := strings.Cut(lines.Text(), "="); ok {
+			seen[key] = value
+		}
+	}
+
+	return seen, nil
+}
+
+
+func run() error {
+	mine, err := namespaces("self")
+
+	if err != nil {
+		return err
+	}
+
+	name, err := os.Hostname()
+
+	if err != nil {
+		return err
+	}
+
+	for _, isolate := range []bool{false, true} {
+		seen, err := report(isolate)
+
+		if err != nil {
+			return err
+		}
+
+		after, err := os.Hostname()
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("child in new user, UTS and PID namespaces: %v\n", isolate)
+		fmt.Printf("  same UTS namespace as the parent %v, same PID namespace %v\n",
+			seen["uts"] == mine["uts"], seen["pidns"] == mine["pid"])
+		fmt.Printf("  sethostname %s; host name inside is \"box\" %v, outside unchanged %v\n",
+			seen["sethostname"], seen["hostname"] == "box", after == name)
+		fmt.Printf("  pid inside is 1 %v; uid inside is 0 %v\n", seen["pid"] == "1", seen["uid"] == "0")
+
+		if fields := strings.Fields(seen["map"]); isolate &amp;&amp; len(fields) == 3 {
+			fmt.Printf("  uid map: user 0 inside is user %s outside\n", fields[1])
+		}
+	}
+
+	return nil
+}
+
+
+func main() {
+	if len(os.Args) &gt; 1 &amp;&amp; os.Args[1] == "inside" {
+		if err := inside(); err != nil {
+			log.Fatal(err)
+		}
+
+		return
+	}
+
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 11.21</b> The complete <code>nsfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsfacts/src/main.rs">code/rust/nsfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures namespaces. It compares the namespaces of a process with those of
+//! an ordinary child, and then starts a child in new user, UTS and PID
+//! namespaces and reports what that child sees.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p nsfacts
+//! ```
+
+use std::collections::HashMap;
+use std::env;
+use std::fs;
+use std::io;
+use std::process::{self, Command};
+
+use nix::sched::{CloneFlags, unshare};
+use nix::unistd::{getgid, gethostname, getpid, getuid, sethostname};
+
+/// The namespace types of Linux 5.15, as named under `/proc/&lt;pid&gt;/ns`.
+const KINDS: [&amp;str; 8] = ["cgroup", "ipc", "mnt", "net", "pid", "time", "user", "uts"];
+
+/// Returns the identity of each namespace of a process. The kernel shows it
+/// as the target of a symbolic link, such as `uts:[4026531838]`.
+/// Processes are in the same namespace when the targets are equal.
+fn namespaces(pid: &amp;str) -&gt; io::Result&lt;HashMap&lt;&amp;'static str, String&gt;&gt; {
+    KINDS
+        .iter()
+        .map(|&amp;kind| {
+            let id = fs::read_link(format!("/proc/{pid}/ns/{kind}"))?;
+
+            Ok((kind, id.to_string_lossy().into_owned()))
+        })
+        .collect()
+}
+
+fn hostname() -&gt; io::Result&lt;String&gt; {
+    Ok(gethostname()?.to_string_lossy().into_owned())
+}
+
+/// Runs in the child. It tries to change the host name, and prints what it
+/// sees as key=value lines for the parent to read.
+fn inside() -&gt; io::Result&lt;()&gt; {
+    let outcome = match sethostname("box") {
+        Ok(()) =&gt; "succeeds".to_owned(),
+        Err(error) =&gt; format!("fails with {error:?}"),
+    };
+
+    let ids = namespaces("self")?;
+    let uid_map = fs::read_to_string("/proc/self/uid_map")?;
+    let uid_map: Vec&lt;&amp;str&gt; = uid_map.split_whitespace().collect();
+
+    println!("sethostname={outcome}");
+    println!("hostname={}", hostname()?);
+    println!("pid={}", getpid());
+    println!("uid={}", getuid());
+    println!("map={}", uid_map.join(" "));
+    println!("uts={}", ids["uts"]);
+    println!("pidns={}", ids["pid"]);
+
+    Ok(())
+}
+
+/// Moves this process into new user and UTS namespaces, maps user 0 inside to
+/// the current user, and runs the program again as a child. A new PID
+/// namespace applies to the children of the process that asks for it, so the
+/// child is the first process of that namespace.
+fn isolated() -&gt; io::Result&lt;()&gt; {
+    let (uid, gid) = (getuid(), getgid());
+
+    unshare(CloneFlags::CLONE_NEWUSER | CloneFlags::CLONE_NEWUTS | CloneFlags::CLONE_NEWPID)?;
+
+    fs::write("/proc/self/setgroups", "deny")?;
+    fs::write("/proc/self/uid_map", format!("0 {uid} 1"))?;
+    fs::write("/proc/self/gid_map", format!("0 {gid} 1"))?;
+
+    let status = Command::new("/proc/self/exe").arg("inside").status()?;
+
+    process::exit(if status.success() { 0 } else { 1 });
+}
+
+/// Runs this program again as a child and returns the lines the child prints,
+/// as a map. With `isolate` set, the child is created in new namespaces.
+fn report(isolate: bool) -&gt; io::Result&lt;HashMap&lt;String, String&gt;&gt; {
+    let mode = if isolate { "isolated" } else { "inside" };
+    let output = Command::new("/proc/self/exe").arg(mode).output()?;
+
+    let seen = String::from_utf8_lossy(&amp;output.stdout)
+        .lines()
+        .filter_map(|line| line.split_once('='))
+        .map(|(key, value)| (key.to_owned(), value.to_owned()))
+        .collect();
+
+    Ok(seen)
+}
+
+fn run() -&gt; io::Result&lt;()&gt; {
+    let mine = namespaces("self")?;
+    let name = hostname()?;
+
+    for isolate in [false, true] {
+        let seen = report(isolate)?;
+        let get = |key: &amp;str| seen.get(key).map_or("", String::as_str);
+
+        println!("child in new user, UTS and PID namespaces: {isolate}");
+        println!(
+            "  same UTS namespace as the parent {}, same PID namespace {}",
+            get("uts") == mine["uts"],
+            get("pidns") == mine["pid"]
+        );
+        println!(
+            "  sethostname {}; host name inside is \"box\" {}, outside unchanged {}",
+            get("sethostname"),
+            get("hostname") == "box",
+            hostname()? == name
+        );
+        println!(
+            "  pid inside is 1 {}; uid inside is 0 {}",
+            get("pid") == "1",
+            get("uid") == "0"
+        );
+
+        let map: Vec&lt;&amp;str&gt; = get("map").split_whitespace().collect();
+
+        if let (true, [_, outside, _]) = (isolate, map.as_slice()) {
+            println!("  uid map: user 0 inside is user {outside} outside");
+        }
+    }
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    match env::args().nth(1).as_deref() {
+        Some("inside") =&gt; inside(),
+        Some("isolated") =&gt; isolated(),
+        _ =&gt; run(),
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 11.22</b> The complete <code>nsmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/nsmodel/main.go">code/go/nsmodel/main.go</a></p>
+
+<pre><code class="language-go">// Command nsmodel models 2 kinds of namespace. A PID namespace gives its
+// processes their own process numbers, and every process also has a number
+// in each enclosing namespace. A UTS namespace holds a host name.
+//
+// Run it from code/go with:
+//
+//	go run ./nsmodel
+package main
+
+import "fmt"
+
+
+// A pidNamespace hands out process numbers. level is its depth below the
+// root namespace, which has level 0.
+type pidNamespace struct {
+	parent *pidNamespace
+	level  int
+	last   int
+}
+
+// allocate returns the next unused number of the namespace.
+func (ns *pidNamespace) allocate() int {
+	ns.last++
+
+	return ns.last
+}
+
+// A utsNamespace holds the host name that its processes see.
+type utsNamespace struct {
+	hostname string
+}
+
+// A process belongs to one namespace of each kind. numbers holds its process
+// number in every PID namespace from the root, at index 0, down to its own.
+type process struct {
+	pid     *pidNamespace
+	uts     *utsNamespace
+	numbers []int
+}
+
+
+// fork creates a child. By default the child is in its parent's namespaces.
+// With newPID it is the first process of a new PID namespace below the
+// parent's. With newUTS it gets a copy of the parent's UTS namespace.
+func fork(parent *process, newPID, newUTS bool) *process {
+	child := &amp;process{pid: parent.pid, uts: parent.uts}
+
+	if newPID {
+		child.pid = &amp;pidNamespace{parent: parent.pid, level: parent.pid.level + 1}
+	}
+
+	if newUTS {
+		child.uts = &amp;utsNamespace{hostname: parent.uts.hostname}
+	}
+
+	child.numbers = make([]int, child.pid.level+1)
+
+	for ns := child.pid; ns != nil; ns = ns.parent {
+		child.numbers[ns.level] = ns.allocate()
+	}
+
+	return child
+}
+
+
+// numberIn returns the number by which a process is known in a namespace. A
+// process is visible in its own PID namespace and in every namespace that
+// encloses it, and in no other.
+func (p *process) numberIn(ns *pidNamespace) (int, bool) {
+	own := p.pid
+
+	for own != nil &amp;&amp; own.level &gt; ns.level {
+		own = own.parent
+	}
+
+	if own != ns {
+		return 0, false
+	}
+
+	return p.numbers[ns.level], true
+}
+
+// seen describes a process as a namespace sees it.
+func seen(p *process, ns *pidNamespace) string {
+	if number, ok := p.numberIn(ns); ok {
+		return fmt.Sprintf("pid %d", number)
+	}
+
+	return "not visible"
+}
+
+
+func main() {
+	root := &amp;pidNamespace{}
+	host := &amp;utsNamespace{hostname: "host"}
+
+	first := &amp;process{pid: root, uts: host, numbers: []int{root.allocate()}}
+	shell := fork(first, false, false)
+	a := fork(shell, true, true)
+	child := fork(a, false, false)
+	b := fork(shell, true, true)
+	nested := fork(child, true, false)
+
+	rows := []struct {
+		name string
+		p    *process
+	}{{"first process", first}, {"shell", shell}, {"first process of A", a}, {"its child", child},
+		{"first process of B", b}, {"nested below A", nested}}
+
+	for _, row := range rows {
+		fmt.Printf("%-20s numbers from the root namespace down: %v\n", row.name, row.p.numbers)
+	}
+
+	fmt.Printf("the first process of B, seen from the root namespace: %s\n", seen(b, root))
+	fmt.Printf("the first process of B, seen from A: %s\n", seen(b, a.pid))
+	fmt.Printf("the shell, seen from A: %s\n", seen(shell, a.pid))
+	fmt.Printf("the nested process, seen from A: %s\n", seen(nested, a.pid))
+
+	a.uts.hostname = "box"
+	fmt.Printf("host name set to \"box\" in A: A sees %q, its child %q, B %q, the shell %q\n",
+		a.uts.hostname, child.uts.hostname, b.uts.hostname, shell.uts.hostname)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 11.23</b> The complete <code>nsmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/nsmodel/src/main.rs">code/rust/nsmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models 2 kinds of namespace. A PID namespace gives its processes their own
+//! process numbers, and every process also has a number in each enclosing
+//! namespace. A UTS namespace holds a host name.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p nsmodel
+//! ```
+
+/// Hands out process numbers. `level` is its depth below the root namespace,
+/// which has level 0. `parent` is the index of the enclosing namespace.
+struct PidNamespace {
+    parent: Option&lt;usize&gt;,
+    level: usize,
+    last: u32,
+}
+
+/// A process belongs to one namespace of each kind, named here by its index
+/// in the kernel's tables. `numbers` holds its process number in every PID
+/// namespace from the root, at index 0, down to its own.
+struct Process {
+    pid: usize,
+    uts: usize,
+    numbers: Vec&lt;u32&gt;,
+}
+
+/// The namespaces of a machine. A UTS namespace is the host name that its
+/// processes see.
+struct Kernel {
+    pid_namespaces: Vec&lt;PidNamespace&gt;,
+    hostnames: Vec&lt;String&gt;,
+}
+
+impl Kernel {
+    /// Returns the next unused number of a PID namespace.
+    fn allocate(&amp;mut self, namespace: usize) -&gt; u32 {
+        self.pid_namespaces[namespace].last += 1;
+
+        self.pid_namespaces[namespace].last
+    }
+}
+
+impl Kernel {
+    /// Creates a child. By default the child is in its parent's namespaces.
+    /// With `new_pid` it is the first process of a new PID namespace below
+    /// the parent's. With `new_uts` it gets a copy of the parent's UTS
+    /// namespace.
+    fn fork(&amp;mut self, parent: &amp;Process, new_pid: bool, new_uts: bool) -&gt; Process {
+        let (mut pid, mut uts) = (parent.pid, parent.uts);
+
+        if new_pid {
+            self.pid_namespaces.push(PidNamespace {
+                parent: Some(parent.pid),
+                level: self.pid_namespaces[parent.pid].level + 1,
+                last: 0,
+            });
+            pid = self.pid_namespaces.len() - 1;
+        }
+
+        if new_uts {
+            self.hostnames.push(self.hostnames[parent.uts].clone());
+            uts = self.hostnames.len() - 1;
+        }
+
+        let mut numbers = vec![0; self.pid_namespaces[pid].level + 1];
+        let mut namespace = Some(pid);
+
+        while let Some(current) = namespace {
+            numbers[self.pid_namespaces[current].level] = self.allocate(current);
+            namespace = self.pid_namespaces[current].parent;
+        }
+
+        Process { pid, uts, numbers }
+    }
+}
+
+impl Kernel {
+    /// Returns the number by which a process is known in a namespace. A
+    /// process is visible in its own PID namespace and in every namespace
+    /// that encloses it, and in no other.
+    fn number_in(&amp;self, process: &amp;Process, namespace: usize) -&gt; Option&lt;u32&gt; {
+        let level = self.pid_namespaces[namespace].level;
+        let mut own = Some(process.pid);
+
+        while let Some(current) = own
+            &amp;&amp; self.pid_namespaces[current].level &gt; level
+        {
+            own = self.pid_namespaces[current].parent;
+        }
+
+        if own != Some(namespace) {
+            return None;
+        }
+
+        process.numbers.get(level).copied()
+    }
+
+    /// Describes a process as a namespace sees it.
+    fn seen(&amp;self, process: &amp;Process, namespace: usize) -&gt; String {
+        match self.number_in(process, namespace) {
+            Some(number) =&gt; format!("pid {number}"),
+            None =&gt; "not visible".to_owned(),
+        }
+    }
+}
+
+/// Formats numbers the way Go prints a slice.
+fn list(numbers: &amp;[u32]) -&gt; String {
+    let words: Vec&lt;String&gt; = numbers.iter().map(u32::to_string).collect();
+
+    format!("[{}]", words.join(" "))
+}
+
+fn main() {
+    let root = PidNamespace {
+        parent: None,
+        level: 0,
+        last: 0,
+    };
+
+    let mut kernel = Kernel {
+        pid_namespaces: vec![root],
+        hostnames: vec!["host".to_owned()],
+    };
+
+    let first = Process {
+        pid: 0,
+        uts: 0,
+        numbers: vec![kernel.allocate(0)],
+    };
+
+    let shell = kernel.fork(&amp;first, false, false);
+    let a = kernel.fork(&amp;shell, true, true);
+    let child = kernel.fork(&amp;a, false, false);
+    let b = kernel.fork(&amp;shell, true, true);
+    let nested = kernel.fork(&amp;child, true, false);
+
+    let rows = [
+        ("first process", &amp;first),
+        ("shell", &amp;shell),
+        ("first process of A", &amp;a),
+        ("its child", &amp;child),
+        ("first process of B", &amp;b),
+        ("nested below A", &amp;nested),
+    ];
+
+    for (name, process) in rows {
+        println!(
+            "{name:&lt;20} numbers from the root namespace down: {}",
+            list(&amp;process.numbers)
+        );
+    }
+
+    println!(
+        "the first process of B, seen from the root namespace: {}",
+        kernel.seen(&amp;b, 0)
+    );
+    println!(
+        "the first process of B, seen from A: {}",
+        kernel.seen(&amp;b, a.pid)
+    );
+    println!("the shell, seen from A: {}", kernel.seen(&amp;shell, a.pid));
+    println!(
+        "the nested process, seen from A: {}",
+        kernel.seen(&amp;nested, a.pid)
+    );
+
+    kernel.hostnames[a.uts] = "box".to_owned();
+    println!(
+        "host name set to \"box\" in A: A sees {:?}, its child {:?}, B {:?}, the shell {:?}",
+        kernel.hostnames[a.uts],
+        kernel.hostnames[child.uts],
+        kernel.hostnames[b.uts],
+        kernel.hostnames[shell.uts]
+    );
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A namespace gives a group of processes their own instance of a resource. Linux 5.15
+has 8 kinds, and a process is in 1 of each.</li>
+<li>A child inherits its parent’s namespaces. <code>clone</code> flags and <code>unshare</code> create new ones.</li>
+<li>An unprivileged user may create a user namespace and be user 0 inside it, with
+privilege over the namespaces created with it and none outside.</li>
+<li>A process has a number in its own PID namespace and in every enclosing one. The first
+process of a PID namespace has number 1 there.</li>
+<li>A PID namespace sees the processes in itself and below it.</li>
+<li>A change to the host name stays inside the UTS namespace in which it was made.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>namespaces(7)</code>, <code>user_namespaces(7)</code>, <code>pid_namespaces(7)</code> and <code>unshare(2)</code>, Linux
+manual pages: <a href="https://man7.org/linux/man-pages/man7/namespaces.7.html">https://man7.org/linux/man-pages/man7/namespaces.7.html</a></li>
+<li>M. Kerrisk, <em>Namespaces in operation</em>, LWN.net, 2013:
+<a href="https://lwn.net/Articles/531114/">https://lwn.net/Articles/531114/</a></li>
+<li><code>kernel/nsproxy.c</code>, <code>kernel/pid_namespace.c</code> and <code>kernel/user_namespace.c</code>, Linux
+5.15: <a href="https://elixir.bootlin.com/linux/v5.15/source/kernel/nsproxy.c">https://elixir.bootlin.com/linux/v5.15/source/kernel/nsproxy.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="10-tcp-sockets.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="12-control-groups.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="10-tcp-sockets.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="12-control-groups.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

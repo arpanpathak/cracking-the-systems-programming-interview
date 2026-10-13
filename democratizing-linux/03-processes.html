@@ -1,0 +1,2234 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Processes - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/03-processes.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch03.svg" alt="Fork, a small red daemon, holds a fork. Beside it stands a smaller copy of itself, just created. Tags give their numbers: 500 for the parent and 501 for the child.">
+<h1 id="processes"><a class="header" href="#processes">Processes</a></h1>
+<p>A <em>process</em> is a program in execution, together with everything the kernel keeps for it:
+its memory, its open files, its identity for permission checks, and its place in the
+scheduler. The kernel represents each process by a record, <code>struct task_struct</code>, and
+identifies it by a number, the <em>process ID</em> or <em>pid</em>.</p>
+<p>In this chapter, we will follow a process through its whole life: how it is created,
+how it comes to run a different program, how it ends, and how the process that created
+it learns the result. We will read the kernel’s record of a process field by field and
+find the same information under <code>/proc</code>. Then we will write <code>procfacts</code>, which measures
+each step on a running kernel, and <code>proctable</code>, a model of the kernel’s process table.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what happens when a shell runs a command, step by step</li>
+<li><code>struct task_struct</code>: the kernel’s record of a process</li>
+<li>process states, and how to read them from <code>/proc</code></li>
+<li><code>fork</code>: what the child copies, what it shares, and what is new</li>
+<li><code>exec</code>: what is replaced and what survives</li>
+<li><code>exit</code> and <code>wait</code>, and the integer that carries the result</li>
+<li>zombies, orphans, and the process that adopts them</li>
+<li>how the kernel chooses a pid</li>
+<li>threads, and the difference between a process and a task</li>
+</ul>
+</div>
+
+<h2 id="a-shell-runs-a-command"><a class="header" href="#a-shell-runs-a-command">A shell runs a command</a></h2>
+<p>When we type <code>ls</code> in a shell, 4 system calls do the work, 2 in the shell and 2 in a new
+process.</p>
+<ol>
+<li>The shell calls <code>fork</code>. The kernel creates a second process that is a copy of the
+shell: the same program, the same memory contents, the same open files. The new
+process is the <em>child</em>, and the shell is its <em>parent</em>. <code>fork</code> returns in both
+processes. In the parent it returns the pid of the child, and in the child it returns
+0, which is how each of them knows which one it is.</li>
+<li>The child calls <code>exec</code> with the path of the <code>ls</code> program. The kernel discards the
+memory of the child, loads <code>ls</code> in its place, and starts it. The pid does not change.
+It is the same process running a different program.</li>
+<li><code>ls</code> does its work and calls <code>exit</code> with a status, 0 for success.</li>
+<li>Meanwhile the parent has called <code>wait</code>, which puts it to sleep until a child ends.
+<code>wait</code> now returns the pid of the child and its status, and the shell prints the next
+prompt.</li>
+</ol>
+<figure>
+<img src="figures/fork-exec-wait.svg" alt="A shell runs ls, in 2 columns with time running downward. The parent, pid 500, reads the line and calls fork, which returns the child&#39;s pid. The child, pid 501, is a copy of the shell in which fork returns 0. The parent calls wait and sleeps. The child calls exec and its program is replaced by ls, which runs and writes to descriptor 1, then calls exit and becomes a zombie. wait returns in the parent with the pid and status of the child, and the shell prints the next prompt.">
+<figcaption><b>Figure 3.1</b> The 4 calls behind a command: <code>fork</code> and <code>wait</code> in the parent, <code>exec</code> and <code>exit</code> in the child.</figcaption>
+</figure>
+<p>Creating a process and loading a program are separate calls, and that is deliberate.
+Between <code>fork</code> and <code>exec</code> the child is still running the shell’s code, with the shell’s
+descriptors. The shell uses that interval to prepare the environment of the new program:
+it redirects descriptors with <code>dup2</code>, changes the working directory, or adjusts signal
+handling. Then it calls <code>exec</code>. The new program starts in the prepared environment and
+contains no code for the preparation. The redirections of
+<a href="02-file-descriptors.html">chapter 2</a> are performed in this interval, and
+<a href="04-building-a-shell.html">chapter 4</a> builds a shell that does it.</p>
+<h2 id="the-kernels-record-of-a-process"><a class="header" href="#the-kernels-record-of-a-process">The kernel’s record of a process</a></h2>
+<p>Every process has a <code>struct task_struct</code>. It is one of the largest structures in the
+kernel, about 700 lines in <code>include/linux/sched.h</code>. These are the fields that this
+chapter and the following chapters use, as they appear in Linux 5.15.</p>
+<pre><code class="language-c">struct task_struct {
+        unsigned int __state;                  /* running, sleeping, stopped, ... */
+        struct sched_entity se;                /* scheduling data, chapter 6 */
+        struct mm_struct *mm;                  /* the address space, chapter 7 */
+        int exit_state;                        /* EXIT_ZOMBIE after exit */
+        int exit_code;                         /* the status for the parent */
+        pid_t pid;                             /* the number of this task */
+        pid_t tgid;                            /* the number of its process */
+        struct task_struct *real_parent;       /* the process that created it */
+        struct list_head children;             /* its children */
+        struct list_head sibling;              /* its place in the parent's list */
+        const struct cred *cred;               /* user and group, capabilities */
+        char comm[TASK_COMM_LEN];              /* the name of the program */
+        struct files_struct *files;            /* the descriptor table, chapter 2 */
+        struct nsproxy *nsproxy;               /* its namespaces, chapter 11 */
+        struct signal_struct *signal;          /* signal state, chapter 5 */
+        struct sighand_struct *sighand;        /* signal handlers, chapter 5 */
+        struct css_set *cgroups;               /* its control groups, chapter 12 */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pid</code></td><td>The number by which system calls and <code>/proc</code> name the task.</td></tr>
+<tr><td><code>real_parent</code></td><td>The process that is told when this one ends and that collects its status.</td></tr>
+<tr><td><code>children</code>, <code>sibling</code></td><td>The children of a process form a linked list. <code>children</code> is the head of the list in the parent, and <code>sibling</code> links a child into it.</td></tr>
+<tr><td><code>__state</code></td><td>Whether the task is runnable, sleeping or stopped.</td></tr>
+<tr><td><code>exit_state</code>, <code>exit_code</code></td><td>Set when the task ends, and kept until the parent has read them.</td></tr>
+<tr><td><code>comm</code></td><td>The name of the program, at most 15 characters. <code>ps</code> and <code>/proc/&lt;pid&gt;/comm</code> show it.</td></tr>
+<tr><td><code>cred</code></td><td>The user and group the process runs as. The kernel checks these when the process opens a file or sends a signal.</td></tr>
+<tr><td><code>mm</code>, <code>files</code>, <code>signal</code>, <code>nsproxy</code>, <code>cgroups</code></td><td>Pointers to the other resources of the process. Each is the subject of a later chapter.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/task-struct-map.svg" alt="struct task_struct has the fields pid and tgid, __state, exit_state, exit_code, real_parent, children and comm, and pointers to other structures: mm to struct mm_struct, the address space of chapter 7; files to struct files_struct, the descriptor table of chapter 2; signal and sighand to the signal state of chapter 5; se, the struct sched_entity of chapter 6; nsproxy to the namespaces of chapter 11; and cgroups to the control groups of chapter 12.">
+<figcaption><b>Figure 3.2</b> A process is a <code>struct task_struct</code> and the structures it points to.</figcaption>
+</figure>
+<p>The resources are separate structures reached through pointers, and this is what makes
+<code>fork</code> and threads possible with the same code. A new task can receive a copy of a
+resource or a pointer to the same one, resource by resource.</p>
+<h3 id="reading-the-record-from-proc"><a class="header" href="#reading-the-record-from-proc">Reading the record from /proc</a></h3>
+<p>The kernel publishes the record of every process as text files in <code>/proc/&lt;pid&gt;</code>. This is
+a <code>sleep</code> started from a shell with pid 565533:</p>
+<pre><code class="language-console">$ ps -o pid,ppid,stat,comm
+    PID    PPID STAT COMMAND
+ 565533  565532 S    sh
+ 565534  565533 S    sleep
+$ grep -E 'Name|State|Tgid|Pid|PPid|Threads' /proc/565534/status
+Name:	sleep
+State:	S (sleeping)
+Tgid:	565534
+Pid:	565534
+PPid:	565533
+Threads:	1
+</code></pre>
+<figure>
+<img src="figures/status-annotated.svg" alt="The lines of /proc/pid/status explained. Name is the program name. State S means sleeping, waiting for an event. Tgid and Pid are the process number and the thread number, equal for a process with a single thread. PPid is the parent. Threads is the number of tasks that share the address space.">
+<figcaption><b>Figure 3.3</b> The status file of the <code>sleep</code> process, line by line.</figcaption>
+</figure>
+<p><code>Name</code> is <code>comm</code>, <code>Pid</code> and <code>Tgid</code> are <code>pid</code> and <code>tgid</code>, and <code>PPid</code> is the pid of
+<code>real_parent</code>. <code>State</code> is a letter derived from <code>__state</code> and <code>exit_state</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Letter</th><th>State</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>R</code></td><td>running</td><td>The task is on a CPU or waiting in the run queue for one.</td></tr>
+<tr><td><code>S</code></td><td>sleeping</td><td>The task waits for an event, such as input or a timer, and a signal can wake it.</td></tr>
+<tr><td><code>D</code></td><td>uninterruptible sleep</td><td>The task waits for an event, usually disk I/O, and signals are held back until it arrives.</td></tr>
+<tr><td><code>T</code></td><td>stopped</td><td>The task was stopped by a signal such as <code>SIGSTOP</code> and continues on <code>SIGCONT</code>.</td></tr>
+<tr><td><code>Z</code></td><td>zombie</td><td>The task has ended, and its parent has not yet collected its status.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Most processes on a system are in state <code>S</code> at any moment. A process in state <code>R</code> uses
+CPU time, and <a href="06-cpu-scheduling.html">chapter 6</a> describes how the kernel divides the
+CPUs among them.</p>
+<h2 id="fork"><a class="header" href="#fork">fork</a></h2>
+<p><code>fork</code> creates a new <code>struct task_struct</code> and decides, for each resource of the parent,
+whether the child gets a copy.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Resource</th><th>In the child</th></tr>
+</thead>
+<tbody>
+<tr><td>pid</td><td>new</td></tr>
+<tr><td>parent</td><td>the process that called <code>fork</code></td></tr>
+<tr><td>memory</td><td>a copy, made lazily: the pages are shared until one side writes (<a href="07-virtual-memory.html">chapter 7</a>)</td></tr>
+<tr><td>descriptor table</td><td>a copy; the entries refer to the same open files (<a href="02-file-descriptors.html">chapter 2</a>)</td></tr>
+<tr><td>signal handlers</td><td>a copy</td></tr>
+<tr><td>pending signals</td><td>none</td></tr>
+<tr><td>working directory, user and group</td><td>the same</td></tr>
+<tr><td>namespaces and control group</td><td>the same</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/fork-copies.svg" alt="What fork gives the child, resource by resource. The pid is new: 500 in the parent, 501 in the child. The memory is the same pages, shared until one side writes. The descriptor table is a copy that refers to the same open files. The signal handlers are a copy and independent afterwards. The working directory is copied.">
+<figcaption><b>Figure 3.4</b> The parent and the child directly after <code>fork</code>.</figcaption>
+</figure>
+<p>A way to remember the table: the child starts as a photograph of the parent, taken at
+the moment of the call. Everything that is true of the parent at that moment is true of
+the child, with 2 differences that let them tell each other apart: the pid, and the
+return value of <code>fork</code>. From then on they are separate processes, and a change in one is
+invisible to the other, except through the open files they still share.</p>
+<p>The copy of the memory is what makes <code>fork</code> look expensive and why it is cheap in
+practice. The kernel copies the page table and leaves the pages themselves shared and
+read-only. A page is copied only when one of the processes writes to it. A child that
+calls <code>exec</code> immediately, the usual case, discards the address space before it has
+written to more than a few pages.</p>
+<p>On Linux, <code>fork</code> is a special case of a more general call, <code>clone</code>, which takes a flag
+for each resource: with the flag, the child shares the parent’s structure, and without
+it the child gets a copy. <code>fork</code> is <code>clone</code> with no sharing flags.</p>
+<h2 id="exec"><a class="header" href="#exec">exec</a></h2>
+<p><code>exec</code> keeps the <code>task_struct</code> and replaces what the process runs. The kernel reads the
+header of the program file, which is in the ELF format on Linux, to learn which parts of
+the file to map into memory and at which address execution starts. It builds a new
+address space, places the arguments and the environment variables on a new stack, and
+sets the processor to the entry point.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kept across <code>exec</code></th><th>Replaced or reset</th></tr>
+</thead>
+<tbody>
+<tr><td>pid, parent, children</td><td>the address space: code, data, heap and stack</td></tr>
+<tr><td>open descriptors without the close-on-exec flag</td><td>descriptors with the flag are closed</td></tr>
+<tr><td>working directory, user and group</td><td>signal handlers return to the default action</td></tr>
+<tr><td>ignored signals stay ignored</td><td><code>comm</code> becomes the name of the new program</td></tr>
+<tr><td>namespaces and control group</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<p>The table explains why the preparation between <code>fork</code> and <code>exec</code> works. Everything the
+shell arranges in that interval is in the left column.</p>
+<h2 id="exit-and-wait"><a class="header" href="#exit-and-wait">exit and wait</a></h2>
+<p>A process ends by calling <code>exit</code> with a status, or because a signal ends it. In both
+cases the kernel releases its memory and closes its descriptors at once. The
+<code>task_struct</code> remains, with <code>exit_state</code> set to <code>EXIT_ZOMBIE</code> and the result in
+<code>exit_code</code>, because the parent has not yet asked for the result. A process in this
+condition is a <em>zombie</em>. It uses no memory and no CPU. It occupies a <code>task_struct</code> and a
+pid.</p>
+<p>The parent collects the result with <code>wait</code> or <code>waitpid</code>, and the kernel then frees the
+<code>task_struct</code>. This is called <em>reaping</em> the child. <code>wait</code> delivers both kinds of ending
+in a single integer.</p>
+<figure>
+<img src="figures/wait-status.svg" alt="The integer that wait returns. For a process ended by exit(7), bits 15 to 8 hold the exit status 7 and bits 6 to 0, the signal number, are 0. For a process ended by SIGTERM, bits 15 to 8 are 0 and bits 6 to 0 hold the signal number 15. Bit 7 records whether a core dump was written.">
+<figcaption><b>Figure 3.5</b> The layout of the status that <code>wait</code> returns.</figcaption>
+</figure>
+<p>The exit status has 8 bits. A program that calls <code>exit(300)</code> is reported with status
+44, the low 8 bits of 300. A shell folds the integer into its own <code>$?</code>: the exit status
+itself, or <code>128 + n</code> for a process ended by signal <code>n</code>, so a process ended by <code>SIGTERM</code>,
+signal 15, appears as 143.</p>
+<p>A parent that does not call <code>wait</code> leaves a zombie for each child that ends. The zombies
+disappear when the parent itself ends, for the reason given next.</p>
+<div class="crab crab-shocked">
+<p>A zombie cannot be ended with <code>kill</code>. It has already ended, and only its parent can remove it, by calling <code>wait</code>.</p>
+</div>
+
+<h3 id="orphans"><a class="header" href="#orphans">Orphans</a></h3>
+<p>A zombie can be reaped only by its parent, so every process needs a living parent. When
+a process ends before its children, the children are <em>orphans</em>, and the kernel gives
+them a new parent at once. The new parent is process 1, the first process of the system,
+unless a closer ancestor has asked for the role: a process can declare itself a
+<em>subreaper</em> with <code>prctl(PR_SET_CHILD_SUBREAPER)</code>, and it then adopts the orphans among
+its descendants. Process 1 and every subreaper call <code>wait</code> in a loop for exactly this
+purpose.</p>
+<figure>
+<img src="figures/process-life.svg" alt="The life of a process, top to bottom. Fork gives the parent a child with a new pid. The child runs; exec replaces its program and keeps the pid, the parent and the descriptors. After exit or a signal the process is a zombie: its memory and descriptors are released and its table entry keeps the exit status. When the parent calls wait, the entry is removed and the pid can be given out again.">
+<figcaption><b>Figure 3.6</b> The <code>task_struct</code> of a process, from <code>fork</code> to <code>wait</code>.</figcaption>
+</figure>
+<h2 id="processes-and-threads"><a class="header" href="#processes-and-threads">Processes and threads</a></h2>
+<p><code>task_struct</code> has 2 numbers, <code>pid</code> and <code>tgid</code>, because the kernel schedules <em>tasks</em>, and
+a process can consist of several. A <em>thread</em> is a task that shares the address space,
+the descriptor table and the signal handlers of another task. It is created by <code>clone</code>
+with the sharing flags set, where <code>fork</code> sets none.</p>
+<p>All threads of a process have the same <code>tgid</code>, the <em>thread group ID</em>, and each has its
+own <code>pid</code>. The number that <code>getpid</code> returns, and that we call the pid of a process, is
+the <code>tgid</code>. The number of each thread is visible under <code>/proc/&lt;pid&gt;/task</code>, and the
+<code>Threads</code> line of <code>/proc/&lt;pid&gt;/status</code> counts them. The <code>sleep</code> above has 1. A Go
+program always has several, because the Go runtime starts threads of its own to run
+goroutines.</p>
+<h2 id="measuring-processes"><a class="header" href="#measuring-processes">Measuring processes</a></h2>
+<p><code>procfacts</code> starts child processes with the standard libraries, <code>os/exec</code> in Go and
+<code>std::process</code> in Rust. Both perform the creation of the child and the <code>exec</code> in a
+single call, since a program with several threads cannot safely run arbitrary code
+between <code>fork</code> and <code>exec</code>. The Rust version uses the <code>nix</code> crate with the <code>signal</code>
+feature to send a signal.</p>
+<pre><code class="language-console">$ cargo new procfacts
+$ cargo add -p procfacts nix --features signal
+</code></pre>
+<p><code>field</code> reads a field of <code>/proc/&lt;pid&gt;/stat</code>, a single line with the same information as
+<code>status</code> in a fixed order. Field 3 is the state letter and field 4 is the parent’s pid.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.1</b> The imports of <code>procfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.2</b> The imports of <code>procfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fs;
+use std::io;
+use std::os::unix::process::ExitStatusExt;
+use std::path::Path;
+use std::process::{self, Command};
+use std::thread;
+use std::time::Duration;
+
+use nix::sys::signal::{Signal, kill};
+use nix::unistd::Pid;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.3</b> Reading a field of a process's record, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// field returns one field of /proc/&lt;pid&gt;/stat, counted from 1. The second
+// field, the command name, is in parentheses and may contain spaces, so the
+// fields after it are counted from the closing parenthesis.
+func field(pid, n int) (string, error) {
+	stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+
+	if err != nil {
+		return "", err
+	}
+
+	end := strings.LastIndexByte(string(stat), ')')
+	rest := strings.Fields(string(stat[end+1:]))
+
+	return rest[n-3], nil
+}
+
+// output runs a shell command and returns what it printed, without the final
+// newline.
+func output(script string) (string, error) {
+	text, err := exec.Command("sh", "-c", script).Output()
+
+	return strings.TrimSpace(string(text)), err
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.4</b> Reading a field of a process's record, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Returns one field of `/proc/&lt;pid&gt;/stat`, counted from 1. The second field,
+/// the command name, is in parentheses and may contain spaces, so the fields
+/// after it are counted from the closing parenthesis.
+fn field(pid: u32, n: usize) -&gt; io::Result&lt;String&gt; {
+    let stat = fs::read_to_string(format!("/proc/{pid}/stat"))?;
+    let rest = stat.rsplit_once(')').map_or("", |(_, rest)| rest);
+
+    rest.split_whitespace()
+        .nth(n - 3)
+        .map(str::to_owned)
+        .ok_or_else(|| io::ErrorKind::InvalidData.into())
+}
+
+/// Runs a shell command and returns what it printed, without the final
+/// newline.
+fn output(script: &amp;str) -&gt; io::Result&lt;String&gt; {
+    let output = Command::new("sh").args(["-c", script]).output()?;
+
+    Ok(String::from_utf8_lossy(&amp;output.stdout).trim().to_owned())
+}</code></pre>
+<p><code>parent</code> runs a shell that prints <code>$PPID</code>, the pid of its parent, and compares it with
+the pid of the program.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.5</b> The parent of a child, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// parent asks a child for the number of its parent process.
+func parent() error {
+	text, err := output("echo $PPID")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the child's parent is this process: %v\n", text == strconv.Itoa(os.Getpid()))
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.6</b> The parent of a child, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Asks a child for the number of its parent process.
+fn parent() -&gt; io::Result&lt;()&gt; {
+    let text = output("echo $PPID")?;
+
+    println!(
+        "the child's parent is this process: {}",
+        text == process::id().to_string()
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>status</code> runs a script and reports how it ended. The program calls it with <code>exit 7</code>,
+with <code>exit 300</code>, and with a script that sends itself <code>SIGTERM</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.7</b> Exit status and signal, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// status runs a script and reports how it terminated.
+func status(script string) error {
+	err := exec.Command("sh", "-c", script).Run()
+
+	var exit *exec.ExitError
+
+	if !errors.As(err, &amp;exit) {
+		return fmt.Errorf("%s: %v", script, err)
+	}
+
+	wait, ok := exit.Sys().(syscall.WaitStatus)
+
+	switch {
+	case ok &amp;&amp; wait.Signaled():
+		fmt.Printf("%s: killed by signal %d\n", script, wait.Signal())
+	default:
+		fmt.Printf("%s: exited with status %d\n", script, exit.ExitCode())
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.8</b> Exit status and signal, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Runs a script and reports how it terminated.
+fn status(script: &amp;str) -&gt; io::Result&lt;()&gt; {
+    let status = Command::new("sh").args(["-c", script]).status()?;
+
+    match (status.signal(), status.code()) {
+        (Some(signal), _) =&gt; println!("{script}: killed by signal {signal}"),
+        (None, Some(code)) =&gt; println!("{script}: exited with status {code}"),
+        (None, None) =&gt; println!("{script}: {status}"),
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>execKeepsPid</code> runs a shell that prints its pid, replaces itself with another shell by
+<code>exec</code>, and prints the pid again.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.9</b> The pid before and after exec, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// execKeepsPid prints the process number of a shell before and after the
+// shell replaces its program with exec.
+func execKeepsPid() error {
+	text, err := output(`echo $$; exec sh -c 'echo $$'`)
+
+	if err != nil {
+		return err
+	}
+
+	pids := strings.Fields(text)
+
+	fmt.Printf("pid before and after exec: equal %v\n", len(pids) == 2 &amp;&amp; pids[0] == pids[1])
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.10</b> The pid before and after exec, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Prints the process number of a shell before and after the shell replaces
+/// its program with exec.
+fn exec_keeps_pid() -&gt; io::Result&lt;()&gt; {
+    let text = output("echo $$; exec sh -c 'echo $$'")?;
+    let pids: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    println!(
+        "pid before and after exec: equal {}",
+        pids.len() == 2 &amp;&amp; pids[0] == pids[1]
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>zombie</code> starts <code>true</code>, which exits immediately, and polls the state field until the
+child has ended. Then it waits for the child and checks whether the <code>/proc</code> entry still
+exists.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.11</b> A child between exit and wait, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// zombie starts a child that exits at once, and reads its state before and
+// after waiting for it.
+func zombie() error {
+	child := exec.Command("true")
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	pid := child.Process.Pid
+	state, err := field(pid, 3)
+
+	for err == nil &amp;&amp; state != "Z" {
+		time.Sleep(time.Millisecond)
+		state, err = field(pid, 3)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := child.Wait(); err != nil {
+		return err
+	}
+
+	_, err = os.Stat(fmt.Sprintf("/proc/%d", pid))
+
+	fmt.Printf("exited child: state %s before wait, /proc entry present after wait: %v\n", state, err == nil)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.12</b> A child between exit and wait, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Starts a child that exits at once, and reads its state before and after
+/// waiting for it.
+fn zombie() -&gt; io::Result&lt;()&gt; {
+    let mut child = Command::new("true").spawn()?;
+    let pid = child.id();
+
+    let mut state = field(pid, 3)?;
+
+    while state != "Z" {
+        thread::sleep(Duration::from_millis(1));
+        state = field(pid, 3)?;
+    }
+
+    child.wait()?;
+
+    let present = Path::new(&amp;format!("/proc/{pid}")).exists();
+    println!("exited child: state {state} before wait, /proc entry present after wait: {present}");
+
+    Ok(())
+}</code></pre>
+<p><code>orphan</code> runs a shell that starts <code>sleep 30</code> in the background, prints the pid of the
+sleep, and exits. The sleep is then an orphan. The program reads the pid of its new
+parent and the name of that process.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.13</b> The new parent of an orphan, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// orphan starts a shell that starts a background sleep and exits. The sleep
+// outlives its parent, and the kernel gives it a new one.
+func orphan() error {
+	text, err := output("sleep 30 &gt;/dev/null 2&gt;&amp;1 &amp; echo $!")
+
+	if err != nil {
+		return err
+	}
+
+	pid, err := strconv.Atoi(text)
+
+	if err != nil {
+		return err
+	}
+
+	defer syscall.Kill(pid, syscall.SIGKILL)
+
+	adopter, err := field(pid, 4)
+
+	if err != nil {
+		return err
+	}
+
+	name, err := os.ReadFile("/proc/" + adopter + "/comm")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("orphan adopted by: %s\n", strings.TrimSpace(string(name)))
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.14</b> The new parent of an orphan, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Starts a shell that starts a background sleep and exits. The sleep
+/// outlives its parent, and the kernel gives it a new one.
+fn orphan() -&gt; io::Result&lt;()&gt; {
+    let text = output("sleep 30 &gt;/dev/null 2&gt;&amp;1 &amp; echo $!")?;
+
+    let pid: u32 = text
+        .parse()
+        .map_err(|_| io::Error::from(io::ErrorKind::InvalidData))?;
+
+    let adopter = field(pid, 4);
+    kill(Pid::from_raw(pid as i32), Signal::SIGKILL)?;
+
+    let name = fs::read_to_string(format!("/proc/{}/comm", adopter?))?;
+    println!("orphan adopted by: {}", name.trim());
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">the child's parent is this process: true
+exit 7: exited with status 7
+exit 300: exited with status 44
+kill -TERM $$: killed by signal 15
+pid before and after exec: equal true
+exited child: state Z before wait, /proc entry present after wait: false
+orphan adopted by: systemd
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>the child’s parent is this process</td><td><code>real_parent</code> of a child is the process that created it.</td></tr>
+<tr><td><code>exit 7</code>: status 7</td><td>The status passed to <code>exit</code> reaches the parent.</td></tr>
+<tr><td><code>exit 300</code>: status 44</td><td>Only the low 8 bits are kept: 300 - 256 = 44.</td></tr>
+<tr><td><code>kill -TERM $$</code>: signal 15</td><td>A process ended by a signal has no exit status. The parent receives the signal number.</td></tr>
+<tr><td>the pid is equal before and after <code>exec</code></td><td><code>exec</code> replaces the program inside the same <code>task_struct</code>.</td></tr>
+<tr><td>state <code>Z</code> before <code>wait</code>, no entry after</td><td>A process that has ended is a zombie until its parent reaps it.</td></tr>
+<tr><td>the orphan is adopted by <code>systemd</code></td><td>The kernel gave the orphan a new parent.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The process named <code>systemd</code> in the last line is the service manager of the user’s
+session, which has registered as a subreaper. On a system without one, the line would
+name process 1.</p>
+<h2 id="modelling-the-process-table"><a class="header" href="#modelling-the-process-table">Modelling the process table</a></h2>
+<p><code>proctable</code> is a model of the part of the kernel that this chapter describes: the table
+of processes, the allocation of pids, the zombie state, and the adoption of orphans.</p>
+<div class="lld">
+<p>Low-level design: <code>proctable</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Kernel structure</th><th>Fields</th><th>Invariant</th></tr>
+</thead>
+<tbody>
+<tr><td><code>process</code></td><td><code>struct task_struct</code></td><td><code>parent</code>, <code>state</code>, <code>status</code></td><td><code>state</code> is running or zombie; <code>status</code> is meaningful for a zombie</td></tr>
+<tr><td><code>table</code></td><td>the kernel’s table of pids</td><td><code>procs</code>, <code>last</code>, <code>pidMax</code></td><td>every <code>parent</code> except that of process 1 is a pid in <code>procs</code></td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th><th>Error</th></tr>
+</thead>
+<tbody>
+<tr><td><code>allocate()</code></td><td>returns the first free pid after <code>last</code>, wrapping at <code>pidMax</code></td><td><code>EAGAIN</code> when every pid is in use</td></tr>
+<tr><td><code>fork(parent)</code></td><td>adds a running child of <code>parent</code></td><td><code>ESRCH</code> when <code>parent</code> does not exist</td></tr>
+<tr><td><code>exit(pid, status)</code></td><td>marks <code>pid</code> a zombie, stores <code>status</code>, gives its children to process 1</td><td><code>ESRCH</code></td></tr>
+<tr><td><code>wait(parent)</code></td><td>removes a zombie child and returns its pid and status</td><td><code>ECHILD</code> when <code>parent</code> has no children</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The table maps a pid to an entry. <code>last</code> remembers the pid allocated most recently.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.15</b> The imports of <code>proctable</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+	"slices"
+	"strings"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.16</b> The imports of <code>proctable</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::BTreeMap;
+use std::fmt;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.17</b> The process table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">// The errors carry the names of the kernel's error codes for the same cases.
+var (
+	errAgain   = errors.New("EAGAIN: no process number is free")
+	errNoChild = errors.New("ECHILD: the caller has no child to wait for")
+	errSearch  = errors.New("ESRCH: no such process")
+)
+
+// initPid is the process that adopts orphans.
+const initPid = 1
+
+type state byte
+
+const (
+	running state = 'R'
+	zombie  state = 'Z'
+)
+
+// A process is one entry of the table.
+type process struct {
+	parent int
+	state  state
+	status int
+}
+
+// A table maps process numbers to entries. last is the number given out most
+// recently, and pidMax is the largest number allowed.
+type table struct {
+	procs  map[int]*process
+	last   int
+	pidMax int
+}
+
+func newTable(pidMax int) *table {
+	return &amp;table{
+		procs:  map[int]*process{initPid: {state: running}},
+		last:   initPid,
+		pidMax: pidMax,
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.18</b> The process table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The errors carry the names of the kernel's error codes for the same cases.
+#[derive(Debug)]
+enum Error {
+    Again,
+    NoChild,
+    Search,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Error::Again =&gt; "EAGAIN: no process number is free",
+            Error::NoChild =&gt; "ECHILD: the caller has no child to wait for",
+            Error::Search =&gt; "ESRCH: no such process",
+        })
+    }
+}
+
+impl std::error::Error for Error {}
+
+/// The process that adopts orphans.
+const INIT_PID: u32 = 1;
+
+#[derive(Clone, Copy, PartialEq)]
+enum State {
+    Running,
+    Zombie,
+}
+
+/// One entry of the table.
+struct Process {
+    parent: u32,
+    state: State,
+    status: i32,
+}
+
+/// Maps process numbers to entries. `last` is the number given out most
+/// recently, and `pid_max` is the largest number allowed.
+struct Table {
+    procs: BTreeMap&lt;u32, Process&gt;,
+    last: u32,
+    pid_max: u32,
+}
+
+impl Table {
+    fn new(pid_max: u32) -&gt; Table {
+        let init = Process {
+            parent: 0,
+            state: State::Running,
+            status: 0,
+        };
+
+        Table {
+            procs: BTreeMap::from([(INIT_PID, init)]),
+            last: INIT_PID,
+            pid_max,
+        }
+    }
+}</code></pre>
+<p><code>allocate</code> searches upward from <code>last</code> and wraps around at <code>pidMax</code>. A pid that has been
+freed is therefore reused only after all higher numbers have been tried. The delay
+protects programs that hold a pid: a process that stored the pid of another, to send it
+a signal later, would otherwise reach an unrelated new process if the number were reused
+quickly. <code>/proc/sys/kernel/pid_max</code> sets the limit, 4194304 on this machine.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.19</b> Allocating a pid and creating a child, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">// allocate returns the first free number after last, wrapping around from
+// pidMax to the number after initPid.
+func (t *table) allocate() (int, error) {
+	pid := t.last
+
+	for range t.pidMax {
+		pid++
+
+		if pid &gt; t.pidMax {
+			pid = initPid + 1
+		}
+
+		if _, used := t.procs[pid]; !used {
+			t.last = pid
+
+			return pid, nil
+		}
+	}
+
+	return 0, errAgain
+}
+
+// fork creates a child of parent and returns the child's number.
+func (t *table) fork(parent int) (int, error) {
+	if _, ok := t.procs[parent]; !ok {
+		return 0, errSearch
+	}
+
+	pid, err := t.allocate()
+
+	if err != nil {
+		return 0, err
+	}
+
+	t.procs[pid] = &amp;process{parent: parent, state: running}
+
+	return pid, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.20</b> Allocating a pid and creating a child, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Table {
+    /// Returns the first free number after `last`, wrapping around from
+    /// `pid_max` to the number after `INIT_PID`.
+    fn allocate(&amp;mut self) -&gt; Result&lt;u32, Error&gt; {
+        let mut pid = self.last;
+
+        for _ in 0..self.pid_max {
+            pid += 1;
+
+            if pid &gt; self.pid_max {
+                pid = INIT_PID + 1;
+            }
+
+            if !self.procs.contains_key(&amp;pid) {
+                self.last = pid;
+
+                return Ok(pid);
+            }
+        }
+
+        Err(Error::Again)
+    }
+
+    /// Creates a child of `parent` and returns the child's number.
+    fn fork(&amp;mut self, parent: u32) -&gt; Result&lt;u32, Error&gt; {
+        if !self.procs.contains_key(&amp;parent) {
+            return Err(Error::Search);
+        }
+
+        let pid = self.allocate()?;
+
+        let child = Process {
+            parent,
+            state: State::Running,
+            status: 0,
+        };
+
+        self.procs.insert(pid, child);
+
+        Ok(pid)
+    }
+}</code></pre>
+<p><code>exit</code> keeps the entry and changes its state. It then gives every child of the ended
+process to process 1.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.21</b> Ending a process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">// exit ends a process. The entry stays in the table as a zombie that holds
+// the exit status, and the children of the process become children of init.
+func (t *table) exit(pid, status int) error {
+	p, ok := t.procs[pid]
+
+	if !ok {
+		return errSearch
+	}
+
+	p.state, p.status = zombie, status
+
+	for _, child := range t.procs {
+		if child.parent == pid {
+			child.parent = initPid
+		}
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.22</b> Ending a process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Table {
+    /// Ends a process. The entry stays in the table as a zombie that holds
+    /// the exit status, and the children of the process become children of
+    /// init.
+    fn exit(&amp;mut self, pid: u32, status: i32) -&gt; Result&lt;(), Error&gt; {
+        let process = self.procs.get_mut(&amp;pid).ok_or(Error::Search)?;
+
+        process.state = State::Zombie;
+        process.status = status;
+
+        for child in self.procs.values_mut() {
+            if child.parent == pid {
+                child.parent = INIT_PID;
+            }
+        }
+
+        Ok(())
+    }
+}</code></pre>
+<p><code>wait</code> has 3 outcomes. A zombie child exists, and it is removed and returned. Children
+exist and none has ended, where the kernel would put the caller to sleep. Or the caller
+has no children, which is the error <code>ECHILD</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.23</b> Collecting a child, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">// wait removes a zombie child of parent from the table and returns its number
+// and exit status. ok is false when parent has children and none of them has
+// exited, the case in which the kernel suspends the caller.
+func (t *table) wait(parent int) (pid, status int, ok bool, err error) {
+	children := 0
+
+	for _, pid := range t.pids() {
+		child := t.procs[pid]
+
+		if child.parent != parent {
+			continue
+		}
+
+		children++
+
+		if child.state == zombie {
+			delete(t.procs, pid)
+
+			return pid, child.status, true, nil
+		}
+	}
+
+	if children == 0 {
+		return 0, 0, false, errNoChild
+	}
+
+	return 0, 0, false, nil
+}
+
+// pids returns the process numbers in use, in increasing order.
+func (t *table) pids() []int {
+	pids := make([]int, 0, len(t.procs))
+
+	for pid := range t.procs {
+		pids = append(pids, pid)
+	}
+
+	slices.Sort(pids)
+
+	return pids
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.24</b> Collecting a child, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Table {
+    /// Removes a zombie child of `parent` from the table and returns its
+    /// number and exit status. The result is `None` when `parent` has
+    /// children and none of them has exited, the case in which the kernel
+    /// suspends the caller.
+    fn wait(&amp;mut self, parent: u32) -&gt; Result&lt;Option&lt;(u32, i32)&gt;, Error&gt; {
+        let mut children = self
+            .procs
+            .iter()
+            .filter(|(_, child)| child.parent == parent)
+            .peekable();
+
+        if children.peek().is_none() {
+            return Err(Error::NoChild);
+        }
+
+        let Some((&amp;pid, child)) = children.find(|(_, child)| child.state == State::Zombie) else {
+            return Ok(None);
+        };
+
+        let status = child.status;
+        self.procs.remove(&amp;pid);
+
+        Ok(Some((pid, status)))
+    }
+}</code></pre>
+<p>The program applies a sequence of calls to a table with <code>pidMax</code> set to 6 and prints the
+table after each call. An entry is printed as <code>pid(parent)state</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.25</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">// String renders the table as pid(parent)state for each entry.
+func (t *table) String() string {
+	var cells []string
+
+	for _, pid := range t.pids() {
+		p := t.procs[pid]
+		cells = append(cells, fmt.Sprintf("%d(%d)%c", pid, p.parent, p.state))
+	}
+
+	return strings.Join(cells, " ")
+}
+
+// A call is one step of the trace: an operation, the process it applies to,
+// and for exit the status.
+type call struct {
+	op     string
+	pid    int
+	status int
+}
+
+// apply performs a call and describes its result.
+func (t *table) apply(c call) (string, error) {
+	switch c.op {
+	case "fork":
+		child, err := t.fork(c.pid)
+
+		return fmt.Sprintf("fork by %d: pid %d", c.pid, child), err
+
+	case "exit":
+		return fmt.Sprintf("exit of %d, status %d", c.pid, c.status), t.exit(c.pid, c.status)
+
+	default:
+		child, status, ok, err := t.wait(c.pid)
+
+		if !ok {
+			return fmt.Sprintf("wait by %d: would block", c.pid), err
+		}
+
+		return fmt.Sprintf("wait by %d: pid %d, status %d", c.pid, child, status), nil
+	}
+}
+
+func main() {
+	t := newTable(6)
+
+	calls := []call{
+		{op: "fork", pid: 1},
+		{op: "fork", pid: 2},
+		{op: "fork", pid: 3},
+		{op: "wait", pid: 2},
+		{op: "exit", pid: 3},
+		{op: "wait", pid: 2},
+		{op: "fork", pid: 2},
+		{op: "exit", pid: 4, status: 7},
+		{op: "wait", pid: 1},
+		{op: "fork", pid: 2},
+		{op: "fork", pid: 2},
+	}
+
+	fmt.Printf("%-30s %s\n", "start", t)
+
+	for _, c := range calls {
+		result, err := t.apply(c)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("%-30s %s\n", result, t)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.26</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Renders the table as pid(parent)state for each entry.
+impl fmt::Display for Table {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        let cells: Vec&lt;String&gt; = self
+            .procs
+            .iter()
+            .map(|(pid, process)| {
+                let state = match process.state {
+                    State::Running =&gt; 'R',
+                    State::Zombie =&gt; 'Z',
+                };
+
+                format!("{pid}({}){state}", process.parent)
+            })
+            .collect();
+
+        f.write_str(&amp;cells.join(" "))
+    }
+}
+
+/// One step of the trace.
+enum Call {
+    Fork(u32),
+    Exit(u32, i32),
+    Wait(u32),
+}
+
+impl Table {
+    /// Performs a call and describes its result.
+    fn apply(&amp;mut self, call: &amp;Call) -&gt; Result&lt;String, Error&gt; {
+        match *call {
+            Call::Fork(parent) =&gt; {
+                let child = self.fork(parent)?;
+
+                Ok(format!("fork by {parent}: pid {child}"))
+            }
+            Call::Exit(pid, status) =&gt; {
+                self.exit(pid, status)?;
+
+                Ok(format!("exit of {pid}, status {status}"))
+            }
+            Call::Wait(parent) =&gt; match self.wait(parent)? {
+                Some((child, status)) =&gt; {
+                    Ok(format!("wait by {parent}: pid {child}, status {status}"))
+                }
+                None =&gt; Ok(format!("wait by {parent}: would block")),
+            },
+        }
+    }
+}
+
+fn main() -&gt; Result&lt;(), Error&gt; {
+    let mut table = Table::new(6);
+
+    let calls = [
+        Call::Fork(1),
+        Call::Fork(2),
+        Call::Fork(3),
+        Call::Wait(2),
+        Call::Exit(3, 0),
+        Call::Wait(2),
+        Call::Fork(2),
+        Call::Exit(4, 7),
+        Call::Wait(1),
+        Call::Fork(2),
+        Call::Fork(2),
+    ];
+
+    println!("{:&lt;30} {table}", "start");
+
+    for call in &amp;calls {
+        let result = table.apply(call)?;
+        println!("{result:&lt;30} {table}");
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">start                          1(0)R
+fork by 1: pid 2               1(0)R 2(1)R
+fork by 2: pid 3               1(0)R 2(1)R 3(2)R
+fork by 3: pid 4               1(0)R 2(1)R 3(2)R 4(3)R
+wait by 2: would block         1(0)R 2(1)R 3(2)R 4(3)R
+exit of 3, status 0            1(0)R 2(1)R 3(2)Z 4(1)R
+wait by 2: pid 3, status 0     1(0)R 2(1)R 4(1)R
+fork by 2: pid 5               1(0)R 2(1)R 4(1)R 5(2)R
+exit of 4, status 7            1(0)R 2(1)R 4(1)Z 5(2)R
+wait by 1: pid 4, status 7     1(0)R 2(1)R 5(2)R
+fork by 2: pid 6               1(0)R 2(1)R 5(2)R 6(2)R
+fork by 2: pid 3               1(0)R 2(1)R 3(2)R 5(2)R 6(2)R
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>wait by 2: would block</code></td><td>Process 2 has a child, 3, which is still running.</td></tr>
+<tr><td><code>exit of 3</code></td><td>Entry 3 becomes <code>Z</code> and stays. Its child 4 now has parent 1.</td></tr>
+<tr><td><code>wait by 2: pid 3</code></td><td>The zombie is removed and its status is returned.</td></tr>
+<tr><td><code>fork by 2: pid 5</code></td><td>Pid 3 is free, and the search continues upward from <code>last</code>, which is 4.</td></tr>
+<tr><td><code>wait by 1: pid 4, status 7</code></td><td>Process 1 reaps the orphan it adopted.</td></tr>
+<tr><td><code>fork by 2: pid 3</code></td><td>After pid 6 the search wraps around. Pid 2 is in use, and 3 is the first free number.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/orphan-adoption.svg" alt="Before pid 3 exits, the processes form a chain: 1 is the parent of 2, 2 of 3, and 3 of 4. After pid 3 exits it is a zombie child of 2, and the kernel has made pid 1, init, the parent of 4.">
+<figcaption><b>Figure 3.7</b> The table before and after the line <code>exit of 3</code>.</figcaption>
+</figure>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> <code>kernel/fork.c</code> contains <code>copy_process</code>,
+which builds the new <code>task_struct</code> and calls a <code>copy_</code> function for each resource
+(<code>copy_mm</code>, <code>copy_files</code>, <code>copy_sighand</code>, and others), each of which copies or shares
+according to the <code>clone</code> flags. <code>alloc_pid</code> in <code>kernel/pid.c</code> allocates numbers with
+<code>idr_alloc_cyclic</code>, the cyclic search that <code>allocate</code> models. <code>do_exit</code> in
+<code>kernel/exit.c</code> sets <code>EXIT_ZOMBIE</code> and calls <code>forget_original_parent</code>, which chooses the
+new parent of each child with <code>find_new_reaper</code>. The kernel keeps a list of children in
+each task, where <code>proctable</code> scans the whole table.</p>
+</div>
+
+<h2 id="inspecting-processes-on-a-live-system"><a class="header" href="#inspecting-processes-on-a-live-system">Inspecting processes on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ps -o pid,ppid,stat,comm</code></td><td>pid, parent, state and name of the processes of the terminal</td></tr>
+<tr><td><code>ps -ef --forest</code> or <code>pstree -p</code></td><td>every process, drawn as a tree of parents and children</td></tr>
+<tr><td><code>cat /proc/&lt;pid&gt;/status</code></td><td>the record of a process: state, parent, threads, memory, user</td></tr>
+<tr><td><code>ls /proc/&lt;pid&gt;/task</code></td><td>the threads of a process</td></tr>
+<tr><td><code>cat /proc/sys/kernel/pid_max</code></td><td>the largest pid</td></tr>
+<tr><td><code>ps -eo stat,pid,ppid,comm | grep '^Z'</code></td><td>the zombies of the system, with the parent that has not reaped them</td></tr>
+</tbody>
+</table>
+</div>
+<p>A zombie cannot be removed with <code>kill</code>, since it has already ended. The last command
+gives the pid of the parent, and the remedy is there: the parent has to call <code>wait</code>, or
+end.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.27</b> The complete <code>procfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/procfacts/main.go">code/go/procfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command procfacts measures the life cycle of a process: who its parent is,
+// how its termination is reported, what exec keeps, what remains of a child
+// that has exited and has not been waited for, and who becomes the parent of
+// an orphan.
+//
+// Run it from code/go with:
+//
+//	go run ./procfacts
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+
+
+// field returns one field of /proc/&lt;pid&gt;/stat, counted from 1. The second
+// field, the command name, is in parentheses and may contain spaces, so the
+// fields after it are counted from the closing parenthesis.
+func field(pid, n int) (string, error) {
+	stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+
+	if err != nil {
+		return "", err
+	}
+
+	end := strings.LastIndexByte(string(stat), ')')
+	rest := strings.Fields(string(stat[end+1:]))
+
+	return rest[n-3], nil
+}
+
+// output runs a shell command and returns what it printed, without the final
+// newline.
+func output(script string) (string, error) {
+	text, err := exec.Command("sh", "-c", script).Output()
+
+	return strings.TrimSpace(string(text)), err
+}
+
+
+// parent asks a child for the number of its parent process.
+func parent() error {
+	text, err := output("echo $PPID")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the child's parent is this process: %v\n", text == strconv.Itoa(os.Getpid()))
+
+	return nil
+}
+
+
+// status runs a script and reports how it terminated.
+func status(script string) error {
+	err := exec.Command("sh", "-c", script).Run()
+
+	var exit *exec.ExitError
+
+	if !errors.As(err, &amp;exit) {
+		return fmt.Errorf("%s: %v", script, err)
+	}
+
+	wait, ok := exit.Sys().(syscall.WaitStatus)
+
+	switch {
+	case ok &amp;&amp; wait.Signaled():
+		fmt.Printf("%s: killed by signal %d\n", script, wait.Signal())
+	default:
+		fmt.Printf("%s: exited with status %d\n", script, exit.ExitCode())
+	}
+
+	return nil
+}
+
+
+// execKeepsPid prints the process number of a shell before and after the
+// shell replaces its program with exec.
+func execKeepsPid() error {
+	text, err := output(`echo $$; exec sh -c 'echo $$'`)
+
+	if err != nil {
+		return err
+	}
+
+	pids := strings.Fields(text)
+
+	fmt.Printf("pid before and after exec: equal %v\n", len(pids) == 2 &amp;&amp; pids[0] == pids[1])
+
+	return nil
+}
+
+
+// zombie starts a child that exits at once, and reads its state before and
+// after waiting for it.
+func zombie() error {
+	child := exec.Command("true")
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	pid := child.Process.Pid
+	state, err := field(pid, 3)
+
+	for err == nil &amp;&amp; state != "Z" {
+		time.Sleep(time.Millisecond)
+		state, err = field(pid, 3)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := child.Wait(); err != nil {
+		return err
+	}
+
+	_, err = os.Stat(fmt.Sprintf("/proc/%d", pid))
+
+	fmt.Printf("exited child: state %s before wait, /proc entry present after wait: %v\n", state, err == nil)
+
+	return nil
+}
+
+
+// orphan starts a shell that starts a background sleep and exits. The sleep
+// outlives its parent, and the kernel gives it a new one.
+func orphan() error {
+	text, err := output("sleep 30 &gt;/dev/null 2&gt;&amp;1 &amp; echo $!")
+
+	if err != nil {
+		return err
+	}
+
+	pid, err := strconv.Atoi(text)
+
+	if err != nil {
+		return err
+	}
+
+	defer syscall.Kill(pid, syscall.SIGKILL)
+
+	adopter, err := field(pid, 4)
+
+	if err != nil {
+		return err
+	}
+
+	name, err := os.ReadFile("/proc/" + adopter + "/comm")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("orphan adopted by: %s\n", strings.TrimSpace(string(name)))
+
+	return nil
+}
+
+
+func main() {
+	experiments := []func() error{
+		parent,
+		func() error { return status("exit 7") },
+		func() error { return status("exit 300") },
+		func() error { return status("kill -TERM $$") },
+		execKeepsPid,
+		zombie,
+		orphan,
+	}
+
+	for _, experiment := range experiments {
+		if err := experiment(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.28</b> The complete <code>procfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/procfacts/src/main.rs">code/rust/procfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures the life cycle of a process: who its parent is, how its
+//! termination is reported, what exec keeps, what remains of a child that has
+//! exited and has not been waited for, and who becomes the parent of an
+//! orphan.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p procfacts
+//! ```
+
+use std::fs;
+use std::io;
+use std::os::unix::process::ExitStatusExt;
+use std::path::Path;
+use std::process::{self, Command};
+use std::thread;
+use std::time::Duration;
+
+use nix::sys::signal::{Signal, kill};
+use nix::unistd::Pid;
+
+/// Returns one field of `/proc/&lt;pid&gt;/stat`, counted from 1. The second field,
+/// the command name, is in parentheses and may contain spaces, so the fields
+/// after it are counted from the closing parenthesis.
+fn field(pid: u32, n: usize) -&gt; io::Result&lt;String&gt; {
+    let stat = fs::read_to_string(format!("/proc/{pid}/stat"))?;
+    let rest = stat.rsplit_once(')').map_or("", |(_, rest)| rest);
+
+    rest.split_whitespace()
+        .nth(n - 3)
+        .map(str::to_owned)
+        .ok_or_else(|| io::ErrorKind::InvalidData.into())
+}
+
+/// Runs a shell command and returns what it printed, without the final
+/// newline.
+fn output(script: &amp;str) -&gt; io::Result&lt;String&gt; {
+    let output = Command::new("sh").args(["-c", script]).output()?;
+
+    Ok(String::from_utf8_lossy(&amp;output.stdout).trim().to_owned())
+}
+
+/// Asks a child for the number of its parent process.
+fn parent() -&gt; io::Result&lt;()&gt; {
+    let text = output("echo $PPID")?;
+
+    println!(
+        "the child's parent is this process: {}",
+        text == process::id().to_string()
+    );
+
+    Ok(())
+}
+
+/// Runs a script and reports how it terminated.
+fn status(script: &amp;str) -&gt; io::Result&lt;()&gt; {
+    let status = Command::new("sh").args(["-c", script]).status()?;
+
+    match (status.signal(), status.code()) {
+        (Some(signal), _) =&gt; println!("{script}: killed by signal {signal}"),
+        (None, Some(code)) =&gt; println!("{script}: exited with status {code}"),
+        (None, None) =&gt; println!("{script}: {status}"),
+    }
+
+    Ok(())
+}
+
+/// Prints the process number of a shell before and after the shell replaces
+/// its program with exec.
+fn exec_keeps_pid() -&gt; io::Result&lt;()&gt; {
+    let text = output("echo $$; exec sh -c 'echo $$'")?;
+    let pids: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    println!(
+        "pid before and after exec: equal {}",
+        pids.len() == 2 &amp;&amp; pids[0] == pids[1]
+    );
+
+    Ok(())
+}
+
+/// Starts a child that exits at once, and reads its state before and after
+/// waiting for it.
+fn zombie() -&gt; io::Result&lt;()&gt; {
+    let mut child = Command::new("true").spawn()?;
+    let pid = child.id();
+
+    let mut state = field(pid, 3)?;
+
+    while state != "Z" {
+        thread::sleep(Duration::from_millis(1));
+        state = field(pid, 3)?;
+    }
+
+    child.wait()?;
+
+    let present = Path::new(&amp;format!("/proc/{pid}")).exists();
+    println!("exited child: state {state} before wait, /proc entry present after wait: {present}");
+
+    Ok(())
+}
+
+/// Starts a shell that starts a background sleep and exits. The sleep
+/// outlives its parent, and the kernel gives it a new one.
+fn orphan() -&gt; io::Result&lt;()&gt; {
+    let text = output("sleep 30 &gt;/dev/null 2&gt;&amp;1 &amp; echo $!")?;
+
+    let pid: u32 = text
+        .parse()
+        .map_err(|_| io::Error::from(io::ErrorKind::InvalidData))?;
+
+    let adopter = field(pid, 4);
+    kill(Pid::from_raw(pid as i32), Signal::SIGKILL)?;
+
+    let name = fs::read_to_string(format!("/proc/{}/comm", adopter?))?;
+    println!("orphan adopted by: {}", name.trim());
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    parent()?;
+    status("exit 7")?;
+    status("exit 300")?;
+    status("kill -TERM $$")?;
+    exec_keeps_pid()?;
+    zombie()?;
+    orphan()
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 3.29</b> The complete <code>proctable</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/proctable/main.go">code/go/proctable/main.go</a></p>
+
+<pre><code class="language-go">// Command proctable models the kernel's process table: process numbers handed
+// out in a cycle, a parent for every process, a zombie state between exit and
+// wait, and a new parent for orphans. It applies a sequence of calls and
+// prints the table after each.
+//
+// Run it from code/go with:
+//
+//	go run ./proctable
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"slices"
+	"strings"
+)
+
+
+// The errors carry the names of the kernel's error codes for the same cases.
+var (
+	errAgain   = errors.New("EAGAIN: no process number is free")
+	errNoChild = errors.New("ECHILD: the caller has no child to wait for")
+	errSearch  = errors.New("ESRCH: no such process")
+)
+
+// initPid is the process that adopts orphans.
+const initPid = 1
+
+type state byte
+
+const (
+	running state = 'R'
+	zombie  state = 'Z'
+)
+
+// A process is one entry of the table.
+type process struct {
+	parent int
+	state  state
+	status int
+}
+
+// A table maps process numbers to entries. last is the number given out most
+// recently, and pidMax is the largest number allowed.
+type table struct {
+	procs  map[int]*process
+	last   int
+	pidMax int
+}
+
+func newTable(pidMax int) *table {
+	return &amp;table{
+		procs:  map[int]*process{initPid: {state: running}},
+		last:   initPid,
+		pidMax: pidMax,
+	}
+}
+
+
+// allocate returns the first free number after last, wrapping around from
+// pidMax to the number after initPid.
+func (t *table) allocate() (int, error) {
+	pid := t.last
+
+	for range t.pidMax {
+		pid++
+
+		if pid &gt; t.pidMax {
+			pid = initPid + 1
+		}
+
+		if _, used := t.procs[pid]; !used {
+			t.last = pid
+
+			return pid, nil
+		}
+	}
+
+	return 0, errAgain
+}
+
+// fork creates a child of parent and returns the child's number.
+func (t *table) fork(parent int) (int, error) {
+	if _, ok := t.procs[parent]; !ok {
+		return 0, errSearch
+	}
+
+	pid, err := t.allocate()
+
+	if err != nil {
+		return 0, err
+	}
+
+	t.procs[pid] = &amp;process{parent: parent, state: running}
+
+	return pid, nil
+}
+
+
+// exit ends a process. The entry stays in the table as a zombie that holds
+// the exit status, and the children of the process become children of init.
+func (t *table) exit(pid, status int) error {
+	p, ok := t.procs[pid]
+
+	if !ok {
+		return errSearch
+	}
+
+	p.state, p.status = zombie, status
+
+	for _, child := range t.procs {
+		if child.parent == pid {
+			child.parent = initPid
+		}
+	}
+
+	return nil
+}
+
+
+// wait removes a zombie child of parent from the table and returns its number
+// and exit status. ok is false when parent has children and none of them has
+// exited, the case in which the kernel suspends the caller.
+func (t *table) wait(parent int) (pid, status int, ok bool, err error) {
+	children := 0
+
+	for _, pid := range t.pids() {
+		child := t.procs[pid]
+
+		if child.parent != parent {
+			continue
+		}
+
+		children++
+
+		if child.state == zombie {
+			delete(t.procs, pid)
+
+			return pid, child.status, true, nil
+		}
+	}
+
+	if children == 0 {
+		return 0, 0, false, errNoChild
+	}
+
+	return 0, 0, false, nil
+}
+
+// pids returns the process numbers in use, in increasing order.
+func (t *table) pids() []int {
+	pids := make([]int, 0, len(t.procs))
+
+	for pid := range t.procs {
+		pids = append(pids, pid)
+	}
+
+	slices.Sort(pids)
+
+	return pids
+}
+
+
+// String renders the table as pid(parent)state for each entry.
+func (t *table) String() string {
+	var cells []string
+
+	for _, pid := range t.pids() {
+		p := t.procs[pid]
+		cells = append(cells, fmt.Sprintf("%d(%d)%c", pid, p.parent, p.state))
+	}
+
+	return strings.Join(cells, " ")
+}
+
+// A call is one step of the trace: an operation, the process it applies to,
+// and for exit the status.
+type call struct {
+	op     string
+	pid    int
+	status int
+}
+
+// apply performs a call and describes its result.
+func (t *table) apply(c call) (string, error) {
+	switch c.op {
+	case "fork":
+		child, err := t.fork(c.pid)
+
+		return fmt.Sprintf("fork by %d: pid %d", c.pid, child), err
+
+	case "exit":
+		return fmt.Sprintf("exit of %d, status %d", c.pid, c.status), t.exit(c.pid, c.status)
+
+	default:
+		child, status, ok, err := t.wait(c.pid)
+
+		if !ok {
+			return fmt.Sprintf("wait by %d: would block", c.pid), err
+		}
+
+		return fmt.Sprintf("wait by %d: pid %d, status %d", c.pid, child, status), nil
+	}
+}
+
+func main() {
+	t := newTable(6)
+
+	calls := []call{
+		{op: "fork", pid: 1},
+		{op: "fork", pid: 2},
+		{op: "fork", pid: 3},
+		{op: "wait", pid: 2},
+		{op: "exit", pid: 3},
+		{op: "wait", pid: 2},
+		{op: "fork", pid: 2},
+		{op: "exit", pid: 4, status: 7},
+		{op: "wait", pid: 1},
+		{op: "fork", pid: 2},
+		{op: "fork", pid: 2},
+	}
+
+	fmt.Printf("%-30s %s\n", "start", t)
+
+	for _, c := range calls {
+		result, err := t.apply(c)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("%-30s %s\n", result, t)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.30</b> The complete <code>proctable</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/proctable/src/main.rs">code/rust/proctable/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the kernel's process table: process numbers handed out in a cycle,
+//! a parent for every process, a zombie state between exit and wait, and a
+//! new parent for orphans. It applies a sequence of calls and prints the
+//! table after each.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p proctable
+//! ```
+
+use std::collections::BTreeMap;
+use std::fmt;
+
+/// The errors carry the names of the kernel's error codes for the same cases.
+#[derive(Debug)]
+enum Error {
+    Again,
+    NoChild,
+    Search,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Error::Again =&gt; "EAGAIN: no process number is free",
+            Error::NoChild =&gt; "ECHILD: the caller has no child to wait for",
+            Error::Search =&gt; "ESRCH: no such process",
+        })
+    }
+}
+
+impl std::error::Error for Error {}
+
+/// The process that adopts orphans.
+const INIT_PID: u32 = 1;
+
+#[derive(Clone, Copy, PartialEq)]
+enum State {
+    Running,
+    Zombie,
+}
+
+/// One entry of the table.
+struct Process {
+    parent: u32,
+    state: State,
+    status: i32,
+}
+
+/// Maps process numbers to entries. `last` is the number given out most
+/// recently, and `pid_max` is the largest number allowed.
+struct Table {
+    procs: BTreeMap&lt;u32, Process&gt;,
+    last: u32,
+    pid_max: u32,
+}
+
+impl Table {
+    fn new(pid_max: u32) -&gt; Table {
+        let init = Process {
+            parent: 0,
+            state: State::Running,
+            status: 0,
+        };
+
+        Table {
+            procs: BTreeMap::from([(INIT_PID, init)]),
+            last: INIT_PID,
+            pid_max,
+        }
+    }
+}
+
+impl Table {
+    /// Returns the first free number after `last`, wrapping around from
+    /// `pid_max` to the number after `INIT_PID`.
+    fn allocate(&amp;mut self) -&gt; Result&lt;u32, Error&gt; {
+        let mut pid = self.last;
+
+        for _ in 0..self.pid_max {
+            pid += 1;
+
+            if pid &gt; self.pid_max {
+                pid = INIT_PID + 1;
+            }
+
+            if !self.procs.contains_key(&amp;pid) {
+                self.last = pid;
+
+                return Ok(pid);
+            }
+        }
+
+        Err(Error::Again)
+    }
+
+    /// Creates a child of `parent` and returns the child's number.
+    fn fork(&amp;mut self, parent: u32) -&gt; Result&lt;u32, Error&gt; {
+        if !self.procs.contains_key(&amp;parent) {
+            return Err(Error::Search);
+        }
+
+        let pid = self.allocate()?;
+
+        let child = Process {
+            parent,
+            state: State::Running,
+            status: 0,
+        };
+
+        self.procs.insert(pid, child);
+
+        Ok(pid)
+    }
+}
+
+impl Table {
+    /// Ends a process. The entry stays in the table as a zombie that holds
+    /// the exit status, and the children of the process become children of
+    /// init.
+    fn exit(&amp;mut self, pid: u32, status: i32) -&gt; Result&lt;(), Error&gt; {
+        let process = self.procs.get_mut(&amp;pid).ok_or(Error::Search)?;
+
+        process.state = State::Zombie;
+        process.status = status;
+
+        for child in self.procs.values_mut() {
+            if child.parent == pid {
+                child.parent = INIT_PID;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Table {
+    /// Removes a zombie child of `parent` from the table and returns its
+    /// number and exit status. The result is `None` when `parent` has
+    /// children and none of them has exited, the case in which the kernel
+    /// suspends the caller.
+    fn wait(&amp;mut self, parent: u32) -&gt; Result&lt;Option&lt;(u32, i32)&gt;, Error&gt; {
+        let mut children = self
+            .procs
+            .iter()
+            .filter(|(_, child)| child.parent == parent)
+            .peekable();
+
+        if children.peek().is_none() {
+            return Err(Error::NoChild);
+        }
+
+        let Some((&amp;pid, child)) = children.find(|(_, child)| child.state == State::Zombie) else {
+            return Ok(None);
+        };
+
+        let status = child.status;
+        self.procs.remove(&amp;pid);
+
+        Ok(Some((pid, status)))
+    }
+}
+
+/// Renders the table as pid(parent)state for each entry.
+impl fmt::Display for Table {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        let cells: Vec&lt;String&gt; = self
+            .procs
+            .iter()
+            .map(|(pid, process)| {
+                let state = match process.state {
+                    State::Running =&gt; 'R',
+                    State::Zombie =&gt; 'Z',
+                };
+
+                format!("{pid}({}){state}", process.parent)
+            })
+            .collect();
+
+        f.write_str(&amp;cells.join(" "))
+    }
+}
+
+/// One step of the trace.
+enum Call {
+    Fork(u32),
+    Exit(u32, i32),
+    Wait(u32),
+}
+
+impl Table {
+    /// Performs a call and describes its result.
+    fn apply(&amp;mut self, call: &amp;Call) -&gt; Result&lt;String, Error&gt; {
+        match *call {
+            Call::Fork(parent) =&gt; {
+                let child = self.fork(parent)?;
+
+                Ok(format!("fork by {parent}: pid {child}"))
+            }
+            Call::Exit(pid, status) =&gt; {
+                self.exit(pid, status)?;
+
+                Ok(format!("exit of {pid}, status {status}"))
+            }
+            Call::Wait(parent) =&gt; match self.wait(parent)? {
+                Some((child, status)) =&gt; {
+                    Ok(format!("wait by {parent}: pid {child}, status {status}"))
+                }
+                None =&gt; Ok(format!("wait by {parent}: would block")),
+            },
+        }
+    }
+}
+
+fn main() -&gt; Result&lt;(), Error&gt; {
+    let mut table = Table::new(6);
+
+    let calls = [
+        Call::Fork(1),
+        Call::Fork(2),
+        Call::Fork(3),
+        Call::Wait(2),
+        Call::Exit(3, 0),
+        Call::Wait(2),
+        Call::Fork(2),
+        Call::Exit(4, 7),
+        Call::Wait(1),
+        Call::Fork(2),
+        Call::Fork(2),
+    ];
+
+    println!("{:&lt;30} {table}", "start");
+
+    for call in &amp;calls {
+        let result = table.apply(call)?;
+        println!("{result:&lt;30} {table}");
+    }
+
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A process is a <code>struct task_struct</code> and the resources it points to: an address space,
+a descriptor table, signal state, namespaces and control groups.</li>
+<li><code>fork</code> creates a child with a new pid and copies of the parent’s resources. Memory is
+copied lazily. <code>exec</code> replaces the program and keeps the <code>task_struct</code>.</li>
+<li>The code that runs between <code>fork</code> and <code>exec</code> prepares the environment of the new
+program.</li>
+<li>A process ends with an 8-bit exit status or by a signal, and <code>wait</code> reports which in a
+single integer.</li>
+<li>A process that has ended is a zombie until its parent reaps it with <code>wait</code>.</li>
+<li>An orphan is adopted by the nearest subreaper among its ancestors, or by process 1.</li>
+<li>Pids are allocated in a cycle, so a freed pid is reused as late as possible.</li>
+<li>A thread is a task that shares the resources of another. The pid of a process is the
+thread group ID of its tasks.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>fork(2)</code>, <code>clone(2)</code>, <code>execve(2)</code>, <code>wait(2)</code>, <code>prctl(2)</code> and <code>proc(5)</code>, Linux manual
+pages: <a href="https://man7.org/linux/man-pages/man2/fork.2.html">https://man7.org/linux/man-pages/man2/fork.2.html</a></li>
+<li>M. Kerrisk, <em>The Linux Programming Interface</em>, No Starch Press, 2010, chapters 6 and
+24 to 28.</li>
+<li><code>include/linux/sched.h</code>, <code>kernel/fork.c</code>, <code>kernel/exit.c</code> and <code>kernel/pid.c</code>, Linux
+5.15: <a href="https://elixir.bootlin.com/linux/v5.15/source/kernel/fork.c">https://elixir.bootlin.com/linux/v5.15/source/kernel/fork.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="02-file-descriptors.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="04-building-a-shell.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="02-file-descriptors.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="04-building-a-shell.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

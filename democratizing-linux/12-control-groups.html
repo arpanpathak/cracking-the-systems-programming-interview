@@ -1,0 +1,2099 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Control Groups - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/12-control-groups.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch12.svg" alt="Weir, a beaver in a hard hat, has built a dam. A mark on the dam shows the limit, the water stands exactly at the mark, and no more is let through.">
+<h1 id="control-groups"><a class="header" href="#control-groups">Control Groups</a></h1>
+<p>A control group, or cgroup, is a set of processes that the kernel accounts for and
+limits as a unit. Where a namespace controls what a process can see, a control group
+controls how much it can use: how many processes it may contain, how much memory, how
+much CPU time. Control groups form a tree, and a limit on a group applies to everything
+below it.</p>
+<p>In this chapter, we will learn how processes are placed in a group and how the kernel
+enforces a limit. We will first create a group and measure 2 limits with <code>cgfacts</code>.
+Then we will write <code>cgmodel</code>, a model of hierarchical accounting, and follow a fork and
+an allocation that are stopped by a limit set on a parent group.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the control group file system: groups as directories, settings as files</li>
+<li>how a process is moved into a group, and where its children start</li>
+<li>controllers, and which of them a parent passes on to its children</li>
+<li>the kernel structures: <code>struct cgroup</code>, <code>struct css_set</code> and <code>struct page_counter</code></li>
+<li>the checks the kernel makes on <code>fork</code> and on a page fault</li>
+<li><code>pids.max</code>: what happens to a fork beyond the limit</li>
+<li><code>memory.max</code>: what happens to an allocation beyond the limit</li>
+<li>hierarchical accounting: a limit covers the whole subtree</li>
+<li>the CPU and I/O controllers in brief</li>
+<li>how to read the limits and the usage of a group on a running system</li>
+</ul>
+</div>
+
+<h2 id="the-interface"><a class="header" href="#the-interface">The interface</a></h2>
+<p>Control groups have no system calls of their own. The kernel presents them as a file
+system, mounted at <code>/sys/fs/cgroup</code>. A directory is a group. Creating a directory creates
+a group, and the kernel fills it with control files.</p>
+<figure>
+<img src="figures/cgroup-files.svg" alt="A control group is a directory under /sys/fs/cgroup. It contains cgroup.procs, which lists the processes in the group; pids.max, pids.current and pids.events; memory.max, memory.current and memory.events; and a subdirectory for each child group. mkdir creates a group and rmdir removes an empty one.">
+<figcaption><b>Figure 12.1</b> The control files of a group.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cgroup.procs</code></td><td>the processes in the group; writing a pid to it moves that process into the group</td></tr>
+<tr><td><code>cgroup.controllers</code></td><td>the controllers available in this group</td></tr>
+<tr><td><code>cgroup.subtree_control</code></td><td>the controllers this group passes on to its children</td></tr>
+<tr><td><code>pids.max</code>, <code>memory.max</code></td><td>limits; the value <code>max</code> means no limit</td></tr>
+<tr><td><code>pids.current</code>, <code>memory.current</code></td><td>the current usage of the group and its descendants</td></tr>
+<tr><td><code>pids.events</code>, <code>memory.events</code></td><td>counters of how often a limit was hit</td></tr>
+</tbody>
+</table>
+</div>
+<p>Every process is in exactly 1 group, shown in <code>/proc/&lt;pid&gt;/cgroup</code>. A child process
+starts in the group of its parent, so a process that has been moved into a group cannot
+leave the group’s accounting by forking.</p>
+<p>A <em>controller</em> is the part of the kernel that accounts for 1 kind of resource: <code>pids</code>,
+<code>memory</code>, <code>cpu</code>, <code>io</code>. A group has the control files of a controller only when its
+parent lists that controller in <code>cgroup.subtree_control</code>. On this machine the user’s
+session is given the <code>memory</code> and <code>pids</code> controllers, which is why the chapter measures
+those 2.</p>
+<p>The group of the shell this chapter was written in, and the controllers available to
+it:</p>
+<pre><code class="language-console">$ cat /proc/self/cgroup
+0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.gnome.Terminal.slice/vte-spawn-1f7da0d1-a682-46b3-8151-d6603c0e21ae.scope
+$ cat /sys/fs/cgroup/cgroup.controllers
+cpuset cpu io memory hugetlb pids
+$ cat /sys/fs/cgroup/user.slice/user-1000.slice/cgroup.controllers
+memory pids
+</code></pre>
+<figure>
+<img src="figures/cgroup-path-tree.svg" alt="The cgroup path of a shell drawn as nested groups: user.slice for all users, user-1000.slice for user 1000 where memory and pids are counted, user@1000.service for the session manager, app.slice for applications, a slice for the terminal program, and a scope for 1 terminal window that contains the shell.">
+<figcaption><b>Figure 12.2</b> The path of the shell's group, drawn as groups inside groups.</figcaption>
+</figure>
+<p>The line in <code>/proc/self/cgroup</code> is a path below <code>/sys/fs/cgroup</code>. Each component is a
+group, created by the service manager <code>systemd</code>: a group for all users, a group for user
+1000, a group for that user’s session manager, and so on down to a group for a single
+terminal window. The root group has 6 controllers, and the group of user 1000 has
+received 2 of them.</p>
+<p>The counters of a group can be read at any time. For the group of user 1000:</p>
+<pre><code class="language-console">$ cd /sys/fs/cgroup/user.slice/user-1000.slice
+$ cat pids.current pids.max
+1347
+40594
+$ cat memory.current memory.max
+12315291648
+max
+$ grep -E '^(anon|file) ' memory.stat
+anon 5923209216
+file 5730648064
+</code></pre>
+<figure>
+<img src="figures/cgroup-gauges.svg" alt="3 gauges for the group of user 1000. pids.current is 1347 of 40594 tasks allowed. Of the 12315 MB of memory in use, 5923 MB is anonymous memory of programs and 5731 MB is page cache.">
+<figcaption><b>Figure 12.3</b> The counters of the group of user 1000, to scale.</figcaption>
+</figure>
+<p>All processes of the user together are 1347 tasks, of 40594 allowed, and use 12.3 GB,
+with no limit. <code>memory.stat</code> divides the usage by kind: 5.9 GB is anonymous memory of
+programs, and 5.7 GB is page cache, which is charged to the group whose process first
+read the file (<a href="08-the-page-cache.html">chapter 8</a>).</p>
+<h2 id="the-kernels-structures"><a class="header" href="#the-kernels-structures">The kernel’s structures</a></h2>
+<p>A group is a <code>struct cgroup</code>. A task does not point to its group directly. It points to
+a <code>struct css_set</code>, which holds, for each controller, the state of the group the task
+belongs to. Tasks in the same groups share a <code>css_set</code>, so <code>fork</code> only has to copy a
+pointer. These are fields from <code>include/linux/cgroup-defs.h</code> and
+<code>include/linux/page_counter.h</code> of Linux 5.15.</p>
+<pre><code class="language-c">struct css_set {
+        struct cgroup_subsys_state *subsys[CGROUP_SUBSYS_COUNT]; /* state per controller */
+        struct list_head tasks;                /* the tasks that use this set */
+        struct cgroup *dfl_cgrp;               /* the group, in the unified tree */
+        /* ... */
+};
+
+struct cgroup {
+        struct cgroup_subsys_state self;       /* links to the parent group */
+        int level;                             /* depth in the tree */
+        struct kernfs_node *kn;                /* its directory under /sys/fs/cgroup */
+        u16 subtree_control;                   /* controllers passed to children */
+        struct cgroup_subsys_state *subsys[CGROUP_SUBSYS_COUNT];
+        /* ... */
+};
+
+struct cgroup_subsys_state {
+        struct cgroup *cgroup;                 /* the group this state belongs to */
+        struct cgroup_subsys_state *parent;    /* the same controller, parent group */
+        /* ... */
+};
+
+struct page_counter {
+        atomic_long_t usage;                   /* pages charged: memory.current */
+        unsigned long max;                     /* the limit: memory.max */
+        struct page_counter *parent;           /* the counter of the parent group */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Structure</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>struct cgroup</code></td><td>A group: a directory of the control group file system.</td></tr>
+<tr><td><code>struct cgroup_subsys_state</code></td><td>The state of 1 controller in 1 group. Each controller embeds it in a structure of its own, such as the pids counter or the memory counters. Its <code>parent</code> pointer is what makes accounting hierarchical.</td></tr>
+<tr><td><code>struct css_set</code></td><td>The set of controller states that applies to a task. <code>task_struct.cgroups</code> points to it.</td></tr>
+<tr><td><code>struct page_counter</code></td><td>The memory controller’s counter: a usage, a limit, and a pointer to the counter of the parent group.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/cgroup-structs.svg" alt="The structures of control groups. struct task_struct has cgroups, a pointer to a struct css_set. The css_set has, for each controller, the state of the group the task is in, and the list of tasks that share the set. A struct cgroup is a directory, with its node in cgroupfs, its level, subtree_control and its state for each controller. For each controller and group there is a state: for pids a counter, a limit and events; for memory a struct page_counter with usage, max and parent.">
+<figcaption><b>Figure 12.4</b> From a task to the counters that limit it.</figcaption>
+</figure>
+<h2 id="measuring-limits"><a class="header" href="#measuring-limits">Measuring limits</a></h2>
+<p><code>cgfacts</code> needs only the standard libraries. It reads and writes files and starts shell
+commands.</p>
+<pre><code class="language-console">$ cargo new cgfacts
+</code></pre>
+<p>A <code>group</code> is a path. <code>set</code> and <code>get</code> write and read a control file, and <code>event</code> reads a
+counter from a file such as <code>pids.events</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.1</b> The imports of <code>cgfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.2</b> The imports of <code>cgfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fs;
+use std::io;
+use std::os::unix::process::ExitStatusExt;
+use std::path::{Path, PathBuf};
+use std::process::{self, Command};
+use std::thread;
+use std::time::Duration;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.3</b> Reading and writing control files, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">// A group is the directory of a control group under /sys/fs/cgroup.
+type group string
+
+// set writes a value to one of the group's control files.
+func (g group) set(file, value string) error {
+	return os.WriteFile(filepath.Join(string(g), file), []byte(value), 0)
+}
+
+// get reads one of the group's control files.
+func (g group) get(file string) (string, error) {
+	text, err := os.ReadFile(filepath.Join(string(g), file))
+
+	return strings.TrimSpace(string(text)), err
+}
+
+// event returns the counter with the given key from a file of "key value"
+// lines, such as pids.events and memory.events.
+func (g group) event(file, key string) (string, error) {
+	text, err := g.get(file)
+
+	if err != nil {
+		return "", err
+	}
+
+	for lines := bufio.NewScanner(strings.NewReader(text)); lines.Scan(); {
+		if fields := strings.Fields(lines.Text()); len(fields) == 2 &amp;&amp; fields[0] == key {
+			return fields[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("%s: no line %q", file, key)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.4</b> Reading and writing control files, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The directory of a control group under `/sys/fs/cgroup`.
+struct Group(PathBuf);
+
+impl Group {
+    /// Writes a value to one of the group's control files.
+    fn set(&amp;self, file: &amp;str, value: &amp;str) -&gt; io::Result&lt;()&gt; {
+        fs::write(self.0.join(file), value)
+    }
+
+    /// Reads one of the group's control files.
+    fn get(&amp;self, file: &amp;str) -&gt; io::Result&lt;String&gt; {
+        Ok(fs::read_to_string(self.0.join(file))?.trim().to_owned())
+    }
+
+    /// Returns the counter with the given key from a file of "key value"
+    /// lines, such as `pids.events` and `memory.events`.
+    fn event(&amp;self, file: &amp;str, key: &amp;str) -&gt; io::Result&lt;String&gt; {
+        self.get(file)?
+            .lines()
+            .filter_map(|line| line.split_once(' '))
+            .find(|(name, _)| *name == key)
+            .map(|(_, value)| value.to_owned())
+            .ok_or_else(|| io::ErrorKind::NotFound.into())
+    }
+}</code></pre>
+<p><code>create</code> finds a place for a new group. It walks up from the group of the program to
+the nearest group whose <code>cgroup.subtree_control</code> contains <code>memory</code> and <code>pids</code>, and makes
+a directory there. An ordinary user can do this because the system’s service manager
+has given the user ownership of that part of the tree.</p>
+<p><code>command</code> builds a shell command that first writes its own pid to the <code>cgroup.procs</code> of
+the new group. <code>remove</code> deletes the group. A group can be removed only when it is
+empty, so <code>remove</code> first writes to <code>cgroup.kill</code>, which ends every process in the group.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.5</b> Creating a group, entering it, and removing it, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">// create makes a new group. It goes up from the group of this process to the
+// nearest group that distributes the memory and pids controllers to its
+// children, and creates a directory there.
+func create() (group, error) {
+	line, err := os.ReadFile("/proc/self/cgroup")
+
+	if err != nil {
+		return "", err
+	}
+
+	_, path, _ := strings.Cut(strings.TrimSpace(string(line)), "::")
+
+	for dir := filepath.Join("/sys/fs/cgroup", path); dir != "/sys/fs/cgroup"; dir = filepath.Dir(dir) {
+		enabled, err := group(dir).get("cgroup.subtree_control")
+
+		if err != nil || !strings.Contains(enabled, "memory") || !strings.Contains(enabled, "pids") {
+			continue
+		}
+
+		created := filepath.Join(dir, fmt.Sprintf("cgfacts-%d", os.Getpid()))
+
+		return group(created), os.Mkdir(created, 0o755)
+	}
+
+	return "", errors.New("no parent group delegates the memory and pids controllers")
+}
+
+// command returns a shell script that will run in the group. The shell
+// first moves itself into the group by writing its own process number to
+// cgroup.procs, and every process it starts afterwards is created there.
+func (g group) command(script string) *exec.Cmd {
+	return exec.Command("sh", "-c", `echo $$ &gt; "$0/cgroup.procs" &amp;&amp; `+script, string(g))
+}
+
+// remove ends every process left in the group, waits until the group is
+// empty, and deletes it.
+func (g group) remove() error {
+	if err := g.set("cgroup.kill", "1"); err != nil {
+		return err
+	}
+
+	for {
+		current, err := g.get("pids.current")
+
+		if err != nil {
+			return err
+		}
+
+		if current == "0" {
+			return os.Remove(string(g))
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.6</b> Creating a group, entering it, and removing it, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Group {
+    /// Makes a new group. It goes up from the group of this process to the
+    /// nearest group that distributes the memory and pids controllers to its
+    /// children, and creates a directory there.
+    fn create() -&gt; io::Result&lt;Group&gt; {
+        let line = fs::read_to_string("/proc/self/cgroup")?;
+        let path = line.trim().split_once("::").map_or("", |(_, path)| path);
+        let root = Path::new("/sys/fs/cgroup");
+        let own = root.join(path.trim_start_matches('/'));
+
+        for dir in own.ancestors().take_while(|dir| *dir != root) {
+            let Ok(enabled) = fs::read_to_string(dir.join("cgroup.subtree_control")) else {
+                continue;
+            };
+
+            if enabled.contains("memory") &amp;&amp; enabled.contains("pids") {
+                let created = dir.join(format!("cgfacts-{}", process::id()));
+
+                fs::create_dir(&amp;created)?;
+
+                return Ok(Group(created));
+            }
+        }
+
+        Err(io::Error::other(
+            "no parent group delegates the memory and pids controllers",
+        ))
+    }
+
+    /// Returns a shell script that will run in the group. The shell first
+    /// moves itself into the group by writing its own process number to
+    /// `cgroup.procs`, and every process it starts afterwards is created
+    /// there.
+    fn command(&amp;self, script: &amp;str) -&gt; Command {
+        let mut command = Command::new("sh");
+
+        command
+            .arg("-c")
+            .arg(format!(r#"echo $$ &gt; "$0/cgroup.procs" &amp;&amp; {script}"#))
+            .arg(&amp;self.0);
+
+        command
+    }
+
+    /// Ends every process left in the group, waits until the group is empty,
+    /// and deletes it.
+    fn remove(&amp;self) -&gt; io::Result&lt;()&gt; {
+        self.set("cgroup.kill", "1")?;
+
+        while self.get("pids.current")? != "0" {
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        fs::remove_dir(&amp;self.0)
+    }
+}</code></pre>
+<p><code>count</code> starts a process in the group and reads <code>pids.current</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.7</b> The kernel counts the processes of a group, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">// count starts a process in the group and reads the group's process count.
+func count(g group) error {
+	child := g.command("exec sleep 30")
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	current, err := g.get("pids.current")
+
+	for err == nil &amp;&amp; current != "1" {
+		time.Sleep(time.Millisecond)
+		current, err = g.get("pids.current")
+	}
+
+	child.Process.Kill()
+	child.Wait()
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("a process moved into the new group: pids.current %s\n", current)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.8</b> The kernel counts the processes of a group, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Starts a process in the group and reads the group's process count.
+fn count(group: &amp;Group) -&gt; io::Result&lt;()&gt; {
+    let mut child = group.command("exec sleep 30").spawn()?;
+
+    while group.get("pids.current")? != "1" {
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    child.kill()?;
+    child.wait()?;
+
+    println!("a process moved into the new group: pids.current 1");
+
+    Ok(())
+}</code></pre>
+<p><code>limitPids</code> sets <code>pids.max</code> to 4. The shell, which is in the group, then tries to start
+6 background commands and prints a line for each success.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.9</b> A limit on the number of processes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">// limitPids sets pids.max to 4 and runs a shell that tries to start 6
+// background commands and prints a line for each one it started.
+func limitPids(g group) error {
+	if err := g.set("pids.max", "4"); err != nil {
+		return err
+	}
+
+	started, _ := g.command("for i in 1 2 3 4 5 6; do sleep 1 &amp; echo started; done 2&gt;/dev/null").Output()
+	refused, err := g.event("pids.events", "max")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("pids.max 4, a shell starts background commands: started %d, forks refused %s\n",
+		strings.Count(string(started), "started"), refused)
+
+	return g.set("pids.max", "max")
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.10</b> A limit on the number of processes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Sets `pids.max` to 4 and runs a shell that tries to start 6 background
+/// commands and prints a line for each one it started.
+fn limit_pids(group: &amp;Group) -&gt; io::Result&lt;()&gt; {
+    group.set("pids.max", "4")?;
+
+    let script = "for i in 1 2 3 4 5 6; do sleep 1 &amp; echo started; done 2&gt;/dev/null";
+    let output = group.command(script).output()?;
+    let started = String::from_utf8_lossy(&amp;output.stdout)
+        .matches("started")
+        .count();
+
+    println!(
+        "pids.max 4, a shell starts background commands: started {started}, forks refused {}",
+        group.event("pids.events", "max")?
+    );
+
+    group.set("pids.max", "max")
+}</code></pre>
+<p><code>limitMemory</code> sets <code>memory.max</code> to 32 MiB and <code>memory.swap.max</code> to 0, so that the group
+cannot move its memory to swap space. It then runs <code>tail /dev/zero</code>. <code>tail</code> keeps the
+last lines of its input in memory, and <code>/dev/zero</code> supplies bytes without a line end, so
+the memory of the process grows without bound.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.11</b> A limit on memory, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">// limitMemory sets memory.max to 32 MiB with no swap and runs a command
+// whose memory grows without bound.
+func limitMemory(g group) error {
+	if err := g.set("memory.max", "33554432"); err != nil {
+		return err
+	}
+
+	if err := g.set("memory.swap.max", "0"); err != nil {
+		return err
+	}
+
+	child := g.command("exec tail /dev/zero")
+	child.Run()
+
+	kills, err := g.event("memory.events", "oom_kill")
+
+	if err != nil {
+		return err
+	}
+
+	if status, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok &amp;&amp; status.Signaled() {
+		fmt.Printf("memory.max 32 MiB, a command that grows without bound: killed by signal %d, oom_kill %s\n",
+			status.Signal(), kills)
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.12</b> A limit on memory, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Sets `memory.max` to 32 MiB with no swap and runs a command whose memory
+/// grows without bound.
+fn limit_memory(group: &amp;Group) -&gt; io::Result&lt;()&gt; {
+    group.set("memory.max", "33554432")?;
+    group.set("memory.swap.max", "0")?;
+
+    let status = group.command("exec tail /dev/zero").status()?;
+    let kills = group.event("memory.events", "oom_kill")?;
+
+    if let Some(signal) = status.signal() {
+        println!(
+            "memory.max 32 MiB, a command that grows without bound: killed by signal {signal}, oom_kill {kills}"
+        );
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">a process moved into the new group: pids.current 1
+pids.max 4, a shell starts background commands: started 3, forks refused 1
+memory.max 32 MiB, a command that grows without bound: killed by signal 9, oom_kill 1
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pids.current</code> 1</td><td>The shell moved itself into the group by writing to <code>cgroup.procs</code>, and the kernel counts it.</td></tr>
+<tr><td>started 3, forks refused 1</td><td>The shell and 3 commands are 4 processes. The next <code>fork</code> fails with <code>EAGAIN</code>, and the shell gives up at that point.</td></tr>
+<tr><td>killed by signal 9, <code>oom_kill</code> 1</td><td>When the group could not stay within <code>memory.max</code>, the kernel ended the process with <code>SIGKILL</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The 2 controllers react differently because the resources differ. A fork can be refused
+with an error, and the program can handle it. An ordinary memory access has no way to
+return an error. When a group reaches its memory limit, the kernel first tries to free
+memory inside the group by discarding clean page cache pages and writing out dirty ones.
+When that is not enough, the <em>OOM killer</em> selects a process in the group and ends it.</p>
+<div class="crab crab-angry">
+<p>At <code>memory.max</code> the kernel ends a process of the group with <code>SIGKILL</code>. Check <code>memory.events</code> when a process disappears without a message.</p>
+</div>
+
+<h2 id="hierarchical-accounting"><a class="header" href="#hierarchical-accounting">Hierarchical accounting</a></h2>
+<p>The counters of a group include all of its descendants. A process in a child group is
+counted in the child, in the parent, and in every group up to the root, and a limit at
+any of those levels can stop it.</p>
+<figure>
+<img src="figures/cgroup-tree.svg" alt="The group team has pids.max 4 and memory.max 100. Its children job-a and job-b have no limits of their own. job-a holds 3 processes and 60 units of memory, job-b holds 1 process and no memory, and team counts both: 4 processes and 60 units.">
+<figcaption><b>Figure 12.5</b> The limits of a parent group cover its children together.</figcaption>
+</figure>
+<p>The kernel enforces a limit at the moment a resource is requested, by walking up the
+tree. For the <code>pids</code> controller the moment is <code>fork</code>.</p>
+<figure>
+<img src="figures/cgroup-fork-check.svg" alt="The check the kernel makes on fork for a process in the group job-b. job-b has no limit, so it is charged and its count becomes 2. Its parent team is at 4 of 4, so the charge is refused. The kernel undoes the charge in job-b, fork fails with EAGAIN, and the max counter in pids.events of team is increased.">
+<figcaption><b>Figure 12.6</b> The check on <code>fork</code>, from the group of the process toward the root.</figcaption>
+</figure>
+<p>For the <code>memory</code> controller the moment is the allocation of a frame, usually inside a
+page fault (<a href="07-virtual-memory.html">chapter 7</a>). A page fault cannot return an error to
+the program, so the kernel has to make room or end a process.</p>
+<figure>
+<img src="figures/memory-charge.svg" alt="What happens when a process in a limited group needs memory. The process touches a new page and the page fault needs a frame. The kernel charges the frame to the group and every group above. If a group would exceed memory.max, the kernel reclaims memory inside that group by dropping clean cache pages, writing dirty pages and swapping. If enough was freed, the charge succeeds and the fault returns. If too little was freed, the OOM killer ends a process of the group.">
+<figcaption><b>Figure 12.7</b> The charge of a frame against a memory limit.</figcaption>
+</figure>
+<p>The events are counted hierarchically as well. <code>memory.events</code> of the group of user 1000
+on this machine shows <code>oom_kill 16</code>, and those 16 kills include every run of <code>cgfacts</code>
+made while this chapter was written, 4 levels further down the tree.</p>
+<p>This is what makes delegation safe. An administrator sets a limit on a group and hands
+the subtree below it to a user or to a container. The owner of the subtree can create
+groups and distribute the resource among them, and cannot exceed the limit set above.</p>
+<div class="lld">
+<p>Low-level design: <code>cgmodel</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>group</code></td><td><code>parent</code>, <code>pidsMax</code>, <code>memoryMax</code></td><td>a node of the tree and its limits</td></tr>
+<tr><td></td><td><code>pids</code>, <code>memory</code></td><td>usage of the group and all its descendants</td></tr>
+<tr><td></td><td><code>refused</code>, <code>oomKills</code></td><td>the counters of <code>pids.events</code> and <code>memory.events</code></td></tr>
+<tr><td><code>process</code></td><td><code>home</code>, <code>memory</code></td><td>the group of the process and the memory it holds</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>spawn(name)</code></td><td>fails with <code>EAGAIN</code> when the group or any ancestor is at <code>pidsMax</code>; otherwise counts the process at every level</td></tr>
+<tr><td><code>allocate(amount)</code></td><td>charges every level; while a level exceeds <code>memoryMax</code>, kills the largest process in that level’s subtree</td></tr>
+<tr><td><code>kill()</code></td><td>removes a process and returns its memory and its place in the count</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="modelling-the-hierarchy"><a class="header" href="#modelling-the-hierarchy">Modelling the hierarchy</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.13</b> The imports of <code>cgmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgmodel/main.go">code/go/cgmodel/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"math"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.14</b> The imports of <code>cgmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgmodel/src/main.rs">code/rust/cgmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fmt;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.15</b> Groups and processes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgmodel/main.go">code/go/cgmodel/main.go</a></p>
+
+<pre><code class="language-go">// unlimited is the value of a limit that is written "max" in a control file.
+const unlimited = math.MaxInt
+
+var errAgain = errors.New("EAGAIN")
+
+// A group is one node of the hierarchy. pids and memory are the usage of the
+// group and of every group below it. refused and oomKills are the counters
+// the kernel publishes in pids.events and memory.events.
+type group struct {
+	name      string
+	parent    *group
+	children  []*group
+	processes []*process
+
+	pidsMax, memoryMax int
+	pids, memory       int
+	refused, oomKills  int
+}
+
+// A process belongs to one group and holds an amount of memory.
+type process struct {
+	name   string
+	home   *group
+	memory int
+}
+
+// child adds a group below g, with no limits of its own.
+func (g *group) child(name string) *group {
+	c := &amp;group{name: name, parent: g, pidsMax: unlimited, memoryMax: unlimited}
+	g.children = append(g.children, c)
+
+	return c
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.16</b> Groups and processes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgmodel/src/main.rs">code/rust/cgmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The value of a limit that is written "max" in a control file.
+const UNLIMITED: usize = usize::MAX;
+
+#[derive(Debug)]
+struct Again;
+
+impl fmt::Display for Again {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("EAGAIN")
+    }
+}
+
+/// One node of the hierarchy. `pids` and `memory` are the usage of the group
+/// and of every group below it. `refused` and `oom_kills` are the counters
+/// the kernel publishes in `pids.events` and `memory.events`.
+struct Group {
+    parent: Option&lt;usize&gt;,
+    pids_max: usize,
+    memory_max: usize,
+    pids: usize,
+    memory: usize,
+    refused: usize,
+    oom_kills: usize,
+}
+
+/// A process belongs to one group and holds an amount of memory.
+struct Process {
+    name: &amp;'static str,
+    home: usize,
+    memory: usize,
+    alive: bool,
+}
+
+/// The hierarchy: groups and processes, referred to by index.
+#[derive(Default)]
+struct Hierarchy {
+    groups: Vec&lt;Group&gt;,
+    processes: Vec&lt;Process&gt;,
+}
+
+impl Hierarchy {
+    /// Adds a group below `parent` and returns its index.
+    fn group(&amp;mut self, parent: Option&lt;usize&gt;, pids_max: usize, memory_max: usize) -&gt; usize {
+        self.groups.push(Group {
+            parent,
+            pids_max,
+            memory_max,
+            pids: 0,
+            memory: 0,
+            refused: 0,
+            oom_kills: 0,
+        });
+
+        self.groups.len() - 1
+    }
+
+    /// The group itself and every group above it, nearest first.
+    fn upward(&amp;self, group: usize) -&gt; Vec&lt;usize&gt; {
+        let mut path = vec![group];
+
+        while let Some(parent) = self.groups[path[path.len() - 1]].parent {
+            path.push(parent);
+        }
+
+        path
+    }
+}</code></pre>
+<p><code>spawn</code> checks every level before it changes any counter. The refusal is recorded in
+the group whose limit was reached, which is where the kernel increments <code>pids.events</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.17</b> Starting a process under a hierarchy of limits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgmodel/main.go">code/go/cgmodel/main.go</a></p>
+
+<pre><code class="language-go">// spawn starts a process in g. The process is counted in g and in every
+// group above it, so it is refused when any of them is at its limit.
+func (g *group) spawn(name string) (*process, error) {
+	for up := g; up != nil; up = up.parent {
+		if up.pids == up.pidsMax {
+			up.refused++
+
+			return nil, errAgain
+		}
+	}
+
+	for up := g; up != nil; up = up.parent {
+		up.pids++
+	}
+
+	p := &amp;process{name: name, home: g}
+	g.processes = append(g.processes, p)
+
+	return p, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.18</b> Starting a process under a hierarchy of limits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgmodel/src/main.rs">code/rust/cgmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Hierarchy {
+    /// Starts a process in a group and returns its index. The process is
+    /// counted in the group and in every group above it, so it is refused
+    /// when any of them is at its limit.
+    fn spawn(&amp;mut self, group: usize, name: &amp;'static str) -&gt; Result&lt;usize, Again&gt; {
+        let path = self.upward(group);
+
+        for &amp;up in &amp;path {
+            if self.groups[up].pids == self.groups[up].pids_max {
+                self.groups[up].refused += 1;
+
+                return Err(Again);
+            }
+        }
+
+        for &amp;up in &amp;path {
+            self.groups[up].pids += 1;
+        }
+
+        self.processes.push(Process {
+            name,
+            home: group,
+            memory: 0,
+            alive: true,
+        });
+
+        Ok(self.processes.len() - 1)
+    }
+}</code></pre>
+<p><code>allocate</code> charges first and then enforces. For each level that is over its limit, it
+selects the process with the most memory in the subtree of that level. The victim is
+chosen from the whole subtree, so it can be a process in a different child group from
+the one that made the allocation.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.19</b> Charging memory, and ending the largest process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgmodel/main.go">code/go/cgmodel/main.go</a></p>
+
+<pre><code class="language-go">// charge adds an amount, which may be negative, to the memory count of a
+// group and of every group above it.
+func (g *group) charge(amount int) {
+	for up := g; up != nil; up = up.parent {
+		up.memory += amount
+	}
+}
+
+// allocate gives a process more memory. While a group above the process is
+// over its limit, the largest process in that group's subtree is killed. It
+// returns the names of the processes killed.
+func (p *process) allocate(amount int) []string {
+	p.memory += amount
+	p.home.charge(amount)
+
+	var killed []string
+
+	for up := p.home; up != nil; up = up.parent {
+		for up.memory &gt; up.memoryMax {
+			victim := up.largest()
+			up.oomKills++
+			killed = append(killed, victim.name)
+			victim.kill()
+		}
+	}
+
+	return killed
+}
+
+// largest returns the process with the most memory in the subtree of g.
+func (g *group) largest() *process {
+	var found *process
+
+	for _, p := range g.processes {
+		if found == nil || p.memory &gt; found.memory {
+			found = p
+		}
+	}
+
+	for _, c := range g.children {
+		if p := c.largest(); p != nil &amp;&amp; (found == nil || p.memory &gt; found.memory) {
+			found = p
+		}
+	}
+
+	return found
+}
+
+// kill removes a process from its group and returns its memory and its
+// place in the process count.
+func (p *process) kill() {
+	p.home.charge(-p.memory)
+
+	for up := p.home; up != nil; up = up.parent {
+		up.pids--
+	}
+
+	for i, other := range p.home.processes {
+		if other == p {
+			p.home.processes = append(p.home.processes[:i], p.home.processes[i+1:]...)
+
+			break
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.20</b> Charging memory, and ending the largest process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgmodel/src/main.rs">code/rust/cgmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Hierarchy {
+    /// Gives a process more memory. While a group above the process is over
+    /// its limit, the largest process in that group's subtree is killed.
+    /// Returns the names of the processes killed.
+    fn allocate(&amp;mut self, process: usize, amount: usize) -&gt; Vec&lt;&amp;'static str&gt; {
+        let path = self.upward(self.processes[process].home);
+
+        self.processes[process].memory += amount;
+
+        for &amp;up in &amp;path {
+            self.groups[up].memory += amount;
+        }
+
+        let mut killed = Vec::new();
+
+        for &amp;up in &amp;path {
+            while self.groups[up].memory &gt; self.groups[up].memory_max {
+                let Some(victim) = self.largest(up) else {
+                    break;
+                };
+
+                self.groups[up].oom_kills += 1;
+                killed.push(self.processes[victim].name);
+                self.kill(victim);
+            }
+        }
+
+        killed
+    }
+
+    /// Returns the living process with the most memory in the subtree of a
+    /// group.
+    fn largest(&amp;self, group: usize) -&gt; Option&lt;usize&gt; {
+        (0..self.processes.len())
+            .filter(|&amp;p| self.processes[p].alive)
+            .filter(|&amp;p| self.upward(self.processes[p].home).contains(&amp;group))
+            .max_by_key(|&amp;p| self.processes[p].memory)
+    }
+
+    /// Ends a process and returns its memory and its place in the process
+    /// count.
+    fn kill(&amp;mut self, process: usize) {
+        let memory = self.processes[process].memory;
+
+        for up in self.upward(self.processes[process].home) {
+            self.groups[up].memory -= memory;
+            self.groups[up].pids -= 1;
+        }
+
+        self.processes[process].alive = false;
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.21</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgmodel/main.go">code/go/cgmodel/main.go</a></p>
+
+<pre><code class="language-go">func main() {
+	team := &amp;group{name: "team", pidsMax: 4, memoryMax: 100}
+	jobA, jobB := team.child("job-a"), team.child("job-b")
+
+	var started []*process
+
+	for _, start := range []struct {
+		in   *group
+		name string
+	}{{jobA, "a1"}, {jobA, "a2"}, {jobA, "a3"}, {jobB, "b1"}} {
+		p, err := start.in.spawn(start.name)
+
+		if err != nil {
+			fmt.Println(err)
+
+			return
+		}
+
+		started = append(started, p)
+	}
+
+	fmt.Printf("3 processes in job-a and 1 in job-b: pids.current job-a %d, job-b %d, team %d\n",
+		jobA.pids, jobB.pids, team.pids)
+
+	_, err := jobB.spawn("b2")
+	fmt.Printf("another process in job-b, team at pids.max 4: %v, pids.events max of team %d\n", err, team.refused)
+
+	a1, b1 := started[0], started[3]
+
+	a1.allocate(60)
+	fmt.Printf("a1 allocates 60: memory.current job-a %d, job-b %d, team %d\n", jobA.memory, jobB.memory, team.memory)
+
+	killed := b1.allocate(50)
+	fmt.Printf("b1 allocates 50, team at memory.max 100: killed %v, oom_kill of team %d\n", killed, team.oomKills)
+	fmt.Printf("afterwards: memory.current job-a %d, job-b %d, team %d, pids.current team %d\n",
+		jobA.memory, jobB.memory, team.memory, team.pids)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 12.22</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgmodel/src/main.rs">code/rust/cgmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn main() -&gt; Result&lt;(), Again&gt; {
+    let mut tree = Hierarchy::default();
+
+    let team = tree.group(None, 4, 100);
+    let job_a = tree.group(Some(team), UNLIMITED, UNLIMITED);
+    let job_b = tree.group(Some(team), UNLIMITED, UNLIMITED);
+
+    let a1 = tree.spawn(job_a, "a1")?;
+    tree.spawn(job_a, "a2")?;
+    tree.spawn(job_a, "a3")?;
+    let b1 = tree.spawn(job_b, "b1")?;
+
+    println!(
+        "3 processes in job-a and 1 in job-b: pids.current job-a {}, job-b {}, team {}",
+        tree.groups[job_a].pids, tree.groups[job_b].pids, tree.groups[team].pids
+    );
+
+    if let Err(error) = tree.spawn(job_b, "b2") {
+        println!(
+            "another process in job-b, team at pids.max 4: {error}, pids.events max of team {}",
+            tree.groups[team].refused
+        );
+    }
+
+    tree.allocate(a1, 60);
+    println!(
+        "a1 allocates 60: memory.current job-a {}, job-b {}, team {}",
+        tree.groups[job_a].memory, tree.groups[job_b].memory, tree.groups[team].memory
+    );
+
+    let killed = tree.allocate(b1, 50);
+    println!(
+        "b1 allocates 50, team at memory.max 100: killed [{}], oom_kill of team {}",
+        killed.join(" "),
+        tree.groups[team].oom_kills
+    );
+    println!(
+        "afterwards: memory.current job-a {}, job-b {}, team {}, pids.current team {}",
+        tree.groups[job_a].memory,
+        tree.groups[job_b].memory,
+        tree.groups[team].memory,
+        tree.groups[team].pids
+    );
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">3 processes in job-a and 1 in job-b: pids.current job-a 3, job-b 1, team 4
+another process in job-b, team at pids.max 4: EAGAIN, pids.events max of team 1
+a1 allocates 60: memory.current job-a 60, job-b 0, team 60
+b1 allocates 50, team at memory.max 100: killed [a1], oom_kill of team 1
+afterwards: memory.current job-a 0, job-b 50, team 50, pids.current team 3
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>job-a 3, job-b 1, team 4</code></td><td>Each process is counted in its own group and in <code>team</code>.</td></tr>
+<tr><td><code>EAGAIN</code></td><td><code>job-b</code> has no limit. The fork is refused by the limit of <code>team</code>.</td></tr>
+<tr><td><code>a1 allocates 60</code></td><td>The memory is charged to <code>job-a</code> and to <code>team</code>.</td></tr>
+<tr><td><code>killed [a1]</code></td><td>The allocation by <code>b1</code> puts <code>team</code> over its limit, and the largest process below <code>team</code> is <code>a1</code>, in the other child group.</td></tr>
+<tr><td>the last line</td><td>After the kill, <code>team</code> is within its limit and has 3 processes.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> <code>pids_can_fork</code> in <code>kernel/cgroup/pids.c</code>
+walks from the group to the root and charges each level, undoing the charges when a
+level is at its limit, as <code>spawn</code> does. Memory is charged in <code>try_charge_memcg</code> in
+<code>mm/memcontrol.c</code>, which climbs the hierarchy of <code>struct page_counter</code>, starts reclaim
+at the level that is over its limit, and calls <code>mem_cgroup_out_of_memory</code> when reclaim
+fails. The victim is chosen by <code>oom_badness</code>, which scores a process mainly by its
+memory use. The model omits reclaim.</p>
+</div>
+
+<h2 id="the-other-controllers"><a class="header" href="#the-other-controllers">The other controllers</a></h2>
+<p>The session of an ordinary user on this machine has only <code>memory</code> and <code>pids</code>. A
+container runtime that runs with privilege, or a service manager, also uses these.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Controller</th><th>Main file</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cpu</code></td><td><code>cpu.max</code>, for example <code>50000 100000</code></td><td>The group may use 50 ms of CPU time in every period of 100 ms. A group that has used its quota is not scheduled until the next period.</td></tr>
+<tr><td><code>cpu</code></td><td><code>cpu.weight</code></td><td>A weight for the fair scheduler, applied to the group as a whole (<a href="06-cpu-scheduling.html">chapter 6</a>).</td></tr>
+<tr><td><code>cpuset</code></td><td><code>cpuset.cpus</code></td><td>The CPUs the tasks of the group may run on.</td></tr>
+<tr><td><code>io</code></td><td><code>io.max</code></td><td>Limits on bytes and operations per second for a block device.</td></tr>
+<tr><td><code>memory</code></td><td><code>memory.high</code></td><td>A softer limit: above it, the group is slowed down and reclaimed, without the OOM killer.</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>cpu.max</code> and <code>memory.max</code> are what the options <code>--cpus</code> and <code>--memory</code> of a container
+runtime set, and the resource limits of a Kubernetes pod are written to these files.</p>
+<p>This chapter describes <em>cgroup v2</em>, in which all controllers share a single tree. The
+older cgroup v1 gave each controller a tree of its own, mounted separately, and it is
+still found on older systems. <code>stat -fc %T /sys/fs/cgroup</code> prints <code>cgroup2fs</code> on a
+system that uses v2.</p>
+<h2 id="inspecting-control-groups-on-a-live-system"><a class="header" href="#inspecting-control-groups-on-a-live-system">Inspecting control groups on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cat /proc/&lt;pid&gt;/cgroup</code></td><td>the group of a process</td></tr>
+<tr><td><code>cat &lt;group&gt;/cgroup.procs</code></td><td>the processes of a group</td></tr>
+<tr><td><code>cat &lt;group&gt;/memory.current</code>, <code>pids.current</code></td><td>the usage of a group and its descendants</td></tr>
+<tr><td><code>cat &lt;group&gt;/memory.stat</code></td><td>the memory of a group by kind</td></tr>
+<tr><td><code>cat &lt;group&gt;/memory.events</code>, <code>pids.events</code></td><td>how often a limit was hit, and how many processes were killed</td></tr>
+<tr><td><code>systemd-cgls</code></td><td>the whole tree, with the processes in each group</td></tr>
+<tr><td><code>systemd-cgtop</code></td><td>the groups ordered by their use of CPU and memory</td></tr>
+</tbody>
+</table>
+</div>
+<p>A process that disappears without an error message has often been ended by the OOM
+killer of its group. <code>memory.events</code> of the group, and the kernel log shown by <code>dmesg</code>,
+record it.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.23</b> The complete <code>cgfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgfacts/main.go">code/go/cgfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command cgfacts measures control groups. It creates a group below the one
+// it runs in, starts shell commands inside the new group, and observes the
+// kernel counting their processes, refusing a fork beyond pids.max, and
+// ending a process that exceeds memory.max.
+//
+// Run it from code/go with:
+//
+//	go run ./cgfacts
+package main
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+)
+
+
+// A group is the directory of a control group under /sys/fs/cgroup.
+type group string
+
+// set writes a value to one of the group's control files.
+func (g group) set(file, value string) error {
+	return os.WriteFile(filepath.Join(string(g), file), []byte(value), 0)
+}
+
+// get reads one of the group's control files.
+func (g group) get(file string) (string, error) {
+	text, err := os.ReadFile(filepath.Join(string(g), file))
+
+	return strings.TrimSpace(string(text)), err
+}
+
+// event returns the counter with the given key from a file of "key value"
+// lines, such as pids.events and memory.events.
+func (g group) event(file, key string) (string, error) {
+	text, err := g.get(file)
+
+	if err != nil {
+		return "", err
+	}
+
+	for lines := bufio.NewScanner(strings.NewReader(text)); lines.Scan(); {
+		if fields := strings.Fields(lines.Text()); len(fields) == 2 &amp;&amp; fields[0] == key {
+			return fields[1], nil
+		}
+	}
+
+	return "", fmt.Errorf("%s: no line %q", file, key)
+}
+
+
+// create makes a new group. It goes up from the group of this process to the
+// nearest group that distributes the memory and pids controllers to its
+// children, and creates a directory there.
+func create() (group, error) {
+	line, err := os.ReadFile("/proc/self/cgroup")
+
+	if err != nil {
+		return "", err
+	}
+
+	_, path, _ := strings.Cut(strings.TrimSpace(string(line)), "::")
+
+	for dir := filepath.Join("/sys/fs/cgroup", path); dir != "/sys/fs/cgroup"; dir = filepath.Dir(dir) {
+		enabled, err := group(dir).get("cgroup.subtree_control")
+
+		if err != nil || !strings.Contains(enabled, "memory") || !strings.Contains(enabled, "pids") {
+			continue
+		}
+
+		created := filepath.Join(dir, fmt.Sprintf("cgfacts-%d", os.Getpid()))
+
+		return group(created), os.Mkdir(created, 0o755)
+	}
+
+	return "", errors.New("no parent group delegates the memory and pids controllers")
+}
+
+// command returns a shell script that will run in the group. The shell
+// first moves itself into the group by writing its own process number to
+// cgroup.procs, and every process it starts afterwards is created there.
+func (g group) command(script string) *exec.Cmd {
+	return exec.Command("sh", "-c", `echo $$ &gt; "$0/cgroup.procs" &amp;&amp; `+script, string(g))
+}
+
+// remove ends every process left in the group, waits until the group is
+// empty, and deletes it.
+func (g group) remove() error {
+	if err := g.set("cgroup.kill", "1"); err != nil {
+		return err
+	}
+
+	for {
+		current, err := g.get("pids.current")
+
+		if err != nil {
+			return err
+		}
+
+		if current == "0" {
+			return os.Remove(string(g))
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+}
+
+
+// count starts a process in the group and reads the group's process count.
+func count(g group) error {
+	child := g.command("exec sleep 30")
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	current, err := g.get("pids.current")
+
+	for err == nil &amp;&amp; current != "1" {
+		time.Sleep(time.Millisecond)
+		current, err = g.get("pids.current")
+	}
+
+	child.Process.Kill()
+	child.Wait()
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("a process moved into the new group: pids.current %s\n", current)
+
+	return nil
+}
+
+
+// limitPids sets pids.max to 4 and runs a shell that tries to start 6
+// background commands and prints a line for each one it started.
+func limitPids(g group) error {
+	if err := g.set("pids.max", "4"); err != nil {
+		return err
+	}
+
+	started, _ := g.command("for i in 1 2 3 4 5 6; do sleep 1 &amp; echo started; done 2&gt;/dev/null").Output()
+	refused, err := g.event("pids.events", "max")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("pids.max 4, a shell starts background commands: started %d, forks refused %s\n",
+		strings.Count(string(started), "started"), refused)
+
+	return g.set("pids.max", "max")
+}
+
+
+// limitMemory sets memory.max to 32 MiB with no swap and runs a command
+// whose memory grows without bound.
+func limitMemory(g group) error {
+	if err := g.set("memory.max", "33554432"); err != nil {
+		return err
+	}
+
+	if err := g.set("memory.swap.max", "0"); err != nil {
+		return err
+	}
+
+	child := g.command("exec tail /dev/zero")
+	child.Run()
+
+	kills, err := g.event("memory.events", "oom_kill")
+
+	if err != nil {
+		return err
+	}
+
+	if status, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok &amp;&amp; status.Signaled() {
+		fmt.Printf("memory.max 32 MiB, a command that grows without bound: killed by signal %d, oom_kill %s\n",
+			status.Signal(), kills)
+	}
+
+	return nil
+}
+
+
+func run() error {
+	g, err := create()
+
+	if err != nil {
+		return err
+	}
+
+	for _, experiment := range []func(group) error{count, limitPids, limitMemory} {
+		if err := experiment(g); err != nil {
+			g.remove()
+
+			return err
+		}
+	}
+
+	return g.remove()
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 12.24</b> The complete <code>cgfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgfacts/src/main.rs">code/rust/cgfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures control groups. It creates a group below the one it runs in,
+//! starts shell commands inside the new group, and observes the kernel
+//! counting their processes, refusing a fork beyond `pids.max`, and ending a
+//! process that exceeds `memory.max`.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p cgfacts
+//! ```
+
+use std::fs;
+use std::io;
+use std::os::unix::process::ExitStatusExt;
+use std::path::{Path, PathBuf};
+use std::process::{self, Command};
+use std::thread;
+use std::time::Duration;
+
+/// The directory of a control group under `/sys/fs/cgroup`.
+struct Group(PathBuf);
+
+impl Group {
+    /// Writes a value to one of the group's control files.
+    fn set(&amp;self, file: &amp;str, value: &amp;str) -&gt; io::Result&lt;()&gt; {
+        fs::write(self.0.join(file), value)
+    }
+
+    /// Reads one of the group's control files.
+    fn get(&amp;self, file: &amp;str) -&gt; io::Result&lt;String&gt; {
+        Ok(fs::read_to_string(self.0.join(file))?.trim().to_owned())
+    }
+
+    /// Returns the counter with the given key from a file of "key value"
+    /// lines, such as `pids.events` and `memory.events`.
+    fn event(&amp;self, file: &amp;str, key: &amp;str) -&gt; io::Result&lt;String&gt; {
+        self.get(file)?
+            .lines()
+            .filter_map(|line| line.split_once(' '))
+            .find(|(name, _)| *name == key)
+            .map(|(_, value)| value.to_owned())
+            .ok_or_else(|| io::ErrorKind::NotFound.into())
+    }
+}
+
+impl Group {
+    /// Makes a new group. It goes up from the group of this process to the
+    /// nearest group that distributes the memory and pids controllers to its
+    /// children, and creates a directory there.
+    fn create() -&gt; io::Result&lt;Group&gt; {
+        let line = fs::read_to_string("/proc/self/cgroup")?;
+        let path = line.trim().split_once("::").map_or("", |(_, path)| path);
+        let root = Path::new("/sys/fs/cgroup");
+        let own = root.join(path.trim_start_matches('/'));
+
+        for dir in own.ancestors().take_while(|dir| *dir != root) {
+            let Ok(enabled) = fs::read_to_string(dir.join("cgroup.subtree_control")) else {
+                continue;
+            };
+
+            if enabled.contains("memory") &amp;&amp; enabled.contains("pids") {
+                let created = dir.join(format!("cgfacts-{}", process::id()));
+
+                fs::create_dir(&amp;created)?;
+
+                return Ok(Group(created));
+            }
+        }
+
+        Err(io::Error::other(
+            "no parent group delegates the memory and pids controllers",
+        ))
+    }
+
+    /// Returns a shell script that will run in the group. The shell first
+    /// moves itself into the group by writing its own process number to
+    /// `cgroup.procs`, and every process it starts afterwards is created
+    /// there.
+    fn command(&amp;self, script: &amp;str) -&gt; Command {
+        let mut command = Command::new("sh");
+
+        command
+            .arg("-c")
+            .arg(format!(r#"echo $$ &gt; "$0/cgroup.procs" &amp;&amp; {script}"#))
+            .arg(&amp;self.0);
+
+        command
+    }
+
+    /// Ends every process left in the group, waits until the group is empty,
+    /// and deletes it.
+    fn remove(&amp;self) -&gt; io::Result&lt;()&gt; {
+        self.set("cgroup.kill", "1")?;
+
+        while self.get("pids.current")? != "0" {
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        fs::remove_dir(&amp;self.0)
+    }
+}
+
+/// Starts a process in the group and reads the group's process count.
+fn count(group: &amp;Group) -&gt; io::Result&lt;()&gt; {
+    let mut child = group.command("exec sleep 30").spawn()?;
+
+    while group.get("pids.current")? != "1" {
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    child.kill()?;
+    child.wait()?;
+
+    println!("a process moved into the new group: pids.current 1");
+
+    Ok(())
+}
+
+/// Sets `pids.max` to 4 and runs a shell that tries to start 6 background
+/// commands and prints a line for each one it started.
+fn limit_pids(group: &amp;Group) -&gt; io::Result&lt;()&gt; {
+    group.set("pids.max", "4")?;
+
+    let script = "for i in 1 2 3 4 5 6; do sleep 1 &amp; echo started; done 2&gt;/dev/null";
+    let output = group.command(script).output()?;
+    let started = String::from_utf8_lossy(&amp;output.stdout)
+        .matches("started")
+        .count();
+
+    println!(
+        "pids.max 4, a shell starts background commands: started {started}, forks refused {}",
+        group.event("pids.events", "max")?
+    );
+
+    group.set("pids.max", "max")
+}
+
+/// Sets `memory.max` to 32 MiB with no swap and runs a command whose memory
+/// grows without bound.
+fn limit_memory(group: &amp;Group) -&gt; io::Result&lt;()&gt; {
+    group.set("memory.max", "33554432")?;
+    group.set("memory.swap.max", "0")?;
+
+    let status = group.command("exec tail /dev/zero").status()?;
+    let kills = group.event("memory.events", "oom_kill")?;
+
+    if let Some(signal) = status.signal() {
+        println!(
+            "memory.max 32 MiB, a command that grows without bound: killed by signal {signal}, oom_kill {kills}"
+        );
+    }
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let group = Group::create()?;
+
+    let result = count(&amp;group)
+        .and_then(|()| limit_pids(&amp;group))
+        .and_then(|()| limit_memory(&amp;group));
+
+    group.remove()?;
+
+    result
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 12.25</b> The complete <code>cgmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/cgmodel/main.go">code/go/cgmodel/main.go</a></p>
+
+<pre><code class="language-go">// Command cgmodel models the control group hierarchy: every group counts the
+// processes and the memory of its whole subtree, a fork is refused when any
+// group above it is at its limit, and a group that exceeds its memory limit
+// loses the largest process in its subtree.
+//
+// Run it from code/go with:
+//
+//	go run ./cgmodel
+package main
+
+import (
+	"errors"
+	"fmt"
+	"math"
+)
+
+
+// unlimited is the value of a limit that is written "max" in a control file.
+const unlimited = math.MaxInt
+
+var errAgain = errors.New("EAGAIN")
+
+// A group is one node of the hierarchy. pids and memory are the usage of the
+// group and of every group below it. refused and oomKills are the counters
+// the kernel publishes in pids.events and memory.events.
+type group struct {
+	name      string
+	parent    *group
+	children  []*group
+	processes []*process
+
+	pidsMax, memoryMax int
+	pids, memory       int
+	refused, oomKills  int
+}
+
+// A process belongs to one group and holds an amount of memory.
+type process struct {
+	name   string
+	home   *group
+	memory int
+}
+
+// child adds a group below g, with no limits of its own.
+func (g *group) child(name string) *group {
+	c := &amp;group{name: name, parent: g, pidsMax: unlimited, memoryMax: unlimited}
+	g.children = append(g.children, c)
+
+	return c
+}
+
+
+// spawn starts a process in g. The process is counted in g and in every
+// group above it, so it is refused when any of them is at its limit.
+func (g *group) spawn(name string) (*process, error) {
+	for up := g; up != nil; up = up.parent {
+		if up.pids == up.pidsMax {
+			up.refused++
+
+			return nil, errAgain
+		}
+	}
+
+	for up := g; up != nil; up = up.parent {
+		up.pids++
+	}
+
+	p := &amp;process{name: name, home: g}
+	g.processes = append(g.processes, p)
+
+	return p, nil
+}
+
+
+// charge adds an amount, which may be negative, to the memory count of a
+// group and of every group above it.
+func (g *group) charge(amount int) {
+	for up := g; up != nil; up = up.parent {
+		up.memory += amount
+	}
+}
+
+// allocate gives a process more memory. While a group above the process is
+// over its limit, the largest process in that group's subtree is killed. It
+// returns the names of the processes killed.
+func (p *process) allocate(amount int) []string {
+	p.memory += amount
+	p.home.charge(amount)
+
+	var killed []string
+
+	for up := p.home; up != nil; up = up.parent {
+		for up.memory &gt; up.memoryMax {
+			victim := up.largest()
+			up.oomKills++
+			killed = append(killed, victim.name)
+			victim.kill()
+		}
+	}
+
+	return killed
+}
+
+// largest returns the process with the most memory in the subtree of g.
+func (g *group) largest() *process {
+	var found *process
+
+	for _, p := range g.processes {
+		if found == nil || p.memory &gt; found.memory {
+			found = p
+		}
+	}
+
+	for _, c := range g.children {
+		if p := c.largest(); p != nil &amp;&amp; (found == nil || p.memory &gt; found.memory) {
+			found = p
+		}
+	}
+
+	return found
+}
+
+// kill removes a process from its group and returns its memory and its
+// place in the process count.
+func (p *process) kill() {
+	p.home.charge(-p.memory)
+
+	for up := p.home; up != nil; up = up.parent {
+		up.pids--
+	}
+
+	for i, other := range p.home.processes {
+		if other == p {
+			p.home.processes = append(p.home.processes[:i], p.home.processes[i+1:]...)
+
+			break
+		}
+	}
+}
+
+
+func main() {
+	team := &amp;group{name: "team", pidsMax: 4, memoryMax: 100}
+	jobA, jobB := team.child("job-a"), team.child("job-b")
+
+	var started []*process
+
+	for _, start := range []struct {
+		in   *group
+		name string
+	}{{jobA, "a1"}, {jobA, "a2"}, {jobA, "a3"}, {jobB, "b1"}} {
+		p, err := start.in.spawn(start.name)
+
+		if err != nil {
+			fmt.Println(err)
+
+			return
+		}
+
+		started = append(started, p)
+	}
+
+	fmt.Printf("3 processes in job-a and 1 in job-b: pids.current job-a %d, job-b %d, team %d\n",
+		jobA.pids, jobB.pids, team.pids)
+
+	_, err := jobB.spawn("b2")
+	fmt.Printf("another process in job-b, team at pids.max 4: %v, pids.events max of team %d\n", err, team.refused)
+
+	a1, b1 := started[0], started[3]
+
+	a1.allocate(60)
+	fmt.Printf("a1 allocates 60: memory.current job-a %d, job-b %d, team %d\n", jobA.memory, jobB.memory, team.memory)
+
+	killed := b1.allocate(50)
+	fmt.Printf("b1 allocates 50, team at memory.max 100: killed %v, oom_kill of team %d\n", killed, team.oomKills)
+	fmt.Printf("afterwards: memory.current job-a %d, job-b %d, team %d, pids.current team %d\n",
+		jobA.memory, jobB.memory, team.memory, team.pids)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 12.26</b> The complete <code>cgmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/cgmodel/src/main.rs">code/rust/cgmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the control group hierarchy: every group counts the processes and
+//! the memory of its whole subtree, a fork is refused when any group above
+//! it is at its limit, and a group that exceeds its memory limit loses the
+//! largest process in its subtree.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p cgmodel
+//! ```
+
+use std::fmt;
+
+/// The value of a limit that is written "max" in a control file.
+const UNLIMITED: usize = usize::MAX;
+
+#[derive(Debug)]
+struct Again;
+
+impl fmt::Display for Again {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("EAGAIN")
+    }
+}
+
+/// One node of the hierarchy. `pids` and `memory` are the usage of the group
+/// and of every group below it. `refused` and `oom_kills` are the counters
+/// the kernel publishes in `pids.events` and `memory.events`.
+struct Group {
+    parent: Option&lt;usize&gt;,
+    pids_max: usize,
+    memory_max: usize,
+    pids: usize,
+    memory: usize,
+    refused: usize,
+    oom_kills: usize,
+}
+
+/// A process belongs to one group and holds an amount of memory.
+struct Process {
+    name: &amp;'static str,
+    home: usize,
+    memory: usize,
+    alive: bool,
+}
+
+/// The hierarchy: groups and processes, referred to by index.
+#[derive(Default)]
+struct Hierarchy {
+    groups: Vec&lt;Group&gt;,
+    processes: Vec&lt;Process&gt;,
+}
+
+impl Hierarchy {
+    /// Adds a group below `parent` and returns its index.
+    fn group(&amp;mut self, parent: Option&lt;usize&gt;, pids_max: usize, memory_max: usize) -&gt; usize {
+        self.groups.push(Group {
+            parent,
+            pids_max,
+            memory_max,
+            pids: 0,
+            memory: 0,
+            refused: 0,
+            oom_kills: 0,
+        });
+
+        self.groups.len() - 1
+    }
+
+    /// The group itself and every group above it, nearest first.
+    fn upward(&amp;self, group: usize) -&gt; Vec&lt;usize&gt; {
+        let mut path = vec![group];
+
+        while let Some(parent) = self.groups[path[path.len() - 1]].parent {
+            path.push(parent);
+        }
+
+        path
+    }
+}
+
+impl Hierarchy {
+    /// Starts a process in a group and returns its index. The process is
+    /// counted in the group and in every group above it, so it is refused
+    /// when any of them is at its limit.
+    fn spawn(&amp;mut self, group: usize, name: &amp;'static str) -&gt; Result&lt;usize, Again&gt; {
+        let path = self.upward(group);
+
+        for &amp;up in &amp;path {
+            if self.groups[up].pids == self.groups[up].pids_max {
+                self.groups[up].refused += 1;
+
+                return Err(Again);
+            }
+        }
+
+        for &amp;up in &amp;path {
+            self.groups[up].pids += 1;
+        }
+
+        self.processes.push(Process {
+            name,
+            home: group,
+            memory: 0,
+            alive: true,
+        });
+
+        Ok(self.processes.len() - 1)
+    }
+}
+
+impl Hierarchy {
+    /// Gives a process more memory. While a group above the process is over
+    /// its limit, the largest process in that group's subtree is killed.
+    /// Returns the names of the processes killed.
+    fn allocate(&amp;mut self, process: usize, amount: usize) -&gt; Vec&lt;&amp;'static str&gt; {
+        let path = self.upward(self.processes[process].home);
+
+        self.processes[process].memory += amount;
+
+        for &amp;up in &amp;path {
+            self.groups[up].memory += amount;
+        }
+
+        let mut killed = Vec::new();
+
+        for &amp;up in &amp;path {
+            while self.groups[up].memory &gt; self.groups[up].memory_max {
+                let Some(victim) = self.largest(up) else {
+                    break;
+                };
+
+                self.groups[up].oom_kills += 1;
+                killed.push(self.processes[victim].name);
+                self.kill(victim);
+            }
+        }
+
+        killed
+    }
+
+    /// Returns the living process with the most memory in the subtree of a
+    /// group.
+    fn largest(&amp;self, group: usize) -&gt; Option&lt;usize&gt; {
+        (0..self.processes.len())
+            .filter(|&amp;p| self.processes[p].alive)
+            .filter(|&amp;p| self.upward(self.processes[p].home).contains(&amp;group))
+            .max_by_key(|&amp;p| self.processes[p].memory)
+    }
+
+    /// Ends a process and returns its memory and its place in the process
+    /// count.
+    fn kill(&amp;mut self, process: usize) {
+        let memory = self.processes[process].memory;
+
+        for up in self.upward(self.processes[process].home) {
+            self.groups[up].memory -= memory;
+            self.groups[up].pids -= 1;
+        }
+
+        self.processes[process].alive = false;
+    }
+}
+
+fn main() -&gt; Result&lt;(), Again&gt; {
+    let mut tree = Hierarchy::default();
+
+    let team = tree.group(None, 4, 100);
+    let job_a = tree.group(Some(team), UNLIMITED, UNLIMITED);
+    let job_b = tree.group(Some(team), UNLIMITED, UNLIMITED);
+
+    let a1 = tree.spawn(job_a, "a1")?;
+    tree.spawn(job_a, "a2")?;
+    tree.spawn(job_a, "a3")?;
+    let b1 = tree.spawn(job_b, "b1")?;
+
+    println!(
+        "3 processes in job-a and 1 in job-b: pids.current job-a {}, job-b {}, team {}",
+        tree.groups[job_a].pids, tree.groups[job_b].pids, tree.groups[team].pids
+    );
+
+    if let Err(error) = tree.spawn(job_b, "b2") {
+        println!(
+            "another process in job-b, team at pids.max 4: {error}, pids.events max of team {}",
+            tree.groups[team].refused
+        );
+    }
+
+    tree.allocate(a1, 60);
+    println!(
+        "a1 allocates 60: memory.current job-a {}, job-b {}, team {}",
+        tree.groups[job_a].memory, tree.groups[job_b].memory, tree.groups[team].memory
+    );
+
+    let killed = tree.allocate(b1, 50);
+    println!(
+        "b1 allocates 50, team at memory.max 100: killed [{}], oom_kill of team {}",
+        killed.join(" "),
+        tree.groups[team].oom_kills
+    );
+    println!(
+        "afterwards: memory.current job-a {}, job-b {}, team {}, pids.current team {}",
+        tree.groups[job_a].memory,
+        tree.groups[job_b].memory,
+        tree.groups[team].memory,
+        tree.groups[team].pids
+    );
+
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A control group is a set of processes with shared accounting and limits. Groups are
+directories under <code>/sys/fs/cgroup</code>, and their settings are files.</li>
+<li>Writing a pid to <code>cgroup.procs</code> moves a process into a group. Its children start in
+the same group.</li>
+<li>A group has the files of a controller only if its parent passes that controller on in
+<code>cgroup.subtree_control</code>.</li>
+<li>At <code>pids.max</code>, a <code>fork</code> in the group fails with <code>EAGAIN</code>.</li>
+<li>At <code>memory.max</code>, the kernel reclaims memory from the group, and when that fails it
+ends a process in the group with <code>SIGKILL</code>.</li>
+<li>The counters and limits of a group cover its whole subtree.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>cgroups(7)</code>, Linux manual page:
+<a href="https://man7.org/linux/man-pages/man7/cgroups.7.html">https://man7.org/linux/man-pages/man7/cgroups.7.html</a></li>
+<li><em>Control Group v2</em>, Linux kernel documentation:
+<a href="https://www.kernel.org/doc/html/v5.15/admin-guide/cgroup-v2.html">https://www.kernel.org/doc/html/v5.15/admin-guide/cgroup-v2.html</a></li>
+<li><code>kernel/cgroup/pids.c</code> and <code>mm/memcontrol.c</code>, Linux 5.15:
+<a href="https://elixir.bootlin.com/linux/v5.15/source/kernel/cgroup/pids.c">https://elixir.bootlin.com/linux/v5.15/source/kernel/cgroup/pids.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="11-namespaces.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="13-building-a-container.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="11-namespaces.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="13-building-a-container.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

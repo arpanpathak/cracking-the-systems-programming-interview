@@ -1,0 +1,3335 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Pipes - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/01-pipes.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch01.svg" alt="Flange, a penguin in a hard hat, feeds the bytes of the word hello into a pipe. They come out of the other end in the same order, where a gopher is waiting to catch them.">
+<h1 id="pipes"><a class="header" href="#pipes">Pipes</a></h1>
+<p>A pipe is a one-way stream of bytes between processes, buffered in a fixed amount of
+kernel memory. The shell creates one for each <code>|</code> on a command line. In
+<code>seq 1 100000 | grep 7 | wc -l</code>, the first pipe carries the output of <code>seq</code> to the input
+of <code>grep</code>, and the second carries the output of <code>grep</code> to the input of <code>wc</code>.</p>
+<p>In this chapter, we will specify what a pipe has to do, measure how the Linux pipe
+behaves, and then implement the same design ourselves. We will write <code>pipefacts</code>, which measures a kernel pipe, <code>handpipe</code>, which implements a pipe in user space with the kernel’s data structure, and <code>pipeline</code>, which connects real commands with kernel pipes the way a shell does. Each program is written in Go and in Rust.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the requirements of a byte stream between processes, and the mechanism that meets each</li>
+<li>the capacity of a Linux pipe and the unit in which a read frees space</li>
+<li>the pipe buffer: a ring of pages indexed by the counters <code>head</code> and <code>tail</code></li>
+<li>blocking: how a full buffer suspends the writer and an empty buffer suspends the reader</li>
+<li>end of stream and <code>SIGPIPE</code>: how each side learns that the other has closed</li>
+<li>the descriptor rule a program must follow when it builds a pipeline</li>
+<li>the kernel’s <code>struct pipe_inode_info</code> and <code>struct pipe_buffer</code></li>
+<li>resizing a pipe, named pipes, and how to inspect pipes on a running system</li>
+</ul>
+</div>
+
+<h2 id="why-a-pipe"><a class="header" href="#why-a-pipe">Why a pipe</a></h2>
+<p>Consider the job of counting how many of the numbers from 1 to 100000 contain the digit
+7. <code>seq 1 100000</code> prints the numbers, 588895 bytes of text, and <code>grep 7 | wc -l</code> counts
+the matching lines. The output of the first program has to reach the second somehow.</p>
+<p>The obvious way is a temporary file: run <code>seq</code> and store its output, then run <code>grep</code> on
+the file. This works, and it has 3 costs. The whole output is stored, although each
+number is needed only once. The second program cannot start until the first has
+finished. And if the output were endless, as it is for a program that follows a log, the
+method would not work at all.</p>
+<p>A pipe removes all 3. It is a small buffer in memory with a writer on one side and a
+reader on the other. The writer adds bytes, the reader removes them, and both programs
+run at the same time. The buffer holds 65536 bytes at most, whether 600 kilobytes pass
+through it or 600 gigabytes.</p>
+<figure>
+<img src="figures/pipe-why.svg" alt="2 ways to pass the output of seq to wc. Without a pipe, seq writes all 588895 bytes to a temporary file and wc reads it afterwards: seq must finish before wc starts, and the disk holds everything. With a pipe, seq writes and wc reads at the same time through a buffer of at most 65536 bytes, and memory stays small and fixed.">
+<figcaption><b>Figure 1.1</b> A temporary file stores everything and forces an order. A pipe passes the bytes along while both programs run.</figcaption>
+</figure>
+<p>A small buffer between 2 running programs raises questions that a file does not. What
+happens when the buffer is full? What happens when it is empty? How does the reader
+learn that the writer has finished? The answers are the behaviour of a pipe, and the
+next section lists them as requirements.</p>
+<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
+<p>Linux runs each program as a <em>process</em>, which has its own memory. A process cannot
+read or write the memory of another. The <em>kernel</em> is the part of the operating system
+that manages memory and devices for all processes, and a process asks it for a service
+with a <em>system call</em>: a function call that enters the kernel and returns a result.
+<code>read</code> and <code>write</code> are system calls. Each takes a <em>file descriptor</em>, a small integer
+that names an open file or another source of bytes.</p>
+<p>Since processes share no memory, a stream of bytes between them has to pass through the kernel. The table lists what such a stream must provide and the mechanism a pipe uses to provide it.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Requirement</th><th>Mechanism in a pipe</th></tr>
+</thead>
+<tbody>
+<tr><td>Bytes arrive in the order they were sent</td><td>a first-in, first-out buffer</td></tr>
+<tr><td>Memory use is independent of the length of the stream</td><td>the buffer has a fixed capacity, 16 pages by default</td></tr>
+<tr><td>A fast writer cannot overrun a slow reader</td><td>a write to a full buffer blocks until a read frees space</td></tr>
+<tr><td>The reader can detect the end of the stream</td><td>a read from an empty buffer returns 0 once every write end is closed</td></tr>
+<tr><td>The writer can detect that the reader is gone</td><td>a write with no read end open raises <code>SIGPIPE</code> and fails with <code>EPIPE</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>A call <em>blocks</em> when the kernel suspends the calling thread until the call can proceed.
+A suspended thread consumes no processor time.</p>
+<h2 id="the-interface"><a class="header" href="#the-interface">The interface</a></h2>
+<p>The <code>pipe2</code> system call creates a pipe and returns a pair of file descriptors: the <em>read end</em>, then the <em>write end</em>. Bytes passed to <code>write</code> on the write
+end are appended to the pipe’s buffer, and <code>read</code> on the read end removes them from the
+front.</p>
+<figure>
+<img src="figures/pipe-two-ends.svg" alt="A writer process calls write on the write end of a pipe. Inside the kernel the pipe is a ring of 16 pages of 4096 bytes; 6 of them hold bytes, from the oldest to the newest. A reader process calls read on the read end, and bytes leave in the order they entered.">
+<figcaption><b>Figure 1.2</b> A pipe: a write end, a read end, and a buffer in kernel memory between them.</figcaption>
+</figure>
+<p>A pipe has no name in the file system and stores nothing on disk. It exists for as long
+as some process holds a descriptor for either end. Linux lists the descriptors of a
+process under <code>/proc/&lt;pid&gt;/fd</code>, where <code>&lt;pid&gt;</code> is the process number, so we can observe a
+pipe from outside. For <code>sleep 47 | sleep 48</code>, with the processes numbered 4121903
+and 4121904, descriptor 1 (standard output) of the first and descriptor 0 (standard
+input) of the second refer to the same pipe object:</p>
+<pre><code class="language-console">$ ls -l /proc/4121903/fd/1 /proc/4121904/fd/0
+/proc/4121903/fd/1 -&gt; pipe:[33835818]
+/proc/4121904/fd/0 -&gt; pipe:[33835818]
+</code></pre>
+<p>The listing is read as follows.</p>
+<figure>
+<img src="figures/proc-fd-annotated.svg" alt="The 2 lines of the listing explained. The first line is process 4121903, descriptor 1, standard output, which is the write end of pipe number 33835818. The second line is process 4121904, descriptor 0, standard input, which is the read end of the same pipe, because the pipe numbers match.">
+<figcaption><b>Figure 1.3</b> How to read the 2 lines: the number after <code>pipe:</code> identifies the pipe, and equal numbers mean the same pipe.</figcaption>
+</figure>
+<p>The same can be seen from inside a pipeline. Here <code>ls</code> lists its own descriptors while
+its output goes to <code>cat</code>. The lines for descriptors 1 and 3 are shown: descriptor 1 of
+<code>ls</code> is a pipe, and descriptor 3 is the directory it is reading.</p>
+<pre><code class="language-console">$ ls -l /proc/self/fd | cat
+1 -&gt; pipe:[35453230]
+3 -&gt; /proc/559492/fd
+</code></pre>
+<p>A pipe carries bytes in 1 direction. A program that needs to send and receive creates 2
+pipes, or uses a socket (<a href="10-tcp-sockets.html">chapter 10</a>). The descriptors, the table
+they live in and what a child process inherits are the subject of
+<a href="02-file-descriptors.html">chapter 2</a>. For this chapter it is enough that a descriptor is
+a number that names 1 end of the pipe.</p>
+<h2 id="one-write-step-by-step"><a class="header" href="#one-write-step-by-step">One write, step by step</a></h2>
+<p>Before looking at the data structures, we follow a single call. A process holds the
+write end of a pipe as descriptor 4 and calls <code>write(4, "hello", 5)</code>.</p>
+<ol>
+<li>The kernel takes entry 4 of the process’s descriptor table and finds a <code>struct file</code>,
+its record of an open file. The record contains a table of functions, <code>f_op</code>, and
+for a pipe the write function in that table is <code>pipe_write</code>.</li>
+<li><code>pipe_write</code> locks the pipe. A <em>mutex</em> is a lock that 1 thread can hold at a time,
+and a thread that asks for a held mutex sleeps until it is released. All further
+steps happen with the lock held, so a reader running at the same moment sees the pipe
+either before the write or after it.</li>
+<li>It checks that a read end is open. If none is, it sends the process the signal
+<code>SIGPIPE</code> and returns the error <code>EPIPE</code>.</li>
+<li>It looks for room. The bytes can go into the unused end of the page written last, or
+into a new page if a slot of the buffer is free. If there is no room, the process is
+put to sleep until a reader makes some, and the step is repeated.</li>
+<li>It copies the 5 bytes from the memory of the process into the page.</li>
+<li>It wakes any reader that is asleep waiting for data, releases the lock, and returns
+5.</li>
+</ol>
+<figure>
+<img src="figures/pipe-write-path.svg" alt="The path of write(4, hello, 5) on a pipe. Descriptor 4 is the write end. Its struct file has the pipe&#39;s function table in f_op, which leads to pipe_write. pipe_write locks the pipe&#39;s mutex, checks that a reader is left and otherwise sends SIGPIPE and fails with EPIPE, finds room in the newest page or a free slot of the ring, copies the 5 bytes from the process into the page, and wakes the readers asleep on rd_wait.">
+<figcaption><b>Figure 1.4</b> A <code>write</code> to a pipe, from the system call to the wake-up of the reader.</figcaption>
+</figure>
+<p>Each step corresponds to a field of the structure that represents a pipe in the kernel.</p>
+<h2 id="the-kernels-structures"><a class="header" href="#the-kernels-structures">The kernel’s structures</a></h2>
+<p>A pipe is a <code>struct pipe_inode_info</code>, and each slot of its buffer is a
+<code>struct pipe_buffer</code>. These are the definitions in <code>include/linux/pipe_fs_i.h</code> of the
+kernel that runs on our machine, Linux 5.15, with the fields this chapter does not use
+left out.</p>
+<pre><code class="language-c">struct pipe_buffer {
+        struct page *page;             /* the page that holds the bytes */
+        unsigned int offset, len;      /* where the unread bytes start, and how many */
+        unsigned int flags;            /* PIPE_BUF_FLAG_CAN_MERGE: may be appended to */
+        /* ... */
+};
+
+struct pipe_inode_info {
+        struct mutex mutex;                    /* the lock of step 2 */
+        wait_queue_head_t rd_wait, wr_wait;    /* sleeping readers, sleeping writers */
+        unsigned int head;                     /* slots ever filled */
+        unsigned int tail;                     /* slots ever emptied */
+        unsigned int max_usage;                /* slots that may be in use */
+        unsigned int ring_size;                /* slots in bufs, a power of 2 */
+        unsigned int readers;                  /* open read ends */
+        unsigned int writers;                  /* open write ends */
+        struct pipe_buffer *bufs;              /* the array of slots */
+        /* ... */
+};
+
+#define PIPE_DEF_BUFFERS        16
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>bufs</code>, <code>ring_size</code></td><td>The buffer: an array of <code>ring_size</code> slots. A new pipe has <code>PIPE_DEF_BUFFERS</code>, 16.</td></tr>
+<tr><td><code>page</code></td><td>A <em>page</em> is the unit in which the kernel allocates memory, 4096 bytes on this machine. Each slot in use refers to 1 page.</td></tr>
+<tr><td><code>offset</code>, <code>len</code></td><td>The unread bytes of a page are <code>len</code> bytes starting at <code>offset</code>. A read advances <code>offset</code> and reduces <code>len</code>.</td></tr>
+<tr><td><code>head</code>, <code>tail</code></td><td>Counters that only increase. <code>head - tail</code> slots are in use.</td></tr>
+<tr><td><code>mutex</code></td><td>Held during every read and write.</td></tr>
+<tr><td><code>rd_wait</code>, <code>wr_wait</code></td><td><em>Wait queues</em>: lists of sleeping threads. A reader that finds the pipe empty adds itself to <code>rd_wait</code> and sleeps, and a writer wakes the threads on it. <code>wr_wait</code> is the same for writers and a full pipe.</td></tr>
+<tr><td><code>readers</code>, <code>writers</code></td><td>How many read ends and write ends are open. Step 3 tests <code>readers</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/pipe-structs.svg" alt="The kernel structures of a pipe. The read end and the write end are 2 struct file objects that refer to the same inode. The inode refers to a struct pipe_inode_info, which has the mutex, the wait queues rd_wait and wr_wait, the counters head and tail, ring_size, the counts readers and writers, and the array bufs. bufs holds 16 struct pipe_buffer, each with a page, an offset, a length and flags.">
+<figcaption><b>Figure 1.5</b> The structures of a pipe and the pointers between them.</figcaption>
+</figure>
+<p>The capacity follows from these numbers: 16 slots of 4096 bytes are 65536 bytes. The
+first measurement below checks it.</p>
+<h2 id="setting-up-the-project"><a class="header" href="#setting-up-the-project">Setting up the project</a></h2>
+<p>The Go programs share a module, and the Rust programs share a Cargo workspace. The Rust
+crates use the 2024 edition and Rust 1.99, the current stable release. A
+<code>rust-toolchain.toml</code> file in the <code>rust</code> directory selects it.</p>
+<p><code>pipefacts</code> calls the kernel through <code>golang.org/x/sys/unix</code> in Go and through the
+<code>nix</code> crate in Rust. <code>handpipe</code> uses the <code>parking_lot</code> crate in Rust for its lock and
+condition variables. <code>pipeline</code> needs only the standard library in both languages.</p>
+<p>To create the Go module with its dependency, we run:</p>
+<pre><code class="language-console">$ mkdir go &amp;&amp; cd go
+$ go mod init democratizing-linux
+$ go get golang.org/x/sys/unix
+</code></pre>
+<p>This produces the following <code>go.mod</code>. Each program is a directory with a <code>main.go</code>,
+such as <code>pipefacts/main.go</code>.</p>
+<pre><code class="language-text">module democratizing-linux
+
+go 1.26.0
+
+require golang.org/x/sys v0.49.0
+</code></pre>
+<p>For Rust, we create a directory <code>rust</code> with this workspace manifest in <code>Cargo.toml</code>:</p>
+<pre><code class="language-toml">[workspace]
+members = []
+resolver = "3"
+</code></pre>
+<p>and this <code>rust-toolchain.toml</code> beside it:</p>
+<pre><code class="language-toml">[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+</code></pre>
+<p>Then we create the crates and add their dependencies. <code>cargo new</code> adds each crate to
+<code>members</code>.</p>
+<pre><code class="language-console">$ cargo new pipefacts
+$ cargo add -p pipefacts nix --features fs
+$ cargo new handpipe
+$ cargo add -p handpipe parking_lot
+$ cargo new pipeline
+</code></pre>
+<p>The manifest of <code>pipefacts</code> is now:</p>
+<pre><code class="language-toml">[package]
+name = "pipefacts"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+
+[dependencies]
+nix = { version = "0.31.3", features = ["fs"] }
+</code></pre>
+<p>and the manifest of <code>handpipe</code>:</p>
+<pre><code class="language-toml">[package]
+name = "handpipe"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+
+[dependencies]
+parking_lot = "0.12.5"
+</code></pre>
+<p>We run a program with <code>go run ./pipefacts</code> from the <code>go</code> directory and with
+<code>cargo run -p pipefacts</code> from the <code>rust</code> directory.</p>
+<h2 id="measuring-a-kernel-pipe"><a class="header" href="#measuring-a-kernel-pipe">Measuring a kernel pipe</a></h2>
+<p><code>pipefacts</code> measures the behaviours in the requirements table on a kernel pipe. It creates each
+pipe with the <code>O_NONBLOCK</code> flag. In this mode, a call that would block returns the error
+<code>EAGAIN</code> immediately, which lets a thread detect a full or an empty buffer
+without being suspended. We will come back to <code>O_CLOEXEC</code> when we start other programs.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.1</b> The imports of <code>pipefacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+
+	"golang.org/x/sys/unix"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.2</b> The imports of <code>pipefacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::os::fd::OwnedFd;
+
+use nix::errno::Errno;
+use nix::fcntl::{FcntlArg, OFlag, fcntl};
+use nix::unistd::{pipe2, read, write};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.3</b> Creating a non-blocking pipe, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// block is the size of every write the program attempts: one page.
+const block = 4096
+
+// newPipe creates a pipe in non-blocking mode: a read or a write that cannot
+// proceed returns EAGAIN where it would otherwise suspend the caller.
+func newPipe() (reader, writer int, err error) {
+	var fds [2]int
+
+	if err := unix.Pipe2(fds[:], unix.O_NONBLOCK|unix.O_CLOEXEC); err != nil {
+		return 0, 0, fmt.Errorf("pipe2: %w", err)
+	}
+
+	return fds[0], fds[1], nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.4</b> Creating a non-blocking pipe, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The size of every write the program attempts: one page.
+const BLOCK: usize = 4096;
+
+/// Creates a pipe in non-blocking mode: a read or a write that cannot proceed
+/// returns `EAGAIN` where it would otherwise suspend the caller. The read end
+/// is first.
+fn new_pipe() -&gt; nix::Result&lt;(OwnedFd, OwnedFd)&gt; {
+    pipe2(OFlag::O_NONBLOCK | OFlag::O_CLOEXEC)
+}</code></pre>
+<p><code>fill</code> measures free space. It writes 4096-byte blocks until a write returns <code>EAGAIN</code>
+and returns the total number of bytes accepted. <code>drain</code> removes bytes.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.5</b> Measuring free space by writing until the kernel refuses, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// fill writes whole blocks until the kernel refuses one and returns the
+// number of bytes accepted.
+func fill(writer int) (int, error) {
+	data := make([]byte, block)
+	total := 0
+
+	for {
+		n, err := unix.Write(writer, data)
+
+		if errors.Is(err, unix.EAGAIN) {
+			return total, nil
+		}
+
+		if err != nil {
+			return total, fmt.Errorf("write: %w", err)
+		}
+
+		total += n
+	}
+}
+
+// drain reads and discards up to n bytes.
+func drain(reader, n int) error {
+	_, err := unix.Read(reader, make([]byte, n))
+
+	return err
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.6</b> Measuring free space by writing until the kernel refuses, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes whole blocks until the kernel refuses one and returns the number of
+/// bytes accepted.
+fn fill(writer: &amp;OwnedFd) -&gt; nix::Result&lt;usize&gt; {
+    let data = [0u8; BLOCK];
+    let mut total = 0;
+
+    loop {
+        match write(writer, &amp;data) {
+            Ok(n) =&gt; total += n,
+            Err(Errno::EAGAIN) =&gt; return Ok(total),
+            Err(error) =&gt; return Err(error),
+        }
+    }
+}
+
+/// Reads and discards up to `n` bytes.
+fn drain(reader: &amp;OwnedFd, n: usize) -&gt; nix::Result&lt;usize&gt; {
+    read(reader, &amp;mut vec![0u8; n])
+}</code></pre>
+<p><code>capacity</code> calls <code>fill</code> on a new pipe, again after 1 byte has been read from the full pipe, and again after 4096 bytes have been read in total.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.7</b> Capacity, and the space a read frees, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// capacity fills a pipe when it is new, after 1 byte has been read, and
+// after 4096 bytes have been read. Each fill reports the free space.
+func capacity() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(reader)
+	defer unix.Close(writer)
+
+	steps := []struct {
+		read   int
+		report string
+	}{
+		{0, "new pipe: %d bytes accepted\n"},
+		{1, "after reading 1 byte: %d bytes accepted\n"},
+		{block - 1, "after reading 4096 bytes in total: %d bytes accepted\n"},
+	}
+
+	for _, step := range steps {
+		if err := drain(reader, step.read); err != nil {
+			return err
+		}
+
+		accepted, err := fill(writer)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf(step.report, accepted)
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.8</b> Capacity, and the space a read frees, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Fills a pipe when it is new, after 1 byte has been read, and after 4096
+/// bytes have been read. Each fill reports the free space.
+fn capacity() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+
+    let steps = [
+        (0, "new pipe"),
+        (1, "after reading 1 byte"),
+        (BLOCK - 1, "after reading 4096 bytes in total"),
+    ];
+
+    for (count, label) in steps {
+        drain(&amp;reader, count)?;
+
+        let accepted = fill(&amp;writer)?;
+        println!("{label}: {accepted} bytes accepted");
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>resize</code> changes the number of slots. <code>fcntl</code> with the command <code>F_SETPIPE_SZ</code> asks for a
+capacity in bytes and returns the capacity granted. The program asks for 16384 bytes,
+for 5000 bytes, and for 1048576 bytes, and measures the pipe after each request.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.9</b> Changing the capacity of a pipe, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// resize changes the capacity of a pipe with fcntl and measures it after
+// each change.
+func resize() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(reader)
+	defer unix.Close(writer)
+
+	for _, request := range []int{4 * block, 5000, 1 &lt;&lt; 20} {
+		granted, err := unix.FcntlInt(uintptr(writer), unix.F_SETPIPE_SZ, request)
+
+		if err != nil {
+			return fmt.Errorf("F_SETPIPE_SZ: %w", err)
+		}
+
+		accepted, err := fill(writer)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("capacity of %d bytes requested: %d granted, %d bytes accepted\n", request, granted, accepted)
+
+		if err := drain(reader, accepted); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.10</b> Changing the capacity of a pipe, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Changes the capacity of a pipe with fcntl and measures it after each
+/// change.
+fn resize() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+
+    for request in [4 * BLOCK, 5000, 1 &lt;&lt; 20] {
+        let granted = fcntl(&amp;writer, FcntlArg::F_SETPIPE_SZ(request as i32))?;
+        let accepted = fill(&amp;writer)?;
+
+        println!(
+            "capacity of {request} bytes requested: {granted} granted, {accepted} bytes accepted"
+        );
+
+        drain(&amp;reader, accepted)?;
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>endOfStream</code> reads an empty pipe with the write end open, and again with it closed.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.11</b> Reading an empty pipe, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// endOfStream reads an empty pipe while a write end is open, and again after
+// the write end has been closed.
+func endOfStream() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(reader)
+
+	buf := make([]byte, block)
+
+	_, err = unix.Read(reader, buf)
+	fmt.Printf("empty pipe, write end open: read fails with %s\n", name(err))
+
+	unix.Close(writer)
+
+	n, err := unix.Read(reader, buf)
+
+	if err != nil {
+		return fmt.Errorf("read: %w", err)
+	}
+
+	fmt.Printf("empty pipe, write end closed: read returns %d\n", n)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.12</b> Reading an empty pipe, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Reads an empty pipe while a write end is open, and again after the write
+/// end has been closed.
+fn end_of_stream() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+    let mut buf = [0u8; BLOCK];
+
+    if let Err(error) = read(&amp;reader, &amp;mut buf) {
+        println!("empty pipe, write end open: read fails with {error:?}");
+    }
+
+    drop(writer);
+
+    let n = read(&amp;reader, &amp;mut buf)?;
+    println!("empty pipe, write end closed: read returns {n}");
+
+    Ok(())
+}</code></pre>
+<p><code>brokenPipe</code> closes the read end and then writes.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.13</b> Writing with no read end open, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// brokenPipe writes to a pipe whose read end has been closed.
+func brokenPipe() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(writer)
+
+	unix.Close(reader)
+
+	_, err = unix.Write(writer, []byte("hello"))
+	fmt.Printf("read end closed: write fails with %s\n", name(err))
+
+	return nil
+}
+
+// name returns the symbolic name of a system call error, such as EAGAIN.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.14</b> Writing with no read end open, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes to a pipe whose read end has been closed.
+fn broken_pipe() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+
+    drop(reader);
+
+    if let Err(error) = write(&amp;writer, b"hello") {
+        println!("read end closed: write fails with {error:?}");
+    }
+
+    Ok(())
+}</code></pre>
+<p>The Go and Rust programs print the following on a Jetson Orin NX running Linux 5.15:</p>
+<pre><code class="language-text">new pipe: 65536 bytes accepted
+after reading 1 byte: 0 bytes accepted
+after reading 4096 bytes in total: 4096 bytes accepted
+capacity of 16384 bytes requested: 16384 granted, 16384 bytes accepted
+capacity of 5000 bytes requested: 8192 granted, 8192 bytes accepted
+capacity of 1048576 bytes requested: 1048576 granted, 1048576 bytes accepted
+empty pipe, write end open: read fails with EAGAIN
+empty pipe, write end closed: read returns 0
+read end closed: write fails with EPIPE
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>a new pipe accepts 65536 bytes</td><td>The capacity is 16 pages. A <em>page</em> is the unit in which the kernel allocates memory: 4096 bytes on this machine.</td></tr>
+<tr><td>after 1 byte is read, 0 bytes are accepted</td><td>Free space is counted in whole pages. The pipe held 65535 bytes at that point and still refused a write.</td></tr>
+<tr><td>after 4096 bytes are read, 4096 are accepted</td><td>Reading the last byte of a page releases that page.</td></tr>
+<tr><td>16384 requested, 16384 granted</td><td>The ring was replaced by a ring of 4 slots.</td></tr>
+<tr><td>5000 requested, 8192 granted</td><td>The kernel rounds the request up to whole pages and to a power of 2 slots, here 2.</td></tr>
+<tr><td>1048576 requested and granted</td><td>256 slots. This is the largest size an ordinary user may ask for, set in <code>/proc/sys/fs/pipe-max-size</code>.</td></tr>
+<tr><td><code>EAGAIN</code> with the write end open</td><td>The buffer is empty and data may still arrive. A blocking read would be suspended here.</td></tr>
+<tr><td>0 with the write end closed</td><td>The buffer is empty and no data can arrive. A return value of 0 from <code>read</code> is the end of the stream.</td></tr>
+<tr><td><code>EPIPE</code> with the read end closed</td><td>No process can consume the data, so the write is refused.</td></tr>
+</tbody>
+</table>
+</div>
+<p>In the last case the kernel also sends the writing process <code>SIGPIPE</code>. A <em>signal</em> is an
+asynchronous notification from the kernel to a process, and the default action for
+<code>SIGPIPE</code> is to terminate the process. The programs continue and print <code>EPIPE</code> because
+their runtimes change that default: the Go runtime handles <code>SIGPIPE</code> for descriptors
+other than 1 and 2, and a Rust program starts with <code>SIGPIPE</code> ignored. The <code>pipeline</code>
+program shows the default action.</p>
+<p>Rows 2 and 3 confirm that the buffer is made of whole pages and rule out a flat byte array, since a flat array with 1 byte removed would accept 1 byte.</p>
+<h2 id="the-buffer-a-ring-of-pages"><a class="header" href="#the-buffer-a-ring-of-pages">The buffer: a ring of pages</a></h2>
+<p>The kernel allocates physical memory in pages, and the pipe buffer is built from that
+unit. A pipe has an array of <em>slots</em>, 16 by default, and each slot refers to a page.
+Each slot also records which part of its page holds unread data: an <code>offset</code> to the
+first unread byte and a <code>length</code>.</p>
+<p>Since the buffer is built from page references, an empty pipe needs no data pages and an idle pipe costs little memory. A page that already contains the data can also be placed in a slot directly: the <code>splice</code> system call moves page references between
+a file and a pipe and copies no bytes.</p>
+<p>The slots are used as a ring, indexed by the counters <code>head</code> and <code>tail</code>:</p>
+<ul>
+<li><code>head</code> is the number of pages added to the ring since the pipe was created.</li>
+<li><code>tail</code> is the number of pages removed.</li>
+</ul>
+<p><code>head</code> and <code>tail</code> only increase. The ring maintains these invariants:</p>
+<ol>
+<li><code>head - tail</code> is the number of pages in use, and it is between 0 and the number of
+slots.</li>
+<li>Counter value <code>c</code> refers to slot <code>c mod slots</code>. The oldest page is at <code>tail</code> and the
+newest at <code>head - 1</code>.</li>
+<li>New bytes are appended to the newest page if it has unused space after its data.
+The remainder goes into new pages at <code>head</code>.</li>
+<li>Bytes are removed from the oldest page. When its <code>length</code> reaches 0, the page is
+released and <code>tail</code> advances by 1.</li>
+</ol>
+<p>The kernel computes the slot with a mask in place of a division: <code>head &amp; (ring_size - 1)</code>.
+The 2 are equal when <code>ring_size</code> is a power of 2, which is the reason a request for 5000
+bytes was rounded up to 2 slots. The counters are unsigned 32-bit numbers and wrap
+around to 0 after about 4 billion pages. <code>head - tail</code> remains correct across the wrap,
+because unsigned subtraction wraps in the same way.</p>
+<p>Invariants 3 and 4 explain the measurement. Removing bytes from the oldest page frees
+space at the front of that page, and invariant 3 places no new bytes there. The space
+becomes usable only when the whole page is released.</p>
+<p>The table below traces a ring of 4 slots with 8-byte pages. The last column lists the
+<code>length</code> of each slot, with a dot for a free slot.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th>Result</th><th><code>head</code></th><th><code>tail</code></th><th>Slots 0 to 3</th><th>Explanation</th></tr>
+</thead>
+<tbody>
+<tr><td><code>put</code> 12</td><td>12</td><td>2</td><td>0</td><td><code>[8 4 . .]</code></td><td>2 new pages: 8 bytes and 4 bytes.</td></tr>
+<tr><td><code>take</code> 3</td><td>3</td><td>2</td><td>0</td><td><code>[5 4 . .]</code></td><td>Slot 0 has <code>offset</code> 3 and <code>length</code> 5. It still holds data, so <code>tail</code> is unchanged.</td></tr>
+<tr><td><code>put</code> 30</td><td>20</td><td>4</td><td>0</td><td><code>[5 8 8 8]</code></td><td>4 bytes complete slot 1, and slots 2 and 3 take 8 each. All slots are in use. The 3 free bytes in slot 0 are unusable.</td></tr>
+<tr><td><code>take</code> 5</td><td>5</td><td>4</td><td>1</td><td><code>[. 8 8 8]</code></td><td>Slot 0 is empty and is released.</td></tr>
+<tr><td><code>put</code> 30</td><td>8</td><td>5</td><td>1</td><td><code>[8 8 8 8]</code></td><td>Counter 4 maps to slot 0. The newest page now precedes the oldest in the array: the ring has wrapped.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/ring-steps.svg" alt="A ring of 4 slots, each a page of 8 bytes, after each call of the trace. Put 12 fills slot 0 and half of slot 1. Take 3 leaves 5 bytes in slot 0. Put 30 copies 20 bytes and fills slots 1, 2 and 3. Take 5 empties slot 0 and tail becomes 1. Put 30 copies 8 bytes into slot 0, and head becomes 5.">
+<figcaption><b>Figure 1.6</b> The trace as a picture. The shaded part of a slot is its unread data.</figcaption>
+</figure>
+<div class="lld">
+<p>Low-level design: <code>handpipe</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Invariant</th></tr>
+</thead>
+<tbody>
+<tr><td><code>page</code></td><td><code>data</code>, <code>offset</code>, <code>length</code></td><td>unread bytes are <code>data[offset .. offset+length]</code></td></tr>
+<tr><td><code>ring</code></td><td><code>pages</code>, <code>head</code>, <code>tail</code></td><td><code>0 &lt;= head - tail &lt;= len(pages)</code>; counter <code>c</code> maps to slot <code>c mod len(pages)</code></td></tr>
+<tr><td><code>pipe</code></td><td><code>ring</code>, a lock, <code>readable</code>, <code>writable</code>, <code>readers</code>, <code>writers</code></td><td>the ring and the counts are accessed only with the lock held</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th><th>Blocks</th></tr>
+</thead>
+<tbody>
+<tr><td><code>put(data)</code></td><td>appends as many bytes as fit; returns the count</td><td>no</td></tr>
+<tr><td><code>take(buf)</code></td><td>removes up to <code>len(buf)</code> of the oldest bytes; returns the count</td><td>no</td></tr>
+<tr><td><code>write(data)</code></td><td>appends all of <code>data</code>; fails with <code>EPIPE</code> when <code>readers</code> is 0</td><td>while the ring is full</td></tr>
+<tr><td><code>read(buf)</code></td><td>removes at least 1 byte; returns 0 when the ring is empty and <code>writers</code> is 0</td><td>while the ring is empty and <code>writers</code> is above 0</td></tr>
+<tr><td><code>closeWriter</code>, <code>closeReader</code></td><td>decrements a count and wakes the other side</td><td>no</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h3 id="implementing-the-ring"><a class="header" href="#implementing-the-ring">Implementing the ring</a></h3>
+<p><code>page</code> and <code>ring</code> follow the description directly. <code>slot</code> applies invariant 2. Both
+versions allocate every page when the ring is created, which keeps the code short; the
+kernel allocates a page when a slot first needs one.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.15</b> The imports of <code>handpipe</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.16</b> The imports of <code>handpipe</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fmt;
+use std::thread;
+
+use parking_lot::{Condvar, Mutex};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.17</b> The page, the ring, and its counters, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// A page is one slot of the ring: a block of memory, and the position and
+// length of the bytes in it that have not been read yet.
+type page struct {
+	data   []byte
+	offset int
+	length int
+}
+
+// A ring is the storage of a pipe. head counts the pages ever put into use
+// and tail counts the pages ever emptied, so head-tail pages are in use, and
+// a counter's remainder after division by the number of slots is its slot.
+type ring struct {
+	pages []page
+	head  uint
+	tail  uint
+}
+
+func newRing(slots, pageSize int) *ring {
+	pages := make([]page, slots)
+
+	for i := range pages {
+		pages[i].data = make([]byte, pageSize)
+	}
+
+	return &amp;ring{pages: pages}
+}
+
+func (r *ring) empty() bool {
+	return r.head == r.tail
+}
+
+func (r *ring) full() bool {
+	return r.head-r.tail == uint(len(r.pages))
+}
+
+// slot returns the page that a counter refers to.
+func (r *ring) slot(counter uint) *page {
+	return &amp;r.pages[counter%uint(len(r.pages))]
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.18</b> The page, the ring, and its counters, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// One slot of the ring: a block of memory, and the position and length of
+/// the bytes in it that have not been read yet.
+struct Page {
+    data: Vec&lt;u8&gt;,
+    offset: usize,
+    length: usize,
+}
+
+/// The storage of a pipe. `head` counts the pages ever put into use and
+/// `tail` counts the pages ever emptied, so `head - tail` pages are in use,
+/// and a counter's remainder after division by the number of slots is its
+/// slot.
+struct Ring {
+    pages: Vec&lt;Page&gt;,
+    head: usize,
+    tail: usize,
+}
+
+impl Ring {
+    fn new(slots: usize, page_size: usize) -&gt; Ring {
+        let pages = (0..slots)
+            .map(|_| Page {
+                data: vec![0; page_size],
+                offset: 0,
+                length: 0,
+            })
+            .collect();
+
+        Ring {
+            pages,
+            head: 0,
+            tail: 0,
+        }
+    }
+
+    fn empty(&amp;self) -&gt; bool {
+        self.head == self.tail
+    }
+
+    fn full(&amp;self) -&gt; bool {
+        self.head - self.tail == self.pages.len()
+    }
+
+    /// The page that a counter refers to.
+    fn slot(&amp;mut self, counter: usize) -&gt; &amp;mut Page {
+        let slots = self.pages.len();
+
+        &amp;mut self.pages[counter % slots]
+    }
+}</code></pre>
+<p><code>put</code> implements invariant 3: first the unused space of the newest page, then free slots. It returns the number of bytes copied, which is smaller than the request
+when the ring fills.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.19</b> Appending bytes to the ring, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// put copies as much of data as the ring has room for and returns the number
+// of bytes it copied. The bytes go first into the unused end of the newest
+// page, then into free slots, one page each.
+func (r *ring) put(data []byte) int {
+	copied := 0
+
+	if !r.empty() {
+		newest := r.slot(r.head - 1)
+		end := newest.offset + newest.length
+
+		n := copy(newest.data[end:], data)
+		newest.length += n
+		copied += n
+	}
+
+	for copied &lt; len(data) &amp;&amp; !r.full() {
+		next := r.slot(r.head)
+		next.offset = 0
+		next.length = copy(next.data, data[copied:])
+
+		copied += next.length
+		r.head++
+	}
+
+	return copied
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.20</b> Appending bytes to the ring, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Copies as many bytes as both slices allow and returns the count.
+fn copy(to: &amp;mut [u8], from: &amp;[u8]) -&gt; usize {
+    let n = to.len().min(from.len());
+    to[..n].copy_from_slice(&amp;from[..n]);
+
+    n
+}
+
+impl Ring {
+    /// Copies as much of `data` as the ring has room for and returns the
+    /// number of bytes it copied. The bytes go first into the unused end of
+    /// the newest page, then into free slots, one page each.
+    fn put(&amp;mut self, data: &amp;[u8]) -&gt; usize {
+        let mut copied = 0;
+
+        if !self.empty() {
+            let newest = self.slot(self.head - 1);
+            let end = newest.offset + newest.length;
+
+            let n = copy(&amp;mut newest.data[end..], data);
+            newest.length += n;
+            copied += n;
+        }
+
+        while copied &lt; data.len() &amp;&amp; !self.full() {
+            let next = self.slot(self.head);
+            next.offset = 0;
+            next.length = copy(&amp;mut next.data, &amp;data[copied..]);
+
+            copied += next.length;
+            self.head += 1;
+        }
+
+        copied
+    }
+}</code></pre>
+<p><code>take</code> implements invariant 4. It advances <code>offset</code> in the oldest page and increments
+<code>tail</code> when the page is exhausted.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.21</b> Removing the oldest bytes from the ring, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// take moves up to len(buf) of the oldest bytes into buf and returns the
+// number it moved. A slot becomes free when the last byte of its page has
+// been taken.
+func (r *ring) take(buf []byte) int {
+	moved := 0
+
+	for moved &lt; len(buf) &amp;&amp; !r.empty() {
+		oldest := r.slot(r.tail)
+
+		n := copy(buf[moved:], oldest.data[oldest.offset:oldest.offset+oldest.length])
+		oldest.offset += n
+		oldest.length -= n
+		moved += n
+
+		if oldest.length == 0 {
+			r.tail++
+		}
+	}
+
+	return moved
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.22</b> Removing the oldest bytes from the ring, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Ring {
+    /// Moves up to `buf.len()` of the oldest bytes into `buf` and returns the
+    /// number it moved. A slot becomes free when the last byte of its page
+    /// has been taken.
+    fn take(&amp;mut self, buf: &amp;mut [u8]) -&gt; usize {
+        let mut moved = 0;
+
+        while moved &lt; buf.len() &amp;&amp; !self.empty() {
+            let oldest = self.slot(self.tail);
+            let unread = oldest.offset..oldest.offset + oldest.length;
+
+            let n = copy(&amp;mut buf[moved..], &amp;oldest.data[unread]);
+            oldest.offset += n;
+            oldest.length -= n;
+            moved += n;
+
+            if oldest.length == 0 {
+                self.tail += 1;
+            }
+        }
+
+        moved
+    }
+}</code></pre>
+<p><code>smallRing</code> applies the calls of the trace and prints the ring after each.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.23</b> Running the trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// picture renders the ring as one cell per slot: the number of unread bytes
+// in its page, or a dot when the slot is free.
+func (r *ring) picture() string {
+	cells := make([]string, len(r.pages))
+
+	for i := range cells {
+		cells[i] = "."
+	}
+
+	for counter := r.tail; counter != r.head; counter++ {
+		cells[counter%uint(len(r.pages))] = fmt.Sprint(r.slot(counter).length)
+	}
+
+	return "[" + strings.Join(cells, " ") + "]"
+}
+
+// smallRing applies the calls of the trace to a ring of 4 pages of 8 bytes
+// and prints the ring after each.
+func smallRing() {
+	r := newRing(4, 8)
+	buf := make([]byte, 32)
+
+	calls := []struct {
+		op string
+		n  int
+	}{{"put", 12}, {"take", 3}, {"put", 30}, {"take", 5}, {"put", 30}}
+
+	fmt.Println("ring of 4 pages of 8 bytes")
+
+	for _, call := range calls {
+		var done int
+
+		switch call.op {
+		case "put":
+			done = r.put(buf[:call.n])
+		case "take":
+			done = r.take(buf[:call.n])
+		}
+
+		fmt.Printf("%-4s %2d: %2d bytes   head %d  tail %d   %s\n", call.op, call.n, done, r.head, r.tail, r.picture())
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.24</b> Running the trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Ring {
+    /// Renders the ring as one cell per slot: the unread bytes in its page,
+    /// or a dot for a free slot.
+    fn picture(&amp;self) -&gt; String {
+        let slots = self.pages.len();
+        let mut cells = vec![".".to_string(); slots];
+
+        for counter in self.tail..self.head {
+            cells[counter % slots] = self.pages[counter % slots].length.to_string();
+        }
+
+        format!("[{}]", cells.join(" "))
+    }
+}
+
+/// Applies the calls of the trace to a ring of 4 pages of 8 bytes and prints
+/// the ring after each.
+fn small_ring() {
+    let mut ring = Ring::new(4, 8);
+    let mut buf = [0u8; 32];
+
+    let calls = [
+        ("put", 12),
+        ("take", 3),
+        ("put", 30),
+        ("take", 5),
+        ("put", 30),
+    ];
+
+    println!("ring of 4 pages of 8 bytes");
+
+    for (op, n) in calls {
+        let done = match op {
+            "put" =&gt; ring.put(&amp;buf[..n]),
+            _ =&gt; ring.take(&amp;mut buf[..n]),
+        };
+
+        println!(
+            "{op:&lt;4} {n:2}: {done:2} bytes   head {}  tail {}   {}",
+            ring.head,
+            ring.tail,
+            ring.picture()
+        );
+    }
+}</code></pre>
+<pre><code class="language-text">ring of 4 pages of 8 bytes
+put  12: 12 bytes   head 2  tail 0   [8 4 . .]
+take  3:  3 bytes   head 2  tail 0   [5 4 . .]
+put  30: 20 bytes   head 4  tail 0   [5 8 8 8]
+take  5:  5 bytes   head 4  tail 1   [. 8 8 8]
+put  30:  8 bytes   head 5  tail 1   [8 8 8 8]
+</code></pre>
+<p>The output agrees with the table.</p>
+<h3 id="checking-the-model-against-the-kernel"><a class="header" href="#checking-the-model-against-the-kernel">Checking the model against the kernel</a></h3>
+<p><code>kernelSize</code> repeats the capacity measurement of <code>pipefacts</code> on a ring with the kernel’s
+dimensions, 16 pages of 4096 bytes.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.25</b> The capacity measurement on a ring of 16 pages, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// fill puts whole blocks into the ring until it accepts none and returns the
+// number of bytes accepted.
+func fill(r *ring, block []byte) int {
+	total := 0
+
+	for {
+		n := r.put(block)
+
+		if n == 0 {
+			return total
+		}
+
+		total += n
+	}
+}
+
+// kernelSize repeats the capacity measurement of pipefacts on a ring with
+// the kernel's dimensions: 16 pages of 4096 bytes.
+func kernelSize() {
+	const pageSize = 4096
+
+	r := newRing(16, pageSize)
+	block := make([]byte, pageSize)
+
+	steps := []struct {
+		read   int
+		report string
+	}{
+		{0, "new pipe: %d bytes accepted\n"},
+		{1, "after reading 1 byte: %d bytes accepted\n"},
+		{pageSize - 1, "after reading 4096 bytes in total: %d bytes accepted\n"},
+	}
+
+	for _, step := range steps {
+		r.take(block[:step.read])
+		fmt.Printf(step.report, fill(r, block))
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.26</b> The capacity measurement on a ring of 16 pages, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Puts whole blocks into the ring until it accepts none and returns the
+/// number of bytes accepted.
+fn fill(ring: &amp;mut Ring, block: &amp;[u8]) -&gt; usize {
+    let mut total = 0;
+
+    loop {
+        let n = ring.put(block);
+
+        if n == 0 {
+            return total;
+        }
+
+        total += n;
+    }
+}
+
+/// Repeats the capacity measurement of pipefacts on a ring with the kernel's
+/// dimensions: 16 pages of 4096 bytes.
+fn kernel_size() {
+    const PAGE_SIZE: usize = 4096;
+
+    let mut ring = Ring::new(16, PAGE_SIZE);
+    let mut block = [0u8; PAGE_SIZE];
+
+    let steps = [
+        (0, "new pipe"),
+        (1, "after reading 1 byte"),
+        (PAGE_SIZE - 1, "after reading 4096 bytes in total"),
+    ];
+
+    for (count, label) in steps {
+        ring.take(&amp;mut block[..count]);
+
+        let accepted = fill(&amp;mut ring, &amp;block);
+        println!("{label}: {accepted} bytes accepted");
+    }
+}</code></pre>
+<pre><code class="language-text">new pipe: 65536 bytes accepted
+after reading 1 byte: 0 bytes accepted
+after reading 4096 bytes in total: 4096 bytes accepted
+</code></pre>
+<p>These lines are identical to lines 1 to 3 of the <code>pipefacts</code> output. The ring
+of pages reproduces the kernel’s capacity and its page-sized release of space.</p>
+<div class="callout">
+<p><strong>Where the model simplifies.</strong> <code>handpipe</code> uses the kernel’s names and its ring. It
+differs in 3 details. It allocates every page when the ring is created, where the kernel
+allocates a page when a slot first needs one. It appends to the newest page whenever
+there is space, where the kernel does so only when the final partial page of a write
+fits there completely, which keeps the pages of a large write aligned. And its ring has
+a fixed size, where the kernel’s can be resized with <code>F_SETPIPE_SZ</code>, as <code>pipefacts</code>
+showed.</p>
+</div>
+
+<h2 id="blocking"><a class="header" href="#blocking">Blocking</a></h2>
+<p>The ring is a single-threaded data structure. A pipe adds safe access from a reader and a writer running concurrently, and a defined behaviour when a call cannot make progress. Figure 1.7 lists the cases of each call.</p>
+<figure>
+<img src="figures/pipe-cases.svg" alt="What a read does: when the ring holds bytes it returns them; when the ring is empty and a write end is open the caller sleeps; when the ring is empty and no write end is open it returns 0. What a write does: when the ring has room it copies the bytes; when the ring is full and a read end is open the caller sleeps; when no read end is open the kernel sends SIGPIPE and the call fails with EPIPE.">
+<figcaption><b>Figure 1.7</b> The cases of <code>read</code> and of <code>write</code>.</figcaption>
+</figure>
+<img class="plate" src="art/crab-moods.svg" alt="4 crabs show what a write to a pipe can meet. A happy crab: the ring has room, and the write returns. A sleeping crab: the ring is full, and the writer sleeps. An angry crab: no reader is left, and the write fails with SIGPIPE and EPIPE. A cute crab: the writer closes its end, and read returns 0.">
+<p>The blocking cases provide flow control. If <code>seq</code> produces output faster than <code>grep</code>
+consumes it, the ring fills and <code>seq</code> is suspended inside <code>write</code>. When <code>grep</code> releases
+a page, <code>seq</code> resumes. The writer’s rate is therefore limited to the reader’s rate, and
+the memory between them stays at 16 pages for a stream of any length. Neither program
+contains code for this; it follows from the semantics of <code>write</code>.</p>
+<p>In addition to the ring, the implementation needs:</p>
+<ul>
+<li>A <em>lock</em>, which gives a thread exclusive access to the ring while it holds the lock.</li>
+<li>The <em>condition variables</em> <code>readable</code> and <code>writable</code>. A condition variable is a queue on which a thread sleeps
+until another thread wakes it. Waiting releases the lock and suspends the thread atomically, and reacquires the lock before returning. Readers wait on <code>readable</code>
+and writers on <code>writable</code>. The kernel’s equivalents are the wait queues <code>rd_wait</code> and
+<code>wr_wait</code>.</li>
+<li>The counts <code>readers</code> and <code>writers</code> of the open ends.</li>
+</ul>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.27</b> The pipe: a ring, a lock, wait queues, and the open ends, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// errBrokenPipe is what a write returns when no reader is left.
+var errBrokenPipe = errors.New("EPIPE")
+
+// A pipe is a ring shared by a reader and a writer goroutine. readable is where a reader
+// sleeps while the ring is empty, and writable is where a writer sleeps while
+// the ring is full. readers and writers count the open ends.
+type pipe struct {
+	mu       sync.Mutex
+	readable *sync.Cond
+	writable *sync.Cond
+	ring     *ring
+	readers  int
+	writers  int
+}
+
+func newPipe(slots, pageSize int) *pipe {
+	p := &amp;pipe{ring: newRing(slots, pageSize), readers: 1, writers: 1}
+	p.readable = sync.NewCond(&amp;p.mu)
+	p.writable = sync.NewCond(&amp;p.mu)
+
+	return p
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.28</b> The pipe: a ring, a lock, wait queues, and the open ends, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// What a write returns when no reader is left.
+#[derive(Debug)]
+struct BrokenPipe;
+
+impl fmt::Display for BrokenPipe {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("EPIPE")
+    }
+}
+
+/// What the lock guards: the ring and the count of the open ends.
+struct State {
+    ring: Ring,
+    readers: usize,
+    writers: usize,
+}
+
+/// A ring shared by a reader and a writer thread. `readable` is where a reader sleeps while
+/// the ring is empty, and `writable` is where a writer sleeps while the ring
+/// is full.
+struct Pipe {
+    state: Mutex&lt;State&gt;,
+    readable: Condvar,
+    writable: Condvar,
+}
+
+impl Pipe {
+    fn new(slots: usize, page_size: usize) -&gt; Pipe {
+        let state = State {
+            ring: Ring::new(slots, page_size),
+            readers: 1,
+            writers: 1,
+        };
+
+        Pipe {
+            state: Mutex::new(state),
+            readable: Condvar::new(),
+            writable: Condvar::new(),
+        }
+    }
+}</code></pre>
+<p><code>write</code> loops until all of <code>data</code> is in the ring. On each pass it checks for a reader,
+appends what fits, and either wakes the readers or waits on <code>writable</code>.</p>
+<p>A woken thread must test its condition again before proceeding. A wake-up indicates
+that the state changed, and the change may be unrelated to the condition the thread waits for: in row 2 of the trace, a <code>take</code> of 3 bytes freed no slot. For
+this reason the wait is inside the loop, and the writer calls <code>put</code> again after every
+wake-up.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.29</b> Blocking write, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// write returns when every byte of data is in the ring, or when no reader is
+// left. While the ring is full it sleeps on writable.
+func (p *pipe) write(data []byte) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	written := 0
+
+	for written &lt; len(data) {
+		if p.readers == 0 {
+			return written, errBrokenPipe
+		}
+
+		n := p.ring.put(data[written:])
+		written += n
+
+		if n == 0 {
+			p.writable.Wait()
+			continue
+		}
+
+		p.readable.Broadcast()
+	}
+
+	return written, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.30</b> Blocking write, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Pipe {
+    /// Returns when every byte of `data` is in the ring, or when no reader is
+    /// left. While the ring is full it sleeps on `writable`.
+    fn write(&amp;self, data: &amp;[u8]) -&gt; Result&lt;usize, BrokenPipe&gt; {
+        let mut state = self.state.lock();
+        let mut written = 0;
+
+        while written &lt; data.len() {
+            if state.readers == 0 {
+                return Err(BrokenPipe);
+            }
+
+            let n = state.ring.put(&amp;data[written..]);
+            written += n;
+
+            if n == 0 {
+                self.writable.wait(&amp;mut state);
+                continue;
+            }
+
+            self.readable.notify_all();
+        }
+
+        Ok(written)
+    }
+}</code></pre>
+<p><code>read</code> waits while the ring is empty and a writer exists. If it wakes with the ring
+still empty, <code>writers</code> is 0, <code>take</code> returns 0, and so does <code>read</code>. A read returns as soon as at least 1 byte is available, so the caller may receive fewer bytes than it
+asked for and must be prepared to call <code>read</code> again.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.31</b> Blocking read, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// read returns as soon as it has moved at least one byte into buf. While the
+// ring is empty and a writer exists it sleeps on readable. It returns 0 when
+// the ring is empty and no writer is left: the end of the stream.
+func (p *pipe) read(buf []byte) int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for p.ring.empty() &amp;&amp; p.writers &gt; 0 {
+		p.readable.Wait()
+	}
+
+	n := p.ring.take(buf)
+
+	if n &gt; 0 {
+		p.writable.Broadcast()
+	}
+
+	return n
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.32</b> Blocking read, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Pipe {
+    /// Returns as soon as it has moved at least one byte into `buf`. While
+    /// the ring is empty and a writer exists it sleeps on `readable`. It
+    /// returns 0 when the ring is empty and no writer is left: the end of the
+    /// stream.
+    fn read(&amp;self, buf: &amp;mut [u8]) -&gt; usize {
+        let mut state = self.state.lock();
+
+        self.readable
+            .wait_while(&amp;mut state, |state| state.ring.empty() &amp;&amp; state.writers &gt; 0);
+
+        let n = state.ring.take(buf);
+
+        if n &gt; 0 {
+            self.writable.notify_all();
+        }
+
+        n
+    }
+}</code></pre>
+<p>Closing an end decrements its count and wakes the opposite side. Without the wake-up, a
+reader already waiting on an empty ring would remain suspended after <code>writers</code> reached
+0.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.33</b> Closing an end, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// closeWriter gives up a write end. A reader asleep on an empty ring wakes
+// and finds that no writer is left.
+func (p *pipe) closeWriter() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.writers--
+	p.readable.Broadcast()
+}
+
+// closeReader gives up a read end. A writer asleep on a full ring wakes and
+// finds that no reader is left.
+func (p *pipe) closeReader() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.readers--
+	p.writable.Broadcast()
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.34</b> Closing an end, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Pipe {
+    /// Gives up a write end. A reader asleep on an empty ring wakes and finds
+    /// that no writer is left.
+    fn close_writer(&amp;self) {
+        self.state.lock().writers -= 1;
+        self.readable.notify_all();
+    }
+
+    /// Gives up a read end. A writer asleep on a full ring wakes and finds
+    /// that no reader is left.
+    fn close_reader(&amp;self) {
+        self.state.lock().readers -= 1;
+        self.writable.notify_all();
+    }
+}</code></pre>
+<p>Animation 1.1 runs a writer and a reader on the 4-slot ring. The writer’s second call
+writes 30 bytes. It blocks after 20 bytes and again after 28, and returns when all 30 bytes are in the ring.</p>
+<figure class="anim">
+<video class="motion" src="figures/ring-sleep.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A writer and a reader share a ring of 4 pages of 8 bytes. The writer puts 12 bytes, and the reader takes 3. The writer starts a write of 30 bytes; 20 fit, every slot is in use, and the writer sleeps. The reader takes 5 more bytes, which frees slot 0; the writer wakes, puts 8 bytes into slot 0, and sleeps again with 2 bytes left. The reader takes 8, the writer puts its last 2 bytes and its write returns 30. The writer closes its end, the reader takes the 26 bytes that remain, and its next read returns 0." data-chapters="[[0.0, &quot;put&quot;], [3.06, &quot;take&quot;], [8.1, &quot;full&quot;], [19.74, &quot;wake&quot;], [37.38, &quot;end&quot;]]"><img src="figures/ring-sleep.gif" alt="A writer and a reader share a ring of 4 pages of 8 bytes. The writer puts 12 bytes, and the reader takes 3. The writer starts a write of 30 bytes; 20 fit, every slot is in use, and the writer sleeps. The reader takes 5 more bytes, which frees slot 0; the writer wakes, puts 8 bytes into slot 0, and sleeps again with 2 bytes left. The reader takes 8, the writer puts its last 2 bytes and its write returns 30. The writer closes its end, the reader takes the 26 bytes that remain, and its next read returns 0."></video>
+<figcaption><b>Animation 1.1</b> A write of 30 bytes into a ring that holds 32. The writer blocks while no slot is free.</figcaption>
+</figure>
+<p><code>transfer</code> tests the complete pipe. A writer thread sends 1048576 bytes in writes of
+100000 bytes. Each write is larger than the ring’s capacity, so each one blocks several
+times. The reader verifies the order of the bytes, then reads again after the write end is closed. The read end is then closed and another write is attempted.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.35</b> One megabyte through a 16-page ring, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// transfer sends one megabyte through a pipe of the kernel's size. Byte i of
+// the stream has the value i mod 256, which lets the reader verify the order.
+func transfer() {
+	const total = 1 &lt;&lt; 20
+
+	p := newPipe(16, 4096)
+
+	go func() {
+		defer p.closeWriter()
+
+		chunk := make([]byte, 100_000)
+
+		for sent := 0; sent &lt; total; sent += len(chunk) {
+			chunk = chunk[:min(len(chunk), total-sent)]
+
+			for i := range chunk {
+				chunk[i] = byte(sent + i)
+			}
+
+			if _, err := p.write(chunk); err != nil {
+				return
+			}
+		}
+	}()
+
+	buf := make([]byte, 30_000)
+	received, inOrder := 0, true
+
+	for n := p.read(buf); n &gt; 0; n = p.read(buf) {
+		for i, b := range buf[:n] {
+			inOrder = inOrder &amp;&amp; b == byte(received+i)
+		}
+
+		received += n
+	}
+
+	fmt.Printf("1048576 bytes written: %d bytes read, in order: %v\n", received, inOrder)
+	fmt.Printf("write end closed: read returns %d\n", p.read(buf))
+
+	p.closeReader()
+
+	_, err := p.write([]byte("hello"))
+	fmt.Printf("read end closed: write fails with %v\n", err)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.36</b> One megabyte through a 16-page ring, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Sends one megabyte through a pipe of the kernel's size. Byte `i` of the
+/// stream has the value `i` mod 256, which lets the reader verify the order.
+fn transfer() {
+    const TOTAL: usize = 1 &lt;&lt; 20;
+
+    let pipe = Pipe::new(16, 4096);
+    let mut buf = vec![0u8; 30_000];
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            let mut chunk = vec![0u8; 100_000];
+
+            for sent in (0..TOTAL).step_by(chunk.len()) {
+                chunk.truncate(TOTAL - sent);
+
+                for (i, byte) in chunk.iter_mut().enumerate() {
+                    *byte = (sent + i) as u8;
+                }
+
+                if pipe.write(&amp;chunk).is_err() {
+                    break;
+                }
+            }
+
+            pipe.close_writer();
+        });
+
+        let (mut received, mut in_order) = (0, true);
+
+        loop {
+            let n = pipe.read(&amp;mut buf);
+
+            if n == 0 {
+                break;
+            }
+
+            for (i, byte) in buf[..n].iter().enumerate() {
+                in_order = in_order &amp;&amp; *byte == (received + i) as u8;
+            }
+
+            received += n;
+        }
+
+        println!("1048576 bytes written: {received} bytes read, in order: {in_order}");
+    });
+
+    println!("write end closed: read returns {}", pipe.read(&amp;mut buf));
+
+    pipe.close_reader();
+
+    if let Err(error) = pipe.write(b"hello") {
+        println!("read end closed: write fails with {error}");
+    }
+}</code></pre>
+<pre><code class="language-text">1048576 bytes written: 1048576 bytes read, in order: true
+write end closed: read returns 0
+read end closed: write fails with EPIPE
+</code></pre>
+<p>All bytes arrived in order through 65536 bytes of buffer. The read that returns 0 and the write that fails with <code>EPIPE</code> match the <code>pipefacts</code> output.</p>
+<div class="callout">
+<p><strong>Atomic writes.</strong> When several processes write to the same pipe, the kernel guarantees
+that a write of at most <code>PIPE_BUF</code> bytes (4096 on Linux) is kept contiguous in the
+stream. Larger writes can be interleaved with the writes of other processes.
+<code>handpipe</code> omits this guarantee: its <code>write</code> can block after copying part of a small
+request.</p>
+</div>
+
+<h2 id="the-end-of-a-stream"><a class="header" href="#the-end-of-a-stream">The end of a stream</a></h2>
+<p><code>readers</code> and <code>writers</code> in <code>struct pipe_inode_info</code> count open ends, and both rules for
+the end of a stream are tests of these counts.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th>Condition</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td><code>read</code></td><td>the ring is empty and <code>writers</code> is 0</td><td>returns 0</td></tr>
+<tr><td><code>write</code></td><td><code>readers</code> is 0</td><td><code>SIGPIPE</code>, and the error <code>EPIPE</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The counts change when an end is opened or closed, and “closed” has a precise meaning.
+An end of a pipe is a <code>struct file</code>, and several descriptors can refer to the same
+<code>struct file</code>: <code>dup</code> creates another one, and <code>fork</code> gives the child a copy of every
+descriptor of the parent. The kernel releases the <code>struct file</code>, and lowers <code>readers</code> or
+<code>writers</code>, when the last of those descriptors is closed. A single forgotten descriptor
+in any process keeps the end open.</p>
+<p>Figure 1.8 follows the counts through the life of the pipeline <code>a | b</code>.</p>
+<figure>
+<img src="figures/pipe-ends-count.svg" alt="The number of open read ends and write ends of the pipe in the pipeline a | b. After pipe the shell holds 1 of each. After 2 forks the shell, a and b hold 3 of each. After each process closes what it does not use, a holds the write end and b the read end: 1 and 1. After a exits the write count is 0. When b has read the last byte, read returns 0.">
+<figcaption><b>Figure 1.8</b> The open ends of a pipe, counted over all processes.</figcaption>
+</figure>
+<p>The figure counts descriptors, as a programmer has to. Row 3 is the step that programs
+get wrong. After the forks, 3 processes hold a descriptor for the write end. The reader
+<code>b</code> holds one itself, and if it does not close it, <code>b</code> waits for the end of a stream
+whose last writer is <code>b</code>.</p>
+<h2 id="building-a-pipeline"><a class="header" href="#building-a-pipeline">Building a pipeline</a></h2>
+<p><code>pipeline</code> runs <code>seq 1 100000 | grep 7 | wc -l</code> with kernel pipes. The kernel’s rules for descriptors determine how it must manage them.</p>
+<ol>
+<li><strong>Descriptors are inherited.</strong> When a process (the <em>parent</em>) starts another (the
+<em>child</em>), the child receives copies of the parent’s descriptors. A copy refers to the
+same pipe end as the original.</li>
+<li><strong>An end is closed when its last descriptor is closed.</strong> The kernel counts the
+descriptors that refer to each end. <code>read</code> returns 0 only when the count for the
+write end is 0.</li>
+</ol>
+<p>Suppose the parent creates a pipe, starts <code>seq</code> with the write end and <code>grep</code> with the
+read end, and keeps its own descriptors open. When <code>seq</code> exits, the write end still has an open descriptor, the parent’s. <code>grep</code> then blocks in <code>read</code> indefinitely and the pipeline
+does not finish. The rule for the parent follows: after starting a child, close the
+parent’s copy of every pipe end that was passed to it.</p>
+<p><code>O_CLOEXEC</code> enforces the same rule for descriptors that were not passed deliberately.
+The kernel closes a descriptor carrying this flag when the process executes a new
+program. Go’s <code>os.Pipe</code> and Rust’s <code>io::pipe</code> both set it, so each command receives its own ends and no descriptors for the other pipes.</p>
+<figure>
+<img src="figures/pipeline-ends.svg" alt="A pipeline of 3 commands and 3 pipes, top to bottom. The standard output of seq 1 100000 is the write end of pipe 1, and the standard input of grep 7 is its read end; 588895 bytes pass through. grep writes to pipe 2, which wc -l reads; 241976 bytes pass through. wc writes 6 bytes to pipe 3, which the pipeline program reads: 40951.">
+<figcaption><b>Figure 1.9</b> The pipeline that <code>pipeline</code> builds. The parent reads pipe 3 to collect the result.</figcaption>
+</figure>
+<p><code>start</code> creates a pipe for each command. Each command writes to its own pipe and reads from the previous pipe, and the read end of the newest pipe is carried to the next iteration.
+The parent’s copies are closed in each iteration: explicitly in Go, and in Rust by
+ownership, since the ends are moved into the <code>Command</code>, which is dropped at the end of
+the statement.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.37</b> The imports of <code>pipeline</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipeline/main.go">code/go/pipeline/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.38</b> The imports of <code>pipeline</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipeline/src/main.rs">code/rust/pipeline/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::io::{self, PipeReader, Read};
+use std::os::unix::process::ExitStatusExt;
+use std::process::{Child, Command, Stdio};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.39</b> Starting the commands, each with its own pipe, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipeline/main.go">code/go/pipeline/main.go</a></p>
+
+<pre><code class="language-go">// start runs the commands of a pipeline. Command i writes to pipe i and reads
+// from pipe i-1; the first command reads /dev/null. It returns the commands
+// and the read end of the last pipe.
+func start(stages [][]string) ([]*exec.Cmd, *os.File, error) {
+	var input *os.File
+	commands := make([]*exec.Cmd, 0, len(stages))
+
+	for _, stage := range stages {
+		reader, writer, err := os.Pipe()
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		command := exec.Command(stage[0], stage[1:]...)
+		command.Stdout = writer
+
+		if input != nil {
+			command.Stdin = input
+		}
+
+		err = command.Start()
+
+		// The child holds its own copies of both ends. Closing the parent's
+		// copies leaves the child's as the only ones.
+		writer.Close()
+
+		if input != nil {
+			input.Close()
+		}
+
+		if err != nil {
+			reader.Close()
+
+			return nil, nil, fmt.Errorf("%s: %w", stage[0], err)
+		}
+
+		commands, input = append(commands, command), reader
+	}
+
+	return commands, input, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.40</b> Starting the commands, each with its own pipe, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipeline/src/main.rs">code/rust/pipeline/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Runs the commands of a pipeline. Command `i` writes to pipe `i` and reads
+/// from pipe `i - 1`; the first command reads /dev/null. Returns the children
+/// and the read end of the last pipe.
+fn start(stages: &amp;[Vec&lt;&amp;str&gt;]) -&gt; io::Result&lt;(Vec&lt;Child&gt;, PipeReader)&gt; {
+    let mut input = None;
+    let mut children = Vec::with_capacity(stages.len());
+
+    for stage in stages {
+        let (reader, writer) = io::pipe()?;
+        let stdin = input.take().map_or_else(Stdio::null, Stdio::from);
+
+        // The `Command` owns the parent's copies of both ends. It is dropped
+        // when this statement ends, which closes them and leaves the child's
+        // copies as the only ones.
+        let child = Command::new(stage[0])
+            .args(&amp;stage[1..])
+            .stdin(stdin)
+            .stdout(writer)
+            .spawn()?;
+
+        children.push(child);
+        input = Some(reader);
+    }
+
+    let output = input.ok_or(io::ErrorKind::InvalidInput)?;
+
+    Ok((children, output))
+}</code></pre>
+<p>The kernel records how each process terminated: with an exit status chosen by the
+process, where 0 means success by convention, or by a signal. The parent retrieves the
+record with the <code>wait</code> system call.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.41</b> Reporting how a command terminated, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipeline/main.go">code/go/pipeline/main.go</a></p>
+
+<pre><code class="language-go">// ending waits for a command and reports how it terminated: with an exit
+// status, or by a signal.
+func ending(command *exec.Cmd) string {
+	command.Wait()
+
+	state := command.ProcessState
+
+	if status, ok := state.Sys().(syscall.WaitStatus); ok &amp;&amp; status.Signaled() {
+		return fmt.Sprintf("killed by signal %d", status.Signal())
+	}
+
+	return fmt.Sprintf("exited with status %d", state.ExitCode())
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.42</b> Reporting how a command terminated, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipeline/src/main.rs">code/rust/pipeline/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Waits for a command and reports how it terminated: with an exit status,
+/// or by a signal.
+fn ending(child: &amp;mut Child) -&gt; io::Result&lt;String&gt; {
+    let status = child.wait()?;
+
+    let text = match (status.signal(), status.code()) {
+        (Some(signal), _) =&gt; format!("killed by signal {signal}"),
+        (None, Some(code)) =&gt; format!("exited with status {code}"),
+        (None, None) =&gt; status.to_string(),
+    };
+
+    Ok(text)
+}</code></pre>
+<p><code>run</code> reads the last pipe until <code>read</code> returns 0. That occurs when the last command has
+exited and no descriptor for the write end remains, which depends on <code>start</code> having
+closed the parent’s copy.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.43</b> Running a pipeline, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipeline/main.go">code/go/pipeline/main.go</a></p>
+
+<pre><code class="language-go">// run starts a pipeline, reads the last command's output to the end of the
+// stream, and prints the output and each command's termination.
+func run(line string) error {
+	var stages [][]string
+
+	for _, stage := range strings.Split(line, " | ") {
+		stages = append(stages, strings.Fields(stage))
+	}
+
+	commands, output, err := start(stages)
+
+	if err != nil {
+		return err
+	}
+
+	defer output.Close()
+
+	text, err := io.ReadAll(output)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(line)
+	fmt.Printf("  output: %s\n", strings.Join(strings.Fields(string(text)), " "))
+
+	for i, command := range commands {
+		fmt.Printf("  %s: %s\n", stages[i][0], ending(command))
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.44</b> Running a pipeline, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipeline/src/main.rs">code/rust/pipeline/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Starts a pipeline, reads the last command's output to the end of the
+/// stream, and prints the output and each command's termination.
+fn run(line: &amp;str) -&gt; io::Result&lt;()&gt; {
+    let stages: Vec&lt;Vec&lt;&amp;str&gt;&gt; = line
+        .split(" | ")
+        .map(|stage| stage.split_whitespace().collect())
+        .collect();
+
+    let (mut children, mut output) = start(&amp;stages)?;
+
+    let mut text = String::new();
+    output.read_to_string(&amp;mut text)?;
+
+    let words: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    println!("{line}");
+    println!("  output: {}", words.join(" "));
+
+    for (stage, child) in stages.iter().zip(&amp;mut children) {
+        println!("  {}: {}", stage[0], ending(child)?);
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">seq 1 100000 | grep 7 | wc -l
+  output: 40951
+  seq: exited with status 0
+  grep: exited with status 0
+  wc: exited with status 0
+yes | head -n 3
+  output: y y y
+  yes: killed by signal 13
+  head: exited with status 0
+</code></pre>
+<p>In the first pipeline, each command reached the end of its input when the previous
+command exited, and all of them exited with status 0. The result can be verified
+independently. Of the 100000 5-digit strings from 00000 to 99999, 9<sup>5</sup> =
+59049 contain no 7. The range 1 to 100000 replaces 00000 with 100000, and neither
+contains a 7, so 100000 - 59049 = 40951 numbers in the range contain a 7.</p>
+<p>The second pipeline terminates a writer that has no end of its own. <code>yes</code> writes the
+line <code>y</code> in a loop. <code>head -n 3</code> exits after 3 lines, which closes the only read end
+of the pipe. The next <code>write</code> by <code>yes</code> raises <code>SIGPIPE</code>, signal 13, and the default
+action terminates the process. In a longer pipeline this propagates from right to left:
+each command that exits closes a read end, and the command before it is terminated on
+its next write.</p>
+<h2 id="named-pipes"><a class="header" href="#named-pipes">Named pipes</a></h2>
+<p>The pipes so far have no name, so only processes that inherited the descriptors can use
+them. A <em>named pipe</em>, or FIFO, is the same kernel object with an entry in the file
+system, created by <code>mkfifo</code>. Unrelated processes open it by path, one for writing and
+one for reading, and the bytes pass through a <code>struct pipe_inode_info</code> exactly as
+before. Nothing is written to the disk. The <code>p</code> at the start of the permissions marks
+the type.</p>
+<pre><code class="language-console">$ mkfifo /tmp/x/queue
+$ ls -l /tmp/x/queue
+prw-rw-r-- /tmp/x/queue
+$ echo hello &gt; /tmp/x/queue &amp;
+$ cat /tmp/x/queue
+hello
+</code></pre>
+<p>An <code>open</code> of a FIFO for writing blocks until some process opens it for reading, and the
+reverse, which is why the <code>echo</code> above is started in the background.</p>
+<h2 id="inspecting-pipes-on-a-live-system"><a class="header" href="#inspecting-pipes-on-a-live-system">Inspecting pipes on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ls -l /proc/&lt;pid&gt;/fd</code></td><td>which descriptors of a process are pipes, and the number of each pipe; equal numbers are the 2 ends of the same pipe</td></tr>
+<tr><td><code>cat /proc/sys/fs/pipe-max-size</code></td><td>the largest capacity an ordinary user can set with <code>F_SETPIPE_SZ</code>: 1048576 here</td></tr>
+<tr><td><code>cat /proc/sys/fs/pipe-user-pages-soft</code></td><td>the number of pages all pipes of a user may hold before new pipes are created with a single slot: 16384 here</td></tr>
+<tr><td><code>fcntl(fd, F_GETPIPE_SZ)</code></td><td>the capacity of a pipe, from inside a program</td></tr>
+</tbody>
+</table>
+</div>
+<p>A pipeline that appears to hang is usually diagnosed with the first command: find the
+process that is blocked, read its descriptors, and look for another process that still
+holds the write end of the same pipe number.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.45</b> The complete <code>pipefacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipefacts/main.go">code/go/pipefacts/main.go</a></p>
+
+<pre><code class="language-go">// Command pipefacts measures a kernel pipe: its capacity,
+// the unit in which a read frees space, how a reader observes the end of the
+// stream, and the result of a write when no reader exists.
+//
+// Run it from code/go with:
+//
+//	go run ./pipefacts
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+
+	"golang.org/x/sys/unix"
+)
+
+
+// block is the size of every write the program attempts: one page.
+const block = 4096
+
+// newPipe creates a pipe in non-blocking mode: a read or a write that cannot
+// proceed returns EAGAIN where it would otherwise suspend the caller.
+func newPipe() (reader, writer int, err error) {
+	var fds [2]int
+
+	if err := unix.Pipe2(fds[:], unix.O_NONBLOCK|unix.O_CLOEXEC); err != nil {
+		return 0, 0, fmt.Errorf("pipe2: %w", err)
+	}
+
+	return fds[0], fds[1], nil
+}
+
+
+// fill writes whole blocks until the kernel refuses one and returns the
+// number of bytes accepted.
+func fill(writer int) (int, error) {
+	data := make([]byte, block)
+	total := 0
+
+	for {
+		n, err := unix.Write(writer, data)
+
+		if errors.Is(err, unix.EAGAIN) {
+			return total, nil
+		}
+
+		if err != nil {
+			return total, fmt.Errorf("write: %w", err)
+		}
+
+		total += n
+	}
+}
+
+// drain reads and discards up to n bytes.
+func drain(reader, n int) error {
+	_, err := unix.Read(reader, make([]byte, n))
+
+	return err
+}
+
+
+// capacity fills a pipe when it is new, after 1 byte has been read, and
+// after 4096 bytes have been read. Each fill reports the free space.
+func capacity() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(reader)
+	defer unix.Close(writer)
+
+	steps := []struct {
+		read   int
+		report string
+	}{
+		{0, "new pipe: %d bytes accepted\n"},
+		{1, "after reading 1 byte: %d bytes accepted\n"},
+		{block - 1, "after reading 4096 bytes in total: %d bytes accepted\n"},
+	}
+
+	for _, step := range steps {
+		if err := drain(reader, step.read); err != nil {
+			return err
+		}
+
+		accepted, err := fill(writer)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf(step.report, accepted)
+	}
+
+	return nil
+}
+
+
+// resize changes the capacity of a pipe with fcntl and measures it after
+// each change.
+func resize() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(reader)
+	defer unix.Close(writer)
+
+	for _, request := range []int{4 * block, 5000, 1 &lt;&lt; 20} {
+		granted, err := unix.FcntlInt(uintptr(writer), unix.F_SETPIPE_SZ, request)
+
+		if err != nil {
+			return fmt.Errorf("F_SETPIPE_SZ: %w", err)
+		}
+
+		accepted, err := fill(writer)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("capacity of %d bytes requested: %d granted, %d bytes accepted\n", request, granted, accepted)
+
+		if err := drain(reader, accepted); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+
+// endOfStream reads an empty pipe while a write end is open, and again after
+// the write end has been closed.
+func endOfStream() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(reader)
+
+	buf := make([]byte, block)
+
+	_, err = unix.Read(reader, buf)
+	fmt.Printf("empty pipe, write end open: read fails with %s\n", name(err))
+
+	unix.Close(writer)
+
+	n, err := unix.Read(reader, buf)
+
+	if err != nil {
+		return fmt.Errorf("read: %w", err)
+	}
+
+	fmt.Printf("empty pipe, write end closed: read returns %d\n", n)
+
+	return nil
+}
+
+
+// brokenPipe writes to a pipe whose read end has been closed.
+func brokenPipe() error {
+	reader, writer, err := newPipe()
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(writer)
+
+	unix.Close(reader)
+
+	_, err = unix.Write(writer, []byte("hello"))
+	fmt.Printf("read end closed: write fails with %s\n", name(err))
+
+	return nil
+}
+
+// name returns the symbolic name of a system call error, such as EAGAIN.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+
+func main() {
+	for _, experiment := range []func() error{capacity, resize, endOfStream, brokenPipe} {
+		if err := experiment(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 1.46</b> The complete <code>pipefacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipefacts/src/main.rs">code/rust/pipefacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures a kernel pipe: its capacity, the unit in which
+//! a read frees space, how a reader observes the end of the stream, and the
+//! result of a write when no reader exists.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p pipefacts
+//! ```
+
+use std::os::fd::OwnedFd;
+
+use nix::errno::Errno;
+use nix::fcntl::{FcntlArg, OFlag, fcntl};
+use nix::unistd::{pipe2, read, write};
+
+/// The size of every write the program attempts: one page.
+const BLOCK: usize = 4096;
+
+/// Creates a pipe in non-blocking mode: a read or a write that cannot proceed
+/// returns `EAGAIN` where it would otherwise suspend the caller. The read end
+/// is first.
+fn new_pipe() -&gt; nix::Result&lt;(OwnedFd, OwnedFd)&gt; {
+    pipe2(OFlag::O_NONBLOCK | OFlag::O_CLOEXEC)
+}
+
+/// Writes whole blocks until the kernel refuses one and returns the number of
+/// bytes accepted.
+fn fill(writer: &amp;OwnedFd) -&gt; nix::Result&lt;usize&gt; {
+    let data = [0u8; BLOCK];
+    let mut total = 0;
+
+    loop {
+        match write(writer, &amp;data) {
+            Ok(n) =&gt; total += n,
+            Err(Errno::EAGAIN) =&gt; return Ok(total),
+            Err(error) =&gt; return Err(error),
+        }
+    }
+}
+
+/// Reads and discards up to `n` bytes.
+fn drain(reader: &amp;OwnedFd, n: usize) -&gt; nix::Result&lt;usize&gt; {
+    read(reader, &amp;mut vec![0u8; n])
+}
+
+/// Fills a pipe when it is new, after 1 byte has been read, and after 4096
+/// bytes have been read. Each fill reports the free space.
+fn capacity() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+
+    let steps = [
+        (0, "new pipe"),
+        (1, "after reading 1 byte"),
+        (BLOCK - 1, "after reading 4096 bytes in total"),
+    ];
+
+    for (count, label) in steps {
+        drain(&amp;reader, count)?;
+
+        let accepted = fill(&amp;writer)?;
+        println!("{label}: {accepted} bytes accepted");
+    }
+
+    Ok(())
+}
+
+/// Changes the capacity of a pipe with fcntl and measures it after each
+/// change.
+fn resize() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+
+    for request in [4 * BLOCK, 5000, 1 &lt;&lt; 20] {
+        let granted = fcntl(&amp;writer, FcntlArg::F_SETPIPE_SZ(request as i32))?;
+        let accepted = fill(&amp;writer)?;
+
+        println!(
+            "capacity of {request} bytes requested: {granted} granted, {accepted} bytes accepted"
+        );
+
+        drain(&amp;reader, accepted)?;
+    }
+
+    Ok(())
+}
+
+/// Reads an empty pipe while a write end is open, and again after the write
+/// end has been closed.
+fn end_of_stream() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+    let mut buf = [0u8; BLOCK];
+
+    if let Err(error) = read(&amp;reader, &amp;mut buf) {
+        println!("empty pipe, write end open: read fails with {error:?}");
+    }
+
+    drop(writer);
+
+    let n = read(&amp;reader, &amp;mut buf)?;
+    println!("empty pipe, write end closed: read returns {n}");
+
+    Ok(())
+}
+
+/// Writes to a pipe whose read end has been closed.
+fn broken_pipe() -&gt; nix::Result&lt;()&gt; {
+    let (reader, writer) = new_pipe()?;
+
+    drop(reader);
+
+    if let Err(error) = write(&amp;writer, b"hello") {
+        println!("read end closed: write fails with {error:?}");
+    }
+
+    Ok(())
+}
+
+fn main() -&gt; nix::Result&lt;()&gt; {
+    capacity()?;
+    resize()?;
+    end_of_stream()?;
+    broken_pipe()
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.47</b> The complete <code>handpipe</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/handpipe/main.go">code/go/handpipe/main.go</a></p>
+
+<pre><code class="language-go">// Command handpipe builds a pipe by hand, with the same parts the kernel
+// uses: a ring of pages for the bytes, a lock, a place for a reader to sleep
+// and a place for a writer to sleep, and a count of the open ends.
+//
+// It traces a small ring call by call, repeats the capacity measurement of
+// pipefacts on a ring of the kernel's size, and sends 1048576 bytes from a
+// writer goroutine to a reader.
+//
+// Run it from code/go with:
+//
+//	go run ./handpipe
+package main
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
+)
+
+
+// A page is one slot of the ring: a block of memory, and the position and
+// length of the bytes in it that have not been read yet.
+type page struct {
+	data   []byte
+	offset int
+	length int
+}
+
+// A ring is the storage of a pipe. head counts the pages ever put into use
+// and tail counts the pages ever emptied, so head-tail pages are in use, and
+// a counter's remainder after division by the number of slots is its slot.
+type ring struct {
+	pages []page
+	head  uint
+	tail  uint
+}
+
+func newRing(slots, pageSize int) *ring {
+	pages := make([]page, slots)
+
+	for i := range pages {
+		pages[i].data = make([]byte, pageSize)
+	}
+
+	return &amp;ring{pages: pages}
+}
+
+func (r *ring) empty() bool {
+	return r.head == r.tail
+}
+
+func (r *ring) full() bool {
+	return r.head-r.tail == uint(len(r.pages))
+}
+
+// slot returns the page that a counter refers to.
+func (r *ring) slot(counter uint) *page {
+	return &amp;r.pages[counter%uint(len(r.pages))]
+}
+
+
+// put copies as much of data as the ring has room for and returns the number
+// of bytes it copied. The bytes go first into the unused end of the newest
+// page, then into free slots, one page each.
+func (r *ring) put(data []byte) int {
+	copied := 0
+
+	if !r.empty() {
+		newest := r.slot(r.head - 1)
+		end := newest.offset + newest.length
+
+		n := copy(newest.data[end:], data)
+		newest.length += n
+		copied += n
+	}
+
+	for copied &lt; len(data) &amp;&amp; !r.full() {
+		next := r.slot(r.head)
+		next.offset = 0
+		next.length = copy(next.data, data[copied:])
+
+		copied += next.length
+		r.head++
+	}
+
+	return copied
+}
+
+
+// take moves up to len(buf) of the oldest bytes into buf and returns the
+// number it moved. A slot becomes free when the last byte of its page has
+// been taken.
+func (r *ring) take(buf []byte) int {
+	moved := 0
+
+	for moved &lt; len(buf) &amp;&amp; !r.empty() {
+		oldest := r.slot(r.tail)
+
+		n := copy(buf[moved:], oldest.data[oldest.offset:oldest.offset+oldest.length])
+		oldest.offset += n
+		oldest.length -= n
+		moved += n
+
+		if oldest.length == 0 {
+			r.tail++
+		}
+	}
+
+	return moved
+}
+
+
+// errBrokenPipe is what a write returns when no reader is left.
+var errBrokenPipe = errors.New("EPIPE")
+
+// A pipe is a ring shared by a reader and a writer goroutine. readable is where a reader
+// sleeps while the ring is empty, and writable is where a writer sleeps while
+// the ring is full. readers and writers count the open ends.
+type pipe struct {
+	mu       sync.Mutex
+	readable *sync.Cond
+	writable *sync.Cond
+	ring     *ring
+	readers  int
+	writers  int
+}
+
+func newPipe(slots, pageSize int) *pipe {
+	p := &amp;pipe{ring: newRing(slots, pageSize), readers: 1, writers: 1}
+	p.readable = sync.NewCond(&amp;p.mu)
+	p.writable = sync.NewCond(&amp;p.mu)
+
+	return p
+}
+
+
+// write returns when every byte of data is in the ring, or when no reader is
+// left. While the ring is full it sleeps on writable.
+func (p *pipe) write(data []byte) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	written := 0
+
+	for written &lt; len(data) {
+		if p.readers == 0 {
+			return written, errBrokenPipe
+		}
+
+		n := p.ring.put(data[written:])
+		written += n
+
+		if n == 0 {
+			p.writable.Wait()
+			continue
+		}
+
+		p.readable.Broadcast()
+	}
+
+	return written, nil
+}
+
+
+// read returns as soon as it has moved at least one byte into buf. While the
+// ring is empty and a writer exists it sleeps on readable. It returns 0 when
+// the ring is empty and no writer is left: the end of the stream.
+func (p *pipe) read(buf []byte) int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for p.ring.empty() &amp;&amp; p.writers &gt; 0 {
+		p.readable.Wait()
+	}
+
+	n := p.ring.take(buf)
+
+	if n &gt; 0 {
+		p.writable.Broadcast()
+	}
+
+	return n
+}
+
+
+// closeWriter gives up a write end. A reader asleep on an empty ring wakes
+// and finds that no writer is left.
+func (p *pipe) closeWriter() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.writers--
+	p.readable.Broadcast()
+}
+
+// closeReader gives up a read end. A writer asleep on a full ring wakes and
+// finds that no reader is left.
+func (p *pipe) closeReader() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.readers--
+	p.writable.Broadcast()
+}
+
+
+// picture renders the ring as one cell per slot: the number of unread bytes
+// in its page, or a dot when the slot is free.
+func (r *ring) picture() string {
+	cells := make([]string, len(r.pages))
+
+	for i := range cells {
+		cells[i] = "."
+	}
+
+	for counter := r.tail; counter != r.head; counter++ {
+		cells[counter%uint(len(r.pages))] = fmt.Sprint(r.slot(counter).length)
+	}
+
+	return "[" + strings.Join(cells, " ") + "]"
+}
+
+// smallRing applies the calls of the trace to a ring of 4 pages of 8 bytes
+// and prints the ring after each.
+func smallRing() {
+	r := newRing(4, 8)
+	buf := make([]byte, 32)
+
+	calls := []struct {
+		op string
+		n  int
+	}{{"put", 12}, {"take", 3}, {"put", 30}, {"take", 5}, {"put", 30}}
+
+	fmt.Println("ring of 4 pages of 8 bytes")
+
+	for _, call := range calls {
+		var done int
+
+		switch call.op {
+		case "put":
+			done = r.put(buf[:call.n])
+		case "take":
+			done = r.take(buf[:call.n])
+		}
+
+		fmt.Printf("%-4s %2d: %2d bytes   head %d  tail %d   %s\n", call.op, call.n, done, r.head, r.tail, r.picture())
+	}
+}
+
+
+// fill puts whole blocks into the ring until it accepts none and returns the
+// number of bytes accepted.
+func fill(r *ring, block []byte) int {
+	total := 0
+
+	for {
+		n := r.put(block)
+
+		if n == 0 {
+			return total
+		}
+
+		total += n
+	}
+}
+
+// kernelSize repeats the capacity measurement of pipefacts on a ring with
+// the kernel's dimensions: 16 pages of 4096 bytes.
+func kernelSize() {
+	const pageSize = 4096
+
+	r := newRing(16, pageSize)
+	block := make([]byte, pageSize)
+
+	steps := []struct {
+		read   int
+		report string
+	}{
+		{0, "new pipe: %d bytes accepted\n"},
+		{1, "after reading 1 byte: %d bytes accepted\n"},
+		{pageSize - 1, "after reading 4096 bytes in total: %d bytes accepted\n"},
+	}
+
+	for _, step := range steps {
+		r.take(block[:step.read])
+		fmt.Printf(step.report, fill(r, block))
+	}
+}
+
+
+// transfer sends one megabyte through a pipe of the kernel's size. Byte i of
+// the stream has the value i mod 256, which lets the reader verify the order.
+func transfer() {
+	const total = 1 &lt;&lt; 20
+
+	p := newPipe(16, 4096)
+
+	go func() {
+		defer p.closeWriter()
+
+		chunk := make([]byte, 100_000)
+
+		for sent := 0; sent &lt; total; sent += len(chunk) {
+			chunk = chunk[:min(len(chunk), total-sent)]
+
+			for i := range chunk {
+				chunk[i] = byte(sent + i)
+			}
+
+			if _, err := p.write(chunk); err != nil {
+				return
+			}
+		}
+	}()
+
+	buf := make([]byte, 30_000)
+	received, inOrder := 0, true
+
+	for n := p.read(buf); n &gt; 0; n = p.read(buf) {
+		for i, b := range buf[:n] {
+			inOrder = inOrder &amp;&amp; b == byte(received+i)
+		}
+
+		received += n
+	}
+
+	fmt.Printf("1048576 bytes written: %d bytes read, in order: %v\n", received, inOrder)
+	fmt.Printf("write end closed: read returns %d\n", p.read(buf))
+
+	p.closeReader()
+
+	_, err := p.write([]byte("hello"))
+	fmt.Printf("read end closed: write fails with %v\n", err)
+}
+
+
+func main() {
+	smallRing()
+	fmt.Println()
+	kernelSize()
+	fmt.Println()
+	transfer()
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 1.48</b> The complete <code>handpipe</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/handpipe/src/main.rs">code/rust/handpipe/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Builds a pipe by hand, with the same parts the kernel uses: a ring of
+//! pages for the bytes, a lock, a place for a reader to sleep and a place for
+//! a writer to sleep, and a count of the open ends.
+//!
+//! It traces a small ring call by call, repeats the capacity measurement of
+//! pipefacts on a ring of the kernel's size, and sends 1048576 bytes from a
+//! writer thread to a reader.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p handpipe
+//! ```
+
+use std::fmt;
+use std::thread;
+
+use parking_lot::{Condvar, Mutex};
+
+/// One slot of the ring: a block of memory, and the position and length of
+/// the bytes in it that have not been read yet.
+struct Page {
+    data: Vec&lt;u8&gt;,
+    offset: usize,
+    length: usize,
+}
+
+/// The storage of a pipe. `head` counts the pages ever put into use and
+/// `tail` counts the pages ever emptied, so `head - tail` pages are in use,
+/// and a counter's remainder after division by the number of slots is its
+/// slot.
+struct Ring {
+    pages: Vec&lt;Page&gt;,
+    head: usize,
+    tail: usize,
+}
+
+impl Ring {
+    fn new(slots: usize, page_size: usize) -&gt; Ring {
+        let pages = (0..slots)
+            .map(|_| Page {
+                data: vec![0; page_size],
+                offset: 0,
+                length: 0,
+            })
+            .collect();
+
+        Ring {
+            pages,
+            head: 0,
+            tail: 0,
+        }
+    }
+
+    fn empty(&amp;self) -&gt; bool {
+        self.head == self.tail
+    }
+
+    fn full(&amp;self) -&gt; bool {
+        self.head - self.tail == self.pages.len()
+    }
+
+    /// The page that a counter refers to.
+    fn slot(&amp;mut self, counter: usize) -&gt; &amp;mut Page {
+        let slots = self.pages.len();
+
+        &amp;mut self.pages[counter % slots]
+    }
+}
+
+/// Copies as many bytes as both slices allow and returns the count.
+fn copy(to: &amp;mut [u8], from: &amp;[u8]) -&gt; usize {
+    let n = to.len().min(from.len());
+    to[..n].copy_from_slice(&amp;from[..n]);
+
+    n
+}
+
+impl Ring {
+    /// Copies as much of `data` as the ring has room for and returns the
+    /// number of bytes it copied. The bytes go first into the unused end of
+    /// the newest page, then into free slots, one page each.
+    fn put(&amp;mut self, data: &amp;[u8]) -&gt; usize {
+        let mut copied = 0;
+
+        if !self.empty() {
+            let newest = self.slot(self.head - 1);
+            let end = newest.offset + newest.length;
+
+            let n = copy(&amp;mut newest.data[end..], data);
+            newest.length += n;
+            copied += n;
+        }
+
+        while copied &lt; data.len() &amp;&amp; !self.full() {
+            let next = self.slot(self.head);
+            next.offset = 0;
+            next.length = copy(&amp;mut next.data, &amp;data[copied..]);
+
+            copied += next.length;
+            self.head += 1;
+        }
+
+        copied
+    }
+}
+
+impl Ring {
+    /// Moves up to `buf.len()` of the oldest bytes into `buf` and returns the
+    /// number it moved. A slot becomes free when the last byte of its page
+    /// has been taken.
+    fn take(&amp;mut self, buf: &amp;mut [u8]) -&gt; usize {
+        let mut moved = 0;
+
+        while moved &lt; buf.len() &amp;&amp; !self.empty() {
+            let oldest = self.slot(self.tail);
+            let unread = oldest.offset..oldest.offset + oldest.length;
+
+            let n = copy(&amp;mut buf[moved..], &amp;oldest.data[unread]);
+            oldest.offset += n;
+            oldest.length -= n;
+            moved += n;
+
+            if oldest.length == 0 {
+                self.tail += 1;
+            }
+        }
+
+        moved
+    }
+}
+
+/// What a write returns when no reader is left.
+#[derive(Debug)]
+struct BrokenPipe;
+
+impl fmt::Display for BrokenPipe {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("EPIPE")
+    }
+}
+
+/// What the lock guards: the ring and the count of the open ends.
+struct State {
+    ring: Ring,
+    readers: usize,
+    writers: usize,
+}
+
+/// A ring shared by a reader and a writer thread. `readable` is where a reader sleeps while
+/// the ring is empty, and `writable` is where a writer sleeps while the ring
+/// is full.
+struct Pipe {
+    state: Mutex&lt;State&gt;,
+    readable: Condvar,
+    writable: Condvar,
+}
+
+impl Pipe {
+    fn new(slots: usize, page_size: usize) -&gt; Pipe {
+        let state = State {
+            ring: Ring::new(slots, page_size),
+            readers: 1,
+            writers: 1,
+        };
+
+        Pipe {
+            state: Mutex::new(state),
+            readable: Condvar::new(),
+            writable: Condvar::new(),
+        }
+    }
+}
+
+impl Pipe {
+    /// Returns when every byte of `data` is in the ring, or when no reader is
+    /// left. While the ring is full it sleeps on `writable`.
+    fn write(&amp;self, data: &amp;[u8]) -&gt; Result&lt;usize, BrokenPipe&gt; {
+        let mut state = self.state.lock();
+        let mut written = 0;
+
+        while written &lt; data.len() {
+            if state.readers == 0 {
+                return Err(BrokenPipe);
+            }
+
+            let n = state.ring.put(&amp;data[written..]);
+            written += n;
+
+            if n == 0 {
+                self.writable.wait(&amp;mut state);
+                continue;
+            }
+
+            self.readable.notify_all();
+        }
+
+        Ok(written)
+    }
+}
+
+impl Pipe {
+    /// Returns as soon as it has moved at least one byte into `buf`. While
+    /// the ring is empty and a writer exists it sleeps on `readable`. It
+    /// returns 0 when the ring is empty and no writer is left: the end of the
+    /// stream.
+    fn read(&amp;self, buf: &amp;mut [u8]) -&gt; usize {
+        let mut state = self.state.lock();
+
+        self.readable
+            .wait_while(&amp;mut state, |state| state.ring.empty() &amp;&amp; state.writers &gt; 0);
+
+        let n = state.ring.take(buf);
+
+        if n &gt; 0 {
+            self.writable.notify_all();
+        }
+
+        n
+    }
+}
+
+impl Pipe {
+    /// Gives up a write end. A reader asleep on an empty ring wakes and finds
+    /// that no writer is left.
+    fn close_writer(&amp;self) {
+        self.state.lock().writers -= 1;
+        self.readable.notify_all();
+    }
+
+    /// Gives up a read end. A writer asleep on a full ring wakes and finds
+    /// that no reader is left.
+    fn close_reader(&amp;self) {
+        self.state.lock().readers -= 1;
+        self.writable.notify_all();
+    }
+}
+
+impl Ring {
+    /// Renders the ring as one cell per slot: the unread bytes in its page,
+    /// or a dot for a free slot.
+    fn picture(&amp;self) -&gt; String {
+        let slots = self.pages.len();
+        let mut cells = vec![".".to_string(); slots];
+
+        for counter in self.tail..self.head {
+            cells[counter % slots] = self.pages[counter % slots].length.to_string();
+        }
+
+        format!("[{}]", cells.join(" "))
+    }
+}
+
+/// Applies the calls of the trace to a ring of 4 pages of 8 bytes and prints
+/// the ring after each.
+fn small_ring() {
+    let mut ring = Ring::new(4, 8);
+    let mut buf = [0u8; 32];
+
+    let calls = [
+        ("put", 12),
+        ("take", 3),
+        ("put", 30),
+        ("take", 5),
+        ("put", 30),
+    ];
+
+    println!("ring of 4 pages of 8 bytes");
+
+    for (op, n) in calls {
+        let done = match op {
+            "put" =&gt; ring.put(&amp;buf[..n]),
+            _ =&gt; ring.take(&amp;mut buf[..n]),
+        };
+
+        println!(
+            "{op:&lt;4} {n:2}: {done:2} bytes   head {}  tail {}   {}",
+            ring.head,
+            ring.tail,
+            ring.picture()
+        );
+    }
+}
+
+/// Puts whole blocks into the ring until it accepts none and returns the
+/// number of bytes accepted.
+fn fill(ring: &amp;mut Ring, block: &amp;[u8]) -&gt; usize {
+    let mut total = 0;
+
+    loop {
+        let n = ring.put(block);
+
+        if n == 0 {
+            return total;
+        }
+
+        total += n;
+    }
+}
+
+/// Repeats the capacity measurement of pipefacts on a ring with the kernel's
+/// dimensions: 16 pages of 4096 bytes.
+fn kernel_size() {
+    const PAGE_SIZE: usize = 4096;
+
+    let mut ring = Ring::new(16, PAGE_SIZE);
+    let mut block = [0u8; PAGE_SIZE];
+
+    let steps = [
+        (0, "new pipe"),
+        (1, "after reading 1 byte"),
+        (PAGE_SIZE - 1, "after reading 4096 bytes in total"),
+    ];
+
+    for (count, label) in steps {
+        ring.take(&amp;mut block[..count]);
+
+        let accepted = fill(&amp;mut ring, &amp;block);
+        println!("{label}: {accepted} bytes accepted");
+    }
+}
+
+/// Sends one megabyte through a pipe of the kernel's size. Byte `i` of the
+/// stream has the value `i` mod 256, which lets the reader verify the order.
+fn transfer() {
+    const TOTAL: usize = 1 &lt;&lt; 20;
+
+    let pipe = Pipe::new(16, 4096);
+    let mut buf = vec![0u8; 30_000];
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            let mut chunk = vec![0u8; 100_000];
+
+            for sent in (0..TOTAL).step_by(chunk.len()) {
+                chunk.truncate(TOTAL - sent);
+
+                for (i, byte) in chunk.iter_mut().enumerate() {
+                    *byte = (sent + i) as u8;
+                }
+
+                if pipe.write(&amp;chunk).is_err() {
+                    break;
+                }
+            }
+
+            pipe.close_writer();
+        });
+
+        let (mut received, mut in_order) = (0, true);
+
+        loop {
+            let n = pipe.read(&amp;mut buf);
+
+            if n == 0 {
+                break;
+            }
+
+            for (i, byte) in buf[..n].iter().enumerate() {
+                in_order = in_order &amp;&amp; *byte == (received + i) as u8;
+            }
+
+            received += n;
+        }
+
+        println!("1048576 bytes written: {received} bytes read, in order: {in_order}");
+    });
+
+    println!("write end closed: read returns {}", pipe.read(&amp;mut buf));
+
+    pipe.close_reader();
+
+    if let Err(error) = pipe.write(b"hello") {
+        println!("read end closed: write fails with {error}");
+    }
+}
+
+fn main() {
+    small_ring();
+    println!();
+    kernel_size();
+    println!();
+    transfer();
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 1.49</b> The complete <code>pipeline</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/pipeline/main.go">code/go/pipeline/main.go</a></p>
+
+<pre><code class="language-go">// Command pipeline runs `a | b | c` the way a shell does: each command's
+// standard output is the write end of a pipe, and the next command's standard
+// input is the read end of the same pipe.
+//
+// It runs the pipelines listed in main and prints the last command's output and how each
+// command terminated.
+//
+// Run it from code/go with:
+//
+//	go run ./pipeline
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
+)
+
+
+// start runs the commands of a pipeline. Command i writes to pipe i and reads
+// from pipe i-1; the first command reads /dev/null. It returns the commands
+// and the read end of the last pipe.
+func start(stages [][]string) ([]*exec.Cmd, *os.File, error) {
+	var input *os.File
+	commands := make([]*exec.Cmd, 0, len(stages))
+
+	for _, stage := range stages {
+		reader, writer, err := os.Pipe()
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		command := exec.Command(stage[0], stage[1:]...)
+		command.Stdout = writer
+
+		if input != nil {
+			command.Stdin = input
+		}
+
+		err = command.Start()
+
+		// The child holds its own copies of both ends. Closing the parent's
+		// copies leaves the child's as the only ones.
+		writer.Close()
+
+		if input != nil {
+			input.Close()
+		}
+
+		if err != nil {
+			reader.Close()
+
+			return nil, nil, fmt.Errorf("%s: %w", stage[0], err)
+		}
+
+		commands, input = append(commands, command), reader
+	}
+
+	return commands, input, nil
+}
+
+
+// ending waits for a command and reports how it terminated: with an exit
+// status, or by a signal.
+func ending(command *exec.Cmd) string {
+	command.Wait()
+
+	state := command.ProcessState
+
+	if status, ok := state.Sys().(syscall.WaitStatus); ok &amp;&amp; status.Signaled() {
+		return fmt.Sprintf("killed by signal %d", status.Signal())
+	}
+
+	return fmt.Sprintf("exited with status %d", state.ExitCode())
+}
+
+
+// run starts a pipeline, reads the last command's output to the end of the
+// stream, and prints the output and each command's termination.
+func run(line string) error {
+	var stages [][]string
+
+	for _, stage := range strings.Split(line, " | ") {
+		stages = append(stages, strings.Fields(stage))
+	}
+
+	commands, output, err := start(stages)
+
+	if err != nil {
+		return err
+	}
+
+	defer output.Close()
+
+	text, err := io.ReadAll(output)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(line)
+	fmt.Printf("  output: %s\n", strings.Join(strings.Fields(string(text)), " "))
+
+	for i, command := range commands {
+		fmt.Printf("  %s: %s\n", stages[i][0], ending(command))
+	}
+
+	return nil
+}
+
+
+func main() {
+	for _, line := range []string{"seq 1 100000 | grep 7 | wc -l", "yes | head -n 3"} {
+		if err := run(line); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 1.50</b> The complete <code>pipeline</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/pipeline/src/main.rs">code/rust/pipeline/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Runs `a | b | c` the way a shell does: each command's standard output is
+//! the write end of a pipe, and the next command's standard input is the read
+//! end of the same pipe.
+//!
+//! It runs the pipelines listed in main and prints the last command's output and how each
+//! command terminated.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p pipeline
+//! ```
+
+use std::io::{self, PipeReader, Read};
+use std::os::unix::process::ExitStatusExt;
+use std::process::{Child, Command, Stdio};
+
+/// Runs the commands of a pipeline. Command `i` writes to pipe `i` and reads
+/// from pipe `i - 1`; the first command reads /dev/null. Returns the children
+/// and the read end of the last pipe.
+fn start(stages: &amp;[Vec&lt;&amp;str&gt;]) -&gt; io::Result&lt;(Vec&lt;Child&gt;, PipeReader)&gt; {
+    let mut input = None;
+    let mut children = Vec::with_capacity(stages.len());
+
+    for stage in stages {
+        let (reader, writer) = io::pipe()?;
+        let stdin = input.take().map_or_else(Stdio::null, Stdio::from);
+
+        // The `Command` owns the parent's copies of both ends. It is dropped
+        // when this statement ends, which closes them and leaves the child's
+        // copies as the only ones.
+        let child = Command::new(stage[0])
+            .args(&amp;stage[1..])
+            .stdin(stdin)
+            .stdout(writer)
+            .spawn()?;
+
+        children.push(child);
+        input = Some(reader);
+    }
+
+    let output = input.ok_or(io::ErrorKind::InvalidInput)?;
+
+    Ok((children, output))
+}
+
+/// Waits for a command and reports how it terminated: with an exit status,
+/// or by a signal.
+fn ending(child: &amp;mut Child) -&gt; io::Result&lt;String&gt; {
+    let status = child.wait()?;
+
+    let text = match (status.signal(), status.code()) {
+        (Some(signal), _) =&gt; format!("killed by signal {signal}"),
+        (None, Some(code)) =&gt; format!("exited with status {code}"),
+        (None, None) =&gt; status.to_string(),
+    };
+
+    Ok(text)
+}
+
+/// Starts a pipeline, reads the last command's output to the end of the
+/// stream, and prints the output and each command's termination.
+fn run(line: &amp;str) -&gt; io::Result&lt;()&gt; {
+    let stages: Vec&lt;Vec&lt;&amp;str&gt;&gt; = line
+        .split(" | ")
+        .map(|stage| stage.split_whitespace().collect())
+        .collect();
+
+    let (mut children, mut output) = start(&amp;stages)?;
+
+    let mut text = String::new();
+    output.read_to_string(&amp;mut text)?;
+
+    let words: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    println!("{line}");
+    println!("  output: {}", words.join(" "));
+
+    for (stage, child) in stages.iter().zip(&amp;mut children) {
+        println!("  {}: {}", stage[0], ending(child)?);
+    }
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    run("seq 1 100000 | grep 7 | wc -l")?;
+    run("yes | head -n 3")
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A pipe is a one-way byte stream between processes, buffered in kernel memory and
+reached through a read end and a write end.</li>
+<li>The buffer is a ring of 16 slots, each referring to one page: 65536 bytes with
+4096-byte pages.</li>
+<li><code>head</code> counts pages added and <code>tail</code> counts pages removed. Space is released a whole page at a time, when the last byte of the oldest page has been read.</li>
+<li>A write to a full pipe blocks until a read releases a page. This limits a writer to
+the rate of its reader and bounds the memory between them.</li>
+<li>A thread woken from a wait tests its condition again, because a wake-up reports that
+the state changed and says nothing about which change occurred.</li>
+<li><code>read</code> returns 0 when the pipe is empty and no descriptor for the write end remains.</li>
+<li><code>write</code> raises <code>SIGPIPE</code> and fails with <code>EPIPE</code> when no descriptor for the read end
+remains.</li>
+<li>A program that builds a pipeline closes its own copy of each pipe end after passing it
+to a child. A copy left open prevents the end of the stream from being reported.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>pipe(7)</code> and <code>pipe(2)</code>, Linux manual pages:
+<a href="https://man7.org/linux/man-pages/man7/pipe.7.html">https://man7.org/linux/man-pages/man7/pipe.7.html</a></li>
+<li><code>fs/pipe.c</code> and <code>include/linux/pipe_fs_i.h</code>, Linux 5.15:
+<a href="https://elixir.bootlin.com/linux/v5.15/source/fs/pipe.c">https://elixir.bootlin.com/linux/v5.15/source/fs/pipe.c</a></li>
+<li>M. Kerrisk, <em>The Linux Programming Interface</em>, No Starch Press, 2010, chapter 44.</li>
+<li>D. M. Ritchie, “The Evolution of the Unix Time-sharing System”, AT&amp;T Bell Laboratories
+Technical Journal, 63(8), 1984.</li>
+<li>Go, package <code>os/signal</code>, the section on <code>SIGPIPE</code>: <a href="https://pkg.go.dev/os/signal">https://pkg.go.dev/os/signal</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="about-the-cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="02-file-descriptors.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="about-the-cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="02-file-descriptors.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 588" width="480" height="588" role="img" aria-label="The steps of box. 1: box creates a control group and sets pids.max. 2: box creates a child with the namespace flags. 3: the child, process 1 of the new PID namespace, mounts a tmpfs and binds /usr and /dev/null. 4: it mounts a new /proc. 5: it calls pivot_root and detaches the old root. 6: it sets the host name. 7: it calls exec and becomes the shell.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="588" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Starting a container</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Each step is a system call from an earlier chapter.</text>
+  <rect x="70" y="96" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,96.7 H76 V147.3 H82 A11.3,11.3 0 0 1 70.7,136 V108 A11.3,11.3 0 0 1 82,96.7 Z" fill="#2F6FDB"/>
+  <text x="90.0" y="118.0" class="name" text-anchor="start" xml:space="preserve">creates a group, sets pids.max</text>
+  <text x="90.0" y="136.0" class="sub" text-anchor="start" xml:space="preserve">box</text>
+  <text x="48.0" y="127.0" class="name" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="70" y="164" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,164.7 H76 V215.3 H82 A11.3,11.3 0 0 1 70.7,204 V176 A11.3,11.3 0 0 1 82,164.7 Z" fill="#2F6FDB"/>
+  <text x="90.0" y="186.0" class="name" text-anchor="start" xml:space="preserve">clones a child into new namespaces</text>
+  <text x="90.0" y="204.0" class="sub" text-anchor="start" xml:space="preserve">box</text>
+  <text x="48.0" y="195.0" class="name" text-anchor="middle" xml:space="preserve">2</text>
+  <path class="wire" d="M240,148 L240,164" marker-end="url(#head)"/>
+  <rect x="70" y="232" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,232.7 H76 V283.3 H82 A11.3,11.3 0 0 1 70.7,272 V244 A11.3,11.3 0 0 1 82,232.7 Z" fill="#7A4FD0"/>
+  <text x="90.0" y="254.0" class="name" text-anchor="start" xml:space="preserve">mounts a tmpfs, binds /usr</text>
+  <text x="90.0" y="272.0" class="sub" text-anchor="start" xml:space="preserve">child, process 1</text>
+  <text x="48.0" y="263.0" class="name" text-anchor="middle" xml:space="preserve">3</text>
+  <path class="wire" d="M240,216 L240,232" marker-end="url(#head)"/>
+  <rect x="70" y="300" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,300.7 H76 V351.3 H82 A11.3,11.3 0 0 1 70.7,340 V312 A11.3,11.3 0 0 1 82,300.7 Z" fill="#7A4FD0"/>
+  <text x="90.0" y="322.0" class="name" text-anchor="start" xml:space="preserve">mounts a new /proc</text>
+  <text x="90.0" y="340.0" class="sub" text-anchor="start" xml:space="preserve">child, process 1</text>
+  <text x="48.0" y="331.0" class="name" text-anchor="middle" xml:space="preserve">4</text>
+  <path class="wire" d="M240,284 L240,300" marker-end="url(#head)"/>
+  <rect x="70" y="368" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,368.7 H76 V419.3 H82 A11.3,11.3 0 0 1 70.7,408 V380 A11.3,11.3 0 0 1 82,368.7 Z" fill="#7A4FD0"/>
+  <text x="90.0" y="390.0" class="name" text-anchor="start" xml:space="preserve">pivot_root, detaches the old root</text>
+  <text x="90.0" y="408.0" class="sub" text-anchor="start" xml:space="preserve">child, process 1</text>
+  <text x="48.0" y="399.0" class="name" text-anchor="middle" xml:space="preserve">5</text>
+  <path class="wire" d="M240,352 L240,368" marker-end="url(#head)"/>
+  <rect x="70" y="436" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,436.7 H76 V487.3 H82 A11.3,11.3 0 0 1 70.7,476 V448 A11.3,11.3 0 0 1 82,436.7 Z" fill="#7A4FD0"/>
+  <text x="90.0" y="458.0" class="name" text-anchor="start" xml:space="preserve">sets the host name</text>
+  <text x="90.0" y="476.0" class="sub" text-anchor="start" xml:space="preserve">child, process 1</text>
+  <text x="48.0" y="467.0" class="name" text-anchor="middle" xml:space="preserve">6</text>
+  <path class="wire" d="M240,420 L240,436" marker-end="url(#head)"/>
+  <rect x="70" y="504" width="360" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M82,504.7 H76 V555.3 H82 A11.3,11.3 0 0 1 70.7,544 V516 A11.3,11.3 0 0 1 82,504.7 Z" fill="#2E8B3D"/>
+  <text x="90.0" y="526.0" class="name" text-anchor="start" xml:space="preserve">exec: becomes the shell</text>
+  <text x="90.0" y="544.0" class="sub" text-anchor="start" xml:space="preserve">child, process 1</text>
+  <text x="48.0" y="535.0" class="name" text-anchor="middle" xml:space="preserve">7</text>
+  <path class="wire" d="M240,488 L240,504" marker-end="url(#head)"/>
+</svg>

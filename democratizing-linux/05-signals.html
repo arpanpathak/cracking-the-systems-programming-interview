@@ -1,0 +1,2218 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Signals - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/05-signals.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch05.svg" alt="Klaxon, an owl, is the night watch. Signal flags numbered 2, 9 and 15 fly from a mast, a bell rings, and a hare that was asleep jumps awake.">
+<h1 id="signals"><a class="header" href="#signals">Signals</a></h1>
+<p>A <em>signal</em> is a notification that the kernel delivers to a process at a moment the
+process did not choose. Each signal is identified by a small number and a name. The
+kernel sends signals to report events: a key pressed on the terminal, a write to a pipe
+with no reader, the end of a child, an invalid memory access. Processes send them to
+each other with the <code>kill</code> system call.</p>
+<p>In this chapter, we will learn what state the kernel keeps for signals and at which
+moment a signal takes effect. We will follow Ctrl-C from the keyboard to the end of a
+program, read the kernel’s structures, and see how a handler function is run. Then we
+will measure signal handling from outside a process with <code>sigfacts</code>, and write
+<code>sigmodel</code>, a model of the kernel’s signal state.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the common signals, what sends them, and what they do by default</li>
+<li>the path of Ctrl-C from the terminal to a process</li>
+<li>the pending mask, the blocked mask, and the action of a signal</li>
+<li>the kernel structures: <code>struct sigpending</code>, <code>struct sighand_struct</code>, <code>struct k_sigaction</code></li>
+<li>why sending a signal and delivering it are separate events</li>
+<li>why several sends of the same signal can result in a single delivery</li>
+<li>how the kernel runs a handler, and what a handler may safely do</li>
+<li>which dispositions survive <code>exec</code></li>
+<li>why <code>SIGKILL</code> cannot be blocked, ignored or handled</li>
+<li><code>EINTR</code> and <code>SA_RESTART</code>: a signal during a blocking system call</li>
+</ul>
+</div>
+
+<h2 id="the-common-signals"><a class="header" href="#the-common-signals">The common signals</a></h2>
+<p>Linux has 64 signals. Numbers 1 to 31 are the <em>standard signals</em>, each with a fixed
+meaning, and numbers 32 to 64 are the <em>real-time signals</em>, which programs may use for
+their own purposes. <code>kill -l</code> lists them. These are the ones a programmer meets.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Number</th><th>Name</th><th>Sent when</th><th>Default action</th></tr>
+</thead>
+<tbody>
+<tr><td>2</td><td><code>SIGINT</code></td><td>Ctrl-C is pressed on the terminal</td><td>end the process</td></tr>
+<tr><td>3</td><td><code>SIGQUIT</code></td><td>Ctrl-\ is pressed</td><td>end the process and write a core dump</td></tr>
+<tr><td>9</td><td><code>SIGKILL</code></td><td>a program calls <code>kill</code> with it</td><td>end the process; cannot be changed</td></tr>
+<tr><td>11</td><td><code>SIGSEGV</code></td><td>the process accesses memory it has no mapping for (<a href="07-virtual-memory.html">chapter 7</a>)</td><td>end the process and write a core dump</td></tr>
+<tr><td>13</td><td><code>SIGPIPE</code></td><td>the process writes to a pipe or socket with no reader (<a href="01-pipes.html">chapter 1</a>)</td><td>end the process</td></tr>
+<tr><td>15</td><td><code>SIGTERM</code></td><td>a program calls <code>kill</code>; the default of the <code>kill</code> command</td><td>end the process</td></tr>
+<tr><td>17</td><td><code>SIGCHLD</code></td><td>a child of the process ends or stops (<a href="03-processes.html">chapter 3</a>)</td><td>ignore</td></tr>
+<tr><td>19</td><td><code>SIGSTOP</code></td><td>a program calls <code>kill</code> with it</td><td>stop the process; cannot be changed</td></tr>
+<tr><td>20</td><td><code>SIGTSTP</code></td><td>Ctrl-Z is pressed</td><td>stop the process</td></tr>
+<tr><td>18</td><td><code>SIGCONT</code></td><td><code>fg</code>, <code>bg</code>, or <code>kill</code></td><td>continue a stopped process</td></tr>
+</tbody>
+</table>
+</div>
+<p>For each signal a process has a <em>disposition</em>, also called its action: what happens when
+the signal is delivered. There are 3 possibilities. The <em>default action</em> is the one in
+the table. <em>Ignore</em> discards the signal. A <em>handler</em> is a function of the program that
+the kernel calls when the signal arrives. <code>SIGTERM</code> is the polite request to end, which
+a program can handle to save its work, and <code>SIGKILL</code> is the request that cannot be
+refused.</p>
+<h2 id="from-ctrl-c-to-the-end-of-a-program"><a class="header" href="#from-ctrl-c-to-the-end-of-a-program">From Ctrl-C to the end of a program</a></h2>
+<p>Suppose a program is running in a terminal, blocked in a <code>read</code>, and we press Ctrl-C.</p>
+<ol>
+<li>The terminal passes the byte 0x03 to the kernel’s terminal driver.</li>
+<li>The driver recognises it as the interrupt character and does not put it in the input
+of the program. It sends <code>SIGINT</code> to every process of the terminal’s <em>foreground
+process group</em>, the set of processes the shell started for the current command line.</li>
+<li>Sending means setting a bit: the kernel sets the bit for <code>SIGINT</code> in the <em>pending
+mask</em> of each of those processes. Nothing else has happened to them yet.</li>
+<li>A process that is sleeping in a system call is woken so that it can notice.</li>
+<li>When the process is next about to return from the kernel to user mode, the kernel
+checks its pending mask, finds <code>SIGINT</code>, clears the bit, and performs the action. The
+default action ends the process.</li>
+</ol>
+<figure>
+<img src="figures/signal-ctrl-c.svg" alt="What happens when Ctrl-C is pressed. The terminal receives the byte 0x03. The terminal driver in the kernel recognises the interrupt character and sends SIGINT to each process of the foreground process group. The pending bit of SIGINT is set in the mask of each process. A process that sleeps in a system call is woken. When the process returns to user mode, the kernel performs the action of the signal.">
+<figcaption><b>Figure 5.1</b> Ctrl-C, from the keyboard to the action of <code>SIGINT</code>.</figcaption>
+</figure>
+<p>Steps 3 and 5 are separate events. <em>Sending</em> a signal runs in the sender, or in the
+kernel on behalf of a device, and only records that the signal is wanted. <em>Delivery</em>
+runs later, in the target, at the boundary between kernel mode and user mode. Every
+property of signals in this chapter follows from that split.</p>
+<h2 id="the-state-behind-a-signal"><a class="header" href="#the-state-behind-a-signal">The state behind a signal</a></h2>
+<p>The kernel keeps 3 pieces of signal state.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>State</th><th>Contents</th><th>Changed by</th></tr>
+</thead>
+<tbody>
+<tr><td>Pending mask</td><td>1 bit per signal: the signal has been sent and not yet delivered</td><td><code>kill</code> sets a bit; delivery clears it</td></tr>
+<tr><td>Blocked mask</td><td>1 bit per signal: delivery of the signal is postponed</td><td><code>sigprocmask</code></td></tr>
+<tr><td>Action</td><td>per signal: the default, ignore, or the address of a handler function</td><td><code>sigaction</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><em>Blocking</em> a signal is different from ignoring it. An ignored signal is discarded. A
+blocked signal stays pending and is delivered when the program unblocks it. A program
+blocks a signal around a piece of code that must not be interrupted by its handler.</p>
+<figure>
+<img src="figures/signal-path.svg" alt="A sender calls kill with a pid and SIGUSR1. The kernel sets bit 10 in the pending mask of the target. The target also has a blocked mask, here with bit 2 set. When the target is about to return to user mode, each signal that is pending and not blocked is delivered, and its action is performed: the default, which ends the process for most signals; ignore, which discards it; or a handler function.">
+<figcaption><b>Figure 5.2</b> <code>kill</code> sets a pending bit. The action is performed later, in the target.</figcaption>
+</figure>
+<p>These are the kernel’s definitions in Linux 5.15, from <code>include/linux/signal_types.h</code>,
+<code>include/linux/sched/signal.h</code> and <code>include/linux/sched.h</code>, reduced to the fields we use.</p>
+<pre><code class="language-c">struct sigpending {
+        struct list_head list;         /* queued details of pending signals */
+        sigset_t signal;               /* the pending mask: 64 bits */
+};
+
+struct sigaction {
+        __sighandler_t sa_handler;     /* SIG_DFL, SIG_IGN, or a function */
+        unsigned long sa_flags;        /* SA_RESTART, ... */
+        sigset_t sa_mask;              /* signals blocked while the handler runs */
+};
+
+struct sighand_struct {
+        struct k_sigaction action[_NSIG];      /* one action per signal, _NSIG is 64 */
+        /* ... */
+};
+
+struct signal_struct {
+        struct sigpending shared_pending;      /* signals sent to the process */
+        /* ... */
+};
+
+struct task_struct {
+        struct signal_struct *signal;
+        struct sighand_struct *sighand;
+        sigset_t blocked;                      /* the blocked mask */
+        struct sigpending pending;             /* signals sent to this thread */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>sigset_t</code></td><td>A set of signals as a bit mask of 64 bits. Signal <code>n</code> is bit <code>n - 1</code>.</td></tr>
+<tr><td><code>sigpending.signal</code></td><td>The pending mask.</td></tr>
+<tr><td><code>sighand_struct.action</code></td><td>The table of actions, indexed by signal number.</td></tr>
+<tr><td><code>sa_handler</code></td><td>The action: the constant <code>SIG_DFL</code> for the default, <code>SIG_IGN</code> for ignore, or the address of a handler.</td></tr>
+<tr><td><code>sa_flags</code>, <code>sa_mask</code></td><td>Options for a handler, set by the program with <code>sigaction</code>.</td></tr>
+<tr><td><code>task_struct.blocked</code></td><td>The blocked mask. Each thread has its own.</td></tr>
+<tr><td><code>task_struct.pending</code> and <code>signal_struct.shared_pending</code></td><td>There are 2 pending sets. A signal sent to a process with <code>kill</code> goes into <code>shared_pending</code>, and any thread of the process that does not block it may take it. A signal aimed at a single thread, such as <code>SIGSEGV</code> for the thread that made the invalid access, goes into that thread’s <code>pending</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/signal-structs.svg" alt="The kernel structures of signal handling. Each thread has a struct task_struct with a blocked mask and a pending set for signals sent to that thread. Each process has a struct signal_struct with shared_pending for signals sent to the process. A struct sighand_struct holds the array action with a struct k_sigaction for each of the 64 signals: sa_handler, sa_flags and sa_mask.">
+<figcaption><b>Figure 5.3</b> The structures that hold the pending signals, the blocked mask and the actions.</figcaption>
+</figure>
+<p>The kernel shows these masks in <code>/proc/&lt;pid&gt;/status</code>. This is a shell after
+<code>trap '' INT</code> and <code>trap 'echo x' USR1</code>:</p>
+<pre><code class="language-console">$ grep -E 'SigPnd|ShdPnd|SigBlk|SigIgn|SigCgt' /proc/$$/status
+SigPnd:	0000000000000000
+ShdPnd:	0000000000000000
+SigBlk:	0000000000000000
+SigIgn:	0000000000000002
+SigCgt:	0000000000010200
+</code></pre>
+<p><code>SigPnd</code> is the thread’s <code>pending</code> mask and <code>ShdPnd</code> is <code>shared_pending</code>. <code>SigBlk</code> is
+<code>blocked</code>. <code>SigIgn</code> and <code>SigCgt</code> are derived from the action table: the signals that are
+ignored and the signals that have a handler. The values are hexadecimal. <code>0x2</code> is bit 1,
+signal 2, <code>SIGINT</code>. <code>0x10200</code> is bit 9, signal 10, <code>SIGUSR1</code>, and bit 16, signal 17,
+<code>SIGCHLD</code>, which the shell handles for its own purposes.</p>
+<p>The masks are easier to read after decoding one by hand. Take <code>SigCgt</code>,
+<code>0000000000010200</code>.</p>
+<ol>
+<li>Drop the leading zeros: <code>0x10200</code>.</li>
+<li>Write each hexadecimal digit as 4 bits: <code>1 0000 0010 0000 0000</code>.</li>
+<li>Number the bits from the right, starting at 0. The bits that are 1 are bit 9 and bit
+16.</li>
+<li>Add 1 to each: signals 10 and 17, <code>SIGUSR1</code> and <code>SIGCHLD</code>.</li>
+</ol>
+<figure>
+<img src="figures/mask-decode.svg" alt="The mask 0x10200 written in binary, with bit 0 on the right. Bits 9 and 16 are 1 and all others are 0. Bit 9 stands for signal 10, SIGUSR1, and bit 16 for signal 17, SIGCHLD. Bit n stands for signal n plus 1.">
+<figcaption><b>Figure 5.4</b> The mask <code>0x10200</code> decoded bit by bit.</figcaption>
+</figure>
+<p><code>SigIgn</code>, <code>0x2</code>, is the single bit 1, signal 2, <code>SIGINT</code>. A mask of all zeros, as for
+<code>SigPnd</code> and <code>SigBlk</code> here, means that no signal is pending and none is blocked.</p>
+<p>The design has direct consequences, and the measurements below confirm each of them.</p>
+<ul>
+<li>The pending mask has 1 bit per signal, so it cannot count. A signal that is sent again
+while its bit is set leaves the mask unchanged.</li>
+<li>A blocked signal stays pending for as long as it is blocked.</li>
+<li>A handler is an address inside the current program. <code>exec</code> replaces the program, so a
+handled signal returns to the default action. Ignore and default are independent of
+the program and are kept.</li>
+<li><code>SIGKILL</code> and <code>SIGSTOP</code> are exempt from all 3 mechanisms. The kernel guarantees that
+an administrator can always end or stop a process.</li>
+</ul>
+<div class="crab crab-angry">
+<p><code>SIGKILL</code> cannot be blocked, ignored or handled. A process that receives it gets no chance to clean up.</p>
+</div>
+
+<h2 id="how-a-handler-is-run"><a class="header" href="#how-a-handler-is-run">How a handler is run</a></h2>
+<p>A handler is a function in the program, and the kernel has to make the program call it
+at a moment the program did not plan for. It does so by editing the state it is about to
+return to.</p>
+<ol>
+<li>The process is in the kernel, about to return to user mode, with its user-mode
+registers saved.</li>
+<li>The kernel copies those saved registers to the user stack of the process, in a
+<em>signal frame</em>.</li>
+<li>It changes the saved program counter to the address of the handler, and arranges the
+return address of the handler to point at a small piece of code that makes the
+system call <code>sigreturn</code>.</li>
+<li>It returns to user mode. The process now executes the handler, as if the handler had
+been called at the point of interruption.</li>
+<li>When the handler returns, <code>sigreturn</code> enters the kernel, which restores the registers
+from the signal frame. The program continues at the instruction where it was
+interrupted.</li>
+</ol>
+<figure>
+<img src="figures/signal-frame.svg" alt="How a handler is run. The program is interrupted at any instruction. The kernel saves the registers in a frame on the user stack and sets the program counter to the address of the handler. The handler runs in user mode on the same stack. When it returns, it returns into a call of sigreturn, and the kernel restores the registers so that the program continues where it was interrupted.">
+<figcaption><b>Figure 5.5</b> The kernel runs a handler by rewriting the state the program returns to.</figcaption>
+</figure>
+<p>The handler can run between any 2 instructions of the program. If the program was in the
+middle of <code>malloc</code>, with the allocator’s data structures half updated, and the handler
+calls <code>malloc</code> too, the structures are corrupted. A handler may therefore call only
+functions that are <em>async-signal-safe</em>, a short list that includes <code>write</code> and excludes
+<code>malloc</code> and <code>printf</code>. The usual practice is a handler that does almost nothing: it
+sets a flag, or writes a byte to a pipe that the main loop of the program reads.</p>
+<p>The runtimes of both languages do this for us. The Go runtime installs handlers for all
+signals and forwards them to the program through a channel registered with
+<code>signal.Notify</code>. Rust libraries such as <code>signal-hook</code> use the pipe technique. In both,
+the code we write for a signal runs in ordinary program context and may call anything.</p>
+<h2 id="measuring-signals"><a class="header" href="#measuring-signals">Measuring signals</a></h2>
+<p>A program that changed its own signal handling would measure its language runtime as
+much as the kernel. <code>sigfacts</code> therefore observes other processes. It starts shell
+scripts that set dispositions with <code>trap</code>, sends them signals, and reads their masks
+from <code>/proc/&lt;pid&gt;/status</code>. The Rust version uses the <code>nix</code> crate with the <code>signal</code>
+feature.</p>
+<pre><code class="language-console">$ cargo new sigfacts
+$ cargo add -p sigfacts nix --features signal
+</code></pre>
+<p><code>mask</code> reads a mask from the status file as a hexadecimal number. <code>await</code> waits until a
+process has reached a given state.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.1</b> The imports of <code>sigfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"bufio"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.2</b> The imports of <code>sigfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fs;
+use std::io::{self, Read};
+use std::os::unix::process::ExitStatusExt;
+use std::process::{Child, Command, Stdio};
+use std::thread;
+use std::time::Duration;
+
+use nix::sys::signal::{Signal, kill};
+use nix::unistd::Pid;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.3</b> Reading the signal masks of another process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+<pre><code class="language-go">// mask returns one of the signal masks in /proc/&lt;pid&gt;/status: ShdPnd
+// (pending), SigBlk (blocked), SigIgn (ignored) or SigCgt (caught).
+func mask(pid int, name string) (uint64, error) {
+	status, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
+
+	if err != nil {
+		return 0, err
+	}
+
+	defer status.Close()
+
+	for lines := bufio.NewScanner(status); lines.Scan(); {
+		if value, ok := strings.CutPrefix(lines.Text(), name+":"); ok {
+			return strconv.ParseUint(strings.TrimSpace(value), 16, 64)
+		}
+	}
+
+	return 0, fmt.Errorf("%s: not in /proc/%d/status", name, pid)
+}
+
+// has reports whether a mask contains a signal. Signal n is bit n-1.
+func has(mask uint64, signal syscall.Signal) bool {
+	return mask&amp;(1&lt;&lt;(signal-1)) != 0
+}
+
+// await polls /proc/&lt;pid&gt;/stat until the process has the given command name
+// and state. State T is "stopped" and S is "sleeping".
+func await(pid int, command string, state byte) error {
+	want := fmt.Sprintf("(%s) %c", command, state)
+
+	for {
+		stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+
+		if err != nil {
+			return err
+		}
+
+		if strings.Contains(string(stat), want) {
+			return nil
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.4</b> Reading the signal masks of another process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Returns one of the signal masks in `/proc/&lt;pid&gt;/status`: `ShdPnd`
+/// (pending), `SigBlk` (blocked), `SigIgn` (ignored) or `SigCgt` (caught).
+fn mask(pid: Pid, name: &amp;str) -&gt; io::Result&lt;u64&gt; {
+    let status = fs::read_to_string(format!("/proc/{pid}/status"))?;
+
+    status
+        .lines()
+        .find_map(|line| line.strip_prefix(name)?.strip_prefix(':'))
+        .and_then(|value| u64::from_str_radix(value.trim(), 16).ok())
+        .ok_or_else(|| io::ErrorKind::InvalidData.into())
+}
+
+/// Reports whether a mask contains a signal. Signal `n` is bit `n - 1`.
+fn has(mask: u64, signal: Signal) -&gt; bool {
+    mask &amp; (1 &lt;&lt; (signal as i32 - 1)) != 0
+}
+
+/// Polls `/proc/&lt;pid&gt;/stat` until the process has the given command name and
+/// state. State `T` is "stopped" and `S` is "sleeping".
+fn wait_for(pid: Pid, command: &amp;str, state: char) -&gt; io::Result&lt;()&gt; {
+    let want = format!("({command}) {state}");
+
+    while !fs::read_to_string(format!("/proc/{pid}/stat"))?.contains(&amp;want) {
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    Ok(())
+}
+
+/// Starts a shell script and returns the child with its process number.
+fn shell(script: &amp;str, stdout: Stdio) -&gt; io::Result&lt;(Child, Pid)&gt; {
+    let child = Command::new("sh")
+        .args(["-c", script])
+        .stdout(stdout)
+        .spawn()?;
+    let pid = Pid::from_raw(child.id() as i32);
+
+    Ok((child, pid))
+}</code></pre>
+<p>A stopped process does not return to user mode, so nothing is delivered to it. <code>pending</code>
+uses that to observe the pending mask. The script installs a handler for <code>SIGUSR1</code> and
+stops itself. The program sends <code>SIGUSR1</code> 3 times, reads the mask, and lets the script
+continue with <code>SIGCONT</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.5</b> Sending a signal 3 times to a stopped process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+<pre><code class="language-go">// pending sends SIGUSR1 3 times to a stopped process that has a handler for
+// it, reads the pending mask, and counts how often the handler runs after
+// the process continues.
+func pending() error {
+	child := exec.Command("sh", "-c", `trap 'echo caught' USR1; kill -STOP $$; echo done`)
+	stdout, err := child.StdoutPipe()
+
+	if err != nil {
+		return err
+	}
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	pid := child.Process.Pid
+
+	if err := await(pid, "sh", 'T'); err != nil {
+		return err
+	}
+
+	for range 3 {
+		syscall.Kill(pid, syscall.SIGUSR1)
+	}
+
+	waiting, err := mask(pid, "ShdPnd")
+
+	if err != nil {
+		return err
+	}
+
+	syscall.Kill(pid, syscall.SIGCONT)
+
+	text, err := io.ReadAll(stdout)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("SIGUSR1 sent 3 times to a stopped process: pending mask %#x\n", waiting)
+	fmt.Printf("after SIGCONT the handler ran %d time(s)\n", strings.Count(string(text), "caught"))
+
+	return child.Wait()
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.6</b> Sending a signal 3 times to a stopped process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Sends `SIGUSR1` 3 times to a stopped process that has a handler for it,
+/// reads the pending mask, and counts how often the handler runs after the
+/// process continues.
+fn pending() -&gt; io::Result&lt;()&gt; {
+    let script = "trap 'echo caught' USR1; kill -STOP $$; echo done";
+    let (mut child, pid) = shell(script, Stdio::piped())?;
+
+    wait_for(pid, "sh", 'T')?;
+
+    for _ in 0..3 {
+        kill(pid, Signal::SIGUSR1)?;
+    }
+
+    let waiting = mask(pid, "ShdPnd")?;
+
+    kill(pid, Signal::SIGCONT)?;
+
+    let mut text = String::new();
+
+    if let Some(stdout) = child.stdout.as_mut() {
+        stdout.read_to_string(&amp;mut text)?;
+    }
+
+    child.wait()?;
+
+    println!("SIGUSR1 sent 3 times to a stopped process: pending mask {waiting:#x}");
+    println!(
+        "after SIGCONT the handler ran {} time(s)",
+        text.matches("caught").count()
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>dispositions</code> reads the ignored and caught masks of a shell that ignores <code>SIGINT</code> and
+handles <code>SIGUSR1</code>.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.7</b> The actions of a process, read from outside, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+<pre><code class="language-go">// dispositions reads the ignored and caught masks of a shell that ignores
+// SIGINT and handles SIGUSR1.
+func dispositions() error {
+	child := exec.Command("sh", "-c", `trap '' INT; trap 'echo caught' USR1; kill -STOP $$`)
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	defer child.Wait()
+	defer child.Process.Kill()
+
+	pid := child.Process.Pid
+
+	if err := await(pid, "sh", 'T'); err != nil {
+		return err
+	}
+
+	ignored, err := mask(pid, "SigIgn")
+
+	if err != nil {
+		return err
+	}
+
+	caught, err := mask(pid, "SigCgt")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("shell with 2 traps: SIGINT ignored %v, SIGUSR1 caught %v, SIGTERM ignored %v\n",
+		has(ignored, syscall.SIGINT), has(caught, syscall.SIGUSR1), has(ignored, syscall.SIGTERM))
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.8</b> The actions of a process, read from outside, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Reads the ignored and caught masks of a shell that ignores `SIGINT` and
+/// handles `SIGUSR1`.
+fn dispositions() -&gt; io::Result&lt;()&gt; {
+    let script = "trap '' INT; trap 'echo caught' USR1; kill -STOP $$";
+    let (mut child, pid) = shell(script, Stdio::inherit())?;
+
+    wait_for(pid, "sh", 'T')?;
+
+    let ignored = mask(pid, "SigIgn")?;
+    let caught = mask(pid, "SigCgt")?;
+
+    child.kill()?;
+    child.wait()?;
+
+    println!(
+        "shell with 2 traps: SIGINT ignored {}, SIGUSR1 caught {}, SIGTERM ignored {}",
+        has(ignored, Signal::SIGINT),
+        has(caught, Signal::SIGUSR1),
+        has(ignored, Signal::SIGTERM)
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>acrossExec</code> starts a shell that ignores <code>SIGTERM</code>, handles <code>SIGUSR1</code>, and then replaces
+itself with <code>sleep</code> by <code>exec</code>. It reads the masks of the <code>sleep</code> process, sends it
+<code>SIGTERM</code> and then <code>SIGKILL</code>, and reports how it ended.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.9</b> Dispositions after exec, and SIGKILL, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+<pre><code class="language-go">// acrossExec reads the masks of a process after exec, sends it a signal it
+// ignores, and then SIGKILL.
+func acrossExec() error {
+	child := exec.Command("sh", "-c", `trap '' TERM; trap 'echo caught' USR1; exec sleep 30`)
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	pid := child.Process.Pid
+
+	if err := await(pid, "sleep", 'S'); err != nil {
+		return err
+	}
+
+	ignored, err := mask(pid, "SigIgn")
+
+	if err != nil {
+		return err
+	}
+
+	caught, err := mask(pid, "SigCgt")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("after exec: SIGTERM ignored %v, SIGUSR1 caught %v\n",
+		has(ignored, syscall.SIGTERM), has(caught, syscall.SIGUSR1))
+
+	syscall.Kill(pid, syscall.SIGTERM)
+	syscall.Kill(pid, syscall.SIGKILL)
+	child.Wait()
+
+	if status, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok &amp;&amp; status.Signaled() {
+		fmt.Printf("SIGTERM, then SIGKILL: killed by signal %d\n", status.Signal())
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.10</b> Dispositions after exec, and SIGKILL, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Reads the masks of a process after exec, sends it a signal it ignores, and
+/// then `SIGKILL`.
+fn across_exec() -&gt; io::Result&lt;()&gt; {
+    let script = "trap '' TERM; trap 'echo caught' USR1; exec sleep 30";
+    let (mut child, pid) = shell(script, Stdio::inherit())?;
+
+    wait_for(pid, "sleep", 'S')?;
+
+    let ignored = mask(pid, "SigIgn")?;
+    let caught = mask(pid, "SigCgt")?;
+
+    println!(
+        "after exec: SIGTERM ignored {}, SIGUSR1 caught {}",
+        has(ignored, Signal::SIGTERM),
+        has(caught, Signal::SIGUSR1)
+    );
+
+    kill(pid, Signal::SIGTERM)?;
+    kill(pid, Signal::SIGKILL)?;
+
+    if let Some(signal) = child.wait()?.signal() {
+        println!("SIGTERM, then SIGKILL: killed by signal {signal}");
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">SIGUSR1 sent 3 times to a stopped process: pending mask 0x200
+after SIGCONT the handler ran 1 time(s)
+shell with 2 traps: SIGINT ignored true, SIGUSR1 caught true, SIGTERM ignored false
+after exec: SIGTERM ignored true, SIGUSR1 caught false
+SIGTERM, then SIGKILL: killed by signal 9
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>pending mask <code>0x200</code> after 3 sends</td><td><code>0x200</code> is bit 9, signal 10, <code>SIGUSR1</code>. The mask records that the signal is pending and holds no count.</td></tr>
+<tr><td>the handler ran 1 time</td><td>3 sends were merged into a single delivery.</td></tr>
+<tr><td><code>SIGINT</code> ignored, <code>SIGUSR1</code> caught, <code>SIGTERM</code> not ignored</td><td>Each signal has its own entry in the action table.</td></tr>
+<tr><td>after <code>exec</code>: <code>SIGTERM</code> ignored, <code>SIGUSR1</code> not caught</td><td>Ignore survives <code>exec</code>. A handler is reset to the default.</td></tr>
+<tr><td>killed by signal 9</td><td><code>SIGTERM</code> was discarded. <code>SIGKILL</code> ended the process.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Line 4 explains a detail from <a href="01-pipes.html">chapter 1</a>. A Rust program starts with
+<code>SIGPIPE</code> ignored, and an ignored signal stays ignored across <code>exec</code>. Rust’s <code>Command</code>
+therefore resets <code>SIGPIPE</code> to the default in each child before it calls <code>exec</code>, and
+<code>yes</code> in the pipeline was ended by the signal as intended.</p>
+<p>The merging of signals has a consequence for every program that handles <code>SIGCHLD</code>. A
+handler for it calls <code>wait</code> in a loop until no ended child remains, because several
+children may have ended behind a single delivery.</p>
+<h2 id="modelling-signal-state"><a class="header" href="#modelling-signal-state">Modelling signal state</a></h2>
+<div class="lld">
+<p>Low-level design: <code>sigmodel</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field of <code>process</code></th><th>Kernel field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pending</code></td><td><code>shared_pending.signal</code></td><td>mask of 64 bits; signal <code>n</code> is bit <code>n - 1</code></td></tr>
+<tr><td><code>blocked</code></td><td><code>task_struct.blocked</code></td><td>mask of 64 bits</td></tr>
+<tr><td><code>actions</code>, <code>restart</code></td><td><code>sighand-&gt;action[n]</code></td><td>default, ignore or handle; the <code>SA_RESTART</code> flag</td></tr>
+<tr><td><code>handled</code>, <code>killedBy</code></td><td></td><td>how many handlers have run; the signal that ended the process</td></tr>
+<tr><td><code>call</code>, <code>outcome</code></td><td></td><td>the system call the process is blocked in; what a signal did to it</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>System call</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>setAction(signal, action, restart)</code></td><td><code>sigaction</code></td><td>installs an action; fails with <code>EINVAL</code> for <code>SIGKILL</code></td></tr>
+<tr><td><code>block(mask)</code>, <code>unblock(mask)</code></td><td><code>sigprocmask</code></td><td>changes the blocked mask; <code>SIGKILL</code> cannot be added</td></tr>
+<tr><td><code>send(signal)</code></td><td><code>kill</code></td><td>discards an ignored signal, otherwise sets its pending bit</td></tr>
+<tr><td><code>deliver()</code></td><td></td><td>performs the action of each pending, unblocked signal, lowest number first</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The state of a process is the 2 masks and a table of actions.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.11</b> The imports of <code>sigmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.12</b> The imports of <code>sigmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fmt;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.13</b> The signal state of a process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">const (
+	sigKill = 9
+	sigUsr1 = 10
+	sigTerm = 15
+	sigChld = 17
+	sigLast = 64
+)
+
+type action int
+
+const (
+	byDefault action = iota
+	ignore
+	handle
+)
+
+var errInvalid = errors.New("EINVAL")
+
+// A process holds the signal state of one process. Signal n is bit n-1 of
+// the masks.
+type process struct {
+	pending  uint64
+	blocked  uint64
+	actions  [sigLast + 1]action
+	restart  [sigLast + 1]bool
+	handled  int
+	killedBy int
+
+	// call is the system call the process is blocked in, or "" when it is
+	// running. outcome records what a signal did to that call.
+	call    string
+	outcome string
+}
+
+func bit(signal int) uint64 {
+	return 1 &lt;&lt; (signal - 1)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.14</b> The signal state of a process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">const SIGKILL: usize = 9;
+const SIGUSR1: usize = 10;
+const SIGTERM: usize = 15;
+const SIGCHLD: usize = 17;
+const SIGLAST: usize = 64;
+
+#[derive(Clone, Copy, PartialEq)]
+enum Action {
+    Default,
+    Ignore,
+    Handle,
+}
+
+#[derive(Debug)]
+struct Invalid;
+
+impl fmt::Display for Invalid {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("EINVAL")
+    }
+}
+
+/// The signal state of one process. Signal `n` is bit `n - 1` of the masks.
+struct Process {
+    pending: u64,
+    blocked: u64,
+    actions: [Action; SIGLAST + 1],
+    restart: [bool; SIGLAST + 1],
+    handled: u32,
+    killed_by: Option&lt;usize&gt;,
+
+    /// The system call the process is blocked in, or `None` when it is
+    /// running. `outcome` records what a signal did to that call.
+    call: Option&lt;&amp;'static str&gt;,
+    outcome: String,
+}
+
+fn bit(signal: usize) -&gt; u64 {
+    1 &lt;&lt; (signal - 1)
+}
+
+impl Process {
+    fn new(call: Option&lt;&amp;'static str&gt;) -&gt; Process {
+        Process {
+            pending: 0,
+            blocked: 0,
+            actions: [Action::Default; SIGLAST + 1],
+            restart: [false; SIGLAST + 1],
+            handled: 0,
+            killed_by: None,
+            call,
+            outcome: String::new(),
+        }
+    }
+}</code></pre>
+<p><code>setAction</code> and <code>block</code> enforce the exemption of <code>SIGKILL</code>. Changing its action is an
+error, and a request to block it is reduced silently.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.15</b> Installing actions and changing the blocked mask, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">// setAction installs an action for a signal. restart is the SA_RESTART flag
+// of a handler. The action of SIGKILL cannot be changed.
+func (p *process) setAction(signal int, a action, restart bool) error {
+	if signal == sigKill {
+		return errInvalid
+	}
+
+	p.actions[signal], p.restart[signal] = a, restart
+
+	return nil
+}
+
+// block adds signals to the blocked mask. SIGKILL is removed from the
+// request without an error, as the kernel does.
+func (p *process) block(mask uint64) {
+	p.blocked |= mask &amp;^ bit(sigKill)
+}
+
+// unblock removes signals from the blocked mask and delivers what was
+// waiting for it.
+func (p *process) unblock(mask uint64) {
+	p.blocked &amp;^= mask
+	p.deliver()
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.16</b> Installing actions and changing the blocked mask, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Process {
+    /// Installs an action for a signal. `restart` is the `SA_RESTART` flag of
+    /// a handler. The action of `SIGKILL` cannot be changed.
+    fn set_action(&amp;mut self, signal: usize, action: Action, restart: bool) -&gt; Result&lt;(), Invalid&gt; {
+        if signal == SIGKILL {
+            return Err(Invalid);
+        }
+
+        self.actions[signal] = action;
+        self.restart[signal] = restart;
+
+        Ok(())
+    }
+
+    /// Adds signals to the blocked mask. `SIGKILL` is removed from the
+    /// request without an error, as the kernel does.
+    fn block(&amp;mut self, mask: u64) {
+        self.blocked |= mask &amp; !bit(SIGKILL);
+    }
+
+    /// Removes signals from the blocked mask and delivers what was waiting
+    /// for it.
+    fn unblock(&amp;mut self, mask: u64) {
+        self.blocked &amp;= !mask;
+        self.deliver();
+    }
+}</code></pre>
+<p><code>send</code> is the half that runs in the sender. A signal that the target ignores is
+discarded at this point and does not become pending, unless it is blocked: a blocked
+signal is kept, because its action may have changed by the time it is unblocked.
+Setting a bit that is already set has no effect, which is the merging we measured.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.17</b> Sending: setting a pending bit, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">// ignored reports whether a signal would be discarded on delivery: its
+// action is ignore, or its action is the default and the default is to
+// ignore, which is the case for SIGCHLD.
+func (p *process) ignored(signal int) bool {
+	return p.actions[signal] == ignore || p.actions[signal] == byDefault &amp;&amp; signal == sigChld
+}
+
+// send is the sender's half. It discards a signal that the target ignores
+// and does not block. Otherwise it sets the pending bit, which is already
+// set when the same signal is waiting.
+func (p *process) send(signal int) {
+	if p.ignored(signal) &amp;&amp; p.blocked&amp;bit(signal) == 0 {
+		return
+	}
+
+	p.pending |= bit(signal)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.18</b> Sending: setting a pending bit, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Process {
+    /// Reports whether a signal would be discarded on delivery: its action is
+    /// ignore, or its action is the default and the default is to ignore,
+    /// which is the case for `SIGCHLD`.
+    fn ignored(&amp;self, signal: usize) -&gt; bool {
+        match self.actions[signal] {
+            Action::Ignore =&gt; true,
+            Action::Default =&gt; signal == SIGCHLD,
+            Action::Handle =&gt; false,
+        }
+    }
+
+    /// The sender's half. It discards a signal that the target ignores and
+    /// does not block. Otherwise it sets the pending bit, which is already
+    /// set when the same signal is waiting.
+    fn send(&amp;mut self, signal: usize) {
+        if self.ignored(signal) &amp;&amp; self.blocked &amp; bit(signal) == 0 {
+            return;
+        }
+
+        self.pending |= bit(signal);
+    }
+}</code></pre>
+<p><code>deliver</code> is the half that runs in the target. It considers the signals that are pending
+and not blocked. For a handler it also decides the fate of a system call that the
+process was blocked in.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.19</b> Delivering: performing the action, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">// deliver is the target's half. The kernel runs it when the process is about
+// to return to user mode. It takes each pending signal that is not blocked,
+// lowest number first, and performs its action.
+func (p *process) deliver() {
+	for signal := 1; signal &lt;= sigLast &amp;&amp; p.killedBy == 0; signal++ {
+		if p.pending&amp;^p.blocked&amp;bit(signal) == 0 {
+			continue
+		}
+
+		p.pending &amp;^= bit(signal)
+
+		switch {
+		case p.actions[signal] == handle:
+			p.handled++
+			p.interrupt(signal)
+
+		case !p.ignored(signal):
+			p.killedBy = signal
+		}
+	}
+}
+
+// interrupt decides what happens to a blocking system call when a handler
+// has run: the call is restarted, or it fails with EINTR.
+func (p *process) interrupt(signal int) {
+	if p.call == "" {
+		return
+	}
+
+	if p.restart[signal] {
+		p.outcome = "the " + p.call + " is restarted"
+
+		return
+	}
+
+	p.outcome = "the " + p.call + " fails with EINTR"
+	p.call = ""
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.20</b> Delivering: performing the action, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Process {
+    /// The target's half. The kernel runs it when the process is about to
+    /// return to user mode. It takes each pending signal that is not blocked,
+    /// lowest number first, and performs its action.
+    fn deliver(&amp;mut self) {
+        for signal in 1..=SIGLAST {
+            if self.killed_by.is_some() {
+                break;
+            }
+
+            if self.pending &amp; !self.blocked &amp; bit(signal) == 0 {
+                continue;
+            }
+
+            self.pending &amp;= !bit(signal);
+
+            if self.actions[signal] == Action::Handle {
+                self.handled += 1;
+                self.interrupt(signal);
+            } else if !self.ignored(signal) {
+                self.killed_by = Some(signal);
+            }
+        }
+    }
+
+    /// Decides what happens to a blocking system call when a handler has run:
+    /// the call is restarted, or it fails with `EINTR`.
+    fn interrupt(&amp;mut self, signal: usize) {
+        let Some(call) = self.call else {
+            return;
+        };
+
+        if self.restart[signal] {
+            self.outcome = format!("the {call} is restarted");
+
+            return;
+        }
+
+        self.outcome = format!("the {call} fails with EINTR");
+        self.call = None;
+    }
+}</code></pre>
+<h3 id="a-signal-during-a-blocking-call"><a class="header" href="#a-signal-during-a-blocking-call">A signal during a blocking call</a></h3>
+<p>A process that is blocked in a system call is inside the kernel and is not about to
+return to user mode. If signals waited for the call to finish, a process blocked in a
+<code>read</code> on a terminal could not be interrupted by Ctrl-C. The kernel therefore wakes the
+process, abandons the call, and runs the handler. After the handler returns there are 2
+possible outcomes, selected by a flag given to <code>sigaction</code> when the handler was
+installed.</p>
+<figure>
+<img src="figures/signal-eintr.svg" alt="A process calls read and sleeps because there is no data. A signal arrives, and the kernel wakes the process and abandons the read. The handler runs in user mode. Then, for a handler installed without SA_RESTART, read returns -1 with the error EINTR. For a handler installed with SA_RESTART, the kernel calls read again.">
+<figcaption><b>Figure 5.6</b> A handled signal interrupts a blocking call.</figcaption>
+</figure>
+<p>Without <code>SA_RESTART</code>, the call returns the error <code>EINTR</code>, “interrupted system call”,
+and the program has to call it again. A loop that retries on <code>EINTR</code> around every
+blocking call is the standard defence. Go’s standard library and Rust’s <code>std::io</code>
+helpers such as <code>read_to_end</code> contain that loop.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.21</b> The trace, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">func coalescing() error {
+	p := &amp;process{}
+
+	if err := p.setAction(sigUsr1, handle, false); err != nil {
+		return err
+	}
+
+	p.block(bit(sigUsr1))
+
+	for range 3 {
+		p.send(sigUsr1)
+		p.deliver()
+	}
+
+	fmt.Printf("SIGUSR1 blocked and sent 3 times: pending mask %#x\n", p.pending)
+
+	p.unblock(bit(sigUsr1))
+	fmt.Printf("after unblocking the handler ran %d time(s)\n", p.handled)
+
+	return nil
+}
+
+func ignoring() error {
+	p := &amp;process{}
+
+	if err := p.setAction(sigTerm, ignore, false); err != nil {
+		return err
+	}
+
+	p.send(sigTerm)
+	fmt.Printf("SIGTERM ignored and sent: pending mask %#x\n", p.pending)
+
+	fmt.Printf("installing a handler for SIGKILL: %v\n", p.setAction(sigKill, handle, false))
+
+	p.block(^uint64(0))
+	p.send(sigKill)
+	p.deliver()
+	fmt.Printf("every signal blocked, SIGKILL sent: killed by signal %d\n", p.killedBy)
+
+	return nil
+}
+
+func interrupting(restart bool) error {
+	p := &amp;process{call: "read"}
+
+	if err := p.setAction(sigUsr1, handle, restart); err != nil {
+		return err
+	}
+
+	p.send(sigUsr1)
+	p.deliver()
+	fmt.Printf("handler runs during a blocking read, SA_RESTART %v: %s\n", restart, p.outcome)
+
+	return nil
+}
+
+func main() {
+	steps := []func() error{
+		coalescing,
+		ignoring,
+		func() error { return interrupting(false) },
+		func() error { return interrupting(true) },
+	}
+
+	for _, step := range steps {
+		if err := step(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.22</b> The trace, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn coalescing() -&gt; Result&lt;(), Invalid&gt; {
+    let mut process = Process::new(None);
+
+    process.set_action(SIGUSR1, Action::Handle, false)?;
+    process.block(bit(SIGUSR1));
+
+    for _ in 0..3 {
+        process.send(SIGUSR1);
+        process.deliver();
+    }
+
+    println!(
+        "SIGUSR1 blocked and sent 3 times: pending mask {:#x}",
+        process.pending
+    );
+
+    process.unblock(bit(SIGUSR1));
+    println!(
+        "after unblocking the handler ran {} time(s)",
+        process.handled
+    );
+
+    Ok(())
+}
+
+fn ignoring() -&gt; Result&lt;(), Invalid&gt; {
+    let mut process = Process::new(None);
+
+    process.set_action(SIGTERM, Action::Ignore, false)?;
+    process.send(SIGTERM);
+    println!(
+        "SIGTERM ignored and sent: pending mask {:#x}",
+        process.pending
+    );
+
+    if let Err(error) = process.set_action(SIGKILL, Action::Handle, false) {
+        println!("installing a handler for SIGKILL: {error}");
+    }
+
+    process.block(u64::MAX);
+    process.send(SIGKILL);
+    process.deliver();
+
+    if let Some(signal) = process.killed_by {
+        println!("every signal blocked, SIGKILL sent: killed by signal {signal}");
+    }
+
+    Ok(())
+}
+
+fn interrupting(restart: bool) -&gt; Result&lt;(), Invalid&gt; {
+    let mut process = Process::new(Some("read"));
+
+    process.set_action(SIGUSR1, Action::Handle, restart)?;
+    process.send(SIGUSR1);
+    process.deliver();
+
+    println!(
+        "handler runs during a blocking read, SA_RESTART {restart}: {}",
+        process.outcome
+    );
+
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Invalid&gt; {
+    coalescing()?;
+    ignoring()?;
+    interrupting(false)?;
+    interrupting(true)
+}</code></pre>
+<pre><code class="language-text">SIGUSR1 blocked and sent 3 times: pending mask 0x200
+after unblocking the handler ran 1 time(s)
+SIGTERM ignored and sent: pending mask 0x0
+installing a handler for SIGKILL: EINVAL
+every signal blocked, SIGKILL sent: killed by signal 9
+handler runs during a blocking read, SA_RESTART false: the read fails with EINTR
+handler runs during a blocking read, SA_RESTART true: the read is restarted
+</code></pre>
+<p>Lines 1 and 2 reproduce the pending mask and the single delivery that <code>sigfacts</code>
+measured.</p>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> <code>__send_signal</code> in <code>kernel/signal.c</code> sets the
+bit, and <code>prepare_signal</code> discards ignored signals. Delivery starts in <code>get_signal</code>,
+called on the way back to user mode, and the signal frame of an arm64 process is built
+by <code>setup_rt_frame</code> in <code>arch/arm64/kernel/signal.c</code>. Real-time signals, numbers 32 to
+64, are an exception to merging: the kernel queues each send of those separately, in
+the <code>list</code> of <code>struct sigpending</code>.</p>
+</div>
+
+<h2 id="inspecting-signals-on-a-live-system"><a class="header" href="#inspecting-signals-on-a-live-system">Inspecting signals on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>kill -l</code></td><td>the names and numbers of all signals</td></tr>
+<tr><td><code>grep Sig /proc/&lt;pid&gt;/status</code></td><td>the pending, blocked, ignored and caught masks of a process</td></tr>
+<tr><td><code>kill -TERM &lt;pid&gt;</code>, <code>kill -KILL &lt;pid&gt;</code></td><td>sends a signal to a process</td></tr>
+<tr><td><code>kill -STOP &lt;pid&gt;</code>, <code>kill -CONT &lt;pid&gt;</code></td><td>stops and continues a process</td></tr>
+<tr><td><code>strace -e trace=signal -p &lt;pid&gt;</code></td><td>the signals a process receives and the signal system calls it makes</td></tr>
+</tbody>
+</table>
+</div>
+<p>A process that does not react to <code>kill</code> is diagnosed with the second command. If
+<code>SIGTERM</code>, bit 14, is set in <code>SigIgn</code> or <code>SigBlk</code>, the process has ignored or blocked
+it, and only <code>SIGKILL</code> will end it.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.23</b> The complete <code>sigfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigfacts/main.go">code/go/sigfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command sigfacts measures signal handling from outside a process. It starts
+// shell scripts that set signal dispositions, sends them signals, and reads
+// their signal masks from /proc/&lt;pid&gt;/status.
+//
+// Run it from code/go with:
+//
+//	go run ./sigfacts
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+
+
+// mask returns one of the signal masks in /proc/&lt;pid&gt;/status: ShdPnd
+// (pending), SigBlk (blocked), SigIgn (ignored) or SigCgt (caught).
+func mask(pid int, name string) (uint64, error) {
+	status, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
+
+	if err != nil {
+		return 0, err
+	}
+
+	defer status.Close()
+
+	for lines := bufio.NewScanner(status); lines.Scan(); {
+		if value, ok := strings.CutPrefix(lines.Text(), name+":"); ok {
+			return strconv.ParseUint(strings.TrimSpace(value), 16, 64)
+		}
+	}
+
+	return 0, fmt.Errorf("%s: not in /proc/%d/status", name, pid)
+}
+
+// has reports whether a mask contains a signal. Signal n is bit n-1.
+func has(mask uint64, signal syscall.Signal) bool {
+	return mask&amp;(1&lt;&lt;(signal-1)) != 0
+}
+
+// await polls /proc/&lt;pid&gt;/stat until the process has the given command name
+// and state. State T is "stopped" and S is "sleeping".
+func await(pid int, command string, state byte) error {
+	want := fmt.Sprintf("(%s) %c", command, state)
+
+	for {
+		stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+
+		if err != nil {
+			return err
+		}
+
+		if strings.Contains(string(stat), want) {
+			return nil
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+}
+
+
+// pending sends SIGUSR1 3 times to a stopped process that has a handler for
+// it, reads the pending mask, and counts how often the handler runs after
+// the process continues.
+func pending() error {
+	child := exec.Command("sh", "-c", `trap 'echo caught' USR1; kill -STOP $$; echo done`)
+	stdout, err := child.StdoutPipe()
+
+	if err != nil {
+		return err
+	}
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	pid := child.Process.Pid
+
+	if err := await(pid, "sh", 'T'); err != nil {
+		return err
+	}
+
+	for range 3 {
+		syscall.Kill(pid, syscall.SIGUSR1)
+	}
+
+	waiting, err := mask(pid, "ShdPnd")
+
+	if err != nil {
+		return err
+	}
+
+	syscall.Kill(pid, syscall.SIGCONT)
+
+	text, err := io.ReadAll(stdout)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("SIGUSR1 sent 3 times to a stopped process: pending mask %#x\n", waiting)
+	fmt.Printf("after SIGCONT the handler ran %d time(s)\n", strings.Count(string(text), "caught"))
+
+	return child.Wait()
+}
+
+
+// dispositions reads the ignored and caught masks of a shell that ignores
+// SIGINT and handles SIGUSR1.
+func dispositions() error {
+	child := exec.Command("sh", "-c", `trap '' INT; trap 'echo caught' USR1; kill -STOP $$`)
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	defer child.Wait()
+	defer child.Process.Kill()
+
+	pid := child.Process.Pid
+
+	if err := await(pid, "sh", 'T'); err != nil {
+		return err
+	}
+
+	ignored, err := mask(pid, "SigIgn")
+
+	if err != nil {
+		return err
+	}
+
+	caught, err := mask(pid, "SigCgt")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("shell with 2 traps: SIGINT ignored %v, SIGUSR1 caught %v, SIGTERM ignored %v\n",
+		has(ignored, syscall.SIGINT), has(caught, syscall.SIGUSR1), has(ignored, syscall.SIGTERM))
+
+	return nil
+}
+
+
+// acrossExec reads the masks of a process after exec, sends it a signal it
+// ignores, and then SIGKILL.
+func acrossExec() error {
+	child := exec.Command("sh", "-c", `trap '' TERM; trap 'echo caught' USR1; exec sleep 30`)
+
+	if err := child.Start(); err != nil {
+		return err
+	}
+
+	pid := child.Process.Pid
+
+	if err := await(pid, "sleep", 'S'); err != nil {
+		return err
+	}
+
+	ignored, err := mask(pid, "SigIgn")
+
+	if err != nil {
+		return err
+	}
+
+	caught, err := mask(pid, "SigCgt")
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("after exec: SIGTERM ignored %v, SIGUSR1 caught %v\n",
+		has(ignored, syscall.SIGTERM), has(caught, syscall.SIGUSR1))
+
+	syscall.Kill(pid, syscall.SIGTERM)
+	syscall.Kill(pid, syscall.SIGKILL)
+	child.Wait()
+
+	if status, ok := child.ProcessState.Sys().(syscall.WaitStatus); ok &amp;&amp; status.Signaled() {
+		fmt.Printf("SIGTERM, then SIGKILL: killed by signal %d\n", status.Signal())
+	}
+
+	return nil
+}
+
+
+func main() {
+	for _, experiment := range []func() error{pending, dispositions, acrossExec} {
+		if err := experiment(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 5.24</b> The complete <code>sigfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigfacts/src/main.rs">code/rust/sigfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures signal handling from outside a process. It starts shell scripts
+//! that set signal dispositions, sends them signals, and reads their signal
+//! masks from `/proc/&lt;pid&gt;/status`.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p sigfacts
+//! ```
+
+use std::fs;
+use std::io::{self, Read};
+use std::os::unix::process::ExitStatusExt;
+use std::process::{Child, Command, Stdio};
+use std::thread;
+use std::time::Duration;
+
+use nix::sys::signal::{Signal, kill};
+use nix::unistd::Pid;
+
+/// Returns one of the signal masks in `/proc/&lt;pid&gt;/status`: `ShdPnd`
+/// (pending), `SigBlk` (blocked), `SigIgn` (ignored) or `SigCgt` (caught).
+fn mask(pid: Pid, name: &amp;str) -&gt; io::Result&lt;u64&gt; {
+    let status = fs::read_to_string(format!("/proc/{pid}/status"))?;
+
+    status
+        .lines()
+        .find_map(|line| line.strip_prefix(name)?.strip_prefix(':'))
+        .and_then(|value| u64::from_str_radix(value.trim(), 16).ok())
+        .ok_or_else(|| io::ErrorKind::InvalidData.into())
+}
+
+/// Reports whether a mask contains a signal. Signal `n` is bit `n - 1`.
+fn has(mask: u64, signal: Signal) -&gt; bool {
+    mask &amp; (1 &lt;&lt; (signal as i32 - 1)) != 0
+}
+
+/// Polls `/proc/&lt;pid&gt;/stat` until the process has the given command name and
+/// state. State `T` is "stopped" and `S` is "sleeping".
+fn wait_for(pid: Pid, command: &amp;str, state: char) -&gt; io::Result&lt;()&gt; {
+    let want = format!("({command}) {state}");
+
+    while !fs::read_to_string(format!("/proc/{pid}/stat"))?.contains(&amp;want) {
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    Ok(())
+}
+
+/// Starts a shell script and returns the child with its process number.
+fn shell(script: &amp;str, stdout: Stdio) -&gt; io::Result&lt;(Child, Pid)&gt; {
+    let child = Command::new("sh")
+        .args(["-c", script])
+        .stdout(stdout)
+        .spawn()?;
+    let pid = Pid::from_raw(child.id() as i32);
+
+    Ok((child, pid))
+}
+
+/// Sends `SIGUSR1` 3 times to a stopped process that has a handler for it,
+/// reads the pending mask, and counts how often the handler runs after the
+/// process continues.
+fn pending() -&gt; io::Result&lt;()&gt; {
+    let script = "trap 'echo caught' USR1; kill -STOP $$; echo done";
+    let (mut child, pid) = shell(script, Stdio::piped())?;
+
+    wait_for(pid, "sh", 'T')?;
+
+    for _ in 0..3 {
+        kill(pid, Signal::SIGUSR1)?;
+    }
+
+    let waiting = mask(pid, "ShdPnd")?;
+
+    kill(pid, Signal::SIGCONT)?;
+
+    let mut text = String::new();
+
+    if let Some(stdout) = child.stdout.as_mut() {
+        stdout.read_to_string(&amp;mut text)?;
+    }
+
+    child.wait()?;
+
+    println!("SIGUSR1 sent 3 times to a stopped process: pending mask {waiting:#x}");
+    println!(
+        "after SIGCONT the handler ran {} time(s)",
+        text.matches("caught").count()
+    );
+
+    Ok(())
+}
+
+/// Reads the ignored and caught masks of a shell that ignores `SIGINT` and
+/// handles `SIGUSR1`.
+fn dispositions() -&gt; io::Result&lt;()&gt; {
+    let script = "trap '' INT; trap 'echo caught' USR1; kill -STOP $$";
+    let (mut child, pid) = shell(script, Stdio::inherit())?;
+
+    wait_for(pid, "sh", 'T')?;
+
+    let ignored = mask(pid, "SigIgn")?;
+    let caught = mask(pid, "SigCgt")?;
+
+    child.kill()?;
+    child.wait()?;
+
+    println!(
+        "shell with 2 traps: SIGINT ignored {}, SIGUSR1 caught {}, SIGTERM ignored {}",
+        has(ignored, Signal::SIGINT),
+        has(caught, Signal::SIGUSR1),
+        has(ignored, Signal::SIGTERM)
+    );
+
+    Ok(())
+}
+
+/// Reads the masks of a process after exec, sends it a signal it ignores, and
+/// then `SIGKILL`.
+fn across_exec() -&gt; io::Result&lt;()&gt; {
+    let script = "trap '' TERM; trap 'echo caught' USR1; exec sleep 30";
+    let (mut child, pid) = shell(script, Stdio::inherit())?;
+
+    wait_for(pid, "sleep", 'S')?;
+
+    let ignored = mask(pid, "SigIgn")?;
+    let caught = mask(pid, "SigCgt")?;
+
+    println!(
+        "after exec: SIGTERM ignored {}, SIGUSR1 caught {}",
+        has(ignored, Signal::SIGTERM),
+        has(caught, Signal::SIGUSR1)
+    );
+
+    kill(pid, Signal::SIGTERM)?;
+    kill(pid, Signal::SIGKILL)?;
+
+    if let Some(signal) = child.wait()?.signal() {
+        println!("SIGTERM, then SIGKILL: killed by signal {signal}");
+    }
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    pending()?;
+    dispositions()?;
+    across_exec()
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 5.25</b> The complete <code>sigmodel</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/sigmodel/main.go">code/go/sigmodel/main.go</a></p>
+
+<pre><code class="language-go">// Command sigmodel models the signal state the kernel keeps for a process: a
+// pending mask, a blocked mask, and an action for each signal. It separates
+// sending a signal from delivering it, and shows what a delivered signal
+// does to a process that is blocked in a system call.
+//
+// Run it from code/go with:
+//
+//	go run ./sigmodel
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+)
+
+
+const (
+	sigKill = 9
+	sigUsr1 = 10
+	sigTerm = 15
+	sigChld = 17
+	sigLast = 64
+)
+
+type action int
+
+const (
+	byDefault action = iota
+	ignore
+	handle
+)
+
+var errInvalid = errors.New("EINVAL")
+
+// A process holds the signal state of one process. Signal n is bit n-1 of
+// the masks.
+type process struct {
+	pending  uint64
+	blocked  uint64
+	actions  [sigLast + 1]action
+	restart  [sigLast + 1]bool
+	handled  int
+	killedBy int
+
+	// call is the system call the process is blocked in, or "" when it is
+	// running. outcome records what a signal did to that call.
+	call    string
+	outcome string
+}
+
+func bit(signal int) uint64 {
+	return 1 &lt;&lt; (signal - 1)
+}
+
+
+// setAction installs an action for a signal. restart is the SA_RESTART flag
+// of a handler. The action of SIGKILL cannot be changed.
+func (p *process) setAction(signal int, a action, restart bool) error {
+	if signal == sigKill {
+		return errInvalid
+	}
+
+	p.actions[signal], p.restart[signal] = a, restart
+
+	return nil
+}
+
+// block adds signals to the blocked mask. SIGKILL is removed from the
+// request without an error, as the kernel does.
+func (p *process) block(mask uint64) {
+	p.blocked |= mask &amp;^ bit(sigKill)
+}
+
+// unblock removes signals from the blocked mask and delivers what was
+// waiting for it.
+func (p *process) unblock(mask uint64) {
+	p.blocked &amp;^= mask
+	p.deliver()
+}
+
+
+// ignored reports whether a signal would be discarded on delivery: its
+// action is ignore, or its action is the default and the default is to
+// ignore, which is the case for SIGCHLD.
+func (p *process) ignored(signal int) bool {
+	return p.actions[signal] == ignore || p.actions[signal] == byDefault &amp;&amp; signal == sigChld
+}
+
+// send is the sender's half. It discards a signal that the target ignores
+// and does not block. Otherwise it sets the pending bit, which is already
+// set when the same signal is waiting.
+func (p *process) send(signal int) {
+	if p.ignored(signal) &amp;&amp; p.blocked&amp;bit(signal) == 0 {
+		return
+	}
+
+	p.pending |= bit(signal)
+}
+
+
+// deliver is the target's half. The kernel runs it when the process is about
+// to return to user mode. It takes each pending signal that is not blocked,
+// lowest number first, and performs its action.
+func (p *process) deliver() {
+	for signal := 1; signal &lt;= sigLast &amp;&amp; p.killedBy == 0; signal++ {
+		if p.pending&amp;^p.blocked&amp;bit(signal) == 0 {
+			continue
+		}
+
+		p.pending &amp;^= bit(signal)
+
+		switch {
+		case p.actions[signal] == handle:
+			p.handled++
+			p.interrupt(signal)
+
+		case !p.ignored(signal):
+			p.killedBy = signal
+		}
+	}
+}
+
+// interrupt decides what happens to a blocking system call when a handler
+// has run: the call is restarted, or it fails with EINTR.
+func (p *process) interrupt(signal int) {
+	if p.call == "" {
+		return
+	}
+
+	if p.restart[signal] {
+		p.outcome = "the " + p.call + " is restarted"
+
+		return
+	}
+
+	p.outcome = "the " + p.call + " fails with EINTR"
+	p.call = ""
+}
+
+
+func coalescing() error {
+	p := &amp;process{}
+
+	if err := p.setAction(sigUsr1, handle, false); err != nil {
+		return err
+	}
+
+	p.block(bit(sigUsr1))
+
+	for range 3 {
+		p.send(sigUsr1)
+		p.deliver()
+	}
+
+	fmt.Printf("SIGUSR1 blocked and sent 3 times: pending mask %#x\n", p.pending)
+
+	p.unblock(bit(sigUsr1))
+	fmt.Printf("after unblocking the handler ran %d time(s)\n", p.handled)
+
+	return nil
+}
+
+func ignoring() error {
+	p := &amp;process{}
+
+	if err := p.setAction(sigTerm, ignore, false); err != nil {
+		return err
+	}
+
+	p.send(sigTerm)
+	fmt.Printf("SIGTERM ignored and sent: pending mask %#x\n", p.pending)
+
+	fmt.Printf("installing a handler for SIGKILL: %v\n", p.setAction(sigKill, handle, false))
+
+	p.block(^uint64(0))
+	p.send(sigKill)
+	p.deliver()
+	fmt.Printf("every signal blocked, SIGKILL sent: killed by signal %d\n", p.killedBy)
+
+	return nil
+}
+
+func interrupting(restart bool) error {
+	p := &amp;process{call: "read"}
+
+	if err := p.setAction(sigUsr1, handle, restart); err != nil {
+		return err
+	}
+
+	p.send(sigUsr1)
+	p.deliver()
+	fmt.Printf("handler runs during a blocking read, SA_RESTART %v: %s\n", restart, p.outcome)
+
+	return nil
+}
+
+func main() {
+	steps := []func() error{
+		coalescing,
+		ignoring,
+		func() error { return interrupting(false) },
+		func() error { return interrupting(true) },
+	}
+
+	for _, step := range steps {
+		if err := step(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 5.26</b> The complete <code>sigmodel</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/sigmodel/src/main.rs">code/rust/sigmodel/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the signal state the kernel keeps for a process: a pending mask, a
+//! blocked mask, and an action for each signal. It separates sending a signal
+//! from delivering it, and shows what a delivered signal does to a process
+//! that is blocked in a system call.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p sigmodel
+//! ```
+
+use std::fmt;
+
+const SIGKILL: usize = 9;
+const SIGUSR1: usize = 10;
+const SIGTERM: usize = 15;
+const SIGCHLD: usize = 17;
+const SIGLAST: usize = 64;
+
+#[derive(Clone, Copy, PartialEq)]
+enum Action {
+    Default,
+    Ignore,
+    Handle,
+}
+
+#[derive(Debug)]
+struct Invalid;
+
+impl fmt::Display for Invalid {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str("EINVAL")
+    }
+}
+
+/// The signal state of one process. Signal `n` is bit `n - 1` of the masks.
+struct Process {
+    pending: u64,
+    blocked: u64,
+    actions: [Action; SIGLAST + 1],
+    restart: [bool; SIGLAST + 1],
+    handled: u32,
+    killed_by: Option&lt;usize&gt;,
+
+    /// The system call the process is blocked in, or `None` when it is
+    /// running. `outcome` records what a signal did to that call.
+    call: Option&lt;&amp;'static str&gt;,
+    outcome: String,
+}
+
+fn bit(signal: usize) -&gt; u64 {
+    1 &lt;&lt; (signal - 1)
+}
+
+impl Process {
+    fn new(call: Option&lt;&amp;'static str&gt;) -&gt; Process {
+        Process {
+            pending: 0,
+            blocked: 0,
+            actions: [Action::Default; SIGLAST + 1],
+            restart: [false; SIGLAST + 1],
+            handled: 0,
+            killed_by: None,
+            call,
+            outcome: String::new(),
+        }
+    }
+}
+
+impl Process {
+    /// Installs an action for a signal. `restart` is the `SA_RESTART` flag of
+    /// a handler. The action of `SIGKILL` cannot be changed.
+    fn set_action(&amp;mut self, signal: usize, action: Action, restart: bool) -&gt; Result&lt;(), Invalid&gt; {
+        if signal == SIGKILL {
+            return Err(Invalid);
+        }
+
+        self.actions[signal] = action;
+        self.restart[signal] = restart;
+
+        Ok(())
+    }
+
+    /// Adds signals to the blocked mask. `SIGKILL` is removed from the
+    /// request without an error, as the kernel does.
+    fn block(&amp;mut self, mask: u64) {
+        self.blocked |= mask &amp; !bit(SIGKILL);
+    }
+
+    /// Removes signals from the blocked mask and delivers what was waiting
+    /// for it.
+    fn unblock(&amp;mut self, mask: u64) {
+        self.blocked &amp;= !mask;
+        self.deliver();
+    }
+}
+
+impl Process {
+    /// Reports whether a signal would be discarded on delivery: its action is
+    /// ignore, or its action is the default and the default is to ignore,
+    /// which is the case for `SIGCHLD`.
+    fn ignored(&amp;self, signal: usize) -&gt; bool {
+        match self.actions[signal] {
+            Action::Ignore =&gt; true,
+            Action::Default =&gt; signal == SIGCHLD,
+            Action::Handle =&gt; false,
+        }
+    }
+
+    /// The sender's half. It discards a signal that the target ignores and
+    /// does not block. Otherwise it sets the pending bit, which is already
+    /// set when the same signal is waiting.
+    fn send(&amp;mut self, signal: usize) {
+        if self.ignored(signal) &amp;&amp; self.blocked &amp; bit(signal) == 0 {
+            return;
+        }
+
+        self.pending |= bit(signal);
+    }
+}
+
+impl Process {
+    /// The target's half. The kernel runs it when the process is about to
+    /// return to user mode. It takes each pending signal that is not blocked,
+    /// lowest number first, and performs its action.
+    fn deliver(&amp;mut self) {
+        for signal in 1..=SIGLAST {
+            if self.killed_by.is_some() {
+                break;
+            }
+
+            if self.pending &amp; !self.blocked &amp; bit(signal) == 0 {
+                continue;
+            }
+
+            self.pending &amp;= !bit(signal);
+
+            if self.actions[signal] == Action::Handle {
+                self.handled += 1;
+                self.interrupt(signal);
+            } else if !self.ignored(signal) {
+                self.killed_by = Some(signal);
+            }
+        }
+    }
+
+    /// Decides what happens to a blocking system call when a handler has run:
+    /// the call is restarted, or it fails with `EINTR`.
+    fn interrupt(&amp;mut self, signal: usize) {
+        let Some(call) = self.call else {
+            return;
+        };
+
+        if self.restart[signal] {
+            self.outcome = format!("the {call} is restarted");
+
+            return;
+        }
+
+        self.outcome = format!("the {call} fails with EINTR");
+        self.call = None;
+    }
+}
+
+fn coalescing() -&gt; Result&lt;(), Invalid&gt; {
+    let mut process = Process::new(None);
+
+    process.set_action(SIGUSR1, Action::Handle, false)?;
+    process.block(bit(SIGUSR1));
+
+    for _ in 0..3 {
+        process.send(SIGUSR1);
+        process.deliver();
+    }
+
+    println!(
+        "SIGUSR1 blocked and sent 3 times: pending mask {:#x}",
+        process.pending
+    );
+
+    process.unblock(bit(SIGUSR1));
+    println!(
+        "after unblocking the handler ran {} time(s)",
+        process.handled
+    );
+
+    Ok(())
+}
+
+fn ignoring() -&gt; Result&lt;(), Invalid&gt; {
+    let mut process = Process::new(None);
+
+    process.set_action(SIGTERM, Action::Ignore, false)?;
+    process.send(SIGTERM);
+    println!(
+        "SIGTERM ignored and sent: pending mask {:#x}",
+        process.pending
+    );
+
+    if let Err(error) = process.set_action(SIGKILL, Action::Handle, false) {
+        println!("installing a handler for SIGKILL: {error}");
+    }
+
+    process.block(u64::MAX);
+    process.send(SIGKILL);
+    process.deliver();
+
+    if let Some(signal) = process.killed_by {
+        println!("every signal blocked, SIGKILL sent: killed by signal {signal}");
+    }
+
+    Ok(())
+}
+
+fn interrupting(restart: bool) -&gt; Result&lt;(), Invalid&gt; {
+    let mut process = Process::new(Some("read"));
+
+    process.set_action(SIGUSR1, Action::Handle, restart)?;
+    process.send(SIGUSR1);
+    process.deliver();
+
+    println!(
+        "handler runs during a blocking read, SA_RESTART {restart}: {}",
+        process.outcome
+    );
+
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Invalid&gt; {
+    coalescing()?;
+    ignoring()?;
+    interrupting(false)?;
+    interrupting(true)
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A signal is sent by setting a bit in the pending mask of the target. Its action is
+performed later, when the target is about to return to user mode and the signal is not
+blocked.</li>
+<li>Each signal has an action: the default, ignore, or a handler function. The actions are
+in <code>struct sighand_struct</code>, and the masks are visible in <code>/proc/&lt;pid&gt;/status</code>.</li>
+<li>The pending mask holds 1 bit per signal, so repeated sends of a pending signal are
+merged into a single delivery.</li>
+<li>The kernel runs a handler by saving the program’s registers on its stack and
+redirecting it to the handler. A handler may call only async-signal-safe functions.</li>
+<li><code>exec</code> resets handlers to the default action and keeps ignored signals ignored.</li>
+<li><code>SIGKILL</code> and <code>SIGSTOP</code> cannot be blocked, ignored or handled.</li>
+<li>A handler that runs during a blocking system call makes the call fail with <code>EINTR</code>,
+or restart when the handler was installed with <code>SA_RESTART</code>.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>signal(7)</code>, <code>sigaction(2)</code>, <code>sigprocmask(2)</code>, <code>signal-safety(7)</code> and <code>sigreturn(2)</code>,
+Linux manual pages: <a href="https://man7.org/linux/man-pages/man7/signal.7.html">https://man7.org/linux/man-pages/man7/signal.7.html</a></li>
+<li>M. Kerrisk, <em>The Linux Programming Interface</em>, No Starch Press, 2010, chapters 20 to
+22.</li>
+<li><code>kernel/signal.c</code> and <code>include/linux/sched/signal.h</code>, Linux 5.15:
+<a href="https://elixir.bootlin.com/linux/v5.15/source/kernel/signal.c">https://elixir.bootlin.com/linux/v5.15/source/kernel/signal.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="04-building-a-shell.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="06-cpu-scheduling.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="04-building-a-shell.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="06-cpu-scheduling.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

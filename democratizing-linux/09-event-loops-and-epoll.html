@@ -1,0 +1,2266 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Event Loops and epoll - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/09-event-loops-and-epoll.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch09.svg" alt="Relay, an octopus wearing a headset, works a switchboard. 2 lamps on the board are lit, and an arm reaches to each of them. The other lines are left alone.">
+<h1 id="event-loops-and-epoll"><a class="header" href="#event-loops-and-epoll">Event Loops and epoll</a></h1>
+<p>An event loop is a program structure in which a single thread waits for activity on
+many file descriptors at once and handles each descriptor when it is ready. The kernel
+mechanism behind it on Linux is <code>epoll</code>: the program registers descriptors with an epoll
+instance and then asks which of them are ready. Network servers, the Go runtime and
+Rust’s async runtimes are all built on this mechanism.</p>
+<p>In this chapter, we will learn how epoll finds the ready descriptors without examining
+all of them. We will first measure its behaviour on pipes with <code>epollfacts</code>. Then we
+will write <code>eventloop</code>, a model of the interest list and the ready list, check it
+against the measurements, and run an event loop on it.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>blocking and non-blocking I/O, and why a blocking <code>read</code> on each descriptor does not scale</li>
+<li>the 3 calls of epoll, and the structure of a server built on them</li>
+<li>the path from arriving data to the return of <code>epoll_wait</code></li>
+<li>the kernel structures: <code>struct eventpoll</code> and <code>struct epitem</code></li>
+<li>the interest list and the ready list of an epoll instance</li>
+<li>why the cost of a wait depends on the number of ready descriptors</li>
+<li>level-triggered and edge-triggered registrations</li>
+<li>how a closed peer is reported</li>
+<li>the structure of an event loop</li>
+<li>how the Go runtime and Rust’s async runtimes use epoll</li>
+<li>how to inspect the registrations of a running process</li>
+</ul>
+</div>
+
+<h2 id="blocking-and-readiness"><a class="header" href="#blocking-and-readiness">Blocking and readiness</a></h2>
+<p>By default a <code>read</code> on a pipe or a socket <em>blocks</em>: if no data is available, the kernel
+puts the calling thread to sleep until some arrives (<a href="01-pipes.html">chapter 1</a>). A thread
+that is asleep in a <code>read</code> on 1 descriptor cannot notice that another descriptor has
+data.</p>
+<p>A descriptor can be switched to <em>non-blocking mode</em> with the flag <code>O_NONBLOCK</code>. A <code>read</code>
+that would have to wait then returns the error <code>EAGAIN</code> immediately. A program could
+call <code>read</code> on each of its descriptors in a loop and skip those that return <code>EAGAIN</code>,
+and it would consume a whole CPU doing nothing. What is needed is a single call that
+sleeps until any of a set of descriptors is <em>ready</em>, meaning that a <code>read</code> or a <code>write</code>
+on it would not block. That call is the subject of this chapter.</p>
+<h2 id="the-problem"><a class="header" href="#the-problem">The problem</a></h2>
+<p>A server with 10000 connections has to respond to whichever connection sends data next.
+A blocking <code>read</code> waits on 1 descriptor. The alternatives each have a cost.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Approach</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td>a thread per connection, each blocked in <code>read</code></td><td>a stack and a scheduler entry for every connection, and a context switch for every message</td></tr>
+<tr><td><code>select</code> or <code>poll</code> with the full list of descriptors</td><td>the kernel examines every descriptor on every call, including the idle ones</td></tr>
+<tr><td><code>epoll</code></td><td>the kernel maintains the list of ready descriptors; a call returns that list</td></tr>
+</tbody>
+</table>
+</div>
+<p>With <code>select</code> and <code>poll</code>, the program passes all its descriptors on each call, and the
+kernel checks each one. The work per call is proportional to the number of descriptors
+registered. On a server most connections are idle at any moment, so most of that work
+finds nothing.</p>
+<figure>
+<img src="figures/scan-vs-ready.svg" alt="With 40 descriptors of which 1 is ready, select and poll examine all 40 on every call to find it. epoll reads a ready list that already holds the 1 ready descriptor, put there when its data arrived: 1 check, however many are registered.">
+<figcaption><b>Figure 9.1</b> The work of a single call, with <code>select</code> or <code>poll</code> and with epoll.</figcaption>
+</figure>
+<p><code>epoll</code> separates registration from waiting. The program registers a descriptor once,
+with <code>epoll_ctl</code>. From then on the kernel itself records when the descriptor becomes
+ready. <code>epoll_wait</code> returns the recorded descriptors, and its work is proportional to
+the number that are ready.</p>
+<figure>
+<img src="figures/epoll-lists.svg" alt="An epoll instance has an interest list of every registered descriptor, here 5 to 12. Data arrived on descriptors 7 and 10, and each arrival added an entry to the ready list, which holds 10 and then 7. epoll_wait copies the ready list to the program, which handles descriptor 10 and then 7.">
+<figcaption><b>Figure 9.2</b> The interest list holds every registration. The ready list holds the descriptors with activity.</figcaption>
+</figure>
+<p>The ready list is filled at the moment of the event. In chapter 1 a <code>write</code> to a pipe
+woke the readers sleeping on the pipe’s wait queue. Registering a descriptor with epoll
+adds an entry to that same wait queue, and the entry’s wake-up function puts the
+registration on the ready list. The writer does this work as part of its <code>write</code>.</p>
+<h2 id="the-interface"><a class="header" href="#the-interface">The interface</a></h2>
+<p>epoll consists of 3 system calls.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Call</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>epoll_create1(flags)</code></td><td>creates an epoll instance and returns a descriptor for it</td></tr>
+<tr><td><code>epoll_ctl(epfd, op, fd, &amp;event)</code></td><td>adds, changes or removes the registration of <code>fd</code></td></tr>
+<tr><td><code>epoll_wait(epfd, events, max, timeout)</code></td><td>sleeps until a registered descriptor is ready, and returns up to <code>max</code> events</td></tr>
+</tbody>
+</table>
+</div>
+<p>A registration and an event are both a <code>struct epoll_event</code>. This is the definition in
+<code>include/uapi/linux/eventpoll.h</code>.</p>
+<pre><code class="language-c">struct epoll_event {
+        __poll_t events;       /* which conditions: EPOLLIN, EPOLLOUT, ... */
+        __u64 data;            /* chosen by the program, returned with each event */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Bit in <code>events</code></th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>EPOLLIN</code></td><td>a <code>read</code> would not block: data is available, or the peer has closed</td></tr>
+<tr><td><code>EPOLLOUT</code></td><td>a <code>write</code> would not block: there is room in the send buffer</td></tr>
+<tr><td><code>EPOLLHUP</code>, <code>EPOLLERR</code></td><td>the peer has closed, or an error is pending; always reported, without being requested</td></tr>
+<tr><td><code>EPOLLET</code></td><td>make the registration edge-triggered, explained below</td></tr>
+<tr><td><code>EPOLLONESHOT</code></td><td>report the descriptor once, then disable the registration until it is re-armed</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>data</code> is how the program recognises an event. The kernel does not interpret it. A
+program stores the descriptor number or a pointer to its own record of the connection,
+and gets it back in <code>epoll_wait</code>.</p>
+<p>A server on a single thread uses the calls in the following pattern.</p>
+<figure>
+<img src="figures/server-loop.svg" alt="The structure of a server built on epoll. epoll_create1 returns a descriptor for the instance. epoll_ctl adds the listening socket for EPOLLIN. epoll_wait sleeps until a descriptor is ready. For the listener, the server accepts the connection, sets it non-blocking, and adds it with epoll_ctl. For a connection, it reads until EAGAIN, handles the request and writes the reply. Then it returns to epoll_wait.">
+<figcaption><b>Figure 9.3</b> The loop of a server built on epoll.</figcaption>
+</figure>
+<p>The descriptors are in non-blocking mode. epoll reports that a descriptor is ready, and
+the non-blocking mode guarantees that the handler does not sleep if the situation has
+changed by the time it reads.</p>
+<h2 id="from-arriving-data-to-epoll_wait"><a class="header" href="#from-arriving-data-to-epoll_wait">From arriving data to epoll_wait</a></h2>
+<p>The claim that <code>epoll_wait</code> does work proportional to the number of ready descriptors
+rests on 1 mechanism, which we follow for a registered descriptor 7.</p>
+<ol>
+<li>At registration, <code>epoll_ctl</code> creates an item for descriptor 7 and adds an entry to
+the <em>wait queue</em> of the file behind it. A wait queue is the list of sleepers that the
+file wakes when its state changes (<a href="01-pipes.html">chapter 1</a>). The entry that epoll
+adds is a function in place of a sleeping thread.</li>
+<li>Later, data arrives for descriptor 7. The code that delivers the data, a <code>write</code> by
+another process or the network stack, wakes the wait queue of the file.</li>
+<li>Waking the queue calls the function, <code>ep_poll_callback</code>. It puts the item for
+descriptor 7 on the ready list of the epoll instance.</li>
+<li>It then wakes any thread that is asleep in <code>epoll_wait</code> on this instance.</li>
+<li><code>epoll_wait</code> takes the items from the ready list, asks each file once more whether it
+is really ready, and copies the events to the program.</li>
+</ol>
+<figure>
+<img src="figures/epoll-wake-path.svg" alt="How a descriptor reaches the ready list. A peer writes to descriptor 7 and data arrives in its buffer. The wait queue of the file is woken, as for any sleeping reader. The entry that epoll added to that queue runs ep_poll_callback, which puts the item on rdllist, the ready list of the epoll instance, and wakes the thread that sleeps in epoll_wait. epoll_wait returns the event with the stored data value.">
+<figcaption><b>Figure 9.4</b> The event itself puts the descriptor on the ready list.</figcaption>
+</figure>
+<p>No step searches the registered descriptors. The descriptor announces itself at the
+moment it becomes ready.</p>
+<h2 id="the-kernels-structures"><a class="header" href="#the-kernels-structures">The kernel’s structures</a></h2>
+<p>An epoll instance is a <code>struct eventpoll</code>, and each registration is a <code>struct epitem</code>.
+Both are defined in <code>fs/eventpoll.c</code> of Linux 5.15. These are the fields we use.</p>
+<pre><code class="language-c">struct eventpoll {
+        struct mutex mtx;                      /* held by epoll_ctl and epoll_wait */
+        wait_queue_head_t wq;                  /* threads asleep in epoll_wait */
+        struct list_head rdllist;              /* the ready list */
+        struct rb_root_cached rbr;             /* the interest list: a tree of epitems */
+        /* ... */
+};
+
+struct epitem {
+        struct rb_node rbn;                    /* its node in rbr */
+        struct list_head rdllink;              /* its link in rdllist */
+        struct epoll_filefd ffd;               /* the file and descriptor it watches */
+        struct eppoll_entry *pwqlist;          /* its entry on the file's wait queue */
+        struct eventpoll *ep;                  /* the instance it belongs to */
+        struct epoll_event event;              /* the events asked for, and data */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>rbr</code></td><td>The interest list. It is a red-black tree keyed by file and descriptor, so that <code>epoll_ctl</code> finds an existing registration quickly.</td></tr>
+<tr><td><code>rdllist</code></td><td>The ready list: a linked list of the items whose files have reported activity.</td></tr>
+<tr><td><code>wq</code></td><td>The threads that are asleep in <code>epoll_wait</code>. Step 4 wakes them.</td></tr>
+<tr><td><code>rdllink</code></td><td>An item is on the ready list when this link is in use, which also keeps an item from being added a second time.</td></tr>
+<tr><td><code>pwqlist</code></td><td>The entry of step 1.</td></tr>
+<tr><td><code>event</code></td><td>The <code>struct epoll_event</code> given at registration.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/epoll-structs.svg" alt="The structures of epoll. A struct eventpoll is the epoll instance, with rbr, the interest list as a tree of items, rdllist, the ready list, wq, the threads asleep in epoll_wait, and mtx. A struct epitem is a registration, with ffd, the file and descriptor watched, event, its node in the tree, its link in the ready list, and its entry on the file&#39;s wait queue. A struct epoll_event is what the program sees: events and 64 bits of data.">
+<figcaption><b>Figure 9.5</b> An epoll instance, a registration, and the event the program receives.</figcaption>
+</figure>
+<p>An epoll instance is itself a file, and the kernel shows its registrations in <code>/proc</code>.
+This is the session manager of our user account, pid 1203, whose descriptor 4 is an
+epoll instance:</p>
+<pre><code class="language-console">$ ls -l /proc/1203/fd | grep eventpoll
+4 -&gt; anon_inode:[eventpoll]
+$ cat /proc/1203/fdinfo/4
+pos:	0
+flags:	02000002
+tfd:       29 events:       19 data:     aaaaf18e8be0  pos:0 ino:b06c sdev:8
+tfd:       35 events:       19 data:     aaaaf1953a90  pos:0 ino:b06e sdev:8
+tfd:       15 events:       19 data:     aaaaf173f750  pos:0 ino:b049 sdev:8
+</code></pre>
+<figure>
+<img src="figures/epoll-fdinfo-annotated.svg" alt="2 lines of the fdinfo of an epoll descriptor explained. tfd 29 means descriptor 29 is registered. events 19 is hexadecimal for EPOLLIN, EPOLLERR and EPOLLHUP together. data is the value the program stored at registration, here the address of its own record for the descriptor.">
+<figcaption><b>Figure 9.6</b> 2 registrations of the listing, field by field.</figcaption>
+</figure>
+<p>Each <code>tfd</code> line is an item of the interest list: the descriptor it watches, the events
+in hexadecimal, and <code>data</code>. <code>19</code> is <code>EPOLLIN</code> (1), <code>EPOLLERR</code> (8) and <code>EPOLLHUP</code> (0x10)
+together. The <code>data</code> values are addresses in the memory of the program, which stored a
+pointer to its own record of each descriptor.</p>
+<h2 id="measuring-epoll"><a class="header" href="#measuring-epoll">Measuring epoll</a></h2>
+<p><code>epollfacts</code> uses <code>golang.org/x/sys/unix</code> in Go and the <code>nix</code> crate with the <code>event</code> and
+<code>fs</code> features in Rust.</p>
+<pre><code class="language-console">$ cargo new epollfacts
+$ cargo add -p epollfacts nix --features event,fs
+</code></pre>
+<p><code>watch</code> creates an epoll instance and a number of pipes, and registers the read end of
+each pipe for the event <code>EPOLLIN</code>, readability. A registration carries a value chosen by
+the program, here the number of the pipe, which the kernel returns with each event.
+<code>ready</code> calls <code>epoll_wait</code> with a timeout of 0, so that it reports the current state
+without blocking.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.1</b> The imports of <code>epollfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/epollfacts/main.go">code/go/epollfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"fmt"
+	"log"
+
+	"golang.org/x/sys/unix"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.2</b> The imports of <code>epollfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/epollfacts/src/main.rs">code/rust/epollfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::os::fd::OwnedFd;
+
+use nix::fcntl::OFlag;
+use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
+use nix::unistd::{pipe2, read, write};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.3</b> Creating an epoll instance and registering pipes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/epollfacts/main.go">code/go/epollfacts/main.go</a></p>
+
+<pre><code class="language-go">// A pipe is the pair of descriptors of one pipe.
+type pipe struct {
+	reader, writer int
+}
+
+// watch creates an epoll instance and n pipes, and registers the read end of
+// every pipe for readability with the given extra flags. The number of the
+// pipe is stored in the registration and comes back with each event.
+func watch(n int, flags uint32) (int, []pipe, error) {
+	epoll, err := unix.EpollCreate1(unix.EPOLL_CLOEXEC)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	pipes := make([]pipe, n)
+
+	for i := range pipes {
+		var fds [2]int
+
+		if err := unix.Pipe2(fds[:], unix.O_CLOEXEC); err != nil {
+			return 0, nil, err
+		}
+
+		pipes[i] = pipe{reader: fds[0], writer: fds[1]}
+		event := unix.EpollEvent{Events: unix.EPOLLIN | flags, Fd: int32(i)}
+
+		if err := unix.EpollCtl(epoll, unix.EPOLL_CTL_ADD, fds[0], &amp;event); err != nil {
+			return 0, nil, err
+		}
+	}
+
+	return epoll, pipes, nil
+}
+
+// ready returns the events that are ready now. A timeout of 0 makes the
+// wait return at once.
+func ready(epoll int) ([]unix.EpollEvent, error) {
+	events := make([]unix.EpollEvent, 16)
+	n, err := unix.EpollWait(epoll, events, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return events[:n], nil
+}
+
+// release closes an epoll instance and its pipes.
+func release(epoll int, pipes []pipe) {
+	unix.Close(epoll)
+
+	for _, p := range pipes {
+		unix.Close(p.reader)
+		unix.Close(p.writer)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.4</b> Creating an epoll instance and registering pipes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/epollfacts/src/main.rs">code/rust/epollfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The pair of descriptors of one pipe. The write end is an `Option` so that
+/// an experiment can close it.
+struct Pipe {
+    reader: OwnedFd,
+    writer: Option&lt;OwnedFd&gt;,
+}
+
+/// Creates an epoll instance and `n` pipes, and registers the read end of
+/// every pipe for readability with the given extra flags. The number of the
+/// pipe is stored in the registration and comes back with each event.
+fn watch(n: usize, flags: EpollFlags) -&gt; nix::Result&lt;(Epoll, Vec&lt;Pipe&gt;)&gt; {
+    let epoll = Epoll::new(EpollCreateFlags::EPOLL_CLOEXEC)?;
+    let mut pipes = Vec::with_capacity(n);
+
+    for i in 0..n {
+        let (reader, writer) = pipe2(OFlag::O_CLOEXEC)?;
+
+        epoll.add(
+            &amp;reader,
+            EpollEvent::new(EpollFlags::EPOLLIN | flags, i as u64),
+        )?;
+
+        pipes.push(Pipe {
+            reader,
+            writer: Some(writer),
+        });
+    }
+
+    Ok((epoll, pipes))
+}
+
+/// Returns the events that are ready now. A timeout of 0 makes the wait
+/// return at once.
+fn ready(epoll: &amp;Epoll) -&gt; nix::Result&lt;Vec&lt;EpollEvent&gt;&gt; {
+    let mut events = [EpollEvent::empty(); 16];
+    let n = epoll.wait(&amp;mut events, EpollTimeout::ZERO)?;
+
+    Ok(events[..n].to_vec())
+}
+
+/// Writes "hello" to a pipe whose write end is open.
+fn send(pipe: &amp;Pipe) -&gt; nix::Result&lt;()&gt; {
+    if let Some(writer) = &amp;pipe.writer {
+        write(writer, b"hello")?;
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>level</code> uses the default kind of registration, called level-triggered. It waits before
+any write, after a write to pipe 1, a second time without reading the data, after
+reading it, and after closing the write end.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.5</b> Level-triggered events, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/epollfacts/main.go">code/go/epollfacts/main.go</a></p>
+
+<pre><code class="language-go">// level registers 3 pipes level-triggered and waits before a write, after a
+// write, again without reading, and after reading.
+func level() error {
+	epoll, pipes, err := watch(3, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer release(epoll, pipes)
+
+	events, err := ready(epoll)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("3 pipes registered, none written: %d event(s)\n", len(events))
+
+	if _, err := unix.Write(pipes[1].writer, []byte("hello")); err != nil {
+		return err
+	}
+
+	events, err = ready(epoll)
+
+	if err != nil || len(events) != 1 {
+		return fmt.Errorf("wait after a write: %d events, %v", len(events), err)
+	}
+
+	fmt.Printf("write to pipe 1: 1 event, for pipe %d\n", events[0].Fd)
+
+	events, err = ready(epoll)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("level-triggered, data not read, wait again: %d event(s)\n", len(events))
+
+	if _, err := unix.Read(pipes[1].reader, make([]byte, 16)); err != nil {
+		return err
+	}
+
+	events, err = ready(epoll)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("after reading the data: %d event(s)\n", len(events))
+
+	unix.Close(pipes[1].writer)
+	events, err = ready(epoll)
+
+	if err != nil || len(events) != 1 {
+		return fmt.Errorf("wait after a close: %d events, %v", len(events), err)
+	}
+
+	fmt.Printf("write end of pipe 1 closed: event has EPOLLHUP %v\n", events[0].Events&amp;unix.EPOLLHUP != 0)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.6</b> Level-triggered events, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/epollfacts/src/main.rs">code/rust/epollfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Registers 3 pipes level-triggered and waits before a write, after a write,
+/// again without reading, and after reading.
+fn level() -&gt; nix::Result&lt;()&gt; {
+    let (epoll, mut pipes) = watch(3, EpollFlags::empty())?;
+
+    println!(
+        "3 pipes registered, none written: {} event(s)",
+        ready(&amp;epoll)?.len()
+    );
+
+    send(&amp;pipes[1])?;
+
+    if let [event] = ready(&amp;epoll)?.as_slice() {
+        println!("write to pipe 1: 1 event, for pipe {}", event.data());
+    }
+
+    println!(
+        "level-triggered, data not read, wait again: {} event(s)",
+        ready(&amp;epoll)?.len()
+    );
+
+    read(&amp;pipes[1].reader, &amp;mut [0u8; 16])?;
+    println!("after reading the data: {} event(s)", ready(&amp;epoll)?.len());
+
+    pipes[1].writer = None;
+
+    if let [event] = ready(&amp;epoll)?.as_slice() {
+        println!(
+            "write end of pipe 1 closed: event has EPOLLHUP {}",
+            event.events().contains(EpollFlags::EPOLLHUP)
+        );
+    }
+
+    Ok(())
+}</code></pre>
+<p><code>edge</code> registers a pipe with the flag <code>EPOLLET</code>, edge-triggered, and waits 2 times after
+a write and again after a further write.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.7</b> Edge-triggered events, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/epollfacts/main.go">code/go/epollfacts/main.go</a></p>
+
+<pre><code class="language-go">// edge registers a pipe edge-triggered and waits 2 times after one write,
+// and once more after a second write.
+func edge() error {
+	epoll, pipes, err := watch(1, unix.EPOLLET)
+
+	if err != nil {
+		return err
+	}
+
+	defer release(epoll, pipes)
+
+	var counts [3]int
+
+	for i := range counts {
+		if i != 1 {
+			if _, err := unix.Write(pipes[0].writer, []byte("hello")); err != nil {
+				return err
+			}
+		}
+
+		events, err := ready(epoll)
+
+		if err != nil {
+			return err
+		}
+
+		counts[i] = len(events)
+	}
+
+	fmt.Printf("edge-triggered, data not read: wait %d event(s), wait again %d event(s)\n", counts[0], counts[1])
+	fmt.Printf("edge-triggered, after another write: %d event(s)\n", counts[2])
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.8</b> Edge-triggered events, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/epollfacts/src/main.rs">code/rust/epollfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Registers a pipe edge-triggered and waits 2 times after one write, and
+/// once more after a second write.
+fn edge() -&gt; nix::Result&lt;()&gt; {
+    let (epoll, pipes) = watch(1, EpollFlags::EPOLLET)?;
+    let mut counts = [0; 3];
+
+    for (i, count) in counts.iter_mut().enumerate() {
+        if i != 1 {
+            send(&amp;pipes[0])?;
+        }
+
+        *count = ready(&amp;epoll)?.len();
+    }
+
+    println!(
+        "edge-triggered, data not read: wait {} event(s), wait again {} event(s)",
+        counts[0], counts[1]
+    );
+    println!(
+        "edge-triggered, after another write: {} event(s)",
+        counts[2]
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>many</code> registers 1000 pipes and writes to pipe 700.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.9</b> 1000 registrations and 1 ready descriptor, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/epollfacts/main.go">code/go/epollfacts/main.go</a></p>
+
+<pre><code class="language-go">// many registers 1000 pipes and writes to 1 of them.
+func many() error {
+	epoll, pipes, err := watch(1000, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer release(epoll, pipes)
+
+	if _, err := unix.Write(pipes[700].writer, []byte("hello")); err != nil {
+		return err
+	}
+
+	events, err := ready(epoll)
+
+	if err != nil || len(events) != 1 {
+		return fmt.Errorf("wait with 1000 pipes: %d events, %v", len(events), err)
+	}
+
+	fmt.Printf("1000 pipes registered, pipe 700 written: 1 event, for pipe %d\n", events[0].Fd)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.10</b> 1000 registrations and 1 ready descriptor, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/epollfacts/src/main.rs">code/rust/epollfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Registers 1000 pipes and writes to 1 of them.
+fn many() -&gt; nix::Result&lt;()&gt; {
+    let (epoll, pipes) = watch(1000, EpollFlags::empty())?;
+
+    send(&amp;pipes[700])?;
+
+    if let [event] = ready(&amp;epoll)?.as_slice() {
+        println!(
+            "1000 pipes registered, pipe 700 written: 1 event, for pipe {}",
+            event.data()
+        );
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">3 pipes registered, none written: 0 event(s)
+write to pipe 1: 1 event, for pipe 1
+level-triggered, data not read, wait again: 1 event(s)
+after reading the data: 0 event(s)
+write end of pipe 1 closed: event has EPOLLHUP true
+edge-triggered, data not read: wait 1 event(s), wait again 0 event(s)
+edge-triggered, after another write: 1 event(s)
+1000 pipes registered, pipe 700 written: 1 event, for pipe 700
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>0 events with nothing written</td><td>A wait reports only descriptors that are ready.</td></tr>
+<tr><td>1 event, for pipe 1</td><td>The event carries the value stored at registration, which identifies the descriptor.</td></tr>
+<tr><td>level-triggered: 1 event again</td><td>A level-triggered descriptor is reported for as long as data remains.</td></tr>
+<tr><td>0 events after reading</td><td>Reading the data ends the condition.</td></tr>
+<tr><td><code>EPOLLHUP</code> after the write end is closed</td><td>The end of the stream is reported as an event, without being requested.</td></tr>
+<tr><td>edge-triggered: 1 event, then 0</td><td>An edge-triggered descriptor is reported when data arrives and stays silent afterwards, with the data still unread.</td></tr>
+<tr><td>1 event after another write</td><td>New data produces a new event.</td></tr>
+<tr><td>1000 registered, 1 event</td><td>The wait returns the ready descriptor and no others.</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/level-edge.svg" alt="With a level-triggered registration, after a write the first wait returns 1 event, a second wait without reading returns 1 event again, and after reading all the data a wait returns 0 events. With an edge-triggered registration, after a write the first wait returns 1 event, a second wait returns 0 events, and after another write a wait returns 1 event.">
+<figcaption><b>Figure 9.7</b> The measured sequences for both kinds of registration.</figcaption>
+</figure>
+<p>The choice has a consequence for the handler. With a level-triggered registration, a
+handler may read part of the data and return; the descriptor is reported again. With an
+edge-triggered registration, a handler has to read until <code>read</code> returns <code>EAGAIN</code>,
+because no further event will announce the data it leaves behind. Edge-triggered
+registrations save repeated reports and are used by runtimes that follow this rule
+strictly.</p>
+<h2 id="modelling-epoll"><a class="header" href="#modelling-epoll">Modelling epoll</a></h2>
+<div class="lld">
+<p>Low-level design: <code>eventloop</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>pipe</code></td><td><code>buffered</code>, <code>registered</code>, <code>edge</code>, <code>queued</code></td><td>the bytes waiting; the registration; whether the pipe is on the ready list</td></tr>
+<tr><td><code>kernel</code></td><td><code>pipes</code>, <code>ready</code>, <code>examined</code></td><td>the pipes; the ready list in order of arrival; a counter of registrations examined</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th></tr>
+</thead>
+<tbody>
+<tr><td><code>register(index, edge)</code></td><td>adds a pipe to the interest list; queues it if it is already readable</td></tr>
+<tr><td><code>write(index, n)</code></td><td>adds bytes; puts a registered pipe on the ready list</td></tr>
+<tr><td><code>wait()</code></td><td>empties the ready list; returns the pipes that are still readable; queues the level-triggered ones again</td></tr>
+<tr><td><code>scan()</code></td><td>examines every registered pipe, as <code>select</code> and <code>poll</code> do</td></tr>
+<tr><td><code>turn(handle)</code></td><td>waits, then calls the handler for each ready pipe</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>A pipe is reduced to a count of buffered bytes. The <code>queued</code> flag keeps a pipe from
+appearing on the ready list more than once.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.11</b> The imports of <code>eventloop</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">import "fmt"
+</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.12</b> Pipes, the interest list and the ready list, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">// A pipe is the read end of a pipe as epoll sees it: the bytes waiting to be
+// read, and its registration. queued is set while the pipe is on the ready
+// list.
+type pipe struct {
+	buffered   int
+	registered bool
+	edge       bool
+	queued     bool
+}
+
+// A kernel holds the pipes and one epoll instance. The registered pipes are
+// the interest list. ready is the ready list, in the order in which the
+// pipes became ready. examined counts the registrations that waits and scans
+// have looked at.
+type kernel struct {
+	pipes    []pipe
+	ready    []int
+	examined int
+}
+
+func newKernel(pipes int) *kernel {
+	return &amp;kernel{pipes: make([]pipe, pipes)}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.13</b> Pipes, the interest list and the ready list, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/eventloop/src/main.rs">code/rust/eventloop/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The read end of a pipe as epoll sees it: the bytes waiting to be read, and
+/// its registration. `queued` is set while the pipe is on the ready list.
+#[derive(Clone, Default)]
+struct Pipe {
+    buffered: usize,
+    registered: bool,
+    edge: bool,
+    queued: bool,
+}
+
+/// Holds the pipes and one epoll instance. The registered pipes are the
+/// interest list. `ready` is the ready list, in the order in which the pipes
+/// became ready. `examined` counts the registrations that waits and scans
+/// have looked at.
+struct Kernel {
+    pipes: Vec&lt;Pipe&gt;,
+    ready: Vec&lt;usize&gt;,
+    examined: usize,
+}
+
+impl Kernel {
+    fn new(pipes: usize) -&gt; Kernel {
+        Kernel {
+            pipes: vec![Pipe::default(); pipes],
+            ready: Vec::new(),
+            examined: 0,
+        }
+    }
+}</code></pre>
+<p><code>write</code> is where a pipe becomes ready, and it is <code>write</code> that queues the pipe. No part
+of the model searches for ready pipes.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.14</b> Registering, and queuing on a write, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">// register adds a pipe to the interest list. A pipe that is already
+// readable goes on the ready list at once.
+func (k *kernel) register(index int, edge bool) {
+	p := &amp;k.pipes[index]
+	p.registered, p.edge = true, edge
+
+	if p.buffered &gt; 0 {
+		k.enqueue(index)
+	}
+}
+
+// enqueue puts a pipe on the ready list unless it is already there.
+func (k *kernel) enqueue(index int) {
+	if p := &amp;k.pipes[index]; !p.queued {
+		p.queued = true
+		k.ready = append(k.ready, index)
+	}
+}
+
+// write adds bytes to a pipe. This is the moment the pipe becomes ready, and
+// the writer puts it on the ready list.
+func (k *kernel) write(index, n int) {
+	k.pipes[index].buffered += n
+
+	if k.pipes[index].registered {
+		k.enqueue(index)
+	}
+}
+
+// read removes up to n bytes from a pipe and returns the number removed.
+func (k *kernel) read(index, n int) int {
+	n = min(n, k.pipes[index].buffered)
+	k.pipes[index].buffered -= n
+
+	return n
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.15</b> Registering, and queuing on a write, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/eventloop/src/main.rs">code/rust/eventloop/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Adds a pipe to the interest list. A pipe that is already readable goes
+    /// on the ready list at once.
+    fn register(&amp;mut self, index: usize, edge: bool) {
+        let pipe = &amp;mut self.pipes[index];
+
+        pipe.registered = true;
+        pipe.edge = edge;
+
+        if pipe.buffered &gt; 0 {
+            self.enqueue(index);
+        }
+    }
+
+    /// Puts a pipe on the ready list unless it is already there.
+    fn enqueue(&amp;mut self, index: usize) {
+        if !self.pipes[index].queued {
+            self.pipes[index].queued = true;
+            self.ready.push(index);
+        }
+    }
+
+    /// Adds bytes to a pipe. This is the moment the pipe becomes ready, and
+    /// the writer puts it on the ready list.
+    fn write(&amp;mut self, index: usize, n: usize) {
+        self.pipes[index].buffered += n;
+
+        if self.pipes[index].registered {
+            self.enqueue(index);
+        }
+    }
+
+    /// Removes up to `n` bytes from a pipe and returns the number removed.
+    fn read(&amp;mut self, index: usize, n: usize) -&gt; usize {
+        let n = n.min(self.pipes[index].buffered);
+        self.pipes[index].buffered -= n;
+
+        n
+    }
+}</code></pre>
+<p><code>wait</code> takes the ready list and checks each entry again, since the data may have been
+read in the meantime. The difference between the kinds of registration is a single
+statement: a level-triggered pipe that is reported is queued again, and an
+edge-triggered pipe is left off the list until the next <code>write</code> queues it.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.16</b> Waiting, and scanning for comparison, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">// wait empties the ready list and returns the pipes on it that are still
+// readable. A level-triggered pipe that is reported goes back on the list,
+// so the next wait checks it again. An edge-triggered pipe does not, and is
+// reported again only after another write.
+func (k *kernel) wait() []int {
+	queued := k.ready
+	k.ready = nil
+
+	var events []int
+
+	for _, index := range queued {
+		p := &amp;k.pipes[index]
+		p.queued = false
+		k.examined++
+
+		if p.buffered == 0 {
+			continue
+		}
+
+		events = append(events, index)
+
+		if !p.edge {
+			k.enqueue(index)
+		}
+	}
+
+	return events
+}
+
+// scan is the method of select and poll: it examines every registered pipe
+// on every call.
+func (k *kernel) scan() []int {
+	var events []int
+
+	for index, p := range k.pipes {
+		if !p.registered {
+			continue
+		}
+
+		k.examined++
+
+		if p.buffered &gt; 0 {
+			events = append(events, index)
+		}
+	}
+
+	return events
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.17</b> Waiting, and scanning for comparison, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/eventloop/src/main.rs">code/rust/eventloop/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Empties the ready list and returns the pipes on it that are still
+    /// readable. A level-triggered pipe that is reported goes back on the
+    /// list, so the next wait checks it again. An edge-triggered pipe does
+    /// not, and is reported again only after another write.
+    fn wait(&amp;mut self) -&gt; Vec&lt;usize&gt; {
+        let queued = std::mem::take(&amp;mut self.ready);
+        let mut events = Vec::new();
+
+        for index in queued {
+            self.pipes[index].queued = false;
+            self.examined += 1;
+
+            if self.pipes[index].buffered == 0 {
+                continue;
+            }
+
+            events.push(index);
+
+            if !self.pipes[index].edge {
+                self.enqueue(index);
+            }
+        }
+
+        events
+    }
+
+    /// The method of select and poll: it examines every registered pipe on
+    /// every call.
+    fn scan(&amp;mut self) -&gt; Vec&lt;usize&gt; {
+        let mut events = Vec::new();
+
+        for (index, pipe) in self.pipes.iter().enumerate() {
+            if !pipe.registered {
+                continue;
+            }
+
+            self.examined += 1;
+
+            if pipe.buffered &gt; 0 {
+                events.push(index);
+            }
+        }
+
+        events
+    }
+}</code></pre>
+<p>The model repeats the measurements. <code>many</code> also counts how many registrations a wait
+and a scan examine.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.18</b> The measurements on the model, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">// level repeats the level-triggered measurement of epollfacts.
+func level() {
+	k := newKernel(3)
+
+	for index := range k.pipes {
+		k.register(index, false)
+	}
+
+	fmt.Printf("3 pipes registered, none written: %d event(s)\n", len(k.wait()))
+
+	k.write(1, 5)
+
+	if events := k.wait(); len(events) == 1 {
+		fmt.Printf("write to pipe 1: 1 event, for pipe %d\n", events[0])
+	}
+
+	fmt.Printf("level-triggered, data not read, wait again: %d event(s)\n", len(k.wait()))
+
+	k.read(1, 16)
+	fmt.Printf("after reading the data: %d event(s)\n", len(k.wait()))
+}
+
+// edge repeats the edge-triggered measurement.
+func edge() {
+	k := newKernel(1)
+	k.register(0, true)
+
+	k.write(0, 5)
+	first, second := len(k.wait()), len(k.wait())
+	fmt.Printf("edge-triggered, data not read: wait %d event(s), wait again %d event(s)\n", first, second)
+
+	k.write(0, 5)
+	fmt.Printf("edge-triggered, after another write: %d event(s)\n", len(k.wait()))
+}
+
+// many compares the work of a wait with the work of a scan when 1000 pipes
+// are registered and 1 is ready.
+func many() {
+	k := newKernel(1000)
+
+	for index := range k.pipes {
+		k.register(index, false)
+	}
+
+	k.write(700, 5)
+
+	if events := k.wait(); len(events) == 1 {
+		fmt.Printf("1000 pipes registered, pipe 700 written: 1 event, for pipe %d\n", events[0])
+	}
+
+	byWait := k.examined
+	k.scan()
+	fmt.Printf("registrations examined: %d by the wait, %d by a scan\n", byWait, k.examined-byWait)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.19</b> The measurements on the model, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/eventloop/src/main.rs">code/rust/eventloop/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Repeats the level-triggered measurement of epollfacts.
+fn level() {
+    let mut kernel = Kernel::new(3);
+
+    for index in 0..3 {
+        kernel.register(index, false);
+    }
+
+    println!(
+        "3 pipes registered, none written: {} event(s)",
+        kernel.wait().len()
+    );
+
+    kernel.write(1, 5);
+
+    if let [index] = kernel.wait().as_slice() {
+        println!("write to pipe 1: 1 event, for pipe {index}");
+    }
+
+    println!(
+        "level-triggered, data not read, wait again: {} event(s)",
+        kernel.wait().len()
+    );
+
+    kernel.read(1, 16);
+    println!("after reading the data: {} event(s)", kernel.wait().len());
+}
+
+/// Repeats the edge-triggered measurement.
+fn edge() {
+    let mut kernel = Kernel::new(1);
+    kernel.register(0, true);
+
+    kernel.write(0, 5);
+    let (first, second) = (kernel.wait().len(), kernel.wait().len());
+    println!("edge-triggered, data not read: wait {first} event(s), wait again {second} event(s)");
+
+    kernel.write(0, 5);
+    println!(
+        "edge-triggered, after another write: {} event(s)",
+        kernel.wait().len()
+    );
+}
+
+/// Compares the work of a wait with the work of a scan when 1000 pipes are
+/// registered and 1 is ready.
+fn many() {
+    let mut kernel = Kernel::new(1000);
+
+    for index in 0..1000 {
+        kernel.register(index, false);
+    }
+
+    kernel.write(700, 5);
+
+    if let [index] = kernel.wait().as_slice() {
+        println!("1000 pipes registered, pipe 700 written: 1 event, for pipe {index}");
+    }
+
+    let by_wait = kernel.examined;
+    kernel.scan();
+    println!(
+        "registrations examined: {by_wait} by the wait, {} by a scan",
+        kernel.examined - by_wait
+    );
+}</code></pre>
+<h3 id="the-loop"><a class="header" href="#the-loop">The loop</a></h3>
+<p>An event loop repeats 2 steps: wait for events, then run the handler of each ready
+descriptor. A handler must return quickly and must not block, because every other
+descriptor waits while it runs.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.20</b> An event loop on the model, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">// turn is one iteration of an event loop: wait for ready pipes, then run the
+// handler for each. It returns the pipes it handled.
+func (k *kernel) turn(handle func(k *kernel, index int)) []int {
+	events := k.wait()
+
+	for _, index := range events {
+		handle(k, index)
+	}
+
+	return events
+}
+
+// loop registers 4 pipes, writes to 2 of them, and runs an event loop whose
+// handler reads at most 4 bytes for each event.
+func loop() {
+	k := newKernel(4)
+
+	for index := range k.pipes {
+		k.register(index, false)
+	}
+
+	k.write(2, 5)
+	k.write(0, 3)
+
+	handle := func(k *kernel, index int) { k.read(index, 4) }
+
+	fmt.Printf("event loop: turn 1 handles %v, turn 2 handles %v, turn 3 handles %v\n",
+		k.turn(handle), k.turn(handle), k.turn(handle))
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 9.21</b> An event loop on the model, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/eventloop/src/main.rs">code/rust/eventloop/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// One iteration of an event loop: wait for ready pipes, then run the
+    /// handler for each. Returns the pipes it handled.
+    fn turn(&amp;mut self, handle: fn(&amp;mut Kernel, usize)) -&gt; Vec&lt;usize&gt; {
+        let events = self.wait();
+
+        for &amp;index in &amp;events {
+            handle(self, index);
+        }
+
+        events
+    }
+}
+
+/// Formats pipe numbers the way Go prints a slice.
+fn list(pipes: &amp;[usize]) -&gt; String {
+    let words: Vec&lt;String&gt; = pipes.iter().map(usize::to_string).collect();
+
+    format!("[{}]", words.join(" "))
+}
+
+/// Registers 4 pipes, writes to 2 of them, and runs an event loop whose
+/// handler reads at most 4 bytes for each event.
+fn event_loop() {
+    let mut kernel = Kernel::new(4);
+
+    for index in 0..4 {
+        kernel.register(index, false);
+    }
+
+    kernel.write(2, 5);
+    kernel.write(0, 3);
+
+    let handle = |kernel: &amp;mut Kernel, index: usize| {
+        kernel.read(index, 4);
+    };
+
+    let turns = [
+        kernel.turn(handle),
+        kernel.turn(handle),
+        kernel.turn(handle),
+    ];
+
+    println!(
+        "event loop: turn 1 handles {}, turn 2 handles {}, turn 3 handles {}",
+        list(&amp;turns[0]),
+        list(&amp;turns[1]),
+        list(&amp;turns[2])
+    );
+}</code></pre>
+<figure class="anim">
+<video class="motion" src="figures/epoll-ready.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="6 pipes are registered with an epoll instance and the ready list is empty. A write of 5 bytes to pipe 4 puts it on the ready list, and a write of 3 bytes to pipe 1 puts it behind pipe 4. epoll_wait returns pipes 4 and 1. The handler reads 4 bytes from each, which empties pipe 1 and leaves 1 byte in pipe 4. Both stay on the list. The next wait drops pipe 1 and reports pipe 4, and the handler reads its last byte. The wait after that drops pipe 4, the list is empty, and the loop sleeps." data-chapters="[[0.0, &quot;&quot;], [2.46, &quot;writes&quot;], [13.62, &quot;wait&quot;], [26.58, &quot;again&quot;], [37.86, &quot;idle&quot;]]"><img src="figures/epoll-ready.gif" alt="6 pipes are registered with an epoll instance and the ready list is empty. A write of 5 bytes to pipe 4 puts it on the ready list, and a write of 3 bytes to pipe 1 puts it behind pipe 4. epoll_wait returns pipes 4 and 1. The handler reads 4 bytes from each, which empties pipe 1 and leaves 1 byte in pipe 4. Both stay on the list. The next wait drops pipe 1 and reports pipe 4, and the handler reads its last byte. The wait after that drops pipe 4, the list is empty, and the loop sleeps."></video>
+<figcaption><b>Animation 9.1</b> Writes fill the ready list, and a wait returns it.</figcaption>
+</figure>
+<pre><code class="language-text">3 pipes registered, none written: 0 event(s)
+write to pipe 1: 1 event, for pipe 1
+level-triggered, data not read, wait again: 1 event(s)
+after reading the data: 0 event(s)
+edge-triggered, data not read: wait 1 event(s), wait again 0 event(s)
+edge-triggered, after another write: 1 event(s)
+1000 pipes registered, pipe 700 written: 1 event, for pipe 700
+registrations examined: 1 by the wait, 1000 by a scan
+event loop: turn 1 handles [2 0], turn 2 handles [2], turn 3 handles []
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Line</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>lines 1 to 7</td><td>The model gives the event counts that <code>epollfacts</code> measured.</td></tr>
+<tr><td>1 examined by the wait, 1000 by a scan</td><td>The wait looked at the ready list. A scan looks at every registration.</td></tr>
+<tr><td>turn 1 handles <code>[2 0]</code></td><td>Events are returned in the order the pipes became ready.</td></tr>
+<tr><td>turn 2 handles <code>[2]</code></td><td>The handler read 4 of the 5 bytes of pipe 2, and a level-triggered pipe with data left is reported again.</td></tr>
+<tr><td>turn 3 handles <code>[]</code></td><td>Nothing is ready. A real loop would sleep in <code>epoll_wait</code> here.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+<p><strong>Correspondence with the kernel source.</strong> The model corresponds to <code>fs/eventpoll.c</code>.
+An epoll instance is <code>struct eventpoll</code>, with the interest list in the red-black tree
+<code>rbr</code> and the ready list in <code>rdllist</code>. A registration is <code>struct epitem</code>.
+<code>ep_poll_callback</code> is the wake-up function that queues an item when its file becomes
+ready, and <code>ep_send_events</code> is the loop of <code>wait</code>: it polls each queued item again,
+copies the event to the program, and adds the item back to <code>rdllist</code> unless <code>EPOLLET</code>
+is set.</p>
+</div>
+
+<div class="crab crab-cute">
+<p>A handler must return quickly. Every other descriptor waits while it runs.</p>
+</div>
+
+<h2 id="epoll-inside-language-runtimes"><a class="header" href="#epoll-inside-language-runtimes">Epoll inside language runtimes</a></h2>
+<p>Go and Rust programs rarely call epoll directly, and nearly all of their network I/O
+goes through it.</p>
+<p>The Go runtime has a component called the <em>netpoller</em>. Every socket a Go program opens
+is put in non-blocking mode and registered, edge-triggered, with a single epoll
+instance. When a goroutine calls <code>Read</code> and the kernel answers <code>EAGAIN</code>, the runtime
+parks the goroutine, which costs no thread, and runs another. A wake-up from epoll makes
+the parked goroutine runnable again. The code reads as if it blocked, and underneath it
+is the event loop of this chapter.</p>
+<p>In Rust, an async runtime such as Tokio does the same for futures. A future that cannot
+make progress registers its descriptor and returns <code>Pending</code>. The runtime’s reactor
+calls <code>epoll_wait</code>, and wakes the task that owns a descriptor when its event arrives.</p>
+<h2 id="inspecting-epoll-on-a-live-system"><a class="header" href="#inspecting-epoll-on-a-live-system">Inspecting epoll on a live system</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ls -l /proc/&lt;pid&gt;/fd | grep eventpoll</code></td><td>the epoll instances of a process</td></tr>
+<tr><td><code>cat /proc/&lt;pid&gt;/fdinfo/&lt;n&gt;</code></td><td>for an epoll descriptor: every registration, with its events and data</td></tr>
+<tr><td><code>strace -e trace=epoll_wait,epoll_ctl -p &lt;pid&gt;</code></td><td>the registrations a process makes and the events it receives</td></tr>
+<tr><td><code>cat /proc/sys/fs/epoll/max_user_watches</code></td><td>the number of registrations a user may hold: 3563520 here</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.22</b> The complete <code>epollfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/epollfacts/main.go">code/go/epollfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command epollfacts measures epoll with pipes: which descriptors a wait
+// reports, how level-triggered and edge-triggered registrations differ, how
+// a closed peer is reported, and how many events a wait returns when 1000
+// descriptors are registered and 1 is ready.
+//
+// Run it from code/go with:
+//
+//	go run ./epollfacts
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"golang.org/x/sys/unix"
+)
+
+
+// A pipe is the pair of descriptors of one pipe.
+type pipe struct {
+	reader, writer int
+}
+
+// watch creates an epoll instance and n pipes, and registers the read end of
+// every pipe for readability with the given extra flags. The number of the
+// pipe is stored in the registration and comes back with each event.
+func watch(n int, flags uint32) (int, []pipe, error) {
+	epoll, err := unix.EpollCreate1(unix.EPOLL_CLOEXEC)
+
+	if err != nil {
+		return 0, nil, err
+	}
+
+	pipes := make([]pipe, n)
+
+	for i := range pipes {
+		var fds [2]int
+
+		if err := unix.Pipe2(fds[:], unix.O_CLOEXEC); err != nil {
+			return 0, nil, err
+		}
+
+		pipes[i] = pipe{reader: fds[0], writer: fds[1]}
+		event := unix.EpollEvent{Events: unix.EPOLLIN | flags, Fd: int32(i)}
+
+		if err := unix.EpollCtl(epoll, unix.EPOLL_CTL_ADD, fds[0], &amp;event); err != nil {
+			return 0, nil, err
+		}
+	}
+
+	return epoll, pipes, nil
+}
+
+// ready returns the events that are ready now. A timeout of 0 makes the
+// wait return at once.
+func ready(epoll int) ([]unix.EpollEvent, error) {
+	events := make([]unix.EpollEvent, 16)
+	n, err := unix.EpollWait(epoll, events, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return events[:n], nil
+}
+
+// release closes an epoll instance and its pipes.
+func release(epoll int, pipes []pipe) {
+	unix.Close(epoll)
+
+	for _, p := range pipes {
+		unix.Close(p.reader)
+		unix.Close(p.writer)
+	}
+}
+
+
+// level registers 3 pipes level-triggered and waits before a write, after a
+// write, again without reading, and after reading.
+func level() error {
+	epoll, pipes, err := watch(3, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer release(epoll, pipes)
+
+	events, err := ready(epoll)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("3 pipes registered, none written: %d event(s)\n", len(events))
+
+	if _, err := unix.Write(pipes[1].writer, []byte("hello")); err != nil {
+		return err
+	}
+
+	events, err = ready(epoll)
+
+	if err != nil || len(events) != 1 {
+		return fmt.Errorf("wait after a write: %d events, %v", len(events), err)
+	}
+
+	fmt.Printf("write to pipe 1: 1 event, for pipe %d\n", events[0].Fd)
+
+	events, err = ready(epoll)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("level-triggered, data not read, wait again: %d event(s)\n", len(events))
+
+	if _, err := unix.Read(pipes[1].reader, make([]byte, 16)); err != nil {
+		return err
+	}
+
+	events, err = ready(epoll)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("after reading the data: %d event(s)\n", len(events))
+
+	unix.Close(pipes[1].writer)
+	events, err = ready(epoll)
+
+	if err != nil || len(events) != 1 {
+		return fmt.Errorf("wait after a close: %d events, %v", len(events), err)
+	}
+
+	fmt.Printf("write end of pipe 1 closed: event has EPOLLHUP %v\n", events[0].Events&amp;unix.EPOLLHUP != 0)
+
+	return nil
+}
+
+
+// edge registers a pipe edge-triggered and waits 2 times after one write,
+// and once more after a second write.
+func edge() error {
+	epoll, pipes, err := watch(1, unix.EPOLLET)
+
+	if err != nil {
+		return err
+	}
+
+	defer release(epoll, pipes)
+
+	var counts [3]int
+
+	for i := range counts {
+		if i != 1 {
+			if _, err := unix.Write(pipes[0].writer, []byte("hello")); err != nil {
+				return err
+			}
+		}
+
+		events, err := ready(epoll)
+
+		if err != nil {
+			return err
+		}
+
+		counts[i] = len(events)
+	}
+
+	fmt.Printf("edge-triggered, data not read: wait %d event(s), wait again %d event(s)\n", counts[0], counts[1])
+	fmt.Printf("edge-triggered, after another write: %d event(s)\n", counts[2])
+
+	return nil
+}
+
+
+// many registers 1000 pipes and writes to 1 of them.
+func many() error {
+	epoll, pipes, err := watch(1000, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer release(epoll, pipes)
+
+	if _, err := unix.Write(pipes[700].writer, []byte("hello")); err != nil {
+		return err
+	}
+
+	events, err := ready(epoll)
+
+	if err != nil || len(events) != 1 {
+		return fmt.Errorf("wait with 1000 pipes: %d events, %v", len(events), err)
+	}
+
+	fmt.Printf("1000 pipes registered, pipe 700 written: 1 event, for pipe %d\n", events[0].Fd)
+
+	return nil
+}
+
+
+func main() {
+	for _, experiment := range []func() error{level, edge, many} {
+		if err := experiment(); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 9.23</b> The complete <code>epollfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/epollfacts/src/main.rs">code/rust/epollfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures epoll with pipes: which descriptors a wait reports, how
+//! level-triggered and edge-triggered registrations differ, how a closed peer
+//! is reported, and how many events a wait returns when 1000 descriptors are
+//! registered and 1 is ready.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p epollfacts
+//! ```
+
+use std::os::fd::OwnedFd;
+
+use nix::fcntl::OFlag;
+use nix::sys::epoll::{Epoll, EpollCreateFlags, EpollEvent, EpollFlags, EpollTimeout};
+use nix::unistd::{pipe2, read, write};
+
+/// The pair of descriptors of one pipe. The write end is an `Option` so that
+/// an experiment can close it.
+struct Pipe {
+    reader: OwnedFd,
+    writer: Option&lt;OwnedFd&gt;,
+}
+
+/// Creates an epoll instance and `n` pipes, and registers the read end of
+/// every pipe for readability with the given extra flags. The number of the
+/// pipe is stored in the registration and comes back with each event.
+fn watch(n: usize, flags: EpollFlags) -&gt; nix::Result&lt;(Epoll, Vec&lt;Pipe&gt;)&gt; {
+    let epoll = Epoll::new(EpollCreateFlags::EPOLL_CLOEXEC)?;
+    let mut pipes = Vec::with_capacity(n);
+
+    for i in 0..n {
+        let (reader, writer) = pipe2(OFlag::O_CLOEXEC)?;
+
+        epoll.add(
+            &amp;reader,
+            EpollEvent::new(EpollFlags::EPOLLIN | flags, i as u64),
+        )?;
+
+        pipes.push(Pipe {
+            reader,
+            writer: Some(writer),
+        });
+    }
+
+    Ok((epoll, pipes))
+}
+
+/// Returns the events that are ready now. A timeout of 0 makes the wait
+/// return at once.
+fn ready(epoll: &amp;Epoll) -&gt; nix::Result&lt;Vec&lt;EpollEvent&gt;&gt; {
+    let mut events = [EpollEvent::empty(); 16];
+    let n = epoll.wait(&amp;mut events, EpollTimeout::ZERO)?;
+
+    Ok(events[..n].to_vec())
+}
+
+/// Writes "hello" to a pipe whose write end is open.
+fn send(pipe: &amp;Pipe) -&gt; nix::Result&lt;()&gt; {
+    if let Some(writer) = &amp;pipe.writer {
+        write(writer, b"hello")?;
+    }
+
+    Ok(())
+}
+
+/// Registers 3 pipes level-triggered and waits before a write, after a write,
+/// again without reading, and after reading.
+fn level() -&gt; nix::Result&lt;()&gt; {
+    let (epoll, mut pipes) = watch(3, EpollFlags::empty())?;
+
+    println!(
+        "3 pipes registered, none written: {} event(s)",
+        ready(&amp;epoll)?.len()
+    );
+
+    send(&amp;pipes[1])?;
+
+    if let [event] = ready(&amp;epoll)?.as_slice() {
+        println!("write to pipe 1: 1 event, for pipe {}", event.data());
+    }
+
+    println!(
+        "level-triggered, data not read, wait again: {} event(s)",
+        ready(&amp;epoll)?.len()
+    );
+
+    read(&amp;pipes[1].reader, &amp;mut [0u8; 16])?;
+    println!("after reading the data: {} event(s)", ready(&amp;epoll)?.len());
+
+    pipes[1].writer = None;
+
+    if let [event] = ready(&amp;epoll)?.as_slice() {
+        println!(
+            "write end of pipe 1 closed: event has EPOLLHUP {}",
+            event.events().contains(EpollFlags::EPOLLHUP)
+        );
+    }
+
+    Ok(())
+}
+
+/// Registers a pipe edge-triggered and waits 2 times after one write, and
+/// once more after a second write.
+fn edge() -&gt; nix::Result&lt;()&gt; {
+    let (epoll, pipes) = watch(1, EpollFlags::EPOLLET)?;
+    let mut counts = [0; 3];
+
+    for (i, count) in counts.iter_mut().enumerate() {
+        if i != 1 {
+            send(&amp;pipes[0])?;
+        }
+
+        *count = ready(&amp;epoll)?.len();
+    }
+
+    println!(
+        "edge-triggered, data not read: wait {} event(s), wait again {} event(s)",
+        counts[0], counts[1]
+    );
+    println!(
+        "edge-triggered, after another write: {} event(s)",
+        counts[2]
+    );
+
+    Ok(())
+}
+
+/// Registers 1000 pipes and writes to 1 of them.
+fn many() -&gt; nix::Result&lt;()&gt; {
+    let (epoll, pipes) = watch(1000, EpollFlags::empty())?;
+
+    send(&amp;pipes[700])?;
+
+    if let [event] = ready(&amp;epoll)?.as_slice() {
+        println!(
+            "1000 pipes registered, pipe 700 written: 1 event, for pipe {}",
+            event.data()
+        );
+    }
+
+    Ok(())
+}
+
+fn main() -&gt; nix::Result&lt;()&gt; {
+    level()?;
+    edge()?;
+    many()
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 9.24</b> The complete <code>eventloop</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/eventloop/main.go">code/go/eventloop/main.go</a></p>
+
+<pre><code class="language-go">// Command eventloop models epoll: an interest list of registered pipes, a
+// ready list that a write fills, and a wait that examines only the ready
+// list. It repeats the measurements of epollfacts on the model and then runs
+// a small event loop on it.
+//
+// Run it from code/go with:
+//
+//	go run ./eventloop
+package main
+
+import "fmt"
+
+
+// A pipe is the read end of a pipe as epoll sees it: the bytes waiting to be
+// read, and its registration. queued is set while the pipe is on the ready
+// list.
+type pipe struct {
+	buffered   int
+	registered bool
+	edge       bool
+	queued     bool
+}
+
+// A kernel holds the pipes and one epoll instance. The registered pipes are
+// the interest list. ready is the ready list, in the order in which the
+// pipes became ready. examined counts the registrations that waits and scans
+// have looked at.
+type kernel struct {
+	pipes    []pipe
+	ready    []int
+	examined int
+}
+
+func newKernel(pipes int) *kernel {
+	return &amp;kernel{pipes: make([]pipe, pipes)}
+}
+
+
+// register adds a pipe to the interest list. A pipe that is already
+// readable goes on the ready list at once.
+func (k *kernel) register(index int, edge bool) {
+	p := &amp;k.pipes[index]
+	p.registered, p.edge = true, edge
+
+	if p.buffered &gt; 0 {
+		k.enqueue(index)
+	}
+}
+
+// enqueue puts a pipe on the ready list unless it is already there.
+func (k *kernel) enqueue(index int) {
+	if p := &amp;k.pipes[index]; !p.queued {
+		p.queued = true
+		k.ready = append(k.ready, index)
+	}
+}
+
+// write adds bytes to a pipe. This is the moment the pipe becomes ready, and
+// the writer puts it on the ready list.
+func (k *kernel) write(index, n int) {
+	k.pipes[index].buffered += n
+
+	if k.pipes[index].registered {
+		k.enqueue(index)
+	}
+}
+
+// read removes up to n bytes from a pipe and returns the number removed.
+func (k *kernel) read(index, n int) int {
+	n = min(n, k.pipes[index].buffered)
+	k.pipes[index].buffered -= n
+
+	return n
+}
+
+
+// wait empties the ready list and returns the pipes on it that are still
+// readable. A level-triggered pipe that is reported goes back on the list,
+// so the next wait checks it again. An edge-triggered pipe does not, and is
+// reported again only after another write.
+func (k *kernel) wait() []int {
+	queued := k.ready
+	k.ready = nil
+
+	var events []int
+
+	for _, index := range queued {
+		p := &amp;k.pipes[index]
+		p.queued = false
+		k.examined++
+
+		if p.buffered == 0 {
+			continue
+		}
+
+		events = append(events, index)
+
+		if !p.edge {
+			k.enqueue(index)
+		}
+	}
+
+	return events
+}
+
+// scan is the method of select and poll: it examines every registered pipe
+// on every call.
+func (k *kernel) scan() []int {
+	var events []int
+
+	for index, p := range k.pipes {
+		if !p.registered {
+			continue
+		}
+
+		k.examined++
+
+		if p.buffered &gt; 0 {
+			events = append(events, index)
+		}
+	}
+
+	return events
+}
+
+
+// level repeats the level-triggered measurement of epollfacts.
+func level() {
+	k := newKernel(3)
+
+	for index := range k.pipes {
+		k.register(index, false)
+	}
+
+	fmt.Printf("3 pipes registered, none written: %d event(s)\n", len(k.wait()))
+
+	k.write(1, 5)
+
+	if events := k.wait(); len(events) == 1 {
+		fmt.Printf("write to pipe 1: 1 event, for pipe %d\n", events[0])
+	}
+
+	fmt.Printf("level-triggered, data not read, wait again: %d event(s)\n", len(k.wait()))
+
+	k.read(1, 16)
+	fmt.Printf("after reading the data: %d event(s)\n", len(k.wait()))
+}
+
+// edge repeats the edge-triggered measurement.
+func edge() {
+	k := newKernel(1)
+	k.register(0, true)
+
+	k.write(0, 5)
+	first, second := len(k.wait()), len(k.wait())
+	fmt.Printf("edge-triggered, data not read: wait %d event(s), wait again %d event(s)\n", first, second)
+
+	k.write(0, 5)
+	fmt.Printf("edge-triggered, after another write: %d event(s)\n", len(k.wait()))
+}
+
+// many compares the work of a wait with the work of a scan when 1000 pipes
+// are registered and 1 is ready.
+func many() {
+	k := newKernel(1000)
+
+	for index := range k.pipes {
+		k.register(index, false)
+	}
+
+	k.write(700, 5)
+
+	if events := k.wait(); len(events) == 1 {
+		fmt.Printf("1000 pipes registered, pipe 700 written: 1 event, for pipe %d\n", events[0])
+	}
+
+	byWait := k.examined
+	k.scan()
+	fmt.Printf("registrations examined: %d by the wait, %d by a scan\n", byWait, k.examined-byWait)
+}
+
+
+// turn is one iteration of an event loop: wait for ready pipes, then run the
+// handler for each. It returns the pipes it handled.
+func (k *kernel) turn(handle func(k *kernel, index int)) []int {
+	events := k.wait()
+
+	for _, index := range events {
+		handle(k, index)
+	}
+
+	return events
+}
+
+// loop registers 4 pipes, writes to 2 of them, and runs an event loop whose
+// handler reads at most 4 bytes for each event.
+func loop() {
+	k := newKernel(4)
+
+	for index := range k.pipes {
+		k.register(index, false)
+	}
+
+	k.write(2, 5)
+	k.write(0, 3)
+
+	handle := func(k *kernel, index int) { k.read(index, 4) }
+
+	fmt.Printf("event loop: turn 1 handles %v, turn 2 handles %v, turn 3 handles %v\n",
+		k.turn(handle), k.turn(handle), k.turn(handle))
+}
+
+
+func main() {
+	level()
+	edge()
+	many()
+	loop()
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 9.25</b> The complete <code>eventloop</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/eventloop/src/main.rs">code/rust/eventloop/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models epoll: an interest list of registered pipes, a ready list that a
+//! write fills, and a wait that examines only the ready list. It repeats the
+//! measurements of epollfacts on the model and then runs a small event loop
+//! on it.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p eventloop
+//! ```
+
+/// The read end of a pipe as epoll sees it: the bytes waiting to be read, and
+/// its registration. `queued` is set while the pipe is on the ready list.
+#[derive(Clone, Default)]
+struct Pipe {
+    buffered: usize,
+    registered: bool,
+    edge: bool,
+    queued: bool,
+}
+
+/// Holds the pipes and one epoll instance. The registered pipes are the
+/// interest list. `ready` is the ready list, in the order in which the pipes
+/// became ready. `examined` counts the registrations that waits and scans
+/// have looked at.
+struct Kernel {
+    pipes: Vec&lt;Pipe&gt;,
+    ready: Vec&lt;usize&gt;,
+    examined: usize,
+}
+
+impl Kernel {
+    fn new(pipes: usize) -&gt; Kernel {
+        Kernel {
+            pipes: vec![Pipe::default(); pipes],
+            ready: Vec::new(),
+            examined: 0,
+        }
+    }
+}
+
+impl Kernel {
+    /// Adds a pipe to the interest list. A pipe that is already readable goes
+    /// on the ready list at once.
+    fn register(&amp;mut self, index: usize, edge: bool) {
+        let pipe = &amp;mut self.pipes[index];
+
+        pipe.registered = true;
+        pipe.edge = edge;
+
+        if pipe.buffered &gt; 0 {
+            self.enqueue(index);
+        }
+    }
+
+    /// Puts a pipe on the ready list unless it is already there.
+    fn enqueue(&amp;mut self, index: usize) {
+        if !self.pipes[index].queued {
+            self.pipes[index].queued = true;
+            self.ready.push(index);
+        }
+    }
+
+    /// Adds bytes to a pipe. This is the moment the pipe becomes ready, and
+    /// the writer puts it on the ready list.
+    fn write(&amp;mut self, index: usize, n: usize) {
+        self.pipes[index].buffered += n;
+
+        if self.pipes[index].registered {
+            self.enqueue(index);
+        }
+    }
+
+    /// Removes up to `n` bytes from a pipe and returns the number removed.
+    fn read(&amp;mut self, index: usize, n: usize) -&gt; usize {
+        let n = n.min(self.pipes[index].buffered);
+        self.pipes[index].buffered -= n;
+
+        n
+    }
+}
+
+impl Kernel {
+    /// Empties the ready list and returns the pipes on it that are still
+    /// readable. A level-triggered pipe that is reported goes back on the
+    /// list, so the next wait checks it again. An edge-triggered pipe does
+    /// not, and is reported again only after another write.
+    fn wait(&amp;mut self) -&gt; Vec&lt;usize&gt; {
+        let queued = std::mem::take(&amp;mut self.ready);
+        let mut events = Vec::new();
+
+        for index in queued {
+            self.pipes[index].queued = false;
+            self.examined += 1;
+
+            if self.pipes[index].buffered == 0 {
+                continue;
+            }
+
+            events.push(index);
+
+            if !self.pipes[index].edge {
+                self.enqueue(index);
+            }
+        }
+
+        events
+    }
+
+    /// The method of select and poll: it examines every registered pipe on
+    /// every call.
+    fn scan(&amp;mut self) -&gt; Vec&lt;usize&gt; {
+        let mut events = Vec::new();
+
+        for (index, pipe) in self.pipes.iter().enumerate() {
+            if !pipe.registered {
+                continue;
+            }
+
+            self.examined += 1;
+
+            if pipe.buffered &gt; 0 {
+                events.push(index);
+            }
+        }
+
+        events
+    }
+}
+
+/// Repeats the level-triggered measurement of epollfacts.
+fn level() {
+    let mut kernel = Kernel::new(3);
+
+    for index in 0..3 {
+        kernel.register(index, false);
+    }
+
+    println!(
+        "3 pipes registered, none written: {} event(s)",
+        kernel.wait().len()
+    );
+
+    kernel.write(1, 5);
+
+    if let [index] = kernel.wait().as_slice() {
+        println!("write to pipe 1: 1 event, for pipe {index}");
+    }
+
+    println!(
+        "level-triggered, data not read, wait again: {} event(s)",
+        kernel.wait().len()
+    );
+
+    kernel.read(1, 16);
+    println!("after reading the data: {} event(s)", kernel.wait().len());
+}
+
+/// Repeats the edge-triggered measurement.
+fn edge() {
+    let mut kernel = Kernel::new(1);
+    kernel.register(0, true);
+
+    kernel.write(0, 5);
+    let (first, second) = (kernel.wait().len(), kernel.wait().len());
+    println!("edge-triggered, data not read: wait {first} event(s), wait again {second} event(s)");
+
+    kernel.write(0, 5);
+    println!(
+        "edge-triggered, after another write: {} event(s)",
+        kernel.wait().len()
+    );
+}
+
+/// Compares the work of a wait with the work of a scan when 1000 pipes are
+/// registered and 1 is ready.
+fn many() {
+    let mut kernel = Kernel::new(1000);
+
+    for index in 0..1000 {
+        kernel.register(index, false);
+    }
+
+    kernel.write(700, 5);
+
+    if let [index] = kernel.wait().as_slice() {
+        println!("1000 pipes registered, pipe 700 written: 1 event, for pipe {index}");
+    }
+
+    let by_wait = kernel.examined;
+    kernel.scan();
+    println!(
+        "registrations examined: {by_wait} by the wait, {} by a scan",
+        kernel.examined - by_wait
+    );
+}
+
+impl Kernel {
+    /// One iteration of an event loop: wait for ready pipes, then run the
+    /// handler for each. Returns the pipes it handled.
+    fn turn(&amp;mut self, handle: fn(&amp;mut Kernel, usize)) -&gt; Vec&lt;usize&gt; {
+        let events = self.wait();
+
+        for &amp;index in &amp;events {
+            handle(self, index);
+        }
+
+        events
+    }
+}
+
+/// Formats pipe numbers the way Go prints a slice.
+fn list(pipes: &amp;[usize]) -&gt; String {
+    let words: Vec&lt;String&gt; = pipes.iter().map(usize::to_string).collect();
+
+    format!("[{}]", words.join(" "))
+}
+
+/// Registers 4 pipes, writes to 2 of them, and runs an event loop whose
+/// handler reads at most 4 bytes for each event.
+fn event_loop() {
+    let mut kernel = Kernel::new(4);
+
+    for index in 0..4 {
+        kernel.register(index, false);
+    }
+
+    kernel.write(2, 5);
+    kernel.write(0, 3);
+
+    let handle = |kernel: &amp;mut Kernel, index: usize| {
+        kernel.read(index, 4);
+    };
+
+    let turns = [
+        kernel.turn(handle),
+        kernel.turn(handle),
+        kernel.turn(handle),
+    ];
+
+    println!(
+        "event loop: turn 1 handles {}, turn 2 handles {}, turn 3 handles {}",
+        list(&amp;turns[0]),
+        list(&amp;turns[1]),
+        list(&amp;turns[2])
+    );
+}
+
+fn main() {
+    level();
+    edge();
+    many();
+    event_loop();
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>An event loop serves many descriptors from a single thread: wait for events, then
+handle each ready descriptor without blocking.</li>
+<li>An epoll instance has an interest list of registrations and a ready list.</li>
+<li>A descriptor is put on the ready list by the code that makes it ready, such as a
+<code>write</code> to a pipe. <code>epoll_wait</code> returns the ready list.</li>
+<li>The work of a wait is proportional to the number of ready descriptors, where <code>select</code>
+and <code>poll</code> examine every descriptor on every call.</li>
+<li>A level-triggered descriptor is reported while it is readable. An edge-triggered
+descriptor is reported when new data arrives, and its handler must read until
+<code>EAGAIN</code>.</li>
+<li>A closed peer is reported as <code>EPOLLHUP</code>.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>epoll(7)</code>, <code>epoll_ctl(2)</code> and <code>epoll_wait(2)</code>, Linux manual pages:
+<a href="https://man7.org/linux/man-pages/man7/epoll.7.html">https://man7.org/linux/man-pages/man7/epoll.7.html</a></li>
+<li>M. Kerrisk, <em>The Linux Programming Interface</em>, No Starch Press, 2010, chapter 63.</li>
+<li><code>fs/eventpoll.c</code>, Linux 5.15:
+<a href="https://elixir.bootlin.com/linux/v5.15/source/fs/eventpoll.c">https://elixir.bootlin.com/linux/v5.15/source/fs/eventpoll.c</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="08-the-page-cache.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="10-tcp-sockets.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="08-the-page-cache.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="10-tcp-sockets.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

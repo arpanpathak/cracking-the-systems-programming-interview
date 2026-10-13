@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 474" width="480" height="474" role="img" aria-label="CPU 0 has its own run queue with 4 tasks, A, B, C and D, of which A is running. CPU 1 has its own run queue with 1 task, E. Load balancing moves a task from the longer queue to the shorter one.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="474" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A run queue for each CPU</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Balancing keeps the queues of the CPUs similar in length.</text>
+  <rect x="32" y="104" width="416" height="104" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="216.8" height="22" rx="11" fill="#1B2430"/>
+  <text x="158.4" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">CPU 0: ITS OWN RUN QUEUE</text>
+  <rect x="52.0" y="134.0" width="54.0" height="44.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="79.0" y="161.0" class="mono strong" text-anchor="middle" xml:space="preserve">A</text>
+  <rect x="114.0" y="134.0" width="54.0" height="44.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="141.0" y="161.0" class="mono strong" text-anchor="middle" xml:space="preserve">B</text>
+  <rect x="176.0" y="134.0" width="54.0" height="44.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="203.0" y="161.0" class="mono strong" text-anchor="middle" xml:space="preserve">C</text>
+  <rect x="238.0" y="134.0" width="54.0" height="44.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="265.0" y="161.0" class="mono strong" text-anchor="middle" xml:space="preserve">D</text>
+  <text x="432.0" y="194.0" class="note" text-anchor="end" xml:space="preserve">running: A</text>
+  <rect x="32" y="278" width="416" height="104" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="267" width="216.8" height="22" rx="11" fill="#1B2430"/>
+  <text x="158.4" y="282.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">CPU 1: ITS OWN RUN QUEUE</text>
+  <rect x="52.0" y="308.0" width="54.0" height="44.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="79.0" y="335.0" class="mono strong" text-anchor="middle" xml:space="preserve">E</text>
+  <text x="432.0" y="368.0" class="note" text-anchor="end" xml:space="preserve">running: E</text>
+  <path class="wire" d="M300,208 L300,264" marker-end="url(#head)"/>
+  <rect x="203.9" y="227.0" width="192.2" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="300.0" y="239.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">load balancing moves a task</text>
+  <text x="32.0" y="418.0" class="note" text-anchor="start" xml:space="preserve">Each CPU schedules its own queue under its own lock. Periodically,</text>
+  <text x="32.0" y="435.0" class="note" text-anchor="start" xml:space="preserve">and when a CPU becomes idle, the kernel moves tasks from a long</text>
+  <text x="32.0" y="452.0" class="note" text-anchor="start" xml:space="preserve">queue to a short one.</text>
+</svg>

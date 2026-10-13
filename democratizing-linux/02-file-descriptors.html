@@ -1,0 +1,3934 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>File Descriptors - Democratizing Linux: A Pipe Dream</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="The kernel&#x27;s ideas, built by hand in Go and in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-48851384.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-643af33e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-854073d2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Democratizing Linux: A Pipe Dream</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/democratizing-linux" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/democratizing-linux/src/02-file-descriptors.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch02.svg" alt="Docket, a gopher, stands at a wall of pigeonholes numbered 0 to 5. Holes 0, 1 and 2 hold tickets for the terminal, and a string runs from the ticket in hole 3 to a filing cabinet.">
+<h1 id="file-descriptors"><a class="header" href="#file-descriptors">File Descriptors</a></h1>
+<p>Every <code>read</code>, <code>write</code> and <code>close</code> in a program takes a small integer as its first
+argument. That integer is a <em>file descriptor</em>. It is the only handle a process has on a
+file, a pipe, a terminal or a network connection, and the kernel translates it on every
+call into the object the process means.</p>
+<p>In this chapter, we will follow that translation from the integer to the bytes on disk.
+We will meet the kernel structures on the way, one at a time and in the order a <code>read</code>
+visits them: the descriptor table of the process, the open file, the directory entry,
+and the inode. For each structure we will look at its definition in the kernel source,
+say what each field is for, and confirm its behaviour with an experiment. Then we will
+write <code>fdfacts</code>, which measures all of this on a running kernel, and <code>fdtable</code>, a model
+of the same structures that gives the same results.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>why a process refers to a file by a number</li>
+<li>the path of one <code>read</code> through the kernel</li>
+<li>the descriptor table: <code>struct fdtable</code>, the lowest-free-number rule, and the limit on
+descriptors</li>
+<li>the open file: <code>struct file</code>, the offset, and the status flags</li>
+<li>names and files: directory entries, <code>struct inode</code>, and hard links</li>
+<li>reference counts: when an open file and an inode are released</li>
+<li>what <code>dup</code>, <code>fork</code> and <code>exec</code> do to descriptors</li>
+<li>shell redirection, including <code>2&gt;&amp;1</code></li>
+<li>how to inspect the descriptors of a running process</li>
+</ul>
+</div>
+
+<h2 id="why-a-number"><a class="header" href="#why-a-number">Why a number</a></h2>
+<p>A program runs in <em>user mode</em>, in which the processor lets it touch only its own memory.
+The kernel runs in <em>kernel mode</em> and keeps its data in memory that user-mode code cannot
+read or write. A <em>system call</em> is the controlled way from one to the other: the program
+puts a call number and arguments in registers and executes an instruction that switches
+the processor to kernel mode at a fixed entry point.</p>
+<p>The objects that describe an open file live in kernel memory. The kernel cannot hand a
+process a pointer to them, because the process could not use the pointer and must not be
+able to forge one. It keeps a table for each process and gives the process an index into
+that table. The process can pass any integer it likes. The kernel looks the integer up
+in the caller’s own table, so a process can only ever name the files that the kernel has
+put there.</p>
+<p>By convention the first 3 entries have fixed roles: descriptor 0 is the standard input,
+1 the standard output, and 2 the standard error. A program started from a terminal finds
+all 3 referring to that terminal.</p>
+<h2 id="one-read-step-by-step"><a class="header" href="#one-read-step-by-step">One read, step by step</a></h2>
+<p>Suppose a process has opened a file and received descriptor 3, and now calls
+<code>read(3, buf, 100)</code>. The kernel does the following.</p>
+<ol>
+<li>It takes entry 3 of the calling process’s descriptor table. The entry is a pointer
+to a <code>struct file</code>, the kernel’s record of one open file. An empty entry ends the
+call with the error <code>EBADF</code>, “bad file descriptor”.</li>
+<li>It reads the current position in the file from the <code>struct file</code>. This position is
+the <em>offset</em>: the number of bytes from the start of the file at which the next read
+or write takes place.</li>
+<li>It calls the read function of whatever the file is. The <code>struct file</code> holds a table
+of functions, and a disk file, a pipe and a socket each supply their own.</li>
+<li>For a disk file, that function finds the file’s <em>inode</em>, the kernel’s record of the
+file itself, and through it the cached pages of the file. The page cache is the
+subject of <a href="08-the-page-cache.html">chapter 8</a>.</li>
+<li>It copies up to 100 bytes from those pages into <code>buf</code>, in the memory of the process.</li>
+<li>It adds the number of bytes copied to the offset and returns that number.</li>
+</ol>
+<figure>
+<img src="figures/read-path.svg" alt="The path of read(3, buf, 100) through the kernel. The process enters the kernel. Entry 3 of the descriptor table gives a struct file. The struct file supplies the offset, f_pos. The read function of the file system is found through f_op. The struct inode gives the size of the file and its page cache. The bytes are copied to buf, and f_pos is increased by the number of bytes copied.">
+<figcaption><b>Figure 2.1</b> The path of a <code>read</code> through the kernel.</figcaption>
+</figure>
+<p>The steps name 3 objects: the table entry, the open file, and the inode. The rest of
+the chapter takes them in that order. The question to keep in mind for each is which
+state it holds, because that decides what is shared when a descriptor is duplicated or
+inherited.</p>
+<h2 id="the-descriptor-table"><a class="header" href="#the-descriptor-table">The descriptor table</a></h2>
+<p>Each process has a <code>struct files_struct</code>, which contains its descriptor table. The
+table itself is a <code>struct fdtable</code>. These are the definitions from
+<code>include/linux/fdtable.h</code> in Linux 5.15, with the fields that concern locking left out.</p>
+<pre><code class="language-c">struct fdtable {
+        unsigned int max_fds;          /* number of entries in fd[] */
+        struct file **fd;              /* the table: one pointer per descriptor */
+        unsigned long *close_on_exec;  /* bitmap: descriptors closed by exec */
+        unsigned long *open_fds;       /* bitmap: descriptors in use */
+        /* ... */
+};
+
+struct files_struct {
+        atomic_t count;                /* processes and threads sharing this table */
+        struct fdtable *fdt;           /* the current table */
+        unsigned int next_fd;          /* where the search for a free number starts */
+        struct file *fd_array[64];     /* a first table, large enough for most programs */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>fd</code></td><td>An array of pointers. <code>fd[3]</code> is the open file behind descriptor 3, or <code>NULL</code>.</td></tr>
+<tr><td><code>open_fds</code></td><td>1 bit per descriptor, set while the number is in use.</td></tr>
+<tr><td><code>close_on_exec</code></td><td>1 bit per descriptor: the close-on-exec flag, described below.</td></tr>
+<tr><td><code>max_fds</code></td><td>The current length of <code>fd</code>. The table starts with 64 entries and is replaced by a larger one when a higher number is needed.</td></tr>
+<tr><td><code>count</code></td><td>How many tasks use this table. The threads of a process share 1 table.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The table gives rise to 2 rules that every Unix program depends on.</p>
+<p><strong>A new descriptor gets the lowest free number.</strong> The kernel searches <code>open_fds</code> for the
+first clear bit, starting at <code>next_fd</code>. After a process closes descriptor 0, the next
+<code>open</code> returns 0.</p>
+<p><strong>The number of descriptors is limited.</strong> Each process has a resource limit,
+<code>RLIMIT_NOFILE</code>, and an <code>open</code> that would need a number at or above it fails with
+<code>EMFILE</code>, “too many open files”. <code>ulimit -n</code> shows the limit in a shell. On this machine
+it is 1048576 for a process started from the terminal, and many systems set 1024. The
+kernel as a whole has a second limit, on the number of open files in all processes
+together. <code>/proc/sys/fs/file-nr</code> shows the current number first:</p>
+<pre><code class="language-console">$ cat /proc/sys/fs/file-nr
+17312	0	9223372036854775807
+</code></pre>
+<p>A server that forgets to close descriptors, a <em>descriptor leak</em>, eventually hits
+<code>EMFILE</code> and can accept no more connections, although memory and CPU are free.</p>
+<h2 id="the-open-file"><a class="header" href="#the-open-file">The open file</a></h2>
+<p>The pointers in the table refer to <code>struct file</code> objects. The POSIX standard calls this
+object an <em>open file description</em>, and the name is worth learning because the manual
+pages use it. A <code>struct file</code> is created by each successful <code>open</code>, and also by <code>pipe</code>,
+<code>socket</code> and <code>accept</code>. This is the definition from <code>include/linux/fs.h</code>, reduced to the
+fields this chapter uses.</p>
+<pre><code class="language-c">struct file {
+        struct path f_path;                    /* the directory entry it was opened by */
+        struct inode *f_inode;                 /* the file itself */
+        const struct file_operations *f_op;    /* read, write, ... for this kind of file */
+        atomic_long_t f_count;                 /* references to this struct file */
+        unsigned int f_flags;                  /* O_APPEND, O_NONBLOCK, ... */
+        fmode_t f_mode;                        /* opened for reading, writing, or both */
+        loff_t f_pos;                          /* the offset */
+        /* ... */
+};
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>f_pos</code></td><td>The offset. <code>read</code> and <code>write</code> start here and advance it. <code>lseek</code> sets it.</td></tr>
+<tr><td><code>f_flags</code></td><td>The <em>status flags</em> given to <code>open</code>, such as <code>O_APPEND</code> (every write goes to the end of the file) and <code>O_NONBLOCK</code> (calls return <code>EAGAIN</code> where they would block). <code>fcntl</code> with <code>F_GETFL</code> and <code>F_SETFL</code> reads and changes them.</td></tr>
+<tr><td><code>f_mode</code></td><td>Whether the file was opened for reading, for writing, or both. A <code>write</code> on a file opened read-only fails with <code>EBADF</code>.</td></tr>
+<tr><td><code>f_count</code></td><td>The number of references to this <code>struct file</code>: table entries in any process, plus system calls in progress.</td></tr>
+<tr><td><code>f_inode</code></td><td>The inode of the file.</td></tr>
+<tr><td><code>f_op</code></td><td>A table of function pointers. <code>read</code> calls <code>f_op-&gt;read_iter</code>, <code>write</code> calls <code>f_op-&gt;write_iter</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>f_op</code> is the mechanism behind the phrase “everything is a file”. The system call
+<code>read</code> contains no code for disks, pipes or sockets. It calls through <code>f_op</code>, and each
+kind of object installs its own functions when the <code>struct file</code> is created: ext4 for a
+file on disk, the pipe code of <a href="01-pipes.html">chapter 1</a> for a pipe, TCP for the socket
+of <a href="10-tcp-sockets.html">chapter 10</a>. A program that reads descriptor 0 therefore works
+unchanged whether descriptor 0 is a terminal, a file or a pipe.</p>
+<p>The important point for the rest of the chapter is where the offset lives. It is in the
+<code>struct file</code>, and neither in the table entry nor in the inode. Table entries that point
+to the same <code>struct file</code> share an offset. Separate <code>struct file</code> objects for the same
+file on disk each have their own.</p>
+<h2 id="names-directory-entries-and-inodes"><a class="header" href="#names-directory-entries-and-inodes">Names, directory entries and inodes</a></h2>
+<p>A <code>struct file</code> refers to an <em>inode</em>. The inode is the file: its type, its owner, its
+permissions, its size, its timestamps, and the location of its data. It is identified by
+a number, the <em>inode number</em>, which is unique within a file system.</p>
+<p>An inode contains no name. Names are kept in directories. A directory is itself a file
+whose contents are a list of <em>directory entries</em>, each a pair of a name and an inode
+number. Opening <code>/tmp/x/report.txt</code> means reading the directory <code>/</code>, finding the entry
+<code>tmp</code> and its inode, reading that directory, and so on to the last name. The kernel
+caches each step in a <code>struct dentry</code>, so that a path which has been used recently is
+resolved without reading directories from disk.</p>
+<pre><code class="language-c">struct dentry {
+        struct dentry *d_parent;       /* the directory that contains this entry */
+        struct qstr d_name;            /* the name: a single component of a path */
+        struct inode *d_inode;         /* the inode the name refers to */
+        /* ... */
+};
+
+struct inode {
+        umode_t i_mode;                /* type (file, directory, ...) and permissions */
+        kuid_t i_uid;                  /* owner */
+        kgid_t i_gid;                  /* group */
+        unsigned long i_ino;           /* the inode number */
+        unsigned int i_nlink;          /* directory entries that refer to this inode */
+        loff_t i_size;                 /* size in bytes */
+        struct timespec64 i_atime;     /* last access */
+        struct timespec64 i_mtime;     /* last change of the contents */
+        struct timespec64 i_ctime;     /* last change of the inode */
+        blkcnt_t i_blocks;             /* disk space used, in 512-byte units */
+        atomic_t i_count;              /* references from inside the kernel */
+        const struct file_operations *i_fop;   /* copied to f_op at open */
+        struct address_space *i_mapping;       /* the cached pages of the file */
+        /* ... */
+};
+</code></pre>
+<p><code>stat</code> prints the fields of an inode, and <code>ls -i</code> prints inode numbers. Since the name
+is outside the inode, several directory entries can hold the same inode number. Such an
+entry is a <em>hard link</em>, created by <code>ln</code> or the <code>link</code> system call. On this machine:</p>
+<pre><code class="language-console">$ echo hello &gt; report.txt
+$ ln report.txt copy.txt
+$ ls -li
+19927765 -rw-rw-r-- 2 jetson jetson 6 Oct 12 22:56 copy.txt
+19927765 -rw-rw-r-- 2 jetson jetson 6 Oct 12 22:56 report.txt
+$ stat report.txt
+  File: report.txt
+  Size: 6         	Blocks: 8          IO Block: 4096   regular file
+Device: 10301h/66305d	Inode: 19927765    Links: 2
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/  jetson)   Gid: ( 1000/  jetson)
+</code></pre>
+<figure>
+<img src="figures/stat-annotated.svg" alt="The output of ls -li and stat explained. In each line of ls, 19927765 is the inode number, the 2 after the permissions is the link count, and 6 is the size. Both lines have the same inode number, so they are the same file, and only the name differs. stat prints the same fields with their names, and Blocks counts units of 512 bytes.">
+<figcaption><b>Figure 2.2</b> The same output, with the inode field behind each value.</figcaption>
+</figure>
+<p>Both names show inode 19927765. The <code>2</code> after the permissions, <code>Links: 2</code> in the output
+of <code>stat</code>, is <code>i_nlink</code>. The names are equal in every respect: neither is the original,
+and a change made through one is visible through the other, because there is a single
+inode and a single copy of the data.</p>
+<figure>
+<img src="figures/names-inodes.svg" alt="The directory /tmp/x has the entries report.txt and copy.txt, and both hold the inode number 19927765. That inode has a link count of 2 and a size of 6, the owner, the permissions and the times, and the location of the data, which is the text hello followed by a newline.">
+<figcaption><b>Figure 2.3</b> A directory maps names to inode numbers. Everything else about the file is in the inode.</figcaption>
+</figure>
+<p>Several everyday facts follow from this split.</p>
+<ul>
+<li>Renaming a file within a file system is fast at any size. <code>rename</code> changes a
+directory entry and does not touch the inode or the data.</li>
+<li>Permissions belong to the inode, so they are the same through every name.</li>
+<li>Removing a file is called <code>unlink</code> because it removes a link: a directory entry. What
+happens to the inode is the subject of the next section.</li>
+</ul>
+<p>Figure 2.4 puts the structures together.</p>
+<figure>
+<img src="figures/file-structs.svg" alt="The kernel structures behind a descriptor, top to bottom, each pointing to the next. struct fdtable has the array fd with one pointer per descriptor and the bitmaps open_fds and close_on_exec. struct file has f_pos, f_flags, f_count, f_inode and f_path. struct dentry has d_name, d_parent and d_inode. struct inode has i_ino, i_mode, i_nlink, i_size, the owner and times, and i_mapping.">
+<figcaption><b>Figure 2.4</b> From a descriptor to an inode: the structures and the pointers between them.</figcaption>
+</figure>
+<h2 id="what-is-shared"><a class="header" href="#what-is-shared">What is shared</a></h2>
+<p>We can now answer the question a programmer has to ask: when a process has 2
+descriptors, what do they share? It depends on how the second descriptor came to exist.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>The second descriptor comes from</th><th>New table entry</th><th>New <code>struct file</code></th><th>The descriptors share</th></tr>
+</thead>
+<tbody>
+<tr><td><code>dup</code> or <code>dup2</code></td><td>yes</td><td>no</td><td>the offset, the status flags, and the file</td></tr>
+<tr><td><code>fork</code>, in the child</td><td>yes</td><td>no</td><td>the offset, the status flags, and the file</td></tr>
+<tr><td>a second <code>open</code> of the same name</td><td>yes</td><td>yes</td><td>only the file</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/fd-tables.svg" alt="The descriptor table of a process has entries 0, 1 and 2 for the terminal, entry 3 from an open, entry 4 from a dup of 3, and entry 5 from a second open of the same file. Entries 3 and 4 refer to one open file description with offset 5. Entry 5 refers to another description with offset 0. Both descriptions refer to the same inode, a file of 5 bytes.">
+<figcaption><b>Figure 2.5</b> Descriptors 3 and 4 share a <code>struct file</code>, and therefore an offset. Descriptor 5 has its own.</figcaption>
+</figure>
+<p>The reason for sharing the offset through <code>dup</code> and <code>fork</code> is sequential output. When a
+shell runs <code>(date; ls) &gt; file</code>, both commands inherit the same <code>struct file</code>, and <code>ls</code>
+continues at the offset where <code>date</code> stopped. If each had its own offset, the second
+command would overwrite the output of the first. We will measure exactly that below.</p>
+<p>The <em>close-on-exec</em> flag is deliberately excluded from sharing. It
+tells the kernel to close the descriptor when the process executes a new program, and it
+is stored in the <code>close_on_exec</code> bitmap of the table, outside the <code>struct file</code>. A
+program can therefore keep a descriptor for itself and still pass a duplicate of it to a
+child.</p>
+<h2 id="lifetimes"><a class="header" href="#lifetimes">Lifetimes</a></h2>
+<p>An object in the kernel is released when nothing refers to it any more, and each of the
+objects of this chapter keeps a count for that purpose.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Object</th><th>Count</th><th>Raised by</th><th>Lowered by</th><th>At 0</th></tr>
+</thead>
+<tbody>
+<tr><td><code>struct file</code></td><td><code>f_count</code></td><td><code>open</code>, <code>dup</code>, <code>fork</code></td><td><code>close</code>, exit of a process</td><td>the open file is closed, and its reference to the inode is dropped</td></tr>
+<tr><td>inode</td><td><code>i_nlink</code></td><td><code>link</code>, creating the file</td><td><code>unlink</code>, <code>rename</code> over the name</td><td>the file has no name</td></tr>
+<tr><td>inode</td><td>open count</td><td>each <code>struct file</code> that refers to it</td><td>closing a <code>struct file</code></td><td>the file is not open</td></tr>
+</tbody>
+</table>
+</div>
+<p>A <code>struct file</code> is closed when the last descriptor for it is closed. <code>close</code> on a
+descriptor that was duplicated or inherited only lowers <code>f_count</code>. This is the rule that
+<a href="01-pipes.html">chapter 1</a> needed: a pipe reports the end of the stream when the last
+descriptor for its write end is gone, in whichever process that descriptor was.</p>
+<p>An inode and its data are freed when it has no name and is not open. Both conditions
+are required. A file that is unlinked while a process has it open keeps its inode and
+its data until that process closes it.</p>
+<figure>
+<img src="figures/unlink-open.svg" alt="The counts of an inode through 4 calls. After create it has 1 name and is open 0 times, and it exists. After open it has 1 name and is open once. After unlink it has 0 names and is still open once, so it exists without a name. After close both counts are 0 and the inode is freed.">
+<figcaption><b>Figure 2.6</b> An inode is freed when its last name and its last open file are both gone.</figcaption>
+</figure>
+<p>The kernel shows such a file under <code>/proc</code>. Here a shell opens <code>report.txt</code> on
+descriptor 7 and then removes both names:</p>
+<pre><code class="language-console">$ exec 7&lt; report.txt
+$ rm report.txt copy.txt
+$ ls -l /proc/$$/fd/7
+7 -&gt; /tmp/x/report.txt (deleted)
+$ cat &lt;&amp;7
+hello
+</code></pre>
+<p>The consequences are practical. A program can create a temporary file, open it and
+unlink it at once, and the file disappears when the program ends, however it ends. And a
+large log file that is deleted while a server still writes to it continues to occupy the
+disk, which is the usual explanation when <code>df</code> reports a full disk and <code>du</code> cannot find
+the files.</p>
+<div class="crab crab-shocked">
+<p>A file that is deleted while a process has it open keeps its inode, its data and its disk space until that process closes it.</p>
+</div>
+
+<h2 id="fork-and-exec"><a class="header" href="#fork-and-exec">fork and exec</a></h2>
+<p><code>fork</code> gives the child a copy of the parent’s descriptor table. The copy is a new
+<code>struct fdtable</code> with the same pointers, and <code>f_count</code> of every open file is raised by 1.
+Parent and child then have independent tables, so either can close or reassign a
+descriptor without affecting the other, and they share every open file that both still
+hold.</p>
+<figure>
+<img src="figures/fork-shared.svg" alt="A parent has descriptor 1 on the terminal and descriptor 3 on a log file. After fork the child has the same entries, and they point to the same open file descriptions: the terminal, with a reference count of 2, and the log file, with offset 120 and a reference count of 2.">
+<figcaption><b>Figure 2.7</b> After <code>fork</code>, the tables are separate and the open files are shared.</figcaption>
+</figure>
+<p><code>exec</code> replaces the program and keeps the table, with 1 exception: descriptors whose
+close-on-exec bit is set are closed. A program sets the bit with the <code>O_CLOEXEC</code> flag of
+<code>open</code>, or later with <code>fcntl</code> and <code>F_SETFD</code>. Without it, every descriptor a program has
+open is passed to every program it starts, including descriptors for files those
+programs have no business with. Go’s standard library and Rust’s standard library set
+the flag on every descriptor they create, and pass a descriptor to a child only when the
+program asks for it.</p>
+<p><a href="03-processes.html">Chapter 3</a> covers <code>fork</code> and <code>exec</code> themselves.</p>
+<h2 id="measuring-descriptors"><a class="header" href="#measuring-descriptors">Measuring descriptors</a></h2>
+<p><code>fdfacts</code> checks the statements of this chapter on a running kernel. It uses
+<code>golang.org/x/sys/unix</code> in Go and the <code>nix</code> crate with the <code>fs</code> and <code>resource</code> features
+in Rust.</p>
+<pre><code class="language-console">$ cargo new fdfacts
+$ cargo add -p fdfacts nix --features fs,resource
+</code></pre>
+<p><code>numbers</code> closes descriptor 0 and opens a file.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.1</b> The imports of <code>fdfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"golang.org/x/sys/unix"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.2</b> The imports of <code>fdfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read};
+use std::os::fd::{AsFd, AsRawFd};
+use std::os::unix::fs::MetadataExt;
+use std::path::Path;
+use std::process::Command;
+
+use nix::fcntl::{FcntlArg, FdFlag, OFlag, fcntl, open};
+use nix::sys::resource::{Resource, getrlimit, setrlimit};
+use nix::sys::stat::Mode;
+use nix::unistd::{Whence, close, dup, lseek, write};</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.3</b> The number of a new descriptor, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// numbers closes descriptor 0, the standard input, and opens a file. The
+// kernel gives an open the lowest number that is free.
+func numbers(path string) error {
+	if err := unix.Close(0); err != nil {
+		return err
+	}
+
+	fd, err := unix.Open(path, unix.O_RDONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("descriptor 0 closed: the next open returns %d\n", fd)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.4</b> The number of a new descriptor, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Closes descriptor 0, the standard input, and opens a file. The kernel
+/// gives an open the lowest number that is free.
+fn numbers(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    close(0)?;
+
+    let fd = open(path, OFlag::O_RDONLY, Mode::empty())?;
+    println!(
+        "descriptor 0 closed: the next open returns {}",
+        fd.as_raw_fd()
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>limit</code> lowers <code>RLIMIT_NOFILE</code> to 32 and opens a file until <code>open</code> fails. It reports the
+highest number it received and the error.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.5</b> The limit on descriptors, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// name returns the symbolic name of a system call error, such as EMFILE.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+// limit lowers the limit on open descriptors to 32 and opens a file until
+// the kernel refuses.
+func limit(path string) error {
+	var saved unix.Rlimit
+
+	if err := unix.Getrlimit(unix.RLIMIT_NOFILE, &amp;saved); err != nil {
+		return err
+	}
+
+	lowered := saved
+	lowered.Cur = 32
+
+	if err := unix.Setrlimit(unix.RLIMIT_NOFILE, &amp;lowered); err != nil {
+		return err
+	}
+
+	defer unix.Setrlimit(unix.RLIMIT_NOFILE, &amp;saved)
+
+	var opened []int
+	highest := -1
+
+	for {
+		fd, err := unix.Open(path, unix.O_RDONLY, 0)
+
+		if err != nil {
+			fmt.Printf("limit of 32 descriptors: the highest number obtained is %d, the next open fails with %s\n",
+				highest, name(err))
+
+			break
+		}
+
+		opened, highest = append(opened, fd), max(highest, fd)
+	}
+
+	for _, fd := range opened {
+		unix.Close(fd)
+	}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.6</b> The limit on descriptors, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Lowers the limit on open descriptors to 32 and opens a file until the
+/// kernel refuses.
+fn limit(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let (soft, hard) = getrlimit(Resource::RLIMIT_NOFILE)?;
+
+    setrlimit(Resource::RLIMIT_NOFILE, 32, hard)?;
+
+    let mut opened = Vec::new();
+
+    let error = loop {
+        match open(path, OFlag::O_RDONLY, Mode::empty()) {
+            Ok(fd) =&gt; opened.push(fd),
+            Err(error) =&gt; break error,
+        }
+    };
+
+    let highest = opened.iter().map(AsRawFd::as_raw_fd).fold(-1, i32::max);
+
+    println!(
+        "limit of 32 descriptors: the highest number obtained is {highest}, the next open fails with {error:?}"
+    );
+
+    drop(opened);
+    setrlimit(Resource::RLIMIT_NOFILE, soft, hard)?;
+
+    Ok(())
+}</code></pre>
+<p><code>offsets</code> opens a file, duplicates the descriptor, and opens the file again. It writes 5
+bytes through the first descriptor and reads the offset through the other 2. <code>lseek</code>
+with a distance of 0 from the current position returns the offset without changing it.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.7</b> The offset through a duplicate and through a second open, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// offset returns the file offset that a descriptor refers to.
+func offset(fd int) (int64, error) {
+	return unix.Seek(fd, 0, unix.SEEK_CUR)
+}
+
+// offsets writes through one descriptor and reads the offset through a
+// duplicate of it and through a second open of the same file.
+func offsets(path string) error {
+	first, err := unix.Open(path, unix.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(first)
+
+	duplicate, err := unix.Dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(duplicate)
+
+	second, err := unix.Open(path, unix.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(second)
+
+	if _, err := unix.Write(first, []byte("hello")); err != nil {
+		return err
+	}
+
+	shared, err := offset(duplicate)
+
+	if err != nil {
+		return err
+	}
+
+	separate, err := offset(second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("after a write of 5 bytes: offset through the duplicate %d, through a second open %d\n",
+		shared, separate)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.8</b> The offset through a duplicate and through a second open, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Returns the file offset that a descriptor refers to.
+fn offset(fd: impl AsFd) -&gt; nix::Result&lt;i64&gt; {
+    lseek(fd, 0, Whence::SeekCur)
+}
+
+/// Writes through one descriptor and reads the offset through a duplicate of
+/// it and through a second open of the same file.
+fn offsets(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let first = open(path, OFlag::O_WRONLY, Mode::empty())?;
+    let duplicate = dup(&amp;first)?;
+    let second = open(path, OFlag::O_WRONLY, Mode::empty())?;
+
+    write(&amp;first, b"hello")?;
+
+    let shared = offset(&amp;duplicate)?;
+    let separate = offset(&amp;second)?;
+
+    println!(
+        "after a write of 5 bytes: offset through the duplicate {shared}, through a second open {separate}"
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>flags</code> sets <code>O_APPEND</code> and close-on-exec on a duplicate and reads both through the
+original. <code>F_GETFL</code> and <code>F_SETFL</code> address <code>f_flags</code> in the <code>struct file</code>. <code>F_GETFD</code> and
+<code>F_SETFD</code> address the bitmap in the table.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.9</b> Status flags and descriptor flags, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// flags sets O_APPEND and close-on-exec through a duplicate and reads both
+// through the original descriptor.
+func flags(path string) error {
+	first, err := unix.Open(path, unix.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(first)
+
+	duplicate, err := unix.Dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(duplicate)
+
+	if _, err := unix.FcntlInt(uintptr(duplicate), unix.F_SETFL, unix.O_APPEND); err != nil {
+		return err
+	}
+
+	if _, err := unix.FcntlInt(uintptr(duplicate), unix.F_SETFD, unix.FD_CLOEXEC); err != nil {
+		return err
+	}
+
+	status, err := unix.FcntlInt(uintptr(first), unix.F_GETFL, 0)
+
+	if err != nil {
+		return err
+	}
+
+	descriptor, err := unix.FcntlInt(uintptr(first), unix.F_GETFD, 0)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("set on the duplicate, read on the original: O_APPEND %v, close-on-exec %v\n",
+		status&amp;unix.O_APPEND != 0, descriptor&amp;unix.FD_CLOEXEC != 0)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.10</b> Status flags and descriptor flags, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Sets `O_APPEND` and close-on-exec through a duplicate and reads both
+/// through the original descriptor.
+fn flags(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let first = open(path, OFlag::O_WRONLY, Mode::empty())?;
+    let duplicate = dup(&amp;first)?;
+
+    fcntl(&amp;duplicate, FcntlArg::F_SETFL(OFlag::O_APPEND))?;
+    fcntl(&amp;duplicate, FcntlArg::F_SETFD(FdFlag::FD_CLOEXEC))?;
+
+    let status = OFlag::from_bits_truncate(fcntl(&amp;first, FcntlArg::F_GETFL)?);
+    let descriptor = FdFlag::from_bits_truncate(fcntl(&amp;first, FcntlArg::F_GETFD)?);
+
+    println!(
+        "set on the duplicate, read on the original: O_APPEND {}, close-on-exec {}",
+        status.contains(OFlag::O_APPEND),
+        descriptor.contains(FdFlag::FD_CLOEXEC)
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>names</code> creates a file, gives it a second name with <code>link</code>, and compares the inode
+numbers behind the names.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.11</b> A second name for a file, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// inode returns the inode number and the link count of a file.
+func inode(path string) (number uint64, links uint64, err error) {
+	var status unix.Stat_t
+
+	err = unix.Stat(path, &amp;status)
+
+	return status.Ino, uint64(status.Nlink), err
+}
+
+// names gives a file a second name and compares the inodes behind the names.
+func names(path string) error {
+	first, second := path+".first", path+".second"
+
+	if err := os.WriteFile(first, []byte("hello"), 0o644); err != nil {
+		return err
+	}
+
+	defer os.Remove(first)
+	defer os.Remove(second)
+
+	if err := unix.Link(first, second); err != nil {
+		return err
+	}
+
+	a, _, err := inode(first)
+
+	if err != nil {
+		return err
+	}
+
+	b, links, err := inode(second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("a second name for the file: same inode %v, link count %d\n", a == b, links)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.12</b> A second name for a file, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Gives a file a second name and compares the inodes behind the names.
+fn names(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let (first, second) = (path.with_extension("first"), path.with_extension("second"));
+
+    fs::write(&amp;first, "hello")?;
+    fs::hard_link(&amp;first, &amp;second)?;
+
+    let (a, b) = (fs::metadata(&amp;first)?, fs::metadata(&amp;second)?);
+
+    println!(
+        "a second name for the file: same inode {}, link count {}",
+        a.ino() == b.ino(),
+        b.nlink()
+    );
+
+    fs::remove_file(&amp;first)?;
+    fs::remove_file(&amp;second)
+}</code></pre>
+<p><code>unlinked</code> opens a file, removes its name, and then reads the link count and the
+contents through the descriptor.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.13</b> A file removed while it is open, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// unlinked opens a file, removes its only name, and reads through the
+// descriptor.
+func unlinked(path string) error {
+	file := path + ".unlinked"
+
+	if err := os.WriteFile(file, []byte("hello"), 0o644); err != nil {
+		return err
+	}
+
+	fd, err := unix.Open(file, unix.O_RDONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(fd)
+
+	if err := unix.Unlink(file); err != nil {
+		return err
+	}
+
+	var status unix.Stat_t
+
+	if err := unix.Fstat(fd, &amp;status); err != nil {
+		return err
+	}
+
+	buf := make([]byte, 16)
+	n, err := unix.Read(fd, buf)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the name removed, the file still open: link count %d, read through the descriptor returns %q\n",
+		status.Nlink, buf[:n])
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.14</b> A file removed while it is open, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Opens a file, removes its only name, and reads through the descriptor.
+fn unlinked(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let name = path.with_extension("unlinked");
+
+    fs::write(&amp;name, "hello")?;
+
+    let mut file = File::open(&amp;name)?;
+
+    fs::remove_file(&amp;name)?;
+
+    let links = file.metadata()?.nlink();
+    let mut text = String::new();
+
+    file.read_to_string(&amp;mut text)?;
+
+    println!(
+        "the name removed, the file still open: link count {links}, read through the descriptor returns {text:?}"
+    );
+
+    Ok(())
+}</code></pre>
+<p><code>redirections</code> runs a shell command that writes <code>out</code> to descriptor 1 and then <code>err</code> to
+descriptor 2, with both descriptors on the same file. In the first run descriptor 2 is a
+duplicate of descriptor 1. In the other run the file is opened once for each.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.15</b> Descriptors 1 and 2 on the same file, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// redirect runs a command that writes "out" to descriptor 1 and then "err" to
+// descriptor 2, with both descriptors on the same file, and returns the
+// file's contents.
+func redirect(path string, stdout, stderr *os.File) (string, error) {
+	command := exec.Command("sh", "-c", "echo out; echo err &gt;&amp;2")
+	command.Stdout, command.Stderr = stdout, stderr
+
+	if err := command.Run(); err != nil {
+		return "", err
+	}
+
+	text, err := os.ReadFile(path)
+
+	return strings.Join(strings.Fields(string(text)), " "), err
+}
+
+// redirections compares `&gt; file 2&gt;&amp;1`, where descriptor 2 is a duplicate of
+// descriptor 1, with `&gt; file 2&gt; file`, where the file is opened once for each.
+func redirections(path string) error {
+	stdout, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
+	defer stdout.Close()
+
+	text, err := redirect(path, stdout, stdout)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt;&amp;1: the file holds %q\n", text)
+
+	first, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
+	defer first.Close()
+
+	second, err := os.OpenFile(path, os.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer second.Close()
+
+	text, err = redirect(path, first, second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt; file: the file holds %q\n", text)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.16</b> Descriptors 1 and 2 on the same file, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Runs a command that writes "out" to descriptor 1 and then "err" to
+/// descriptor 2, with both descriptors on the same file, and returns the
+/// file's contents.
+fn redirect(path: &amp;Path, stdout: File, stderr: File) -&gt; io::Result&lt;String&gt; {
+    Command::new("sh")
+        .args(["-c", "echo out; echo err &gt;&amp;2"])
+        .stdout(stdout)
+        .stderr(stderr)
+        .status()?;
+
+    let text = fs::read_to_string(path)?;
+    let words: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    Ok(words.join(" "))
+}
+
+/// Compares `&gt; file 2&gt;&amp;1`, where descriptor 2 is a duplicate of descriptor 1,
+/// with `&gt; file 2&gt; file`, where the file is opened once for each.
+fn redirections(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let stdout = File::create(path)?;
+    let stderr = stdout.try_clone()?;
+
+    let text = redirect(path, stdout, stderr)?;
+    println!("&gt; file 2&gt;&amp;1: the file holds {text:?}");
+
+    let first = File::create(path)?;
+    let second = OpenOptions::new().write(true).open(path)?;
+
+    let text = redirect(path, first, second)?;
+    println!("&gt; file 2&gt; file: the file holds {text:?}");
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">descriptor 0 closed: the next open returns 0
+limit of 32 descriptors: the highest number obtained is 31, the next open fails with EMFILE
+after a write of 5 bytes: offset through the duplicate 5, through a second open 0
+set on the duplicate, read on the original: O_APPEND true, close-on-exec false
+a second name for the file: same inode true, link count 2
+the name removed, the file still open: link count 0, read through the descriptor returns "hello"
+&gt; file 2&gt;&amp;1: the file holds "out err"
+&gt; file 2&gt; file: the file holds "err"
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>Conclusion</th></tr>
+</thead>
+<tbody>
+<tr><td>with 0 closed, <code>open</code> returns 0</td><td>A new descriptor gets the lowest free number.</td></tr>
+<tr><td>highest number 31, then <code>EMFILE</code></td><td>With a limit of 32, the usable numbers are 0 to 31.</td></tr>
+<tr><td>offset 5 through the duplicate</td><td><code>dup</code> shares the <code>struct file</code>, and the offset is in it.</td></tr>
+<tr><td>offset 0 through a second open</td><td>Each <code>open</code> creates a <code>struct file</code> with its own offset.</td></tr>
+<tr><td><code>O_APPEND</code> is visible on the original</td><td>Status flags are in the <code>struct file</code>.</td></tr>
+<tr><td>close-on-exec is not visible on the original</td><td>The close-on-exec flag is in the table.</td></tr>
+<tr><td>same inode, link count 2</td><td>2 names refer to 1 inode.</td></tr>
+<tr><td>link count 0, and the read returns <code>hello</code></td><td>An inode without a name exists for as long as it is open.</td></tr>
+<tr><td><code>&gt; file 2&gt;&amp;1</code> leaves <code>out err</code></td><td>With a shared offset, the second write continues after the first.</td></tr>
+<tr><td><code>&gt; file 2&gt; file</code> leaves <code>err</code></td><td>With separate offsets, both writes start at 0 and the second overwrites the first.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="modelling-the-tables"><a class="header" href="#modelling-the-tables">Modelling the tables</a></h2>
+<p><code>fdtable</code> implements the structures of this chapter in user space, with the same
+reference counts, and runs the experiments of <code>fdfacts</code> on them.</p>
+<div class="lld">
+<p>Low-level design: <code>fdtable</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Kernel structure</th><th>Fields</th><th>Invariant</th></tr>
+</thead>
+<tbody>
+<tr><td><code>inode</code></td><td><code>struct inode</code></td><td><code>number</code>, <code>data</code>, <code>links</code>, <code>opens</code></td><td>freed when <code>links</code> and <code>opens</code> are both 0</td></tr>
+<tr><td><code>filesystem</code></td><td>a directory and the inode table</td><td><code>names</code>, <code>inodes</code></td><td>every name maps to an inode in <code>inodes</code></td></tr>
+<tr><td><code>description</code></td><td><code>struct file</code></td><td><code>file</code>, <code>offset</code>, <code>appendMode</code>, <code>refs</code></td><td>closed when <code>refs</code> is 0</td></tr>
+<tr><td><code>descriptor</code></td><td>an entry of <code>fd[]</code> and its close-on-exec bit</td><td><code>open</code>, <code>cloexec</code></td><td>belongs to 1 table</td></tr>
+<tr><td><code>process</code></td><td><code>struct files_struct</code></td><td><code>table</code>, <code>limit</code></td><td>the index of an entry is the descriptor number</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Behaviour</th><th>Error</th></tr>
+</thead>
+<tbody>
+<tr><td><code>create(name)</code>, <code>link(old, new)</code>, <code>unlink(name)</code></td><td>add and remove names; <code>unlink</code> frees the inode when nothing else refers to it</td><td><code>ENOENT</code></td></tr>
+<tr><td><code>install(description)</code></td><td>places a description at the lowest free index</td><td><code>EMFILE</code> at the limit</td></tr>
+<tr><td><code>open(name)</code></td><td>looks the name up, creates a description with offset 0, installs it</td><td><code>ENOENT</code>, <code>EMFILE</code></td></tr>
+<tr><td><code>dup(fd)</code>, <code>dup2(from, to)</code></td><td>install an existing description again</td><td><code>EBADF</code></td></tr>
+<tr><td><code>close(fd)</code></td><td>frees the entry; closes the description at the last reference</td><td><code>EBADF</code></td></tr>
+<tr><td><code>read(fd, n)</code>, <code>write(fd, data)</code></td><td>use and advance the description’s offset</td><td><code>EBADF</code></td></tr>
+<tr><td><code>fork()</code></td><td>copies the table and counts every copy</td><td></td></tr>
+<tr><td><code>exec()</code></td><td>closes the entries that have <code>cloexec</code> set</td><td></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The Go version links the objects with pointers, as the kernel does. The Rust version
+keeps the inodes and the open file descriptions in tables owned by a <code>Kernel</code> value and
+refers to them by number, which avoids shared mutable ownership.</p>
+<p>An inode has its contents and its 2 counts.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.17</b> The imports of <code>fdtable</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">import (
+	"errors"
+	"fmt"
+	"log"
+	"strings"
+)
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.18</b> The imports of <code>fdtable</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::HashMap;
+use std::fmt;</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.19</b> The inode, and the tables that hold inodes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// The errors carry the names of the kernel's error codes for the same cases.
+var (
+	errBadDescriptor = errors.New("EBADF")
+	errTooManyFiles  = errors.New("EMFILE")
+	errNoEntry       = errors.New("ENOENT")
+)
+
+// An inode is a file: its number, its contents, and 2 reference counts.
+// links counts the names that refer to it, and opens counts the open file
+// descriptions that refer to it.
+type inode struct {
+	number int
+	data   []byte
+	links  int
+	opens  int
+}
+
+// A filesystem holds the inodes and a single directory, which maps names to
+// inodes.
+type filesystem struct {
+	names  map[string]*inode
+	inodes map[int]*inode
+	next   int
+}
+
+func newFilesystem() *filesystem {
+	return &amp;filesystem{names: map[string]*inode{}, inodes: map[int]*inode{}, next: 1}
+}
+
+// allocate returns a new inode with no name.
+func (fs *filesystem) allocate() *inode {
+	file := &amp;inode{number: fs.next}
+	fs.inodes[file.number] = file
+	fs.next++
+
+	return file
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.20</b> The inode, and the tables that hold inodes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The errors carry the names of the kernel's error codes for the same cases.
+#[derive(Debug)]
+enum Error {
+    BadDescriptor,
+    TooManyFiles,
+    NoEntry,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Error::BadDescriptor =&gt; "EBADF",
+            Error::TooManyFiles =&gt; "EMFILE",
+            Error::NoEntry =&gt; "ENOENT",
+        })
+    }
+}
+
+/// A file: its contents and 2 reference counts. `links` counts the names
+/// that refer to it, and `opens` counts the open file descriptions that refer
+/// to it. Its number is its key in the kernel's table of inodes.
+#[derive(Default)]
+struct Inode {
+    data: Vec&lt;u8&gt;,
+    links: u32,
+    opens: u32,
+}
+
+/// The kernel's tables: a single directory that maps names to inode numbers,
+/// the inodes, and every open file description.
+#[derive(Default)]
+struct Kernel {
+    names: HashMap&lt;&amp;'static str, u64&gt;,
+    inodes: HashMap&lt;u64, Inode&gt;,
+    open_files: Vec&lt;Description&gt;,
+    next: u64,
+}
+
+impl Kernel {
+    /// Returns the number of a new inode with no name.
+    fn allocate(&amp;mut self) -&gt; u64 {
+        self.next += 1;
+        self.inodes.insert(self.next, Inode::default());
+
+        self.next
+    }
+
+    fn inode(&amp;mut self, number: u64) -&gt; Result&lt;&amp;mut Inode, Error&gt; {
+        self.inodes.get_mut(&amp;number).ok_or(Error::NoEntry)
+    }
+}</code></pre>
+<p><code>create</code>, <code>link</code> and <code>unlink</code> change the directory and the link count. <code>release</code> is the
+single place where an inode is freed, and it requires both counts to be 0.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.21</b> Names: create, link, unlink, and release, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// create makes an empty file with one name.
+func (fs *filesystem) create(name string) *inode {
+	file := fs.allocate()
+	file.links = 1
+	fs.names[name] = file
+
+	return file
+}
+
+// link adds a second name for an existing file.
+func (fs *filesystem) link(existing, added string) error {
+	file, ok := fs.names[existing]
+
+	if !ok {
+		return errNoEntry
+	}
+
+	file.links++
+	fs.names[added] = file
+
+	return nil
+}
+
+// unlink removes a name. The file itself is removed only when release finds
+// no other reference to it.
+func (fs *filesystem) unlink(name string) error {
+	file, ok := fs.names[name]
+
+	if !ok {
+		return errNoEntry
+	}
+
+	delete(fs.names, name)
+	file.links--
+	fs.release(file)
+
+	return nil
+}
+
+// release frees an inode that has no name and is not open.
+func (fs *filesystem) release(file *inode) {
+	if file.links == 0 &amp;&amp; file.opens == 0 {
+		delete(fs.inodes, file.number)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.22</b> Names: create, link, unlink, and release, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Makes an empty file with one name and returns its inode number.
+    fn create(&amp;mut self, name: &amp;'static str) -&gt; Result&lt;u64, Error&gt; {
+        let number = self.allocate();
+
+        self.inode(number)?.links = 1;
+        self.names.insert(name, number);
+
+        Ok(number)
+    }
+
+    /// Adds a second name for an existing file.
+    fn link(&amp;mut self, existing: &amp;str, added: &amp;'static str) -&gt; Result&lt;(), Error&gt; {
+        let number = *self.names.get(existing).ok_or(Error::NoEntry)?;
+
+        self.inode(number)?.links += 1;
+        self.names.insert(added, number);
+
+        Ok(())
+    }
+
+    /// Removes a name. The file itself is removed only when `release` finds
+    /// no other reference to it.
+    fn unlink(&amp;mut self, name: &amp;str) -&gt; Result&lt;(), Error&gt; {
+        let number = self.names.remove(name).ok_or(Error::NoEntry)?;
+
+        self.inode(number)?.links -= 1;
+        self.release(number);
+
+        Ok(())
+    }
+
+    /// Frees an inode that has no name and is not open.
+    fn release(&amp;mut self, number: u64) {
+        if let Some(file) = self.inodes.get(&amp;number)
+            &amp;&amp; file.links == 0
+            &amp;&amp; file.opens == 0
+        {
+            self.inodes.remove(&amp;number);
+        }
+    }
+}</code></pre>
+<p>The description corresponds to <code>struct file</code>, and the descriptor to a table entry
+together with its close-on-exec bit.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.23</b> The description, the descriptor, and the process, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// A description is an open file description: the state created by one open.
+// refs counts the descriptors, in all processes, that refer to it.
+type description struct {
+	file       *inode
+	offset     int
+	appendMode bool
+	refs       int
+}
+
+// A descriptor is one entry of a process's table. The close-on-exec flag
+// belongs to the entry.
+type descriptor struct {
+	open    *description
+	cloexec bool
+}
+
+// A process is its descriptor table. The index of an entry is the file
+// descriptor, a nil entry is a free number, and limit is the number of
+// entries the process may use.
+type process struct {
+	fs    *filesystem
+	table []*descriptor
+	limit int
+}
+
+// newProcess returns a process with descriptors 0, 1 and 2 open on a
+// terminal, which is a file without a name.
+func newProcess(fs *filesystem) *process {
+	p := &amp;process{fs: fs, limit: 1024}
+	terminal := &amp;description{file: fs.allocate()}
+	terminal.file.opens = 1
+
+	for range 3 {
+		p.install(terminal)
+	}
+
+	return p
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.24</b> The description, the descriptor, and the process, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// An open file description: the state created by one open. `file` is the
+/// number of its inode, and `refs` counts the descriptors, in all processes,
+/// that refer to it.
+struct Description {
+    file: u64,
+    offset: usize,
+    append_mode: bool,
+    refs: u32,
+}
+
+/// One entry of a process's table. `open` is the index of a description in
+/// the kernel's table. The close-on-exec flag belongs to the entry.
+#[derive(Clone, Copy)]
+struct Descriptor {
+    open: usize,
+    cloexec: bool,
+}
+
+/// A process is its descriptor table. The index of an entry is the file
+/// descriptor, `None` is a free number, and `limit` is the number of entries
+/// the process may use.
+struct Process {
+    table: Vec&lt;Option&lt;Descriptor&gt;&gt;,
+    limit: usize,
+}
+
+impl Kernel {
+    /// Adds a description for an inode and returns its index.
+    fn describe(&amp;mut self, file: u64) -&gt; usize {
+        self.open_files.push(Description {
+            file,
+            offset: 0,
+            append_mode: false,
+            refs: 0,
+        });
+
+        self.open_files.len() - 1
+    }
+
+    /// Returns a process with descriptors 0, 1 and 2 open on a terminal,
+    /// which is a file without a name.
+    fn process(&amp;mut self) -&gt; Result&lt;Process, Error&gt; {
+        let mut process = Process {
+            table: Vec::new(),
+            limit: 1024,
+        };
+
+        let terminal = self.allocate();
+        let open = self.describe(terminal);
+
+        self.inode(terminal)?.opens = 1;
+
+        for _ in 0..3 {
+            self.install(&amp;mut process, open)?;
+        }
+
+        Ok(process)
+    }
+}</code></pre>
+<p><code>install</code> implements both rules of the descriptor table: the lowest free number and the
+limit. <code>open</code> creates a description, and <code>dup</code> installs an existing one, which is the
+whole difference between them.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.25</b> Creating descriptors, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// install puts a description in the lowest free entry, counts the new
+// reference, and returns the number of the entry.
+func (p *process) install(open *description) (int, error) {
+	fd := 0
+
+	for fd &lt; len(p.table) &amp;&amp; p.table[fd] != nil {
+		fd++
+	}
+
+	if fd &gt;= p.limit {
+		return 0, errTooManyFiles
+	}
+
+	if fd == len(p.table) {
+		p.table = append(p.table, nil)
+	}
+
+	open.refs++
+	p.table[fd] = &amp;descriptor{open: open}
+
+	return fd, nil
+}
+
+// lookup returns the entry of a descriptor.
+func (p *process) lookup(fd int) (*descriptor, error) {
+	if fd &lt; 0 || fd &gt;= len(p.table) || p.table[fd] == nil {
+		return nil, errBadDescriptor
+	}
+
+	return p.table[fd], nil
+}
+
+// open finds the inode behind a name and creates a description for it, with
+// offset 0.
+func (p *process) open(name string) (int, error) {
+	file, ok := p.fs.names[name]
+
+	if !ok {
+		return 0, errNoEntry
+	}
+
+	fd, err := p.install(&amp;description{file: file})
+
+	if err == nil {
+		file.opens++
+	}
+
+	return fd, err
+}
+
+// dup makes a second descriptor for an existing description.
+func (p *process) dup(fd int) (int, error) {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return p.install(entry.open)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.26</b> Creating descriptors, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Puts a description in the lowest free entry, counts the new reference,
+    /// and returns the number of the entry.
+    fn install(&amp;mut self, process: &amp;mut Process, open: usize) -&gt; Result&lt;usize, Error&gt; {
+        let fd = process
+            .table
+            .iter()
+            .take_while(|entry| entry.is_some())
+            .count();
+
+        if fd &gt;= process.limit {
+            return Err(Error::TooManyFiles);
+        }
+
+        if fd == process.table.len() {
+            process.table.push(None);
+        }
+
+        self.open_files[open].refs += 1;
+        process.table[fd] = Some(Descriptor {
+            open,
+            cloexec: false,
+        });
+
+        Ok(fd)
+    }
+
+    /// Finds the inode behind a name and creates a description for it, with
+    /// offset 0.
+    fn open(&amp;mut self, process: &amp;mut Process, name: &amp;str) -&gt; Result&lt;usize, Error&gt; {
+        let file = *self.names.get(name).ok_or(Error::NoEntry)?;
+        let open = self.describe(file);
+        let fd = self.install(process, open)?;
+
+        self.inode(file)?.opens += 1;
+
+        Ok(fd)
+    }
+
+    /// Makes a second descriptor for an existing description.
+    fn dup(&amp;mut self, process: &amp;mut Process, fd: usize) -&gt; Result&lt;usize, Error&gt; {
+        let entry = process.lookup(fd)?;
+
+        self.install(process, entry.open)
+    }
+}
+
+impl Process {
+    /// Returns the entry of a descriptor.
+    fn lookup(&amp;self, fd: usize) -&gt; Result&lt;Descriptor, Error&gt; {
+        self.table
+            .get(fd)
+            .copied()
+            .flatten()
+            .ok_or(Error::BadDescriptor)
+    }
+}</code></pre>
+<p><code>close</code> lowers the count of the description and, at 0, the open count of the inode.
+<code>dup2</code> closes its target first, which is why redirecting descriptor 1 releases whatever
+descriptor 1 was before.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.27</b> Closing a descriptor, and dup2, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// close frees an entry and drops its reference to the description. The last
+// reference closes the description, which drops its reference to the inode.
+func (p *process) close(fd int) error {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return err
+	}
+
+	p.table[fd] = nil
+	entry.open.refs--
+
+	if entry.open.refs == 0 {
+		entry.open.file.opens--
+		p.fs.release(entry.open.file)
+	}
+
+	return nil
+}
+
+// dup2 makes descriptor to refer to the description of descriptor from,
+// closing whatever to referred to before.
+func (p *process) dup2(from, to int) error {
+	entry, err := p.lookup(from)
+
+	if err != nil {
+		return err
+	}
+
+	if from == to {
+		return nil
+	}
+
+	if _, err := p.lookup(to); err == nil {
+		p.close(to)
+	}
+
+	for len(p.table) &lt;= to {
+		p.table = append(p.table, nil)
+	}
+
+	entry.open.refs++
+	p.table[to] = &amp;descriptor{open: entry.open}
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.28</b> Closing a descriptor, and dup2, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Frees an entry and drops its reference to the description. The last
+    /// reference closes the description, which drops its reference to the
+    /// inode.
+    fn close(&amp;mut self, process: &amp;mut Process, fd: usize) -&gt; Result&lt;(), Error&gt; {
+        let entry = process.lookup(fd)?;
+        let open = &amp;mut self.open_files[entry.open];
+
+        process.table[fd] = None;
+        open.refs -= 1;
+
+        if open.refs == 0 {
+            let file = open.file;
+
+            self.inode(file)?.opens -= 1;
+            self.release(file);
+        }
+
+        Ok(())
+    }
+
+    /// Makes descriptor `to` refer to the description of descriptor `from`,
+    /// closing whatever `to` referred to before.
+    fn dup2(&amp;mut self, process: &amp;mut Process, from: usize, to: usize) -&gt; Result&lt;(), Error&gt; {
+        let entry = process.lookup(from)?;
+
+        if from == to {
+            return Ok(());
+        }
+
+        if process.lookup(to).is_ok() {
+            self.close(process, to)?;
+        }
+
+        if process.table.len() &lt;= to {
+            process.table.resize(to + 1, None);
+        }
+
+        self.open_files[entry.open].refs += 1;
+        process.table[to] = Some(Descriptor {
+            open: entry.open,
+            cloexec: false,
+        });
+
+        Ok(())
+    }
+}</code></pre>
+<p><code>read</code> and <code>write</code> take the offset from the description. With <code>appendMode</code> set, <code>write</code>
+first moves the offset to the end of the file. The kernel performs that move and the
+write as a single atomic step, so concurrent appends do not overwrite each other.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.29</b> Reading and writing through a descriptor, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// write copies data into the file at the description's offset and advances
+// the offset. In append mode the offset first moves to the end of the file.
+func (p *process) write(fd int, data string) error {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return err
+	}
+
+	open, file := entry.open, entry.open.file
+
+	if open.appendMode {
+		open.offset = len(file.data)
+	}
+
+	end := open.offset + len(data)
+
+	if end &gt; len(file.data) {
+		file.data = append(file.data, make([]byte, end-len(file.data))...)
+	}
+
+	copy(file.data[open.offset:], data)
+	open.offset = end
+
+	return nil
+}
+
+// read returns up to n bytes from the description's offset and advances the
+// offset.
+func (p *process) read(fd, n int) (string, error) {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return "", err
+	}
+
+	open := entry.open
+	end := min(open.offset+n, len(open.file.data))
+	data := string(open.file.data[open.offset:end])
+	open.offset = end
+
+	return data, nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.30</b> Reading and writing through a descriptor, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Copies `data` into the file at the description's offset and advances
+    /// the offset. In append mode the offset first moves to the end of the
+    /// file.
+    fn write(&amp;mut self, process: &amp;Process, fd: usize, data: &amp;str) -&gt; Result&lt;(), Error&gt; {
+        let open = &amp;mut self.open_files[process.lookup(fd)?.open];
+        let file = self.inodes.get_mut(&amp;open.file).ok_or(Error::NoEntry)?;
+
+        if open.append_mode {
+            open.offset = file.data.len();
+        }
+
+        let end = open.offset + data.len();
+
+        if end &gt; file.data.len() {
+            file.data.resize(end, 0);
+        }
+
+        file.data[open.offset..end].copy_from_slice(data.as_bytes());
+        open.offset = end;
+
+        Ok(())
+    }
+
+    /// Returns up to `n` bytes from the description's offset and advances the
+    /// offset.
+    fn read(&amp;mut self, process: &amp;Process, fd: usize, n: usize) -&gt; Result&lt;String, Error&gt; {
+        let open = &amp;mut self.open_files[process.lookup(fd)?.open];
+        let file = self.inodes.get(&amp;open.file).ok_or(Error::NoEntry)?;
+
+        let end = (open.offset + n).min(file.data.len());
+        let data = String::from_utf8_lossy(&amp;file.data[open.offset..end]).into_owned();
+
+        open.offset = end;
+
+        Ok(data)
+    }
+}</code></pre>
+<p><code>fork</code> copies the table and raises the count of every description. <code>exec</code> applies the
+close-on-exec flag.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.31</b> Inheriting descriptors, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// fork returns a child whose table has a copy of every entry. The copies
+// refer to the parent's descriptions, and each copy is counted.
+func (p *process) fork() *process {
+	child := &amp;process{fs: p.fs, limit: p.limit, table: make([]*descriptor, len(p.table))}
+
+	for fd, entry := range p.table {
+		if entry != nil {
+			entry.open.refs++
+			child.table[fd] = &amp;descriptor{open: entry.open, cloexec: entry.cloexec}
+		}
+	}
+
+	return child
+}
+
+// exec closes every descriptor that has the close-on-exec flag.
+func (p *process) exec() {
+	for fd, entry := range p.table {
+		if entry != nil &amp;&amp; entry.cloexec {
+			p.close(fd)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.32</b> Inheriting descriptors, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">impl Kernel {
+    /// Returns a child whose table has a copy of every entry. The copies
+    /// refer to the parent's descriptions, and each copy is counted.
+    fn fork(&amp;mut self, parent: &amp;Process) -&gt; Process {
+        for entry in parent.table.iter().flatten() {
+            self.open_files[entry.open].refs += 1;
+        }
+
+        Process {
+            table: parent.table.clone(),
+            limit: parent.limit,
+        }
+    }
+
+    /// Closes every descriptor that has the close-on-exec flag.
+    fn exec(&amp;mut self, process: &amp;mut Process) -&gt; Result&lt;(), Error&gt; {
+        for fd in 0..process.table.len() {
+            if process.table[fd].is_some_and(|entry| entry.cloexec) {
+                self.close(process, fd)?;
+            }
+        }
+
+        Ok(())
+    }
+}</code></pre>
+<p>The experiments repeat <code>fdfacts</code> on the model.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.33</b> Numbers, the limit, offsets and flags on the model, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">func numbers(fs *filesystem) error {
+	p := newProcess(fs)
+
+	if err := p.close(0); err != nil {
+		return err
+	}
+
+	fd, err := p.open("file")
+	fmt.Printf("descriptor 0 closed: the next open returns %d\n", fd)
+
+	return err
+}
+
+func limit(fs *filesystem) error {
+	p := newProcess(fs)
+	p.limit = 32
+	highest := -1
+
+	for {
+		fd, err := p.open("file")
+
+		if err != nil {
+			fmt.Printf("limit of 32 descriptors: the highest number obtained is %d, the next open fails with %v\n", highest, err)
+
+			return nil
+		}
+
+		highest = max(highest, fd)
+	}
+}
+
+func offsets(fs *filesystem) error {
+	p := newProcess(fs)
+	first, err := p.open("file")
+
+	if err != nil {
+		return err
+	}
+
+	duplicate, err := p.dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	second, err := p.open("file")
+
+	if err != nil {
+		return err
+	}
+
+	if err := p.write(first, "hello"); err != nil {
+		return err
+	}
+
+	fmt.Printf("after a write of 5 bytes: offset through the duplicate %d, through a second open %d\n",
+		p.table[duplicate].open.offset, p.table[second].open.offset)
+
+	return nil
+}
+
+func flags(fs *filesystem) error {
+	p := newProcess(fs)
+	first, err := p.open("file")
+
+	if err != nil {
+		return err
+	}
+
+	duplicate, err := p.dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	p.table[duplicate].open.appendMode = true
+	p.table[duplicate].cloexec = true
+
+	fmt.Printf("set on the duplicate, read on the original: O_APPEND %v, close-on-exec %v\n",
+		p.table[first].open.appendMode, p.table[first].cloexec)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.34</b> Numbers, the limit, offsets and flags on the model, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn numbers(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+
+    kernel.close(&amp;mut process, 0)?;
+
+    let fd = kernel.open(&amp;mut process, "file")?;
+    println!("descriptor 0 closed: the next open returns {fd}");
+
+    Ok(())
+}
+
+fn limit(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+    let mut highest = 0;
+
+    process.limit = 32;
+
+    let error = loop {
+        match kernel.open(&amp;mut process, "file") {
+            Ok(fd) =&gt; highest = highest.max(fd),
+            Err(error) =&gt; break error,
+        }
+    };
+
+    println!(
+        "limit of 32 descriptors: the highest number obtained is {highest}, the next open fails with {error}"
+    );
+
+    Ok(())
+}
+
+fn offsets(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+
+    let first = kernel.open(&amp;mut process, "file")?;
+    let duplicate = kernel.dup(&amp;mut process, first)?;
+    let second = kernel.open(&amp;mut process, "file")?;
+
+    kernel.write(&amp;process, first, "hello")?;
+
+    let shared = kernel.open_files[process.lookup(duplicate)?.open].offset;
+    let separate = kernel.open_files[process.lookup(second)?.open].offset;
+
+    println!(
+        "after a write of 5 bytes: offset through the duplicate {shared}, through a second open {separate}"
+    );
+
+    Ok(())
+}
+
+fn flags(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+
+    let first = kernel.open(&amp;mut process, "file")?;
+    let duplicate = kernel.dup(&amp;mut process, first)?;
+
+    kernel.open_files[process.lookup(duplicate)?.open].append_mode = true;
+
+    if let Some(entry) = &amp;mut process.table[duplicate] {
+        entry.cloexec = true;
+    }
+
+    let original = process.lookup(first)?;
+
+    println!(
+        "set on the duplicate, read on the original: O_APPEND {}, close-on-exec {}",
+        kernel.open_files[original.open].append_mode, original.cloexec
+    );
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.35</b> Names and the lifetime of an inode on the model, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">func names(fs *filesystem) error {
+	fs.create("first")
+
+	if err := fs.link("first", "second"); err != nil {
+		return err
+	}
+
+	a, b := fs.names["first"], fs.names["second"]
+	fmt.Printf("a second name for the file: same inode %v, link count %d\n", a == b, b.links)
+
+	return nil
+}
+
+func unlinked(fs *filesystem) error {
+	p := newProcess(fs)
+	file := fs.create("unlinked")
+	file.data = []byte("hello")
+
+	fd, err := p.open("unlinked")
+
+	if err != nil {
+		return err
+	}
+
+	if err := fs.unlink("unlinked"); err != nil {
+		return err
+	}
+
+	data, err := p.read(fd, 16)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the name removed, the file still open: link count %d, read through the descriptor returns %q\n",
+		file.links, data)
+
+	return p.close(fd)
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.36</b> Names and the lifetime of an inode on the model, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn names(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    kernel.create("first")?;
+    kernel.link("first", "second")?;
+
+    let (a, b) = (kernel.names["first"], kernel.names["second"]);
+
+    println!(
+        "a second name for the file: same inode {}, link count {}",
+        a == b,
+        kernel.inode(b)?.links
+    );
+
+    Ok(())
+}
+
+fn unlinked(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+    let file = kernel.create("unlinked")?;
+
+    kernel.inode(file)?.data = b"hello".to_vec();
+
+    let fd = kernel.open(&amp;mut process, "unlinked")?;
+
+    kernel.unlink("unlinked")?;
+
+    let links = kernel.inode(file)?.links;
+    let data = kernel.read(&amp;process, fd, 16)?;
+
+    println!(
+        "the name removed, the file still open: link count {links}, read through the descriptor returns {data:?}"
+    );
+
+    kernel.close(&amp;mut process, fd)
+}</code></pre>
+<p><code>redirect</code> does what a shell does between <code>fork</code> and <code>exec</code>: it rearranges the child’s
+descriptors 1 and 2 with <code>dup2</code>. The parent’s table is unchanged.</p>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.37</b> Redirection on the model, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// redirect forks a child, points its descriptors 1 and 2 at the given
+// descriptors, and has it write "out" and then "err". It returns the file's
+// contents.
+func redirect(shell *process, file *inode, stdout, stderr int) (string, error) {
+	child := shell.fork()
+
+	if err := child.dup2(stdout, 1); err != nil {
+		return "", err
+	}
+
+	if err := child.dup2(stderr, 2); err != nil {
+		return "", err
+	}
+
+	child.exec()
+
+	if err := child.write(1, "out\n"); err != nil {
+		return "", err
+	}
+
+	if err := child.write(2, "err\n"); err != nil {
+		return "", err
+	}
+
+	return strings.Join(strings.Fields(string(file.data)), " "), nil
+}
+
+func redirections(fs *filesystem) error {
+	shell := newProcess(fs)
+	file := fs.create("output")
+	stdout, err := shell.open("output")
+
+	if err != nil {
+		return err
+	}
+
+	text, err := redirect(shell, file, stdout, stdout)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt;&amp;1: the file holds %q\n", text)
+
+	file.data = nil
+	first, err := shell.open("output")
+
+	if err != nil {
+		return err
+	}
+
+	second, err := shell.open("output")
+
+	if err != nil {
+		return err
+	}
+
+	text, err = redirect(shell, file, first, second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt; file: the file holds %q\n", text)
+
+	return nil
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.38</b> Redirection on the model, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Forks a child, points its descriptors 1 and 2 at the given descriptors,
+/// and has it write "out" and then "err". Returns the file's contents.
+fn redirect(
+    kernel: &amp;mut Kernel,
+    shell: &amp;Process,
+    file: u64,
+    stdout: usize,
+    stderr: usize,
+) -&gt; Result&lt;String, Error&gt; {
+    let mut child = kernel.fork(shell);
+
+    kernel.dup2(&amp;mut child, stdout, 1)?;
+    kernel.dup2(&amp;mut child, stderr, 2)?;
+    kernel.exec(&amp;mut child)?;
+
+    kernel.write(&amp;child, 1, "out\n")?;
+    kernel.write(&amp;child, 2, "err\n")?;
+
+    let text = String::from_utf8_lossy(&amp;kernel.inode(file)?.data).into_owned();
+    let words: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    Ok(words.join(" "))
+}
+
+fn redirections(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut shell = kernel.process()?;
+    let file = kernel.create("output")?;
+    let stdout = kernel.open(&amp;mut shell, "output")?;
+
+    let text = redirect(kernel, &amp;shell, file, stdout, stdout)?;
+    println!("&gt; file 2&gt;&amp;1: the file holds {text:?}");
+
+    kernel.inode(file)?.data.clear();
+
+    let first = kernel.open(&amp;mut shell, "output")?;
+    let second = kernel.open(&amp;mut shell, "output")?;
+
+    let text = redirect(kernel, &amp;shell, file, first, second)?;
+    println!("&gt; file 2&gt; file: the file holds {text:?}");
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">descriptor 0 closed: the next open returns 0
+limit of 32 descriptors: the highest number obtained is 31, the next open fails with EMFILE
+after a write of 5 bytes: offset through the duplicate 5, through a second open 0
+set on the duplicate, read on the original: O_APPEND true, close-on-exec false
+a second name for the file: same inode true, link count 2
+the name removed, the file still open: link count 0, read through the descriptor returns "hello"
+&gt; file 2&gt;&amp;1: the file holds "out err"
+&gt; file 2&gt; file: the file holds "err"
+</code></pre>
+<p>The output is identical to the output of <code>fdfacts</code>, line for line.</p>
+<h2 id="redirection"><a class="header" href="#redirection">Redirection</a></h2>
+<p>A shell applies redirections from left to right, each as a <code>dup2</code> in the child before
+<code>exec</code>.</p>
+<ul>
+<li><code>&gt; file</code> opens the file and makes descriptor 1 refer to the new <code>struct file</code>.</li>
+<li><code>2&gt;&amp;1</code> makes descriptor 2 refer to the <code>struct file</code> that descriptor 1 refers to at
+that moment.</li>
+</ul>
+<figure>
+<img src="figures/redirect-shared.svg" alt="With &gt; file 2&gt;&amp;1, descriptors 1 and 2 refer to one open file description. The write of out moves its offset from 0 to 4, the write of err continues at 4, and the file holds out and err. With &gt; file 2&gt; file, each descriptor has its own description with offset 0. The write of err starts at offset 0 and overwrites out, and the file holds err.">
+<figcaption><b>Figure 2.8</b> The same file reached through 1 <code>struct file</code> and through 2.</figcaption>
+</figure>
+<p>The order of redirections therefore changes the result. In <code>&gt; file 2&gt;&amp;1</code>, descriptor 1
+is on the file when descriptor 2 is duplicated from it, and both write to the file. In
+<code>2&gt;&amp;1 &gt; file</code>, descriptor 2 is duplicated first, while descriptor 1 is still the
+terminal. Descriptor 1 then moves to the file, and errors continue to go to the
+terminal.</p>
+<p><code>&gt;&gt; file 2&gt;&gt; file</code> is safe with separate <code>struct file</code> objects. Both are opened with
+<code>O_APPEND</code>, so each write goes to the current end of the file regardless of the offset.</p>
+<p><a href="04-building-a-shell.html">Chapter 4</a> builds a shell that performs these redirections.</p>
+<h2 id="inspecting-a-running-process"><a class="header" href="#inspecting-a-running-process">Inspecting a running process</a></h2>
+<p>The kernel publishes the descriptor table of every process under <code>/proc</code>, which makes
+the structures of this chapter visible on a live system.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Shows</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ls -l /proc/&lt;pid&gt;/fd</code></td><td>each descriptor of the process and what it refers to</td></tr>
+<tr><td><code>cat /proc/&lt;pid&gt;/fdinfo/&lt;n&gt;</code></td><td>the offset, the flags and the inode number of descriptor <code>n</code></td></tr>
+<tr><td><code>ulimit -n</code></td><td>the limit on descriptors for processes started from this shell</td></tr>
+<tr><td><code>cat /proc/sys/fs/file-nr</code></td><td>the number of open files in the whole system</td></tr>
+</tbody>
+</table>
+</div>
+<p>For descriptor 7 of the shell above, after the names were removed:</p>
+<pre><code class="language-console">$ cat /proc/$$/fdinfo/7
+pos:	0
+flags:	0400000
+mnt_id:	28
+ino:	19927765
+</code></pre>
+<p><code>pos</code> is <code>f_pos</code>. <code>flags</code> is <code>f_flags</code> in octal: the last digit 0 is <code>O_RDONLY</code>, and
+0400000 is <code>O_LARGEFILE</code>, which the kernel sets on every open on a 64-bit system. <code>ino</code>
+is the inode number, the same 19927765 that <code>ls -li</code> printed while the file had names.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.39</b> The complete <code>fdfacts</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdfacts/main.go">code/go/fdfacts/main.go</a></p>
+
+<pre><code class="language-go">// Command fdfacts measures how the kernel hands out file descriptors and what
+// a pair of descriptors shares: the number an open returns, the file offset, the
+// status flags, and the close-on-exec flag. It ends with the redirection
+// `&gt; file 2&gt;&amp;1`, done once with a shared open file description and once with
+// separate ones.
+//
+// Run it from code/go with:
+//
+//	go run ./fdfacts
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"golang.org/x/sys/unix"
+)
+
+
+// numbers closes descriptor 0, the standard input, and opens a file. The
+// kernel gives an open the lowest number that is free.
+func numbers(path string) error {
+	if err := unix.Close(0); err != nil {
+		return err
+	}
+
+	fd, err := unix.Open(path, unix.O_RDONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("descriptor 0 closed: the next open returns %d\n", fd)
+
+	return nil
+}
+
+
+// name returns the symbolic name of a system call error, such as EMFILE.
+func name(err error) string {
+	var errno unix.Errno
+
+	if errors.As(err, &amp;errno) {
+		return unix.ErrnoName(errno)
+	}
+
+	return fmt.Sprint(err)
+}
+
+// limit lowers the limit on open descriptors to 32 and opens a file until
+// the kernel refuses.
+func limit(path string) error {
+	var saved unix.Rlimit
+
+	if err := unix.Getrlimit(unix.RLIMIT_NOFILE, &amp;saved); err != nil {
+		return err
+	}
+
+	lowered := saved
+	lowered.Cur = 32
+
+	if err := unix.Setrlimit(unix.RLIMIT_NOFILE, &amp;lowered); err != nil {
+		return err
+	}
+
+	defer unix.Setrlimit(unix.RLIMIT_NOFILE, &amp;saved)
+
+	var opened []int
+	highest := -1
+
+	for {
+		fd, err := unix.Open(path, unix.O_RDONLY, 0)
+
+		if err != nil {
+			fmt.Printf("limit of 32 descriptors: the highest number obtained is %d, the next open fails with %s\n",
+				highest, name(err))
+
+			break
+		}
+
+		opened, highest = append(opened, fd), max(highest, fd)
+	}
+
+	for _, fd := range opened {
+		unix.Close(fd)
+	}
+
+	return nil
+}
+
+
+// offset returns the file offset that a descriptor refers to.
+func offset(fd int) (int64, error) {
+	return unix.Seek(fd, 0, unix.SEEK_CUR)
+}
+
+// offsets writes through one descriptor and reads the offset through a
+// duplicate of it and through a second open of the same file.
+func offsets(path string) error {
+	first, err := unix.Open(path, unix.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(first)
+
+	duplicate, err := unix.Dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(duplicate)
+
+	second, err := unix.Open(path, unix.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(second)
+
+	if _, err := unix.Write(first, []byte("hello")); err != nil {
+		return err
+	}
+
+	shared, err := offset(duplicate)
+
+	if err != nil {
+		return err
+	}
+
+	separate, err := offset(second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("after a write of 5 bytes: offset through the duplicate %d, through a second open %d\n",
+		shared, separate)
+
+	return nil
+}
+
+
+// flags sets O_APPEND and close-on-exec through a duplicate and reads both
+// through the original descriptor.
+func flags(path string) error {
+	first, err := unix.Open(path, unix.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(first)
+
+	duplicate, err := unix.Dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(duplicate)
+
+	if _, err := unix.FcntlInt(uintptr(duplicate), unix.F_SETFL, unix.O_APPEND); err != nil {
+		return err
+	}
+
+	if _, err := unix.FcntlInt(uintptr(duplicate), unix.F_SETFD, unix.FD_CLOEXEC); err != nil {
+		return err
+	}
+
+	status, err := unix.FcntlInt(uintptr(first), unix.F_GETFL, 0)
+
+	if err != nil {
+		return err
+	}
+
+	descriptor, err := unix.FcntlInt(uintptr(first), unix.F_GETFD, 0)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("set on the duplicate, read on the original: O_APPEND %v, close-on-exec %v\n",
+		status&amp;unix.O_APPEND != 0, descriptor&amp;unix.FD_CLOEXEC != 0)
+
+	return nil
+}
+
+
+// inode returns the inode number and the link count of a file.
+func inode(path string) (number uint64, links uint64, err error) {
+	var status unix.Stat_t
+
+	err = unix.Stat(path, &amp;status)
+
+	return status.Ino, uint64(status.Nlink), err
+}
+
+// names gives a file a second name and compares the inodes behind the names.
+func names(path string) error {
+	first, second := path+".first", path+".second"
+
+	if err := os.WriteFile(first, []byte("hello"), 0o644); err != nil {
+		return err
+	}
+
+	defer os.Remove(first)
+	defer os.Remove(second)
+
+	if err := unix.Link(first, second); err != nil {
+		return err
+	}
+
+	a, _, err := inode(first)
+
+	if err != nil {
+		return err
+	}
+
+	b, links, err := inode(second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("a second name for the file: same inode %v, link count %d\n", a == b, links)
+
+	return nil
+}
+
+
+// unlinked opens a file, removes its only name, and reads through the
+// descriptor.
+func unlinked(path string) error {
+	file := path + ".unlinked"
+
+	if err := os.WriteFile(file, []byte("hello"), 0o644); err != nil {
+		return err
+	}
+
+	fd, err := unix.Open(file, unix.O_RDONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer unix.Close(fd)
+
+	if err := unix.Unlink(file); err != nil {
+		return err
+	}
+
+	var status unix.Stat_t
+
+	if err := unix.Fstat(fd, &amp;status); err != nil {
+		return err
+	}
+
+	buf := make([]byte, 16)
+	n, err := unix.Read(fd, buf)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the name removed, the file still open: link count %d, read through the descriptor returns %q\n",
+		status.Nlink, buf[:n])
+
+	return nil
+}
+
+
+// redirect runs a command that writes "out" to descriptor 1 and then "err" to
+// descriptor 2, with both descriptors on the same file, and returns the
+// file's contents.
+func redirect(path string, stdout, stderr *os.File) (string, error) {
+	command := exec.Command("sh", "-c", "echo out; echo err &gt;&amp;2")
+	command.Stdout, command.Stderr = stdout, stderr
+
+	if err := command.Run(); err != nil {
+		return "", err
+	}
+
+	text, err := os.ReadFile(path)
+
+	return strings.Join(strings.Fields(string(text)), " "), err
+}
+
+// redirections compares `&gt; file 2&gt;&amp;1`, where descriptor 2 is a duplicate of
+// descriptor 1, with `&gt; file 2&gt; file`, where the file is opened once for each.
+func redirections(path string) error {
+	stdout, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
+	defer stdout.Close()
+
+	text, err := redirect(path, stdout, stdout)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt;&amp;1: the file holds %q\n", text)
+
+	first, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
+	defer first.Close()
+
+	second, err := os.OpenFile(path, os.O_WRONLY, 0)
+
+	if err != nil {
+		return err
+	}
+
+	defer second.Close()
+
+	text, err = redirect(path, first, second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt; file: the file holds %q\n", text)
+
+	return nil
+}
+
+
+func run() error {
+	dir, err := os.MkdirTemp("", "fdfacts")
+
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(dir)
+
+	path := filepath.Join(dir, "file")
+
+	if err := os.WriteFile(path, nil, 0o644); err != nil {
+		return err
+	}
+
+	for _, experiment := range []func(string) error{numbers, limit, offsets, flags, names, unlinked, redirections} {
+		if err := experiment(path); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.40</b> The complete <code>fdfacts</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdfacts/src/main.rs">code/rust/fdfacts/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Measures how the kernel hands out file descriptors and what a pair of
+//! descriptors shares: the number an open returns, the file offset, the
+//! status flags, and the close-on-exec flag. It ends with the redirection
+//! `&gt; file 2&gt;&amp;1`, done once with a shared open file description and once with
+//! separate ones.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p fdfacts
+//! ```
+
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read};
+use std::os::fd::{AsFd, AsRawFd};
+use std::os::unix::fs::MetadataExt;
+use std::path::Path;
+use std::process::Command;
+
+use nix::fcntl::{FcntlArg, FdFlag, OFlag, fcntl, open};
+use nix::sys::resource::{Resource, getrlimit, setrlimit};
+use nix::sys::stat::Mode;
+use nix::unistd::{Whence, close, dup, lseek, write};
+
+/// Closes descriptor 0, the standard input, and opens a file. The kernel
+/// gives an open the lowest number that is free.
+fn numbers(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    close(0)?;
+
+    let fd = open(path, OFlag::O_RDONLY, Mode::empty())?;
+    println!(
+        "descriptor 0 closed: the next open returns {}",
+        fd.as_raw_fd()
+    );
+
+    Ok(())
+}
+
+/// Lowers the limit on open descriptors to 32 and opens a file until the
+/// kernel refuses.
+fn limit(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let (soft, hard) = getrlimit(Resource::RLIMIT_NOFILE)?;
+
+    setrlimit(Resource::RLIMIT_NOFILE, 32, hard)?;
+
+    let mut opened = Vec::new();
+
+    let error = loop {
+        match open(path, OFlag::O_RDONLY, Mode::empty()) {
+            Ok(fd) =&gt; opened.push(fd),
+            Err(error) =&gt; break error,
+        }
+    };
+
+    let highest = opened.iter().map(AsRawFd::as_raw_fd).fold(-1, i32::max);
+
+    println!(
+        "limit of 32 descriptors: the highest number obtained is {highest}, the next open fails with {error:?}"
+    );
+
+    drop(opened);
+    setrlimit(Resource::RLIMIT_NOFILE, soft, hard)?;
+
+    Ok(())
+}
+
+/// Returns the file offset that a descriptor refers to.
+fn offset(fd: impl AsFd) -&gt; nix::Result&lt;i64&gt; {
+    lseek(fd, 0, Whence::SeekCur)
+}
+
+/// Writes through one descriptor and reads the offset through a duplicate of
+/// it and through a second open of the same file.
+fn offsets(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let first = open(path, OFlag::O_WRONLY, Mode::empty())?;
+    let duplicate = dup(&amp;first)?;
+    let second = open(path, OFlag::O_WRONLY, Mode::empty())?;
+
+    write(&amp;first, b"hello")?;
+
+    let shared = offset(&amp;duplicate)?;
+    let separate = offset(&amp;second)?;
+
+    println!(
+        "after a write of 5 bytes: offset through the duplicate {shared}, through a second open {separate}"
+    );
+
+    Ok(())
+}
+
+/// Sets `O_APPEND` and close-on-exec through a duplicate and reads both
+/// through the original descriptor.
+fn flags(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let first = open(path, OFlag::O_WRONLY, Mode::empty())?;
+    let duplicate = dup(&amp;first)?;
+
+    fcntl(&amp;duplicate, FcntlArg::F_SETFL(OFlag::O_APPEND))?;
+    fcntl(&amp;duplicate, FcntlArg::F_SETFD(FdFlag::FD_CLOEXEC))?;
+
+    let status = OFlag::from_bits_truncate(fcntl(&amp;first, FcntlArg::F_GETFL)?);
+    let descriptor = FdFlag::from_bits_truncate(fcntl(&amp;first, FcntlArg::F_GETFD)?);
+
+    println!(
+        "set on the duplicate, read on the original: O_APPEND {}, close-on-exec {}",
+        status.contains(OFlag::O_APPEND),
+        descriptor.contains(FdFlag::FD_CLOEXEC)
+    );
+
+    Ok(())
+}
+
+/// Gives a file a second name and compares the inodes behind the names.
+fn names(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let (first, second) = (path.with_extension("first"), path.with_extension("second"));
+
+    fs::write(&amp;first, "hello")?;
+    fs::hard_link(&amp;first, &amp;second)?;
+
+    let (a, b) = (fs::metadata(&amp;first)?, fs::metadata(&amp;second)?);
+
+    println!(
+        "a second name for the file: same inode {}, link count {}",
+        a.ino() == b.ino(),
+        b.nlink()
+    );
+
+    fs::remove_file(&amp;first)?;
+    fs::remove_file(&amp;second)
+}
+
+/// Opens a file, removes its only name, and reads through the descriptor.
+fn unlinked(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let name = path.with_extension("unlinked");
+
+    fs::write(&amp;name, "hello")?;
+
+    let mut file = File::open(&amp;name)?;
+
+    fs::remove_file(&amp;name)?;
+
+    let links = file.metadata()?.nlink();
+    let mut text = String::new();
+
+    file.read_to_string(&amp;mut text)?;
+
+    println!(
+        "the name removed, the file still open: link count {links}, read through the descriptor returns {text:?}"
+    );
+
+    Ok(())
+}
+
+/// Runs a command that writes "out" to descriptor 1 and then "err" to
+/// descriptor 2, with both descriptors on the same file, and returns the
+/// file's contents.
+fn redirect(path: &amp;Path, stdout: File, stderr: File) -&gt; io::Result&lt;String&gt; {
+    Command::new("sh")
+        .args(["-c", "echo out; echo err &gt;&amp;2"])
+        .stdout(stdout)
+        .stderr(stderr)
+        .status()?;
+
+    let text = fs::read_to_string(path)?;
+    let words: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    Ok(words.join(" "))
+}
+
+/// Compares `&gt; file 2&gt;&amp;1`, where descriptor 2 is a duplicate of descriptor 1,
+/// with `&gt; file 2&gt; file`, where the file is opened once for each.
+fn redirections(path: &amp;Path) -&gt; io::Result&lt;()&gt; {
+    let stdout = File::create(path)?;
+    let stderr = stdout.try_clone()?;
+
+    let text = redirect(path, stdout, stderr)?;
+    println!("&gt; file 2&gt;&amp;1: the file holds {text:?}");
+
+    let first = File::create(path)?;
+    let second = OpenOptions::new().write(true).open(path)?;
+
+    let text = redirect(path, first, second)?;
+    println!("&gt; file 2&gt; file: the file holds {text:?}");
+
+    Ok(())
+}
+
+fn main() -&gt; io::Result&lt;()&gt; {
+    let dir = std::env::temp_dir().join(format!("fdfacts-{}", std::process::id()));
+    let path = dir.join("file");
+
+    fs::create_dir_all(&amp;dir)?;
+    fs::write(&amp;path, "")?;
+
+    let result = numbers(&amp;path)
+        .and_then(|()| limit(&amp;path))
+        .and_then(|()| offsets(&amp;path))
+        .and_then(|()| flags(&amp;path))
+        .and_then(|()| names(&amp;path))
+        .and_then(|()| unlinked(&amp;path))
+        .and_then(|()| redirections(&amp;path));
+
+    fs::remove_dir_all(&amp;dir)?;
+
+    result
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/gopher.svg" alt=""><b>Listing 2.41</b> The complete <code>fdtable</code>, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/go/fdtable/main.go">code/go/fdtable/main.go</a></p>
+
+<pre><code class="language-go">// Command fdtable models the kernel's file tables in user space: names that
+// refer to inodes, open file descriptions that refer to an inode and hold an
+// offset, and a descriptor table for each process. Every object counts the
+// references to it and is released when the count reaches 0. The program
+// repeats the experiments of fdfacts on the model and prints the same lines.
+//
+// Run it from code/go with:
+//
+//	go run ./fdtable
+package main
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"strings"
+)
+
+
+// The errors carry the names of the kernel's error codes for the same cases.
+var (
+	errBadDescriptor = errors.New("EBADF")
+	errTooManyFiles  = errors.New("EMFILE")
+	errNoEntry       = errors.New("ENOENT")
+)
+
+// An inode is a file: its number, its contents, and 2 reference counts.
+// links counts the names that refer to it, and opens counts the open file
+// descriptions that refer to it.
+type inode struct {
+	number int
+	data   []byte
+	links  int
+	opens  int
+}
+
+// A filesystem holds the inodes and a single directory, which maps names to
+// inodes.
+type filesystem struct {
+	names  map[string]*inode
+	inodes map[int]*inode
+	next   int
+}
+
+func newFilesystem() *filesystem {
+	return &amp;filesystem{names: map[string]*inode{}, inodes: map[int]*inode{}, next: 1}
+}
+
+// allocate returns a new inode with no name.
+func (fs *filesystem) allocate() *inode {
+	file := &amp;inode{number: fs.next}
+	fs.inodes[file.number] = file
+	fs.next++
+
+	return file
+}
+
+
+// create makes an empty file with one name.
+func (fs *filesystem) create(name string) *inode {
+	file := fs.allocate()
+	file.links = 1
+	fs.names[name] = file
+
+	return file
+}
+
+// link adds a second name for an existing file.
+func (fs *filesystem) link(existing, added string) error {
+	file, ok := fs.names[existing]
+
+	if !ok {
+		return errNoEntry
+	}
+
+	file.links++
+	fs.names[added] = file
+
+	return nil
+}
+
+// unlink removes a name. The file itself is removed only when release finds
+// no other reference to it.
+func (fs *filesystem) unlink(name string) error {
+	file, ok := fs.names[name]
+
+	if !ok {
+		return errNoEntry
+	}
+
+	delete(fs.names, name)
+	file.links--
+	fs.release(file)
+
+	return nil
+}
+
+// release frees an inode that has no name and is not open.
+func (fs *filesystem) release(file *inode) {
+	if file.links == 0 &amp;&amp; file.opens == 0 {
+		delete(fs.inodes, file.number)
+	}
+}
+
+
+// A description is an open file description: the state created by one open.
+// refs counts the descriptors, in all processes, that refer to it.
+type description struct {
+	file       *inode
+	offset     int
+	appendMode bool
+	refs       int
+}
+
+// A descriptor is one entry of a process's table. The close-on-exec flag
+// belongs to the entry.
+type descriptor struct {
+	open    *description
+	cloexec bool
+}
+
+// A process is its descriptor table. The index of an entry is the file
+// descriptor, a nil entry is a free number, and limit is the number of
+// entries the process may use.
+type process struct {
+	fs    *filesystem
+	table []*descriptor
+	limit int
+}
+
+// newProcess returns a process with descriptors 0, 1 and 2 open on a
+// terminal, which is a file without a name.
+func newProcess(fs *filesystem) *process {
+	p := &amp;process{fs: fs, limit: 1024}
+	terminal := &amp;description{file: fs.allocate()}
+	terminal.file.opens = 1
+
+	for range 3 {
+		p.install(terminal)
+	}
+
+	return p
+}
+
+
+// install puts a description in the lowest free entry, counts the new
+// reference, and returns the number of the entry.
+func (p *process) install(open *description) (int, error) {
+	fd := 0
+
+	for fd &lt; len(p.table) &amp;&amp; p.table[fd] != nil {
+		fd++
+	}
+
+	if fd &gt;= p.limit {
+		return 0, errTooManyFiles
+	}
+
+	if fd == len(p.table) {
+		p.table = append(p.table, nil)
+	}
+
+	open.refs++
+	p.table[fd] = &amp;descriptor{open: open}
+
+	return fd, nil
+}
+
+// lookup returns the entry of a descriptor.
+func (p *process) lookup(fd int) (*descriptor, error) {
+	if fd &lt; 0 || fd &gt;= len(p.table) || p.table[fd] == nil {
+		return nil, errBadDescriptor
+	}
+
+	return p.table[fd], nil
+}
+
+// open finds the inode behind a name and creates a description for it, with
+// offset 0.
+func (p *process) open(name string) (int, error) {
+	file, ok := p.fs.names[name]
+
+	if !ok {
+		return 0, errNoEntry
+	}
+
+	fd, err := p.install(&amp;description{file: file})
+
+	if err == nil {
+		file.opens++
+	}
+
+	return fd, err
+}
+
+// dup makes a second descriptor for an existing description.
+func (p *process) dup(fd int) (int, error) {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return p.install(entry.open)
+}
+
+
+// close frees an entry and drops its reference to the description. The last
+// reference closes the description, which drops its reference to the inode.
+func (p *process) close(fd int) error {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return err
+	}
+
+	p.table[fd] = nil
+	entry.open.refs--
+
+	if entry.open.refs == 0 {
+		entry.open.file.opens--
+		p.fs.release(entry.open.file)
+	}
+
+	return nil
+}
+
+// dup2 makes descriptor to refer to the description of descriptor from,
+// closing whatever to referred to before.
+func (p *process) dup2(from, to int) error {
+	entry, err := p.lookup(from)
+
+	if err != nil {
+		return err
+	}
+
+	if from == to {
+		return nil
+	}
+
+	if _, err := p.lookup(to); err == nil {
+		p.close(to)
+	}
+
+	for len(p.table) &lt;= to {
+		p.table = append(p.table, nil)
+	}
+
+	entry.open.refs++
+	p.table[to] = &amp;descriptor{open: entry.open}
+
+	return nil
+}
+
+
+// write copies data into the file at the description's offset and advances
+// the offset. In append mode the offset first moves to the end of the file.
+func (p *process) write(fd int, data string) error {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return err
+	}
+
+	open, file := entry.open, entry.open.file
+
+	if open.appendMode {
+		open.offset = len(file.data)
+	}
+
+	end := open.offset + len(data)
+
+	if end &gt; len(file.data) {
+		file.data = append(file.data, make([]byte, end-len(file.data))...)
+	}
+
+	copy(file.data[open.offset:], data)
+	open.offset = end
+
+	return nil
+}
+
+// read returns up to n bytes from the description's offset and advances the
+// offset.
+func (p *process) read(fd, n int) (string, error) {
+	entry, err := p.lookup(fd)
+
+	if err != nil {
+		return "", err
+	}
+
+	open := entry.open
+	end := min(open.offset+n, len(open.file.data))
+	data := string(open.file.data[open.offset:end])
+	open.offset = end
+
+	return data, nil
+}
+
+
+// fork returns a child whose table has a copy of every entry. The copies
+// refer to the parent's descriptions, and each copy is counted.
+func (p *process) fork() *process {
+	child := &amp;process{fs: p.fs, limit: p.limit, table: make([]*descriptor, len(p.table))}
+
+	for fd, entry := range p.table {
+		if entry != nil {
+			entry.open.refs++
+			child.table[fd] = &amp;descriptor{open: entry.open, cloexec: entry.cloexec}
+		}
+	}
+
+	return child
+}
+
+// exec closes every descriptor that has the close-on-exec flag.
+func (p *process) exec() {
+	for fd, entry := range p.table {
+		if entry != nil &amp;&amp; entry.cloexec {
+			p.close(fd)
+		}
+	}
+}
+
+
+func numbers(fs *filesystem) error {
+	p := newProcess(fs)
+
+	if err := p.close(0); err != nil {
+		return err
+	}
+
+	fd, err := p.open("file")
+	fmt.Printf("descriptor 0 closed: the next open returns %d\n", fd)
+
+	return err
+}
+
+func limit(fs *filesystem) error {
+	p := newProcess(fs)
+	p.limit = 32
+	highest := -1
+
+	for {
+		fd, err := p.open("file")
+
+		if err != nil {
+			fmt.Printf("limit of 32 descriptors: the highest number obtained is %d, the next open fails with %v\n", highest, err)
+
+			return nil
+		}
+
+		highest = max(highest, fd)
+	}
+}
+
+func offsets(fs *filesystem) error {
+	p := newProcess(fs)
+	first, err := p.open("file")
+
+	if err != nil {
+		return err
+	}
+
+	duplicate, err := p.dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	second, err := p.open("file")
+
+	if err != nil {
+		return err
+	}
+
+	if err := p.write(first, "hello"); err != nil {
+		return err
+	}
+
+	fmt.Printf("after a write of 5 bytes: offset through the duplicate %d, through a second open %d\n",
+		p.table[duplicate].open.offset, p.table[second].open.offset)
+
+	return nil
+}
+
+func flags(fs *filesystem) error {
+	p := newProcess(fs)
+	first, err := p.open("file")
+
+	if err != nil {
+		return err
+	}
+
+	duplicate, err := p.dup(first)
+
+	if err != nil {
+		return err
+	}
+
+	p.table[duplicate].open.appendMode = true
+	p.table[duplicate].cloexec = true
+
+	fmt.Printf("set on the duplicate, read on the original: O_APPEND %v, close-on-exec %v\n",
+		p.table[first].open.appendMode, p.table[first].cloexec)
+
+	return nil
+}
+
+
+func names(fs *filesystem) error {
+	fs.create("first")
+
+	if err := fs.link("first", "second"); err != nil {
+		return err
+	}
+
+	a, b := fs.names["first"], fs.names["second"]
+	fmt.Printf("a second name for the file: same inode %v, link count %d\n", a == b, b.links)
+
+	return nil
+}
+
+func unlinked(fs *filesystem) error {
+	p := newProcess(fs)
+	file := fs.create("unlinked")
+	file.data = []byte("hello")
+
+	fd, err := p.open("unlinked")
+
+	if err != nil {
+		return err
+	}
+
+	if err := fs.unlink("unlinked"); err != nil {
+		return err
+	}
+
+	data, err := p.read(fd, 16)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("the name removed, the file still open: link count %d, read through the descriptor returns %q\n",
+		file.links, data)
+
+	return p.close(fd)
+}
+
+
+// redirect forks a child, points its descriptors 1 and 2 at the given
+// descriptors, and has it write "out" and then "err". It returns the file's
+// contents.
+func redirect(shell *process, file *inode, stdout, stderr int) (string, error) {
+	child := shell.fork()
+
+	if err := child.dup2(stdout, 1); err != nil {
+		return "", err
+	}
+
+	if err := child.dup2(stderr, 2); err != nil {
+		return "", err
+	}
+
+	child.exec()
+
+	if err := child.write(1, "out\n"); err != nil {
+		return "", err
+	}
+
+	if err := child.write(2, "err\n"); err != nil {
+		return "", err
+	}
+
+	return strings.Join(strings.Fields(string(file.data)), " "), nil
+}
+
+func redirections(fs *filesystem) error {
+	shell := newProcess(fs)
+	file := fs.create("output")
+	stdout, err := shell.open("output")
+
+	if err != nil {
+		return err
+	}
+
+	text, err := redirect(shell, file, stdout, stdout)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt;&amp;1: the file holds %q\n", text)
+
+	file.data = nil
+	first, err := shell.open("output")
+
+	if err != nil {
+		return err
+	}
+
+	second, err := shell.open("output")
+
+	if err != nil {
+		return err
+	}
+
+	text, err = redirect(shell, file, first, second)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("&gt; file 2&gt; file: the file holds %q\n", text)
+
+	return nil
+}
+
+
+func main() {
+	experiments := []func(*filesystem) error{numbers, limit, offsets, flags, names, unlinked, redirections}
+
+	for _, experiment := range experiments {
+		fs := newFilesystem()
+		fs.create("file")
+
+		if err := experiment(fs); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.42</b> The complete <code>fdtable</code>, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/democratizing-linux/code/rust/fdtable/src/main.rs">code/rust/fdtable/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Models the kernel's file tables in user space: names that refer to inodes,
+//! open file descriptions that refer to an inode and hold an offset, and a
+//! descriptor table for each process. Every object counts the references to
+//! it and is released when the count reaches 0. The program repeats the
+//! experiments of fdfacts on the model and prints the same lines.
+//!
+//! Run it from code/rust with:
+//!
+//! ```text
+//! cargo run -p fdtable
+//! ```
+
+use std::collections::HashMap;
+use std::fmt;
+
+/// The errors carry the names of the kernel's error codes for the same cases.
+#[derive(Debug)]
+enum Error {
+    BadDescriptor,
+    TooManyFiles,
+    NoEntry,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        f.write_str(match self {
+            Error::BadDescriptor =&gt; "EBADF",
+            Error::TooManyFiles =&gt; "EMFILE",
+            Error::NoEntry =&gt; "ENOENT",
+        })
+    }
+}
+
+/// A file: its contents and 2 reference counts. `links` counts the names
+/// that refer to it, and `opens` counts the open file descriptions that refer
+/// to it. Its number is its key in the kernel's table of inodes.
+#[derive(Default)]
+struct Inode {
+    data: Vec&lt;u8&gt;,
+    links: u32,
+    opens: u32,
+}
+
+/// The kernel's tables: a single directory that maps names to inode numbers,
+/// the inodes, and every open file description.
+#[derive(Default)]
+struct Kernel {
+    names: HashMap&lt;&amp;'static str, u64&gt;,
+    inodes: HashMap&lt;u64, Inode&gt;,
+    open_files: Vec&lt;Description&gt;,
+    next: u64,
+}
+
+impl Kernel {
+    /// Returns the number of a new inode with no name.
+    fn allocate(&amp;mut self) -&gt; u64 {
+        self.next += 1;
+        self.inodes.insert(self.next, Inode::default());
+
+        self.next
+    }
+
+    fn inode(&amp;mut self, number: u64) -&gt; Result&lt;&amp;mut Inode, Error&gt; {
+        self.inodes.get_mut(&amp;number).ok_or(Error::NoEntry)
+    }
+}
+
+impl Kernel {
+    /// Makes an empty file with one name and returns its inode number.
+    fn create(&amp;mut self, name: &amp;'static str) -&gt; Result&lt;u64, Error&gt; {
+        let number = self.allocate();
+
+        self.inode(number)?.links = 1;
+        self.names.insert(name, number);
+
+        Ok(number)
+    }
+
+    /// Adds a second name for an existing file.
+    fn link(&amp;mut self, existing: &amp;str, added: &amp;'static str) -&gt; Result&lt;(), Error&gt; {
+        let number = *self.names.get(existing).ok_or(Error::NoEntry)?;
+
+        self.inode(number)?.links += 1;
+        self.names.insert(added, number);
+
+        Ok(())
+    }
+
+    /// Removes a name. The file itself is removed only when `release` finds
+    /// no other reference to it.
+    fn unlink(&amp;mut self, name: &amp;str) -&gt; Result&lt;(), Error&gt; {
+        let number = self.names.remove(name).ok_or(Error::NoEntry)?;
+
+        self.inode(number)?.links -= 1;
+        self.release(number);
+
+        Ok(())
+    }
+
+    /// Frees an inode that has no name and is not open.
+    fn release(&amp;mut self, number: u64) {
+        if let Some(file) = self.inodes.get(&amp;number)
+            &amp;&amp; file.links == 0
+            &amp;&amp; file.opens == 0
+        {
+            self.inodes.remove(&amp;number);
+        }
+    }
+}
+
+/// An open file description: the state created by one open. `file` is the
+/// number of its inode, and `refs` counts the descriptors, in all processes,
+/// that refer to it.
+struct Description {
+    file: u64,
+    offset: usize,
+    append_mode: bool,
+    refs: u32,
+}
+
+/// One entry of a process's table. `open` is the index of a description in
+/// the kernel's table. The close-on-exec flag belongs to the entry.
+#[derive(Clone, Copy)]
+struct Descriptor {
+    open: usize,
+    cloexec: bool,
+}
+
+/// A process is its descriptor table. The index of an entry is the file
+/// descriptor, `None` is a free number, and `limit` is the number of entries
+/// the process may use.
+struct Process {
+    table: Vec&lt;Option&lt;Descriptor&gt;&gt;,
+    limit: usize,
+}
+
+impl Kernel {
+    /// Adds a description for an inode and returns its index.
+    fn describe(&amp;mut self, file: u64) -&gt; usize {
+        self.open_files.push(Description {
+            file,
+            offset: 0,
+            append_mode: false,
+            refs: 0,
+        });
+
+        self.open_files.len() - 1
+    }
+
+    /// Returns a process with descriptors 0, 1 and 2 open on a terminal,
+    /// which is a file without a name.
+    fn process(&amp;mut self) -&gt; Result&lt;Process, Error&gt; {
+        let mut process = Process {
+            table: Vec::new(),
+            limit: 1024,
+        };
+
+        let terminal = self.allocate();
+        let open = self.describe(terminal);
+
+        self.inode(terminal)?.opens = 1;
+
+        for _ in 0..3 {
+            self.install(&amp;mut process, open)?;
+        }
+
+        Ok(process)
+    }
+}
+
+impl Kernel {
+    /// Puts a description in the lowest free entry, counts the new reference,
+    /// and returns the number of the entry.
+    fn install(&amp;mut self, process: &amp;mut Process, open: usize) -&gt; Result&lt;usize, Error&gt; {
+        let fd = process
+            .table
+            .iter()
+            .take_while(|entry| entry.is_some())
+            .count();
+
+        if fd &gt;= process.limit {
+            return Err(Error::TooManyFiles);
+        }
+
+        if fd == process.table.len() {
+            process.table.push(None);
+        }
+
+        self.open_files[open].refs += 1;
+        process.table[fd] = Some(Descriptor {
+            open,
+            cloexec: false,
+        });
+
+        Ok(fd)
+    }
+
+    /// Finds the inode behind a name and creates a description for it, with
+    /// offset 0.
+    fn open(&amp;mut self, process: &amp;mut Process, name: &amp;str) -&gt; Result&lt;usize, Error&gt; {
+        let file = *self.names.get(name).ok_or(Error::NoEntry)?;
+        let open = self.describe(file);
+        let fd = self.install(process, open)?;
+
+        self.inode(file)?.opens += 1;
+
+        Ok(fd)
+    }
+
+    /// Makes a second descriptor for an existing description.
+    fn dup(&amp;mut self, process: &amp;mut Process, fd: usize) -&gt; Result&lt;usize, Error&gt; {
+        let entry = process.lookup(fd)?;
+
+        self.install(process, entry.open)
+    }
+}
+
+impl Process {
+    /// Returns the entry of a descriptor.
+    fn lookup(&amp;self, fd: usize) -&gt; Result&lt;Descriptor, Error&gt; {
+        self.table
+            .get(fd)
+            .copied()
+            .flatten()
+            .ok_or(Error::BadDescriptor)
+    }
+}
+
+impl Kernel {
+    /// Frees an entry and drops its reference to the description. The last
+    /// reference closes the description, which drops its reference to the
+    /// inode.
+    fn close(&amp;mut self, process: &amp;mut Process, fd: usize) -&gt; Result&lt;(), Error&gt; {
+        let entry = process.lookup(fd)?;
+        let open = &amp;mut self.open_files[entry.open];
+
+        process.table[fd] = None;
+        open.refs -= 1;
+
+        if open.refs == 0 {
+            let file = open.file;
+
+            self.inode(file)?.opens -= 1;
+            self.release(file);
+        }
+
+        Ok(())
+    }
+
+    /// Makes descriptor `to` refer to the description of descriptor `from`,
+    /// closing whatever `to` referred to before.
+    fn dup2(&amp;mut self, process: &amp;mut Process, from: usize, to: usize) -&gt; Result&lt;(), Error&gt; {
+        let entry = process.lookup(from)?;
+
+        if from == to {
+            return Ok(());
+        }
+
+        if process.lookup(to).is_ok() {
+            self.close(process, to)?;
+        }
+
+        if process.table.len() &lt;= to {
+            process.table.resize(to + 1, None);
+        }
+
+        self.open_files[entry.open].refs += 1;
+        process.table[to] = Some(Descriptor {
+            open: entry.open,
+            cloexec: false,
+        });
+
+        Ok(())
+    }
+}
+
+impl Kernel {
+    /// Copies `data` into the file at the description's offset and advances
+    /// the offset. In append mode the offset first moves to the end of the
+    /// file.
+    fn write(&amp;mut self, process: &amp;Process, fd: usize, data: &amp;str) -&gt; Result&lt;(), Error&gt; {
+        let open = &amp;mut self.open_files[process.lookup(fd)?.open];
+        let file = self.inodes.get_mut(&amp;open.file).ok_or(Error::NoEntry)?;
+
+        if open.append_mode {
+            open.offset = file.data.len();
+        }
+
+        let end = open.offset + data.len();
+
+        if end &gt; file.data.len() {
+            file.data.resize(end, 0);
+        }
+
+        file.data[open.offset..end].copy_from_slice(data.as_bytes());
+        open.offset = end;
+
+        Ok(())
+    }
+
+    /// Returns up to `n` bytes from the description's offset and advances the
+    /// offset.
+    fn read(&amp;mut self, process: &amp;Process, fd: usize, n: usize) -&gt; Result&lt;String, Error&gt; {
+        let open = &amp;mut self.open_files[process.lookup(fd)?.open];
+        let file = self.inodes.get(&amp;open.file).ok_or(Error::NoEntry)?;
+
+        let end = (open.offset + n).min(file.data.len());
+        let data = String::from_utf8_lossy(&amp;file.data[open.offset..end]).into_owned();
+
+        open.offset = end;
+
+        Ok(data)
+    }
+}
+
+impl Kernel {
+    /// Returns a child whose table has a copy of every entry. The copies
+    /// refer to the parent's descriptions, and each copy is counted.
+    fn fork(&amp;mut self, parent: &amp;Process) -&gt; Process {
+        for entry in parent.table.iter().flatten() {
+            self.open_files[entry.open].refs += 1;
+        }
+
+        Process {
+            table: parent.table.clone(),
+            limit: parent.limit,
+        }
+    }
+
+    /// Closes every descriptor that has the close-on-exec flag.
+    fn exec(&amp;mut self, process: &amp;mut Process) -&gt; Result&lt;(), Error&gt; {
+        for fd in 0..process.table.len() {
+            if process.table[fd].is_some_and(|entry| entry.cloexec) {
+                self.close(process, fd)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn numbers(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+
+    kernel.close(&amp;mut process, 0)?;
+
+    let fd = kernel.open(&amp;mut process, "file")?;
+    println!("descriptor 0 closed: the next open returns {fd}");
+
+    Ok(())
+}
+
+fn limit(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+    let mut highest = 0;
+
+    process.limit = 32;
+
+    let error = loop {
+        match kernel.open(&amp;mut process, "file") {
+            Ok(fd) =&gt; highest = highest.max(fd),
+            Err(error) =&gt; break error,
+        }
+    };
+
+    println!(
+        "limit of 32 descriptors: the highest number obtained is {highest}, the next open fails with {error}"
+    );
+
+    Ok(())
+}
+
+fn offsets(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+
+    let first = kernel.open(&amp;mut process, "file")?;
+    let duplicate = kernel.dup(&amp;mut process, first)?;
+    let second = kernel.open(&amp;mut process, "file")?;
+
+    kernel.write(&amp;process, first, "hello")?;
+
+    let shared = kernel.open_files[process.lookup(duplicate)?.open].offset;
+    let separate = kernel.open_files[process.lookup(second)?.open].offset;
+
+    println!(
+        "after a write of 5 bytes: offset through the duplicate {shared}, through a second open {separate}"
+    );
+
+    Ok(())
+}
+
+fn flags(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+
+    let first = kernel.open(&amp;mut process, "file")?;
+    let duplicate = kernel.dup(&amp;mut process, first)?;
+
+    kernel.open_files[process.lookup(duplicate)?.open].append_mode = true;
+
+    if let Some(entry) = &amp;mut process.table[duplicate] {
+        entry.cloexec = true;
+    }
+
+    let original = process.lookup(first)?;
+
+    println!(
+        "set on the duplicate, read on the original: O_APPEND {}, close-on-exec {}",
+        kernel.open_files[original.open].append_mode, original.cloexec
+    );
+
+    Ok(())
+}
+
+fn names(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    kernel.create("first")?;
+    kernel.link("first", "second")?;
+
+    let (a, b) = (kernel.names["first"], kernel.names["second"]);
+
+    println!(
+        "a second name for the file: same inode {}, link count {}",
+        a == b,
+        kernel.inode(b)?.links
+    );
+
+    Ok(())
+}
+
+fn unlinked(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut process = kernel.process()?;
+    let file = kernel.create("unlinked")?;
+
+    kernel.inode(file)?.data = b"hello".to_vec();
+
+    let fd = kernel.open(&amp;mut process, "unlinked")?;
+
+    kernel.unlink("unlinked")?;
+
+    let links = kernel.inode(file)?.links;
+    let data = kernel.read(&amp;process, fd, 16)?;
+
+    println!(
+        "the name removed, the file still open: link count {links}, read through the descriptor returns {data:?}"
+    );
+
+    kernel.close(&amp;mut process, fd)
+}
+
+/// Forks a child, points its descriptors 1 and 2 at the given descriptors,
+/// and has it write "out" and then "err". Returns the file's contents.
+fn redirect(
+    kernel: &amp;mut Kernel,
+    shell: &amp;Process,
+    file: u64,
+    stdout: usize,
+    stderr: usize,
+) -&gt; Result&lt;String, Error&gt; {
+    let mut child = kernel.fork(shell);
+
+    kernel.dup2(&amp;mut child, stdout, 1)?;
+    kernel.dup2(&amp;mut child, stderr, 2)?;
+    kernel.exec(&amp;mut child)?;
+
+    kernel.write(&amp;child, 1, "out\n")?;
+    kernel.write(&amp;child, 2, "err\n")?;
+
+    let text = String::from_utf8_lossy(&amp;kernel.inode(file)?.data).into_owned();
+    let words: Vec&lt;&amp;str&gt; = text.split_whitespace().collect();
+
+    Ok(words.join(" "))
+}
+
+fn redirections(kernel: &amp;mut Kernel) -&gt; Result&lt;(), Error&gt; {
+    let mut shell = kernel.process()?;
+    let file = kernel.create("output")?;
+    let stdout = kernel.open(&amp;mut shell, "output")?;
+
+    let text = redirect(kernel, &amp;shell, file, stdout, stdout)?;
+    println!("&gt; file 2&gt;&amp;1: the file holds {text:?}");
+
+    kernel.inode(file)?.data.clear();
+
+    let first = kernel.open(&amp;mut shell, "output")?;
+    let second = kernel.open(&amp;mut shell, "output")?;
+
+    let text = redirect(kernel, &amp;shell, file, first, second)?;
+    println!("&gt; file 2&gt; file: the file holds {text:?}");
+
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Error&gt; {
+    let experiments = [
+        numbers,
+        limit,
+        offsets,
+        flags,
+        names,
+        unlinked,
+        redirections,
+    ];
+
+    for experiment in experiments {
+        let mut kernel = Kernel::default();
+
+        kernel.create("file")?;
+        experiment(&amp;mut kernel)?;
+    }
+
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A file descriptor is an index into a per-process table, <code>struct fdtable</code>. A process
+can name only the objects in its own table.</li>
+<li>A new descriptor gets the lowest free number. <code>RLIMIT_NOFILE</code> limits the numbers, and
+<code>open</code> fails with <code>EMFILE</code> at the limit.</li>
+<li>A table entry points to a <code>struct file</code>, the open file description. It holds the
+offset <code>f_pos</code>, the status flags <code>f_flags</code>, and the function table <code>f_op</code> through
+which <code>read</code> and <code>write</code> reach a file, a pipe or a socket.</li>
+<li>A <code>struct file</code> refers to an inode. The inode holds the type, owner, permissions, size
+and data location of a file, and no name.</li>
+<li>Names are directory entries. Several entries may refer to the same inode, and
+<code>i_nlink</code> counts them.</li>
+<li><code>dup</code> and <code>fork</code> create table entries for an existing <code>struct file</code>, so the offset and
+the status flags are shared. Each <code>open</code> creates a new <code>struct file</code>.</li>
+<li>A <code>struct file</code> is closed when its last descriptor is closed. An inode is freed when
+it has no name and is not open.</li>
+<li>The close-on-exec flag belongs to the table entry. <code>exec</code> closes the descriptors that
+have it.</li>
+<li><code>2&gt;&amp;1</code> duplicates descriptor 1 onto descriptor 2. The descriptors then share an
+offset, and their output appears in order.</li>
+</ul>
+</div>
+
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><code>open(2)</code>, <code>dup(2)</code>, <code>fcntl(2)</code>, <code>link(2)</code>, <code>unlink(2)</code>, <code>stat(2)</code> and <code>inode(7)</code>,
+Linux manual pages: <a href="https://man7.org/linux/man-pages/man7/inode.7.html">https://man7.org/linux/man-pages/man7/inode.7.html</a></li>
+<li>M. Kerrisk, <em>The Linux Programming Interface</em>, No Starch Press, 2010, chapters 4, 5
+and 18.</li>
+<li><code>include/linux/fdtable.h</code>, <code>include/linux/fs.h</code>, <code>include/linux/dcache.h</code> and
+<code>fs/file.c</code>, Linux 5.15: <a href="https://elixir.bootlin.com/linux/v5.15/source/include/linux/fs.h">https://elixir.bootlin.com/linux/v5.15/source/include/linux/fs.h</a></li>
+<li><em>Overview of the Linux Virtual File System</em>, Linux kernel documentation:
+<a href="https://www.kernel.org/doc/html/v5.15/filesystems/vfs.html">https://www.kernel.org/doc/html/v5.15/filesystems/vfs.html</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="01-pipes.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="03-processes.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="01-pipes.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="03-processes.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-48f2abda.js"></script>
+        <script src="theme/anim-be9afa44.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

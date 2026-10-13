@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 522" width="480" height="522" role="img" aria-label="The number of open read ends and write ends of the pipe in the pipeline a | b. After pipe the shell holds 1 of each. After 2 forks the shell, a and b hold 3 of each. After each process closes what it does not use, a holds the write end and b the read end: 1 and 1. After a exits the write count is 0. When b has read the last byte, read returns 0.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="522" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Who holds the ends of a pipe</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The pipeline a | b, from pipe() to the end of the stream.</text>
+  <text x="32.0" y="108.0" class="tab" text-anchor="start" xml:space="preserve">after</text>
+  <text x="318.0" y="108.0" class="tab" text-anchor="middle" xml:space="preserve">read ends</text>
+  <text x="404.0" y="108.0" class="tab" text-anchor="middle" xml:space="preserve">write ends</text>
+  <rect x="32.0" y="122.0" width="416.0" height="54.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="145.0" class="name" text-anchor="start" xml:space="preserve">pipe()</text>
+  <text x="46.0" y="164.0" class="sub" text-anchor="start" xml:space="preserve">shell</text>
+  <rect x="296.0" y="135.0" width="44.0" height="28.0" rx="8" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="318.0" y="154.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="382.0" y="135.0" width="44.0" height="28.0" rx="8" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="404.0" y="154.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="32.0" y="188.0" width="416.0" height="54.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="211.0" class="name" text-anchor="start" xml:space="preserve">fork, fork</text>
+  <text x="46.0" y="230.0" class="sub" text-anchor="start" xml:space="preserve">shell, a, b</text>
+  <rect x="296.0" y="201.0" width="44.0" height="28.0" rx="8" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="318.0" y="220.0" class="mono strong" text-anchor="middle" xml:space="preserve">3</text>
+  <rect x="382.0" y="201.0" width="44.0" height="28.0" rx="8" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="404.0" y="220.0" class="mono strong" text-anchor="middle" xml:space="preserve">3</text>
+  <rect x="32.0" y="254.0" width="416.0" height="54.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="277.0" class="name" text-anchor="start" xml:space="preserve">unused ends closed</text>
+  <text x="46.0" y="296.0" class="sub" text-anchor="start" xml:space="preserve">a writes, b reads</text>
+  <rect x="296.0" y="267.0" width="44.0" height="28.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="318.0" y="286.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="382.0" y="267.0" width="44.0" height="28.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="404.0" y="286.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="32.0" y="320.0" width="416.0" height="54.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="343.0" class="name" text-anchor="start" xml:space="preserve">a exits</text>
+  <text x="46.0" y="362.0" class="sub" text-anchor="start" xml:space="preserve">b reads</text>
+  <rect x="296.0" y="333.0" width="44.0" height="28.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="318.0" y="352.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="382.0" y="333.0" width="44.0" height="28.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="404.0" y="352.0" class="mono strong" text-anchor="middle" xml:space="preserve">0</text>
+  <rect x="32.0" y="386.0" width="416.0" height="54.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="46.0" y="409.0" class="name" text-anchor="start" xml:space="preserve">b reads the last byte</text>
+  <text x="46.0" y="428.0" class="sub" text-anchor="start" xml:space="preserve">b</text>
+  <rect x="296.0" y="399.0" width="44.0" height="28.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="318.0" y="418.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <rect x="382.0" y="399.0" width="44.0" height="28.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="404.0" y="418.0" class="mono strong" text-anchor="middle" xml:space="preserve">0</text>
+  <text x="32.0" y="470.0" class="note" text-anchor="start" xml:space="preserve">The counts are descriptors open on each end, in all processes. A reader</text>
+  <text x="32.0" y="487.0" class="note" text-anchor="start" xml:space="preserve">sees the end of the stream only when the write count is 0. If the shell</text>
+  <text x="32.0" y="504.0" class="note" text-anchor="start" xml:space="preserve">kept its write end, the count would stay at 1 and b would wait for ever.</text>
+</svg>
