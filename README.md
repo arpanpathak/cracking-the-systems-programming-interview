@@ -6,7 +6,8 @@
 
 [![Read the book](https://img.shields.io/badge/read%20the%20book-browser%20edition-14508c?style=for-the-badge&logo=mdbook&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/book/)
 [![Release](https://img.shields.io/github/v/release/arpanpathak/cracking-the-systems-programming-interview?filter=book-*&style=for-the-badge&label=release&color=2f7f86)](https://github.com/arpanpathak/cracking-the-systems-programming-interview/releases/latest)
-[![GPU-Accelerated Kubernetes](https://img.shields.io/badge/new%20book-GPU--Accelerated%20Kubernetes-76b900?style=for-the-badge&logo=kubernetes&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/gpu-accelerated-kubernetes/)
+[![GPU-Accelerated Kubernetes](https://img.shields.io/badge/book-GPU--Accelerated%20Kubernetes-76b900?style=for-the-badge&logo=kubernetes&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/gpu-accelerated-kubernetes/)
+[![Democratizing Linux](https://img.shields.io/badge/new%20book-Democratizing%20Linux-f46a35?style=for-the-badge&logo=linux&logoColor=white)](https://arpanpathak.github.io/cracking-the-systems-programming-interview/democratizing-linux/)
 [![PDF](https://img.shields.io/badge/PDF-print%20edition-b1361f?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](cracking-the-systems-programming-interview/build/cracking-the-systems-programming-interview.pdf)
 [![Rust](https://img.shields.io/badge/rust-edition%202024-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![CI](https://img.shields.io/github/actions/workflow/status/arpanpathak/cracking-the-systems-programming-interview/ci.yaml?branch=prep-v2&style=for-the-badge&label=CI)](../../actions/workflows/ci.yaml)
@@ -28,6 +29,7 @@ each one runnable on its own.
 | [`docs/`](docs/) | 14 study guides: Linux internals, Kubernetes, controller-runtime, CLI/SDK/REST design, concurrency and async, testing and CI, behavioural rounds, and a three-part Rust guide. | read, or `rg` them |
 | [`cracking-the-systems-programming-interview/`](cracking-the-systems-programming-interview/) | The book: 19 chapters in six parts (tools, whiteboard algorithms, memory and the machine, concurrency, the network, interview day) and four appendices. Every lab program is quoted in full with `{{#include}}`, versions of the same problem are shown in the order they were written, and each chapter ends with the questions an interviewer will ask. | `make serve`, `make pdf` |
 | [`gpu-accelerated-kubernetes/`](gpu-accelerated-kubernetes/) | A book on running GPU workloads on Kubernetes, with every program in both Go and Rust: an informer model built from scratch, a GPU job controller on controller-runtime and kube-rs, what one GPU unit contains and how GPUs are shared (time-slicing, MPS, MIG, vGPU, DRA), and a kind cluster whose pods use a real GPU. [Read it online](https://arpanpathak.github.io/cracking-the-systems-programming-interview/gpu-accelerated-kubernetes/). | `cd gpu-accelerated-kubernetes && mdbook serve` |
+| [`democratizing-linux/`](democratizing-linux/) | *Democratizing Linux: A Pipe Dream*. A book that rebuilds the kernel's mechanisms in user space, with every program in both Go and Rust: pipes, file descriptors, processes, a shell, signals, CPU scheduling, virtual memory, the page cache, epoll, TCP sockets, namespaces, control groups and a container. 13 chapters with kernel structure definitions, measurements from a real machine, diagrams and animations. [Read it online](https://arpanpathak.github.io/cracking-the-systems-programming-interview/democratizing-linux/). | `cd democratizing-linux && mdbook serve` |
 | [`systems_design/`](systems_design/) | A GPU and cloud systems design reference with Mermaid diagrams: the GPU execution model, cluster scheduling and sharing, the control plane and API design, failure handling, inference serving, model distribution, metering, and diagnosis. | open the [index](systems_design/README.md) |
 | [`scripts/`](scripts/) | Kind cluster setup, plus a live end-to-end check of the operator. | `scripts/verify-kind.sh` |
 
@@ -159,6 +161,13 @@ rules.
 │   ├── diagrams/                 # Graphviz sources for the figures
 │   ├── tools/                    # art.py, figures.py, anim*.py, build_pdf.py, print.css
 │   └── build/                    # generated PDF
+│
+├── democratizing-linux/          # the Linux book: mdBook, programs in Go and Rust
+│   ├── src/                      # chapters, art/ plates, figures/ diagrams and animations
+│   ├── code/go/, code/rust/      # 25 programs in each language
+│   ├── code/output/              # the output both versions must print
+│   ├── tools/                    # chapter sources, figure and art scripts, checks
+│   └── Makefile                  # make check, make html
 │
 ├── operator/                     # Idiomatic Go Kubernetes operator
 │   ├── api/v1/                   # GpuWorkload CRD types
